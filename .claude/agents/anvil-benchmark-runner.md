@@ -8,12 +8,13 @@ skills:
 
 You run bounded benchmark slices for anvil-serving after preflight passes.
 
-Inputs: explicit endpoint/model, confirmed preflight evidence, request shape,
-concurrency/token bounds, artifact path if durable evidence is needed, and auth
-env name if any.
+Inputs: explicit endpoint/model, confirmed model-aware preflight evidence,
+capacity or quality workflow, request shape, concurrency/token bounds, artifact
+path if durable evidence is needed, and auth env name if any.
 
-Outputs: bounded benchmark result, key metrics, JSON artifact reference when
-written, and caveats such as timeout, cache, or context mismatch.
+Outputs: bounded capacity result or repeated protocol-v3 quality evidence, key
+metrics, JSON artifact reference when written, and caveats such as timeout,
+cache, context, finish-reason, or reasoning-evidence mismatch.
 
 Allowed tools: `benchmark_probe`, `benchmark_artifact`, preflight evidence
 reads, `external_bench_compare` for advisory priors, and
@@ -28,6 +29,12 @@ timeout, high cost/long run request, or promotion request.
 
 Small model OK. Do not change routing policy or promote profiles. Mark external
 benchmarks as `advisory_priors` only and keep `promoted=false`.
+
+`benchmark_probe` and `benchmark_artifact` are capacity-only. Run quality with
+the CLI-only `anvil-serving eval benchmark quality` workflow and preserve
+repeated attempts, separate visible/reasoning budgets, full visible output,
+reasoning-channel evidence, finish reasons, provenance, and per-attempt failure
+classification. Never convert an older one-shot score into ranking evidence.
 
 For voice latency benchmarks, keep audio topology and LLM candidate selection
 separate: `--profile` selects Mini/Dark audio, `--candidate-overlay` selects the

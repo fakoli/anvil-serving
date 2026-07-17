@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from anvil_serving import mcp
 from anvil_serving.command_tree import (
     COMMAND_TREE,
     CommandExample,
@@ -229,6 +230,85 @@ def test_manifest_drift_is_detected(tmp_path: Path):
 
 def test_declared_tree_is_valid():
     validate_command_tree(COMMAND_TREE)
+
+
+def test_remote_command_tools_exist_in_the_mcp_catalog():
+    remote_tools = {
+        record["remote_operation"]["tool"]
+        for record in manifest_data()["commands"]
+        if record["remote_operation"] is not None
+        and record["remote_operation"]["mode"] == "tool"
+    }
+
+    assert remote_tools <= set(mcp.TOOLS)
+
+
+def test_remote_command_arguments_exist_in_the_mcp_tool_schemas():
+    for record in manifest_data()["commands"]:
+        remote = record["remote_operation"]
+        if remote is None or remote["mode"] != "tool":
+            continue
+        properties = set(mcp.TOOLS[remote["tool"]]["inputSchema"]["properties"])
+        declared = set(remote["allowed_arguments"])
+        declared.update(remote["confirmed_arguments"])
+        missing = declared - properties
+        assert not missing, (
+            f"{record['path']} declares arguments absent from {remote['tool']}: "
+            f"{sorted(missing)}"
+        )
+
+
+def test_repo_workbench_surfaces_catalog_current_mcp_tools_and_cli_gaps():
+    root = MANIFEST_PATH.parent.parent
+    catalog_paths = (
+        root / ".agents" / "skills" / "anvil-serving-workbench" / "SKILL.md",
+        root / ".claude" / "skills" / "anvil-serving-workbench" / "SKILL.md",
+        root / "examples" / "openclaw" / "skills" / "anvil-serving-workbench" / "SKILL.md",
+        root / "docs" / "OPERATOR-SKILLS-AND-SUBAGENTS.md",
+        root / "CLAUDE.md",
+    )
+
+    for path in catalog_paths:
+        text = path.read_text(encoding="utf-8")
+        missing = {
+            name
+            for name in mcp.TOOLS
+            if re.search(rf"(?<![A-Za-z0-9_]){re.escape(name)}(?![A-Za-z0-9_])", text)
+            is None
+        }
+        assert not missing, f"{path.relative_to(root)} omits MCP tools: {sorted(missing)}"
+
+    for path in catalog_paths[:3]:
+        text = path.read_text(encoding="utf-8")
+        for command in (
+            "models recipes list/show",
+            "models recipes create/update",
+            "models recipes load",
+            "models recipes delete",
+            "models pull",
+            "serves switch ROLE [MODEL]",
+            "eval benchmark quality",
+            "validate_only=true",
+            "confirm=true",
+            "dry_run=false",
+            "human_approved=true",
+            "Model Benchmark Source Freshness",
+            "does not prove evidence sufficiency",
+        ):
+            assert command in text, f"{path.relative_to(root)} omits {command!r}"
+
+    voice_text = (
+        root / "skills" / "anvil-serving-voice-ops" / "SKILL.md"
+    ).read_text(encoding="utf-8")
+    for token in (
+        "voice_manage",
+        "voice_proxy_manage",
+        "workflow_packet_validate",
+        "voice profiles validate",
+        "--candidate-overlay",
+        "eval benchmark quality",
+    ):
+        assert token in voice_text
 
 
 @pytest.mark.parametrize(

@@ -75,20 +75,6 @@
           "anvil-serving-workbench",
         ],
       },
-      {
-        name: "anvil-quality-critic",
-        model: "anvil/review",
-        skills: [
-          "anvil-serving-workbench",
-        ],
-      },
-      {
-        name: "anvil-adversarial-reviewer",
-        model: "anvil/review",
-        skills: [
-          "anvil-serving-workbench",
-        ],
-      },
     ],
   },
 }

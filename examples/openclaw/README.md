@@ -208,9 +208,10 @@ so they are only usable after the provider models exist.
 
    The rendered roles are `anvil-orchestrator`, `anvil-inventory-scout`,
    `anvil-route-analyst`, `anvil-serve-operator`,
-   `anvil-preflight-runner`, `anvil-benchmark-runner`,
-   `anvil-evidence-reporter`, `anvil-quality-critic`, and
-   `anvil-adversarial-reviewer`.
+   `anvil-preflight-runner`, `anvil-benchmark-runner`, and
+   `anvil-evidence-reporter`. Independent critic/reviewer roles are not
+   generated through the Anvil provider because it may route them back to the
+   candidate being evaluated.
 
 5. Save evidence with the PR or task packet:
 
@@ -247,10 +248,12 @@ by the stdlib renderer; edit them manually or use `--overwrite` only after
 making a separate backup.
 
 Role model mapping is intentionally split: small operational roles use
-`anvil/chat-fast` when present, the orchestrator prefers `anvil/planning`, and
-quality/adversarial critics prefer `anvil/review`. Small-model roles must not
-change routing policy or promote profiles; live promotion, cloud enablement,
-host repair, public bind, and destructive cache work remain human-gated.
+`anvil/chat-fast` when present and the orchestrator prefers `anvil/planning`.
+Configure quality/adversarial critics through a separate provider or external
+harness so they are independent from the candidate route. Small-model roles
+must not change routing policy or promote profiles; live promotion, cloud
+enablement, host repair, public bind, and destructive cache work remain
+human-gated.
 
 ## Run the validator (against the committed fixture)
 

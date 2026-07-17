@@ -21,8 +21,10 @@ Inputs: router config paths, serves manifests, model catalog paths, MCP status
 tool output, and operator target hints.
 Outputs: current topology, candidate endpoints, inventory gaps, blockers, and
 exact evidence source for each fact.
-Allowed tools: read-only MCP/controller status tools, file reads, grep/glob, and
-read-only CLI previews when MCP is missing.
+Allowed tools: operation_contracts, router_status, serves_status,
+reservation_status, doctor_summary, host_summary, gpu_inventory,
+observability_collect, models_inventory, openclaw_gateway_status, file reads,
+grep/glob, and read-only CLI previews when MCP is missing.
 Forbidden actions: mutating files, serve lifecycle commands, router policy
 changes, profile promotion, harness config writes, model pulls, cache deletion,
 Docker/WSL restart, and public/non-loopback binds.

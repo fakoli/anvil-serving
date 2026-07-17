@@ -1,16 +1,16 @@
-// OpenClaw provider config — RECONCILED for the fakoli-dark FLEXIBILITY-mode router (2026-07-04).
+// OpenClaw provider config — illustrative FLEXIBILITY-mode snapshot (reviewed 2026-07-17).
 //
-// Apply on the OpenClaw GATEWAY host (Fakoli Mini), at ~/.openclaw/openclaw.json. This supersedes
-// the reference recipe in docs/OPENCLAW-INTEGRATION-SPEC.md §2 for the current live topology.
+// Prefer `anvil-serving harness sync openclaw --config <router.toml> --dry-run`; it renders the
+// current preset allowlist, context windows, and plugin-owned keys from the selected router config.
+// Apply only on the OpenClaw GATEWAY host after reviewing that generated preview.
 //
-// WHAT CHANGED vs the reference recipe (why "update the openclaw setup" was needed):
-//   - The router now OWNS reasoning/thinking per tier: heavy = gpt-oss-120b `reasoning_effort=high`
-//     (harmony format — IGNORES chat_template_kwargs.enable_thinking); fast = Qwen3.6-27B with
-//     `enable_thinking=false` set on the tier itself. So the old per-preset
+// CURRENT CONTRACT:
+//   - The router owns model-family reasoning/thinking controls. The old per-preset
 //     `agents.defaults.models["anvil/planning"|"anvil/long-context"].params...enable_thinking`
-//     overrides are now the router's job and are REMOVED here (leaving them is harmless-but-stale).
-//   - Presets and contextWindow (131072 = heavy-local's window) are UNCHANGED — every preset can
-//     route to heavy, so 131072 is the largest routed window (contextWindow-clamp gotcha).
+//     overrides stay absent; changing the served model must not require hand-editing this file.
+//   - This snapshot reflects `examples/fakoli-dark/anvil-router.flexibility.toml`. A different
+//     router config can add or remove presets, so generated output is authoritative.
+//   - contextWindow remains the largest routed tier window (contextWindow-clamp gotcha).
 //   - baseUrl/apiKey: the gateway is REMOTE from the router (Mini -> fakoli-dark), so this is NOT the
 //     loopback/no-auth case. Point at fakoli-dark's reachable address and pass the router token.
 {
@@ -31,7 +31,6 @@
           { id: "quick-edit",   name: "Anvil · Quick Edit",   reasoning: true, input: ["text"],         contextWindow: 131072, maxTokens: 8192  },
           { id: "review",       name: "Anvil · Review",       reasoning: true, input: ["text","image"], contextWindow: 131072, maxTokens: 16000 },
           { id: "chat",         name: "Anvil · Chat",         reasoning: true, input: ["text"],         contextWindow: 131072, maxTokens: 8192  },
-          { id: "chat-fast",    name: "Anvil · Chat Fast",    reasoning: true, input: ["text"],         contextWindow: 131072, maxTokens: 8192  },
           { id: "long-context", name: "Anvil · Long Context", reasoning: true, input: ["text"],         contextWindow: 131072, maxTokens: 16000 }
         ]
       }
@@ -41,17 +40,16 @@
     model: { primary: "anvil/chat" },
     // agents.defaults.models is OpenClaw's DROPDOWN ALLOWLIST — a preset appears only if listed
     // here. List EVERY preset with EMPTY params: keep the allowlist entry, but strip per-preset
-    // thinking overrides (the router owns reasoning_effort (heavy) / enable_thinking (fast) on the
-    // tiers). Deleting these entries removes the anvil presets from OpenClaw's picker entirely.
+    // thinking overrides (the router owns model-family controls on its tiers). Deleting these
+    // entries removes the anvil presets from OpenClaw's picker entirely.
     models: {
       "anvil/planning": {}, "anvil/quick-edit": {}, "anvil/review": {},
-      "anvil/chat": {}, "anvil/chat-fast": {}, "anvil/long-context": {}
+      "anvil/chat": {}, "anvil/long-context": {}
     }
   } },
   // key MUST be the packaged plugin id (plugins/openclaw-anvil-intent-router/), or the hook's
   // allowConversationAccess gate is never applied and intent routing silently no-ops.
   plugins: { entries: { "openclaw-anvil-intent-router": {
-    hooks: { allowConversationAccess: true },
-    config: { nativeProvider: "anthropic", nativeModel: "claude-sonnet-4-5" }
+    hooks: { allowConversationAccess: true }
   } } }
 }

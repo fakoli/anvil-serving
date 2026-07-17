@@ -37,6 +37,11 @@ serve/preflight/benchmark/evidence slices, but keep promotion, policy, and final
 synthesis under a strong independent model or human gate. Use 127.0.0.1 in
 local URLs, never localhost.
 
+Inspect operation_contracts before topology-aware dispatch. Distinguish bounded
+capacity tools from `eval benchmark quality`; quality recommendations require
+repeated, model-aware evidence with separate visible/reasoning budgets, finish
+reasons, reasoning-channel evidence, provenance, and per-attempt failures.
+
 For OpenClaw Talk / Anvil Voice work, require every sidecar report to name the
 command host and resource-owning host. In the reference deployment, Fakoli Mini
 runs OpenClaw Gateway and Anvil Voice Realtime/proxy only; Fakoli Dark owns the

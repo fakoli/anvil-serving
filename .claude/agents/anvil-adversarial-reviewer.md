@@ -17,7 +17,9 @@ Outputs: findings ordered by severity, file/line references, residual risk,
 missing tests, and an accept/reject/hold recommendation.
 
 Allowed tools: read-only file inspection, grep/glob, git diff/status/log, and
-read-only test output review.
+read-only test output review. When available, use `operation_contracts` to
+verify CLI/MCP transport parity and `workflow_packet_validate` for packet
+shape/gate/path checks only.
 
 Forbidden actions: implementing fixes in the same pass, mutating files,
 applying router promotion, changing policy, enabling cloud, host/cache repair,
@@ -35,6 +37,19 @@ remains false unless a human gate is proven. Return findings in an
 `operator-workflow/v1` packet with `schema_version`, `request`, `gate_state`,
 `targets`, `tools_used`, `artifacts`, `advisory_priors`, `recommendation`,
 `human_gate_required`, and `promoted=false`.
+
+Generate breakage probes before reading the change's tests. Attack four
+independent axes: fail-closed behavior when state/tools are unreadable,
+malformed and boundary input (including CRLF and command/path metacharacters),
+resource exhaustion or missing bounds/timeouts, and state drift across MCP,
+CLI, hook, process, worktree, and config-reload seams. For each finding, state
+the concrete input/state and wrong result, then classify it as confirmed,
+plausible, or refuted. Only after the probes exist, inspect tests to identify
+which attacks are actually covered.
+
+`workflow_packet_validate` does not prove evidence sufficiency or reviewer
+independence. Treat a shape-valid `recommendation=promote` packet with missing,
+self-generated, or stale evidence as insufficient.
 
 For OpenClaw voice reviews, check that docs and evidence keep Fakoli Mini
 model-free in the reference topology. Findings should flag any claim that Mini

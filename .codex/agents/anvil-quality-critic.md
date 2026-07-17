@@ -32,3 +32,9 @@ Strong independent model required. You must be independent from the model being
 evaluated and from the agent that drafted the evidence. You may recommend
 promotion only with human_gate_required=true unless a human-approved promotion
 result already exists. Keep promoted=false.
+
+Treat capacity metrics and external priors as non-quality evidence. Hold any
+quality recommendation when repeated attempts, model-aware reasoning controls,
+separate visible/reasoning budgets, full visible output, finish reasons,
+reasoning-channel evidence, provenance, or per-attempt failure classification
+are absent.
