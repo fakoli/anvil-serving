@@ -1,0 +1,12 @@
+gh pr view 38135 --repo vllm-project/vllm
+{"baseRefName":"main","headRefName":"gpt-oss-puzzle","headRepositoryOwner":{"id":"MDQ6VXNlcjM4MzEwNDgx","name":"Tomer Ronen","login":"TomerRonen34"},"mergeable":"UNKNOWN","number":38135,"state":"OPEN","title":"[Model] Support for nvidia/gpt-oss-puzzle-88B","updatedAt":"2026-05-23T07:38:49Z","url":"https://github.com/vllm-project/vllm/pull/38135"}
+
+gh pr list --repo vllm-project/vllm --state open --search "38135 in:body"
+[]
+
+gh pr list --repo vllm-project/vllm --state open --search "gpt oss puzzle"
+[{"headRefName":"gpt-oss-puzzle","number":38135,"title":"[Model] Support for nvidia/gpt-oss-puzzle-88B","updatedAt":"2026-05-23T07:38:49Z","url":"https://github.com/vllm-project/vllm/pull/38135"},{"headRefName":"feature/add_anymodel_to_vllm","number":36512,"title":"[Model] Add AnyModel: generic support for NAS-optimized heterogeneous architectures","updatedAt":"2026-07-07T19:42:20Z","url":"https://github.com/vllm-project/vllm/pull/36512"}]
+
+gh pr list --repo vllm-project/vllm --state open --search "GptOssPuzzle"
+[{"headRefName":"gpt-oss-puzzle","number":38135,"title":"[Model] Support for nvidia/gpt-oss-puzzle-88B","updatedAt":"2026-05-23T07:38:49Z","url":"https://github.com/vllm-project/vllm/pull/38135"}]
+
