@@ -243,6 +243,21 @@ def test_remote_command_tools_exist_in_the_mcp_catalog():
     assert remote_tools <= set(mcp.TOOLS)
 
 
+def test_remote_command_arguments_exist_in_the_mcp_tool_schemas():
+    for record in manifest_data()["commands"]:
+        remote = record["remote_operation"]
+        if remote is None or remote["mode"] != "tool":
+            continue
+        properties = set(mcp.TOOLS[remote["tool"]]["inputSchema"]["properties"])
+        declared = set(remote["allowed_arguments"])
+        declared.update(remote["confirmed_arguments"])
+        missing = declared - properties
+        assert not missing, (
+            f"{record['path']} declares arguments absent from {remote['tool']}: "
+            f"{sorted(missing)}"
+        )
+
+
 def test_repo_workbench_surfaces_catalog_current_mcp_tools_and_cli_gaps():
     root = MANIFEST_PATH.parent.parent
     catalog_paths = (
@@ -267,9 +282,18 @@ def test_repo_workbench_surfaces_catalog_current_mcp_tools_and_cli_gaps():
         text = path.read_text(encoding="utf-8")
         for command in (
             "models recipes list/show",
+            "models recipes create/update",
+            "models recipes load",
+            "models recipes delete",
             "models pull",
             "serves switch ROLE [MODEL]",
             "eval benchmark quality",
+            "validate_only=true",
+            "confirm=true",
+            "dry_run=false",
+            "human_approved=true",
+            "Model Benchmark Source Freshness",
+            "does not prove evidence sufficiency",
         ):
             assert command in text, f"{path.relative_to(root)} omits {command!r}"
 

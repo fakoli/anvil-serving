@@ -17,13 +17,16 @@ narration.
 2. List or inspect available MCP tools first. Use `operation_contracts` before
    topology-aware or controller-backed work so the selected CLI operation,
    target context, transport, and MCP wrapper agree. Use the grouped catalog
-   below rather than relying on a memorized subset.
+   below rather than relying on a memorized subset. If the repo-scoped MCP
+   server is unavailable, report that loss of controller coverage explicitly.
 3. Use documented `anvil-serving` CLI verbs only when an MCP wrapper is missing.
    Safe fallbacks are read-only or preview-first verbs such as `eval usage`,
    `models sync`, `models recipes`, `models score`,
    `harness sync openclaw --out -`,
    and other render/inspect commands. Return the command preview and mark the
-   missing wrapper as a product gap.
+   missing wrapper as a product gap. Before using a CLI fallback, verify that
+   it resolves to this checkout or the intended installed version; do not imply
+   that an unverified fallback is controller-backed.
 4. Use `127.0.0.1` in local URLs. Do not introduce `localhost`.
    For resource-owned commands, pass the deployed topology and declare the
    actual command host/runtime; do not infer command identity from the target.
@@ -71,8 +74,12 @@ cloud enablement, destructive cache pruning, host repair, Docker/WSL restart,
 public or non-loopback bind, or any operation that would persist a new routing
 trust decision.
 
-`router_promote` may validate and preview candidate profile/config changes, but
-live apply requires `confirm=true` and `human_approved=true`. Skill packets must
+`router_promote` may validate with `validate_only=true`, `dry_run=false`, and
+`confirm=true`, or preview with the default `dry_run=true`. Validation executes
+an already-local selected container image with network and resource isolation,
+so keep its timeout and output bounds explicit.
+Live apply requires all three fields:
+`confirm=true`, `dry_run=false`, and `human_approved=true`. Skill packets must
 keep `promoted=false` unless that human-approved promotion result is present.
 
 `serves_promote` has the same three-part live gate: `confirm=true`,
@@ -95,8 +102,13 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 - Model catalog: read or sync model inventory and use `external_bench_sources`,
   `external_bench_list`, `external_bench_report`, or `external_bench_compare`
   for benchmark priors. Keep those priors advisory-only. Use
-  `models recipes list/show` to inspect recorded configurations and
-  `models pull` only after an explicit network, disk, and target-volume gate.
+  `models recipes list/show` to inspect recorded configurations. Create or
+  revise candidates through `models recipes create/update`, review the rendered
+  recipe, and use
+  `models recipes load` only with an exact container plus its documented
+  confirmation gate. Use `models recipes delete` only for an exact reviewed
+  registry entry. Run `models pull` only after an explicit network, disk, and
+  target-volume gate.
 - Serve swap: inspect `reservation_status`, then preview lifecycle work with
   `serves_manage` or a named transaction with `serves_promote`. The newer
   role-based recipe flow is `anvil-serving serves switch ROLE [MODEL]`; it is
@@ -141,6 +153,26 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   cache deletion as `blocked` or `human_required` unless the human approves the
   existing gate; MCP cache pruning is plan-only.
 
+## Model Benchmark Source Freshness
+
+When researching Fast or Heavy tier candidates, include dates in the evidence.
+Treat serving posts, community recipes, benchmark tables, and issue threads as
+time-sensitive.
+
+- Classify sources as `current` at 0-60 days, `aging` at 61-120 days, and
+  `stale` after 120 days, when undated, or when tied to a materially older
+  engine, driver, CUDA, quantization, or checkpoint generation.
+- Prefer current official model cards, vendor release notes, and vLLM, SGLang,
+  llama.cpp, NVIDIA, or model-owner documentation and issues.
+- Treat Reddit, forum posts, and community benchmarks as recipe discovery, not
+  promotion evidence. Label aging or stale hardware-matched posts as historical
+  priors and require a current official source or local benchmark.
+- Record candidate, URL, published or observed date, age class, evidence type,
+  hardware/engine relevance, and decision impact.
+- Never let stale community evidence justify a shortlist, serve swap, or
+  promotion by itself. Local preflight, benchmarks, independent quality eval,
+  and the human gate remain required.
+
 ## Sub-Agents
 
 Use small/local models for inventory scout, route analyst, preflight runner,
@@ -158,4 +190,7 @@ entry must include `source_class`, `ok`, `dry_run`, `confirmed`, `target`, and
 `needs_more_data`, and `blocked`. Allowed `gate_state` values are
 `not_required`, `confirm_required`, `human_required`, and `blocked`. Validate
 final packets with `workflow_packet_validate` when the MCP/control-plane tool is
-available.
+available. That validator checks packet shape, gate consistency, evidence
+scope, and bounded paths; it does not prove evidence sufficiency or reviewer
+independence. An independent critic must still reject promotion when the
+underlying evidence is missing or self-generated.

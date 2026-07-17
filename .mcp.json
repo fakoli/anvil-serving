@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "anvil-serving": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "anvil_serving.cli", "mcp", "serve"]
+    }
+  }
+}

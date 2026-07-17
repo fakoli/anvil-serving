@@ -1,0 +1,8 @@
+# Project-scoped controller for trusted Codex checkouts. Codex passes cwd to the
+# child relative to the task working directory, so "." keeps imports in this
+# checkout instead of the worktree parent or a stale editable installation.
+[mcp_servers.anvil-serving]
+command = "python"
+args = ["-m", "anvil_serving.cli", "mcp", "serve"]
+cwd = "."
+startup_timeout_sec = 20

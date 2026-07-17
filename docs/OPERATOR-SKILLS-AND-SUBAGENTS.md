@@ -42,8 +42,12 @@ The initial checked-in entry points are:
 | Harness | Entry point | Purpose |
 |---|---|---|
 | Codex | `.agents/skills/anvil-serving-workbench/SKILL.md` | Repo-scoped portable workbench skill. |
+| Codex | `.agents/skills/anvil-serving-voice-ops/SKILL.md` | Thin activation wrapper for the canonical voice skill. |
+| Codex | `.codex/config.toml` | Trusted-project MCP registration that runs this checkout. |
 | Codex | `.codex/agents/anvil-*.md` | Custom sub-agent roles with model-tier hints. |
 | Claude Code | `.claude/skills/anvil-serving-workbench/SKILL.md` | Project skill using the same workbench contract. |
+| Claude Code | `.claude/skills/anvil-serving-voice-ops/SKILL.md` | Thin activation wrapper for the canonical voice skill. |
+| Claude Code | `.mcp.json` | Project MCP registration that runs this checkout. |
 | Claude Code | `.claude/agents/anvil-*.md` | Project sub-agents for orchestration, inventory, route analysis, serve/preflight/benchmark/evidence slices, and independent review. |
 | OpenClaw | `examples/openclaw/skills/anvil-serving-workbench/SKILL.md` | Installable skill directory or `skills.load.extraDirs` source. |
 | OpenClaw | `examples/openclaw/anvil-serving-workbench.example.json5` | Example skill/agent visibility fragment. |
@@ -53,11 +57,11 @@ The initial checked-in entry points are:
 
 | Surface | Available today | Planned follow-up |
 |---|---|---|
-| Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs; `skills/anvil-serving-voice-ops` for voice workflow installation. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, and host-repair skills once their backing tools exist. |
-| Sub-agent roles | Orchestrator, inventory scout, route analyst, serve operator, preflight runner, benchmark runner, evidence reporter, quality critic, and adversarial reviewer role files for Codex and Claude Code, plus a compatibility-only combined probe/evidence runner. | Add more harness-specific tuning only after real workflow traces show a gap. |
-| OpenClaw install | `anvil-serving harness sync openclaw --skills` renders the workbench skill and Anvil role config; apply it with `--out <config>` or `--gateway-host <mini>`. Use workspace-installed skills, or pass `--skill-dir <gateway-visible-path>` for checkout-loaded skills. | Split additional specialized skills once their backing tools exist. |
+| Portable skills | Checked-in `anvil-serving-workbench` plus repo-visible voice wrappers for Codex and Claude Code, and a manual OpenClaw workbench install. | Split specialized readiness, model-catalog/recipe, serve-swap, harness-sync, promotion-evidence, and host-repair skills once their backing tools exist. Defer quality-eval automation until protocol-v3 repair. |
+| Sub-agent roles | Orchestrator, inventory scout, route analyst, serve operator, preflight runner, benchmark runner, evidence reporter, quality critic, and adversarial reviewer role files for Codex and Claude Code, plus a compatibility-only combined probe/evidence runner. | Add more harness-specific tuning only after real workflow traces show a gap; avoid another generic review role. |
+| OpenClaw install | `anvil-serving harness sync openclaw --skills` renders the workbench skill and operational Anvil role config; apply it with `--out <config>` or `--gateway-host <mini>`. Independent critics must use a separate provider/harness. | Split additional specialized skills once their backing tools exist. |
 | MCP/controller tools | Operation-contract discovery; model, GPU, reservation, host, gateway, router, and serve status; bounded telemetry/logs; guarded host/router/serve/voice lifecycle and tier transitions; route probes; OpenClaw sync; model-aware preflight; capacity probes/artifacts; external advisory reports/compares; workflow validation; and router/serve promotion preview. | Router token status, role-based `serves switch`, and repeated quality-eval wrappers. |
-| Result contract | `operator-workflow/v1` packet documented for skills and reviewers; `workflow_packet_validate` validates packet shape, promotion gates, and artifact paths; `tests/fixtures/operator_workflows/model_swap_promotion_evidence.json` covers the model-swap evidence path. | Broader packet fixtures from real multi-agent runs. |
+| Result contract | `operator-workflow/v1` packet documented for skills and reviewers; `workflow_packet_validate` validates packet shape, gate consistency, evidence scope, and artifact paths, but not evidence sufficiency or reviewer independence; `tests/fixtures/operator_workflows/model_swap_promotion_evidence.json` covers the model-swap evidence path. | Broader packet fixtures from real multi-agent runs. |
 
 ## OpenClaw Smoke Result
 
@@ -107,7 +111,7 @@ require editing a skill, plugin, or benchmark prompt.
 | Router tier transition | `router_transition` | Implemented; status/drain reads plus preview/confirm-gated quiesce/readmit |
 | Bounded router logs | `router_logs` | Implemented |
 | Recent decision summaries | `decision_summary` | Implemented |
-| Promotion validation and preview | `router_promote` | Implemented; apply requires `confirm:true`, `dry_run:false`, and `human_approved:true` |
+| Promotion validation and preview | `router_promote` | Implemented; bounded, network-isolated validation of an already-local selected image uses `validate_only:true`, `dry_run:false`, and `confirm:true`; apply also requires `human_approved:true` |
 | Compose-defined serve health | `serves_status` | Implemented |
 | GPU residency reservation ledger | `reservation_status` | Implemented; read-only per-role capacity, committed, reserved, and free VRAM |
 | Guarded serve lifecycle | `serves_manage` | Implemented |
@@ -129,7 +133,7 @@ require editing a skill, plugin, or benchmark prompt.
 | Correctness gate probe | `preflight_probe` | Implemented |
 | Bounded throughput probe | `benchmark_probe` | Implemented |
 | Benchmark evidence artifact | `benchmark_artifact` | Implemented; writes `--json-out` only to the workspace or server-configured `ANVIL_BENCHMARK_EVIDENCE_DIR` / `ANVIL_EVIDENCE_DIR` roots |
-| Workflow packet validation | `workflow_packet_validate` | Implemented; validates `operator-workflow/v1`, promotion proof, and bounded artifact paths |
+| Workflow packet validation | `workflow_packet_validate` | Implemented; validates `operator-workflow/v1` shape, gate consistency, evidence scope, and bounded artifact paths. It does not establish evidence sufficiency or reviewer independence. |
 | External benchmark source list | `external_bench_sources` | Implemented; advisory-only prior metadata |
 | External benchmark row list | `external_bench_list` | Implemented; advisory-only normalized rows |
 | External benchmark report | `external_bench_report` | Implemented; advisory-only structured report |
@@ -157,7 +161,7 @@ several long-running foreground operations remain explicit CLI workflows.
 | Router lifecycle | `router status/logs/up/down/restart/reload/promote/token` | MCP for status, bounded logs, guarded lifecycle, decision summary, and promotion preview/apply gate; token remains CLI-only | Promotion apply requires `confirm:true`, `dry_run:false`, and `human_approved:true`; token values are not exposed through MCP. |
 | Serve lifecycle | `serves status/up/down/rm/adopt/logs/promote/switch` | MCP for status, reservations, bounded logs, guarded up/down/rm/adopt, and human-gated named promotion; skill/CLI for role-based `serves switch` until a parity wrapper exists | Serve start/stop is normal operation; promotion and switch retain stronger transaction and human gates. |
 | Model inventory | `models sync`, `models pull`, `models recipes list/show/create/update/delete/load` | MCP for catalog inventory with sync preview/confirm; skill/CLI for recipe inspection/CRUD/load and pulls | Pull and load are long-running, network/disk/GPU-heavy operations; recipe mutation retains lock, backup, drift, and confirmation handling. |
-| Bring-up generation | `init`, `doctor`, `serves render` | MCP preview/render plus CLI apply | Generated artifacts should be inspectable before write. |
+| Bring-up generation | `init`, `doctor`, `serves render` | `doctor_summary` through MCP; `init` and `serves render` through CLI | Generated artifacts should be inspectable before write. |
 | Environment repair | `host doctor`, `host memory`, `host wsl-config`, `host restart-docker`, `host reset-wsl`, `host reclaim` | `host_summary` for read-only summary; `host_manage` for bounded preview/confirm-gated WSL config/restart/reset; skill/CLI for memory/reclaim and other disruptive work | Restarting Docker/WSL and editing host config remain human-gated even when MCP-backed. |
 | Correctness, capacity, and quality | `eval preflight`, `eval benchmark capacity`, `eval benchmark quality` | MCP model-aware preflight and bounded capacity probes/artifacts; CLI plus skill sequencing for repeated protocol-v3 quality evidence | Preflight must precede benchmark. Capacity and quality are separate evidence types; quality retains visible/reasoning budgets, finish reasons, reasoning-channel evidence, provenance, repeated attempts, and independent validators. |
 | Quality profile | `eval bootstrap`, `eval calibrate`, `router promote` | MCP preview/status; skill evidence packet; human promotion gate | These change routing trust. Small models can collect evidence, but not promote. |
@@ -176,9 +180,10 @@ tool-backed, not a new policy engine.
 | Skill | Primary model tier | Status | Purpose |
 |---|---|---|---|
 | `anvil-serving-workbench` | orchestrator-selected | Seeded; Mini smoke linked | Choose the playbook, spawn bounded roles, and return the workflow packet. |
-| `anvil-serving-readiness` | small | Planned specialization | Run inventory/status/doctor checks and report blockers before any operation. |
-| `anvil-serving-model-catalog` | small | Planned specialization | Sync or read model inventory, recipes, external priors, and serve facts. |
+| `anvil-serving-readiness` | small | Planned specialization; session-backed | Run topology, controller, reservation, inventory/status/doctor checks and report blockers before any operation. |
+| `anvil-serving-model-catalog` | small | Planned specialization; session-backed | Research current model candidates, sync/read inventory and dated priors, then inspect, create, update, load, or delete reviewed recipes through the existing gates. |
 | `anvil-serving-serve-swap` | small plus human confirm | Planned specialization | Start, adopt, or swap a serve, then run preflight before benchmark. |
+| `anvil-serving-quality-eval` | strong independent evaluator | Deferred until protocol-v3 repair | Run repeated quality attempts with visible/reasoning budgets, finish-reason evidence, provenance, and an independent judge; do not automate the currently unresolved protocol. |
 | `anvil-serving-harness-sync` | small | Planned specialization | Preview/apply OpenClaw provider/model and workbench skill config after router preset or tier changes. |
 | `anvil-serving-promotion-evidence` | small collector, stronger synthesizer | Planned specialization | Assemble preflight, benchmark, calibration, and config evidence without promoting. |
 | `anvil-serving-host-repair` | strong or human-assisted | Planned specialization | Diagnose WSL/Docker/GPU issues and preview safe repairs. |
@@ -187,8 +192,10 @@ tool-backed, not a new policy engine.
 ## Voice Ops Skill
 
 `skills/anvil-serving-voice-ops/SKILL.md` is the specialized voice operations
-skill source. Install or copy it into the active harness skill store when the
-operator wants a dedicated voice playbook. It intentionally uses the existing
+skill source. Thin repo-scoped activation wrappers expose it to Codex and
+Claude Code without copying its body. Install it into OpenClaw's active skill
+store when the operator wants the dedicated voice playbook there. It uses the
+existing
 `anvil-serving voice sidecar validate`, `voice sidecar command`,
 `voice sidecar compose`, `voice audio up/down/status/logs`, `voice profiles`,
 `voice proxy run/up/down/restart/status/logs/bridge`, and `voice benchmark`
@@ -276,16 +283,6 @@ The rendered Anvil-owned keys are:
         "name": "anvil-evidence-reporter",
         "model": "anvil/chat-fast",
         "skills": ["anvil-serving-workbench"]
-      },
-      {
-        "name": "anvil-quality-critic",
-        "model": "anvil/review",
-        "skills": ["anvil-serving-workbench"]
-      },
-      {
-        "name": "anvil-adversarial-reviewer",
-        "model": "anvil/review",
-        "skills": ["anvil-serving-workbench"]
       }
     ]
   }
@@ -296,11 +293,13 @@ If `planning` is absent in a custom router config, the orchestrator falls back
 to `anvil/review`, then `anvil/chat`, then remains pinned to `anvil/planning`
 rather than silently using a small-only preset. If `chat-fast` is absent,
 operational small-model roles fall back to `anvil/chat`, then the first
-configured preset. If `review` is absent, the quality critic and adversarial
-reviewer fall back to `anvil/planning`, then `anvil/chat`, then remain pinned to
-`anvil/review` rather than silently judging from a small-only preset. The sync
-merge replaces current Anvil-owned role entries by name, drops the legacy
-`anvil-probe-evidence-runner` OpenClaw entry when present, and appends
+configured preset. Quality critics and adversarial reviewers are deliberately
+not generated as `anvil/*` OpenClaw roles: that route can select the same model
+being evaluated. Configure independent reviewers through a separate provider
+or external harness. The sync merge replaces current generated operational
+roles by name, drops the legacy `anvil-probe-evidence-runner`, and removes old
+critic/reviewer entries only while their model is still `anvil/*`. Same-name
+roles rebound to an independent provider are preserved. The merge appends
 `anvil-serving-workbench` to existing default skills; unrelated providers,
 agents, plugins, and checkout skill directories are preserved when the existing
 OpenClaw config is plain JSON and the merge path can read it.
