@@ -19,7 +19,7 @@
 #   PORT=30002 docker compose -f examples/fakoli-dark/docker-compose.experiment.yml down
 #
 # Hard-won defaults baked in (docs/findings/blackwell-sm120-lab-notebook.md + CLAUDE.md gotchas):
-#   - image vllm/vllm-openai:latest       stable; the lab's known-good engine (:nightly only when a
+#   - image vLLM 0.25.1 by digest         stable; the lab's known-good engine (:nightly only when a
 #                                         needed fix hasn't reached stable).
 #   - VLLM_WSL2_ENABLE_PIN_MEMORY=1       vLLM 0.25.1+ opt-in: restore pinned host memory on WSL2.
 #   - VLLM_USE_V2_MODEL_RUNNER=0          conservative default for hybrid models; Gemma 4 V1/V2
@@ -37,6 +37,7 @@ name: fakoli-experiment
 
 x-voice-candidate-env: &voice-candidate-env
   CUDA_DEVICE_ORDER: PCI_BUS_ID
+  VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
   VLLM_USE_V2_MODEL_RUNNER: "0"
   FLASHINFER_CUDA_ARCH_LIST: "12.0f"
   HF_TOKEN: ${HF_TOKEN:-}
@@ -50,6 +51,7 @@ x-voice-candidate-common: &voice-candidate-common
 
 x-fast-candidate-env: &fast-candidate-env
   CUDA_DEVICE_ORDER: PCI_BUS_ID
+  VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
   VLLM_USE_V2_MODEL_RUNNER: "0"
   FLASHINFER_CUDA_ARCH_LIST: "12.0f"
   HF_TOKEN: ${HF_TOKEN:-}
@@ -134,7 +136,7 @@ services:
       --port 39017
 
   experiment:
-    image: vllm/vllm-openai:latest
+    image: vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089
     container_name: vllm-experiment-${PORT:-39099}
     restart: "no"
     ipc: host
@@ -152,6 +154,7 @@ services:
       # so also select the target card via CUDA_VISIBLE_DEVICES=<UUID>. Belt-and-suspenders
       # with the device_ids reservation below.
       CUDA_VISIBLE_DEVICES: ${GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
     deploy:
       resources:
@@ -317,7 +320,7 @@ services:
   # would bypass the template under test. Both endpoints remain loopback-only,
   # evaluation-only, and outside router policy.
   gemma4-fast-lab:
-    image: ${GEMMA4_VLLM_IMAGE:-vllm/vllm-openai:v0.25.1}
+    image: ${GEMMA4_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-gemma4-fast-lab
     restart: "no"
     ipc: host
@@ -361,7 +364,7 @@ services:
       ${GEMMA4_FAST_EXTRA_ARGS:-}
 
   gemma4-heavy-lab:
-    image: ${GEMMA4_VLLM_IMAGE:-vllm/vllm-openai:v0.25.1}
+    image: ${GEMMA4_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-gemma4-heavy-lab
     restart: "no"
     ipc: host
@@ -720,6 +723,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "0"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -949,6 +953,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "1"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -978,7 +983,7 @@ services:
       ${CAND_PUZZLE_EXTRA_ARGS:-}
 
   cand-qwen36-heavy-mtp:
-    image: ${CAND_QWEN36_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${CAND_QWEN36_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-cand-qwen36-heavy-mtp
     restart: "no"
     ipc: host
@@ -990,6 +995,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "1"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -1029,7 +1035,7 @@ services:
   # card and native context. Both keep the MTP head and admit five concurrent
   # sessions; they remain direct evaluation endpoints, never router tiers.
   cand-qwen36-fp8:
-    image: ${CAND_QWEN36_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${CAND_QWEN36_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-cand-qwen36-fp8
     restart: "no"
     ipc: host
@@ -1041,8 +1047,9 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "1"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
-      # Nightly currently auto-selects CUTLASS for Qwen3.6 FP8, then still
+      # vLLM auto-selects CUTLASS for Qwen3.6 FP8, then still
       # invokes a DeepGEMM warmup that asserts "Unknown recipe" on sm_120.
       VLLM_USE_DEEP_GEMM: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -1074,7 +1081,7 @@ services:
       ${CAND_QWEN36_FP8_EXTRA_ARGS:-}
 
   cand-thinkingcap-qwen36-fp8:
-    image: ${CAND_QWEN36_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${CAND_QWEN36_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-cand-thinkingcap-qwen36-fp8
     restart: "no"
     ipc: host
@@ -1086,6 +1093,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "1"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       VLLM_USE_DEEP_GEMM: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -1132,6 +1140,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "1"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -1176,6 +1185,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "1"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -1208,10 +1218,10 @@ services:
 
   # Current official NVFP4 challenger (33B total / 3B active MoE) for the
   # RTX PRO 6000 Heavy bakeoff. Poolside documents vLLM 0.21+ support and
-  # requires 0.22+ for NVFP4 + fp8-KV correctness, so this intentionally uses
-  # the same post-0.22 nightly image as the other recent Heavy candidates.
+  # requires 0.22+ for NVFP4 + fp8-KV correctness, so this uses the standard
+  # pinned vLLM 0.25.1 image while newer-architecture candidates stay nightly.
   cand-laguna-xs-21-nvfp4:
-    image: ${CAND_LAGUNA_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${CAND_LAGUNA_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-cand-laguna-xs-21-nvfp4
     restart: "no"
     ipc: host
@@ -1223,6 +1233,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "1"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -1294,11 +1305,11 @@ services:
 
   # Unsloth's July 2026 dynamic NVFP4 Qwen3.6 checkpoint. Its published
   # recipe requires vLLM >=0.25.0, FlashInfer >=0.6.13, and CUTLASS DSL
-  # >=4.5.2; the pinned v0.25.0 image contains those exact minimum versions.
+  # >=4.5.2; the standard pinned v0.25.1 image satisfies those minimum versions.
   # MTP tensors are embedded in the checkpoint and the Unsloth recipe uses a
   # two-token speculative draft. This remains an evaluation-only Heavy serve.
   cand-unsloth-qwen36-27b-nvfp4:
-    image: ${CAND_UNSLOTH_QWEN36_VLLM_IMAGE:-vllm/vllm-openai@sha256:e1c1ff1af9a15921bfa11d1d95047258c1797392cdbfa296e7639da446b23f97}
+    image: ${CAND_UNSLOTH_QWEN36_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-cand-unsloth-qwen36-27b-nvfp4
     restart: "no"
     ipc: host
@@ -1310,6 +1321,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "1"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
     deploy:

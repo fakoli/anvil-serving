@@ -41,7 +41,7 @@ total_params_b = 27
 
   [recipe.serve]
   engine = "vllm"
-  image = "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+  image = "vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089"
   quantization = "fp8"
   context_tokens = 262144
   port = 30002
@@ -49,6 +49,7 @@ total_params_b = 27
   served_model_name = "thinkingcap-qwen36-27b-fp8"
   env = [
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
     "VLLM_USE_V2_MODEL_RUNNER=0",
     "VLLM_USE_DEEP_GEMM=0",
     "FLASHINFER_CUDA_ARCH_LIST=12.0f",
@@ -109,6 +110,7 @@ total_params_b = 27
   port = 30003
   env = [
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
     "VLLM_USE_V2_MODEL_RUNNER=0",
     "FLASHINFER_CUDA_ARCH_LIST=12.0f",
   ]
@@ -167,7 +169,7 @@ active_params_b = 5.1        # MoE: 128 experts, top-4 routing; MXFP4 MoE + bf16
 
   [recipe.serve]
   engine = "vllm"
-  image = "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+  image = "vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089"
   quantization = "mxfp4"               # auto-detected as gpt_oss_mxfp4; MoE backend = MARLIN (FlashInfer-TRTLLM MXFP4 is sm_100-only)
   context_tokens = 131072
   port = 30002
@@ -177,7 +179,8 @@ active_params_b = 5.1        # MoE: 128 experts, top-4 routing; MXFP4 MoE + bf16
   # Plain '12.0' -> runtime "Feature 'cvt.e2m1x2.f32' not supported on .target 'sm_120'".
   env = [
     "FLASHINFER_CUDA_ARCH_LIST=12.0f",
-    "VLLM_USE_V2_MODEL_RUNNER=0",       # WSL2 UVA fix
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
   ]
   flags = [
@@ -244,6 +247,7 @@ total_params_b = 32
   note = "Voice A/B managed serve uses the experiment compose service voice-qwen3-32b on an opt-in 39xxx port; it does not replace fast-local."
   env = [
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
     "VLLM_USE_V2_MODEL_RUNNER=0",
     "FLASHINFER_CUDA_ARCH_LIST=12.0f",
   ]
@@ -293,9 +297,12 @@ active_params_b = 3
   quantization = "modelopt_fp4"
   context_tokens = 32768
   port = 30003
-  note = "Production Fast recipe on port 30003. The historical experiment service used port 39010 for bakeoff evidence."
+  managed_serve = "fast-qwen36-rollback"
+  served_model_name = "qwen36-35b-a3b-nvfp4"
+  note = "Previous Fast recipe, retained as the opt-in rollback on port 30003. The historical experiment service used port 39010 for bakeoff evidence."
   env = [
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
     "VLLM_USE_V2_MODEL_RUNNER=0",
     "FLASHINFER_CUDA_ARCH_LIST=12.0f",
   ]
@@ -480,6 +487,12 @@ total_params_b = 24
   quantization = "fp8"
   context_tokens = 32768
   note = "Start with official FP8 checkpoint; 32K may exceed RTX 5090 KV headroom, so the experiment compose exposes FAST_DEVSTRAL_SMALL2_MAX_MODEL_LEN, FAST_DEVSTRAL_SMALL2_MAX_NUM_SEQS, and FAST_DEVSTRAL_SMALL2_GPU_MEMORY_UTILIZATION for the reduced-context retry. Test llama.cpp GGUF Q5/Q6 when a sourced quant is available."
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
   flags = [
     "--served-model-name devstral-small-2-24b",
     "--enable-auto-tool-choice",
@@ -580,6 +593,7 @@ total_params_b = 12
   note = "Pin model and tokenizer revisions independently; do not add the pre-July-15 explicit repository chat-template override."
   env = [
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
     "VLLM_USE_V2_MODEL_RUNNER=0",
     "FLASHINFER_CUDA_ARCH_LIST=12.0f",
   ]
@@ -613,6 +627,59 @@ total_params_b = 12
   plan = "gemma4-12b-heavy"
   direction = "promote"
   compose_service = "heavy"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED — Gemma 4 E4B IT FP8-Dynamic : current standard Fast tier
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "leon-se/gemma-4-E4B-it-FP8-Dynamic"
+status = "verified"
+source = "measured and promoted on fakoli-dark, 2026-07-13; retained by the 2026-07-16 Gemma 4 chat-template bakeoff and revalidated on vLLM 0.25.1"
+family = "gemma4"
+total_params_b = 4
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "11.49 GiB measured model allocation; the 0.4396 device-memory fraction preserves the ADR-0017 Fast-card reservation while admitting the 32K window."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089"
+  quantization = "compressed-tensors FP8-Dynamic; auto-detected"
+  context_tokens = 32768
+  port = 30003
+  managed_serve = "fast"
+  served_model_name = "gemma4-e4b-it"
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--revision 56e30bf603d18a4972caffafa1bb4a4f9a841dee",
+    "--served-model-name gemma4-e4b-it",
+    "--enable-auto-tool-choice",
+    "--reasoning-parser gemma4",
+    "--tool-call-parser gemma4",
+    "--max-model-len 32768",
+    "--gpu-memory-utilization 0.4396",
+    "--host 0.0.0.0",
+    "--port 30003",
+  ]
+
+  [recipe.measured]
+  preflight = "Production Fast preflight passed on vLLM 0.25.1; the July 16 repeated quality control retained this model over the new-template Fast candidates."
+  promotion_evidence = "docs/findings/2026-07-13-gemma4-e4b-fast-promotion-evidence/"
+  vllm_0251_evidence = "docs/findings/2026-07-16-gemma4-vllm0251-wsl2-evidence/production-fast-preflight.json"
+
+  [recipe.intent]
+  suited = ["chat-fast", "voice", "agentic-conversation", "low-latency"]
+  mode = "agentic"
+  rationale = "Current standard Fast model: preserves the measured quality gate and 32K context while fitting alongside the resident voice and purpose-model services."
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UNVERIFIED — Gemma 4 E4B IT : ultra-fast Gemma lower-bound scout
@@ -785,7 +852,7 @@ active_params_b = 10
 
   [recipe.serve]
   engine = "vllm"
-  image = "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+  image = "vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089"
   managed_serve = "heavy-qwen35-122b-mxfp4"
   served_model_name = "qwen35-122b-mxfp4"
   quantization = "compressed-tensors MXFP4; Marlin W4A16 fallback on sm_120"
@@ -793,6 +860,7 @@ active_params_b = 10
   context_tokens = 131072
   env = [
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
     "VLLM_USE_V2_MODEL_RUNNER=0",
     "FLASHINFER_CUDA_ARCH_LIST=12.0f",
   ]

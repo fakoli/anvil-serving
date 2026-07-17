@@ -241,10 +241,12 @@ def test_deploy_cli_no_manifest_skips_emission(tmp_path, monkeypatch):
 
 # ---- vLLM engine branch (genericity:T010) ---------------------------------------
 
-def test_deploy_engine_vllm_renders_ipc_host_and_v2_runner_off():
+def test_deploy_engine_vllm_renders_pinned_stable_image_and_wsl2_defaults():
     out = deploy.render("/w/model", gpu=0, engine="vllm", served_name="gpt-oss-20b",
                         port=30001, _run=_run_missing)
     assert "ipc: host" in out
+    assert deploy.DEFAULT_IMAGE["vllm"] in out
+    assert 'VLLM_WSL2_ENABLE_PIN_MEMORY: "1"' in out
     assert 'VLLM_USE_V2_MODEL_RUNNER: "0"' in out
     assert "vllm-gpt-oss-20b" in out  # container name derived from served-name
 
