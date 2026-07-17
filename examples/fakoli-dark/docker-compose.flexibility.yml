@@ -20,7 +20,7 @@
 name: fakoli-flexibility
 services:
   qwen35-122b:
-    image: ${QWEN35_MXFP4_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${QWEN35_MXFP4_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-qwen35-122b
     restart: "no"                     # flexibility experiment/validation serve, not a production tier
     ipc: host
@@ -31,7 +31,8 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}   # RTX PRO 6000 96GB
-      VLLM_USE_V2_MODEL_RUNNER: "0"   # WSL2 has no UVA (gotcha #14)
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"   # conservative runner default (gotcha #14)
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"   # sm_120 `f` suffix (CLAUDE.md gotcha #10)
       HF_TOKEN: ${HF_TOKEN:-}
     deploy:

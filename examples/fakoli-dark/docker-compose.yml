@@ -96,7 +96,7 @@ services:
   # compressed-tensors main model and FP8 MTP head.
   heavy-thinkingcap-rollback:
     profiles: ["rollback"]
-    image: ${HEAVY_THINKINGCAP_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${HEAVY_THINKINGCAP_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-thinkingcap-heavy-rollback
     restart: unless-stopped
     ipc: host
@@ -108,6 +108,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       VLLM_USE_DEEP_GEMM: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -141,7 +142,7 @@ services:
   # so stop `heavy` before starting it. It is never a router dependency.
   heavy-gptoss-rollback:
     profiles: ["rollback"]
-    image: ${HEAVY_GPTOSS_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${HEAVY_GPTOSS_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-gptoss120
     restart: unless-stopped
     ipc: host
@@ -152,6 +153,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -265,6 +267,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       # Make-or-break on sm_120 for the NVFP4 kernels; plain 12.0 can select unsupported codegen.
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -322,7 +325,7 @@ services:
   # LAN). Opt in to tailnet exposure per serve by setting EMBEDDINGS_PUBLISH /
   # RERANKER_PUBLISH to this host's tailnet address (e.g. 100.87.34.66) before `serves up`.
   embeddings:
-    image: ${EMBEDDINGS_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${EMBEDDINGS_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-qwen3-embedding
     restart: unless-stopped
     ipc: host
@@ -333,6 +336,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
@@ -363,7 +367,7 @@ services:
       --host 0.0.0.0 --port 30005
 
   reranker:
-    image: ${RERANKER_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${RERANKER_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-qwen3-reranker
     restart: unless-stopped
     ipc: host
@@ -374,6 +378,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -408,7 +413,7 @@ services:
   # ocr-local -> :30007). Serves OpenAI chat completions with image content —
   # send the task prompt ("OCR:", "Table Recognition:", ...) plus the page image
   # (vLLM recipe: docs.vllm.ai/projects/recipes -> PaddlePaddle/PaddleOCR-VL;
-  # native vllm support since v0.11.1 — the pinned nightly digest has it).
+  # native vLLM support since v0.11.1 — the pinned 0.25.1 image has it).
   #
   # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 5120 /
   # residency "resident" for this serve. --gpu-memory-utilization below is
@@ -428,12 +433,12 @@ services:
   # --mm-processor-cache-gb 0 per the upstream recipe (OCR pages don't repeat,
   # so cache memory buys nothing). sm_120 note: bf16 DENSE is the proven-safe
   # path (CLAUDE.md gotchas #7/#16 concern FP8-MoE / NVFP4-MoE kernels, not
-  # this shape); VLLM_USE_V2_MODEL_RUNNER=0 stays mandatory (gotcha #14).
+  # this shape); WSL2 pinned memory stays enabled while V2 remains off (gotcha #14).
   #
   # Publish: loopback-only by default (ADR-0004). Opt in to tailnet exposure by
   # setting OCR_PUBLISH to this host's tailnet address before `serves up`.
   ocr:
-    image: ${OCR_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${OCR_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-paddleocr-vl
     restart: unless-stopped
     ipc: host
@@ -444,6 +449,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
@@ -509,12 +515,12 @@ services:
   # --no-enable-prefix-caching + --mm-processor-cache-gb 0 mirror the `ocr` recipe
   # (screenshots don't repeat; graph memory would eat the KV margin). sm_120 note:
   # bf16 DENSE + fp8 KV is the proven-safe shape (gotchas #7/#16 concern FP8/NVFP4
-  # MoE kernels); VLLM_USE_V2_MODEL_RUNNER=0 stays mandatory (gotcha #14).
+  # MoE kernels); WSL2 pinned memory stays enabled while V2 remains off (gotcha #14).
   #
   # Publish: loopback-only by default (ADR-0004). Opt in to tailnet exposure by
   # setting VISION_PUBLISH to this host's tailnet address before `serves up`.
   vision:
-    image: ${VISION_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    image: ${VISION_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-qwen3-vl-vision
     restart: unless-stopped
     ipc: host
@@ -525,6 +531,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.

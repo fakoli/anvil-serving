@@ -88,9 +88,15 @@ REGISTRY = [
 
 # Engine -> container image. The only place engine names map to images; an engine
 # absent here resolves to None so SubprocessBackend.start fails fast (pure guard).
+VLLM_STABLE_IMAGE = (
+    "vllm/vllm-openai@sha256:"
+    "e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089"
+)
+VLLM_WSL2_PIN_MEMORY_ENV = "VLLM_WSL2_ENABLE_PIN_MEMORY=1"
+
 ENGINE_IMAGE = {
     "sglang": "lmsysorg/sglang:latest",
-    "vllm": "vllm/vllm-openai:latest",
+    "vllm": VLLM_STABLE_IMAGE,
 }
 
 
@@ -137,12 +143,15 @@ def docker_run_cmd(entry):
     -e CUDA_VISIBLE_DEVICES=<uuid>` — the ONLY isolation Docker Desktop's WSL2 backend
     actually honors (`--gpus device=N` is silently ignored there and exposes ALL GPUs).
     Without a gpu_uuid, fall back to `--gpus device={gpu}` so the self-check and
-    non-WSL hosts (which DO honor device=) still work.
+    non-WSL hosts (which DO honor device=) still work. vLLM launches also opt in
+    to pinned host memory on WSL2; the pinned stable image supports this switch,
+    and non-WSL hosts simply retain their normal pinned-memory behavior.
 
     Weights mount: rows with a "volume" key mount that named docker volume read-only
     at the parent of model_path (never a 9P host bind). Legacy host_path bind mounts
     remain supported for minimal/test rows; host_path defaults to model_path."""
-    image = ENGINE_IMAGE.get(entry.get("engine", "sglang"))
+    engine = entry.get("engine", "sglang")
+    image = ENGINE_IMAGE.get(engine)
     if image is None:
         raise BackendError(
             f"unknown engine {entry.get('engine')!r} for {entry['name']}")
@@ -166,10 +175,15 @@ def docker_run_cmd(entry):
                      "-e", f"CUDA_VISIBLE_DEVICES={uuid}"]
     else:     # fallback (self-check + non-WSL hosts that honor device=N)
         gpu_flags = ["--gpus", f"device={entry['gpu']}"]
+    engine_env = (
+        ["-e", VLLM_WSL2_PIN_MEMORY_ENV]
+        if engine == "vllm" else []
+    )
     return ["docker", "run", "--rm", "--name", f"anvil-{entry['name']}",
             # promote argv[0] to --entrypoint so the image entrypoint can't shadow it
             "--entrypoint", argv[0],
             *gpu_flags,
+            *engine_env,
             "--shm-size", "16g",
             "-p", f"{port}:{port}",
             "-v", mount,
@@ -882,6 +896,7 @@ def _self_check():
     assert "vllm" not in vpost, vpost                              # NOT a doubled 'vllm serve'
     assert vpost.count("serve") == 1, vpost                        # no stray dup positional
     assert vpost[1] == vrow["model_path"], vpost                   # model path is the positional
+    assert VLLM_WSL2_PIN_MEMORY_ENV in vdock, vdock                 # WSL2 pinned-memory opt-in
     # volume mounted read-only at the parent of model_path (never a 9P host bind)
     assert f"{vrow['volume']}:{os.path.dirname(vrow['model_path'])}:ro" in vdock, vdock
 
@@ -891,6 +906,7 @@ def _self_check():
     spost = sdock[simg + 1:]
     assert spost[:2] == ["-m", "sglang.launch_server"], spost     # module run, not doubled
     assert "python3" not in spost and "vllm" not in spost, spost  # no doubled binary / wrong engine
+    assert VLLM_WSL2_PIN_MEMORY_ENV not in sdock, sdock             # vLLM-only runtime option
     assert f"{srow['volume']}:{os.path.dirname(srow['model_path'])}:ro" in sdock, sdock
     # legacy host_path rows still bind-mount host_path -> model_path (test/minimal only)
     legacy = docker_run_cmd({"name": "t", "engine": "vllm", "model_path": "/m/x",
