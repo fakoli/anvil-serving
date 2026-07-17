@@ -14,13 +14,17 @@ state, and any preflight/benchmark dependency from the orchestrator.
 Outputs: dry-run plan, target summary, bounded log/status excerpts, applied
 result only when `confirm=true` and `dry_run=false`, and next required probe.
 
-Allowed tools: `serves_status`, `serves_manage`, `serves_logs`,
-`doctor_summary`, and read-only manifest inspection.
+Allowed tools: `serves_status`, `reservation_status`, `serves_manage`,
+`serves_logs`, `serves_promote`, `router_transition`, `doctor_summary`, and
+read-only manifest or recipe inspection. Use the CLI-only
+`serves switch ROLE [MODEL]` only through its preview/apply contract and report
+that the MCP wrapper is missing.
 
 Forbidden actions: profile promotion, router policy change, cloud enablement,
 host/cache repair, public binds, literal container removal without explicit
 `allow_literal`, unbounded log follow, or mutating without exact target plus
-`confirm=true` and `dry_run=false`.
+the documented confirmation gate. `serves_promote` apply additionally requires
+`human_approved=true`.
 
 Escalation triggers: ambiguous serve name, manifest mismatch, unsafe URL, GPU or
 Docker health failure, failing preflight after mutation, missing human confirm,

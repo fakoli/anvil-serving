@@ -7,6 +7,7 @@ import io
 import json
 import re
 import sqlite3
+import subprocess
 import sys
 import threading
 import textwrap
@@ -239,6 +240,9 @@ def test_tools_list_has_json_schemas():
     assert tools["workflow_packet_validate"]["inputSchema"]["required"] == ["packet"]
     assert tools["openclaw_gateway_restart"]["inputSchema"]["properties"]["timeout_seconds"]["default"] == 120
     assert tools["router_promote"]["inputSchema"]["properties"]["human_approved"]["type"] == "boolean"
+    assert tools["router_promote"]["inputSchema"]["properties"]["validate_only"]["type"] == "boolean"
+    assert tools["router_promote"]["inputSchema"]["properties"]["timeout_seconds"]["maximum"] == 1800
+    assert tools["router_promote"]["inputSchema"]["properties"]["max_output_bytes"]["maximum"] == 1048576
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["skills"]["type"] == "boolean"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice"]["type"] == "boolean"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice_api_key_env"]["type"] == "string"
@@ -668,6 +672,68 @@ def test_router_promotion_preview_and_human_gate(tmp_path, monkeypatch):
     assert "--dry-run" in preview["data"]["command"]
     assert preview["data"]["preview"]["diff"]["changed_count"] == 1
 
+    unsafe_image = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "validate_only": True,
+        "confirm": True,
+        "image": "--privileged",
+    })
+    assert unsafe_image["ok"] is False
+    assert unsafe_image["error"]["code"] == "bad_image"
+
+    unconfirmed_validation = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "config": str(cfg),
+        "validate_only": True,
+    })
+    assert unconfirmed_validation["ok"] is False
+    assert unconfirmed_validation["error"]["code"] == "confirmation_required"
+
+    validated = {}
+
+    def fake_bounded(argv, *, timeout, max_output_bytes, input_text, encoding):
+        validated["docker_argv"] = argv
+        validated["timeout"] = timeout
+        validated["max_output_bytes"] = max_output_bytes
+        validated["input_text"] = input_text
+        validated["encoding"] = encoding
+        return subprocess.CompletedProcess(argv, 0, "accepted", ""), {
+            "stdout_truncated": False,
+            "stderr_truncated": False,
+        }
+
+    monkeypatch.setattr(mcp, "_run_bounded_router_validation", fake_bounded)
+    validation = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "config": str(cfg),
+        "validate_only": True,
+        "confirm": True,
+        "timeout_seconds": 17,
+        "max_output_bytes": 4096,
+    })
+    assert validation["ok"] is True
+    assert validation["data"]["validated"] is True
+    assert validation["data"]["applied"] is False
+    assert validation["data"]["human_gate_required"] is False
+    assert "--validate-only" in validation["data"]["command"]
+    assert "--dry-run" not in validation["data"]["command"]
+    assert validated["docker_argv"][:3] == ["docker", "run", "--rm"]
+    assert validated["input_text"]
+    assert validated["encoding"] == "utf-8"
+    assert validated["timeout"] == 17
+    assert validated["max_output_bytes"] == 4096
+    assert validation["data"]["execution_constraints"]["pull"] == "never"
+
+    validation_preview = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "validate_only": True,
+        "dry_run": True,
+    })
+    assert validation_preview["ok"] is False
+    assert validation_preview["error"]["code"] == "validation_not_run"
+
+    from anvil_serving import router_manage
+
     refused = mcp.call_tool("router_promote", {
         "profile": candidate,
         "confirm": True,
@@ -675,8 +741,6 @@ def test_router_promotion_preview_and_human_gate(tmp_path, monkeypatch):
     })
     assert refused["ok"] is False
     assert refused["error"]["code"] == "human_approval_required"
-
-    from anvil_serving import router_manage
 
     seen = {}
 
@@ -697,6 +761,40 @@ def test_router_promotion_preview_and_human_gate(tmp_path, monkeypatch):
     assert applied["data"]["applied"] is True
     assert seen["profile_path"] == candidate
     assert seen["kwargs"]["config_path"] == str(cfg)
+
+
+def test_router_validation_runner_sandboxes_and_bounds_streams(monkeypatch):
+    seen = {}
+
+    class FakePopen:
+        def __init__(self, argv, **kwargs):
+            seen["argv"] = argv
+            seen["kwargs"] = kwargs
+            self.stdin = io.BytesIO()
+            self.stdout = io.BytesIO(b"x" * 4096)
+            self.stderr = io.BytesIO(b"warning")
+
+        def wait(self, timeout=None):
+            seen["timeout"] = timeout
+            return 0
+
+    monkeypatch.setattr(mcp.subprocess, "Popen", FakePopen)
+    completed, meta = mcp._run_bounded_router_validation(
+        ["docker", "run", "--rm", "trusted:image"],
+        timeout=12,
+        max_output_bytes=1024,
+        input_text="{}",
+        encoding="utf-8",
+    )
+    assert seen["argv"][:2] == ["docker", "run"]
+    assert "--pull" in seen["argv"] and "never" in seen["argv"]
+    assert "--network" in seen["argv"] and "none" in seen["argv"]
+    assert "--memory" in seen["argv"] and "512m" in seen["argv"]
+    assert seen["timeout"] == 12
+    assert completed.returncode == 0
+    assert len(completed.stdout) == 1024
+    assert completed.stderr == "warning"
+    assert meta == {"stdout_truncated": True, "stderr_truncated": False}
 
 
 def test_route_decision_posts_to_v1_route(monkeypatch):
@@ -830,8 +928,8 @@ def test_openclaw_sync_preview_can_include_skills(tmp_path):
     assert preview["skill_load_dirs"] == ["/opt/anvil-serving/examples/openclaw/skills"]
     assert preview["agent_models"]["anvil-orchestrator"] == "anvil/review"
     assert preview["agent_models"]["anvil-inventory-scout"] == "anvil/chat-fast"
-    assert preview["agent_models"]["anvil-quality-critic"] == "anvil/review"
-    assert preview["agent_models"]["anvil-adversarial-reviewer"] == "anvil/review"
+    assert "anvil-quality-critic" not in preview["agent_models"]
+    assert "anvil-adversarial-reviewer" not in preview["agent_models"]
 
 
 def test_openclaw_sync_preview_can_include_voice(tmp_path):

@@ -10,21 +10,18 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
 
 ## Rules
 
-- Prefer anvil-serving MCP/controller tools: `router_status`, `router_logs`,
-  `router_manage`, `decision_summary`, `router_promote`, `serves_status`,
-  `serves_manage`, `serves_logs`, `voice_manage`, `voice_proxy_manage`, `doctor_summary`,
-  `host_summary`, `models_inventory`, `cache_prune_plan`, `route_decision`,
-  `openclaw_sync`, `openclaw_gateway_restart`,
-  `preflight_probe`, `benchmark_probe`, `benchmark_artifact`,
-  `external_bench_sources`, `external_bench_list`, `external_bench_report`, and
-  `external_bench_compare`. Use
-  `workflow_packet_validate` before treating a packet as promotion evidence.
+- List the current MCP catalog first. Use `operation_contracts` before
+  topology-aware or controller-backed work so the selected operation, target
+  context, transport, and MCP wrapper agree. Use the complete grouped map below
+  instead of relying on a memorized subset. If the MCP server/controller is
+  unavailable, report that loss of coverage explicitly.
 - Use documented `anvil-serving` CLI verbs only when a structured tool is
   missing. Safe fallbacks are read-only or preview-first verbs such as
   `eval usage`, `models sync`, `models recipes`, `models score`,
   `harness sync openclaw --out -`, and other render/inspect commands. Return
   the command preview as evidence and name the missing MCP wrapper as a product
-  gap.
+  gap. Before using a CLI fallback, verify that it resolves to the intended
+  checkout or installed version; do not imply it is controller-backed.
 - Use `127.0.0.1` for local URLs. Do not use `localhost`.
 - For resource-owned commands, pass the deployed topology and declare the
   actual command host/runtime; do not infer command identity from the target.
@@ -41,24 +38,65 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
 - Stop for a human gate before profile promotion, router policy changes,
   metered cloud enablement, destructive cache/host repair, Docker/WSL restart,
   or public/non-loopback bind.
-- Treat `host_summary` and `cache_prune_plan` as read-only. Report host repair,
-  Docker/WSL restart, WSL config edits, and cache deletion as `blocked` or
-  `human_required` unless the human approves the existing CLI gate.
-- Treat `router_promote` as preview/validation unless `confirm=true` and
-  `human_approved=true` are present. Keep `promoted=false` unless a
-  human-approved promotion actually ran.
+- Treat `host_summary`, `gpu_inventory`, and `cache_prune_plan` as read-only.
+  Use `host_manage` only for an exact reviewed repair after a human gate.
+  Report Docker/WSL restart, WSL config edits, and cache deletion as `blocked`
+  or `human_required` unless the human approves the existing CLI gate.
+- Use `router_promote` with `validate_only=true`, `dry_run=false`, and
+  `confirm=true` for bounded, network-isolated, already-local selected-image
+  validation, or the default
+  `dry_run=true` for preview. Live apply requires
+  `confirm=true`, `dry_run=false`, and `human_approved=true`. Keep
+  `promoted=false` unless a human-approved promotion actually ran.
+- Treat `serves_promote` as preview/validation unless `confirm=true`,
+  `dry_run=false`, and `human_approved=true` are present. Mutating
+  `router_transition` actions are also preview-first and human-gated.
 - Never let the model being evaluated grade its own output.
+
+## MCP Tool Map
+
+- Router: `router_status`, `router_logs`, `router_manage`,
+  `router_transition`, `decision_summary`, `route_decision`, and
+  `router_promote`.
+- Serves and residency: `serves_status`, `reservation_status`,
+  `serves_manage`, `serves_logs`, and `serves_promote`.
+- Voice: `voice_manage` and `voice_proxy_manage`.
+- Host, models, and telemetry: `doctor_summary`, `host_summary`,
+  `gpu_inventory`, `observability_collect`, `host_manage`,
+  `models_inventory`, and `cache_prune_plan`.
+- Harness: `openclaw_sync`, `openclaw_gateway_status`, and
+  `openclaw_gateway_restart`.
+- Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
+  `benchmark_artifact`, `workflow_packet_validate`,
+  `external_bench_sources`, `external_bench_list`, `external_bench_report`,
+  and `external_bench_compare`.
+- Transport discovery: `operation_contracts`.
+
+`benchmark_probe` and `benchmark_artifact` are bounded capacity tools, not
+quality graders. Repeated quality evaluation remains the CLI-only
+`anvil-serving eval benchmark quality` workflow until a dedicated wrapper
+exists.
 
 ## Playbooks
 
-- Readiness: inspect router, serves, doctor, model inventory, and configured
-  endpoint status.
+- Readiness: inspect `operation_contracts`, router, serves,
+  `reservation_status`, doctor, host/GPU, model inventory, gateway status, and
+  configured endpoint status. Use `observability_collect` only for bounded
+  declared capabilities.
 - Model catalog: read or sync model inventory and use `external_bench_sources`,
   `external_bench_list`, `external_bench_report`, or `external_bench_compare`
-  for benchmark priors. Keep those priors advisory-only.
-- Serve swap: preview with `serves_manage`, inspect bounded logs, require exact
-  target plus `confirm=true` and `dry_run=false`, then run preflight before
-  benchmark.
+  for benchmark priors. Keep those priors advisory-only. Inspect recorded
+  configurations with `models recipes list/show`. Create or revise candidates
+  with `models recipes create/update`, review the rendered recipe, and run
+  `models recipes load` only with an exact container and confirmation. Use
+  `models recipes delete` only for an exact reviewed registry entry. Gate
+  `models pull` on its network, disk, and target volume.
+- Serve swap: inspect `reservation_status`, preview lifecycle work with
+  `serves_manage` or named transactions with `serves_promote`, and inspect
+  bounded logs. The role-based recipe flow is
+  `anvil-serving serves switch ROLE [MODEL]`; it is CLI-only, so return its
+  preview and name the missing MCP wrapper. Require an exact target and the
+  documented confirmation gate, then run preflight before benchmarking.
 - Voice lifecycle: preview audio with `voice_manage` and the persistent
   Realtime proxy with `voice_proxy_manage`; live lifecycle changes on the
   owning host require `confirm=true` plus `dry_run=false`.
@@ -68,6 +106,14 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   optional same-host/local-audio mode.
 - Harness sync: preview OpenClaw provider, skill, and agent config with
   `openclaw_sync`; apply only to an explicit `out` or `gateway_host` target.
+- Router operations: use bounded status/log/decision tools and
+  `router_transition`; mutations remain preview-first.
+- Evaluation: use `preflight_probe` with explicit thinking mode, reasoning
+  effort/evidence, visible-answer budget, reasoning headroom, and allowed
+  finish reasons. Use the MCP benchmark tools for capacity only. Quality runs
+  must use repeated `eval benchmark quality` attempts and preserve visible
+  output, reasoning-channel evidence, finish reasons, separate budgets,
+  provenance, and per-attempt failure classification.
 - Promotion evidence: assemble status, decision summaries, route probes,
   preflight, benchmark artifacts, calibration, profile/config diffs, and
   reviewer recommendation with `promoted=false`.
@@ -80,6 +126,26 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   plugin constants.
 - Host/cache work: collect `host_summary` and `cache_prune_plan`; MCP cache
   pruning is plan-only and must not delete.
+
+## Model Benchmark Source Freshness
+
+When researching Fast or Heavy tier candidates, include dates in the evidence.
+Treat serving posts, community recipes, benchmark tables, and issue threads as
+time-sensitive.
+
+- Classify sources as `current` at 0-60 days, `aging` at 61-120 days, and
+  `stale` after 120 days, when undated, or when tied to a materially older
+  engine, driver, CUDA, quantization, or checkpoint generation.
+- Prefer current official model cards, vendor release notes, and vLLM, SGLang,
+  llama.cpp, NVIDIA, or model-owner documentation and issues.
+- Treat Reddit, forum posts, and community benchmarks as recipe discovery, not
+  promotion evidence. Label aging or stale hardware-matched posts as historical
+  priors and require a current official source or local benchmark.
+- Record candidate, URL, published or observed date, age class, evidence type,
+  hardware/engine relevance, and decision impact.
+- Never let stale community evidence justify a shortlist, serve swap, or
+  promotion by itself. Local preflight, benchmarks, independent quality eval,
+  and the human gate remain required.
 
 ## Roles
 
@@ -96,4 +162,8 @@ Return `schema_version: "operator-workflow/v1"`, `request`, `gate_state`,
 `gate_state` values are `not_required`, `confirm_required`, `human_required`,
 and `blocked`. Allowed recommendations are `promote`, `do_not_promote`,
 `needs_more_data`, and `blocked`. Validate final packets with
-`workflow_packet_validate` when the MCP/control-plane tool is available.
+`workflow_packet_validate` when the MCP/control-plane tool is available. That
+validator checks packet shape, gate consistency, evidence scope, and bounded
+paths; it does not prove evidence sufficiency or reviewer independence. An
+independent critic must still reject promotion when the evidence is missing or
+self-generated.

@@ -15,7 +15,10 @@ forwarding bridge, and collecting bounded voice benchmarks.
 1. Read `README.md`, `CLAUDE.md`, and
    `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md` before changing behavior or
    reporting voice results as product evidence.
-2. Prefer the existing CLI verbs before proposing a new tool:
+2. Prefer `voice_manage` for structured STT/TTS lifecycle and
+   `voice_proxy_manage` for persistent Realtime proxy lifecycle. Use the
+   existing CLI verbs for foreground, profile, sidecar, bridge, and benchmark
+   operations that do not have MCP wrappers:
    `anvil-serving voice sidecar validate`,
    `anvil-serving voice sidecar command`,
    `anvil-serving voice sidecar compose`,
@@ -62,6 +65,10 @@ They can support a voice-pipeline status report, but router work-class
 promotion still requires router preflight, benchmark, calibration, independent
 review, and human approval.
 
+Use `workflow_packet_validate` before handing a voice packet to the broader
+workbench. Voice artifacts must remain explicitly marked as non-promotion
+evidence.
+
 ## Playbooks
 
 - Sidecar manifest validation:
@@ -73,15 +80,17 @@ review, and human approval.
   `anvil-serving voice sidecar compose --config <manifest>`; inspect loopback
   ports, `host.docker.internal` routing, image name, and auth comments.
 - Managed audio serves:
+  prefer `voice_manage` for agent/controller operation. The CLI equivalents are
   `anvil-serving voice audio up --topology <topology> --config <manifest>` and
   `voice audio down`; preview mutations first and require `--confirm` for live
-  controller execution. Use `anvil-serving voice audio status` and bounded
+  execution. Use `anvil-serving voice audio status` and bounded
   `anvil-serving voice audio logs` for reads.
   External lifecycle serves
   should be reported as skipped rather than forced into local Docker control.
 - Profile selection:
   `anvil-serving voice profiles list --config <manifest>` to list profiles,
-  then add `--profile <name>` to audio, proxy, or
+  `anvil-serving voice profiles validate --config <manifest> --profile <name>`
+  before live work, then add `--profile <name>` to audio, proxy, or
   `voice benchmark` when switching audio topology. For reference OpenClaw Talk
   and candidate benchmarks, keep Mini model-free and select Dark-host audio or
   a Mini-side proxy to Dark. Use `mini-audio` only when explicitly testing the
@@ -91,14 +100,20 @@ review, and human approval.
   --profile mini-dark-audio-proxy --dry-run` first. Run it on Mini. Require
   topology-derived Dark targets and reject every non-loopback Mini listener.
 - Realtime proxy:
-  use `anvil-serving voice proxy up` for the persistent Mini process and
+  prefer `voice_proxy_manage` for the persistent Mini process. The CLI
+  equivalents are `anvil-serving voice proxy up` for persistent operation and
   `anvil-serving voice proxy run` for a foreground diagnostic. Use
   `down`/`restart` only after preview and explicit
   confirmation; use bounded `status`/`logs` for inspection. Treat unreachable
   STT/TTS/router endpoints as blockers. Never start audio lifecycle implicitly.
 - Bounded benchmark:
   `anvil-serving voice benchmark --topology <topology> --config <manifest>` and
-  capture JSON as `voice-pipeline` evidence with `promoted=false`.
+  capture JSON as `voice-pipeline` evidence with `promoted=false`. Keep audio
+  topology and LLM selection separate: `--profile` selects the audio path and
+  `--candidate-overlay <toml>` selects a candidate LLM configuration. Do not
+  combine `--candidate-overlay` with direct candidate flags. A voice benchmark
+  does not replace `anvil-serving eval preflight`, capacity benchmarking, or
+  repeated `anvil-serving eval benchmark quality` evidence for router trust.
 
 ## Result Packet
 

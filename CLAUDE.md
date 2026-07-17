@@ -311,11 +311,22 @@ skills/modules/agent configuration — **starting with OpenClaw**.
    prefer `anvil-serving mcp serve`; in split-host mode, run `anvil-serving controller serve` on the
    anvil-serving host and bridge from the gateway or operator host with
    `anvil-serving mcp serve --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
-3. **Know the MCP verbs and their safety gates.** `anvil-serving mcp tools` exposes
-   `router_status`, `serves_status`, `doctor_summary`, `route_decision`, `openclaw_sync`,
-   `openclaw_gateway_restart`, `preflight_probe`, and `benchmark_probe`. Mutating or expensive
-   probes stay dry-run unless `confirm=true`; numeric knobs are bounded; booleans must be real
-   booleans; raw `api_key` values are rejected. Probe tools only accept `ANVIL_ROUTER_TOKEN` as
+3. **Know the MCP verbs and their safety gates.** `anvil-serving mcp tools` exposes the complete
+   structured catalog: `operation_contracts`; router status/log/lifecycle/transition/decision/route
+   and promotion tools (`router_status`, `router_logs`, `router_manage`, `router_transition`,
+   `decision_summary`, `route_decision`, `router_promote`); serve status/reservation/lifecycle/log
+   and promotion tools (`serves_status`, `reservation_status`, `serves_manage`, `serves_logs`,
+   `serves_promote`); `voice_manage` and `voice_proxy_manage`; host/model/telemetry tools
+   (`doctor_summary`, `host_summary`, `gpu_inventory`, `observability_collect`, `host_manage`,
+   `models_inventory`, `cache_prune_plan`); OpenClaw tools (`openclaw_sync`,
+   `openclaw_gateway_status`, `openclaw_gateway_restart`); and evidence tools
+   (`preflight_probe`, `benchmark_probe`, `benchmark_artifact`, `workflow_packet_validate`,
+   `external_bench_sources`, `external_bench_list`, `external_bench_report`,
+   `external_bench_compare`). `benchmark_probe` and `benchmark_artifact` are capacity tools;
+   repeated quality evaluation remains `eval benchmark quality` until it has a dedicated wrapper.
+   Mutating or expensive probes stay dry-run unless `confirm=true`; numeric knobs are bounded;
+   booleans must be real booleans; raw `api_key` values are rejected. Router/serve promotion apply
+   additionally requires `human_approved=true`. Probe tools only accept `ANVIL_ROUTER_TOKEN` as
    `api_key_env`, redact the resolved token from responses/errors, and restrict target URLs to
    loopback/private/tailnet hosts (never `localhost`, wildcard, link-local, metadata, or public IPs).
    Proxy mode likewise validates `--controller-url` before sending `ANVIL_CONTROLLER_TOKEN`.

@@ -22,9 +22,11 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from collections.abc import Mapping
 from typing import Any, Callable, Dict, Iterable, Optional
 
@@ -873,7 +875,8 @@ def _router_cli_argv(action: str, *, container: str = "", compose: str = "",
                      service: str = "", env_file: str = "", dry_run: bool = False,
                      profile: str = "", config: str = "", cfg_volume: str = "",
                      image: str = "", profile_dest: str = "", config_dest: str = "",
-                     no_reload: bool = False, no_verify: bool = False) -> list[str]:
+                     no_reload: bool = False, no_verify: bool = False,
+                     validate_only: bool = False) -> list[str]:
     argv = [sys.executable, "-m", "anvil_serving.cli", "router", action]
     if container:
         argv += ["--container", container]
@@ -901,6 +904,8 @@ def _router_cli_argv(action: str, *, container: str = "", compose: str = "",
         argv.append("--no-reload")
     if no_verify:
         argv.append("--no-verify")
+    if validate_only:
+        argv.append("--validate-only")
     return argv
 
 
@@ -1101,13 +1106,31 @@ def tool_router_promote(args: dict) -> dict:
     container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
     cfg_volume = _str_arg(args, "cfg_volume", router_manage.DEFAULT_CFG_VOLUME)
     image = _str_arg(args, "image", router_manage.DEFAULT_IMAGE)
+    if not image or image.startswith("-") or any(
+        ord(ch) < 33 or ord(ch) == 127 for ch in image
+    ):
+        raise ToolError(
+            "bad_image",
+            "image must be a non-option Docker image reference without whitespace/control characters",
+        )
     profile_dest = _str_arg(args, "profile_dest", router_manage.DEFAULT_PROFILE_DEST)
     config_dest = _str_arg(args, "config_dest", router_manage.DEFAULT_CONFIG_DEST)
     no_reload = _arg_bool(args.get("no_reload"), False, name="no_reload")
-    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    validate_only = _arg_bool(args.get("validate_only"), False, name="validate_only")
+    dry_run = _arg_bool(
+        args.get("dry_run"),
+        False if validate_only else True,
+        name="dry_run",
+    )
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     human_approved = _arg_bool(args.get("human_approved"), False, name="human_approved")
     diff_limit = _bounded_int_arg(args, "diff_limit", 50, min_value=1, max_value=500)
+    timeout_seconds = _bounded_int_arg(
+        args, "timeout_seconds", 300, min_value=1, max_value=1800
+    )
+    max_output_bytes = _bounded_int_arg(
+        args, "max_output_bytes", 65536, min_value=1024, max_value=1048576
+    )
 
     try:
         preview = router_manage.promotion_preview(
@@ -1135,7 +1158,8 @@ def tool_router_promote(args: dict) -> dict:
         profile_dest=profile_dest,
         config_dest=config_dest,
         no_reload=no_reload,
-        dry_run=not apply_requested,
+        dry_run=dry_run if validate_only else not apply_requested,
+        validate_only=validate_only,
     )
     target = {
         "container": container,
@@ -1144,7 +1168,76 @@ def tool_router_promote(args: dict) -> dict:
         "profile_dest": profile_dest,
         "config_dest": config_dest,
         "no_reload": no_reload,
+        "timeout_seconds": timeout_seconds,
+        "max_output_bytes": max_output_bytes,
     }
+    if validate_only:
+        if dry_run:
+            raise ToolError(
+                "validation_not_run",
+                "router validate_only requires dry_run=false; omit dry_run or set it to false",
+                {"target": target, "preview": preview},
+            )
+        if not confirm:
+            raise ToolError(
+                "confirmation_required",
+                "router validation executes the selected container image; set confirm=true",
+                {"target": target, "preview": preview, "command": argv},
+            )
+        capture_meta = {}
+
+        def bounded_validation_run(command, **kwargs):
+            completed, meta = _run_bounded_router_validation(
+                command,
+                timeout=timeout_seconds,
+                max_output_bytes=max_output_bytes,
+                input_text=kwargs.get("input"),
+                encoding=kwargs.get("encoding") or "utf-8",
+            )
+            capture_meta.update(meta)
+            return completed
+
+        rc, stdout, stderr = _capture(lambda: router_manage.cmd_promote(
+            profile,
+            config_path=config or None,
+            container=container,
+            cfg_volume=cfg_volume,
+            image=image,
+            profile_dest=profile_dest,
+            config_dest=config_dest,
+            no_reload=no_reload,
+            validate_only=True,
+            _run=bounded_validation_run,
+        ))
+        result = {
+            "applied": False,
+            "validated": rc == 0,
+            "validate_only": True,
+            "dry_run": False,
+            "human_gate_required": False,
+            "target": target,
+            "command": argv,
+            "preview": preview,
+            "returncode": rc,
+            "stdout": stdout,
+            "stderr": stderr,
+            "stdout_truncated": capture_meta.get("stdout_truncated", False),
+            "stderr_truncated": capture_meta.get("stderr_truncated", False),
+            "execution_constraints": {
+                "pull": "never",
+                "network": "none",
+                "memory": "512m",
+                "cpus": "1",
+                "pids_limit": 128,
+            },
+        }
+        if rc != 0:
+            raise ToolError(
+                "command_failed",
+                "router promote --validate-only exited with status %s" % rc,
+                result,
+            )
+        return _ok(result)
     if apply_requested and not human_approved:
         raise ToolError(
             "human_approval_required",
@@ -1437,6 +1530,120 @@ def _run_argv_spooled(argv: list[str], *, timeout: Optional[int], max_output_byt
         if proc.returncode != 0:
             raise ToolError("command_failed", "command exited with status %s" % proc.returncode, result)
         return result
+
+
+def _run_bounded_router_validation(
+        argv: list[str], *, timeout: int, max_output_bytes: int,
+        input_text: Optional[str], encoding: str) -> tuple[subprocess.CompletedProcess, dict]:
+    """Run one Docker validation with bounded pipes and deterministic cleanup.
+
+    Validation images must already be local, have no network, and run inside
+    tight process/CPU/memory limits. Output is drained continuously but only the
+    first ``max_output_bytes`` per stream is retained. A timeout force-removes
+    the named daemon-side container after killing the Docker CLI.
+    """
+    if argv[:2] != ["docker", "run"]:
+        raise ToolError(
+            "unsafe_validation_command",
+            "router validation runner accepts only docker run",
+            {"command": argv},
+        )
+    container_name = "anvil-router-validate-" + uuid.uuid4().hex[:16]
+    command = argv[:2] + [
+        "--name", container_name,
+        "--pull", "never",
+        "--network", "none",
+        "--memory", "512m",
+        "--cpus", "1",
+        "--pids-limit", "128",
+    ] + argv[2:]
+    try:
+        proc = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE if input_text is not None else subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except FileNotFoundError:
+        raise
+
+    retained = {"stdout": bytearray(), "stderr": bytearray()}
+    truncated = {"stdout": False, "stderr": False}
+
+    def drain(name, stream):
+        while True:
+            chunk = stream.read(8192)
+            if not chunk:
+                break
+            remaining = max_output_bytes - len(retained[name])
+            if remaining > 0:
+                retained[name].extend(chunk[:remaining])
+            if len(chunk) > max(remaining, 0):
+                truncated[name] = True
+
+    def write_input():
+        if proc.stdin is None:
+            return
+        try:
+            proc.stdin.write((input_text or "").encode(encoding))
+        except (BrokenPipeError, OSError):
+            pass
+        finally:
+            try:
+                proc.stdin.close()
+            except OSError:
+                pass
+
+    threads = [
+        threading.Thread(target=drain, args=("stdout", proc.stdout), daemon=True),
+        threading.Thread(target=drain, args=("stderr", proc.stderr), daemon=True),
+        threading.Thread(target=write_input, daemon=True),
+    ]
+    for thread in threads:
+        thread.start()
+    try:
+        returncode = proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        try:
+            cleanup = subprocess.run(
+                ["docker", "rm", "-f", container_name],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            cleanup_returncode = cleanup.returncode
+        except (OSError, subprocess.TimeoutExpired):
+            cleanup_returncode = None
+        raise ToolError(
+            "timeout",
+            "router validation timed out; validation container cleanup was attempted",
+            {
+                "command": command,
+                "timeout": timeout,
+                "cleanup_returncode": cleanup_returncode,
+            },
+        )
+    finally:
+        for thread in threads:
+            thread.join(timeout=5)
+
+    stdout = retained["stdout"].decode(encoding, "replace")
+    stderr = retained["stderr"].decode(encoding, "replace")
+    return (
+        subprocess.CompletedProcess(command, returncode, stdout, stderr),
+        {
+            "stdout_truncated": truncated["stdout"],
+            "stderr_truncated": truncated["stderr"],
+        },
+    )
 
 
 def tool_serves_manage(args: dict) -> dict:
@@ -3008,7 +3215,7 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_decision_summary,
     },
     "router_promote": {
-        "description": "Validate and preview router profile promotion; apply requires confirm=true, dry_run=false, and human_approved=true.",
+        "description": "Validate or preview router promotion. Validation executes the selected image and requires confirm=true; apply also requires dry_run=false and human_approved=true.",
         "inputSchema": _schema({
             "profile": {"type": "string"},
             "config": {"type": "string"},
@@ -3020,10 +3227,13 @@ TOOLS: Dict[str, dict] = {
             "profile_dest": {"type": "string"},
             "config_dest": {"type": "string"},
             "no_reload": {"type": "boolean"},
+            "validate_only": {"type": "boolean"},
             "dry_run": {"type": "boolean"},
             "confirm": {"type": "boolean"},
             "human_approved": {"type": "boolean"},
             "diff_limit": _bounded_integer_schema(1, 500, 50),
+            "timeout_seconds": _bounded_integer_schema(1, 1800, 300),
+            "max_output_bytes": _bounded_integer_schema(1024, 1048576, 65536),
         }, required=["profile"]),
         "handler": tool_router_promote,
     },

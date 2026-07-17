@@ -14,23 +14,19 @@ narration.
 
 1. Read `README.md`, `CLAUDE.md`, and `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md`
    before changing behavior or running operational commands.
-2. List or inspect available MCP tools first. Prefer `router_status`,
-   `router_logs`, `router_manage`, `decision_summary`, `router_promote`,
-   `serves_status`, `serves_manage`, `serves_logs`, `voice_manage`,
-   `voice_proxy_manage`,
-   `doctor_summary`, `host_summary`, `models_inventory`, `cache_prune_plan`,
-   `route_decision`, `openclaw_sync`,
-   `openclaw_gateway_restart`, `preflight_probe`, `benchmark_probe`, and
-   `benchmark_artifact`, `external_bench_sources`, `external_bench_list`,
-   `external_bench_report`, and `external_bench_compare` when they cover the
-   request. Use
-   `workflow_packet_validate` before treating a packet as promotion evidence.
+2. List or inspect available MCP tools first. Use `operation_contracts` before
+   topology-aware or controller-backed work so the selected CLI operation,
+   target context, transport, and MCP wrapper agree. Use the grouped catalog
+   below rather than relying on a memorized subset. If the repo-scoped MCP
+   server is unavailable, report that loss of controller coverage explicitly.
 3. Use documented `anvil-serving` CLI verbs only when an MCP wrapper is missing.
    Safe fallbacks are read-only or preview-first verbs such as `eval usage`,
    `models sync`, `models recipes`, `models score`,
    `harness sync openclaw --out -`,
    and other render/inspect commands. Return the command preview and mark the
-   missing wrapper as a product gap.
+   missing wrapper as a product gap. Before using a CLI fallback, verify that
+   it resolves to this checkout or the intended installed version; do not imply
+   that an unverified fallback is controller-backed.
 4. Use `127.0.0.1` in local URLs. Do not introduce `localhost`.
    For resource-owned commands, pass the deployed topology and declare the
    actual command host/runtime; do not infer command identity from the target.
@@ -47,6 +43,30 @@ narration.
 6. Pass credentials by environment variable name only. Never place literal keys
    in configs, fixtures, packets, logs, or prompts.
 
+## MCP Tool Map
+
+- Router: `router_status`, `router_logs`, `router_manage`,
+  `router_transition`, `decision_summary`, `route_decision`, and
+  `router_promote`.
+- Serves and residency: `serves_status`, `reservation_status`,
+  `serves_manage`, `serves_logs`, and `serves_promote`.
+- Voice: `voice_manage` and `voice_proxy_manage`.
+- Host, models, and telemetry: `doctor_summary`, `host_summary`,
+  `gpu_inventory`, `observability_collect`, `host_manage`,
+  `models_inventory`, and `cache_prune_plan`.
+- Harness: `openclaw_sync`, `openclaw_gateway_status`, and
+  `openclaw_gateway_restart`.
+- Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
+  `benchmark_artifact`, `workflow_packet_validate`,
+  `external_bench_sources`, `external_bench_list`, `external_bench_report`,
+  and `external_bench_compare`.
+- Transport discovery: `operation_contracts`.
+
+`benchmark_probe` and `benchmark_artifact` are bounded capacity tools, not
+quality graders. Repeated quality evaluation remains the explicit
+`anvil-serving eval benchmark quality` workflow until a dedicated MCP wrapper
+exists.
+
 ## Gates
 
 Stop for a human gate before profile promotion, router policy changes, metered
@@ -54,9 +74,18 @@ cloud enablement, destructive cache pruning, host repair, Docker/WSL restart,
 public or non-loopback bind, or any operation that would persist a new routing
 trust decision.
 
-`router_promote` may validate and preview candidate profile/config changes, but
-live apply requires `confirm=true` and `human_approved=true`. Skill packets must
+`router_promote` may validate with `validate_only=true`, `dry_run=false`, and
+`confirm=true`, or preview with the default `dry_run=true`. Validation executes
+an already-local selected container image with network and resource isolation,
+so keep its timeout and output bounds explicit.
+Live apply requires all three fields:
+`confirm=true`, `dry_run=false`, and `human_approved=true`. Skill packets must
 keep `promoted=false` unless that human-approved promotion result is present.
+
+`serves_promote` has the same three-part live gate: `confirm=true`,
+`dry_run=false`, and `human_approved=true`. `host_manage` and mutating
+`router_transition` actions remain human-gated even though their MCP schemas
+support preview and confirmation.
 
 Never self-verify. The model that generated a candidate output cannot be the
 critic or judge that validates it.
@@ -66,14 +95,26 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 
 ## Playbook Selection
 
-- Readiness: inspect `router_status`, `serves_status`, `doctor_summary`,
-  `models_inventory`, and configured endpoint status.
+- Readiness: inspect `operation_contracts`, `router_status`, `serves_status`,
+  `reservation_status`, `doctor_summary`, `host_summary`, `gpu_inventory`,
+  `models_inventory`, and configured endpoint status. Use
+  `observability_collect` only for bounded declared capabilities.
 - Model catalog: read or sync model inventory and use `external_bench_sources`,
   `external_bench_list`, `external_bench_report`, or `external_bench_compare`
-  for benchmark priors. Keep those priors advisory-only.
-- Serve swap: preview with `serves_manage`, inspect `serves_logs`, require exact
-  target plus `confirm=true` and `dry_run=false`, then run preflight before
-  benchmark.
+  for benchmark priors. Keep those priors advisory-only. Use
+  `models recipes list/show` to inspect recorded configurations. Create or
+  revise candidates through `models recipes create/update`, review the rendered
+  recipe, and use
+  `models recipes load` only with an exact container plus its documented
+  confirmation gate. Use `models recipes delete` only for an exact reviewed
+  registry entry. Run `models pull` only after an explicit network, disk, and
+  target-volume gate.
+- Serve swap: inspect `reservation_status`, then preview lifecycle work with
+  `serves_manage` or a named transaction with `serves_promote`. The newer
+  role-based recipe flow is `anvil-serving serves switch ROLE [MODEL]`; it is
+  CLI-only, so return its preview and name the missing MCP wrapper. Require an
+  exact target and the documented confirmation gate before apply, then run
+  preflight before either capacity or quality benchmarks.
 - Voice lifecycle: preview audio with `voice_manage` and the persistent
   Realtime proxy with `voice_proxy_manage`; live lifecycle changes on the
   owning host require `confirm=true` plus `dry_run=false`.
@@ -85,8 +126,17 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   `openclaw_sync`; apply only to an explicit `out`/`gateway_host` target and
   preserve operator-owned keys.
 - Router operations: use `router_status`, bounded `router_logs`,
-  `router_manage`, and `decision_summary`; lifecycle mutation is preview-first
-  and live only with `confirm=true` plus `dry_run=false`.
+  `router_manage`, `router_transition`, and `decision_summary`; lifecycle and
+  tier-transition mutation is preview-first and live only with `confirm=true`
+  plus `dry_run=false`.
+- Evaluation: use `preflight_probe` with the model family's declared thinking
+  mode, reasoning effort/evidence expectation, visible-answer budget,
+  reasoning headroom, and allowed finish reasons. Use `benchmark_probe` or
+  `benchmark_artifact` for capacity only. For quality, run
+  `anvil-serving eval benchmark quality` with repeated attempts and preserve
+  visible output, reasoning-channel evidence, finish reasons, separate visible
+  and reasoning budgets, provenance, and per-attempt failure classification.
+  Do not rank or promote from an older one-shot score that lacks that evidence.
 - Promotion evidence: assemble status, decision summary, route probes,
   preflight, benchmark artifacts, calibration, profile/config diffs, and
   reviewer recommendation with `promoted=false`.
@@ -97,10 +147,31 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   generation caps, exact/stream benchmark caps, benchmark reasoning effort, and
   per-intent overrides as router tier `params` owned by the model recipe, not
   as skill or plugin constants.
-- Host/cache work: use `host_summary` and `cache_prune_plan` for read-only
-  checks and plans. Report host repair, Docker/WSL restart, WSL config edits,
-  and cache deletion as `blocked` or `human_required` unless the human approves
-  the existing CLI gate; MCP cache pruning is plan-only.
+- Host/cache work: use `host_summary`, `gpu_inventory`, and `cache_prune_plan`
+  for read-only checks and plans. Use `host_manage` only for an exact reviewed
+  repair after its human gate. Report Docker/WSL restart, WSL config edits, and
+  cache deletion as `blocked` or `human_required` unless the human approves the
+  existing gate; MCP cache pruning is plan-only.
+
+## Model Benchmark Source Freshness
+
+When researching Fast or Heavy tier candidates, include dates in the evidence.
+Treat serving posts, community recipes, benchmark tables, and issue threads as
+time-sensitive.
+
+- Classify sources as `current` at 0-60 days, `aging` at 61-120 days, and
+  `stale` after 120 days, when undated, or when tied to a materially older
+  engine, driver, CUDA, quantization, or checkpoint generation.
+- Prefer current official model cards, vendor release notes, and vLLM, SGLang,
+  llama.cpp, NVIDIA, or model-owner documentation and issues.
+- Treat Reddit, forum posts, and community benchmarks as recipe discovery, not
+  promotion evidence. Label aging or stale hardware-matched posts as historical
+  priors and require a current official source or local benchmark.
+- Record candidate, URL, published or observed date, age class, evidence type,
+  hardware/engine relevance, and decision impact.
+- Never let stale community evidence justify a shortlist, serve swap, or
+  promotion by itself. Local preflight, benchmarks, independent quality eval,
+  and the human gate remain required.
 
 ## Sub-Agents
 
@@ -119,4 +190,7 @@ entry must include `source_class`, `ok`, `dry_run`, `confirmed`, `target`, and
 `needs_more_data`, and `blocked`. Allowed `gate_state` values are
 `not_required`, `confirm_required`, `human_required`, and `blocked`. Validate
 final packets with `workflow_packet_validate` when the MCP/control-plane tool is
-available.
+available. That validator checks packet shape, gate consistency, evidence
+scope, and bounded paths; it does not prove evidence sufficiency or reviewer
+independence. An independent critic must still reject promotion when the
+underlying evidence is missing or self-generated.

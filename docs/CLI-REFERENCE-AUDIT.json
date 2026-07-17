@@ -32,7 +32,7 @@
         "eval-usage": 7,
         "host-gpus": 3,
         "init": 18,
-        "mcp-serve": 23,
+        "mcp-serve": 24,
         "mcp-tools": 11,
         "models-cache-prune": 8,
         "models-recipes": 29,
@@ -100,11 +100,11 @@
         "eval-benchmark-external": 84,
         "eval-benchmark-run": 3,
         "eval-calibrate": 27,
-        "eval-preflight": 36,
+        "eval-preflight": 37,
         "eval-usage": 17,
         "host-gpus": 7,
         "init": 35,
-        "mcp-serve": 29,
+        "mcp-serve": 30,
         "mcp-tools": 14,
         "models-cache-prune": 15,
         "models-recipes": 53,
@@ -120,11 +120,11 @@
         "docs": 61,
         "examples": 53,
         "implementation": 169,
-        "skills": 4,
+        "skills": 6,
         "tests": 164,
-        "tooling": 28
+        "tooling": 29
       },
-      "files_scanned": 479,
+      "files_scanned": 482,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
@@ -181,7 +181,7 @@
         "eval-benchmark-external": 0,
         "eval-benchmark-run": 0,
         "eval-calibrate": 0,
-        "eval-preflight": 0,
+        "eval-preflight": 1,
         "eval-usage": 0,
         "host-gpus": 0,
         "init": 0,
@@ -198,9 +198,9 @@
         "voice-sidecar": 6
       },
       "files_by_category": {
-        "skills": 4
+        "skills": 6
       },
-      "files_scanned": 4,
+      "files_scanned": 6,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
