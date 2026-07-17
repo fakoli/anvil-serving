@@ -20,9 +20,10 @@ Full artifact set (genericity:T009): one `deploy` invocation also appends a
 compose file on served-name and port, so wiring a new local tier into the
 router + `serves` lifecycle verb never drifts from what was actually deployed.
 
-vLLM engine (genericity:T010): `--engine vllm` renders a vLLM compose
-(`ipc: host`, `VLLM_USE_V2_MODEL_RUNNER=0` — WSL2 exposes no UVA, CLAUDE.md
-gotcha #14). Its serve argv is built by `multiplexer.build_cmd()` — the SAME
+vLLM engine (genericity:T010): `--engine vllm` renders a vLLM compose pinned to
+the current stable image (`ipc: host`, `VLLM_WSL2_ENABLE_PIN_MEMORY=1`, and
+the conservative `VLLM_USE_V2_MODEL_RUNNER=0`; CLAUDE.md gotcha #14). Its
+serve argv is built by `multiplexer.build_cmd()` — the SAME
 function that launches a vLLM backend for the multiplexer — so the two paths
 can never drift apart. `--engine sglang` (the default) is unchanged.
 
@@ -64,7 +65,7 @@ TEMPLATE_VLLM = os.path.join(HERE, "..", "templates", "docker-compose.vllm.yml.t
 
 LOOPBACK_BIND = "127.0.0.1"
 LAN_BIND = "0.0.0.0"
-DEFAULT_IMAGE = {"sglang": "lmsysorg/sglang:latest", "vllm": "vllm/vllm-openai:latest"}
+DEFAULT_IMAGE = {"sglang": "lmsysorg/sglang:latest", "vllm": _multiplexer.VLLM_STABLE_IMAGE}
 
 _SLUG_RE = re.compile(r"[^a-zA-Z0-9_.-]+")
 
@@ -173,7 +174,10 @@ def _render_vllm(model_path, device_id, uuid, context, served_name, image, port,
     command_tokens = argv[1:]  # drop the entrypoint marker; the image's own ENTRYPOINT is vllm
     command = "\n      ".join(shlex.quote(t) for t in command_tokens)
     container = f"vllm-{_slug(served_name)}"
-    env_block = _env_block(uuid, extra=['VLLM_USE_V2_MODEL_RUNNER: "0"'])
+    env_block = _env_block(uuid, extra=[
+        'VLLM_WSL2_ENABLE_PIN_MEMORY: "1"',
+        'VLLM_USE_V2_MODEL_RUNNER: "0"',
+    ])
     return tmpl.format(image=image, container=container, port=port, model=model_path,
                        bind=bind, device_id=device_id, command=command, env_block=env_block)
 
