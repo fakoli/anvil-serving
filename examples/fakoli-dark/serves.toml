@@ -601,3 +601,14 @@ model = "unsloth-qwen36-27b-nvfp4"
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-unsloth-qwen36-27b-nvfp4"
+
+# Native GPT-OSS Puzzle 88B candidate. Evaluation-only until its full local
+# functional and long-context qualification completes; it shares the PRO 6000.
+[[serve]]
+name = "cand-gptoss-puzzle-88b"
+container = "vllm-cand-gptoss-puzzle-88b"
+port = 39039
+model = "gpt-oss-puzzle-88b"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-gptoss-puzzle-88b"

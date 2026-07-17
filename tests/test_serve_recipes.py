@@ -389,3 +389,32 @@ def test_shipped_stable_vllm_recipes_pin_0251_and_enable_wsl2_memory(request):
     }
     assert managed["fast"] == "leon-se/gemma-4-E4B-it-FP8-Dynamic"
     assert managed["heavy"] == "google/gemma-4-12B-it-qat-w4a16-ct"
+
+
+def test_shipped_gpt_oss_puzzle_recipe_is_reproducible_and_unverified(request):
+    root = request.config.rootpath
+    registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
+    recipe = sr.find_recipe(registry, "nvidia/gpt-oss-puzzle-88B")
+
+    assert recipe is not None
+    assert recipe["status"] == "unverified"
+    assert recipe["hardware"] == {
+        "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "arch": "sm_120",
+        "gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+        "vram_total_gb": 96,
+    }
+    serve = recipe["serve"]
+    assert serve["image"] == ("anvil-vllm:gpt-oss-puzzle-1bf3b12d5bbeb09136e8478e37133ab0ffad3e51")
+    assert serve["managed_serve"] == "cand-gptoss-puzzle-88b"
+    assert serve["served_model_name"] == "gpt-oss-puzzle-88b"
+    assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in serve["flags"]
+    assert "--tensor-parallel-size 1" in serve["flags"]
+    assert "--moe-backend marlin" in serve["flags"]
+    assert "--max-model-len 131072" in serve["flags"]
+
+    cmd = sr.reconstruct_docker_run(recipe)
+    assert cmd.startswith("docker run -d --gpus device=GPU-d0f446cf-1771-414c-e116-a39138798a8c")
+    assert serve["image"] in cmd
+    assert "nvidia/gpt-oss-puzzle-88B" in cmd
+    assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in cmd
