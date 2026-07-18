@@ -187,6 +187,10 @@ establish a general quality win over Gemma 4. The live artifacts are
 
 ## Reproduction surface
 
+The complete pinned build, cache, serve, benchmark, router, and rollback
+procedure is the
+[GPT-OSS Puzzle 88B recipe](../benchmarks/gpt-oss-puzzle-88b-recipe.md).
+
 Serve lifecycle changes used Anvil Serving rather than raw Docker mutation:
 
 ```powershell

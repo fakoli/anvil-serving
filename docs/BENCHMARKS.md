@@ -89,7 +89,8 @@ The deployment pins checkpoint revision
 `9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2`, serves a 131,072-token window
 with FP8 KV cache, and uses the native Harmony template and OpenAI tool parser.
 The router supplies `reasoning_effort=high` by default. Official Gemma 4 12B IT
-QAT W4A16 is the immediate managed rollback.
+QAT W4A16 is the immediate managed rollback. The complete reusable procedure is
+the [GPT-OSS Puzzle 88B recipe](benchmarks/gpt-oss-puzzle-88b-recipe.md).
 
 This transition is not a cross-model quality or throughput ranking. The exact
 production shape passed smoke and JSON, a 120K requested needle check, 20/20
