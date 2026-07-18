@@ -1,0 +1,27 @@
+{
+  "base_url": "http://127.0.0.1:30002/v1",
+  "completed": 10,
+  "concurrency": 1,
+  "context_tokens": 8192,
+  "max_context_tokens": 131072,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 473.0799198150635,
+    "e2e_p95_ms": 1035.4242324829102,
+    "output_tokens": 20,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 3.848948923245447,
+    "ttft_p50_ms": 393.40949058532715,
+    "ttft_p95_ms": 956.2482833862305
+  },
+  "model": "gpt-oss-puzzle-88b",
+  "requests": 10,
+  "run_id": "benchmark-20260718T184927Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": "low",
+    "shared_prefix_burst": false,
+    "thinking_mode": "default"
+  }
+}
