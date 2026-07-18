@@ -51,6 +51,7 @@ nav:
   - Benchmarks & findings:
       - RTX PRO 6000 benchmark guide: benchmarks/index.md
       - Model recipes & gotchas: benchmarks/models.md
+      - GPT-OSS Puzzle 88B recipe: benchmarks/gpt-oss-puzzle-88b-recipe.md
       - Methodology & evidence: benchmarks/methodology.md
       - Result archive: BENCHMARKS.md
       - External benchmarks: EXTERNAL-BENCHMARKS.md

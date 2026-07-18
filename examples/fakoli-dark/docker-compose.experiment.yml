@@ -1350,11 +1350,12 @@ services:
       --host 0.0.0.0 --port 39036
       ${CAND_UNSLOTH_QWEN36_EXTRA_ARGS:-}
 
-  # Native GPT-OSS Puzzle 88B candidate built from the Anvil vLLM fork. Keep
-  # the checkpoint's native Harmony template. FlashInfer's MXFP4/MXFP8 MoE
-  # paths remain disabled for this compatibility baseline by forcing Marlin.
+  # Native GPT-OSS Puzzle 88B candidate built from the exact Anvil vLLM fork
+  # commit. Keep the native Harmony template and the <|call|> EOS override;
+  # omitting either the final image or override can restore the tool-parser 500.
+  # FlashInfer MXFP4/MXFP8 MoE stays disabled by forcing Marlin.
   cand-gptoss-puzzle-88b:
-    image: ${CAND_GPTOSS_PUZZLE_VLLM_IMAGE:-anvil-vllm:gpt-oss-puzzle-1bf3b12d5bbeb09136e8478e37133ab0ffad3e51}
+    image: ${CAND_GPTOSS_PUZZLE_VLLM_IMAGE:-anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82}
     container_name: vllm-cand-gptoss-puzzle-88b
     restart: "no"
     ipc: host
@@ -1365,7 +1366,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: "1"
+      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -1389,6 +1390,7 @@ services:
       --tool-call-parser openai
       --enable-auto-tool-choice
       --enable-prefix-caching
+      --override-generation-config '{"eos_token_id":[200002,199999,200012]}'
       --max-num-batched-tokens ${CAND_GPTOSS_PUZZLE_MAX_BATCHED_TOKENS:-8192}
       --stream-interval 20
       --gpu-memory-utilization ${CAND_GPTOSS_PUZZLE_GPU_MEMORY_UTILIZATION:-0.95}

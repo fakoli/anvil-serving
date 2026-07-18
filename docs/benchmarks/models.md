@@ -1,8 +1,11 @@
 # RTX PRO 6000 model recipes and gotchas
 
 This page turns the [benchmark tables](index.md) into operating guidance for one
-RTX PRO 6000 Blackwell 96 GB. The durable recipes live in
-[`examples/fakoli-dark/docker-compose.experiment.yml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/docker-compose.experiment.yml)
+RTX PRO 6000 Blackwell 96 GB. The durable production and experiment recipes
+live in
+[`examples/fakoli-dark/docker-compose.yml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/docker-compose.yml)
+and
+[`examples/fakoli-dark/docker-compose.experiment.yml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/docker-compose.experiment.yml),
 and are registered in
 [`examples/fakoli-dark/serves.toml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/serves.toml).
 The snippets below use the managed CLI rather than reproducing long container
@@ -43,6 +46,7 @@ comparisons, and a maximum of five admitted sequences.
 | Engine path | local Anvil vLLM commits `3fbe020f` + `485463b3`; native Puzzle architecture and Harmony template; OpenAI tool parser; Marlin MXFP4 MoE; FP8 KV |
 | Context / admission | 131,072 served; 130,696-prompt-token near-limit retrieval retained from the exact model-support image; 99,100-prompt-token promotion rerun; 8 sequences; 8,192 batched tokens |
 | Router reasoning control | OpenAI `reasoning_effort=high` default; low used for bounded promotion gates |
+| Complete reproduction guide | [Build, pull, serve, gate, route, and roll back](gpt-oss-puzzle-88b-recipe.md) |
 
 **Why choose it.** This is the branch-backed Heavy target the local serving
 stack was built to exercise. The production shape passes chat, structured JSON,
@@ -59,7 +63,9 @@ turn a valid tool call into an HTTP 500. The new 120K requested gate produced
 99,100 prompt tokens after tokenization; use the separately retained 130,696-token
 boundary run for the near-limit context claim.
 
-Evidence: [GPT-OSS Puzzle Heavy enablement](../findings/2026-07-18-gpt-oss-puzzle-heavy-promotion.md).
+Use the [complete GPT-OSS Puzzle recipe](gpt-oss-puzzle-88b-recipe.md) rather
+than reconstructing the engine build or command from this summary. Evidence:
+[GPT-OSS Puzzle Heavy enablement](../findings/2026-07-18-gpt-oss-puzzle-heavy-promotion.md).
 
 ## Gemma 4 12B IT QAT W4A16
 

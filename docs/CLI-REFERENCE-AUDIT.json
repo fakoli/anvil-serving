@@ -28,7 +28,7 @@
         "eval-benchmark-external": 48,
         "eval-benchmark-run": 1,
         "eval-calibrate": 9,
-        "eval-preflight": 22,
+        "eval-preflight": 23,
         "eval-usage": 7,
         "host-gpus": 3,
         "init": 18,
@@ -45,10 +45,10 @@
         "voice-sidecar": 18
       },
       "files_by_category": {
-        "docs": 61,
+        "docs": 62,
         "tooling": 5
       },
-      "files_scanned": 66,
+      "files_scanned": 67,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
@@ -100,7 +100,7 @@
         "eval-benchmark-external": 84,
         "eval-benchmark-run": 3,
         "eval-calibrate": 27,
-        "eval-preflight": 37,
+        "eval-preflight": 38,
         "eval-usage": 17,
         "host-gpus": 7,
         "init": 35,
@@ -117,14 +117,14 @@
         "voice-sidecar": 45
       },
       "files_by_category": {
-        "docs": 61,
+        "docs": 62,
         "examples": 54,
         "implementation": 169,
         "skills": 6,
         "tests": 164,
         "tooling": 29
       },
-      "files_scanned": 483,
+      "files_scanned": 484,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

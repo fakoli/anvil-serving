@@ -1214,9 +1214,22 @@ total_params_b = 8
 [[recipe]]
 model = "nvidia/gpt-oss-puzzle-88B"
 status = "verified"
-source = "local Anvil vLLM fork commits 3fbe020fb04afb27885196dabd1a72392074d49c and 485463b3498ed3ffcf0c8fcb52c1670a21be5d82; exact image qualified on RTX PRO 6000"
+source = "fakoli/anvil-vllm commit 485463b3498ed3ffcf0c8fcb52c1670a21be5d82 (includes model support commit 3fbe020fb04afb27885196dabd1a72392074d49c); exact image qualified on RTX PRO 6000"
 family = "gpt-oss-puzzle"
 total_params_b = 88
+
+  [recipe.download]
+  repo = "nvidia/gpt-oss-puzzle-88B"
+  revision = "9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2"
+  volume = "vllm-hfcache"
+
+  [recipe.sources]
+  engine_repo = "https://github.com/fakoli/anvil-vllm"
+  engine_commit = "485463b3498ed3ffcf0c8fcb52c1670a21be5d82"
+  engine_pr = "https://github.com/fakoli/anvil-vllm/pull/1"
+  upstream_model_support = "https://github.com/vllm-project/vllm/pull/38135"
+  upstream_generation_config = "https://github.com/vllm-project/vllm/pull/45978"
+  runbook = "docs/benchmarks/gpt-oss-puzzle-88b-recipe.md"
 
   [recipe.hardware]
   gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
@@ -1259,7 +1272,7 @@ total_params_b = 88
     "--host 0.0.0.0",
     "--port 30002",
   ]
-  note = "Native Harmony template; no chat-template override. The pinned checkpoint omits <|call|> token 200012 from generation_config.json, so the fork-level full generation-config override restores it as an EOS token. FlashInfer MXFP4/MXFP8 MoE stays disabled through --moe-backend marlin."
+  note = "Native Harmony template; no chat-template override. The pinned checkpoint omits <|call|> token 200012 from generation_config.json, so fork commit 485463b3 plus the full generation-config override restore it as an EOS token. FlashInfer MXFP4/MXFP8 MoE stays disabled through --moe-backend marlin. Follow docs/benchmarks/gpt-oss-puzzle-88b-recipe.md; do not substitute a stock vLLM image."
 
   [recipe.intent]
   suited = ["heavy", "agentic", "quality", "long-context", "planning", "review"]
