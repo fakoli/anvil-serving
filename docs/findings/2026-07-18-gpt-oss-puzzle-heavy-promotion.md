@@ -132,12 +132,50 @@ deployed router image before any state change. The OpenClaw harness sync also
 passed in dry-run mode with the Heavy-backed intents at a 131,072-token context.
 No remote OpenClaw configuration was applied as part of this local Heavy change.
 
+## Live capacity and repeated quality benchmark
+
+After the exact image and router were resident, the production Heavy endpoint
+was requalified and measured without restarting either service. The repeated
+preflight passed coding, JSON, a 99,100-observed-prompt-token retrieval, and
+20/20 shared-prefix tool calls. All checks retained non-empty reasoning evidence
+with `reasoning_effort=low`.
+
+The bounded 8K-context capacity probes used the repository benchmark harness:
+
+| Path | Requests | Concurrency | TTFT p50 / p95 | E2E p50 / p95 | Aggregate output |
+|---|---:|---:|---:|---:|---:|
+| Direct Heavy | 10/10 | 1 | 0.393 / 0.956 s | 0.473 / 1.035 s | 3.85 tok/s |
+| Direct Heavy | 40/40 | 8 | 0.766 / 1.075 s | 0.906 / 1.148 s | 17.85 tok/s |
+| Authenticated router `planning` | 10/10 | 1 | 0.484 / 0.718 s | 0.484 / 0.718 s | 2.00 tok/s |
+
+These capacity prompts produced only 20, 86, and 10 output tokens respectively.
+They establish bounded request completion and latency under the declared load;
+they are not a controlled long-decode throughput result.
+
+The protocol-v3 quality run used three attempts per deterministic check, 256
+visible-answer tokens, 2,048 reasoning-headroom tokens, and verified
+`reasoning_effort=low` control. The 32,768- and 128,000-token context targets
+both passed; the latter consumed 127,916 prompt tokens and had 25.906-second
+TTFT. Session recall passed 3/3, the tool-call check passed 3/3, and timeout
+triage passed 3/3. The strict unified-diff check passed 2/3 because one response
+inserted a space after the diff marker. The harness therefore correctly marked
+the overall repeated quality gate failed at its 100% threshold.
+
+This run closes the former parser failure: the pre-fix image returned HTTP 500
+for the same tool suite 0/3, while the final image completed it 3/3. It does not
+establish a general quality win over Gemma 4. The live artifacts are
+[`live-preflight-20260718.json`](2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/live-preflight-20260718.json),
+[`live-capacity-c1-8k-r10-20260718.json`](2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/live-capacity-c1-8k-r10-20260718.json),
+[`live-capacity-c8-8k-r40-20260718.json`](2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/live-capacity-c8-8k-r40-20260718.json),
+[`live-router-capacity-c1-8k-r10-20260718.json`](2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/live-router-capacity-c1-8k-r10-20260718.json), and
+[`live-quality-protocol-v3-r3-20260718.json`](2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/live-quality-protocol-v3-r3-20260718.json).
+
 ## Scope and caveats
 
-- This change proves local serving compatibility and the listed protocol
-  features. It does not claim Puzzle has better quality or throughput than the
-  prior Gemma Heavy; no controlled cross-model quality or performance bakeoff was
-  run in this transition.
+- This change proves local serving compatibility, bounded capacity, and the
+  listed protocol features. It does not claim Puzzle has better quality or
+  throughput than the prior Gemma Heavy; no controlled cross-model A/B was run,
+  and the repeated strict quality suite retained one 2/3 deterministic failure.
 - FP8 KV cache trades some numerical precision for context capacity. All live
   gates use the same FP8-KV production shape.
 - The 120K gate requests approximately 120,000 characters; the tokenizer
@@ -154,6 +192,8 @@ Serve lifecycle changes used Anvil Serving rather than raw Docker mutation:
 ```powershell
 uv run --no-sync anvil-serving serves up heavy --manifest examples/fakoli-dark/serves.toml --recreate --no-router --confirm
 uv run --no-sync anvil-serving eval preflight --tier heavy --manifest examples/fakoli-dark/serves.toml --checks smoke,json,needle,tools --needle-ctx 120000 --tool-batch 20 --thinking-mode default --reasoning-effort low --visible-answer-tokens 512 --reasoning-headroom-tokens 4096 --reasoning-evidence required --confirm
+uv run --no-sync anvil-serving eval benchmark capacity --tier heavy --manifest examples/fakoli-dark/serves.toml --requests 40 --concurrency 8 --ctx-tokens 8192 --max-tokens 256 --reasoning-effort low --confirm
+uv run --no-sync anvil-serving eval benchmark quality --tier heavy --manifest examples/fakoli-dark/serves.toml --suite chat,context,tool,session,intelligence --context-targets 32768,128000 --eval-repetitions 3 --eval-min-pass-rate 1.0 --visible-answer-tokens 256 --reasoning-headroom-tokens 2048 --reasoning-effort low --confirm
 uv run --no-sync anvil-serving harness sync openclaw --config examples/fakoli-dark/anvil-router.live.toml --dry-run
 ```
 

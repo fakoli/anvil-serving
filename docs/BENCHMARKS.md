@@ -91,14 +91,28 @@ with FP8 KV cache, and uses the native Harmony template and OpenAI tool parser.
 The router supplies `reasoning_effort=high` by default. Official Gemma 4 12B IT
 QAT W4A16 is the immediate managed rollback.
 
-This transition is a serving-compatibility result, not a new cross-model quality
-or throughput ranking. The exact production shape passed smoke and JSON, a 120K
-requested needle check, 20/20 shared-prefix tool calls, the original Harmony
-parser regression 10/10 without a request-level stop-token workaround, Responses
-API, streaming SSE, and a complete tool-result continuation. The observed needle
-prompt was 99,100 tokens; the prior exact-image qualification separately retains
-a 130,696-prompt-token near-limit retrieval. Root cause, fork/upstream
-relationship, immutable revisions, router validation, and raw artifacts are in the
+This transition is not a cross-model quality or throughput ranking. The exact
+production shape passed smoke and JSON, a 120K requested needle check, 20/20
+shared-prefix tool calls, the original Harmony parser regression 10/10 without a
+request-level stop-token workaround, Responses API, streaming SSE, and a complete
+tool-result continuation. The observed needle prompt was 99,100 tokens; the prior
+exact-image qualification separately retains a 130,696-prompt-token near-limit
+retrieval.
+
+Post-promotion live measurement on the final image completed 10/10 direct Heavy
+requests at concurrency one and 40/40 at concurrency eight. At 8K fixed context,
+direct TTFT p50/p95 was 0.393/0.956 seconds at c1 and 0.766/1.075 seconds at c8;
+E2E p50/p95 was 0.473/1.035 and 0.906/1.148 seconds. The tiny mixed completions
+make their 3.85 and 17.85 aggregate tok/s capacity figures unsuitable as
+controlled decode rates. The authenticated `planning` router path separately
+completed 10/10 at c1 with 0.484/0.718-second TTFT p50/p95.
+
+The repeated protocol-v3 suite passed 32K and 128K context, tool calling 3/3,
+session recall 3/3, and timeout triage 3/3. Unified-diff formatting passed 2/3,
+so the strict 100% quality gate failed. This is a real remaining quality caveat,
+while the tool result demonstrates the intended runtime improvement over the
+pre-fix image's 0/3 HTTP-500 failure. Root cause, fork/upstream relationship,
+immutable revisions, router validation, commands, and raw artifacts are in the
 [GPT-OSS Puzzle Heavy enablement record](findings/2026-07-18-gpt-oss-puzzle-heavy-promotion.md).
 
 ## Gemma 4 July 15 template matrix (2026-07-16)
