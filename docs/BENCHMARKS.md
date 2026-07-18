@@ -81,18 +81,38 @@ recorded intent rather than a claim of hard server-side partitioning.
 
 These rows are from the [Fast-tier LLM bakeoff](findings/2026-07-08-fast-tier-llm-bakeoff.md) and its [human-gated promotion record](findings/2026-07-08-fast-tier-promotion.md). The voice artifacts in that bakeoff measure STT, LLM, and TTS stage timing, but their STT hypothesis is empty with WER `1.0`; they are **not** semantic speech-recognition accuracy results. The displayed decode rate is derived from the recorded evidence as `output_tokens * 1000 / (e2e_ms - ttft_ms)`.
 
+## GPT-OSS Puzzle 88B Heavy compatibility (2026-07-18)
+
+The current Heavy tier is **`nvidia/gpt-oss-puzzle-88B`**, served as
+`gpt-oss-puzzle-88b` from an exact local Anvil vLLM image on the RTX PRO 6000.
+The deployment pins checkpoint revision
+`9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2`, serves a 131,072-token window
+with FP8 KV cache, and uses the native Harmony template and OpenAI tool parser.
+The router supplies `reasoning_effort=high` by default. Official Gemma 4 12B IT
+QAT W4A16 is the immediate managed rollback.
+
+This transition is a serving-compatibility result, not a new cross-model quality
+or throughput ranking. The exact production shape passed smoke and JSON, a 120K
+requested needle check, 20/20 shared-prefix tool calls, the original Harmony
+parser regression 10/10 without a request-level stop-token workaround, Responses
+API, streaming SSE, and a complete tool-result continuation. The observed needle
+prompt was 99,100 tokens; the prior exact-image qualification separately retains
+a 130,696-prompt-token near-limit retrieval. Root cause, fork/upstream
+relationship, immutable revisions, router validation, and raw artifacts are in the
+[GPT-OSS Puzzle Heavy enablement record](findings/2026-07-18-gpt-oss-puzzle-heavy-promotion.md).
+
 ## Gemma 4 July 15 template matrix (2026-07-16)
 
-The current Heavy tier is **official Gemma 4 12B IT QAT W4A16**, served as
+Official Gemma 4 12B IT QAT W4A16 is the immediate Heavy rollback, served as
 `gemma4-12b-it-w4a16-ct` through vLLM 0.25.1 on the RTX PRO 6000 with FP8 KV,
 a 256K context limit, five admitted sequences, and thinking enabled by router
-default. It replaced ThinkingCap after a human-approved guarded promotion;
-ThinkingCap remains the immediate managed rollback.
+default. It replaced ThinkingCap after the July 16 human-approved guarded
+promotion and remained Heavy until the July 18 Puzzle compatibility transition.
 
 | Heavy configuration | Repeated quality | 32K TTFT p50 / aggregate output | Quality context TTFT (32K / 128K / 240K) | Outcome |
 |---|---|---:|---:|---|
 | ThinkingCap Qwen3.6 27B FP8 control | pass | 4.84 s / 3 tok/s | 7.83 / 57.60 / 124.70 s | Valid rollback |
-| Gemma 4 12B W4A16, July 15 template | **pass** | **1.52 s / 21 tok/s** | **6.96 / 44.61 / 97.33 s** | **Current Heavy tier** |
+| Gemma 4 12B W4A16, July 15 template | **pass** | **1.52 s / 21 tok/s** | **6.96 / 44.61 / 97.33 s** | **Immediate Heavy rollback** |
 | Gemma 4 26B BF16 | fail timeout triage 0/3 | 0.73 s / 36 tok/s | capacity TTFT 11.93 s at 120K, 34.07 s at 240K | Faster, strict-quality failure |
 | Gemma 4 31B W4A16 | pass | 4.02 s / 7 tok/s | 15.44 / 112.30 / 248.57 s | Quality pass, materially slower |
 

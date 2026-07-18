@@ -1,0 +1,35 @@
+{
+  "schema_version": "anvil-router-validation/v1",
+  "captured_at_utc": "2026-07-18T18:18:16Z",
+  "router": {
+    "container": "anvil-router",
+    "image": "anvil-serving:0.13.2",
+    "base_url": "http://100.87.34.66:8000",
+    "health_http_status": 200,
+    "auth_configured": true,
+    "profile_loaded": true
+  },
+  "heavy_transition_state": {
+    "tier_id": "heavy-local",
+    "state": "admitting",
+    "draining": false,
+    "active_requests": 0,
+    "ready": true,
+    "readiness_state": "ready",
+    "readiness_reason": "identity_passed",
+    "expected_model": "gpt-oss-puzzle-88b",
+    "observed_model": "gpt-oss-puzzle-88b"
+  },
+  "routed_tool_smoke": {
+    "passed": true,
+    "response_model": "gpt-oss-puzzle-88b",
+    "finish_reason": "tool_calls",
+    "function": "record_weather_zip",
+    "arguments": {"zip": "98101"}
+  },
+  "openclaw": {
+    "harness_sync_dry_run_passed": true,
+    "remote_configuration_applied": false
+  },
+  "secret_policy": "The existing token was loaded from the operator environment in process memory and was not printed or recorded."
+}
