@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "reasoning_effort",
+  "source": "live-preflight-20260718.json: reasoning_effort=low passed coding, JSON, 99,100-prompt-token retrieval, and 20/20 tool calls with non-empty reasoning evidence on every check",
+  "observed_at": "2026-07-18T18:49:10Z"
+}
