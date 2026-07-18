@@ -55,17 +55,26 @@ vram_mib = 32607
 reserve_mib = 4608
 
 [[serve]]
-name = "heavy"                 # heavy quality tier — Gemma 4 12B IT QAT W4A16
-container = "vllm-gemma4-12b-heavy"
+name = "heavy"                 # heavy quality tier — GPT-OSS Puzzle 88B
+container = "vllm-gptoss-puzzle-heavy"
 port = 30002
-model = "gemma4-12b-it-w4a16-ct" # served-model-name (used by `anvil-serving eval`)
+model = "gpt-oss-puzzle-88b"   # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
 groups = ["heavy-only", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
 
 [[serve]]
-name = "heavy-thinkingcap-rollback" # immediate rollback; stop `heavy` first because both own :30002
+name = "heavy-gemma4-rollback" # immediate rollback; stop `heavy` first because both own :30002
+container = "vllm-gemma4-12b-heavy-rollback"
+port = 30002
+model = "gemma4-12b-it-w4a16-ct"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-gemma4-rollback"
+
+[[serve]]
+name = "heavy-thinkingcap-rollback" # second-line rollback; stop `heavy` first because both own :30002
 container = "vllm-thinkingcap-heavy-rollback"
 port = 30002
 model = "thinkingcap-qwen36-27b-fp8"
@@ -74,7 +83,7 @@ health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-thinkingcap-rollback"
 
 [[serve]]
-name = "heavy-gptoss-rollback" # second-line rollback; stop `heavy` first because both own :30002
+name = "heavy-gptoss-rollback" # third-line rollback; stop `heavy` first because both own :30002
 container = "vllm-gptoss120"
 port = 30002
 model = "gpt-oss-120b"
@@ -230,45 +239,36 @@ up = "docker compose -f {dir}/docker-compose.yml up -d vision"
 # and complete model+router rollback. This single-GPU plan validates the newly
 # started target in-transaction; a separately resident candidate cannot coexist.
 [[promotion]]
-name = "gemma4-12b-heavy"
+name = "gpt-oss-puzzle-88b-heavy"
 target = "heavy"
-rollback = "heavy-thinkingcap-rollback"
+rollback = "heavy-gemma4-rollback"
 router_config = "{dir}/anvil-router.live.toml"
-router_profile = "{dir}/../../docs/findings/2026-07-16-gemma4-chat-template-bakeoff-evidence/promotion-profile.json"
-rollback_router_config = "{dir}/anvil-router.thinkingcap-rollback.toml"
-rollback_router_profile = "{dir}/../../docs/findings/2026-07-13-e4b-fast-router-promotion-evidence/promotion-profile.json"
+router_profile = "{dir}/../../docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/promotion-profile.json"
+rollback_router_config = "{dir}/anvil-router.gemma4-rollback.toml"
+rollback_router_profile = "{dir}/../../docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/gemma4-rollback-profile.json"
 affected_tiers = ["heavy-local"]
 drain_timeout = 120
-needle_ctx = 240000
+needle_ctx = 120000
 tool_batch = 20
-startup_timeout = 600
+startup_timeout = 900
 rollback_startup_timeout = 600
 poll_interval = 5
 router_health_url = "http://100.87.34.66:8000/healthz"
 
 [[promotion.gate]]
-name = "functional-thinking-disabled"
+name = "puzzle-functional-reasoning"
 checks = "smoke,json,needle,tools"
-thinking_mode = "disabled"
+thinking_mode = "default"
 visible_answer_tokens = 512
-reasoning_headroom_tokens = 0
-reasoning_evidence = "forbidden"
-json_out = "{dir}/../../docs/findings/2026-07-16-gemma4-chat-template-bakeoff-evidence/promotion-functional-preflight.json"
-
-[[promotion.gate]]
-name = "quality-thinking-enabled-4k"
-checks = "smoke,json"
-thinking_mode = "enabled"
-visible_answer_tokens = 256
 reasoning_headroom_tokens = 4096
 reasoning_evidence = "required"
-json_out = "{dir}/../../docs/findings/2026-07-16-gemma4-chat-template-bakeoff-evidence/promotion-thinking-preflight-4k.json"
+json_out = "{dir}/../../docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/promotion-functional-preflight.json"
 
 [[promotion.rollback_gate]]
-name = "thinkingcap-functional"
+name = "gemma4-functional"
 checks = "smoke,json,needle,tools"
 thinking_mode = "enabled"
-visible_answer_tokens = 256
+visible_answer_tokens = 512
 reasoning_headroom_tokens = 4096
 reasoning_evidence = "required"
 
