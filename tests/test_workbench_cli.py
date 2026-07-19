@@ -84,3 +84,14 @@ def test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle(capsy
     docs = (Path(__file__).resolve().parents[1] / "docs" / "WORKBENCH.md").read_text(encoding="utf-8")
     for action in ("up", "down", "status", "logs"):
         assert f"anvil-serving workbench {action}" in docs
+
+
+def test_workbench_compose_waits_for_neo4j_and_ignores_its_secret_env_file():
+    root = Path(__file__).resolve().parents[1]
+    compose = (root / "anvil_serving" / "_scaffold_templates" / "docker-compose.workbench.yml").read_text(encoding="utf-8")
+    gitignore = (root / ".gitignore").read_text(encoding="utf-8")
+
+    assert "neo4j:\n        condition: service_healthy" in compose
+    assert "cypher-shell" in compose
+    assert "workbench.env" in gitignore
+    assert "!workbench.env.example" in gitignore

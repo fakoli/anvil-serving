@@ -8,6 +8,11 @@ build/
 .env.*
 !.env.example
 !examples/**/.env.example
+# Workbench Compose credentials: owner, database, Neo4j, and router auth are
+# supplied at deploy time. Keep an explicitly value-free example publishable.
+workbench.env
+workbench.env.*
+!workbench.env.example
 # uv lockfile — an env-provisioning artifact (the package is stdlib-only by
 # design; pyproject declares no uv config). Not part of the project.
 uv.lock
