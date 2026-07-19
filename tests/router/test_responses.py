@@ -92,6 +92,12 @@ def test_responses_stream_event_order_and_cancellation_close():
     assert names.index("response.output_item.added") < names.index("response.output_text.delta")
     assert names[-1] == "response.completed"
     assert "".join(data.get("delta", "") for name, data in events if name == "response.output_text.delta") == "Hello"
+    done = next(data for name, data in events if name == "response.output_text.done")
+    assert done["text"] == "Hello"
+    part_done = next(data for name, data in events if name == "response.content_part.done")
+    assert part_done["part"]["text"] == "Hello"
+    item_done = next(data for name, data in events if name == "response.output_item.done")
+    assert item_done["item"]["content"][0]["text"] == "Hello"
     completed = events[-1][1]["response"]
     assert completed["output"][0]["content"][0]["text"] == "Hello"
 

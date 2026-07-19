@@ -49,6 +49,30 @@ def test_workbench_mutations_use_shared_confirmation_before_docker(capsys):
         assert "rerun the same command with --confirm" in capsys.readouterr().err
 
 
+def test_workbench_mutations_require_the_dispatcher_confirmation_scope(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(
+        workbench.subprocess,
+        "run",
+        lambda command, **_kwargs: calls.append(command) or type("Result", (), {"returncode": 0})(),
+    )
+
+    assert workbench.main(["up", "--confirm"]) == 3
+    assert calls == []
+    assert "confirmation required" in json.loads(capsys.readouterr().err)["error"]
+
+    assert cli.main(["workbench", "up", "--confirm"]) == 0
+    assert calls[0][-2:] == ["up", "--detach"]
+
+
+@pytest.mark.parametrize("tail", ("0", "-1", "5001", "not-a-number"))
+def test_workbench_logs_reject_unbounded_tails(tail):
+    with pytest.raises(SystemExit) as exc:
+        workbench._parser().parse_args(["logs", "--tail", tail])
+
+    assert exc.value.code == 2
+
+
 def test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle(capsys):
     assert cli.main(["workbench", "up", "--dry-run"]) == 0
     rendered = json.loads(capsys.readouterr().out)
