@@ -79,7 +79,7 @@ from .config import (
     load,
     load_server_config,
 )
-from .decision_log import DecisionLog
+from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, compute_cost_usd, request_correlation
 from .dialects.translate import has_tool_artifacts
 from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecision, route_with_fallback
 from .fingerprint import refresh_fingerprint
@@ -748,13 +748,49 @@ class RoutingBackend:
             # Selected at route time, before the backend call (AC3 residency).
             self._note_selected(available_tiers[0])
             self._thread_local.last_result = None  # cleared; set when stream finishes
+            _fragments: List[str] = []
 
             def _complete_allow() -> None:
                 _fn = getattr(inner_backend, "get_last_structured", None)
-                self._thread_local.last_result = _fn() if callable(_fn) else None
+                structured = _fn() if callable(_fn) else None
+                self._thread_local.last_result = structured
+                correlation = request_correlation(request)
+                # Historically a raw trusted-allow stream has no decision-log
+                # record; adding it after a long stream changes chronological
+                # ordering for existing operational consumers. Workbench asks
+                # explicitly for durable lineage, so only correlated direct
+                # streams receive this supplemental record.
+                if not any(correlation.values()):
+                    return
+                text = "".join(_fragments)
+                usage = getattr(structured, "usage", None) if structured is not None else None
+                prompt_tokens = int(usage.get("input_tokens", 0)) if usage is not None else estimate_tokens([m.content for m in request.messages])
+                completion_tokens = int(usage.get("output_tokens", 0)) if usage is not None else estimate_tokens([text])
+                try:
+                    cost_usd = compute_cost_usd(first_tier, prompt_tokens, completion_tokens)
+                except Exception:  # noqa: BLE001 - observability cannot fail a response
+                    cost_usd = 0.0
+                record = DecisionRecord(
+                    work_class=work_class,
+                    requested_tiers=bound_tiers,
+                    attempts=(AttemptRecord(available_tiers[0], True, "allow", prompt_tokens, completion_tokens, "served"),),
+                    served_tier=available_tiers[0],
+                    total_prompt_tokens=prompt_tokens,
+                    total_completion_tokens=completion_tokens,
+                    fell_back=False,
+                    cost_usd=cost_usd,
+                    mode=self._mode,
+                    **correlation,
+                )
+                self._decision_log.record(record)
+
+            def _generate_allow() -> Iterator[str]:
+                for delta in inner_backend.generate(request):
+                    _fragments.append(delta)
+                    yield delta
 
             return _AdmissionIterator(
-                lambda: inner_backend.generate(request), lease, _complete_allow
+                _generate_allow, lease, _complete_allow
             )
 
         # allow-with-verify (full chain), a local "allow" under the T004

@@ -18,6 +18,7 @@ import pytest
 from anvil_serving.router.backends import CloudBackend, MissingCredentialError
 from anvil_serving.router.backends.cloud import CloudBackendError
 from anvil_serving.router.config import ConfigError, Tier
+from anvil_serving.router.dialects.responses import ResponsesDialect
 
 FAKE_KEY = "sk-test-DEADBEEF-not-a-real-key"
 ANTHROPIC_ENV = "ANVIL_TEST_ANTHROPIC_KEY"
@@ -287,6 +288,44 @@ def test_openai_body_does_not_duplicate_existing_system_message(monkeypatch):
 
     assert roles == ["system", "user"]                # not duplicated
     assert roles.count("system") == 1
+
+
+def test_openai_body_forwards_responses_json_schema(monkeypatch):
+    """A Responses JSON schema must survive the relay to the local model."""
+    monkeypatch.setenv(OPENAI_ENV, FAKE_KEY)
+    transport = _CaptureTransport(_openai_reply())
+    backend = CloudBackend(_openai_cloud_tier(), transport=transport)
+    request = ResponsesDialect().parse_request({
+        "model": "chat",
+        "input": "Return a structured status.",
+        "text": {"format": {
+            "type": "json_schema",
+            "name": "status",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {"passed": {"type": "boolean"}},
+                "required": ["passed"],
+                "additionalProperties": False,
+            },
+        }},
+    })
+
+    list(backend.generate(request))
+    body = json.loads(transport.calls[0]["data"])
+    assert body["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "status",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {"passed": {"type": "boolean"}},
+                "required": ["passed"],
+                "additionalProperties": False,
+            },
+        },
+    }
 
 
 # ── review fix 2: /v1 endpoint normalization for openai cloud tiers ────────────
