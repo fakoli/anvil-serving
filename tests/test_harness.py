@@ -169,6 +169,24 @@ def test_render_rejects_incomplete_or_unsafe_setup_values(kwargs, message):
         harness.render_openclaw_provider(_cfg(), base_url="http://h/v1", **kwargs)
 
 
+@pytest.mark.parametrize(
+    "plugin_dir",
+    [
+        "/opt/anvil/openclaw-anvil-intent-router",
+        r"C:\\Anvil\\openclaw-anvil-intent-router",
+        r"\\server\share\openclaw-anvil-intent-router",
+    ],
+)
+def test_render_accepts_absolute_gateway_paths_independent_of_controller_os(plugin_dir):
+    rendered = harness.render_openclaw_provider(
+        _cfg(),
+        base_url="http://h/v1",
+        plugin_dir=plugin_dir,
+    )
+
+    assert rendered["plugins"]["load"]["paths"] == [plugin_dir]
+
+
 def test_openclaw_voice_sync_defaults_to_chat_fast_preset():
     preview = harness.openclaw_sync_preview(
         "r.toml",
