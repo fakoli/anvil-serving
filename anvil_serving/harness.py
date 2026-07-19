@@ -124,10 +124,21 @@ def _route_timeout_for_base_url(base_url):
 
 
 def _is_absolute_gateway_path(path):
+    """Return whether *path* is absolute on a supported gateway platform.
+
+    The controller and OpenClaw gateway do not have to run the same OS, so
+    ``os.path.isabs`` cannot be used here: on Windows it rejects a valid Unix
+    gateway path such as ``/opt/anvil/plugin``.  Recognize fully-qualified
+    POSIX, Windows drive, and Windows UNC paths independent of the controller.
+    """
     return bool(
         isinstance(path, str)
         and path
-        and (os.path.isabs(path) or re.match(r"^[A-Za-z]:[\\\\/]", path))
+        and (
+            path.startswith("/")
+            or re.match(r"^[A-Za-z]:[\\\\/]", path)
+            or path.startswith("\\\\")
+        )
     )
 
 
