@@ -2326,6 +2326,34 @@ def tool_openclaw_sync(args: dict) -> dict:
             "raw api_key is not accepted; set api_key_env to the credential env var name",
         )
     api_key_env = _probe_api_key_env({"api_key_env": _str_arg(args, "api_key_env", "ANVIL_ROUTER_TOKEN")})
+    native_provider = _str_arg(args, "native_provider", "")
+    native_model = _str_arg(args, "native_model", "")
+    plugin_dir = _str_arg(args, "plugin_dir", "")
+    tool_profile = _str_arg(args, "tool_profile", "")
+    exec_mode = _str_arg(args, "exec_mode", "")
+    client_side_routing = _arg_bool(
+        args.get("client_side_routing"),
+        False,
+        name="client_side_routing",
+    )
+    route_endpoint = _str_arg(args, "route_endpoint", "")
+    if route_endpoint:
+        route_endpoint = _safe_probe_url(route_endpoint)
+    route_auth_env = _str_arg(args, "route_auth_env", "")
+    if route_auth_env:
+        try:
+            harness._validate_env_var_name(route_auth_env, arg_name="route_auth_env")
+        except ValueError as exc:
+            raise ToolError("bad_route_auth_env", str(exc), {"route_auth_env": route_auth_env})
+    route_timeout_ms = None
+    if "route_timeout_ms" in args:
+        route_timeout_ms = _bounded_int_arg(
+            args,
+            "route_timeout_ms",
+            500,
+            min_value=1,
+            max_value=5000,
+        )
     gateway_host = _str_arg(args, "gateway_host", "")
     gateway_user = _str_arg(args, "gateway_user", "")
     gateway_path = _str_arg(args, "gateway_path", "~/.openclaw/openclaw.json")
@@ -2395,6 +2423,15 @@ def tool_openclaw_sync(args: dict) -> dict:
             config,
             base_url=base_url,
             api_key_env=api_key_env,
+            native_provider=native_provider or None,
+            native_model=native_model or None,
+            plugin_dir=plugin_dir or None,
+            tool_profile=tool_profile or None,
+            exec_mode=exec_mode or None,
+            authoritative_route=not client_side_routing,
+            route_endpoint=route_endpoint or None,
+            route_auth_env=route_auth_env or None,
+            route_timeout_ms=route_timeout_ms,
             skills=skills,
             skill_dir=skill_dir or None,
             voice=voice,
@@ -2416,6 +2453,15 @@ def tool_openclaw_sync(args: dict) -> dict:
         "gateway_user": gateway_user or None,
         "gateway_path": gateway_path,
         "out": out or None,
+        "native_provider": native_provider or None,
+        "native_model": native_model or None,
+        "plugin_dir": plugin_dir or None,
+        "tool_profile": tool_profile or None,
+        "exec_mode": exec_mode or None,
+        "authoritative_route": not client_side_routing,
+        "route_endpoint": preview.get("route_endpoint"),
+        "route_auth_env": preview.get("route_auth_env"),
+        "route_timeout_ms": preview.get("route_timeout_ms"),
         "skills": skills,
         "skill_dir": skill_dir or None,
         "voice": voice,
@@ -2444,6 +2490,15 @@ def tool_openclaw_sync(args: dict) -> dict:
         out=out or None,
         base_url=base_url,
         api_key_env=api_key_env,
+        native_provider=native_provider or None,
+        native_model=native_model or None,
+        plugin_dir=plugin_dir or None,
+        tool_profile=tool_profile or None,
+        exec_mode=exec_mode or None,
+        authoritative_route=not client_side_routing,
+        route_endpoint=route_endpoint or None,
+        route_auth_env=route_auth_env or None,
+        route_timeout_ms=route_timeout_ms,
         skills=skills,
         skill_dir=skill_dir or None,
         voice=voice,
@@ -2472,6 +2527,18 @@ def tool_openclaw_sync(args: dict) -> dict:
             "plugin_id": preview["plugin_id"],
             "base_url": preview["base_url"],
             "api_key": preview["api_key"],
+            "plugin_enabled": preview["plugin_enabled"],
+            "plugin_load_paths": preview["plugin_load_paths"],
+            "native_primary": preview["native_primary"],
+            "native_provider": preview["native_provider"],
+            "native_model": preview["native_model"],
+            "route_endpoint": preview["route_endpoint"],
+            "route_auth_env": preview["route_auth_env"],
+            "route_timeout_ms": preview["route_timeout_ms"],
+            "tool_profile": preview["tool_profile"],
+            "exec_mode": preview["exec_mode"],
+            "fresh_setup_ready": preview["fresh_setup_ready"],
+            "fresh_setup_issues": preview["fresh_setup_issues"],
             "skills": preview["skills"],
             "skill_name": preview["skill_name"],
             "skill_load_dirs": preview["skill_load_dirs"],
@@ -3405,11 +3472,26 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_route_decision,
     },
     "openclaw_sync": {
-        "description": "Preview or apply OpenClaw harness config sync from a router config.",
+        "description": "Preview or apply a complete OpenClaw gateway setup from a router config, including the Anvil provider, intent-router plugin contract, and optional tool policy.",
         "inputSchema": _schema({
             "config": {"type": "string"},
             "base_url": {"type": "string"},
             "api_key_env": {"type": "string"},
+            "native_provider": {"type": "string"},
+            "native_model": {"type": "string"},
+            "plugin_dir": {"type": "string"},
+            "tool_profile": {
+                "type": "string",
+                "enum": ["coding", "full", "messaging", "minimal"],
+            },
+            "exec_mode": {
+                "type": "string",
+                "enum": ["allowlist", "ask", "auto", "deny", "full"],
+            },
+            "client_side_routing": {"type": "boolean"},
+            "route_endpoint": {"type": "string"},
+            "route_auth_env": {"type": "string"},
+            "route_timeout_ms": _bounded_integer_schema(1, 5000, 500),
             "gateway_host": {"type": "string"},
             "gateway_user": {"type": "string"},
             "gateway_path": {"type": "string"},
