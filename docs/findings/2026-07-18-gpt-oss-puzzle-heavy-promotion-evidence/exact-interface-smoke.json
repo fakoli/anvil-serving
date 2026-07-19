@@ -1,0 +1,26 @@
+{
+  "schema_version": "gpt-oss-puzzle-interface-smoke/v1",
+  "tested_at_utc": "2026-07-18T18:15:21Z",
+  "image_id": "sha256:470f7b7e39c4363696d5a79fd041d6a45253229a9ba1c055d089ddbdc0ed120c",
+  "source_commit": "485463b3498ed3ffcf0c8fcb52c1670a21be5d82",
+  "endpoint": "http://127.0.0.1:30002/v1",
+  "model": "gpt-oss-puzzle-88b",
+  "results": {
+    "responses_api": {
+      "passed": true,
+      "status": "completed",
+      "expected_answer_observed": "RESPONSES_OK"
+    },
+    "streaming_sse": {
+      "passed": true,
+      "data_events": 3,
+      "done_event_observed": true,
+      "expected_answer_observed": "STREAM_OK"
+    },
+    "tool_result_recovery": {
+      "passed": true,
+      "finish_reason": "stop",
+      "non_empty_final_answer": true
+    }
+  }
+}

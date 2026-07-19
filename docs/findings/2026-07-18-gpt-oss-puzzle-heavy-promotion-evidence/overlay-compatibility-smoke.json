@@ -1,0 +1,62 @@
+{
+  "schema_version": "gpt-oss-puzzle-compatibility-smoke/v1",
+  "tested_at_utc": "2026-07-18T17:18:57Z",
+  "evidence_class": "functional-overlay-only",
+  "performance_claim_allowed": false,
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "memory_total_mib": 97887,
+    "driver": "610.62"
+  },
+  "image": {
+    "tag": "anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82-python-overlay",
+    "id": "sha256:d3322b61d6a990d052e4d4646a6643c92ea5e8fdfde131480727bed0000e5cd8",
+    "base": "anvil-vllm:gpt-oss-puzzle-1bf3b12d5bbeb09136e8478e37133ab0ffad3e51",
+    "source_commit": "485463b3498ed3ffcf0c8fcb52c1670a21be5d82",
+    "overlay": "vllm/config/model.py"
+  },
+  "checkpoint": {
+    "model": "nvidia/gpt-oss-puzzle-88B",
+    "revision": "9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2",
+    "served_name": "gpt-oss-puzzle-88b"
+  },
+  "server_override": {
+    "eos_token_id": [200002, 199999, 200012]
+  },
+  "results": {
+    "health_http_status": 200,
+    "preflight": {
+      "passed": true,
+      "checks": ["smoke", "json", "needle", "tools"],
+      "needle_context_requested": 120000,
+      "needle_prompt_tokens": 99100,
+      "tool_batch": "20/20"
+    },
+    "tool_parser_regression_without_request_stop_token_ids": {
+      "passed": true,
+      "runs": "10/10",
+      "http_status": 200,
+      "finish_reason": "tool_calls",
+      "function": "record_weather_zip",
+      "arguments": {"zip": "98101"}
+    },
+    "responses_api": {
+      "passed": true,
+      "status": "completed",
+      "expected_answer_observed": "RESPONSES_OK"
+    },
+    "streaming_sse": {
+      "passed": true,
+      "data_events": 3,
+      "done_event_observed": true,
+      "expected_answer_observed": "STREAM_OK"
+    },
+    "tool_result_recovery": {
+      "passed": true,
+      "finish_reason": "stop",
+      "non_empty_final_answer": true
+    }
+  },
+  "qualification_note": "This overlay isolates the generation-config merge fix for early functional validation. Promotion requires the same gates to pass on the complete source-built image with the exact source commit embedded."
+}

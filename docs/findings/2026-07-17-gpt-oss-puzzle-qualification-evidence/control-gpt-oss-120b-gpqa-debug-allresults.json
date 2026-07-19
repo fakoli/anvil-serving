@@ -1,0 +1,28 @@
+{
+  "score": 0.0,
+  "metrics": {
+    "chars": 44.0,
+    "chars:std": 0.0,
+    "score:std": 0.0
+  },
+  "htmls": [
+    "\n<h3>Prompt conversation</h3>\n\n\n<div class=\"message user\">\n    <div class=\"role\">\n    user\n    \n    </div>\n    <div class=\"content\">\n    <pre>How many of the stars listed below would be detectable using the ESPRESSO spectrograph, when it is coupled with one of the 8m VLT telescopes at the Paranal Observatory? A star is considered detectable if a signal-to-noise ratio (S/N) of at least 10 per binned pixel during a 1-hour exposure is achieved.\n\nFor more details about the ESPRESSO spectrograph, please refer to the following link:\nhttps://www.eso.org/sci/facilities/paranal/instruments/espresso/overview.html\n\na) Canopus\nb) Polaris\nc) Star with RA = 0 deg and DEC = 0 deg, Absolute V magnitude of 15 mag and located at 10 pc distance from us.\nd) Star with RA = 0 deg and DEC = 0 deg, Absolute V magnitude of 15 mag and located at 200 pc distance from us.\ne) Star with RA = 0 deg and DEC = 0 deg, Absolute V magnitude of 15 mag and located at 5 pc distance from us.\nf) Star with RA = 0 deg and DEC = 0 deg, Absolute V magnitude of 15 mag and located at 50 pc distance from us.\n\n(A) 5\n(B) 2\n(C) 3\n(D) 4\n\nExpress your final answer as the corresponding option &#39;A&#39;, &#39;B&#39;, &#39;C&#39;, or &#39;D&#39;.</pre>\n    </div>\n</div>\n\n<h3>Sampled message</h3>\n\n<div class=\"message assistant\">\n    <div class=\"role\">\n    assistant\n    \n    </div>\n    <div class=\"content\">\n    <pre>**Answer: D** (4 stars would be detectable).</pre>\n    </div>\n</div>\n<h3>Results</h3>\n<p>Correct Answer: C</p>\n<p>Extracted Answer: D</p>\n<p>Score: 0.0</p>"
+  ],
+  "convos": [
+    [
+      {
+        "role": "user",
+        "content": "How many of the stars listed below would be detectable using the ESPRESSO spectrograph, when it is coupled with one of the 8m VLT telescopes at the Paranal Observatory? A star is considered detectable if a signal-to-noise ratio (S/N) of at least 10 per binned pixel during a 1-hour exposure is achieved.\n\nFor more details about the ESPRESSO spectrograph, please refer to the following link:\nhttps://www.eso.org/sci/facilities/paranal/instruments/espresso/overview.html\n\na) Canopus\nb) Polaris\nc) Star with RA = 0 deg and DEC = 0 deg, Absolute V magnitude of 15 mag and located at 10 pc distance from us.\nd) Star with RA = 0 deg and DEC = 0 deg, Absolute V magnitude of 15 mag and located at 200 pc distance from us.\ne) Star with RA = 0 deg and DEC = 0 deg, Absolute V magnitude of 15 mag and located at 5 pc distance from us.\nf) Star with RA = 0 deg and DEC = 0 deg, Absolute V magnitude of 15 mag and located at 50 pc distance from us.\n\n(A) 5\n(B) 2\n(C) 3\n(D) 4\n\nExpress your final answer as the corresponding option 'A', 'B', 'C', or 'D'."
+      },
+      {
+        "content": "**Answer: D** (4 stars would be detectable).",
+        "role": "assistant"
+      }
+    ]
+  ],
+  "metadata": {
+    "example_level_metadata": [
+      null
+    ]
+  }
+}

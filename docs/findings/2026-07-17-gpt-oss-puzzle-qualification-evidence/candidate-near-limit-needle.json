@@ -1,0 +1,51 @@
+{
+  "needle_exact": true,
+  "max_model_len": 131072,
+  "request_budget_tokens": 130952,
+  "headroom_below_max": 120,
+  "elapsed_seconds": 19.809,
+  "repeated_token_count": 130600,
+  "needle": "NEAR-LIMIT-7319-ONYX",
+  "requested_max_completion_tokens": 256,
+  "model": "gpt-oss-puzzle-88b",
+  "response": {
+    "id": "chatcmpl-8619368fdb55bc2c",
+    "object": "chat.completion",
+    "created": 1784295738,
+    "model": "gpt-oss-puzzle-88b",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "NEAR-LIMIT-7319-ONYX",
+          "refusal": null,
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "reasoning": "We have a huge block of \"alpha\" repeated many times, with a hidden code: \"NEAR-LIMIT-7319-ONYX\". The prompt says: \"The hidden code is NEAR-LIMIT-7319-ONYX.\" Then asks: \"What is the hidden code? Reply with only the code.\"\n\nThus answer should be \"NEAR-LIMIT-7319-ONYX\". Probably exactly that string."
+        },
+        "logprobs": null,
+        "finish_reason": "stop",
+        "stop_reason": null,
+        "token_ids": null,
+        "routed_experts": null
+      }
+    ],
+    "service_tier": null,
+    "system_fingerprint": "vllm-0.23.1rc1.dev1229+g1bf3b12d5-781242de",
+    "usage": {
+      "prompt_tokens": 130696,
+      "total_tokens": 130803,
+      "completion_tokens": 107,
+      "prompt_tokens_details": null
+    },
+    "prompt_logprobs": null,
+    "prompt_token_ids": null,
+    "prompt_text": null,
+    "kv_transfer_params": null,
+    "ec_transfer_params": null,
+    "metrics": null
+  },
+  "raw_content_tokens": 130629
+}

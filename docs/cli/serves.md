@@ -82,9 +82,9 @@ For the common model-selection path, choose the deployment role and recipe direc
 
 ```bash
 anvil-serving serves switch heavy
-anvil-serving serves switch heavy gemma-4-12B-it-qat-w4a16-ct --dry-run
+anvil-serving serves switch heavy gpt-oss-puzzle-88B --dry-run
+anvil-serving serves switch heavy gpt-oss-puzzle-88B --confirm
 anvil-serving serves switch heavy gemma-4-12B-it-qat-w4a16-ct --confirm
-anvil-serving serves switch heavy ThinkingCap-Qwen3.6-27B-FP8 --confirm
 ```
 
 With no `MODEL`, the command lists the resolved registry path and marks each declared
