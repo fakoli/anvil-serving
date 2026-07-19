@@ -118,6 +118,19 @@ immutable revisions, router validation, commands, and raw artifacts are in the
 
 ## Gemma 4 July 15 template matrix (2026-07-16)
 
+### Current 31B optimization follow-up (2026-07-17)
+
+The current official `google/gemma-4-31B-it-qat-w4a16-ct` checkpoint with the newly pinned Google
+template ran healthily at 128K on the RTX PRO 6000 Max-Q under vLLM 0.25.1. Its warmed c1 diagnostic
+decode was **62.3 tok/s** (two 512-token responses) and the 128K probe recorded **74.97 s TTFT**.
+The official Q4 MTP assistant is **not compatible** with this W4A16 target: native MTP initializes,
+then fails its engine profile on incompatible 6400/10752 projection dimensions. Do not deploy that
+pair. The 300 W Max-Q power limit and different QAT/NVFP4 checkpoints make the approximately
+46--48 s external RTX PRO 6000 NVFP4 128K TTFT reports an advisory reference, not a direct
+regression comparator. Full artifacts, WSL2 scope, and failure evidence are in the
+[dated optimization finding](findings/2026-07-17-gemma4-31b-optimization.md). **No Heavy
+promotion changed.**
+
 Official Gemma 4 12B IT QAT W4A16 is the immediate Heavy rollback, served as
 `gemma4-12b-it-w4a16-ct` through vLLM 0.25.1 on the RTX PRO 6000 with FP8 KV,
 a 256K context limit, five admitted sequences, and thinking enabled by router
