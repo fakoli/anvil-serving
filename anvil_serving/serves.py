@@ -68,6 +68,7 @@ import subprocess
 import tempfile
 import time
 from . import guard
+from . import host as host_ops
 from . import reservations
 from . import serve_recipes
 import sys
@@ -130,6 +131,8 @@ RESERVED_GROUP = "all"
 # to (matching the promotion plans' router_health_url default host).
 EVICTION_DRAIN_TIMEOUT = 120
 DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
+LIFECYCLE_READINESS_TIMEOUT_SECONDS = 600
+LIFECYCLE_READINESS_POLL_SECONDS = 2
 _ENGINE_MARKERS = {
     "vllm": re.compile(r"(^|[^a-z0-9])vllm([^a-z0-9]|$)"),
     "sglang": re.compile(r"(^|[^a-z0-9])sglang([^a-z0-9]|$)"),
@@ -764,6 +767,41 @@ def _await_healthy(serve, timeout, poll_interval, *, _open=urllib.request.urlope
         if time.monotonic() >= deadline:
             return False
         _sleep(min(poll_interval, max(0, deadline - time.monotonic())))
+
+
+def _await_cache_reclaim_targets(serves, timeout=LIFECYCLE_READINESS_TIMEOUT_SECONDS,
+                                 poll_interval=LIFECYCLE_READINESS_POLL_SECONDS, *,
+                                 _open=urllib.request.urlopen, _sleep=time.sleep):
+    """Wait for every selected manifest serve's declared HTTP health."""
+    deadline = time.monotonic() + timeout
+    while True:
+        if all(
+            _health(serve["port"], serve["health"], _open=_open) == 200
+            for serve in serves
+        ):
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        _sleep(min(poll_interval, max(0, deadline - time.monotonic())))
+
+
+def _finish_cache_reclaim(rc, policy, before, operation, *, dry_run=False,
+                          readiness_targets=None):
+    """Run the best-effort postcondition without changing the parent exit code."""
+    if rc != 0 or dry_run or policy is None or not policy["enabled"]:
+        return rc
+    readiness = True
+    if (
+        readiness_targets is not None
+        and host_ops.cache_reclaim_is_active(policy)
+        and before is not None
+    ):
+        readiness = _await_cache_reclaim_targets(readiness_targets)
+    result = host_ops.automatic_cache_reclaim(
+        policy, before, operation=operation, readiness=readiness,
+    )
+    host_ops.render_cache_reclaim_result(result)
+    return rc
 
 
 def _promotion_cli(argv, *, _run=subprocess.run):
@@ -2827,6 +2865,31 @@ def main(argv=None):
         )
         return 2
 
+    # Persistent host policy is validated before any covered operation can
+    # start the router or touch a container. Ad-hoc Compose and switch-choice
+    # listing are intentionally outside the v1 lifecycle boundary.
+    cache_operation = None
+    if a.action == "up" and not a.compose:
+        cache_operation = "serves up"
+    elif a.action == "adopt":
+        cache_operation = "serves adopt"
+    elif a.action == "promote":
+        cache_operation = "serves promote --rollback" if a.rollback else "serves promote"
+    elif a.action == "switch" and (a.recipe_selector or a.recipe):
+        cache_operation = "serves switch"
+    cache_policy = None
+    cache_before = None
+    if cache_operation is not None:
+        try:
+            cache_policy = host_ops.load_cache_reclaim_policy()
+        except host_ops.HostConfigError as exc:
+            print("[anvil-serving] %s" % exc, file=sys.stderr)
+            return 2
+        if a.dry_run:
+            host_ops.render_cache_reclaim_plan(cache_policy, cache_operation)
+        else:
+            cache_before = host_ops.capture_cache_before(cache_policy)
+
     # `serves up` ensures the DEPLOYED router is healthy FIRST — serves are only
     # reachable behind it. Reuses the `router` verb's own status/up code paths;
     # idempotent (a healthy router is not restarted), honors --dry-run, and
@@ -2912,23 +2975,34 @@ def main(argv=None):
         return cmd_down(serves, group_names if group_names is not None else a.names,
                         dry_run=a.dry_run)
     if a.action == "up":
-        return cmd_up(serves, group_names if group_names is not None else a.names,
-                      dry_run=a.dry_run, recreate=a.recreate,
-                      evict=a.evict, drain_timeout=a.drain_timeout,
-                      router_url=a.router_url)
+        target_names = group_names if group_names is not None else a.names
+        rc = cmd_up(serves, target_names, dry_run=a.dry_run, recreate=a.recreate,
+                    evict=a.evict, drain_timeout=a.drain_timeout,
+                    router_url=a.router_url)
+        return _finish_cache_reclaim(
+            rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,
+            readiness_targets=_select(serves, target_names),
+        )
     if a.action == "rm":
         return cmd_rm(serves, a.names, dry_run=a.dry_run, assume_yes=a.yes)
     if a.action == "adopt":
-        return cmd_adopt(serves, a.names, dry_run=a.dry_run, assume_yes=a.yes)
+        rc = cmd_adopt(serves, a.names, dry_run=a.dry_run, assume_yes=a.yes)
+        return _finish_cache_reclaim(
+            rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,
+            readiness_targets=_select(serves, a.names),
+        )
     if a.action == "promote":
         try:
             promotions = load_promotions(manifest_path)
         except Exception as exc:
             print("bad promotion plan in %s: %s" % (manifest_path, exc), file=sys.stderr)
             return 2
-        return cmd_promote(
+        rc = cmd_promote(
             serves, promotions, a.names[0], os.path.abspath(manifest_path),
             rollback=a.rollback, resume=a.resume, dry_run=a.dry_run,
+        )
+        return _finish_cache_reclaim(
+            rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,
         )
     if a.action == "switch":
         selector = a.recipe_selector or a.recipe
@@ -2950,9 +3024,12 @@ def main(argv=None):
             return cmd_switch_choices(
                 serves, promotions, registry, a.names[0], registry_path,
             )
-        return cmd_switch(
+        rc = cmd_switch(
             serves, promotions, registry, a.names[0], selector,
             os.path.abspath(manifest_path), resume=a.resume, dry_run=a.dry_run,
+        )
+        return _finish_cache_reclaim(
+            rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,
         )
     return 2
 

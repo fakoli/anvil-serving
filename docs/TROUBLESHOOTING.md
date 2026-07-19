@@ -186,12 +186,31 @@ through the WSL2 VM's Linux page cache, which grows until it fills most of the V
 Windows itself starts starving. `autoMemoryReclaim=gradual` in `.wslconfig` does return it, but
 lags load bursts by minutes.
 
-**Fix.** Inspect, then drop the cache (data-safe — only clean cache pages are evicted; the next
-load re-reads weights from disk):
+**Fix.** For repeated Anvil-owned downloads and managed model loads, enable the persistent
+machine policy once in `~/.anvil-serving/host.toml` (or
+`$ANVIL_SERVING_HOME/host.toml`):
+
+```toml
+schema_version = 1
+
+[cache_reclaim]
+enabled = true
+distro = "docker-desktop"
+threshold_gb = 16
+```
+
+Covered command dry runs disclose the policy. Their existing `--confirm` authorizes a
+best-effort postcondition after the download or the model's readiness gate. It reclaims only when
+the operation grew cache by at least 1 GiB, total cache meets the threshold, and growth has
+settled. A readiness timeout, active-I/O refusal, unreadable sample, or drop failure warns without
+turning a successful model operation into a failure.
+
+For diagnosis or an operation outside that lifecycle, inspect and manually drop clean page cache
+(data-safe, but the next load re-reads weights from disk):
 
 ```bash
 anvil-serving host memory                    # host RAM / WSL used + page cache / GPU VRAM
-anvil-serving host reclaim --confirm         # sync && echo 3 > /proc/sys/vm/drop_caches (as root)
+anvil-serving host reclaim --confirm         # sync && echo 1 > /proc/sys/vm/drop_caches (as root)
 ```
 
 `reclaim` refuses while a load is actively streaming (the cache is growing fast — dropping it
@@ -204,6 +223,9 @@ anvil-serving host reclaim --watch --threshold-gb 40 --interval 30 --confirm
 
 This is a symptom-relief valve, not the sizing fix — if the VM cap itself is wrong, size it with
 `host doctor` / `host wsl-config` ([CLI reference → repair the host](cli/host.md#repair-the-host)).
+The automatic policy deliberately excludes ad-hoc Compose, voice, request-time ComfyUI loading,
+and the request-triggered multiplexer; it never forces a reclaim while cache is still growing.
+Use `host status` to see the resolved source, distro, threshold, validity, and host applicability.
 
 ## 401/403 from the router
 

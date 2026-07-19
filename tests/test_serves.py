@@ -12,6 +12,12 @@ import pytest
 from anvil_serving import reservations, serves
 
 
+@pytest.fixture(autouse=True)
+def _isolated_host_policy(monkeypatch, tmp_path):
+    """Never let a developer's enabled machine policy affect unit timing."""
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / ".anvil-serving"))
+
+
 def proc(rc=0, out="", err=""):
     return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
 
@@ -1590,3 +1596,209 @@ def test_status_summary_without_gpu_roles_has_empty_ledger_and_no_extra_probes(t
     assert data["reservations"] == {"gpu_roles": []}
     inspects = [c for c in run.calls if c[:2] == ["docker", "inspect"]]
     assert len(inspects) == 1
+
+
+# ---- lifecycle-aware automatic WSL cache reclaim ---------------------------
+
+def _enabled_cache_policy():
+    return {
+        "enabled": True,
+        "distro": "docker-desktop",
+        "threshold_gb": 16.0,
+        "source_path": "host.toml",
+        "configured": True,
+        "applicable": True,
+        "schema_version": 1,
+    }
+
+
+def _lifecycle_manifest(tmp_path):
+    return _manifest(tmp_path, """
+        [[serve]]
+        name = "heavy"
+        container = "vllm-heavy"
+        port = 30002
+        model = "heavy-local"
+        engine = "vllm"
+        health = "/health"
+        up = "docker compose -f {dir}/compose.yml up -d heavy"
+    """)
+
+
+@pytest.mark.parametrize(("action", "expected_operation"), [
+    (["up", "heavy"], "serves up"),
+    (["adopt", "heavy", "--yes"], "serves adopt"),
+])
+def test_public_up_and_adopt_wait_then_reclaim_exactly_once(
+        tmp_path, monkeypatch, action, expected_operation):
+    manifest = _lifecycle_manifest(tmp_path)
+    policy = _enabled_cache_policy()
+    before = {"cached_gb": 10.0}
+    events = []
+    monkeypatch.setattr(serves.host_ops, "load_cache_reclaim_policy", lambda: policy)
+    monkeypatch.setattr(
+        serves.host_ops, "capture_cache_before",
+        lambda resolved: events.append(("capture", resolved)) or before,
+    )
+    monkeypatch.setattr(serves, "ensure_router_healthy", lambda **_kwargs: 0)
+    if action[0] == "up":
+        monkeypatch.setattr(serves, "cmd_up", lambda *_args, **_kwargs: events.append("up") or 0)
+    else:
+        monkeypatch.setattr(
+            serves, "cmd_adopt", lambda *_args, **_kwargs: events.append("adopt") or 0
+        )
+    monkeypatch.setattr(
+        serves, "_await_cache_reclaim_targets",
+        lambda targets: events.append(("readiness", [item["name"] for item in targets])) or True,
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "automatic_cache_reclaim",
+        lambda resolved, baseline, **kwargs: events.append(
+            ("reclaim", resolved, baseline, kwargs)
+        ) or {"outcome": "reclaimed"},
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "render_cache_reclaim_result",
+        lambda result: events.append(("render", result)),
+    )
+    assert serves.main([*action, "--manifest", manifest]) == 0
+    labels = [event if isinstance(event, str) else event[0] for event in events]
+    assert labels.count("reclaim") == 1
+    assert labels == ["capture", action[0], "readiness", "reclaim", "render"]
+    reclaim = next(event for event in events if not isinstance(event, str) and event[0] == "reclaim")
+    assert reclaim[3] == {"operation": expected_operation, "readiness": True}
+
+
+def test_readiness_timeout_skips_reclaim_but_preserves_success(tmp_path, monkeypatch):
+    manifest = _lifecycle_manifest(tmp_path)
+    policy = _enabled_cache_policy()
+    seen = []
+    monkeypatch.setattr(serves.host_ops, "load_cache_reclaim_policy", lambda: policy)
+    monkeypatch.setattr(
+        serves.host_ops, "capture_cache_before", lambda _policy: {"cached_gb": 10.0}
+    )
+    monkeypatch.setattr(serves, "ensure_router_healthy", lambda **_kwargs: 0)
+    monkeypatch.setattr(serves, "cmd_up", lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(serves, "_await_cache_reclaim_targets", lambda _targets: False)
+    monkeypatch.setattr(
+        serves.host_ops, "automatic_cache_reclaim",
+        lambda _policy, _before, **kwargs: seen.append(kwargs) or {
+            "outcome": "readiness-timeout"
+        },
+    )
+    monkeypatch.setattr(serves.host_ops, "render_cache_reclaim_result", lambda _result: None)
+    assert serves.main(["up", "heavy", "--manifest", manifest]) == 0
+    assert seen == [{"operation": "serves up", "readiness": False}]
+
+
+@pytest.mark.parametrize(("argv", "operation"), [
+    (["promote", "heavy-v2"], "serves promote"),
+    (["promote", "heavy-v2", "--rollback"], "serves promote --rollback"),
+    (["switch", "heavy", "org/model"], "serves switch"),
+])
+def test_switch_and_promote_reclaim_once_without_a_second_readiness_wait(
+        tmp_path, monkeypatch, argv, operation):
+    manifest = _lifecycle_manifest(tmp_path)
+    policy = _enabled_cache_policy()
+    events = []
+    monkeypatch.setattr(serves.host_ops, "load_cache_reclaim_policy", lambda: policy)
+    monkeypatch.setattr(
+        serves.host_ops, "capture_cache_before", lambda _policy: {"cached_gb": 10.0}
+    )
+    monkeypatch.setattr(serves, "load_promotions", lambda _path: [{"name": "heavy-v2"}])
+    monkeypatch.setattr(
+        serves.serve_recipes, "load_registry",
+        lambda _path: {"schema": "x", "recipe": []},
+    )
+    if argv[0] == "promote":
+        monkeypatch.setattr(serves, "cmd_promote", lambda *_args, **_kwargs: 0)
+    else:
+        monkeypatch.setattr(serves, "cmd_switch", lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(
+        serves, "_await_cache_reclaim_targets",
+        lambda _targets: pytest.fail("switch/promote repeated their existing readiness gates"),
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "automatic_cache_reclaim",
+        lambda _policy, _before, **kwargs: events.append(kwargs) or {
+            "outcome": "no-operation-growth"
+        },
+    )
+    monkeypatch.setattr(serves.host_ops, "render_cache_reclaim_result", lambda _result: None)
+    assert serves.main([*argv, "--manifest", manifest]) == 0
+    assert events == [{"operation": operation, "readiness": True}]
+
+
+def test_failed_and_dry_run_serve_operations_never_execute_reclaim(
+        tmp_path, monkeypatch, capsys):
+    manifest = _lifecycle_manifest(tmp_path)
+    policy = _enabled_cache_policy()
+    reclaimed = []
+    monkeypatch.setattr(serves.host_ops, "load_cache_reclaim_policy", lambda: policy)
+    monkeypatch.setattr(serves.host_ops, "capture_cache_before", lambda _policy: {})
+    monkeypatch.setattr(serves, "ensure_router_healthy", lambda **_kwargs: 0)
+    monkeypatch.setattr(serves, "cmd_up", lambda *_args, **_kwargs: 19)
+    monkeypatch.setattr(
+        serves.host_ops, "automatic_cache_reclaim",
+        lambda *_args, **_kwargs: reclaimed.append(True),
+    )
+    assert serves.main(["up", "heavy", "--manifest", manifest]) == 19
+    assert reclaimed == []
+
+    plans = []
+    monkeypatch.setattr(
+        serves.host_ops, "render_cache_reclaim_plan",
+        lambda resolved, operation: plans.append((resolved, operation)),
+    )
+    assert serves.main(["up", "heavy", "--manifest", manifest, "--dry-run"]) == 19
+    assert reclaimed == []
+    assert plans == [(policy, "serves up")]
+    capsys.readouterr()
+
+
+def test_invalid_policy_refuses_before_router_or_container_mutation(
+        tmp_path, monkeypatch, capsys):
+    manifest = _lifecycle_manifest(tmp_path)
+    config_home = tmp_path / "config"
+    config_home.mkdir()
+    (config_home / "host.toml").write_text(
+        "schema_version = 1\n[cache_reclaim]\nunknown = true\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+    monkeypatch.setattr(
+        serves, "ensure_router_healthy",
+        lambda **_kwargs: pytest.fail("router mutated before host policy validation"),
+    )
+    monkeypatch.setattr(
+        serves, "cmd_up", lambda *_args, **_kwargs: pytest.fail("container mutated")
+    )
+    assert serves.main(["up", "heavy", "--manifest", manifest]) == 2
+    assert "unknown field" in capsys.readouterr().err
+
+
+def test_ad_hoc_compose_is_excluded_from_automatic_reclaim(monkeypatch):
+    monkeypatch.setattr(
+        serves.host_ops, "load_cache_reclaim_policy",
+        lambda: pytest.fail("ad-hoc Compose loaded the automatic reclaim policy"),
+    )
+    monkeypatch.setattr(serves, "ensure_router_healthy", lambda **_kwargs: 0)
+    monkeypatch.setattr(serves, "cmd_up_compose", lambda *_args, **_kwargs: 0)
+    assert serves.main(["up", "--compose", "experiment.yml", "model"]) == 0
+
+
+def test_reclaim_failure_cannot_change_successful_parent_exit(monkeypatch):
+    policy = _enabled_cache_policy()
+    monkeypatch.setattr(
+        serves.host_ops, "automatic_cache_reclaim",
+        lambda *_args, **_kwargs: {"outcome": "failed"},
+    )
+    rendered = []
+    monkeypatch.setattr(
+        serves.host_ops, "render_cache_reclaim_result",
+        lambda result: rendered.append(result),
+    )
+    assert serves._finish_cache_reclaim(
+        0, policy, {"cached_gb": 10.0}, "serves switch"
+    ) == 0
+    assert rendered == [{"outcome": "failed"}]
