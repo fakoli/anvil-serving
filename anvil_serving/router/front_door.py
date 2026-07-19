@@ -48,7 +48,7 @@ from typing import Iterable, Optional
 
 from .backends import EchoBackend
 from .config import PURPOSE_EMBEDDING, PURPOSE_RERANK
-from .decision_log import summarize_decisions
+from .decision_log import safe_correlation, summarize_decisions
 from .dialects import Dialect
 from .dialects.anthropic import AnthropicDialect
 from .dialects.embeddings import (
@@ -58,6 +58,7 @@ from .dialects.embeddings import (
     parse_rerank_request,
 )
 from .dialects.openai import OpenAIDialect
+from .dialects.responses import ResponsesDialect
 from .discovery import models_payload, ROUTE_ENDPOINT
 from .intent import PRESETS, Preset, WORK_CLASS_TO_PRESET
 from .internal import (
@@ -73,6 +74,7 @@ from .purpose import PurposeError, PurposeRouter
 _OPENAI_DIALECT = OpenAIDialect()
 _ROUTES = {
     "/v1/chat/completions": _OPENAI_DIALECT,
+    "/v1/responses": ResponsesDialect(),
     "/v1/messages": AnthropicDialect(),
 }
 DECISION_SUMMARY_ENDPOINT = "/v1/decisions"
@@ -147,6 +149,16 @@ def _extract_bearer_token(headers) -> Optional[str]:
     if api_key and api_key.strip():
         return api_key.strip()
     return None
+
+
+def _correlation_from_headers(headers) -> dict:
+    """Read compact, opaque Workbench lineage without forwarding it upstream."""
+    values = {
+        "workbench_run_id": headers.get("X-Anvil-Workbench-Run-Id"),
+        "task_id": headers.get("X-Anvil-Task-Id"),
+        "request_id": headers.get("X-Request-Id") or headers.get("Request-Id"),
+    }
+    return {key: value for key, raw in values.items() if (value := safe_correlation(raw)) is not None}
 
 
 def _make_handler(backend: Backend, timeout: Optional[float],
@@ -930,6 +942,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._error(400, "invalid_request", f"bad request: {e}",
                             dialect=dialect)
                 return
+
+            correlation = _correlation_from_headers(self.headers)
+            if correlation:
+                # This internal key is consumed by routing/audit only. The relay
+                # receives the dialect-shaped request body, never caller headers.
+                request.raw["_anvil_correlation"] = correlation
 
             if request.stream:
                 self._write_sse(dialect, request)

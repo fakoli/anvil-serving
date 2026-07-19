@@ -7465,6 +7465,442 @@
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice sidecar validate"
+    },
+    {
+      "attestations": {
+        "boundedness": "sha256:bb06f84f91077a7486f3af5cb34a0f54a6840eee644675e25fcd9ac203ceeef4",
+        "configuration": "sha256:31efb0ce067c08bc6e9fae2c51a886371c3f8ff5378f23f7bc78987450059850",
+        "confirmation": "sha256:986e4b161e2e4a7eb956d3c644d31a5ee4168b5b77e767525bf17eb00f0ea7cb",
+        "docs": "sha256:d085932156b2fa97ef908ed27aba66449b26d8e3235b130da873aacc2bf7d5c2",
+        "drift_protection": "sha256:1475e1e4d49c26b7af76bd8ebe8d7bfb1503c01fcf4f237d3e2bc11074ce5920",
+        "errors": "sha256:c3e3a47de4698de3ff30b00d3218de190bac27da352a2407125c8ab0ca9a2bad",
+        "grammar": "sha256:b43811a10081f0997b5757fa1b07be98cc308e1868917f780b2e733f4f50099d",
+        "help": "sha256:5bb06d7ef1bb95d7a5162b46f17639f44b98fd17c4c250aee3e136dcbc98e4d1",
+        "journaling": "sha256:b6332f0f1eeaf9ad785f6f40af0992b868f9da484d4418ca358568032bdf7292",
+        "linux": "sha256:35dfe418321565eeb1db8de301ebefc2eb6baccf5a4a36f7251b8a855957f0d9",
+        "macos": "sha256:d3cf76ebbd623fb27dd8f3d06fba447ed704dddbdd26c8e3ec22a83ee8d38ba6",
+        "output": "sha256:d7c6c8aa527f4d696ae61c84bedb8c320594cb16f419ff0f5754513d41dde44d",
+        "parser_tests": "sha256:7dedb15d70c7c0b48d9514f325fab1d08e9a3c5389bbfc78899c38066198b380",
+        "preview": "sha256:3b39be4fbf89d583f7c099a9e60eb1cedd3d82f7ae09c0b9584e9c4030cd552d",
+        "remote_parity": "sha256:815d3291109f31a2212056fc0ac7fbe58ce2f98c7c9d910ed600a8542e021e3f",
+        "rollback": "sha256:f5f88829feb1cb369ce8282a2fc1c756cd544770755274e22ed369fd07548a2c",
+        "timeout": "sha256:1ebc06cfc4f1db8131c1b9b505e468988fa4c3fcb48b144045fca3723a091dd0",
+        "windows": "sha256:a62c14dab2cbce67a5546b2062f7e7edff4f1d1287299221934747efdc974654"
+      },
+      "dimensions": {
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command reconciles an explicit Compose project and file; it does not replace a model, policy, or pinned identity.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "Docker Compose remains the lifecycle owner and its service logs are inspected through the separate logs command.",
+          "status": "not-applicable"
+        },
+        "linux": "pass",
+        "macos": "pass",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": "pass",
+        "remote_parity": {
+          "reason": "This host-owned Docker Compose command has no controller transport; remote parity is not applicable.",
+          "status": "not-applicable"
+        },
+        "rollback": {
+          "reason": "Lifecycle recovery is explicit: down preserves named volumes and up reconciles the requested stack; automatic rollback could destroy intended state.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command delegates local Compose process lifetime to the operator and owns no Anvil network request timeout.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
+      },
+      "docs_anchor": "docs/WORKBENCH.md#lifecycle",
+      "evidence": {
+        "boundedness": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "configuration": [
+          "tests/test_workbench_cli.py::test_workbench_missing_compose_file_is_a_clean_usage_error"
+        ],
+        "confirmation": [
+          "tests/test_workbench_cli.py::test_workbench_mutations_use_shared_confirmation_before_docker"
+        ],
+        "docs": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/test_workbench_cli.py::test_workbench_missing_compose_file_is_a_clean_usage_error"
+        ],
+        "grammar": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "journaling": [],
+        "linux": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "macos": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "output": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "parser_tests": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "preview": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "remote_parity": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ]
+      },
+      "manifest_fingerprint": "sha256:8a2b7a15135a35437a838f39af32dfa5025dd0aa451539701394222400316355",
+      "mutation_class": "mutate",
+      "output_policy": "bounded",
+      "path": "workbench down"
+    },
+    {
+      "attestations": {
+        "boundedness": "sha256:17c891bb3740734a0dd9fc19cbcc82a778067d21aa0a2b1b794683c154c0f7df",
+        "configuration": "sha256:2fb18dbcdfdcfb6e1e35af491f11f40116fefce8c3e999ef07a00814fd831c8b",
+        "confirmation": "sha256:3f853a8e4d4984223e3b47fa8ceb51d308be5a4668314e23f13301a9d806ad15",
+        "docs": "sha256:9acdd19b29fff21bfe554fd1eefa6f7feb521c377ac0f018d909e0bdfe018ad3",
+        "drift_protection": "sha256:c721fa8893dc3241218928384a0aacdd2cb004eb0ec87c9b14e63c776985c339",
+        "errors": "sha256:6d3dd8f36891a728e4c2f0e9fa0b4f38329a401257a234d9ba6c08d053cdd830",
+        "grammar": "sha256:884c076b1e7f83c78c68713d2ac4e7b5282ceb519c63c3a84047dd63ac4817b8",
+        "help": "sha256:69d07d2a004f20a5598b1d69cce3ac365975e73c192ddab2bbfa5e808051282b",
+        "journaling": "sha256:9439430fca916dc9f9720939c8b2399b3073fb673691f0c269f1526dbb1d517e",
+        "linux": "sha256:5b0fc873e67ec32f220b1ceb395b2e8344aaac65bdc7a7501b5117fea70927ee",
+        "macos": "sha256:c62fe81b78fea5a99bfa594cf048e4f2b62663fcd6b340b0029476932ff2fdc2",
+        "output": "sha256:0b035209c79069611d29aca057dc07aac1e3a9180c4ba5a3473512e05dc9b956",
+        "parser_tests": "sha256:a5831d8f4a1eac1469b327f1eb123f96d62f25955d78a589f5000c3335eb4aed",
+        "preview": "sha256:2b64e0bcad606fbecef2766e990a39e57f4d95b99cff431cddd2e6a5422054ed",
+        "remote_parity": "sha256:7501f76757a80ec46c83cf27c5b90cae197d8374f98a2ad5d7fdbcd4b09e5172",
+        "rollback": "sha256:af3b13af3e6919f6f6e300a66ae62473d1baea5833bda22b96b58eb8f29cb5c2",
+        "timeout": "sha256:b45a22449d8eb47453277cd2c8ce2883d08c6d81f1913051309fdee8e15ea3fd",
+        "windows": "sha256:746c7b0fd9ecc9d13731f40d202785851bfcd0aacd418ab3a9e9b77408ce627b"
+      },
+      "dimensions": {
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "linux": "pass",
+        "macos": "pass",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "remote_parity": {
+          "reason": "This host-owned Docker Compose command has no controller transport; remote parity is not applicable.",
+          "status": "not-applicable"
+        },
+        "rollback": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command delegates local Compose process lifetime to the operator and owns no Anvil network request timeout.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
+      },
+      "docs_anchor": "docs/WORKBENCH.md#lifecycle",
+      "evidence": {
+        "boundedness": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "configuration": [
+          "tests/test_workbench_cli.py::test_workbench_missing_compose_file_is_a_clean_usage_error"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/test_workbench_cli.py::test_workbench_missing_compose_file_is_a_clean_usage_error"
+        ],
+        "grammar": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "journaling": [],
+        "linux": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "macos": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "output": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "parser_tests": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "preview": [],
+        "remote_parity": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ]
+      },
+      "manifest_fingerprint": "sha256:0906e590859193659e7df627f18839b981374ab4ea0d9fe1aa191e8fd4ada2eb",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "workbench logs"
+    },
+    {
+      "attestations": {
+        "boundedness": "sha256:dd8df8f73204f9f3045196657ff2c38b9a09ea0486c1b4ae44529273861fb612",
+        "configuration": "sha256:b864fd4f2875d712ea05eb8d9200155e2811025ea2d0f2a232d5a9f81b0fb909",
+        "confirmation": "sha256:cc8e6bbb1dbda4c4542e141717892d42e702478eb2d2820fccf592e6a07977e6",
+        "docs": "sha256:3098c780323edb6db55c014e355bd127d83e7f30763fc672f5d663563d1cd05d",
+        "drift_protection": "sha256:63bb68cd8d3492b58f81e829282075ebfd8cce7e4b66344097dbb6035b1b7277",
+        "errors": "sha256:5441824d23cd48922130c814021a24e882adcce74f46c2298e0b51438ed18642",
+        "grammar": "sha256:9f981c92408e065de9c39fea03d3ac009f0b16e98c4923b1e9ee92e6bb69c306",
+        "help": "sha256:083db62f6f9f76dabaa63655b3524d48e02ad46985fd4122ce8bfa821d4846b2",
+        "journaling": "sha256:07a1b0817fa45dab0818e0b7a09b9c51f72dcfa0bdf5762801ccd80e68abf2f0",
+        "linux": "sha256:24f3aaa979f7fbb047aa5d9b501c1cbe85235f91795b28898748f66dcad33f1e",
+        "macos": "sha256:33c66ac7ec542a8e583c78c9702b4f8276e2e04aba2f0d0f4ffa3254c3356126",
+        "output": "sha256:95af16f109b0f2b9b6ecd84593385edb61240cbea4d2a5fdbbca0712aa6a8932",
+        "parser_tests": "sha256:78ab3a796dcf9a8be9e93a538bacfe671efae8c38dd7eae418f8c29294135b58",
+        "preview": "sha256:50c28873e4ee174d37acd5f33f47d131f41de97bd86dbb9bde737cd746b3820c",
+        "remote_parity": "sha256:f4ba8a8b33fca3d05dbc92b6f9efcc089fb57912ddee1f11cbc9f65ee18b8857",
+        "rollback": "sha256:20518d47c2dae78a1a81824d676aeca025325e84eac3ceb6fa007875cb74f8c3",
+        "timeout": "sha256:dc3b41f9e9f0fd8feaf73f1126cb831f7b5597a8dc927e8c7811becc60d7b474",
+        "windows": "sha256:8748726e039606cdbe7f99f06fad9d8a2d6aef21bc4f0b4b51715a77382804df"
+      },
+      "dimensions": {
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "linux": "pass",
+        "macos": "pass",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "remote_parity": {
+          "reason": "This host-owned Docker Compose command has no controller transport; remote parity is not applicable.",
+          "status": "not-applicable"
+        },
+        "rollback": {
+          "reason": "This command is read-only with respect to Workbench containers and persistent state.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command delegates local Compose process lifetime to the operator and owns no Anvil network request timeout.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
+      },
+      "docs_anchor": "docs/WORKBENCH.md#lifecycle",
+      "evidence": {
+        "boundedness": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "configuration": [
+          "tests/test_workbench_cli.py::test_workbench_missing_compose_file_is_a_clean_usage_error"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/test_workbench_cli.py::test_workbench_missing_compose_file_is_a_clean_usage_error"
+        ],
+        "grammar": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "journaling": [],
+        "linux": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "macos": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "output": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "parser_tests": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "preview": [],
+        "remote_parity": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ]
+      },
+      "manifest_fingerprint": "sha256:89a95b3f5e858ea648b4eb95d5e04741559c4f2a80d40e56ce1a5e9d4ac91e4c",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "workbench status"
+    },
+    {
+      "attestations": {
+        "boundedness": "sha256:725c90fc7169b06770f16cb31e411ee96ef3bb9bfaeb3fdf6055dffd68b81074",
+        "configuration": "sha256:974c8c11e77daa6418d47886471a6751b5261f223150a00b94afe303ed9d883d",
+        "confirmation": "sha256:7dea32660d1c4072358aba160e12cd2d8e6b2b6bf9b5b5a65a2e3374f6c60234",
+        "docs": "sha256:af3a33f481657d699cc7a8062b3147fe33ed7601ec0e5f49d405f3609080ab8d",
+        "drift_protection": "sha256:3bbb73eb9ac9e344f7dc3a761ac2ac8bde43f6d3bff5eb4b97480250fefb5cdf",
+        "errors": "sha256:362db382eeaeb1fa9782b77fe1ae44002ceedac2f064455517259cb5e72f919d",
+        "grammar": "sha256:1cbdcf7151405dbc3c3828dfaed4124660a460c5009a6d90c107e23fde8b991e",
+        "help": "sha256:ffc6b248d39a4d5f09480f182c73ed10b349e568238dd41e155266c5966731c2",
+        "journaling": "sha256:01aa89252a699251bd67415a5cd4fb423021289d7760bd64e5cce644cc38fcba",
+        "linux": "sha256:6ff94c39ba297c76e74244d5e605c6934ed930e9c6bd9f1de50d7fa8c7497c46",
+        "macos": "sha256:aaa080141b663aff494435c3174ef8f914cbcf5e5418098783f4f4bb95f520ba",
+        "output": "sha256:fb74e8add83b422cd856308e37d5763d3d80177f155119a624765eb138d047a3",
+        "parser_tests": "sha256:63fdf11c989424e0e0e67a4848d1e59ae37274888fb5ab872915b3d334c29c49",
+        "preview": "sha256:31ad8c1456f84e7c00ce60a45a0baeaf2a3c44573e3c1c8a0f20836c3f71ec2e",
+        "remote_parity": "sha256:88b179a76c05602369dd40f3f6b40578a40bff6a3e17d2520e444458ed610dc2",
+        "rollback": "sha256:7b8f86da26def05a6d8ba21e521fb79ef64354bf5154faf2d18cf440ed779e39",
+        "timeout": "sha256:faa81650b781f03070dfc51e1371d5fbf55270933f7662b74f83f3ee026d53a7",
+        "windows": "sha256:4d677868fe3f81d6730c1dc2bf06af0ab8882770ab8d57ceaa9f8ccdcf97c7af"
+      },
+      "dimensions": {
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command reconciles an explicit Compose project and file; it does not replace a model, policy, or pinned identity.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "Docker Compose remains the lifecycle owner and its service logs are inspected through the separate logs command.",
+          "status": "not-applicable"
+        },
+        "linux": "pass",
+        "macos": "pass",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": "pass",
+        "remote_parity": {
+          "reason": "This host-owned Docker Compose command has no controller transport; remote parity is not applicable.",
+          "status": "not-applicable"
+        },
+        "rollback": {
+          "reason": "Lifecycle recovery is explicit: down preserves named volumes and up reconciles the requested stack; automatic rollback could destroy intended state.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command delegates local Compose process lifetime to the operator and owns no Anvil network request timeout.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
+      },
+      "docs_anchor": "docs/WORKBENCH.md#lifecycle",
+      "evidence": {
+        "boundedness": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "configuration": [
+          "tests/test_workbench_cli.py::test_workbench_missing_compose_file_is_a_clean_usage_error"
+        ],
+        "confirmation": [
+          "tests/test_workbench_cli.py::test_workbench_mutations_use_shared_confirmation_before_docker"
+        ],
+        "docs": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/test_workbench_cli.py::test_workbench_missing_compose_file_is_a_clean_usage_error"
+        ],
+        "grammar": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "journaling": [],
+        "linux": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "macos": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "output": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "parser_tests": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ],
+        "preview": [
+          "tests/test_workbench_cli.py::test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle"
+        ],
+        "remote_parity": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_workbench_cli.py::test_workbench_commands_render_cross_platform_argument_arrays"
+        ]
+      },
+      "manifest_fingerprint": "sha256:1285f4f9ed834ea9931d42795127d3f74833f658e485696309ff9bc5dff8ec4a",
+      "mutation_class": "mutate",
+      "output_policy": "bounded",
+      "path": "workbench up"
     }
   ],
   "schema_version": 1

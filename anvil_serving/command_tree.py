@@ -2905,6 +2905,43 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor=f"{CONTROL_PLANE_DOC}#edge",
     )
+    workbench_options = (
+        _option("--compose", summary="Workbench Docker Compose file.", value_name="PATH"),
+        _option("--env-file", summary="Compose environment file containing non-browser secrets.", value_name="PATH"),
+        _option("--project-name", summary="Docker Compose project name.", value_name="NAME"),
+    )
+    workbench = _node(
+        "workbench",
+        "Manage the optional private Anvil Workbench hub stack.",
+        children=(
+            _resource_node(
+                "up", "Start the private Workbench hub, Postgres, and Neo4j projection.",
+                "anvil_serving.workbench", role="host", mutation="mutate", argv_prefix=("up",),
+                options=workbench_options + confirm_options,
+                execution_runtime_roles=("native", "docker"), docs_anchor="docs/WORKBENCH.md#lifecycle",
+            ),
+            _resource_node(
+                "down", "Stop the Workbench hub stack while preserving its named data volumes.",
+                "anvil_serving.workbench", role="host", mutation="mutate", argv_prefix=("down",),
+                options=workbench_options + confirm_options,
+                execution_runtime_roles=("native", "docker"), docs_anchor="docs/WORKBENCH.md#lifecycle",
+            ),
+            _resource_node(
+                "status", "Show the bounded Docker Compose service status for Workbench.",
+                "anvil_serving.workbench", role="host", argv_prefix=("status",), options=workbench_options,
+                execution_runtime_roles=("native", "docker"), docs_anchor="docs/WORKBENCH.md#lifecycle",
+            ),
+            _resource_node(
+                "logs", "Read bounded Workbench hub stack logs.", "anvil_serving.workbench", role="host",
+                argv_prefix=("logs",), options=workbench_options + (
+                    _option("--tail", summary="Maximum log lines per service.", value_name="LINES"),
+                    _option("--follow", summary="Follow logs in the foreground."),
+                ),
+                execution_runtime_roles=("native", "docker"), docs_anchor="docs/WORKBENCH.md#lifecycle",
+            ),
+        ),
+        docs_anchor="docs/WORKBENCH.md",
+    )
 
     control_plane_review_metadata = {
         "harness sync openclaw": {
@@ -3337,6 +3374,7 @@ def build_command_tree() -> CommandTree:
             _node("collectors", collectors.summary, children=collectors.children, docs_anchor=collectors.docs_anchor, group="Control plane & integrations"),
             _node("dashboard", dashboard.summary, children=dashboard.children, docs_anchor=dashboard.docs_anchor, group="Local serving tools"),
             _node("edge", edge.summary, children=edge.children, docs_anchor=edge.docs_anchor, group="Control plane & integrations"),
+            _node("workbench", workbench.summary, children=workbench.children, docs_anchor=workbench.docs_anchor, group="Control plane & integrations"),
             *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
                 ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),

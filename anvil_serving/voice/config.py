@@ -737,6 +737,12 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
         _positive_float(table, "timeout")
     if "ready_timeout" in table:
         _positive_float(table, "ready_timeout")
+    if "ready_url" in table:
+        _parsed_url(
+            _string(table, "ready_url"),
+            key="voice.%s.ready_url" % name,
+            schemes=("http", "https"),
+        )
     if "stop_timeout" in table:
         _positive_float(table, "stop_timeout")
     for key in ("serve_name", "manifest_path", "serves_manifest"):
