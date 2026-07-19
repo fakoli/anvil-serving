@@ -41,6 +41,7 @@ class STTServeConfig:
     model: str
     serve_name: str = DEFAULT_SERVE_NAME
     manifest_path: Optional[str] = None
+    ready_url: Optional[str] = None
 
 
 class STTServe:
@@ -62,7 +63,8 @@ class STTServe:
     ) -> None:
         self.config = config
         self._lifecycle = ServeLifecycle(
-            config.serve_name, manifest_path=config.manifest_path, _run=_run, _open=_open,
+            config.serve_name, manifest_path=config.manifest_path,
+            ready_url=config.ready_url, _run=_run, _open=_open,
         )
 
     def bring_up(self, *, dry_run: bool = False, recreate: bool = False) -> int:
@@ -75,7 +77,7 @@ class STTServe:
         return self._lifecycle.tear_down(dry_run=dry_run)
 
     def wait_ready(self, *, timeout: float = DEFAULT_READY_TIMEOUT) -> ServeReadiness:
-        """Poll docker state + an OpenAI-compatible readiness probe."""
+        """Poll docker state plus the manifest's configured readiness probe."""
         return self._lifecycle.wait_ready(self.config.base_url, timeout=timeout)
 
     @property

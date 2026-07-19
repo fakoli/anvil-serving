@@ -11,7 +11,7 @@ serve's container name, port, and `up` command -- the actual STT/TTS engine
 binary/container choice is configured there, NEVER in this Python file. This
 module only adds:
 
-* a readiness probe against the serve's OpenAI-compatible `base_url` (from
+* a readiness probe against the serve's declared endpoint (from
   the VOICE manifest's `[voice.stt]`/`[voice.tts]` tables -- see
   `anvil_serving/voice/config.py`), so a caller can distinguish "the
   container is up" from "the model is loaded and answering requests" --
@@ -57,13 +57,17 @@ class ServeReadiness:
 
 def _probe_models_endpoint(
     base_url: str, timeout: float, _open: Callable[..., Any],
+    ready_url: Optional[str] = None,
 ) -> bool:
-    """GET ``{base_url}/models`` -- a cheap, side-effect-free OpenAI-compatible
-    readiness probe every such server exposes, whether or not the audio
-    endpoints themselves require auth. A non-2xx response or a refused
+    """Probe a declared readiness URL, defaulting to ``{base_url}/models``.
+
+    OpenAI-compatible TTS servers usually expose ``/v1/models``. Some valid
+    STT engines (including parakeet.cpp) expose only a root ``/health`` route,
+    so a manifest may set an explicit ``ready_url`` without changing the audio
+    stage's OpenAI-compatible ``base_url``. A non-2xx response or a refused
     connection just means "not ready yet" -- never raises.
     """
-    url = base_url.rstrip("/") + "/models"
+    url = ready_url or (base_url.rstrip("/") + "/models")
     try:
         with _open(url, timeout=timeout) as resp:
             status = getattr(resp, "status", None) or resp.getcode()
@@ -86,11 +90,13 @@ class ServeLifecycle:
         serve_name: str,
         *,
         manifest_path: Optional[str] = None,
+        ready_url: Optional[str] = None,
         _run: Optional[Callable[..., Any]] = None,
         _open: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.serve_name = serve_name
         self.manifest_path = generic_serves.resolve_manifest_path(manifest_path)
+        self.ready_url = ready_url
         # None -> let anvil_serving.serves fall back to its own subprocess.run default.
         self._run = _run
         self._open = _open or urllib.request.urlopen
@@ -159,12 +165,13 @@ class ServeLifecycle:
             state = self.docker_state()
         except ServeNotConfigured:
             state = "unconfigured"
-        ready = _probe_models_endpoint(base_url, timeout, self._open)
+        probe_url = self.ready_url or (base_url.rstrip("/") + "/models")
+        ready = _probe_models_endpoint(base_url, timeout, self._open, self.ready_url)
         return ServeReadiness(
             name=self.serve_name,
             docker_state=state,
             ready=ready,
             detail="healthy" if ready else (
-                "not responding at %s/models" % base_url.rstrip("/")
+                "not responding at %s" % probe_url
             ),
         )
