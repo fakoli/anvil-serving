@@ -70,7 +70,8 @@ anvil-serving init --out-dir ./anvil-config
 ```
 
 The scaffold includes router variants, modes, recipes, model/voice/ComfyUI
-manifests and Compose files, operator topology, `.env.example`, voice settings,
+manifests and Compose files, operator topology, disabled machine `host.toml`,
+`.env.example`, voice settings,
 and tailnet-edge settings. Templates are validated before the first write.
 Existing operator files receive numbered `.anvil.bak.N` backups before they are
 replaced.
@@ -136,6 +137,12 @@ host through its authenticated controller. `host memory` is a local Windows
 operation because it reads WSL `/proc/meminfo`; the selected distro is only the
 view into the shared WSL VM.
 
+`host status` additively reports the resolved `cache_reclaim` policy: whether it
+is valid and enabled, the source `host.toml`, distro, threshold, and whether the
+current host can apply it. A missing file or section is a valid disabled policy.
+See [Configuration](../CONFIGURATION.md#machine-policy-hosttoml) for the strict
+schema and lifecycle coverage.
+
 These commands are read-only. Missing GPU tools or unavailable probes remain
 visible as empty or degraded results instead of triggering repair.
 
@@ -166,7 +173,9 @@ the public `--confirm` gate.
 fallback if process termination is denied. Both use one attempt and stop for
 diagnosis rather than retry-looping disruptive actions.
 
-`host reclaim` synchronizes the filesystem before dropping clean page cache and
+`host reclaim` synchronizes the filesystem before dropping clean page cache with
+`sync && echo 1 > /proc/sys/vm/drop_caches`; it does not request inode/dentry slab
+reclaim. It
 refuses when a checkpoint appears to be streaming. Its `--force` overrides that
 specific active-load refusal, not confirmation. Watch mode is an explicit
 foreground process:
@@ -174,6 +183,39 @@ foreground process:
 ```bash
 anvil-serving host reclaim --watch --threshold-gb 60 --interval 30 --confirm
 ```
+
+## Automatic reclaim after model lifecycle operations
+
+On Windows/WSL, operators may enable one machine-level policy in
+`$ANVIL_SERVING_HOME/host.toml`:
+
+```toml
+schema_version = 1
+
+[cache_reclaim]
+enabled = true
+distro = "docker-desktop"
+threshold_gb = 16
+```
+
+The existing dry run for a covered model operation shows this policy. Its
+existing `--confirm` authorizes the model operation and the disclosed
+best-effort postcondition; there is no extra lifecycle flag or prompt.
+
+Automatic reclaim waits for the operation's declared readiness boundary,
+requires at least 1 GiB of operation-attributable cache growth, refuses active
+I/O, and is bounded. The CLI reports `reclaimed`, `disabled`,
+`not-applicable`, `below-threshold`, `no-operation-growth`, `active-io`,
+`readiness-timeout`, `unavailable`, or `failed`, with cache measurements when
+available. A skip or failure warns but does not change a successful download or
+model-start exit code. Automatic mode never uses the manual `--force` escape
+hatch.
+
+The covered commands are `models pull`, `models recipes load`, manifest-owned
+`serves up`, `serves adopt`, `serves switch`, and `serves promote`, including
+an explicit rollback. Ad-hoc Compose starts, voice, request-time ComfyUI loads,
+and the request-triggered multiplexer remain outside v1. See
+[ADR-0023](../adr/0023-lifecycle-aware-wsl-cache-reclaim.md).
 
 ## GPU sharing
 

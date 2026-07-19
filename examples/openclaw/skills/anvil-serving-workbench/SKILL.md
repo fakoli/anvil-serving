@@ -125,7 +125,13 @@ exists.
   overrides as router tier `params` owned by the model recipe, not as skill or
   plugin constants.
 - Host/cache work: collect `host_summary` and `cache_prune_plan`; MCP cache
-  pruning is plan-only and must not delete.
+  pruning is plan-only and must not delete. `host_summary` also reports the
+  persistent `host.toml` WSL cache-reclaim policy. When enabled, confirmed
+  model pulls and managed model-load boundaries inherit one disclosed,
+  readiness-aware, warning-only page-cache postcondition; do not add a second
+  manual reclaim after a `reclaimed` result. Ad-hoc Compose, voice, request-time
+  ComfyUI loads, and the request-triggered multiplexer remain outside that
+  policy. Treat changing the persistent opt-in as a reviewed host mutation.
 
 ## Model Benchmark Source Freshness
 

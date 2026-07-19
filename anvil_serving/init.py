@@ -99,6 +99,7 @@ _SCAFFOLD_TEMPLATES = (
     ("example-with-cloud.toml", "example-with-cloud.toml",
      "configs/example-with-cloud.toml"),
     ("modes.toml", "modes.toml", "configs/modes.example.toml"),
+    ("host.toml", "host.toml", "configs/host.example.toml"),
     ("serve-recipes.toml", "serve-recipes.toml", "configs/serve-recipes.toml"),
     ("serves.toml", "serves.toml", "examples/fakoli-dark/serves.toml"),
     ("serves.voice.toml", "serves.voice.toml", "examples/fakoli-dark/serves.voice.toml"),
