@@ -43,6 +43,14 @@ services:
     environment:
       NEO4J_AUTH: neo4j/${WORKBENCH_NEO4J_PASSWORD:?set in env file}
     volumes: [workbench-neo4j:/data]
+    healthcheck:
+      # Keep Compose from starting the hub before Bolt accepts authenticated
+      # queries. ``$$`` preserves the container-side shell expansion.
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#*/}\" 'RETURN 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
     networks: [workbench]
     restart: unless-stopped
 

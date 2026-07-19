@@ -191,6 +191,28 @@ def test_responses_accepts_bounded_stateless_codex_controls_without_policy_overr
         ResponsesDialect().parse_request({"model": "chat", "input": "hi", "truncation": "auto"})
 
 
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ({"model": "chat", "input": "hi", "user": "ignored-before"}, "user"),
+        ({"model": {"unexpected": "object"}, "input": "hi"}, "model"),
+        ({"model": "chat", "input": "hi", "stream": "false"}, "stream"),
+        (
+            {
+                "model": "chat",
+                "input": [{"role": "user", "content": [{"type": "input_image", "image_url": "https://example.invalid/image.png"}]}],
+            },
+            "input_image",
+        ),
+        ({"model": "chat", "input": "hi", "tools": ["not-an-object"]}, "tools"),
+    ],
+)
+def test_responses_rejects_unknown_or_lossy_request_shapes(body, message):
+    """Unsupported inputs must fail rather than silently changing agent intent."""
+    with pytest.raises(DialectError, match=message):
+        ResponsesDialect().parse_request(body)
+
+
 def test_responses_preserves_safe_correlation_in_the_internal_request_only():
     class CaptureBackend:
         def __init__(self):
