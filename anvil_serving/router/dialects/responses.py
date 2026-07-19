@@ -12,7 +12,7 @@ import json
 import time
 from typing import Any, Callable, Dict, Iterable, Iterator, Mapping, Optional
 
-from ..internal import DialectError, InternalRequest, estimate_tokens, normalize_messages
+from ..internal import DialectError, InternalRequest, estimate_tokens
 from . import _new_id
 from .openai import OpenAIDialect
 
