@@ -227,6 +227,30 @@ def test_wait_ready_true_when_models_endpoint_responds(manifest_with_stt):
     assert readiness.name == "stt"
 
 
+def test_wait_ready_uses_manifest_ready_url_for_non_openai_stt(manifest_with_stt):
+    """parakeet.cpp exposes root /health rather than /v1/models."""
+    fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
+    seen = []
+
+    def open_health(url, timeout=None):
+        seen.append(url)
+        return FakeOpenResponse(200)
+
+    serve = STTServe(
+        STTServeConfig(
+            base_url="http://127.0.0.1:8090/v1",
+            model="parakeet",
+            manifest_path=manifest_with_stt,
+            ready_url="http://127.0.0.1:8090/health",
+        ),
+        _run=fake_run,
+        _open=open_health,
+    )
+    readiness = serve.wait_ready()
+    assert readiness.ready is True
+    assert seen == ["http://127.0.0.1:8090/health"]
+
+
 def test_wait_ready_false_when_probe_fails(manifest_with_stt):
     fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
     serve = STTServe(
