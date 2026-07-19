@@ -148,6 +148,38 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/openc
 
 ## 2. OpenClaw provider config recipe (point at anvil-serving)
 
+### Preferred complete setup path
+
+The supported setup path is `harness sync openclaw`, not copying the historical JSON fragment
+below. A fresh gateway is refused unless the sync has both a safe native route and a
+gateway-visible plugin directory:
+
+```bash
+anvil-serving harness sync openclaw \
+  --config configs/example.toml \
+  --base-url http://100.87.34.66:8000/v1 \
+  --native-provider openai \
+  --native-model gpt-5.6-sol \
+  --plugin-dir /absolute/path/to/openclaw-anvil-intent-router \
+  --tool-profile full \
+  --exec-mode auto \
+  --out ~/.openclaw/openclaw.json \
+  --restart
+```
+
+This generates the Anvil provider catalog, retains the native model as the OpenClaw primary,
+enables and loads the plugin, grants `allowConversationAccess`, and configures authoritative
+`/v1/route` decisions with an env-backed token name. It also removes stale Anvil plugin load paths
+during a merge while preserving unrelated plugins and tool settings. Existing gateways can omit
+the native pair when their current non-Anvil primary can be inferred, and can omit the plugin path
+when it is already installed through an operator-managed registry.
+
+`--tool-profile full` is an explicit request for the full agent tool surface. `--exec-mode auto`
+uses allowlist-plus-review host execution and permits durable **Allow Always** choices on approval
+misses. OpenClaw's `ask=always` policy deliberately suppresses Allow Always because it requires a
+prompt on every command. The sync does not silently broaden either policy when these flags are
+omitted, and it never writes approval allowlist entries itself.
+
 > **`contextWindow` MUST match the real routed tier's window — see the
 > live-confirmed failure mode below the recipe before changing these values.**
 
@@ -174,8 +206,8 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/openc
     }
   },
   agents: { defaults: {
-    // Default slot when the plugin is absent → router's own Tier-0 classifier still applies.
-    model: { primary: "anvil/chat" },
+    // Keep a real native model as the safe default. The plugin sends eligible turns to Anvil.
+    model: { primary: "openai/gpt-5.6-sol" },
     // Dropdown allowlist. Keep entries present, but leave params empty:
     // the router owns per-tier reasoning/thinking defaults now.
     models: {
@@ -187,9 +219,21 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/openc
       "anvil/long-context": {}
     }
   } },
-  plugins: { entries: { "openclaw-anvil-intent-router": {
-    hooks: { allowConversationAccess: true }
-  } } } // key = packaged plugin id (CONFIRMED required gate)
+  plugins: {
+    load: { paths: ["/absolute/path/to/openclaw-anvil-intent-router"] },
+    entries: { "openclaw-anvil-intent-router": {
+      enabled: true,
+      hooks: { allowConversationAccess: true },
+      config: {
+        nativeProvider: "openai",
+        nativeModel: "gpt-5.6-sol",
+        routeEndpoint: "http://anvil-gpu.tailnet.example:8000/v1/route",
+        routeAuthEnv: "ANVIL_ROUTER_TOKEN",
+        routeTimeoutMs: 500
+      }
+    } }
+  }, // key = packaged plugin id (CONFIRMED required gate)
+  tools: { profile: "full", exec: { mode: "auto" } }
 }
 ```
 
