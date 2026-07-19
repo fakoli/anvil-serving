@@ -2500,14 +2500,14 @@
     },
     {
       "attestations": {
-        "configuration": "sha256:db61cf75279db013daac16f4615febd7bceadd2774c4f8f6f2593d600eff98dc",
-        "confirmation": "sha256:1cf6cb4a5d26fe9f3d1b138c7ea0d5f4faf6ca228bb3bf8695a92f3f1c96810c",
-        "docs": "sha256:b338294c0a01766e3b879eaca26ccdfc6fcc84fc268dcc766c64ff3283d30bfb",
-        "grammar": "sha256:ecf068703350513c5b9aa027c7e1559eb10062c0e79eb5ed59e3b5f4e056b30a",
-        "help": "sha256:efcc1b43c3954fb304b317b522e64d07d7580c09d20a5699e8134854183e5dfe",
-        "parser_tests": "sha256:c8270748a73ca58ad8f819692075d301d178ef4d2fe8ade522e6952096b0feed",
-        "preview": "sha256:9d90e6dac0308c7e97b04247ac0340b596310dbc68d5b6228d9563f49179b79c",
-        "windows": "sha256:cff957c09e5531747cbd145d18994a024bc80eca044c58140633e5fa1e97ca7d"
+        "configuration": "sha256:85d11a797ca1e83e78b87de0f6c880d6d8a4623b51d9b43969466aefda73865c",
+        "confirmation": "sha256:1e6e76857e15835749d693712d758fad5052ae9c11fabe8c612705dce8a8b82c",
+        "docs": "sha256:95267a36ffb180d8a00b617a246c2cb76daf66958d66e336baf0160453bb991d",
+        "grammar": "sha256:deb9ae86fb43443f8ea5a240355fc300a4ac2e59d496da615ea7aa037880ad91",
+        "help": "sha256:cb40f0163050733ed168032c20e679335ad430bfadb2d94fc6de66bad961b3e9",
+        "parser_tests": "sha256:83cce034a3f626887273c5b7719ae704845472f98340b80f83f800db33ab4f5b",
+        "preview": "sha256:6c7e12890c06c04e2a6920dc41ed4fb0675574137475643fa51670a6d3bd9e1d",
+        "windows": "sha256:e0f790ebfa928d245b94cba349151922e0f0e6b6d0fc1ecec84901a8e95cf540"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2558,7 +2558,7 @@
           "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:792d4de0a1705f65ed4965fb5ee724aaab7ba1fe8e584d6ae4e5bcc128a42643",
+      "manifest_fingerprint": "sha256:28b0d2547f038a0816cc626873162b504c1507b97664eb9b6ed33e72d547d498",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "harness sync openclaw"

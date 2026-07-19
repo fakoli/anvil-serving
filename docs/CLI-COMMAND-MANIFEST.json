@@ -19882,12 +19882,12 @@
     },
     {
       "behavior_notes": [
-        "Dry-run loads the router configuration and renders the complete payload without writing or restarting OpenClaw.",
-        "Apply preserves unrelated operator configuration, writes a backup when a target exists, and restarts only when --restart is explicit."
+        "Dry-run reports whether the provider, native fallback, plugin load path, authoritative route, and tool policy form a complete fresh setup.",
+        "Apply replaces stale Anvil plugin paths, preserves unrelated operator configuration, writes a backup when a target exists, and restarts only when --restart is explicit."
       ],
       "configuration_notes": [
         "--base-url defaults to http://127.0.0.1:8000/v1; a remote gateway needs the router address it can actually reach.",
-        "Remote sync uses OpenSSH, merges Anvil-owned keys by default, and bounds each SSH or SCP call with --timeout-seconds."
+        "Fresh setup requires --native-provider/--native-model plus an absolute --plugin-dir; --tool-profile and --exec-mode change tool policy only when explicit."
       ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
@@ -19897,8 +19897,8 @@
           "summary": "Render and validate the OpenClaw integration without writing or restarting."
         },
         {
-          "invocation": "anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --base-url http://100.87.34.66:8000/v1 --skills --confirm",
-          "summary": "Merge the reviewed provider and workbench configuration on a remote gateway."
+          "invocation": "anvil-serving harness sync openclaw --config configs/example.toml --base-url http://100.87.34.66:8000/v1 --native-provider openai --native-model gpt-5.6-sol --plugin-dir /opt/anvil/openclaw-anvil-intent-router --tool-profile full --exec-mode auto --gateway-host fakoli-mini --confirm",
+          "summary": "Apply the complete reviewed setup on a remote gateway."
         }
       ],
       "execution_host_os": [],
@@ -20094,6 +20094,96 @@
         },
         {
           "flags": [
+            "--native-provider"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Safe native OpenClaw provider.",
+          "tombstone": null,
+          "value_name": "PROVIDER"
+        },
+        {
+          "flags": [
+            "--native-model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Model id within the safe native provider.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--plugin-dir"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Absolute gateway-visible Anvil plugin directory.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tool-profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit OpenClaw tool-surface profile.",
+          "tombstone": null,
+          "value_name": "PROFILE"
+        },
+        {
+          "flags": [
+            "--exec-mode"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit OpenClaw host-command policy.",
+          "tombstone": null,
+          "value_name": "MODE"
+        },
+        {
+          "flags": [
+            "--client-side-routing"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Disable authoritative router decisions in the plugin.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--route-endpoint"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Authoritative Anvil route-decision URL.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--route-auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Route-decision token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--route-timeout-ms"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Authoritative route-decision timeout.",
+          "tombstone": null,
+          "value_name": "MILLISECONDS"
+        },
+        {
+          "flags": [
             "--gateway-host"
           ],
           "output_policy": null,
@@ -20251,6 +20341,15 @@
           "config",
           "base_url",
           "api_key_env",
+          "native_provider",
+          "native_model",
+          "plugin_dir",
+          "tool_profile",
+          "exec_mode",
+          "client_side_routing",
+          "route_endpoint",
+          "route_auth_env",
+          "route_timeout_ms",
           "out",
           "overwrite",
           "restart",
