@@ -5,7 +5,8 @@ On each turn it classifies the prompt (text + attachment kinds) into one of
 anvil's closed presets, then applies an **upfront routing split** (T008):
 
 - **Cloud-preferred presets** (default: `planning`) → an explicit native provider/model
-  override, defaulting to `anthropic/claude-sonnet-4-5`. Avoids a wasted anvil
+  override. The package retains `anthropic/claude-sonnet-4-5` only as a compatibility fallback;
+  production setup must select the gateway's real native provider/model. Avoids a wasted anvil
   round-trip for presets eval-proven to work better on cloud models (T005 bake-off finding).
 - **Local-preferred presets** (quick-edit, review, chat, long-context) → **anvil**
   → emits `{ providerOverride: "anvil", modelOverride: "<preset>" }`.
@@ -118,10 +119,9 @@ plugin set or the default.
 
 Because `planning` (and any other cloud-preferred preset) is now routed to the
 native provider upfront, the plugin needs an explicit native provider/model. The
-default is `anthropic/claude-sonnet-4-5`; override it with plugin config or env
-vars if your OpenClaw native provider differs. `agents.defaults.model.primary`
-can remain `anvil/chat` because cloud routes no longer rely on no-override
-resolution:
+package fallback is not a deployment default; set plugin config or env vars to the
+gateway's actual native route. Keep `agents.defaults.model.primary` native as a safe
+no-plugin fallback:
 
 ```jsonc
 // ~/.openclaw/openclaw.json
@@ -130,8 +130,8 @@ plugins: {
     "openclaw-anvil-intent-router": {
       hooks: { allowConversationAccess: true },
       config: {
-        nativeProvider: "anthropic",
-        nativeModel: "claude-sonnet-4-5",
+        nativeProvider: "openai",
+        nativeModel: "gpt-5.6-sol",
         routeTimeoutMs: 30
       }
     }
@@ -210,6 +210,24 @@ only.
 
 ## Install (on the OpenClaw gateway — e.g. Fakoli Mini)
 
+For a complete provider + plugin + route + tool-policy setup, prefer the owning harness command:
+
+```bash
+anvil-serving harness sync openclaw \
+  --config configs/example.toml \
+  --base-url http://100.87.34.66:8000/v1 \
+  --native-provider openai \
+  --native-model gpt-5.6-sol \
+  --plugin-dir /absolute/path/to/openclaw-anvil-intent-router \
+  --tool-profile full \
+  --exec-mode auto \
+  --out ~/.openclaw/openclaw.json \
+  --restart
+```
+
+Fresh config writes are refused when the native route or absolute plugin path is missing. The
+manual steps below remain useful for registry-managed or custom installs.
+
 > **OpenClaw >=2026.6.11: use `--link`, not a copy-install.** This plugin ships a
 > compiled/TypeScript runtime (`index.ts` + `route.mjs`). Starting with OpenClaw
 > 2026.6.11, the gateway's compiled-runtime loader rejects plugins installed by
@@ -283,15 +301,15 @@ only.
        "openclaw-anvil-intent-router": {
          hooks: { allowConversationAccess: true },
          config: {
-           nativeProvider: "anthropic",
-           nativeModel: "claude-sonnet-4-5"
+           nativeProvider: "openai",
+           nativeModel: "gpt-5.6-sol"
          }
        }
      }
    }
    ```
-   Keep `agents.defaults.model.primary: "anvil/chat"` if you want no-plugin or
-   uncaught cases to remain local-first.
+   Keep `agents.defaults.model.primary` on a real native model so a missing or disabled plugin
+   fails safe instead of forcing every uncaught turn through Anvil.
 5. **Restart the gateway:** `openclaw gateway restart`.
 6. **(Optional) set environment variables:**
    - `ANVIL_CLOUD_CLASSES` — comma-separated preset names to route to native;

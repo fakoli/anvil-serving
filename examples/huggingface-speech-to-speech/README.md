@@ -29,7 +29,9 @@ verify_local_min = false
 
 Only do this after `anvil-serving eval preflight --confirm` passes for the local chat tier. The default
 `verify_local_min = true` keeps a minimal empty/truncated-output safety check on, which can buffer a
-local response before `speech-to-speech` sees the first text delta.
+local response before `speech-to-speech` sees the first text delta. Disabling it does not disable
+tool safety: any request that declares tools or `tool_choice` still uses a buffered contract check,
+so unadvertised or malformed calls cannot reach OpenClaw.
 
 ## 2. Start speech-to-speech
 

@@ -26,6 +26,7 @@ from anvil_serving.router.backends.sse import (
 )
 from anvil_serving.router.config import Tier
 from anvil_serving.router.internal import InternalRequest, Message
+from anvil_serving.router.verify import ResponseView, ToolCallJSONValid
 
 
 def _tier(dialect: str, privacy: str = "cloud", extra_body=None) -> Tier:
@@ -194,6 +195,31 @@ def test_anthropic_streaming_deltas_tools_and_usage():
     (tc,) = s.tool_calls
     assert tc["arguments"] == {"city": "Oakland"}  # parsed dict, like buffered
     assert s.usage == {"input_tokens": 7, "output_tokens": 9}
+
+
+def test_anthropic_streaming_preserves_malformed_tool_arguments_for_verification():
+    assembler = AnthropicStreamAssembler()
+    assembler.feed("content_block_start", json.dumps({
+        "type": "content_block_start",
+        "index": 0,
+        "content_block": {
+            "type": "tool_use",
+            "id": "toolu_bad",
+            "name": "get_weather",
+            "input": {},
+        },
+    }))
+    assembler.feed("content_block_delta", json.dumps({
+        "type": "content_block_delta",
+        "index": 0,
+        "delta": {"type": "input_json_delta", "partial_json": "{not json"},
+    }))
+
+    (tool_call,) = assembler.result().tool_calls
+    assert tool_call["arguments"] == "{not json"
+    verdict = ToolCallJSONValid().verify(ResponseView(tool_calls=[tool_call]))
+    assert verdict.passed is False
+    assert "not valid JSON" in verdict.reason
 
 
 # --------------------------------------------------------------------------- #
