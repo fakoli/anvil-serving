@@ -567,7 +567,7 @@ active_params_b = 3
   ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# VERIFIED — Gemma 4 12B IT QAT W4A16 : current standard Heavy tier
+# VERIFIED — Gemma 4 12B IT QAT W4A16 : immediate Heavy rollback
 # ─────────────────────────────────────────────────────────────────────────────
 [[recipe]]
 model = "google/gemma-4-12B-it-qat-w4a16-ct"
@@ -588,7 +588,7 @@ total_params_b = 12
   quantization = "w4a16-ct"
   context_tokens = 262144
   port = 30002
-  managed_serve = "heavy"
+  managed_serve = "heavy-gemma4-rollback"
   served_model_name = "gemma4-12b-it-w4a16-ct"
   note = "Pin model and tokenizer revisions independently; do not add the pre-July-15 explicit repository chat-template override."
   env = [
@@ -621,12 +621,12 @@ total_params_b = 12
   [recipe.intent]
   suited = ["heavy", "agentic", "long-context", "planning", "review"]
   mode = "agentic-heavy"
-  rationale = "Current standard Heavy model: matched the control's repeated quality while improving 32K, 128K, and 240K context latency."
+  rationale = "Immediate validated rollback for GPT-OSS Puzzle Heavy; retains the July 16 guarded promotion evidence and 256K window."
 
   [recipe.activation.heavy]
-  plan = "gemma4-12b-heavy"
-  direction = "promote"
-  compose_service = "heavy"
+  plan = "gpt-oss-puzzle-88b-heavy"
+  direction = "rollback"
+  compose_service = "heavy-gemma4-rollback"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # VERIFIED — Gemma 4 E4B IT FP8-Dynamic : current standard Fast tier
@@ -1207,3 +1207,79 @@ total_params_b = 8
   suited = ["voice", "low-latency", "chat-fast"]
   mode = "flexibility"
   rationale = "Low-latency small-model specialist (61 ms TTFT). NOT promoted; check PLE issue status before any quality-sensitive role."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED — GPT-OSS Puzzle 88B native Anvil vLLM Heavy tier
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/gpt-oss-puzzle-88B"
+status = "verified"
+source = "fakoli/anvil-vllm commit 485463b3498ed3ffcf0c8fcb52c1670a21be5d82 (includes model support commit 3fbe020fb04afb27885196dabd1a72392074d49c); exact image qualified on RTX PRO 6000"
+family = "gpt-oss-puzzle"
+total_params_b = 88
+
+  [recipe.download]
+  repo = "nvidia/gpt-oss-puzzle-88B"
+  revision = "9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2"
+  volume = "vllm-hfcache"
+
+  [recipe.sources]
+  engine_repo = "https://github.com/fakoli/anvil-vllm"
+  engine_commit = "485463b3498ed3ffcf0c8fcb52c1670a21be5d82"
+  engine_pr = "https://github.com/fakoli/anvil-vllm/pull/1"
+  upstream_model_support = "https://github.com/vllm-project/vllm/pull/38135"
+  upstream_generation_config = "https://github.com/vllm-project/vllm/pull/45978"
+  runbook = "docs/benchmarks/gpt-oss-puzzle-88b-recipe.md"
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+  vram_total_gb = 96
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82"
+  managed_serve = "heavy"
+  served_model_name = "gpt-oss-puzzle-88b"
+  quantization = "gpt_oss_mxfp4 (auto-detected); Marlin compatibility baseline"
+  port = 30002
+  context_tokens = 131072
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "CUDA_VISIBLE_DEVICES=GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2",
+    "--served-model-name gpt-oss-puzzle-88b",
+    "--trust-remote-code",
+    "--tensor-parallel-size 1",
+    "--moe-backend marlin",
+    "--kv-cache-dtype fp8",
+    "--tool-call-parser openai",
+    "--enable-auto-tool-choice",
+    "--enable-prefix-caching",
+    "--override-generation-config '{\"eos_token_id\":[200002,199999,200012]}'",
+    "--max-num-batched-tokens 8192",
+    "--stream-interval 20",
+    "--gpu-memory-utilization 0.95",
+    "--max-num-seqs 8",
+    "--max-cudagraph-capture-size 8",
+    "--max-model-len 131072",
+    "--host 0.0.0.0",
+    "--port 30002",
+  ]
+  note = "Native Harmony template; no chat-template override. The pinned checkpoint omits <|call|> token 200012 from generation_config.json, so fork commit 485463b3 plus the full generation-config override restore it as an EOS token. FlashInfer MXFP4/MXFP8 MoE stays disabled through --moe-backend marlin. Follow docs/benchmarks/gpt-oss-puzzle-88b-recipe.md; do not substitute a stock vLLM image."
+
+  [recipe.intent]
+  suited = ["heavy", "agentic", "quality", "long-context", "planning", "review"]
+  mode = "agentic-heavy"
+  rationale = "Current Heavy tier. The exact-commit image passed direct functional, long-context, repeated tool-call, Responses, streaming, and tool-result gates on the RTX PRO 6000."
+
+  [recipe.activation.heavy]
+  plan = "gpt-oss-puzzle-88b-heavy"
+  direction = "promote"
+  compose_service = "heavy"

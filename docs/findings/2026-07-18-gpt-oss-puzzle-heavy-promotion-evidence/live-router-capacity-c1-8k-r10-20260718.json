@@ -1,0 +1,27 @@
+{
+  "base_url": "http://100.87.34.66:8000/v1",
+  "completed": 10,
+  "concurrency": 1,
+  "context_tokens": 8192,
+  "max_context_tokens": 131072,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 484.30514335632324,
+    "e2e_p95_ms": 717.6508903503418,
+    "output_tokens": 10,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 2.000545468735458,
+    "ttft_p50_ms": 484.30514335632324,
+    "ttft_p95_ms": 717.6508903503418
+  },
+  "model": "planning",
+  "requests": 10,
+  "run_id": "benchmark-20260718T185225Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": "low",
+    "shared_prefix_burst": false,
+    "thinking_mode": "default"
+  }
+}

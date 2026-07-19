@@ -6,7 +6,7 @@
 # scripts had. DO NOT manage these serves with raw `docker`/`docker compose` — go through
 # `anvil-serving serves` so the management experience stays consistent.
 #
-#   heavy  -> service `heavy`  (Gemma 4 12B IT W4A16, :30002, RTX PRO 6000 96GB / GPU 1)
+#   heavy  -> service `heavy`  (GPT-OSS Puzzle 88B, :30002, RTX PRO 6000 96GB / GPU 1)
 #   fast   -> service `fast`   (Gemma 4 E4B IT, vLLM, :30003, RTX 5090 / GPU 0)
 #   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
@@ -16,6 +16,10 @@
 # 2026-07-16 Heavy promotion: official Gemma 4 12B IT QAT W4A16 replaces ThinkingCap
 # after the July 15 chat-template bakeoff. ThinkingCap remains the immediate opt-in
 # `heavy-thinkingcap-rollback` service; GPT-OSS remains a second-line rollback recipe.
+# 2026-07-18 Heavy promotion: the pinned GPT-OSS Puzzle 88B checkpoint replaces Gemma 4
+# after full-checkpoint RTX PRO qualification. Gemma 4 remains the immediate opt-in
+# `heavy-gemma4-rollback` service. The fork-local vLLM image restores the checkpoint's
+# omitted Harmony `<|call|>` EOS token through `--override-generation-config`.
 # 2026-07-13 Fast swap (gpu-reservations:T006): Gemma 4 E4B IT replaces Qwen3.6-35B-A3B-NVFP4
 # as the resident fast serve so the multi-tenant 5090 (always-on voice STT/TTS sidecars,
 # ADR-0017) keeps declared VRAM headroom. The 35B recipe remains as the opt-in
@@ -35,12 +39,63 @@
 #   FAST_GPU_UUID   default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
 # Find yours with `nvidia-smi --query-gpu=index,uuid --format=csv` (or `anvil-serving doctor`).
 services:
-  # Heavy tier: official Gemma 4 12B IT QAT W4A16 on vLLM 0.25.1
+  # Heavy tier: GPT-OSS Puzzle 88B on the exact Anvil vLLM fork commit.
+  # The pinned checkpoint omits Harmony's <|call|> token (200012) from its
+  # generation_config EOS list. The fork honors the full generation-config
+  # override below so valid tool calls terminate before malformed continuation.
+  heavy:
+    image: ${HEAVY_PUZZLE_VLLM_IMAGE:-anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82}
+    container_name: vllm-gptoss-puzzle-heavy
+    restart: unless-stopped
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:30002:30002"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/gpt-oss-puzzle-88B
+      --revision ${HEAVY_PUZZLE_REVISION:-9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2}
+      --served-model-name gpt-oss-puzzle-88b
+      --trust-remote-code
+      --tensor-parallel-size 1
+      --moe-backend marlin
+      --kv-cache-dtype fp8
+      --tool-call-parser openai
+      --enable-auto-tool-choice
+      --enable-prefix-caching
+      --override-generation-config '{"eos_token_id":[200002,199999,200012]}'
+      --max-num-batched-tokens 8192
+      --stream-interval 20
+      --gpu-memory-utilization 0.95
+      --max-num-seqs 8
+      --max-cudagraph-capture-size 8
+      --max-model-len 131072
+      --host 0.0.0.0 --port 30002
+      ${HEAVY_PUZZLE_EXTRA_ARGS:-}
+
+  # Immediate Heavy rollback: official Gemma 4 12B IT QAT W4A16 on vLLM 0.25.1
   # (RTX PRO 6000 / GPU 1, :30002). The model and tokenizer revisions are pinned
   # separately so the July 15 chat template cannot drift independently of weights.
-  heavy:
+  heavy-gemma4-rollback:
+    profiles: ["rollback"]
     image: ${HEAVY_GEMMA4_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
-    container_name: vllm-gemma4-12b-heavy
+    container_name: vllm-gemma4-12b-heavy-rollback
     restart: unless-stopped
     ipc: host
     shm_size: "16gb"
@@ -90,7 +145,7 @@ services:
       --host 0.0.0.0 --port 30002
       ${HEAVY_GEMMA4_EXTRA_ARGS:-}
 
-  # Immediate Heavy rollback. It deliberately shares :30002 and the PRO 6000,
+  # Second-line Heavy rollback. It deliberately shares :30002 and the PRO 6000,
   # so stop `heavy` before starting it. MTP is intentionally disabled: vLLM's
   # speculative-config validation currently conflicts with this pinned checkpoint's
   # compressed-tensors main model and FP8 MTP head.
@@ -138,7 +193,7 @@ services:
       --host 0.0.0.0 --port 30002
       ${HEAVY_THINKINGCAP_EXTRA_ARGS:-}
 
-  # Second-line rollback for Heavy. It deliberately shares :30002 and the PRO 6000,
+  # Third-line rollback for Heavy. It deliberately shares :30002 and the PRO 6000,
   # so stop `heavy` before starting it. It is never a router dependency.
   heavy-gptoss-rollback:
     profiles: ["rollback"]
