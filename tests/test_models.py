@@ -15,6 +15,12 @@ import pytest
 from anvil_serving import cache_prune, cli, guard, models, serve_recipes
 
 
+@pytest.fixture(autouse=True)
+def _isolated_host_policy(monkeypatch, tmp_path):
+    """Never let a developer's enabled machine policy affect unit timing."""
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / ".anvil-serving"))
+
+
 # --------------------------------------------------------------------------- #
 # build_pull_argv — the constructed docker command (the load-bearing invariants)
 # --------------------------------------------------------------------------- #
@@ -122,6 +128,7 @@ def test_pull_dry_run_via_pull_main_explicit_unauthenticated(capsys):
     assert "download openai/gpt-oss-120b" in out
     assert "huggingface-cli" not in out
     assert "HF_TOKEN" not in out  # unauthenticated by default
+    assert "automatic cache reclaim: disabled" in out
 
 
 def test_pull_dry_run_token_env_shows_name_only_not_value(monkeypatch, capsys):
@@ -1243,7 +1250,9 @@ def test_recipe_load_dry_run_selects_recipe_without_docker(request, capsys):
     assert "--name recipe-heavy" in out
     assert "127.0.0.1:30002:30002" in out
     assert "ownership condition:" in out
-    assert "not performed by load: health check and eval preflight" in out
+    assert "wait up to 600s for declared HTTP health" in out
+    assert "not performed by load: eval preflight" in out
+    assert "automatic cache reclaim: disabled" in out
 
 
 def test_recipe_load_dispatches_through_canonical_cli(request, capsys):
@@ -1271,3 +1280,146 @@ def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys)
     assert rc == 0
     assert seen == {"model": "openai/gpt-oss-120b", "container": "recipe-heavy"}
     assert "preflight before trusting" in capsys.readouterr().out
+
+
+def _enabled_cache_policy():
+    return {
+        "enabled": True,
+        "distro": "docker-desktop",
+        "threshold_gb": 16.0,
+        "source_path": "host.toml",
+        "configured": True,
+        "applicable": True,
+        "schema_version": 1,
+    }
+
+
+def test_pull_validates_host_policy_before_download(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
+    (tmp_path / "host.toml").write_text(
+        "schema_version = 1\n[cache_reclaim]\nunknown = true\n",
+        encoding="utf-8",
+    )
+    called = []
+    monkeypatch.setattr(models, "run_pull", lambda *_args, **_kwargs: called.append(True) or 0)
+    assert models.pull_main(["org/model", "--no-token"]) == 2
+    assert called == []
+    assert "unknown field" in capsys.readouterr().err
+
+
+def test_pull_runs_reclaim_once_only_after_success(monkeypatch):
+    policy = _enabled_cache_policy()
+    before = {"cached_gb": 10.0}
+    events = []
+    monkeypatch.setattr(models.host_ops, "load_cache_reclaim_policy", lambda: policy)
+    monkeypatch.setattr(
+        models.host_ops, "capture_cache_before",
+        lambda resolved: events.append(("capture", resolved)) or before,
+    )
+    monkeypatch.setattr(
+        models, "run_pull",
+        lambda *_args, **_kwargs: events.append("pull") or 0,
+    )
+    monkeypatch.setattr(
+        models.host_ops, "automatic_cache_reclaim",
+        lambda resolved, baseline, **kwargs: events.append(
+            ("reclaim", resolved, baseline, kwargs)
+        ) or {"outcome": "reclaimed"},
+    )
+    monkeypatch.setattr(
+        models.host_ops, "render_cache_reclaim_result",
+        lambda result: events.append(("render", result)),
+    )
+    assert models.pull_main(["org/model", "--no-token"]) == 0
+    assert [event if isinstance(event, str) else event[0] for event in events] == [
+        "capture", "pull", "reclaim", "render",
+    ]
+    assert events[2][3]["operation"] == "models pull"
+
+
+def test_pull_failure_and_dry_run_never_reclaim(monkeypatch, capsys):
+    policy = _enabled_cache_policy()
+    monkeypatch.setattr(models.host_ops, "load_cache_reclaim_policy", lambda: policy)
+    reclaimed = []
+    monkeypatch.setattr(
+        models.host_ops, "automatic_cache_reclaim",
+        lambda *_args, **_kwargs: reclaimed.append(True),
+    )
+    monkeypatch.setattr(models, "run_pull", lambda *_args, **_kwargs: 17)
+    assert models.pull_main(["org/model", "--no-token"]) == 17
+    assert reclaimed == []
+
+    captures = []
+    monkeypatch.setattr(
+        models.host_ops, "capture_cache_before",
+        lambda *_args, **_kwargs: captures.append(True),
+    )
+    monkeypatch.setattr(models, "run_pull", lambda *_args, **_kwargs: 0)
+    assert models.pull_main(["org/model", "--no-token", "--dry-run"]) == 0
+    assert captures == [] and reclaimed == []
+    assert "automatic cache reclaim: enabled" in capsys.readouterr().out
+
+
+def test_recipe_load_waits_for_health_then_reclaims_once(
+        request, monkeypatch):
+    from anvil_serving import serves
+
+    policy = _enabled_cache_policy()
+    before = {"cached_gb": 10.0}
+    events = []
+    monkeypatch.setattr(models.host_ops, "load_cache_reclaim_policy", lambda: policy)
+    monkeypatch.setattr(models.host_ops, "capture_cache_before", lambda _policy: before)
+    monkeypatch.setattr(
+        models.serve_recipes, "load_recipe",
+        lambda *_args, **_kwargs: (events.append("load") or (["docker", "run"], 0)),
+    )
+    monkeypatch.setattr(
+        serves, "_await_healthy",
+        lambda target, timeout, poll: events.append(
+            ("health", target, timeout, poll)
+        ) or True,
+    )
+    monkeypatch.setattr(
+        models.host_ops, "automatic_cache_reclaim",
+        lambda resolved, baseline, **kwargs: events.append(
+            ("reclaim", resolved, baseline, kwargs)
+        ) or {"outcome": "reclaimed"},
+    )
+    monkeypatch.setattr(models.host_ops, "render_cache_reclaim_result", lambda _result: None)
+    assert models.main([
+        "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
+        "--registry", _registry(request), "--confirm",
+    ]) == 0
+    assert events[0] == "load"
+    assert events[1][0] == "health"
+    assert events[1][1] == {"port": 30002, "health": "/health"}
+    assert events[1][2:] == (600, 2)
+    assert events[2][0] == "reclaim"
+    assert events[2][3]["readiness"] is True
+
+
+def test_recipe_load_readiness_timeout_is_warning_only(request, monkeypatch):
+    from anvil_serving import serves
+
+    policy = _enabled_cache_policy()
+    seen = []
+    monkeypatch.setattr(models.host_ops, "load_cache_reclaim_policy", lambda: policy)
+    monkeypatch.setattr(
+        models.host_ops, "capture_cache_before", lambda _policy: {"cached_gb": 10.0}
+    )
+    monkeypatch.setattr(
+        models.serve_recipes, "load_recipe", lambda *_args: (["docker", "run"], 0)
+    )
+    monkeypatch.setattr(serves, "_await_healthy", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(
+        models.host_ops, "automatic_cache_reclaim",
+        lambda _policy, _before, **kwargs: seen.append(kwargs) or {
+            "outcome": "readiness-timeout"
+        },
+    )
+    monkeypatch.setattr(models.host_ops, "render_cache_reclaim_result", lambda _result: None)
+    assert models.main([
+        "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
+        "--registry", _registry(request), "--confirm",
+    ]) == 0
+    assert seen == [{"operation": "models recipes load", "readiness": False}]

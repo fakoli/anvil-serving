@@ -444,6 +444,7 @@ def test_reclaim_force_overrides_streaming_and_prompt(monkeypatch):
     assert rc == 0 and len(box.drops) == 1
     j = " ".join(box.drops[0])
     assert "-u root" in j and "drop_caches" in j and "sync" in j
+    assert "echo 1 > /proc/sys/vm/drop_caches" in j
 
 
 def test_reclaim_reports_before_and_after_cache(monkeypatch, capsys):
@@ -618,3 +619,222 @@ def test_main_dispatches_status_and_disruptive_dry_run(monkeypatch):
     assert host.main(["status"]) == 0
     assert host.main(["restart-docker", "--dry-run"]) == 0
     assert seen == ["status", ("restart", {"force": False, "dry_run": True})]
+
+
+# ---- persistent lifecycle cache-reclaim policy ------------------------------
+
+def test_cache_reclaim_policy_missing_is_disabled_and_honors_config_home(
+        monkeypatch, tmp_path):
+    config_home = tmp_path / "operator-home"
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    policy = host.load_cache_reclaim_policy()
+    assert policy == {
+        "enabled": False,
+        "distro": "docker-desktop",
+        "threshold_gb": 16.0,
+        "source_path": str(config_home / "host.toml"),
+        "configured": False,
+        "applicable": True,
+        "schema_version": 1,
+    }
+
+
+def test_cache_reclaim_policy_missing_section_is_disabled(tmp_path):
+    path = tmp_path / "host.toml"
+    path.write_text("schema_version = 1\n", encoding="utf-8")
+    policy = host.load_cache_reclaim_policy(path)
+    assert policy["enabled"] is False
+    assert policy["configured"] is False
+
+
+def test_cache_reclaim_policy_parses_enabled_values(monkeypatch, tmp_path):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    path = tmp_path / "host.toml"
+    path.write_text(
+        "schema_version = 1\n[cache_reclaim]\n"
+        "enabled = true\ndistro = \"Ubuntu-24.04\"\nthreshold_gb = 24.5\n",
+        encoding="utf-8",
+    )
+    policy = host.load_cache_reclaim_policy(path)
+    assert policy["enabled"] is True
+    assert policy["distro"] == "Ubuntu-24.04"
+    assert policy["threshold_gb"] == 24.5
+    assert policy["configured"] is True
+    assert policy["applicable"] is True
+
+
+@pytest.mark.parametrize("text", [
+    "schema_version = 2\n[cache_reclaim]\nenabled = true\n",
+    "schema_version = 1\nunknown = true\n",
+    "schema_version = 1\n[cache_reclaim]\nenabled = \"yes\"\n",
+    "schema_version = 1\n[cache_reclaim]\nthreshold_gb = 0\n",
+    "schema_version = 1\n[cache_reclaim]\ndistro = \"\"\n",
+    "schema_version = 1\n[cache_reclaim]\nextra = 1\n",
+])
+def test_cache_reclaim_policy_strict_validation(tmp_path, text):
+    path = tmp_path / "host.toml"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(host.HostConfigError):
+        host.load_cache_reclaim_policy(path)
+
+
+def test_cache_reclaim_policy_non_windows_is_not_applicable(monkeypatch, tmp_path):
+    monkeypatch.setattr(host.sys, "platform", "linux")
+    path = tmp_path / "host.toml"
+    path.write_text(
+        "schema_version = 1\n[cache_reclaim]\nenabled = true\n",
+        encoding="utf-8",
+    )
+    policy = host.load_cache_reclaim_policy(path)
+    assert policy["enabled"] is True
+    assert policy["applicable"] is False
+
+
+def test_host_summary_adds_resolved_cache_reclaim_policy(monkeypatch, tmp_path):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
+    (tmp_path / "host.toml").write_text(
+        "schema_version = 1\n[cache_reclaim]\n"
+        "enabled = true\ndistro = \"docker-desktop\"\nthreshold_gb = 20\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(host, "_host_total_gb", lambda **_kwargs: 96.0)
+    monkeypatch.setattr(host, "_wsl_vm_memory_gb", lambda **_kwargs: 80.0)
+    monkeypatch.setattr(host, "_gpus", lambda **_kwargs: [])
+    summary = host.host_summary()
+    assert summary["cache_reclaim"]["valid"] is True
+    assert summary["cache_reclaim"]["enabled"] is True
+    assert summary["cache_reclaim"]["threshold_gb"] == 20.0
+    assert summary["cache_reclaim"]["source_path"] == str(tmp_path / "host.toml")
+    assert {item["name"] for item in summary["checks"]} == {
+        "host_ram", "docker_wsl_memory", "gpu_inventory",
+    }
+
+
+def _auto_policy(**overrides):
+    policy = {
+        "enabled": True,
+        "distro": "docker-desktop",
+        "threshold_gb": 16.0,
+        "source_path": "host.toml",
+        "configured": True,
+        "applicable": True,
+        "schema_version": 1,
+    }
+    policy.update(overrides)
+    return policy
+
+
+def _sample(cached):
+    return {"total_gb": 64.0, "used_gb": 40.0, "available_gb": 24.0,
+            "cached_gb": cached}
+
+
+def test_automatic_reclaim_disabled_and_not_applicable_never_probe():
+    def runner(*_args, **_kwargs):
+        pytest.fail("disabled/not-applicable policy probed WSL")
+    assert host.automatic_cache_reclaim(
+        _auto_policy(enabled=False), None, operation="pull", _run=runner,
+    )["outcome"] == "disabled"
+    assert host.automatic_cache_reclaim(
+        _auto_policy(applicable=False), None, operation="pull", _run=runner,
+    )["outcome"] == "not-applicable"
+
+
+def test_automatic_reclaim_readiness_timeout_skips_sampling():
+    def runner(*_args, **_kwargs):
+        pytest.fail("readiness timeout probed WSL")
+    result = host.automatic_cache_reclaim(
+        _auto_policy(), _sample(10), operation="load", readiness=False, _run=runner,
+    )
+    assert result["outcome"] == "readiness-timeout"
+    assert result["before_cache_gb"] == 10
+
+
+def test_automatic_reclaim_unavailable_below_threshold_and_no_growth():
+    unavailable = host.automatic_cache_reclaim(
+        _auto_policy(), None, operation="pull",
+        _run=lambda *_args, **_kwargs: proc(1),
+    )
+    assert unavailable["outcome"] == "unavailable"
+
+    below = _WslBox([12])
+    result = host.automatic_cache_reclaim(
+        _auto_policy(), _sample(10), operation="pull", _run=below,
+    )
+    assert result["outcome"] == "below-threshold"
+    assert result["growth_gb"] == 2
+
+    unchanged = _WslBox([20])
+    result = host.automatic_cache_reclaim(
+        _auto_policy(), _sample(19.5), operation="up", _run=unchanged,
+    )
+    assert result["outcome"] == "no-operation-growth"
+    assert unchanged.drops == []
+
+
+def test_automatic_reclaim_waits_for_settling_then_drops_page_cache_only():
+    box = _WslBox([20, 22, 22.1, 4])
+    result = host.automatic_cache_reclaim(
+        _auto_policy(), _sample(10), operation="up", _run=box,
+        _sleep=lambda _seconds: None,
+    )
+    assert result["outcome"] == "reclaimed"
+    assert result["before_cache_gb"] == 10
+    assert result["after_cache_gb"] == 4
+    assert result["growth_gb"] == pytest.approx(12.1, abs=0.01)
+    assert len(box.drops) == 1
+    command = " ".join(box.drops[0])
+    assert "echo 1 > /proc/sys/vm/drop_caches" in command
+    assert "echo 3" not in command
+
+
+@pytest.mark.parametrize(
+    ("samples", "threshold_gb", "outcome"),
+    [
+        ([20, 15], 16, "below-threshold"),
+        ([20, 10.5], 8, "no-operation-growth"),
+    ],
+)
+def test_automatic_reclaim_rechecks_eligibility_after_settling(
+    samples, threshold_gb, outcome,
+):
+    box = _WslBox(samples)
+    result = host.automatic_cache_reclaim(
+        _auto_policy(threshold_gb=threshold_gb), _sample(10), operation="up", _run=box,
+        _sleep=lambda _seconds: None,
+    )
+    assert result["outcome"] == outcome
+    assert box.drops == []
+
+
+def test_automatic_reclaim_refuses_active_io_after_bounded_polling():
+    # Initial post-operation sample plus 15 two-second samples = exactly 30s.
+    box = _WslBox([20 + index for index in range(16)])
+    sleeps = []
+    result = host.automatic_cache_reclaim(
+        _auto_policy(), _sample(10), operation="pull", _run=box,
+        _sleep=lambda seconds: sleeps.append(seconds),
+    )
+    assert result["outcome"] == "active-io"
+    assert len(sleeps) == 15
+    assert sum(sleeps) == 30
+    assert box.drops == []
+
+
+def test_automatic_reclaim_reports_drop_failure_and_renderer_warns(capsys):
+    class FailedDrop(_WslBox):
+        def __call__(self, argv, **kwargs):
+            if "drop_caches" in " ".join(argv):
+                self.drops.append(argv)
+                return proc(1, err="denied")
+            return super().__call__(argv, **kwargs)
+
+    result = host.automatic_cache_reclaim(
+        _auto_policy(), _sample(10), operation="load",
+        _run=FailedDrop([20, 20]), _sleep=lambda _seconds: None,
+    )
+    assert result["outcome"] == "failed"
+    host.render_cache_reclaim_result(result)
+    assert "WARNING" in capsys.readouterr().err

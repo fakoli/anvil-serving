@@ -151,7 +151,13 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   for read-only checks and plans. Use `host_manage` only for an exact reviewed
   repair after its human gate. Report Docker/WSL restart, WSL config edits, and
   cache deletion as `blocked` or `human_required` unless the human approves the
-  existing gate; MCP cache pruning is plan-only.
+  existing gate; MCP cache pruning is plan-only. `host_summary` also reports the
+  persistent `host.toml` WSL cache-reclaim policy. When enabled, confirmed
+  model pulls and managed model-load boundaries inherit one disclosed,
+  readiness-aware, warning-only page-cache postcondition; do not add a second
+  manual reclaim after a `reclaimed` result. Ad-hoc Compose, voice, request-time
+  ComfyUI loads, and the request-triggered multiplexer remain outside that
+  policy. Treat changing the persistent opt-in as a reviewed host mutation.
 
 ## Model Benchmark Source Freshness
 

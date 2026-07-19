@@ -27,6 +27,7 @@ import tomllib
 import sys
 from . import config
 from . import guard
+from . import host as host_ops
 from . import paths
 from . import serve_recipes
 HERE = os.path.dirname(__file__)
@@ -41,6 +42,8 @@ DEFAULT_PULL_TOKEN_FILE = "~/.env"
 # downloaded blobs land on native ext4, not a 9P bind mount (gotcha #15).
 HF_CACHE_MOUNTPOINT = "/root/.cache/huggingface"
 DEFAULT_CATALOG_DIR = "model-library"
+LIFECYCLE_READINESS_TIMEOUT_SECONDS = 600
+LIFECYCLE_READINESS_POLL_SECONDS = 2
 
 
 class CatalogNotFound(FileNotFoundError):
@@ -381,10 +384,27 @@ def pull_main(argv):
     ap.add_argument("--dry-run", action="store_true",
                     help="print the docker command that WOULD run, then exit")
     a = ap.parse_args(argv)
-    return run_pull(a.repo_id, volume=a.volume, image=a.image, revision=a.revision,
-                    include=a.include, exclude=a.exclude,
-                    token_env=None if a.no_token else a.token_env,
-                    token_file=a.token_file, dry_run=a.dry_run)
+    operation = "models pull"
+    try:
+        policy = host_ops.load_cache_reclaim_policy()
+    except host_ops.HostConfigError as exc:
+        print("[anvil-serving] %s" % exc, file=sys.stderr)
+        return 2
+    before = None if a.dry_run else host_ops.capture_cache_before(policy)
+    rc = run_pull(a.repo_id, volume=a.volume, image=a.image, revision=a.revision,
+                  include=a.include, exclude=a.exclude,
+                  token_env=None if a.no_token else a.token_env,
+                  token_file=a.token_file, dry_run=a.dry_run)
+    if a.dry_run:
+        if rc == 0:
+            host_ops.render_cache_reclaim_plan(policy, operation)
+        return rc
+    if rc == 0 and policy["enabled"]:
+        result = host_ops.automatic_cache_reclaim(
+            policy, before, operation=operation,
+        )
+        host_ops.render_cache_reclaim_result(result)
+    return rc
 
 
 # The serve-recipe registry ships at <repo>/configs/serve-recipes.toml.
@@ -687,6 +707,14 @@ def _build_recipe_parser():
 def _recipe_main(argv):
     a = _build_recipe_parser().parse_args(argv)
 
+    cache_policy = None
+    if a.recipe_action == "load":
+        try:
+            cache_policy = host_ops.load_cache_reclaim_policy()
+        except host_ops.HostConfigError as exc:
+            print("[anvil-serving] %s" % exc, file=sys.stderr)
+            return 2
+
     registry_path = a.registry or _default_registry()
     try:
         registry = _recipe_registry(
@@ -800,17 +828,38 @@ def _recipe_main(argv):
             )
             print("ownership condition: never remove a container that existed before apply")
             print("deferred until apply: confirmation and Docker start")
-            print("not performed by load: health check and eval preflight; run them next")
+            print("postcondition: wait up to 600s for declared HTTP health before automatic cache reclaim")
+            print("not performed by load: eval preflight; run it next")
+            host_ops.render_cache_reclaim_plan(cache_policy, "models recipes load")
             return 0
         if not _confirm_recipe_mutation("load", recipe["model"], confirm=a.confirm, dry_run=False):
             return 3
+        before = host_ops.capture_cache_before(cache_policy)
         print("loading recipe %r as container %r" % (recipe["model"], a.container))
         print("$ " + printable)
         _command, rc = serve_recipes.load_recipe(recipe, a.container)
         if rc:
             print("recipe load failed with docker exit code %s" % rc, file=sys.stderr)
             return rc
-        port = recipe.get("serve", {}).get("port")
+        recipe_serve = recipe.get("serve", {})
+        port = recipe_serve.get("port")
+        if cache_policy["enabled"]:
+            readiness = True
+            if host_ops.cache_reclaim_is_active(cache_policy) and before is not None:
+                if port:
+                    from . import serves
+                    readiness = serves._await_healthy(
+                        {"port": port, "health": recipe_serve.get("health", "/health")},
+                        LIFECYCLE_READINESS_TIMEOUT_SECONDS,
+                        LIFECYCLE_READINESS_POLL_SECONDS,
+                    )
+                else:
+                    readiness = False
+            result = host_ops.automatic_cache_reclaim(
+                cache_policy, before, operation="models recipes load",
+                readiness=readiness,
+            )
+            host_ops.render_cache_reclaim_result(result)
         if port:
             print("next: preflight before trusting this serve: anvil-serving eval preflight --base-url http://127.0.0.1:%s/v1 --model %s --confirm" % (port, recipe["model"]))
         return 0

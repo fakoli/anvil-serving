@@ -19,7 +19,7 @@ hand-set `memory=84GB` on a 93.7 GB host starved Windows, Docker Desktop failed 
   memory          show host RAM, the WSL VM's used/page-cache/available (via `/proc/meminfo` inside the
                   distro), and GPU VRAM. The page-cache line is the one that matters during bakeoffs:
                   repeated 60-90 GB weight streams balloon it until Windows starves.
-  reclaim         drop the WSL VM's page cache (`sync && echo 3 > /proc/sys/vm/drop_caches` as root inside
+  reclaim         drop the WSL VM's page cache (`sync && echo 1 > /proc/sys/vm/drop_caches` as root inside
                   the distro) - the safe manual remediation from the 2026-07-10/11 Blackwell bakeoff,
                   promoted per "operational utilities belong in anvil-serving". Confirm-gated: via the
                   anvil-serving CLI the gate is --confirm (--force does NOT satisfy it); --force
@@ -34,12 +34,15 @@ dependency-injected so tests run with no docker, no WSL, no prompts.
 """
 import argparse
 import json
+import math
 import os
 import shutil
 import subprocess
 import sys
 import time
+import tomllib
 from . import guard
+from . import paths
 
 # Leave AT LEAST this much for Windows (hard floor: refuse a WSL memory that leaves less, unless --force).
 MIN_WINDOWS_RESERVE_GB = 10
@@ -123,7 +126,273 @@ def _gpus(_run=subprocess.run, timeout=DEFAULT_PROBE_TIMEOUT_SECONDS):
 # ponytail: fixed heuristic; make it a flag if a slow disk ever streams below 0.25 GB/s.
 STREAMING_CACHE_GROWTH_GBPS = 0.25
 _STREAM_SAMPLE_SECONDS = 2.0
-DROP_CACHES_CMD = "sync && echo 3 > /proc/sys/vm/drop_caches"
+_AUTO_SETTLE_SECONDS = 30.0
+_AUTO_MIN_GROWTH_GB = 1.0
+DROP_CACHES_CMD = "sync && echo 1 > /proc/sys/vm/drop_caches"
+HOST_CONFIG_SCHEMA_VERSION = 1
+DEFAULT_CACHE_RECLAIM_DISTRO = "docker-desktop"
+DEFAULT_CACHE_RECLAIM_THRESHOLD_GB = 16.0
+_HOST_CONFIG_FIELDS = frozenset({"schema_version", "cache_reclaim"})
+_CACHE_RECLAIM_FIELDS = frozenset({"enabled", "distro", "threshold_gb"})
+_WARNING_RECLAIM_OUTCOMES = frozenset({
+    "active-io", "readiness-timeout", "unavailable", "failed",
+})
+
+
+class HostConfigError(ValueError):
+    """The persistent machine-level host policy is invalid."""
+
+
+def host_config_path():
+    """Resolved persistent host policy path (honors ``ANVIL_SERVING_HOME``)."""
+    return paths.config_path("host.toml")
+
+
+def load_cache_reclaim_policy(path=None):
+    """Load and strictly validate the persistent lifecycle cache-reclaim policy.
+
+    A missing file or ``[cache_reclaim]`` table is disabled for upgrade
+    compatibility. Once the table exists, unknown fields and invalid types fail
+    loudly so lifecycle callers can refuse before starting a model operation.
+    """
+    source_path = os.path.abspath(os.path.expanduser(path or host_config_path()))
+    policy = {
+        "enabled": False,
+        "distro": DEFAULT_CACHE_RECLAIM_DISTRO,
+        "threshold_gb": DEFAULT_CACHE_RECLAIM_THRESHOLD_GB,
+        "source_path": source_path,
+        "configured": False,
+        "applicable": sys.platform == "win32",
+        "schema_version": HOST_CONFIG_SCHEMA_VERSION,
+    }
+    try:
+        with open(source_path, "rb") as handle:
+            document = tomllib.load(handle)
+    except FileNotFoundError:
+        return policy
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        raise HostConfigError("cannot read host policy %s: %s" % (source_path, exc)) from exc
+    if not isinstance(document, dict):  # pragma: no cover - tomllib always returns a dict
+        raise HostConfigError("host policy %s must be a TOML document" % source_path)
+    unknown = sorted(set(document) - _HOST_CONFIG_FIELDS)
+    if unknown:
+        raise HostConfigError(
+            "host policy %s has unknown field(s): %s"
+            % (source_path, ", ".join(unknown))
+        )
+    section = document.get("cache_reclaim")
+    if section is None:
+        version = document.get("schema_version", HOST_CONFIG_SCHEMA_VERSION)
+        if isinstance(version, bool) or version != HOST_CONFIG_SCHEMA_VERSION:
+            raise HostConfigError(
+                "host policy %s schema_version must be %s"
+                % (source_path, HOST_CONFIG_SCHEMA_VERSION)
+            )
+        return policy
+    if not isinstance(section, dict):
+        raise HostConfigError("host policy %s cache_reclaim must be a table" % source_path)
+    version = document.get("schema_version")
+    if isinstance(version, bool) or version != HOST_CONFIG_SCHEMA_VERSION:
+        raise HostConfigError(
+            "host policy %s schema_version must be %s when cache_reclaim is configured"
+            % (source_path, HOST_CONFIG_SCHEMA_VERSION)
+        )
+    unknown = sorted(set(section) - _CACHE_RECLAIM_FIELDS)
+    if unknown:
+        raise HostConfigError(
+            "host policy %s cache_reclaim has unknown field(s): %s"
+            % (source_path, ", ".join(unknown))
+        )
+    enabled = section.get("enabled", False)
+    distro = section.get("distro", DEFAULT_CACHE_RECLAIM_DISTRO)
+    threshold = section.get("threshold_gb", DEFAULT_CACHE_RECLAIM_THRESHOLD_GB)
+    if not isinstance(enabled, bool):
+        raise HostConfigError("host policy %s cache_reclaim.enabled must be a boolean" % source_path)
+    if not isinstance(distro, str) or not distro.strip():
+        raise HostConfigError(
+            "host policy %s cache_reclaim.distro must be a non-empty string" % source_path
+        )
+    if (
+        isinstance(threshold, bool)
+        or not isinstance(threshold, (int, float))
+        or not math.isfinite(threshold)
+        or threshold <= 0
+    ):
+        raise HostConfigError(
+            "host policy %s cache_reclaim.threshold_gb must be a finite positive number"
+            % source_path
+        )
+    policy.update({
+        "enabled": enabled,
+        "distro": distro.strip(),
+        "threshold_gb": float(threshold),
+        "configured": True,
+    })
+    return policy
+
+
+def cache_reclaim_policy_summary(path=None):
+    """Return the resolved policy without making host status all-or-nothing."""
+    source_path = os.path.abspath(os.path.expanduser(path or host_config_path()))
+    try:
+        return {"valid": True, **load_cache_reclaim_policy(source_path)}
+    except HostConfigError as exc:
+        return {
+            "valid": False,
+            "enabled": False,
+            "distro": None,
+            "threshold_gb": None,
+            "source_path": source_path,
+            "configured": os.path.exists(source_path),
+            "applicable": sys.platform == "win32",
+            "schema_version": None,
+            "error": str(exc),
+        }
+
+
+def cache_reclaim_is_active(policy):
+    """Whether a lifecycle caller should sample cache or wait for readiness."""
+    return bool(policy.get("enabled") and policy.get("applicable"))
+
+
+def capture_cache_before(policy, _run=subprocess.run):
+    """Capture the operation baseline only when automatic reclaim can apply."""
+    if not cache_reclaim_is_active(policy):
+        return None
+    return wsl_meminfo(_run=_run, distro=policy["distro"])
+
+
+def _cache_value(sample):
+    if not isinstance(sample, dict):
+        return None
+    value = sample.get("cached_gb")
+    return value if isinstance(value, (int, float)) and math.isfinite(value) else None
+
+
+def automatic_cache_reclaim(policy, before, *, operation, readiness=True,
+                            _run=subprocess.run, _sleep=time.sleep):
+    """Apply lifecycle-aware WSL page-cache reclaim and return one result dict.
+
+    This is a best-effort postcondition: it never raises into the successful
+    parent operation, never forces an active-I/O override, and only drops page
+    cache after the configured threshold, operation-growth, and bounded settling
+    gates pass.
+    """
+    result = {
+        "outcome": None,
+        "operation": operation,
+        "distro": policy.get("distro"),
+        "threshold_gb": policy.get("threshold_gb"),
+        "source_path": policy.get("source_path"),
+        "before_cache_gb": _cache_value(before),
+        "after_cache_gb": None,
+        "growth_gb": None,
+        "growth_gbps": None,
+    }
+    if not policy.get("enabled"):
+        result["outcome"] = "disabled"
+        return result
+    if not policy.get("applicable"):
+        result["outcome"] = "not-applicable"
+        return result
+    if not readiness:
+        result["outcome"] = "readiness-timeout"
+        return result
+    try:
+        after = wsl_meminfo(_run=_run, distro=policy["distro"])
+        before_cache = _cache_value(before)
+        after_cache = _cache_value(after)
+        result["after_cache_gb"] = after_cache
+        if before_cache is None or after_cache is None:
+            result["outcome"] = "unavailable"
+            return result
+        if after_cache < policy["threshold_gb"]:
+            result["growth_gb"] = after_cache - before_cache
+            result["outcome"] = "below-threshold"
+            return result
+        growth = after_cache - before_cache
+        result["growth_gb"] = growth
+        if growth < _AUTO_MIN_GROWTH_GB:
+            result["outcome"] = "no-operation-growth"
+            return result
+
+        current = after
+        samples = int(_AUTO_SETTLE_SECONDS / _STREAM_SAMPLE_SECONDS)
+        for _ in range(samples):
+            _sleep(_STREAM_SAMPLE_SECONDS)
+            following = wsl_meminfo(_run=_run, distro=policy["distro"])
+            current_cache = _cache_value(current)
+            following_cache = _cache_value(following)
+            if current_cache is None or following_cache is None:
+                result["outcome"] = "unavailable"
+                return result
+            rate = (following_cache - current_cache) / _STREAM_SAMPLE_SECONDS
+            result["after_cache_gb"] = following_cache
+            result["growth_gb"] = following_cache - before_cache
+            result["growth_gbps"] = rate
+            current = following
+            if rate <= STREAMING_CACHE_GROWTH_GBPS:
+                break
+        else:
+            result["outcome"] = "active-io"
+            return result
+
+        # The settling sample is the cache state we are about to mutate. Recheck
+        # both eligibility gates so natural WSL reclaim during the bounded wait
+        # cannot trigger an unnecessary VM-wide drop.
+        settled_cache = result["after_cache_gb"]
+        if settled_cache < policy["threshold_gb"]:
+            result["outcome"] = "below-threshold"
+            return result
+        if result["growth_gb"] < _AUTO_MIN_GROWTH_GB:
+            result["outcome"] = "no-operation-growth"
+            return result
+
+        if not _drop_caches(policy["distro"], _run):
+            result["outcome"] = "failed"
+            return result
+        dropped = wsl_meminfo(_run=_run, distro=policy["distro"])
+        result["after_cache_gb"] = _cache_value(dropped)
+        result["outcome"] = "reclaimed"
+        return result
+    except Exception as exc:  # best-effort postcondition: never replace parent success
+        result["outcome"] = "failed"
+        result["error"] = str(exc)
+        return result
+
+
+def render_cache_reclaim_result(result):
+    """Render one automatic postcondition result; library code stays print-free."""
+    outcome = result["outcome"]
+    before = _fmt(result.get("before_cache_gb"))
+    after = _fmt(result.get("after_cache_gb"))
+    detail = "cache %s -> %s" % (before, after)
+    if result.get("growth_gb") is not None:
+        detail += ", operation growth %.1f GB" % result["growth_gb"]
+    if result.get("growth_gbps") is not None:
+        detail += ", latest growth %.2f GB/s" % result["growth_gbps"]
+    if result.get("error"):
+        detail += ", %s" % result["error"]
+    stream = sys.stderr if outcome in _WARNING_RECLAIM_OUTCOMES else sys.stdout
+    prefix = "WARNING: " if stream is sys.stderr else ""
+    print(
+        "%scache reclaim after %s: %s (%s; distro %s)"
+        % (prefix, result["operation"], outcome, detail, result.get("distro") or "-"),
+        file=stream,
+    )
+
+
+def render_cache_reclaim_plan(policy, operation):
+    """Disclose the resolved automatic postcondition in an existing dry-run."""
+    state = "enabled" if policy["enabled"] else "disabled"
+    applicability = "applicable" if policy["applicable"] else "not applicable on this host"
+    print(
+        "automatic cache reclaim: %s (%s; after %s; distro %s; threshold %.1f GB; policy %s)"
+        % (
+            state, applicability, operation, policy["distro"], policy["threshold_gb"],
+            policy["source_path"],
+        )
+    )
 
 
 def _wsl_argv(tail, distro=None):
@@ -176,9 +445,13 @@ def _cache_growth_gbps(_run=subprocess.run, distro=None, _sleep=time.sleep):
 
 
 def _drop_caches(distro, _run):
-    """`sync && echo 3 > /proc/sys/vm/drop_caches` as root inside the distro. True on success.
-    Only clean (already-written) cache pages are evicted, so this is data-safe; `sync` first
-    flushes any dirty pages. Generous timeout: sync can take a while under write load."""
+    """Drop page cache as root inside the distro. True on success.
+
+    ``drop_caches=1`` deliberately leaves reclaimable dentries and inodes alone.
+    Only clean (already-written) page-cache pages are evicted, so this is
+    data-safe; ``sync`` first flushes dirty pages. The timeout is generous
+    because sync can take a while under write load.
+    """
     try:
         r = _run(_wsl_argv(["-u", "root", "-e", "sh", "-c", DROP_CACHES_CMD], distro),
                  capture_output=True, text=True, errors="replace", timeout=120)
@@ -226,6 +499,7 @@ def host_summary(_run=subprocess.run):
         }
         for index, name, used, total in gpus
     ]
+    cache_reclaim = cache_reclaim_policy_summary()
     checks = [
         {"name": "host_ram", "ok": host is not None, "value_gb": host},
         {"name": "docker_wsl_memory", "ok": wsl is not None, "value_gb": wsl},
@@ -242,6 +516,7 @@ def host_summary(_run=subprocess.run):
         "gpus": gpu_rows,
         "recommended_wsl_memory_gb": rec,
         "windows_reserve": reserve,
+        "cache_reclaim": cache_reclaim,
         "checks": checks,
     }
 
@@ -719,7 +994,7 @@ def _build_parser():
     mem = sub.add_parser("memory", help="show host RAM / WSL VM memory (incl. page cache) / GPUs")
     mem.add_argument("--distro", help="WSL distro to query (default: the default distro).")
 
-    rec = sub.add_parser("reclaim", help="drop the WSL VM page cache (sync && drop_caches=3)")
+    rec = sub.add_parser("reclaim", help="drop the WSL VM page cache (sync && drop_caches=1)")
     rec.add_argument("--force", action="store_true",
                      help="override the streaming-load refusal (and skip the [y/N] prompt when "
                           "invoking this module directly; via the anvil-serving CLI the "

@@ -94,7 +94,11 @@ The named-volume default avoids slow host bind mounts on Windows/WSL2 and remain
 valid on Linux and macOS Docker hosts. Preview resolves repository filters, token
 mode (including the environment-variable name and expanded dotenv path, never a
 token value), preconditions, ordered Docker actions, resumable recovery, and the
-fact that downloaded bytes have no automatic rollback.
+fact that downloaded bytes have no automatic rollback. It also discloses the
+machine's automatic WSL cache-reclaim policy. When that policy is enabled, a
+successful confirmed pull captures operation cache growth and evaluates the
+best-effort page-cache-only postcondition once. A skip or failure warns without
+changing the successful download's exit code.
 
 ## Recipes
 
@@ -171,6 +175,13 @@ change router policy or promote the candidate. Validate it with
 [`eval preflight`](eval.md#preflight), then use [`serves switch`](serves.md#switch-heavy-by-recipe)
 only after human review. The preview's cleanup command is conditional: use it only for a
 container successfully created by that load, never for a name that existed beforehand.
+
+When machine-level cache reclaim is enabled, the preview also declares that `load`
+will wait up to 600 seconds for the recipe's HTTP health after the container starts.
+Only then does it evaluate the cache threshold, fixed 1 GiB growth gate, and settled-I/O
+gate. A readiness timeout skips reclaim and leaves the container running; it does not
+change the successful load's exit code. Configure the default-off policy in
+[`host.toml`](../CONFIGURATION.md#machine-policy-hosttoml).
 
 ## Model scoring
 

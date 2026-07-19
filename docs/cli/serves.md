@@ -64,6 +64,13 @@ and `down` does not imply removal. `--confirm` is the only public consent spelli
 the removed `serves rm --yes` and `serves adopt --yes` forms fail with migration
 guidance before reaching Docker.
 
+On a Windows/WSL machine with the default-off `host.toml` cache policy enabled,
+confirmed manifest-owned `up` waits up to 600 seconds for every selected serve's
+declared HTTP health, then evaluates one best-effort page-cache reclaim. Ad-hoc
+`serves up --compose` is excluded. The dry run discloses the resolved policy, and a
+readiness timeout or reclaim failure warns without stopping the container or changing
+the successful lifecycle exit code.
+
 ## Render and adopt
 
 ```bash
@@ -74,7 +81,8 @@ anvil-serving serves adopt --confirm
 
 `render` produces a reviewable serve definition. `adopt` brings an already-running
 serve under the same ownership contract; it does not silently claim arbitrary
-containers.
+containers. An enabled machine cache policy gives `adopt` the same bounded health wait
+and single postcondition as manifest-owned `up`.
 
 ## Switch Heavy by recipe
 
@@ -105,6 +113,10 @@ dated findings. A normal registry row is intentionally not enough to alter a liv
 tier; add a reviewed activation mapping and promotion plan first. Controller and SSH
 transport parity remain tracked follow-up work; run this command on the resource owner.
 
+An enabled machine cache policy runs once at this public boundary after the switch's
+existing health, exact-identity, preflight, and router-readiness gates. Nested `up` work
+inside the transaction does not reclaim separately.
+
 ## Advanced: promote a plan
 
 For lower-level plan operation and recovery:
@@ -118,6 +130,13 @@ anvil-serving serves promote PROMOTION_PLAN --confirm
 Promotion stages the candidate, runs preflight, and preserves a rollback path. It is
 separate from [`models recipes load`](models.md#load-a-recipe), which starts a named
 local container but never promotes router policy.
+
+Promotion and an explicitly requested rollback also evaluate the enabled machine cache
+policy exactly once after their existing readiness gates. Controller-dispatched serve
+operations inherit the behavior because they execute the same resource-owner CLI; no
+new MCP tool or schema field is added. See
+[`host.toml` configuration](../CONFIGURATION.md#machine-policy-hosttoml) and
+[ADR-0023](../adr/0023-lifecycle-aware-wsl-cache-reclaim.md).
 
 ## Multiplexing
 
