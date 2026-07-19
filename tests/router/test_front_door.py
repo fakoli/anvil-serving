@@ -182,6 +182,9 @@ def _decision_record() -> DecisionRecord:
         total_completion_tokens=8,
         fell_back=True,
         intent="chat",
+        request_id="req_91ce",
+        workbench_run_id="run_7f2a",
+        task_id="task_48",
     )
 
 
@@ -199,6 +202,8 @@ def test_decision_summary_route_returns_recent_metadata_only():
     assert body["count"] == 1
     assert body["records"][0]["served_tier"] == "cloud"
     assert body["records"][0]["fell_back"] is True
+    assert body["records"][0]["workbench_run_id"] == "run_7f2a"
+    assert body["records"][0]["task_id"] == "task_48"
     rendered_records = json.dumps(body["records"])
     assert "messages" not in rendered_records
     assert "content" not in rendered_records

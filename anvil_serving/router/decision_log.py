@@ -35,6 +35,7 @@ _SUMMARY_SECRET_RE = re.compile(
     r"sk-(?:proj-)?[A-Za-z0-9_-]{6,}|"
     r"[A-Z0-9_-]*(?:TOKEN|SECRET|API_KEY|API-KEY|KEY)[A-Z0-9_-]*\s*[:=]\s*[^\s]+)"
 )
+_CORRELATION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 
 
 @dataclass(frozen=True)
@@ -107,6 +108,37 @@ class DecisionRecord:
     # distinguishes the SAME model measured in different modes. None (a --config boot
     # with no mode) leaves existing records byte-for-byte unchanged.
     mode: Optional[str] = None
+    # Workbench lineage metadata. These identifiers are supplied by a trusted
+    # private harness header and sanitized at the front door; they are never
+    # prompt/response content and remain optional for all existing callers.
+    request_id: Optional[str] = None
+    workbench_run_id: Optional[str] = None
+    task_id: Optional[str] = None
+
+
+def safe_correlation(value: Any) -> Optional[str]:
+    """Accept a compact opaque correlation identifier or discard it.
+
+    Decision logs are operator-visible and sometimes exported as line-oriented
+    evidence, so caller-controlled values cannot carry whitespace, control
+    characters, or arbitrary content. The router treats malformed correlation
+    headers as absent rather than failing an otherwise valid model request.
+    """
+    candidate = str(value or "")
+    return candidate if _CORRELATION_RE.fullmatch(candidate) else None
+
+
+def request_correlation(request: Any) -> dict[str, Optional[str]]:
+    """Read the front-door-stamped Workbench lineage from an internal request."""
+    raw = getattr(request, "raw", {})
+    source = raw.get("_anvil_correlation", {}) if isinstance(raw, Mapping) else {}
+    if not isinstance(source, Mapping):
+        source = {}
+    return {
+        "request_id": safe_correlation(source.get("request_id")),
+        "workbench_run_id": safe_correlation(source.get("workbench_run_id")),
+        "task_id": safe_correlation(source.get("task_id")),
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -155,16 +187,19 @@ def response_metadata(record: DecisionRecord) -> Mapping[str, Any]:
     ``tiers_tried`` (the tier id of each attempt, in order), and ``exhausted``
     (no tier served). Metadata only — no prompt, response, or secret.
     """
-    return MappingProxyType(
-        {
+    fields = {
             "served_tier": record.served_tier,
             "fell_back": record.fell_back,
             "work_class": record.work_class,
             "intent": record.intent,
             "tiers_tried": tuple(a.tier_id for a in record.attempts),
             "exhausted": record.served_tier is None,
-        }
-    )
+    }
+    for name in ("request_id", "workbench_run_id", "task_id"):
+        value = safe_correlation(getattr(record, name, None))
+        if value is not None:
+            fields[name] = value
+    return MappingProxyType(fields)
 
 
 def _safe(token: Optional[str]) -> str:
@@ -296,6 +331,9 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
             "total_completion_tokens": completion_tokens,
             "cost_usd": round(cost_usd, 8),
             "mode": _summary_safe(_field(record, "mode")),
+            "request_id": _summary_safe(safe_correlation(_field(record, "request_id"))),
+            "workbench_run_id": _summary_safe(safe_correlation(_field(record, "workbench_run_id"))),
+            "task_id": _summary_safe(safe_correlation(_field(record, "task_id"))),
         })
     return {
         "count": len(items),
