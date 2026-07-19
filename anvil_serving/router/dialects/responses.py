@@ -17,10 +17,26 @@ from . import _new_id
 from .openai import OpenAIDialect
 
 
-_UNSUPPORTED_FIELDS = (
-    "previous_response_id", "conversation", "background",
-    "metadata",
+_SUPPORTED_FIELDS = frozenset(
+    {
+        "include",
+        "input",
+        "instructions",
+        "max_output_tokens",
+        "model",
+        "parallel_tool_calls",
+        "reasoning",
+        "store",
+        "stream",
+        "temperature",
+        "text",
+        "tool_choice",
+        "tools",
+        "top_p",
+        "truncation",
+    }
 )
+_TEXT_CONTENT_TYPES = frozenset({"input_text", "output_text", "text"})
 
 
 def _event(name: str, payload: Dict[str, Any]) -> bytes:
@@ -31,19 +47,44 @@ def _event(name: str, payload: Dict[str, Any]) -> bytes:
     )
 
 
-def _text(value: Any) -> str:
+def _text(value: Any, *, field: str) -> str:
+    """Render the explicitly supported text-only content shape.
+
+    A text-only adapter must not silently discard an image, file, or malformed
+    content item. That changes an agent's request while returning a successful
+    response, which is worse than a clear unsupported-feature failure.
+    """
     if isinstance(value, str):
         return value
     if isinstance(value, list):
         parts: list[str] = []
         for item in value:
-            if isinstance(item, str):
-                parts.append(item)
-            elif isinstance(item, Mapping):
-                if item.get("type") in {"input_text", "output_text", "text"}:
-                    parts.append(str(item.get("text") or ""))
+            if not isinstance(item, Mapping):
+                raise DialectError(
+                    400, "invalid_request_error", f"{field} content parts must be objects"
+                )
+            item_type = item.get("type")
+            if item_type not in _TEXT_CONTENT_TYPES:
+                rendered_type = str(item_type) if item_type is not None else "missing"
+                raise DialectError(
+                    400,
+                    "unsupported_feature",
+                    f"/v1/responses does not support {field} content type: {rendered_type}",
+                )
+            text = item.get("text")
+            if not isinstance(text, str):
+                raise DialectError(
+                    400,
+                    "invalid_request_error",
+                    f"{field} text content requires a string text field",
+                )
+            parts.append(text)
         return "".join(parts)
-    return "" if value is None else str(value)
+    raise DialectError(
+        400,
+        "invalid_request_error",
+        f"{field} must be a string or an array of text content",
+    )
 
 
 def _tool_definition(tool: Mapping[str, Any]) -> dict[str, Any]:
@@ -60,11 +101,20 @@ def _tool_definition(tool: Mapping[str, Any]) -> dict[str, Any]:
         raise DialectError(400, "invalid_request_error", "function tools require a non-empty name")
     function: dict[str, Any] = {"name": name}
     if "description" in tool:
-        function["description"] = str(tool["description"])
+        description = tool["description"]
+        if not isinstance(description, str):
+            raise DialectError(400, "invalid_request_error", "function tool descriptions must be strings")
+        function["description"] = description
     if "parameters" in tool:
-        function["parameters"] = tool["parameters"]
+        parameters = tool["parameters"]
+        if not isinstance(parameters, Mapping):
+            raise DialectError(400, "invalid_request_error", "function tool parameters must be objects")
+        function["parameters"] = dict(parameters)
     if "strict" in tool:
-        function["strict"] = bool(tool["strict"])
+        strict = tool["strict"]
+        if not isinstance(strict, bool):
+            raise DialectError(400, "invalid_request_error", "function tool strict must be a boolean")
+        function["strict"] = strict
     return {"type": "function", "function": function}
 
 
@@ -84,11 +134,17 @@ def _tool_definitions(tool: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 
 def _tool_choice(value: Any) -> Any:
+    if isinstance(value, str):
+        if value in {"auto", "none", "required"}:
+            return value
+        raise DialectError(400, "unsupported_feature", f"unsupported tool_choice: {value}")
     if not isinstance(value, Mapping):
-        return value
+        raise DialectError(400, "invalid_request_error", "tool_choice must be a string or function object")
     if value.get("type") == "function" and isinstance(value.get("name"), str):
+        if set(value) != {"type", "name"} or not value["name"]:
+            raise DialectError(400, "invalid_request_error", "function tool_choice requires only a non-empty name")
         return {"type": "function", "function": {"name": value["name"]}}
-    return dict(value)
+    raise DialectError(400, "unsupported_feature", "only function tool_choice objects are supported")
 
 
 class ResponsesDialect:
@@ -97,6 +153,13 @@ class ResponsesDialect:
     name = "responses"
 
     def parse_request(self, body: Mapping[str, Any]) -> InternalRequest:
+        unsupported = sorted(str(field) for field in body if field not in _SUPPORTED_FIELDS)
+        if unsupported:
+            raise DialectError(
+                400,
+                "unsupported_feature",
+                f"/v1/responses does not support field(s): {', '.join(unsupported)}",
+            )
         # Codex sends the explicit stateless form.  Accepting `store: false`
         # retains the Responses request shape without claiming provider-side
         # response storage or stateful continuation support.
@@ -134,9 +197,6 @@ class ResponsesDialect:
             raise DialectError(400, "unsupported_feature", "/v1/responses supports only parallel_tool_calls: false")
         if "truncation" in body and body["truncation"] != "disabled":
             raise DialectError(400, "unsupported_feature", "/v1/responses supports only truncation: disabled")
-        for field in _UNSUPPORTED_FIELDS:
-            if field in body:
-                raise DialectError(400, "unsupported_feature", f"/v1/responses does not support {field}")
         if "input" not in body:
             raise DialectError(400, "invalid_request_error", "input is required")
         input_value = body.get("input")
@@ -157,30 +217,44 @@ class ResponsesDialect:
                     role = str(item.get("role") or "user")
                     if role not in {"system", "developer", "user", "assistant"}:
                         raise DialectError(400, "invalid_request_error", f"unsupported input message role: {role}")
-                    messages.append({"role": "system" if role == "developer" else role, "content": _text(item.get("content"))})
+                    if "content" not in item:
+                        raise DialectError(400, "invalid_request_error", "input messages require content")
+                    messages.append({"role": "system" if role == "developer" else role, "content": _text(item["content"], field="input message")})
                 elif item_type == "function_call":
-                    call_id = str(item.get("call_id") or item.get("id") or _new_id("call_"))
+                    call_id = item.get("call_id")
+                    if not isinstance(call_id, str) or not call_id:
+                        raise DialectError(400, "invalid_request_error", "function_call input requires call_id")
                     name = item.get("name")
                     if not isinstance(name, str) or not name:
                         raise DialectError(400, "invalid_request_error", "function_call input requires name")
                     arguments = item.get("arguments", "")
                     if isinstance(arguments, Mapping):
                         arguments = json.dumps(arguments, separators=(",", ":"))
+                    if not isinstance(arguments, str):
+                        raise DialectError(400, "invalid_request_error", "function_call input arguments must be a string or object")
                     messages.append({"role": "assistant", "content": None, "tool_calls": [{"id": call_id, "type": "function", "function": {"name": name, "arguments": str(arguments)}}]})
                 elif item_type == "function_call_output":
                     call_id = item.get("call_id")
                     if not isinstance(call_id, str) or not call_id:
                         raise DialectError(400, "invalid_request_error", "function_call_output requires call_id")
-                    messages.append({"role": "tool", "tool_call_id": call_id, "content": _text(item.get("output"))})
+                    if "output" not in item:
+                        raise DialectError(400, "invalid_request_error", "function_call_output requires output")
+                    messages.append({"role": "tool", "tool_call_id": call_id, "content": _text(item["output"], field="function_call_output")})
                 else:
                     raise DialectError(400, "unsupported_feature", f"unsupported input item type: {item_type}")
         else:
             raise DialectError(400, "invalid_request_error", "input must be a string or an array")
 
+        model = body.get("model", "chat")
+        if not isinstance(model, str) or not model.strip():
+            raise DialectError(400, "invalid_request_error", "model must be a non-empty string")
+        stream = body.get("stream", False)
+        if not isinstance(stream, bool):
+            raise DialectError(400, "invalid_request_error", "stream must be a boolean")
         converted: dict[str, Any] = {
-            "model": str(body.get("model") or "chat"),
+            "model": model,
             "messages": messages,
-            "stream": bool(body.get("stream", False)),
+            "stream": stream,
         }
         for field in ("temperature", "top_p"):
             if field in body:
@@ -191,11 +265,12 @@ class ResponsesDialect:
         if tools is not None:
             if not isinstance(tools, list):
                 raise DialectError(400, "invalid_request_error", "tools must be an array")
-            converted["tools"] = [
-                definition
-                for tool in tools
-                for definition in _tool_definitions(tool if isinstance(tool, Mapping) else {})
-            ]
+            definitions: list[dict[str, Any]] = []
+            for tool in tools:
+                if not isinstance(tool, Mapping):
+                    raise DialectError(400, "invalid_request_error", "tools must contain objects")
+                definitions.extend(_tool_definitions(tool))
+            converted["tools"] = definitions
         if "tool_choice" in body:
             converted["tool_choice"] = _tool_choice(body["tool_choice"])
         text = body.get("text")
@@ -208,9 +283,15 @@ class ResponsesDialect:
             schema = format_value.get("schema")
             if not isinstance(schema, Mapping):
                 raise DialectError(400, "invalid_request_error", "text.format.schema must be an object")
+            format_name = format_value.get("name", "response")
+            if not isinstance(format_name, str) or not format_name:
+                raise DialectError(400, "invalid_request_error", "text.format.name must be a non-empty string")
+            strict = format_value.get("strict", False)
+            if not isinstance(strict, bool):
+                raise DialectError(400, "invalid_request_error", "text.format.strict must be a boolean")
             converted["response_format"] = {
                 "type": "json_schema",
-                "json_schema": {"name": str(format_value.get("name") or "response"), "schema": dict(schema), "strict": bool(format_value.get("strict", False))},
+                "json_schema": {"name": format_name, "schema": dict(schema), "strict": strict},
             }
         request = OpenAIDialect().parse_request(converted)
         # The relay emits Chat Completions upstream, but response rendering remains

@@ -27,6 +27,7 @@ anvil-serving workbench down --env-file .\workbench.env --confirm
 ```
 
 `up` and `down` require `--confirm`; `down` preserves named database volumes. Use `--dry-run` to inspect the exact Docker Compose command. `logs --tail` accepts 1 through 5000 lines per service; `--follow` remains an intentional foreground stream. The environment file supplies owner, approver set, database passwords, and the private Anvil router base URL. The router token remains an environment variable on the Docker host, never a browser value or committed configuration.
+`workbench.env` (and variants such as `workbench.env.dark`) are intentionally gitignored; commit only a value-free `workbench.env.example` if an example is needed.
 
 ## Responses and correlation contract
 
