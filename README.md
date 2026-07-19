@@ -183,6 +183,54 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | `anvil-serving voice` | Manage STT/TTS lifecycle, switch voice profiles, bridge private audio endpoints, run the local Realtime voice server, benchmark voice turns, and delegate nested `voice sidecar` operations. |
 | `anvil-serving voice sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
 
+### Fresh OpenClaw gateway setup
+
+Use the harness sync as the setup owner instead of hand-merging a provider fragment. A fresh
+gateway needs a native provider/model for safe cloud-preferred turns, an absolute plugin path
+that is visible on the gateway, and explicit tool/exec policies:
+
+```bash
+anvil-serving harness sync openclaw \
+  --config configs/example.toml \
+  --base-url http://100.87.34.66:8000/v1 \
+  --native-provider openai \
+  --native-model gpt-5.6-sol \
+  --plugin-dir /absolute/path/to/openclaw-anvil-intent-router \
+  --tool-profile full \
+  --exec-mode auto \
+  --out ~/.openclaw/openclaw.json \
+  --restart
+```
+
+The sync enables the plugin, grants its conversation hook, registers its load path, configures the
+authoritative `<base-url>/route` decision endpoint, and keeps the native model as OpenClaw's primary
+instead of making `anvil/chat` the failure-prone default. `--tool-profile full` exposes OpenClaw's
+full agent tool surface. `--exec-mode auto` uses allowlist-plus-review execution: approval misses can
+offer **Allow Always**, while reviewed or already allowlisted commands can proceed. Do not use
+`ask=always` when durable approval is desired; OpenClaw intentionally removes Allow Always in that
+mode. Omit either tool flag when merging a gateway whose operator-owned tool policy must stay
+unchanged.
+
+Fresh writes and overwrites fail closed if either policy flag is omitted. Existing-config merges
+may omit either flag to preserve the gateway operator's current tool and approval policy. A
+first-time merge into a nonempty gateway is held to the same complete-setup contract. Explicit
+provider and route options replace old Anvil values; omitted options preserve them, and
+`--client-side-routing` removes stale authoritative-route settings.
+
+`--plugin-dir` must already contain `openclaw.plugin.json` with the packaged Anvil plugin id. The
+sync verifies that manifest locally or over SCP before changing the config. For a fresh sync to the
+real default gateway path, it also asks OpenClaw to confirm that the native fallback model is
+available and that the plugin runtime imported its routing hook. Preview output distinguishes
+`fresh_config_ready` (the rendered prerequisites are complete) from `fresh_setup_ready` (gateway
+manifest, model, and runtime checks have all passed).
+
+Provision `ANVIL_ROUTER_TOKEN` in the gateway process environment when the router is authenticated.
+For a remote gateway, use `--gateway-host` and make `--plugin-dir` an absolute path on that remote
+host. The `openclaw_sync` MCP/controller tool accepts the same setup fields. For ongoing diagnosis,
+verify with
+`openclaw plugins inspect openclaw-anvil-intent-router --runtime --json` and
+`openclaw exec-policy show --json`.
+
 ### CLI Compatibility Notes
 
 Canonical command changes:

@@ -103,7 +103,14 @@ from .modes import (
 from .policy import Needs, route
 from .profile_store import ProfileStore, default_profile
 from .purpose import PurposeRouter
-from .verify import NonEmptyContent, NotTruncated, ResponseView, default_verifiers
+from .verify import (
+    NonEmptyContent,
+    NotTruncated,
+    ResponseView,
+    ToolCallContractValid,
+    ToolCallJSONValid,
+    default_verifiers,
+)
 
 
 class _AdmissionIterator:
@@ -680,6 +687,14 @@ class RoutingBackend:
 
         first_verdict = self._tier_verdict(available_tiers[0], work_class)
         first_tier = self._config.tier(available_tiers[0])
+        raw = request.raw if isinstance(request.raw, Mapping) else {}
+        # Tool contracts are a correctness boundary, not an optional quality
+        # heuristic.  Any request that explicitly declares a tool catalog or a
+        # tool choice must pass through the commit window so an invented tool
+        # name (or an ignored required/forbidden choice) can never reach the
+        # caller.  This remains true when verify_local_min is disabled for
+        # latency-sensitive voice traffic, and for trusted cloud tiers too.
+        tool_contract_required = "tools" in raw or "tool_choice" in raw
 
         # genericity:T004 — a privacy=local tier under "allow" is normally the
         # most trusted case (streamed raw, below) but that also means it is the
@@ -698,7 +713,11 @@ class RoutingBackend:
             and self._config.verify_local_min
         )
 
-        if first_verdict == "allow" and not min_verify_local_allow:
+        if (
+            first_verdict == "allow"
+            and not min_verify_local_allow
+            and not tool_contract_required
+        ):
             # Trusted tier: stream its deltas to the client directly.
             # No buffering, no verification — TTFT is preserved.
             #
@@ -738,16 +757,20 @@ class RoutingBackend:
                 lambda: inner_backend.generate(request), lease, _complete_allow
             )
 
-        # allow-with-verify (full chain), OR a local "allow" under the T004
-        # minimal-verify safety net (NonEmptyContent/NotTruncated only): both
-        # enforce the commit-window guarantee — ZERO partial local tokens may
-        # reach the client on a verify-failure. route_with_fallback (T009) drives
+        # allow-with-verify (full chain), a local "allow" under the T004
+        # minimal-verify safety net, OR any trusted allow tier handling an
+        # explicit tool contract (NonEmptyContent/NotTruncated plus the
+        # request-derived tool checks added in _route_with_verify): all enforce
+        # the commit-window guarantee — ZERO partial tokens may reach the client
+        # on a verify-failure. route_with_fallback (T009) drives
         # the candidate walk over bound_tiers, buffering each tier's response
         # before deciding, exactly as stream_with_commit_window (T008) does for a
         # single tier, generalised across N candidates.
-        verifiers = default_verifiers() if not min_verify_local_allow else [
-            NonEmptyContent(), NotTruncated(),
-        ]
+        verifiers = (
+            default_verifiers()
+            if first_verdict != "allow"
+            else [NonEmptyContent(), NotTruncated()]
+        )
         result = self._route_with_verify(
             request, bound_tiers, work_class, verifiers, availability
         )
@@ -823,12 +846,34 @@ class RoutingBackend:
             return ResponseView(text=text, caller_max_tokens=caller_cap)
 
         fb_decision = _FallbackDecision(tiers=bound_tiers, work_class=work_class)
+        # Tool-call JSON validity alone cannot catch a model inventing a validly
+        # encoded but unadvertised name (the OpenClaw incident emitted
+        # ``open_file`` and bare ``functions``).  Bind the caller's actual tool
+        # catalog/choice into every buffered verify walk, including the minimal
+        # local-allow safety net, so a bad local call is discarded before the
+        # harness sees it and the next quality-gated tier can be attempted.
+        request_verifiers = []
+        request_json_verifier = ToolCallJSONValid.from_request_raw(request.raw)
+        request_contract_verifier = ToolCallContractValid.from_request_raw(request.raw)
+        replaced_json_verifier = False
+        for verifier in verifiers:
+            if isinstance(verifier, ToolCallJSONValid):
+                request_verifiers.extend(
+                    (request_json_verifier, request_contract_verifier)
+                )
+                replaced_json_verifier = True
+            else:
+                request_verifiers.append(verifier)
+        if not replaced_json_verifier:
+            request_verifiers.extend(
+                (request_json_verifier, request_contract_verifier)
+            )
         return route_with_fallback(
             request,
             fb_decision,
             self._config,
             backend_for=_tracking_backend_for,
-            verifiers=verifiers,
+            verifiers=request_verifiers,
             budget=self._budget,
             log=self._decision_log,
             breaker=self._circuit_breaker,
