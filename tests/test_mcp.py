@@ -2136,7 +2136,7 @@ def test_gateway_restart_is_gated_and_uses_argv_preview():
         "ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
         "-o", "ConnectTimeout=60",
         "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1",
-        "--", "sd@mini", 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"',
+        "--", "sd@mini", "openclaw gateway restart",
     ]
 
 

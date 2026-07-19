@@ -133,6 +133,19 @@ def test_openclaw_voice_sync_replaces_existing_consult_thinking_level(tmp_path):
     existing.write_text(
         json.dumps(
             {
+                "models": {
+                    "providers": {
+                        "anvil": {
+                            "baseUrl": "http://100.87.34.66:8000/v1",
+                            "apiKey": "${ANVIL_ROUTER_TOKEN}",
+                        }
+                    }
+                },
+                "plugins": {
+                    "entries": {
+                        "openclaw-anvil-intent-router": {"enabled": True}
+                    }
+                },
                 "talk": {
                     "consultThinkingLevel": "low",
                     "consultBootstrapContextMode": "full",
@@ -149,6 +162,10 @@ def test_openclaw_voice_sync_replaces_existing_consult_thinking_level(tmp_path):
         base_url="http://100.87.34.66:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
+        native_provider="openai",
+        native_model="gpt-5.6-sol",
+        tool_profile="full",
+        exec_mode="auto",
         _load=lambda _path: _cfg(),
     )
 
