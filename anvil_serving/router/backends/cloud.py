@@ -803,6 +803,15 @@ class CloudBackend:
                 body["tools"] = tools
             if choice is not None:
                 body["tool_choice"] = choice
+        # The stateless /v1/responses adapter normalizes its supported
+        # ``text.format=json_schema`` surface to OpenAI's ``response_format``.
+        # Preserve that wire field on an OpenAI-compatible tier; otherwise the
+        # router silently degrades a requested structured response to prose.
+        # Cross-dialect schema translation is intentionally out of scope.
+        if request.dialect == DIALECT_OPENAI and isinstance(
+            raw.get("response_format"), Mapping
+        ):
+            body["response_format"] = dict(raw["response_format"])
         # genericity:T003 -- see the Anthropic branch above for the rationale.
         # extra_body_defaults are SOFT (the request wins); extra_body is the HARD override.
         self._apply_tier_extra_body(body)

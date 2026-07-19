@@ -28,6 +28,14 @@ For OpenClaw and agent-assisted operations, anvil-serving also exposes a structu
 token-authenticated private/tailnet controller that lets a gateway host operate a separate
 router, serve, or voice host without making raw SSH the product contract.
 
+For a private delivery cockpit, the optional separate **Anvil Workbench** product uses the
+router's stateless `/v1/responses` compatibility surface and records safe run/task/request
+correlation in decision evidence. Its hub lifecycle is available through
+`anvil-serving workbench`. Anvil Serving owns only the optional container lifecycle and private
+exposure; Workbench owns its product logic and remains independently deployable, outside the
+router and Anvil State authority boundaries.
+See [Workbench integration](docs/WORKBENCH.md).
+
 ## Why It Exists
 
 Local models can be cheap and fast for bounded coding work, but they are not uniformly reliable.
@@ -43,7 +51,7 @@ anvil-serving routes with evidence:
 | Verify risky work | `allow-with-verify` rows buffer and check output before returning it. |
 | Avoid known local failures | `deny` rows skip local or exhaust cleanly. |
 | Stop a model serve safely | Configured local health checks remove an unavailable tier before inference and automatically readmit it after recovery. |
-| Preserve one agent endpoint | Anthropic Messages and OpenAI Chat Completions terminate at the router. |
+| Preserve one agent endpoint | Anthropic Messages, OpenAI Chat Completions, and the supported stateless Responses subset terminate at the router. |
 | Keep billing explicit | The default config has no cloud API key; metered cloud is opt-in. |
 | Operate safely | MCP/controller tools expose status, route probes, voice lifecycle, preflight, benchmark, and OpenClaw sync. |
 

@@ -1,0 +1,84 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39038/v1",
+  "model": "gemma4-heavy-lab",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 512,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 512
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "1.8s got='```python\\nsum(xs)\\n```' finish='stop' visible=21 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=43 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "content_chars": 21,
+      "content_excerpt": "```python\nsum(xs)\n```",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 29,
+        "total_tokens": 39,
+        "completion_tokens": 10,
+        "prompt_tokens_details": null
+      },
+      "test": "smoke",
+      "seconds": 1.816,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "```json\n{\"language\":\"python\",\"ok\":true}\n```",
+      "finish_reason": "stop",
+      "content_chars": 43,
+      "content_excerpt": "```json\n{\"language\":\"python\",\"ok\":true}\n```",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 31,
+        "total_tokens": 46,
+        "completion_tokens": 15,
+        "prompt_tokens_details": null
+      },
+      "test": "json",
+      "seconds": 0.284,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "forbidden",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

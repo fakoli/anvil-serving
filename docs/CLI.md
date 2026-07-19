@@ -217,6 +217,11 @@ required operands, choices, and defaults.
 | `edge status` | Show serve mappings, flagging which this tool manages. | `read` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map` |
 | `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map`<br>`--dry-run`<br>`--confirm` |
 | `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map`<br>`--dry-run`<br>`--confirm` |
+| `workbench` | Manage the optional private Anvil Workbench hub stack. | `read` / `bounded` | - |
+| `workbench up` | Start the private Workbench hub, Postgres, and Neo4j projection. | `mutate` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name`<br>`--dry-run`<br>`--confirm` |
+| `workbench down` | Stop the Workbench hub stack while preserving its named data volumes. | `mutate` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name`<br>`--dry-run`<br>`--confirm` |
+| `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name` |
+| `workbench logs` | Read bounded Workbench hub stack logs. | `read` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name`<br>`--tail`<br>`--follow` |
 <!-- END GENERATED CLI MANIFEST INDEX -->
 
 ## Migration from legacy commands

@@ -118,6 +118,8 @@ def _audio_serves(
         }
         if table.get("serve_name"):
             config_kwargs["serve_name"] = table["serve_name"]
+        if table.get("ready_url"):
+            config_kwargs["ready_url"] = table["ready_url"]
         manifest_path = table.get("manifest_path") or table.get("serves_manifest")
         if manifest_path:
             config_kwargs["manifest_path"] = _resolve_manifest_reference(
