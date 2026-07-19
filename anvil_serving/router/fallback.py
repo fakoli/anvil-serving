@@ -62,7 +62,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 from .config import RouterConfig, Tier
-from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, compute_cost_usd
+from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, compute_cost_usd, request_correlation
 from .internal import Backend, InternalRequest, StructuredResult, estimate_tokens
 from .commit_window import build_response_view
 from .verify import VerifyResult, Verifier, default_verifiers, run_verifiers
@@ -506,6 +506,7 @@ def route_with_fallback(
             # Active serving mode (ADR-0011 / flexibility:T013); None (a --config
             # boot with no mode) leaves the record identical to pre-T013.
             mode=mode,
+            **request_correlation(request),
         )
         # Seam isolation: a raising observer/log must not crash a served response.
         if log is not None:

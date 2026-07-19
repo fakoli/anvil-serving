@@ -1,0 +1,63 @@
+services:
+  workbench:
+    image: ${ANVIL_WORKBENCH_IMAGE:-ghcr.io/fakoli/anvil-workbench:latest}
+    environment:
+      WORKBENCH_DATABASE_URL: postgresql://workbench:${WORKBENCH_POSTGRES_PASSWORD:?set in env file}@db:5432/workbench
+      WORKBENCH_NEO4J_URI: bolt://neo4j:7687
+      WORKBENCH_NEO4J_USER: neo4j
+      WORKBENCH_NEO4J_PASSWORD: ${WORKBENCH_NEO4J_PASSWORD:?set in env file}
+      WORKBENCH_OWNER: ${WORKBENCH_OWNER:?set in env file}
+      WORKBENCH_APPROVERS: ${WORKBENCH_APPROVERS:-}
+      WORKBENCH_IDENTITY_HEADER: ${WORKBENCH_IDENTITY_HEADER:-Tailscale-User-Login}
+      ANVIL_ROUTER_BASE_URL: ${ANVIL_ROUTER_BASE_URL:?set in env file}
+      ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:?set in host environment}
+      WORKBENCH_EMBEDDING_MODEL: ${WORKBENCH_EMBEDDING_MODEL:-}
+      WORKBENCH_RERANK_MODEL: ${WORKBENCH_RERANK_MODEL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    ports:
+      - "${ANVIL_WORKBENCH_BIND:-127.0.0.1}:${ANVIL_WORKBENCH_PORT:-8090}:8080"
+    networks: [workbench]
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: workbench
+      POSTGRES_USER: workbench
+      POSTGRES_PASSWORD: ${WORKBENCH_POSTGRES_PASSWORD:?set in env file}
+    volumes: [workbench-postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workbench -d workbench"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [workbench]
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:2026.01
+    environment:
+      NEO4J_AUTH: neo4j/${WORKBENCH_NEO4J_PASSWORD:?set in env file}
+    volumes: [workbench-neo4j:/data]
+    healthcheck:
+      # Keep Compose from starting the hub before Bolt accepts authenticated
+      # queries. ``$$`` preserves the container-side shell expansion.
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#*/}\" 'RETURN 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    networks: [workbench]
+    restart: unless-stopped
+
+networks:
+  workbench:
+    name: anvil-workbench
+
+volumes:
+  workbench-postgres:
+  workbench-neo4j:
