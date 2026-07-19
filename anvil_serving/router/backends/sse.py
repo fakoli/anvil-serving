@@ -224,9 +224,16 @@ class AnthropicStreamAssembler:
                 try:
                     args = json.loads(joined) if joined.strip() else {}
                     if not isinstance(args, dict):
-                        args = {}
+                        # Preserve the raw wire value so ToolCallJSONValid can
+                        # reject a non-object instead of laundering it into an
+                        # apparently valid no-argument call.
+                        args = joined
                 except (ValueError, TypeError):
-                    args = {}
+                    # Verification owns malformed tool arguments.  Keeping the
+                    # raw fragment makes the parse failure observable there;
+                    # coercing it to {} can falsely pass a no-required-args
+                    # schema and execute the wrong call.
+                    args = joined
                 calls.append({"name": slot["name"], "id": slot["id"],
                               "arguments": args})
             tool_calls = calls

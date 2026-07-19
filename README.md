@@ -186,8 +186,8 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 ### Fresh OpenClaw gateway setup
 
 Use the harness sync as the setup owner instead of hand-merging a provider fragment. A fresh
-gateway needs a native provider/model for safe cloud-preferred turns and an absolute plugin path
-that is visible on the gateway:
+gateway needs a native provider/model for safe cloud-preferred turns, an absolute plugin path
+that is visible on the gateway, and explicit tool/exec policies:
 
 ```bash
 anvil-serving harness sync openclaw \
@@ -211,9 +211,23 @@ offer **Allow Always**, while reviewed or already allowlisted commands can proce
 mode. Omit either tool flag when merging a gateway whose operator-owned tool policy must stay
 unchanged.
 
+Fresh writes and overwrites fail closed if either policy flag is omitted. Existing-config merges
+may omit either flag to preserve the gateway operator's current tool and approval policy. A
+first-time merge into a nonempty gateway is held to the same complete-setup contract. Explicit
+provider and route options replace old Anvil values; omitted options preserve them, and
+`--client-side-routing` removes stale authoritative-route settings.
+
+`--plugin-dir` must already contain `openclaw.plugin.json` with the packaged Anvil plugin id. The
+sync verifies that manifest locally or over SCP before changing the config. For a fresh sync to the
+real default gateway path, it also asks OpenClaw to confirm that the native fallback model is
+available and that the plugin runtime imported its routing hook. Preview output distinguishes
+`fresh_config_ready` (the rendered prerequisites are complete) from `fresh_setup_ready` (gateway
+manifest, model, and runtime checks have all passed).
+
 Provision `ANVIL_ROUTER_TOKEN` in the gateway process environment when the router is authenticated.
 For a remote gateway, use `--gateway-host` and make `--plugin-dir` an absolute path on that remote
-host. The `openclaw_sync` MCP/controller tool accepts the same setup fields. After sync, verify with
+host. The `openclaw_sync` MCP/controller tool accepts the same setup fields. For ongoing diagnosis,
+verify with
 `openclaw plugins inspect openclaw-anvil-intent-router --runtime --json` and
 `openclaw exec-policy show --json`.
 
