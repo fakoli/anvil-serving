@@ -1,0 +1,525 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": [
+      {
+        "attempted_context_tokens": 128000,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 128000,
+        "e2e_ms": 16752.055406570435,
+        "estimated_prompt_tokens": 128000,
+        "output_tokens": 1,
+        "status": "passed",
+        "target_tokens": 128000,
+        "ttft_ms": 16751.54995918274,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 95347,
+          "total_tokens": 95411
+        }
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 2048,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "HTTP Error 500: Internal Server Error",
+      "failure_classes": [
+        "request_error"
+      ],
+      "pass_rate": 0.0,
+      "suite": "tool"
+    },
+    {
+      "error": "pass rate below threshold",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.6666666666666666,
+      "prompt_id": "unified_diff_timeout_edit",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39039/v1",
+    "candidate_id": "gpt-oss-puzzle-88b",
+    "config_id": "anvil-vllm-1bf3b12d5-sm120-marlin-fp8kv-131k",
+    "engine": "vllm",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "model": "gpt-oss-puzzle-88b",
+    "started_at": "2026-07-17T12:50:33Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "content": "```diff\n--- a/app.py\n+++ b/app.py\n@@\n- timeout = 30\n+ timeout = 45\n  retries = 2\n```",
+            "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@\n- timeout = 30\n+ timeout = 45\n  retries = 2\n```",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 444.3063735961914,
+            "reasoning_chars": 138,
+            "reasoning_excerpt": "We need to output a unified diff. Show changes: line with timeout changed from 30 to 45. Keep retries line unchanged. Provide diff format.",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": false
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 75,
+              "prompt_tokens": 103,
+              "prompt_tokens_details": null,
+              "total_tokens": 178
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "content": "```diff\n--- a/app.py\n+++ b/app.py\n@@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 393.5728073120117,
+            "reasoning_chars": 107,
+            "reasoning_excerpt": "We need to output a unified diff. Show change from timeout 30 to 45. No other changes. Provide diff format.",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 69,
+              "prompt_tokens": 103,
+              "prompt_tokens_details": null,
+              "total_tokens": 172
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "content": "```diff\n--- a/app.py\n+++ b/app.py\n@@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 399.45149421691895,
+            "reasoning_chars": 107,
+            "reasoning_excerpt": "We need to output a unified diff. Show change from timeout 30 to 45. No other changes. Provide diff format.",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 69,
+              "prompt_tokens": 103,
+              "prompt_tokens_details": null,
+              "total_tokens": 172
+            }
+          }
+        ],
+        "error": "pass rate below threshold",
+        "id": "unified_diff_timeout_edit",
+        "pass_count": 2,
+        "pass_rate": 0.6666666666666666,
+        "required_pass_rate": 1.0,
+        "status": "failed",
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "content": "The combined 3\u202fs processing time exceeds the 2.5\u202fs turn limit, so speed up the LLM (e.g., switch to a faster model or run it in parallel) to bring total latency under the timeout.",
+            "content_excerpt": "The combined 3\u202fs processing time exceeds the 2.5\u202fs turn limit, so speed up the LLM (e.g., switch to a faster model or run it in parallel) to bring total latency under the timeout.",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 624.0735054016113,
+            "reasoning_chars": 216,
+            "reasoning_excerpt": "Need concise sentence identifying problem: total exceeds timeout (2500ms) because sum 550+1800+650=3000ms, exceeding limit. Fix: reduce LLM latency e.g., use faster model or parallel processing. Provi",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 109,
+              "prompt_tokens": 126,
+              "prompt_tokens_details": null,
+              "total_tokens": 235
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "content": "The combined 3\u202fs processing time exceeds the 2.5\u202fs turn limit\u2014reduce LLM latency (e.g., by using a faster model or caching responses) to bring the total under the timeout.",
+            "content_excerpt": "The combined 3\u202fs processing time exceeds the 2.5\u202fs turn limit\u2014reduce LLM latency (e.g., by using a faster model or caching responses) to bring the total under the timeout.",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 625.1335144042969,
+            "reasoning_chars": 205,
+            "reasoning_excerpt": "Need concise sentence identifying problem: total exceeds timeout (2500ms) because sum 550+1800+650=3000ms, LLM too slow. Fix: optimize LLM latency, e.g., use smaller model or caching. Provide one sent",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 107,
+              "prompt_tokens": 126,
+              "prompt_tokens_details": null,
+              "total_tokens": 233
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "content": "The combined 3\u202fs processing time exceeds the 2.5\u202fs turn limit\u2014so reduce LLM latency (e.g., by using a faster/smaller model or caching responses) to fit within the timeout.",
+            "content_excerpt": "The combined 3\u202fs processing time exceeds the 2.5\u202fs turn limit\u2014so reduce LLM latency (e.g., by using a faster/smaller model or caching responses) to fit within the timeout.",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 647.2668647766113,
+            "reasoning_chars": 205,
+            "reasoning_excerpt": "Need concise sentence identifying problem: total exceeds timeout (2500ms) because sum 550+1800+650=3000ms, LLM too slow. Fix: optimize LLM latency, e.g., use smaller model or caching. Provide one sent",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 109,
+              "prompt_tokens": 126,
+              "prompt_tokens_details": null,
+              "total_tokens": 235
+            }
+          }
+        ],
+        "id": "parallel_timeout_triage",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260717T125033Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 16752.055406570435,
+    "intelligence_pass_rate": 0.5,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "default",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 16751.54995918274,
+    "usable_context_tokens": 128000,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      128000
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 275.9106159210205,
+            "reasoning_chars": 115,
+            "reasoning_excerpt": "User asks: \"What session code should be used? Reply with only the code.\" The code is RIVER-918. So reply just that.",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 44,
+              "prompt_tokens": 105,
+              "prompt_tokens_details": null,
+              "total_tokens": 149
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 269.68932151794434,
+            "reasoning_chars": 115,
+            "reasoning_excerpt": "User asks: \"What session code should be used? Reply with only the code.\" The code is RIVER-918. So reply just that.",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 44,
+              "prompt_tokens": 105,
+              "prompt_tokens_details": null,
+              "total_tokens": 149
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 267.1017646789551,
+            "reasoning_chars": 115,
+            "reasoning_excerpt": "User asks: \"What session code should be used? Reply with only the code.\" The code is RIVER-918. So reply just that.",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 44,
+              "prompt_tokens": 105,
+              "prompt_tokens_details": null,
+              "total_tokens": 149
+            }
+          }
+        ],
+        "name": "single_request_multiturn_recall",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": "configs/serve-recipes.toml#nvidia-gpt-oss-puzzle-88B",
+    "serve_command": "docker compose -f examples/fakoli-dark/docker-compose.experiment.yml up -d cand-gptoss-puzzle-88b"
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "reasoning_effort",
+    "control_requested": "low",
+    "control_status": "requested_unverified",
+    "mode": "default",
+    "reasoning_effort": "low",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 16752.055406570435,
+      "e2e_p95_ms": 16752.055406570435,
+      "output_tokens": 1,
+      "ttft_p50_ms": 16751.54995918274,
+      "ttft_p95_ms": 16751.54995918274
+    },
+    "wall_ms": 21700.08683204651
+  },
+  "tool": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "error": "HTTP Error 500: Internal Server Error",
+            "failure_class": "request_error",
+            "status": "failed"
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "error": "HTTP Error 500: Internal Server Error",
+            "failure_class": "request_error",
+            "status": "failed"
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2304,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 256
+            },
+            "error": "HTTP Error 500: Internal Server Error",
+            "failure_class": "request_error",
+            "status": "failed"
+          }
+        ],
+        "error": "HTTP Error 500: Internal Server Error",
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "name": "openai_tool_call_smoke",
+        "pass_count": 0,
+        "pass_rate": 0.0,
+        "required_pass_rate": 1.0,
+        "status": "failed"
+      }
+    ],
+    "status": "failed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

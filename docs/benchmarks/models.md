@@ -1,8 +1,11 @@
 # RTX PRO 6000 model recipes and gotchas
 
 This page turns the [benchmark tables](index.md) into operating guidance for one
-RTX PRO 6000 Blackwell 96 GB. The durable recipes live in
-[`examples/fakoli-dark/docker-compose.experiment.yml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/docker-compose.experiment.yml)
+RTX PRO 6000 Blackwell 96 GB. The durable production and experiment recipes
+live in
+[`examples/fakoli-dark/docker-compose.yml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/docker-compose.yml)
+and
+[`examples/fakoli-dark/docker-compose.experiment.yml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/docker-compose.experiment.yml),
 and are registered in
 [`examples/fakoli-dark/serves.toml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/serves.toml).
 The snippets below use the managed CLI rather than reproducing long container
@@ -33,23 +36,55 @@ Unless a model section says otherwise, the July 2026 Heavy experiments used FP8
 KV cache, text-only mode, prefix caching disabled for independent-prompt
 comparisons, and a maximum of five admitted sequences.
 
+## GPT-OSS Puzzle 88B
+
+| Setting | Tested value |
+|---|---|
+| Checkpoint | [`nvidia/gpt-oss-puzzle-88B`](https://huggingface.co/nvidia/gpt-oss-puzzle-88B), revision `9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2` |
+| Managed service / endpoint | `heavy` / `http://127.0.0.1:30002/v1` |
+| Served name | `gpt-oss-puzzle-88b` |
+| Engine path | local Anvil vLLM commits `3fbe020f` + `485463b3`; native Puzzle architecture and Harmony template; OpenAI tool parser; Marlin MXFP4 MoE; FP8 KV |
+| Context / admission | 131,072 served; 130,696-prompt-token near-limit retrieval retained from the exact model-support image; 99,100-prompt-token promotion rerun; 8 sequences; 8,192 batched tokens |
+| Router reasoning control | OpenAI `reasoning_effort=high` default; low used for bounded promotion gates |
+| Complete reproduction guide | [Build, pull, serve, gate, route, and roll back](gpt-oss-puzzle-88b-recipe.md) |
+
+**Why choose it.** This is the branch-backed Heavy target the local serving
+stack was built to exercise. The production shape passes chat, structured JSON,
+long-context retrieval, automatic tools, Responses API, streaming, and tool-result
+continuation on the RTX PRO 6000. The transition does not establish a quality or
+throughput advantage over Gemma 4; use its compatibility evidence to justify the
+default and retain Gemma for an immediate proven rollback.
+
+**Gotchas.** The pinned checkpoint omits Harmony token `200012` (`<|call|>`) from
+its EOS list. Keep the server-level full generation-config override
+`{"eos_token_id":[200002,199999,200012]}` and an engine revision that applies
+special-token overrides before parser initialization. Removing either piece can
+turn a valid tool call into an HTTP 500. The new 120K requested gate produced
+99,100 prompt tokens after tokenization; use the separately retained 130,696-token
+boundary run for the near-limit context claim.
+
+Use the [complete GPT-OSS Puzzle recipe](gpt-oss-puzzle-88b-recipe.md) rather
+than reconstructing the engine build or command from this summary. Evidence:
+[GPT-OSS Puzzle Heavy enablement](../findings/2026-07-18-gpt-oss-puzzle-heavy-promotion.md).
+
 ## Gemma 4 12B IT QAT W4A16
 
 | Setting | Tested value |
 |---|---|
 | Checkpoint | [`google/gemma-4-12B-it-qat-w4a16-ct`](https://huggingface.co/google/gemma-4-12B-it-qat-w4a16-ct), revision `5d8bb23cdbff01e89d2a1a47f3b3d29b877bca76` |
 | Tokenizer/template | [`google/gemma-4-12B-it`](https://huggingface.co/google/gemma-4-12B-it), revision `12ace6d648d72bd41519e140f1185f34d38c7e3d`; July 15 template SHA-256 `ae53464b…4c6d4` |
-| Managed service / endpoint | `heavy` / `http://127.0.0.1:30002/v1` |
+| Managed service / endpoint | `heavy-gemma4-rollback` / `http://127.0.0.1:30002/v1` when selected |
 | Served name | `gemma4-12b-it-w4a16-ct` |
 | Engine path | vLLM 0.25.1; compressed-tensors W4A16; FP8 KV; `gemma4` reasoning/tool parsers |
 | Context / admission | 262,144 served; 240K promotion needle passed; 5 sequences |
 | Router reasoning control | `chat_template_kwargs.enable_thinking=true`; 4,096 reasoning-headroom tokens in the promotion evidence gate |
 
-**Why choose it.** It matched ThinkingCap's perfect repeated built-in quality
+**Why retain it.** It matched ThinkingCap's perfect repeated built-in quality
 result and improved quality-context TTFT from 7.83/57.60/124.70 seconds to
-6.96/44.61/97.33 seconds at 32K/128K/240K. The guarded promotion also passed
+6.96/44.61/97.33 seconds at 32K/128K/240K. Its guarded promotion also passed
 disabled-thinking smoke/JSON, a 240K needle, 20/20 tools, enabled-thinking
-reasoning evidence, router reload, and exact model identity.
+reasoning evidence, router reload, and exact model identity, making it the
+immediate validated rollback for Puzzle.
 
 **Gotchas.** Pin the model and tokenizer revisions independently; using only a
 model revision does not pin the July 15 chat template. Do not reintroduce the old

@@ -36,6 +36,7 @@ _FAKOLI = _REPO_ROOT / "examples" / "fakoli-dark"
 FAKOLI_LIVE = _FAKOLI / "anvil-router.live.toml"
 FAKOLI_AGENTIC = _FAKOLI / "anvil-router.agentic.toml"
 FAKOLI_FLEXIBILITY = _FAKOLI / "anvil-router.flexibility.toml"
+FAKOLI_GEMMA4_ROLLBACK = _FAKOLI / "anvil-router.gemma4-rollback.toml"
 
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
@@ -1058,13 +1059,11 @@ def test_fakoli_agentic_config_loads():
     assert fast.context_limit == 32768
     assert dict(fast.extra_body or {}) == {"chat_template_kwargs": {"enable_thinking": False}}
     assert fast.extra_body_defaults is None
-    assert heavy.model == "gemma4-12b-it-w4a16-ct"
+    assert heavy.model == "gpt-oss-puzzle-88b"
     assert heavy.base_url == "http://host.docker.internal:30002/v1"
-    assert heavy.context_limit == 262144
+    assert heavy.context_limit == 131072
     assert heavy.extra_body is None
-    assert dict(heavy.extra_body_defaults or {}) == {
-        "chat_template_kwargs": {"enable_thinking": True}
-    }
+    assert dict(heavy.extra_body_defaults or {}) == {"reasoning_effort": "high"}
     assert cfg.tier("fast-local").params == {
         "generation_probe_max_tokens": 48,
         "interaction_benchmark_max_tokens": 192,
@@ -1076,6 +1075,16 @@ def test_fakoli_agentic_config_loads():
         "interaction_benchmark_stream_max_tokens": 4352,
         "interaction_benchmark_max_tokens_by_intent": {"planning": 4352},
         "interaction_benchmark_stream_max_tokens_by_intent": {"planning": 4352},
+    }
+
+
+def test_fakoli_gemma4_rollback_matches_previous_heavy_identity():
+    cfg = load(str(FAKOLI_GEMMA4_ROLLBACK))
+    heavy = cfg.tier("heavy-local")
+    assert heavy.model == "gemma4-12b-it-w4a16-ct"
+    assert heavy.context_limit == 262144
+    assert dict(heavy.extra_body_defaults or {}) == {
+        "chat_template_kwargs": {"enable_thinking": True}
     }
 
 

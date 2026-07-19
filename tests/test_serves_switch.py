@@ -175,16 +175,16 @@ def test_shipped_heavy_activation_metadata_matches_reference_promotion(monkeypat
 
     monkeypatch.setattr(serves, "_compose_service_for_recipe", lambda *args, **kwargs: _deployment())
     current, plan, rollback, _ = serves.resolve_recipe_activation(
-        managed, plans, registry, "heavy", "gemma-4-12B-it-qat-w4a16-ct",
+        managed, plans, registry, "heavy", "gpt-oss-puzzle-88B",
     )
     previous, previous_plan, previous_rollback, _ = serves.resolve_recipe_activation(
-        managed, plans, registry, "heavy", "ThinkingCap-Qwen3.6-27B-FP8",
+        managed, plans, registry, "heavy", "gemma-4-12B-it-qat-w4a16-ct",
     )
 
-    assert current["serve"]["served_model_name"] == "gemma4-12b-it-w4a16-ct"
-    assert (plan, rollback) == ("gemma4-12b-heavy", False)
-    assert previous["serve"]["served_model_name"] == "thinkingcap-qwen36-27b-fp8"
-    assert (previous_plan, previous_rollback) == ("gemma4-12b-heavy", True)
+    assert current["serve"]["served_model_name"] == "gpt-oss-puzzle-88b"
+    assert (plan, rollback) == ("gpt-oss-puzzle-88b-heavy", False)
+    assert previous["serve"]["served_model_name"] == "gemma4-12b-it-w4a16-ct"
+    assert (previous_plan, previous_rollback) == ("gpt-oss-puzzle-88b-heavy", True)
 
 
 def test_switch_help_names_role_recipe_and_preview_options():
@@ -204,9 +204,9 @@ def test_switch_docs_show_preview_apply_and_both_reference_models():
     root = Path(__file__).resolve().parents[1]
     docs = (root / "docs" / "cli" / "serves.md").read_text(encoding="utf-8")
     assert "serves switch heavy\n" in docs
-    assert "serves switch heavy gemma-4-12B-it-qat-w4a16-ct --dry-run" in docs
+    assert "serves switch heavy gpt-oss-puzzle-88B --dry-run" in docs
+    assert "serves switch heavy gpt-oss-puzzle-88B --confirm" in docs
     assert "serves switch heavy gemma-4-12B-it-qat-w4a16-ct --confirm" in docs
-    assert "serves switch heavy ThinkingCap-Qwen3.6-27B-FP8 --confirm" in docs
     assert "normal registry row is intentionally not enough" in docs
 
 
@@ -261,11 +261,11 @@ def test_direct_promotions_share_one_transaction_lock(monkeypatch):
 def test_switch_reference_plan_has_finite_timeouts_and_automatic_rollback():
     root = Path(__file__).resolve().parents[1]
     plans = serves.load_promotions(root / "examples" / "fakoli-dark" / "serves.toml")
-    plan = next(item for item in plans if item["name"] == "gemma4-12b-heavy")
+    plan = next(item for item in plans if item["name"] == "gpt-oss-puzzle-88b-heavy")
     assert plan["drain_timeout"] > 0
     assert plan["startup_timeout"] > 0
     assert plan["rollback_startup_timeout"] > 0
-    assert plan["rollback"] == "heavy-thinkingcap-rollback"
+    assert plan["rollback"] == "heavy-gemma4-rollback"
     assert plan["rollback_gate"]
 
 

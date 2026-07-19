@@ -1,0 +1,25 @@
+{
+  "schema_version": "gpt-oss-puzzle-tool-regression/v1",
+  "tested_at_utc": "2026-07-18T18:15:21Z",
+  "image_id": "sha256:470f7b7e39c4363696d5a79fd041d6a45253229a9ba1c055d089ddbdc0ed120c",
+  "source_commit": "485463b3498ed3ffcf0c8fcb52c1670a21be5d82",
+  "endpoint": "http://127.0.0.1:30002/v1/chat/completions",
+  "model": "gpt-oss-puzzle-88b",
+  "request": {
+    "temperature": 0,
+    "reasoning_effort": "low",
+    "tool_choice": "auto",
+    "function": "record_weather_zip",
+    "expected_arguments": {"zip": "98101"},
+    "request_level_stop_token_ids_present": false
+  },
+  "result": {
+    "passed": true,
+    "runs": 10,
+    "successes": 10,
+    "http_statuses": {"200": 10},
+    "finish_reason": "tool_calls",
+    "function": "record_weather_zip",
+    "arguments": {"zip": "98101"}
+  }
+}

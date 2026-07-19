@@ -1,0 +1,39 @@
+{
+  "schema_version": "anvil-runtime-identity/v1",
+  "captured_at_utc": "2026-07-18T18:15:21Z",
+  "service": "heavy",
+  "container": "vllm-gptoss-puzzle-heavy",
+  "container_started_at_utc": "2026-07-18T18:12:04.134105771Z",
+  "container_status": "running",
+  "image": {
+    "tag": "anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82",
+    "id": "sha256:470f7b7e39c4363696d5a79fd041d6a45253229a9ba1c055d089ddbdc0ed120c",
+    "created_at_utc": "2026-07-18T18:06:53.354496007Z",
+    "size_bytes": 8368388105,
+    "build_commit": "485463b3498ed3ffcf0c8fcb52c1670a21be5d82",
+    "oci_revision": "485463b3498ed3ffcf0c8fcb52c1670a21be5d82",
+    "build_pipeline": "local-anvil"
+  },
+  "runtime": {
+    "vllm_version": "0.23.1rc1.dev1229+g485463b34",
+    "architecture": "GptOssPuzzleForCausalLM",
+    "model": "nvidia/gpt-oss-puzzle-88B",
+    "checkpoint_revision": "9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2",
+    "served_name": "gpt-oss-puzzle-88b",
+    "max_model_len": 131072,
+    "kv_cache_dtype": "fp8",
+    "kv_cache_tokens": 2819653,
+    "moe_backend": "marlin",
+    "generation_config_override": {
+      "eos_token_id": [200002, 199999, 200012]
+    },
+    "health_http_status": 200
+  },
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "memory_total_mib": 97887,
+    "memory_used_mib": 93480,
+    "driver": "610.62"
+  }
+}
