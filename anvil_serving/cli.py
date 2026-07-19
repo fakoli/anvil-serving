@@ -92,6 +92,7 @@ _HANDLER_PROGS = {
     "anvil_serving.upgrade": "anvil-serving upgrade",
     "anvil_serving.voice.cli": "anvil-serving voice",
     "anvil_serving.voice_sidecar": "anvil-serving voice-sidecar",
+    "anvil_serving.workbench": "anvil-serving workbench",
 }
 
 
