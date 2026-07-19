@@ -13,8 +13,24 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from .guard import confirmation_authorized
+
 
 DEFAULT_COMPOSE = Path(__file__).with_name("_scaffold_templates") / "docker-compose.workbench.yml"
+_MAX_LOG_TAIL = 5_000
+
+
+def _bounded_tail(value: str) -> int:
+    """Parse a finite, operator-readable Compose log tail."""
+    try:
+        tail = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("tail must be an integer") from exc
+    if tail < 1 or tail > _MAX_LOG_TAIL:
+        raise argparse.ArgumentTypeError(
+            f"tail must be between 1 and {_MAX_LOG_TAIL}"
+        )
+    return tail
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -29,7 +45,12 @@ def _parser() -> argparse.ArgumentParser:
             child.add_argument("--confirm", action="store_true", help="Confirm the lifecycle mutation.")
             child.add_argument("--dry-run", action="store_true", help="Print the exact Compose command without running it.")
         if name == "logs":
-            child.add_argument("--tail", type=int, default=200, help="Maximum log lines per service.")
+            child.add_argument(
+                "--tail",
+                type=_bounded_tail,
+                default=200,
+                help=f"Maximum log lines per service (1 through {_MAX_LOG_TAIL}).",
+            )
             child.add_argument("--follow", action="store_true", help="Follow logs in the foreground.")
     return parser
 
@@ -65,13 +86,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ValueError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
         return 2
-    # The canonical ``anvil-serving`` dispatcher consumes --confirm before it
-    # invokes a leaf handler, after enforcing the human gate. Keeping the flag
-    # in this parser makes direct help clear; lifecycle authorization lives in
-    # the shared dispatcher like every other mutable CLI verb.
     if getattr(args, "dry_run", False):
         print(json.dumps({"ok": True, "dry_run": True, "command": command}))
         return 0
+    # The canonical dispatcher strips ``--confirm`` before invoking a leaf, then
+    # installs a thread-local authorization scope. Requiring that scope here
+    # prevents ``python -m anvil_serving.workbench up`` or an accidental direct
+    # handler call from bypassing the shared mutation gate.
+    if args.action in {"up", "down"} and not confirmation_authorized():
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": "confirmation required; invoke through anvil-serving workbench with --confirm",
+                }
+            ),
+            file=sys.stderr,
+        )
+        return 3
     try:
         completed = subprocess.run(command, check=False, text=True)
     except OSError as exc:

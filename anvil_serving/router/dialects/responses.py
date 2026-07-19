@@ -266,12 +266,28 @@ class ResponsesDialect:
         text = "".join(pieces)
         structured = get_structured() if callable(get_structured) else None
         output = self._output(response_id, text, structured)
-        if message_id is not None and output and output[0]["type"] == "message":
-            output[0]["id"] = message_id
         if message_id is not None:
-            yield _event("response.output_text.done", {"item_id": message_id, "output_index": 0, "content_index": 0, "text": ""})
-            yield _event("response.content_part.done", {"item_id": message_id, "output_index": 0, "content_index": 0, "part": {"type": "output_text", "text": "", "annotations": []}})
-            yield _event("response.output_item.done", {"output_index": 0, "item": {"id": message_id, "type": "message", "role": "assistant", "status": "completed", "content": []}})
+            message = next((item for item in output if item["type"] == "message"), None)
+            if message is None:
+                message = {
+                    "id": message_id,
+                    "type": "message",
+                    "role": "assistant",
+                    "status": "completed",
+                    "content": [
+                        {
+                            "type": "output_text",
+                            "text": text,
+                            "annotations": [],
+                        }
+                    ],
+                }
+                output.insert(0, message)
+            else:
+                message["id"] = message_id
+            yield _event("response.output_text.done", {"item_id": message_id, "output_index": 0, "content_index": 0, "text": text})
+            yield _event("response.content_part.done", {"item_id": message_id, "output_index": 0, "content_index": 0, "part": {"type": "output_text", "text": text, "annotations": []}})
+            yield _event("response.output_item.done", {"output_index": 0, "item": message})
         output_index = 1 if message_id is not None else 0
         for call in (item for item in output if item["type"] == "function_call"):
             yield _event("response.output_item.added", {"output_index": output_index, "item": {**call, "status": "in_progress", "arguments": ""}})
