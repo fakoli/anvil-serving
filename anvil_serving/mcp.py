@@ -1326,6 +1326,12 @@ def _serves_cli_argv(action: str, manifest: str, names: list[str], *, dry_run: b
         argv += ["--compose", compose]
     if dry_run:
         argv.append("--dry-run")
+    elif action in {"up", "down", "rm", "adopt"}:
+        # MCP's confirm=true + dry_run=false is the operator approval for this
+        # exact declared action. Forward it to the resource-owner CLI so its
+        # shared confirmation gate authorizes the lifecycle operation and all
+        # declared postconditions (including lifecycle cache reclaim).
+        argv.append("--confirm")
     if recreate:
         argv.append("--recreate")
     if tail is not None:
@@ -1333,7 +1339,7 @@ def _serves_cli_argv(action: str, manifest: str, names: list[str], *, dry_run: b
     if since:
         argv += ["--since", since]
     if action in ("rm", "adopt") and not dry_run:
-        # The CLI now gates these irreversible actions behind an interactive
+        # The serves module additionally gates these irreversible actions behind an interactive
         # [y/N] prompt. This subprocess has no TTY (stdin is the JSON-RPC
         # pipe), and the MCP triple gate (confirm=true, dry_run=false) IS the
         # operator's consent — pass it through, or the child EOFs to "No" and

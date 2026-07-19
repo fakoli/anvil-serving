@@ -1,0 +1,11 @@
+# Persistent machine-level host policy. `anvil-serving init` installs this as
+# ~/.anvil-serving/host.toml (or under ANVIL_SERVING_HOME).
+schema_version = 1
+
+[cache_reclaim]
+# Best-effort page-cache reclaim after confirmed model pulls and managed loads.
+# Disabled by default because drop_caches is VM-wide and trades lower vmmemWSL
+# usage for cold page-cache reads in other WSL workloads.
+enabled = false
+distro = "docker-desktop"
+threshold_gb = 16

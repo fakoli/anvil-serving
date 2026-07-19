@@ -9,6 +9,7 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-18 | [2026-07-18-lifecycle-aware-wsl-cache-reclaim.md](2026-07-18-lifecycle-aware-wsl-cache-reclaim.md) | Fakoli Dark managed Puzzle Heavy load: 49.9 GiB cache-growth attribution, page-cache-only reclaim, retained VRAM/health/identity/inference, and exact stopped-state restoration |
 | 2026-07-18 | [2026-07-18-gpt-oss-puzzle-heavy-promotion.md](2026-07-18-gpt-oss-puzzle-heavy-promotion.md) | Pinned GPT-OSS Puzzle 88B Anvil vLLM fix, RTX PRO 6000 functional and benchmark evidence, default Heavy transition, and Gemma 4 rollback |
 | 2026-07-16 | [2026-07-16-gemma4-vllm0251-wsl2-c128.md](2026-07-16-gemma4-vllm0251-wsl2-c128.md) | vLLM 0.25.1 WSL2 pinned-memory upgrade, V1/V2 Gemma 4 c1/c8/c128 retest, larger-model sweep, and corrected high-concurrency NVFP4 conclusion |
 | 2026-07-16 | [2026-07-16-gemma4-unsloth-nvfp4-follow-up.md](2026-07-16-gemma4-unsloth-nvfp4-follow-up.md) | Unsloth Gemma 4 NVFP4 12B/26B-A4B/31B Fast/Heavy matrix, direct QAT speed A/B, template/tool regression, and no-promotion result |

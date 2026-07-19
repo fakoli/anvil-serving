@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Lifecycle-aware WSL page-cache reclaim.** A strict, default-off machine policy in
+  `$ANVIL_SERVING_HOME/host.toml` lets confirmed model pulls, recipe loads, and managed serve
+  up/adopt/switch/promotion boundaries evaluate one synchronous, readiness-aware cache reclaim.
+  The hook requires threshold, 1 GiB operation-growth, and settled-I/O evidence; uses
+  page-cache-only `drop_caches=1`; reports a structured warning-only outcome; and is inherited by
+  controller-dispatched serve operations without a new command, lifecycle flag, or MCP tool.
+  `host status` exposes the resolved policy, `init` ships the disabled template, and ADR-0023
+  records the VM-wide performance and consent tradeoffs.
+
 - **Repo-local agent controller registration and voice discovery.** Trusted Codex and Claude Code
   checkouts now start the checkout's `anvil-serving mcp serve` entry point instead of depending on a
   potentially stale global registration, and thin harness-specific wrappers expose the canonical

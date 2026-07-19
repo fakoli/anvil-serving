@@ -8,7 +8,7 @@ import os
 
 import pytest
 
-from anvil_serving import init, deploy, serve_recipes, serves
+from anvil_serving import host, init, deploy, serve_recipes, serves
 from anvil_serving.router import config as router_config
 from anvil_serving.router import modes as router_modes
 from anvil_serving.topology import load_topology
@@ -278,7 +278,7 @@ _REAL_HOST_VALUES = (
 _EXPECTED_HOME_FILES = {
     "router.toml", "example.toml", "example-docker.toml",
     "example-flexibility.toml", "example-with-cloud.toml", "modes.toml",
-    "serve-recipes.toml",
+    "host.toml", "serve-recipes.toml",
     "serves.toml", "serves.voice.toml", "serves.comfyui.toml",
     "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.comfyui.yml",
     "operator-topology.toml", ".env.example", "voice.toml", "edge.toml",
@@ -326,6 +326,12 @@ def test_scaffold_home_router_configs_modes_and_recipes_parse(tmp_path):
     registry = serve_recipes.load_registry(str(tmp_path / "serve-recipes.toml"))
     assert registry["schema"] == serve_recipes.REGISTRY_SCHEMA
     assert registry["recipe"]
+
+    policy = host.load_cache_reclaim_policy(str(tmp_path / "host.toml"))
+    assert policy["configured"] is True
+    assert policy["enabled"] is False
+    assert policy["distro"] == "docker-desktop"
+    assert policy["threshold_gb"] == 16.0
 
 
 def test_scaffold_home_writes_placeholders_not_real_host_values(tmp_path):

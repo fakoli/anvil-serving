@@ -42,3 +42,4 @@ people and the chat logs.
 | [0020](0020-init-defaults-to-home-scaffold-shipped-as-package-data.md) | `init` defaults to the home scaffold, shipped as package data (installed-tool fix) | Accepted |
 | [0021](0021-cli-interaction-contract.md) | CLI interaction contract: resource-first, previewable, recoverable, and cross-platform | Accepted |
 | [0022](0022-evaluation-evidence-protocol.md) | Evaluation evidence protocol: model-aware, repeated, and comparison-safe | Accepted |
+| [0023](0023-lifecycle-aware-wsl-cache-reclaim.md) | Lifecycle-aware WSL page-cache reclaim | Accepted |

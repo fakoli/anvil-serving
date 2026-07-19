@@ -1,7 +1,9 @@
 # Configuration Reference
 
-anvil-serving is configured through a single TOML file whose `[server]` and `[router]` tables
-declare the front door's auth, the tier topology, and the preset routing map. Start the router with
+anvil-serving's router is configured through one selected TOML file whose `[server]` and
+`[router]` tables declare the front door's auth, tier topology, and preset routing map. Separate
+machine-level behavior lives in the config home; the first such policy is `host.toml` for optional
+WSL page-cache reclaim. Start the router with
 an explicit file (`anvil-serving router run --config configs/example.toml`) or by mode name
 (`anvil-serving router run --mode agentic|flexibility`), which resolves to a mode's config file for you
 ([ADR-0011](adr/0011-two-mode-operation.md)). A small set of environment variables covers secrets
@@ -9,6 +11,46 @@ an explicit file (`anvil-serving router run --config configs/example.toml`) or b
 caps.
 
 Use `127.0.0.1` in every local URL, never `localhost` (a documented ~21-second Windows IPv6 stall).
+
+## Machine policy: `host.toml`
+
+The optional machine-level policy file is `$ANVIL_SERVING_HOME/host.toml`, or
+`~/.anvil-serving/host.toml` when the environment override is unset. It is independent of the
+router config, serve manifests, and recipe registry. `anvil-serving init` scaffolds the disabled
+template, and `host status` reports the resolved policy and source path.
+
+```toml
+schema_version = 1
+
+[cache_reclaim]
+enabled = false
+distro = "docker-desktop"
+threshold_gb = 16
+```
+
+| Key | Type | Default when absent | Meaning |
+|---|---|---|---|
+| `schema_version` | integer | not required while the section is absent | Must be exactly `1` when `[cache_reclaim]` is present. |
+| `cache_reclaim.enabled` | boolean | `false` | Enables the best-effort postcondition for confirmed Anvil-owned model downloads and managed model loads on Windows/WSL. |
+| `cache_reclaim.distro` | non-empty string | `"docker-desktop"` | WSL distro used to sample and reclaim the shared VM page cache. |
+| `cache_reclaim.threshold_gb` | finite number greater than zero | `16` | Minimum total page cache before the postcondition may reclaim. A separate fixed 1 GiB operation-growth gate also applies. |
+
+A missing file or missing section preserves upgrade compatibility and disables automatic reclaim.
+When the section exists, validation is strict: unknown root or section fields, invalid types,
+invalid values, and unsupported schema versions fail before a covered model operation mutates
+anything.
+
+Covered operations are `models pull`, `models recipes load`, manifest-owned `serves up`,
+`serves adopt`, `serves switch`, and `serves promote`/explicit rollback. Their dry runs disclose
+the resolved policy; their existing `--confirm` authorizes the declared postcondition. Ad-hoc
+`serves up --compose`, voice, request-time ComfyUI loads, and the request-triggered multiplexer are
+not covered in v1.
+
+The hook is conservative: it requires readable before/after samples, at least 1 GiB of growth,
+the configured threshold, settled cache growth, and the operation's readiness boundary. It runs
+`sync && echo 1 > /proc/sys/vm/drop_caches`, which drops clean page cache only. A skip, readiness
+timeout, or reclaim failure warns without changing the successful parent operation's exit code.
+See [ADR-0023](adr/0023-lifecycle-aware-wsl-cache-reclaim.md).
 
 ## How configuration is loaded
 
@@ -247,6 +289,7 @@ Read once at import; set before starting `router run`.
 |---|---|---|
 | `ANVIL_CONTROLLER_MAX_BODY_BYTES` | `1048576` (1 MiB) | Controller request body cap. |
 | `ANVIL_CONTROLLER_READ_TIMEOUT_SECONDS` | `30.0` | Controller socket read timeout. |
+| `ANVIL_SERVING_HOME` | platform config home (`~/.anvil-serving` on Windows/Linux) | Operator configuration home for `host.toml`, recipes, manifests, and generated lifecycle evidence. |
 | `ANVIL_WORKSPACE_ROOT` | auto-discovered | Explicit anvil-serving workspace root for MCP tools that write artifacts (validated: must be a real workspace directory). |
 | `ANVIL_BENCHMARK_EVIDENCE_DIR` / `ANVIL_EVIDENCE_DIR` | unset | Extra allowed root(s) for MCP benchmark-evidence artifact paths (`os.pathsep`-separated). |
 
