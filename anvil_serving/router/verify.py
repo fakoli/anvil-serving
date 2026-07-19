@@ -463,6 +463,39 @@ class ToolCallJSONValid:
     def __init__(self, required_keys: Optional[Dict[str, Sequence[str]]] = None):
         self.required_keys = required_keys or {}
 
+    @classmethod
+    def from_request_raw(cls, raw: Any) -> "ToolCallJSONValid":
+        """Build shallow required-key checks from either supported tool dialect.
+
+        OpenAI declares the schema at ``function.parameters``; Anthropic uses
+        ``input_schema``. Only the JSON Schema ``required`` array is consumed —
+        the verifier stays stdlib-only and deliberately does not pretend to be
+        a complete JSON Schema implementation.
+        """
+        body = raw if isinstance(raw, dict) else {}
+        tools = body.get("tools")
+        required_keys: Dict[str, Sequence[str]] = {}
+        if not isinstance(tools, (list, tuple)):
+            return cls()
+        for tool in tools:
+            if not isinstance(tool, dict):
+                continue
+            fn = tool.get("function")
+            if isinstance(fn, dict):
+                name = fn.get("name")
+                schema = fn.get("parameters")
+            else:
+                name = tool.get("name")
+                schema = tool.get("input_schema")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            required = schema.get("required") if isinstance(schema, dict) else None
+            if isinstance(required, (list, tuple)):
+                keys = [key for key in required if isinstance(key, str) and key]
+                if keys:
+                    required_keys[name.strip()] = keys
+        return cls(required_keys=required_keys)
+
     def verify(self, response: ResponseView) -> VerifyResult:
         calls = response.tool_calls or []
         if not calls:
@@ -509,6 +542,134 @@ class ToolCallJSONValid:
         if problems:
             return VerifyResult(self.name, False, score, "; ".join(problems))
         return VerifyResult(self.name, True, 1.0, f"{ok}/{len(calls)} tool calls valid")
+
+
+class ToolCallContractValid:
+    """Tool calls must honor the caller's advertised catalog and choice.
+
+    JSON-valid arguments are not enough: a model can emit a syntactically valid
+    call to a tool the harness never advertised (for example ``open_file`` or
+    the bare wrapper name ``functions``).  Forwarding that call merely pushes a
+    predictable ``tool not found`` error into the agent loop.  This verifier
+    proves the response obeys the request-side contract before any bytes are
+    committed, allowing the router to try the next quality-gated tier instead.
+
+    ``from_request_raw`` understands both supported wire dialects:
+
+    * OpenAI tools: ``{type:"function", function:{name:...}}`` and choices
+      ``auto`` / ``required`` / ``none`` / a forced function object.
+    * Anthropic tools: ``{name:...}`` and choices ``auto`` / ``any`` / ``none`` /
+      ``tool``.
+
+    An absent tool catalog is treated as "not checkable" for compatibility
+    with trusted/in-process backends that surface structured calls without a
+    complete raw wire body.  An explicitly present catalog (including an empty
+    one) is authoritative. Malformed request entries are ignored defensively;
+    the dialect/front door remains responsible for request validation.
+    """
+
+    name = "tool_call_contract_valid"
+
+    def __init__(
+        self,
+        allowed_names: Optional[Sequence[str]],
+        *,
+        choice_mode: str = "auto",
+        required_name: Optional[str] = None,
+    ) -> None:
+        self.allowed_names = (
+            frozenset(str(name) for name in allowed_names if str(name))
+            if allowed_names is not None
+            else None
+        )
+        self.choice_mode = choice_mode
+        self.required_name = required_name
+
+    @classmethod
+    def from_request_raw(cls, raw: Any) -> "ToolCallContractValid":
+        body = raw if isinstance(raw, dict) else {}
+        raw_tools = body.get("tools")
+        catalog_present = isinstance(raw_tools, (list, tuple))
+        names: List[str] = []
+        if catalog_present:
+            for tool in raw_tools:
+                if not isinstance(tool, dict):
+                    continue
+                # OpenAI function tool.
+                fn = tool.get("function")
+                if isinstance(fn, dict) and isinstance(fn.get("name"), str):
+                    name = fn["name"].strip()
+                    if name:
+                        names.append(name)
+                    continue
+                # Anthropic custom tool.
+                if isinstance(tool.get("name"), str):
+                    name = tool["name"].strip()
+                    if name:
+                        names.append(name)
+
+        choice = body.get("tool_choice")
+        mode = "auto"
+        required_name: Optional[str] = None
+        if isinstance(choice, str) and choice in ("auto", "required", "none"):
+            mode = choice
+        elif isinstance(choice, dict):
+            ctype = choice.get("type")
+            if ctype == "any":
+                mode = "required"
+            elif ctype in ("auto", "none"):
+                mode = str(ctype)
+            elif ctype in ("function", "tool"):
+                fn = choice.get("function")
+                candidate = (
+                    fn.get("name") if isinstance(fn, dict) else choice.get("name")
+                )
+                if isinstance(candidate, str) and candidate.strip():
+                    mode = "specific"
+                    required_name = candidate.strip()
+
+        return cls(
+            names if catalog_present else None,
+            choice_mode=mode,
+            required_name=required_name,
+        )
+
+    def verify(self, response: ResponseView) -> VerifyResult:
+        calls = response.tool_calls or []
+        problems: List[str] = []
+
+        if self.choice_mode in ("required", "specific") and not calls:
+            label = (
+                f"tool {self.required_name!r}" if self.required_name else "a tool call"
+            )
+            problems.append(f"caller required {label}, but response made no tool call")
+        if self.choice_mode == "none" and calls:
+            problems.append("caller forbade tool calls, but response emitted one")
+
+        for i, tool_call in enumerate(calls):
+            if not isinstance(tool_call, dict):
+                problems.append(
+                    f"#{i}: tool call is {type(tool_call).__name__}, not an object"
+                )
+                continue
+            name = _tool_name(tool_call)
+            if not name:
+                problems.append(f"#{i}: tool call has no name")
+                continue
+            if self.allowed_names is not None and name not in self.allowed_names:
+                problems.append(f"{name!r}: tool name was not advertised by caller")
+            if self.required_name is not None and name != self.required_name:
+                problems.append(
+                    f"{name!r}: caller specifically required {self.required_name!r}"
+                )
+
+        if problems:
+            return VerifyResult(self.name, False, 0.0, "; ".join(problems))
+        if calls:
+            return VerifyResult(
+                self.name, True, 1.0, f"{len(calls)} tool call(s) honor caller contract"
+            )
+        return VerifyResult(self.name, True, 1.0, "no tool call required or emitted")
 
 
 class CodeParses:
