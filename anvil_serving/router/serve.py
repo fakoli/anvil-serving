@@ -103,7 +103,14 @@ from .modes import (
 from .policy import Needs, route
 from .profile_store import ProfileStore, default_profile
 from .purpose import PurposeRouter
-from .verify import NonEmptyContent, NotTruncated, ResponseView, default_verifiers
+from .verify import (
+    NonEmptyContent,
+    NotTruncated,
+    ResponseView,
+    ToolCallContractValid,
+    ToolCallJSONValid,
+    default_verifiers,
+)
 
 
 class _AdmissionIterator:
@@ -739,7 +746,8 @@ class RoutingBackend:
             )
 
         # allow-with-verify (full chain), OR a local "allow" under the T004
-        # minimal-verify safety net (NonEmptyContent/NotTruncated only): both
+        # minimal-verify safety net (NonEmptyContent/NotTruncated plus the
+        # request-derived tool contract checks added in _route_with_verify): both
         # enforce the commit-window guarantee — ZERO partial local tokens may
         # reach the client on a verify-failure. route_with_fallback (T009) drives
         # the candidate walk over bound_tiers, buffering each tier's response
@@ -823,12 +831,34 @@ class RoutingBackend:
             return ResponseView(text=text, caller_max_tokens=caller_cap)
 
         fb_decision = _FallbackDecision(tiers=bound_tiers, work_class=work_class)
+        # Tool-call JSON validity alone cannot catch a model inventing a validly
+        # encoded but unadvertised name (the OpenClaw incident emitted
+        # ``open_file`` and bare ``functions``).  Bind the caller's actual tool
+        # catalog/choice into every buffered verify walk, including the minimal
+        # local-allow safety net, so a bad local call is discarded before the
+        # harness sees it and the next quality-gated tier can be attempted.
+        request_verifiers = []
+        request_json_verifier = ToolCallJSONValid.from_request_raw(request.raw)
+        request_contract_verifier = ToolCallContractValid.from_request_raw(request.raw)
+        replaced_json_verifier = False
+        for verifier in verifiers:
+            if isinstance(verifier, ToolCallJSONValid):
+                request_verifiers.extend(
+                    (request_json_verifier, request_contract_verifier)
+                )
+                replaced_json_verifier = True
+            else:
+                request_verifiers.append(verifier)
+        if not replaced_json_verifier:
+            request_verifiers.extend(
+                (request_json_verifier, request_contract_verifier)
+            )
         return route_with_fallback(
             request,
             fb_decision,
             self._config,
             backend_for=_tracking_backend_for,
-            verifiers=verifiers,
+            verifiers=request_verifiers,
             budget=self._budget,
             log=self._decision_log,
             breaker=self._circuit_breaker,
