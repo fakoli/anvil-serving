@@ -21,8 +21,14 @@ class _FakeSCP:
     absent). READ (`scp host:path localtmp`) materializes `remote` to the local dest; WRITE
     (`scp localtmp host:path`) captures the payload; a `.bak` dest records a backup. `read_err`
     non-"no such file" simulates an unreachable host."""
-    def __init__(self, host="mini", remote=None, read_err="", write_rc=0):
+    def __init__(self, host="mini", remote=None, read_err="", write_rc=0,
+                 plugin_manifest=None, model_available=True, plugin_loaded=True):
         self.host, self.remote, self.read_err, self.write_rc = host, remote, read_err, write_rc
+        self.plugin_manifest = plugin_manifest or json.dumps({
+            "id": "openclaw-anvil-intent-router",
+        })
+        self.model_available = model_available
+        self.plugin_loaded = plugin_loaded
         self.calls, self.written, self.backed_up, self.restarted = [], None, False, False
         self.kwargs = []
 
@@ -35,6 +41,27 @@ class _FakeSCP:
         if argv[0] == "ssh" and argv[-1] == harness._REMOTE_RESTART_COMMAND:
             self.restarted = True
             return _proc(0)
+        if argv[0] == "ssh" and argv[-1] == harness._REMOTE_MODELS_VALIDATE_COMMAND:
+            payload = json.loads(self.written)
+            native_ref = payload["agents"]["defaults"]["model"]["primary"]
+            return _proc(0, json.dumps({
+                "models": [{"key": native_ref, "available": self.model_available}],
+            }))
+        if argv[0] == "ssh" and argv[-1] == harness._REMOTE_PLUGIN_VALIDATE_COMMAND:
+            return _proc(0, json.dumps({
+                "plugin": {
+                    "id": "openclaw-anvil-intent-router",
+                    "enabled": True,
+                    "imported": self.plugin_loaded,
+                    "status": "loaded" if self.plugin_loaded else "error",
+                    "error": None if self.plugin_loaded else "load failed",
+                    "hookCount": 1 if self.plugin_loaded else 0,
+                },
+            }))
+        if argv[0] == "sftp":
+            assert kw["input"] == "rm .openclaw/openclaw.json\n"
+            self.written = None
+            return _proc(0)
         src, dst = argv[-2], argv[-1]
         if self._is_remote(dst):                      # WRITE or BACKUP (dest is remote)
             if dst.endswith(".bak"):
@@ -44,6 +71,10 @@ class _FakeSCP:
                 self.written = f.read()
             return _proc(self.write_rc, "", "" if self.write_rc == 0 else "write failed")
         # READ (source is remote) -> materialize the remote content to the local dest
+        if src.endswith(("/openclaw.plugin.json", "\\openclaw.plugin.json")):
+            with open(dst, "w", encoding="utf-8") as f:
+                f.write(self.plugin_manifest)
+            return _proc(0)
         if self.remote is None:
             return _proc(1, "", self.read_err or "scp: %s: No such file or directory" % src)
         with open(dst, "w", encoding="utf-8") as f:
@@ -73,6 +104,16 @@ def _cfg():
                  "chat-fast": ("fast", "heavy")},
         tiers={"heavy": _Tier(131072), "fast": _Tier(32768)},
     )
+
+
+def _local_plugin_dir(tmp_path):
+    plugin_dir = tmp_path / "openclaw-anvil-intent-router"
+    plugin_dir.mkdir(exist_ok=True)
+    (plugin_dir / "openclaw.plugin.json").write_text(
+        json.dumps({"id": "openclaw-anvil-intent-router"}),
+        encoding="utf-8",
+    )
+    return str(plugin_dir)
 
 
 # ---- rendering ---------------------------------------------------------------
@@ -235,7 +276,7 @@ def test_sync_writes_out_file(tmp_path, capsys):
         api_key_env="ANVIL_ROUTER_TOKEN",
         native_provider="openai",
         native_model="gpt-5.6-sol",
-        plugin_dir="/opt/anvil/plugins/openclaw-anvil-intent-router",
+        plugin_dir=_local_plugin_dir(tmp_path),
         tool_profile="full",
         exec_mode="auto",
         _load=lambda _p: _cfg(),
@@ -358,7 +399,8 @@ def test_scp_merge_preserves_others_and_drops_stale_anvil_overrides():
     })
     scp = _FakeSCP(remote=remote)
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+                                   gateway_host="mini", tool_profile="full",
+                                   exec_mode="auto", _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
     merged = json.loads(scp.written)
     provs = merged["models"]["providers"]
@@ -385,12 +427,86 @@ def test_scp_merge_preserves_live_baseurl_and_apikey():
     scp = _FakeSCP(remote=remote)
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://default-host/v1",
                                    api_key_env="ANVIL_ROUTER_TOKEN", gateway_host="mini",
+                                   native_provider="openai", native_model="gpt-5.6-sol",
+                                   plugin_dir="/srv/openclaw-anvil-intent-router",
+                                   tool_profile="full", exec_mode="auto",
                                    _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
     anvil = json.loads(scp.written)["models"]["providers"]["anvil"]
     assert anvil["baseUrl"] == "http://100.87.34.66:8000/v1"   # live URL preserved
     assert anvil["apiKey"] == "LITERAL-TOKEN-xyz"              # live token preserved (not ${ENV})
     assert all(m["reasoning"] is True for m in anvil["models"])  # but models ARE updated
+
+
+def test_merge_replaces_explicit_provider_and_route_settings():
+    existing = {
+        "models": {"providers": {"anvil": {
+            "baseUrl": "http://old/v1",
+            "apiKey": "OLD",
+        }}},
+        "plugins": {"entries": {"openclaw-anvil-intent-router": {
+            "config": {
+                "routeEndpoint": "http://old/v1/route",
+                "routeAuthEnv": "OLD_TOKEN",
+                "routeTimeoutMs": 30,
+            },
+        }}},
+    }
+    rendered = harness.render_openclaw_provider(
+        _cfg(),
+        base_url="http://new/v1",
+        api_key_env="NEW_TOKEN",
+        route_endpoint="http://route-new/v1/route",
+        route_auth_env="NEW_ROUTE_TOKEN",
+        route_timeout_ms=750,
+    )
+
+    merged = harness._merge_anvil_provider(
+        existing,
+        rendered,
+        replace_provider_keys=("baseUrl", "apiKey"),
+        replace_route_keys=("routeEndpoint", "routeAuthEnv", "routeTimeoutMs"),
+    )
+
+    anvil = merged["models"]["providers"]["anvil"]
+    assert anvil["baseUrl"] == "http://new/v1"
+    assert anvil["apiKey"] == "${NEW_TOKEN}"
+    route = merged["plugins"]["entries"][
+        "openclaw-anvil-intent-router"
+    ]["config"]
+    assert route["routeEndpoint"] == "http://route-new/v1/route"
+    assert route["routeAuthEnv"] == "NEW_ROUTE_TOKEN"
+    assert route["routeTimeoutMs"] == 750
+
+
+def test_client_side_routing_removes_existing_authoritative_route_settings():
+    existing = {
+        "plugins": {"entries": {"openclaw-anvil-intent-router": {
+            "config": {
+                "nativeProvider": "openai",
+                "nativeModel": "gpt-5.6-sol",
+                "routeEndpoint": "http://old/v1/route",
+                "routeAuthEnv": "OLD_TOKEN",
+                "routeTimeoutMs": 30,
+            },
+        }}},
+    }
+    rendered = harness.render_openclaw_provider(
+        _cfg(), base_url="http://new/v1", authoritative_route=False,
+    )
+
+    merged = harness._merge_anvil_provider(
+        existing, rendered, remove_route_config=True,
+    )
+
+    config = merged["plugins"]["entries"][
+        "openclaw-anvil-intent-router"
+    ]["config"]
+    assert config["nativeProvider"] == "openai"
+    assert config["nativeModel"] == "gpt-5.6-sol"
+    assert "routeEndpoint" not in config
+    assert "routeAuthEnv" not in config
+    assert "routeTimeoutMs" not in config
 
 
 def test_scp_merge_preserves_existing_plugin_config():
@@ -410,13 +526,16 @@ def test_scp_merge_preserves_existing_plugin_config():
     })
     scp = _FakeSCP(remote=remote)
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+                                   gateway_host="mini", native_provider="openai",
+                                   native_model="gpt-5.6-sol", tool_profile="full",
+                                   exec_mode="auto", _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
     entry = json.loads(scp.written)["plugins"]["entries"]["openclaw-anvil-intent-router"]
     assert entry["hooks"]["allowConversationAccess"] is True
     assert entry["hooks"]["allowPromptInjection"] is False
     assert entry["config"]["routeAuthEnv"] == "ANVIL_ROUTER_TOKEN"
-    assert "nativeProvider" not in entry["config"]
+    assert entry["config"]["nativeProvider"] == "openai"
+    assert entry["config"]["nativeModel"] == "gpt-5.6-sol"
 
 
 def test_scp_merge_removes_legacy_generated_plugin_defaults():
@@ -437,7 +556,8 @@ def test_scp_merge_removes_legacy_generated_plugin_defaults():
     })
     scp = _FakeSCP(remote=remote)
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+                                   gateway_host="mini", tool_profile="full",
+                                   exec_mode="auto", _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
     entry = json.loads(scp.written)["plugins"]["entries"]["openclaw-anvil-intent-router"]
     assert entry["hooks"]["allowConversationAccess"] is True
@@ -463,7 +583,9 @@ def test_scp_merge_preserves_explicit_plugin_overrides():
     })
     scp = _FakeSCP(remote=remote)
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+                                   gateway_host="mini", native_provider="openai",
+                                   native_model="gpt-5.5", tool_profile="full",
+                                   exec_mode="auto", _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
     config = json.loads(scp.written)["plugins"]["entries"]["openclaw-anvil-intent-router"]["config"]
     assert config["nativeProvider"] == "openai"
@@ -484,7 +606,8 @@ def test_scp_merge_derives_native_route_from_existing_gateway_primary():
     })
     scp = _FakeSCP(remote=remote)
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+                                   gateway_host="mini", tool_profile="full",
+                                   exec_mode="auto", _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
     entry = json.loads(scp.written)["plugins"]["entries"]["openclaw-anvil-intent-router"]
     assert entry["hooks"]["allowConversationAccess"] is True
@@ -513,6 +636,8 @@ def test_scp_merge_replaces_stale_anvil_plugin_paths_and_preserves_others():
         api_key_env="T",
         gateway_host="mini",
         plugin_dir="/srv/anvil/plugins/openclaw-anvil-intent-router",
+        tool_profile="full",
+        exec_mode="auto",
         _load=lambda p: _cfg(),
         _run=scp,
     )
@@ -570,6 +695,9 @@ def test_openclaw_skills_sync_scp_merge_preserves_operator_owned_config():
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
                                    gateway_host="mini", skills=True,
                                    skill_dir="/checkout/examples/openclaw/skills",
+                                   native_provider="openai", native_model="gpt",
+                                   plugin_dir="/srv/openclaw-anvil-intent-router",
+                                   tool_profile="full", exec_mode="auto",
                                    _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
     merged = json.loads(scp.written)
@@ -604,6 +732,11 @@ def test_openclaw_skills_sync_preserves_same_name_independent_reviewers():
         api_key_env="T",
         gateway_host="mini",
         skills=True,
+        native_provider="openai",
+        native_model="gpt-5.6-sol",
+        plugin_dir="/srv/openclaw-anvil-intent-router",
+        tool_profile="full",
+        exec_mode="auto",
         _load=lambda p: _cfg(),
         _run=scp,
     )
@@ -625,6 +758,9 @@ def test_openclaw_skills_sync_local_out_merges_and_backs_up(tmp_path):
     }), encoding="utf-8")
     rc = harness.cmd_sync_openclaw("r.toml", out=str(out), base_url="http://h/v1",
                                    api_key_env="T", skills=True,
+                                   native_provider="openai", native_model="gpt",
+                                   plugin_dir=_local_plugin_dir(tmp_path),
+                                   tool_profile="full", exec_mode="auto",
                                    _load=lambda p: _cfg())
     assert rc == 0
     merged = json.loads(out.read_text(encoding="utf-8"))
@@ -662,6 +798,8 @@ def test_scp_overwrite_clobbers_other_providers():
         native_provider="openai",
         native_model="gpt-5.6-sol",
         plugin_dir="/srv/anvil/plugins/openclaw-anvil-intent-router",
+        tool_profile="full",
+        exec_mode="auto",
         _load=lambda p: _cfg(),
         _run=scp,
     )
@@ -682,6 +820,7 @@ def test_scp_refuses_merge_on_json5_remote(capsys):
 
 def test_scp_created_when_remote_absent(capsys):
     scp = _FakeSCP(remote=None)                                # file absent -> create
+    validation = {}
     rc = harness.cmd_sync_openclaw(
         "r.toml",
         base_url="http://h/v1",
@@ -690,13 +829,176 @@ def test_scp_created_when_remote_absent(capsys):
         native_provider="openai",
         native_model="gpt-5.6-sol",
         plugin_dir="/srv/anvil/plugins/openclaw-anvil-intent-router",
+        tool_profile="full",
+        exec_mode="auto",
         _load=lambda p: _cfg(),
         _run=scp,
+        _applied_validation=validation,
     )
     assert rc == 0
     assert json.loads(scp.written)["models"]["providers"]["anvil"]
     assert not scp.backed_up                                    # nothing to back up
     assert "created" in capsys.readouterr().out
+    assert validation == {
+        "plugin_manifest_verified": True,
+        "native_model_verified": True,
+        "plugin_runtime_verified": True,
+    }
+
+
+def test_runtime_validation_rejects_unavailable_native_model_and_unloaded_plugin():
+    payload = harness.render_openclaw_provider(
+        _cfg(),
+        base_url="http://h/v1",
+        native_provider="openai",
+        native_model="fabricated-model",
+        plugin_dir="/srv/openclaw-anvil-intent-router",
+        tool_profile="full",
+        exec_mode="auto",
+    )
+    loaded_plugin = json.dumps({
+        "plugin": {
+            "id": "openclaw-anvil-intent-router",
+            "enabled": True,
+            "imported": True,
+            "status": "loaded",
+            "error": None,
+            "hookCount": 1,
+        },
+    })
+
+    with pytest.raises(ValueError, match="cannot use native fallback model"):
+        harness._validate_openclaw_runtime_payload(
+            payload,
+            json.dumps({"models": [{
+                "key": "openai/fabricated-model",
+                "available": None,
+            }]}),
+            loaded_plugin,
+        )
+
+    with pytest.raises(ValueError, match="did not load the Anvil routing plugin"):
+        harness._validate_openclaw_runtime_payload(
+            payload,
+            json.dumps({"models": [{
+                "key": "openai/fabricated-model",
+                "available": True,
+            }]}),
+            json.dumps({"plugin": {
+                "id": "openclaw-anvil-intent-router",
+                "enabled": True,
+                "imported": False,
+                "status": "error",
+                "error": "module load failed",
+                "hookCount": 0,
+            }}),
+        )
+
+
+def test_remote_first_time_runtime_failure_restores_existing_config(capsys):
+    original = json.dumps({
+        "models": {"providers": {"openai": {"baseUrl": "https://api.openai.com/v1"}}},
+    })
+    scp = _FakeSCP(remote=original, model_available=False)
+
+    rc = harness.cmd_sync_openclaw(
+        "r.toml",
+        base_url="http://h/v1",
+        api_key_env="T",
+        gateway_host="mini",
+        native_provider="openai",
+        native_model="fabricated-model",
+        plugin_dir="/srv/openclaw-anvil-intent-router",
+        tool_profile="full",
+        exec_mode="auto",
+        _load=lambda p: _cfg(),
+        _run=scp,
+    )
+
+    assert rc == 1
+    assert json.loads(scp.written) == json.loads(original)
+    error = capsys.readouterr().err
+    assert "cannot use native fallback model" in error
+    assert "restored the previous OpenClaw config" in error
+
+
+def test_remote_new_runtime_failure_removes_unvalidated_config(capsys):
+    scp = _FakeSCP(remote=None, model_available=False)
+
+    rc = harness.cmd_sync_openclaw(
+        "r.toml",
+        base_url="http://h/v1",
+        api_key_env="T",
+        gateway_host="mini",
+        native_provider="openai",
+        native_model="fabricated-model",
+        plugin_dir="/srv/openclaw-anvil-intent-router",
+        tool_profile="full",
+        exec_mode="auto",
+        _load=lambda p: _cfg(),
+        _run=scp,
+    )
+
+    assert rc == 1
+    assert scp.written is None
+    assert "removed the unvalidated newly created OpenClaw config" in capsys.readouterr().err
+
+
+def test_remote_fresh_setup_refuses_wrong_or_missing_plugin_manifest(capsys):
+    scp = _FakeSCP(
+        remote=None,
+        plugin_manifest=json.dumps({"id": "different-plugin"}),
+    )
+    rc = harness.cmd_sync_openclaw(
+        "r.toml",
+        base_url="http://h/v1",
+        api_key_env="T",
+        gateway_host="mini",
+        native_provider="openai",
+        native_model="gpt-5.6-sol",
+        plugin_dir="/srv/anvil/plugins/openclaw-anvil-intent-router",
+        tool_profile="full",
+        exec_mode="auto",
+        _load=lambda p: _cfg(),
+        _run=scp,
+    )
+
+    assert rc == 1
+    assert scp.written is None
+    assert "different-plugin" in capsys.readouterr().err
+
+
+def test_nonempty_first_time_integration_requires_complete_setup():
+    existing = json.dumps({
+        "models": {"providers": {"openai": {"baseUrl": "https://api.openai.com/v1"}}},
+    })
+    rendered = harness.render_openclaw_provider(_cfg(), base_url="http://h/v1")
+
+    with pytest.raises(ValueError, match="incomplete first-time OpenClaw integration"):
+        harness._payload_for_existing_config(
+            existing,
+            rendered,
+            overwrite=False,
+            path="openclaw.json",
+        )
+
+
+def test_partial_legacy_anvil_fragment_does_not_bypass_complete_setup():
+    existing = json.dumps({
+        "models": {"providers": {"anvil": {
+            "baseUrl": "http://old/v1",
+            "apiKey": "OLD",
+        }}},
+    })
+    rendered = harness.render_openclaw_provider(_cfg(), base_url="http://h/v1")
+
+    with pytest.raises(ValueError, match="incomplete partial OpenClaw integration"):
+        harness._payload_for_existing_config(
+            existing,
+            rendered,
+            overwrite=False,
+            path="openclaw.json",
+        )
 
 
 def test_scp_unreachable_errors(capsys):
@@ -849,6 +1151,8 @@ def test_sync_gateway_restarts_after_success():
         native_provider="openai",
         native_model="gpt-5.6-sol",
         plugin_dir="/srv/anvil/plugins/openclaw-anvil-intent-router",
+        tool_profile="full",
+        exec_mode="auto",
         _load=lambda p: _cfg(),
         _run=scp,
     )
@@ -886,11 +1190,16 @@ def test_main_dispatches_sync_openclaw(monkeypatch):
         seen["cfg"], seen["k"] = cfg, k
         return 0
     monkeypatch.setattr(harness, "cmd_sync_openclaw", fake)
-    rc = harness.main(["sync", "openclaw", "--config", "r.toml", "--base-url", "http://h:8000/v1"])
+    rc = harness.main([
+        "sync", "openclaw", "--config", "r.toml",
+        "--base-url", "http://h:8000/v1",
+        "--api-key-env", "ROUTER_TOKEN",
+    ])
     assert rc == 0
     assert seen["cfg"] == "r.toml"
     assert seen["k"]["base_url"] == "http://h:8000/v1"
-    assert seen["k"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
+    assert seen["k"]["api_key_env"] == "ROUTER_TOKEN"
+    assert seen["k"]["_replace_provider_keys"] == ("baseUrl", "apiKey")
 
 
 def test_main_sync_forwards_fresh_gateway_setup_options(monkeypatch):

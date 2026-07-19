@@ -576,6 +576,7 @@ class ToolCallContractValid:
         *,
         choice_mode: str = "auto",
         required_name: Optional[str] = None,
+        allow_parallel: bool = True,
     ) -> None:
         self.allowed_names = (
             frozenset(str(name) for name in allowed_names if str(name))
@@ -584,6 +585,7 @@ class ToolCallContractValid:
         )
         self.choice_mode = choice_mode
         self.required_name = required_name
+        self.allow_parallel = allow_parallel
 
     @classmethod
     def from_request_raw(cls, raw: Any) -> "ToolCallContractValid":
@@ -609,11 +611,14 @@ class ToolCallContractValid:
                         names.append(name)
 
         choice = body.get("tool_choice")
+        allow_parallel = body.get("parallel_tool_calls") is not False
         mode = "auto"
         required_name: Optional[str] = None
         if isinstance(choice, str) and choice in ("auto", "required", "none"):
             mode = choice
         elif isinstance(choice, dict):
+            if choice.get("disable_parallel_tool_use") is True:
+                allow_parallel = False
             ctype = choice.get("type")
             if ctype == "any":
                 mode = "required"
@@ -632,6 +637,7 @@ class ToolCallContractValid:
             names if catalog_present else None,
             choice_mode=mode,
             required_name=required_name,
+            allow_parallel=allow_parallel,
         )
 
     def verify(self, response: ResponseView) -> VerifyResult:
@@ -645,6 +651,11 @@ class ToolCallContractValid:
             problems.append(f"caller required {label}, but response made no tool call")
         if self.choice_mode == "none" and calls:
             problems.append("caller forbade tool calls, but response emitted one")
+        if not self.allow_parallel and len(calls) > 1:
+            problems.append(
+                "caller disabled parallel tool use, but response emitted %d calls"
+                % len(calls)
+            )
 
         for i, tool_call in enumerate(calls):
             if not isinstance(tool_call, dict):

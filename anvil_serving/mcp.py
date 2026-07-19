@@ -2485,6 +2485,8 @@ def tool_openclaw_sync(args: dict) -> dict:
             "openclaw sync apply requires gateway_host or a real out path; '-' is render-only",
             {"target": target},
         )
+    applied_payload = {}
+    applied_validation = {}
     rc, stdout, stderr = _capture(lambda: harness.cmd_sync_openclaw(
         config,
         out=out or None,
@@ -2514,7 +2516,31 @@ def tool_openclaw_sync(args: dict) -> dict:
         overwrite=overwrite,
         restart=restart,
         timeout_seconds=timeout_seconds,
+        _replace_provider_keys=tuple(
+            key for arg_name, key in (
+                ("base_url", "baseUrl"),
+                ("api_key_env", "apiKey"),
+            )
+            if arg_name in args
+        ),
+        _applied_payload=applied_payload,
+        _applied_validation=applied_validation,
     ))
+    if rc == 0 and applied_payload:
+        preview = harness._openclaw_payload_summary(
+            applied_payload,
+            skills=skills,
+            voice=voice,
+            plugin_manifest_verified=applied_validation.get(
+                "plugin_manifest_verified"
+            ),
+            native_model_verified=applied_validation.get(
+                "native_model_verified"
+            ),
+            plugin_runtime_verified=applied_validation.get(
+                "plugin_runtime_verified"
+            ),
+        )
     result = {
         "applied": rc == 0,
         "returncode": rc,
@@ -2537,6 +2563,11 @@ def tool_openclaw_sync(args: dict) -> dict:
             "route_timeout_ms": preview["route_timeout_ms"],
             "tool_profile": preview["tool_profile"],
             "exec_mode": preview["exec_mode"],
+            "fresh_config_ready": preview["fresh_config_ready"],
+            "fresh_config_issues": preview["fresh_config_issues"],
+            "plugin_manifest_verified": preview["plugin_manifest_verified"],
+            "native_model_verified": preview["native_model_verified"],
+            "plugin_runtime_verified": preview["plugin_runtime_verified"],
             "fresh_setup_ready": preview["fresh_setup_ready"],
             "fresh_setup_issues": preview["fresh_setup_issues"],
             "skills": preview["skills"],

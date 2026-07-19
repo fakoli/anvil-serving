@@ -97,6 +97,33 @@ def test_contract_understands_anthropic_catalog_and_choice():
 @pytest.mark.parametrize(
     "raw",
     [
+        {**_openai_raw(), "parallel_tool_calls": False},
+        {
+            "tools": [
+                {"name": "web_fetch", "input_schema": {"type": "object"}},
+                {"name": "read_url", "input_schema": {"type": "object"}},
+            ],
+            "tool_choice": {
+                "type": "auto",
+                "disable_parallel_tool_use": True,
+            },
+        },
+    ],
+)
+def test_contract_enforces_parallel_tool_call_opt_out(raw):
+    verifier = ToolCallContractValid.from_request_raw(raw)
+    result = verifier.verify(ResponseView(tool_calls=[
+        {"name": "web_fetch", "arguments": {}},
+        {"name": "web_fetch", "arguments": {}},
+    ]))
+
+    assert result.passed is False
+    assert "disabled parallel tool use" in result.reason
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
         {
             "tools": [{
                 "type": "function",
@@ -181,6 +208,29 @@ def test_routing_discards_unknown_tool_and_falls_back_to_valid_tier():
         tiers=(_tier("fast"), _tier("heavy")),
         presets={"chat-custom": ("fast", "heavy")},
         mapping_version="test.0",
+    )
+    routing = RoutingBackend(
+        config,
+        {"fast": _ToolBackend("open_file"), "heavy": _ToolBackend("web_fetch")},
+        default_profile(),
+    )
+
+    assert "".join(routing.generate(_request())) == ""
+    structured = routing.get_last_structured()
+    assert structured is not None
+    assert structured.tool_calls[0]["name"] == "web_fetch"
+    record = routing._decision_log.last
+    assert record is not None and record.fell_back
+    assert record.served_tier == "heavy"
+    assert "tool_call_contract_valid" in record.attempts[0].verify_reason
+
+
+def test_tool_contract_still_applies_when_local_min_verify_is_disabled():
+    config = RouterConfig(
+        tiers=(_tier("fast"), _tier("heavy")),
+        presets={"chat-custom": ("fast", "heavy")},
+        mapping_version="test.0",
+        verify_local_min=False,
     )
     routing = RoutingBackend(
         config,

@@ -117,7 +117,9 @@ Reading the ladder:
 - **`allow`** rows skip the full verifier chain. A cloud `allow` tier streams straight through
   (time-to-first-token preserved); a *local* `allow` tier still passes a minimal buffered
   `NonEmptyContent` + `NotTruncated` window before the first byte under the default
-  `verify_local_min = true` — set it to `false` to stream local raw.
+  `verify_local_min = true` — set it to `false` to stream ordinary local text raw. Requests that
+  declare tools or `tool_choice` always retain a buffered JSON/name/choice contract check on local
+  and cloud tiers, independent of this latency option.
 - **`allow-with-verify`** rows buffer the whole local response, verify it, and only then release
   the first byte; a failure discards the local output and escalates.
 - **`deny`** rows are filtered before dispatch. `planning` never routes to an unmeasured local
