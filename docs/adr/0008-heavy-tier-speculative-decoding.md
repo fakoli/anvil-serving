@@ -4,7 +4,8 @@
 - **Date:** 2026-07-02
 - **Relates to:** the fakoli-dark heavy tier (`examples/fakoli-dark/docker-compose.yml`, service
   `sglang`, model `qwen35-awq` = Qwen3.5-35B-A3B AWQ), ADR-0002 (serves are compose-defined),
-  ADR-0027 (supersedes this record's evidence-location convention only), issue #175
+  ADR-0027 (supersedes this record's evidence-location convention only),
+  `docs/findings/2026-07-22-adr-0008-evidence-gap.md`
 
 ## Context
 
@@ -60,11 +61,13 @@ of upstream reports:
   zero errors, confirmed via the server's own `#cached-token` log lines, not just the client-side
   report.
 
-The key numbers above are the public record of what was measured; the raw benchmark logs from this
-historical validation session were not committed and remain a legacy public-evidence gap tracked by
-issue #175. ADR-0027 supersedes only that old evidence-location convention: future equivalent
-benchmarks publish sanitized findings and bounded raw evidence publicly. It does not change this
-ADR's speculative-decoding decision.
+The key numbers above are the public record of what was measured. The raw benchmark logs from this
+historical validation session were never committed and were not found in the fetched companion-notes
+history. The linked [public evidence-gap record](../findings/2026-07-22-adr-0008-evidence-gap.md)
+documents the search and resulting limitation rather than inventing a private source. ADR-0027
+supersedes only that old evidence-location convention: future equivalent benchmarks publish
+sanitized findings and bounded raw evidence publicly. It does not change this ADR's historical
+decision, but this record alone is not current promotion evidence for another model or engine.
 
 ## Consequences
 

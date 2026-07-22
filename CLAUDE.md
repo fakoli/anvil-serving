@@ -407,10 +407,10 @@ it, and keep the script as a thin example or remove it.
 - `docs/adr/0013-openclaw-layers-and-mcp-control-plane.md` / `0014-tailnet-controller-transport.md`
   — clean OpenClaw layers and split-host controller transport
 - `docs/adr/` — **Architecture Decision Records** — the *why* behind significant design decisions
-- the full 2026-07-02 architecture-review working record (the PR #96–#102 series: wire fidelity,
-  measured profile, bug bash, swap draining, residency + streaming relay) lives in the private
-  companion repo `fakoli/anvil-serving-notes`; public dated evidence, including the durable sm_120
-  record, follows ADR-0027 under `docs/findings/`
+- related 2026-07-02 architecture-review working materials (the PR #96–#102 series: wire fidelity,
+  measured profile, bug bash, swap draining, residency + streaming relay) live in the private
+  companion repo `fakoli/anvil-serving-notes`; the 2026-07-22 publication audit records exactly
+  what was and was not present, while public dated evidence follows ADR-0027 under `docs/findings/`
 - `examples/fakoli-dark/` — real two-tier instance (heavy :30000 SGLang, fast :30001 vLLM)
 
 > **Companion repo:** internal design discussions, planning context, review/session transcripts,

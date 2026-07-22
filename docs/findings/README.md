@@ -39,12 +39,15 @@ load-bearing evidence into a private repository.
 Only existing artifacts' size and format are grandfathered; sanitization, correction, and public
 citation requirements still apply. Any future size cleanup is a separate reviewed migration that
 must preserve public access, provenance, and content hashes.
-The legacy corpus is not retroactively certified: private-only grounding is tracked by
-[issue #175](https://github.com/fakoli/anvil-serving/issues/175), and machine-local paths/public
-artifact access are tracked by [issue #290](https://github.com/fakoli/anvil-serving/issues/290).
+The legacy corpus is not retroactively certified: [issue #175](https://github.com/fakoli/anvil-serving/issues/175)
+published or gap-recorded the private-only grounding it identified, while the broader machine-local
+path and public-artifact audit remains tracked by
+[issue #290](https://github.com/fakoli/anvil-serving/issues/290).
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-22 | [2026-07-22-private-evidence-publication-audit.md](2026-07-22-private-evidence-publication-audit.md) | #175 inventory, sanitized public publication, offline rerun, and exact missing-mirror record |
+| 2026-07-22 | [2026-07-22-adr-0008-evidence-gap.md](2026-07-22-adr-0008-evidence-gap.md) | Public provenance correction for ADR-0008 raw logs that were never committed and could not be found |
 | 2026-07-18 | [2026-07-18-lifecycle-aware-wsl-cache-reclaim.md](2026-07-18-lifecycle-aware-wsl-cache-reclaim.md) | Fakoli Dark managed Puzzle Heavy load: 49.9 GiB cache-growth attribution, page-cache-only reclaim, retained VRAM/health/identity/inference, and exact stopped-state restoration |
 | 2026-07-18 | [2026-07-18-gpt-oss-puzzle-heavy-promotion.md](2026-07-18-gpt-oss-puzzle-heavy-promotion.md) | Pinned GPT-OSS Puzzle 88B Anvil vLLM fix, RTX PRO 6000 functional and benchmark evidence, default Heavy transition, and Gemma 4 rollback |
 | 2026-07-17 | [2026-07-17-gemma4-31b-optimization.md](2026-07-17-gemma4-31b-optimization.md) | Current Google 31B QAT template, 128K baseline, native-MTP compatibility failure, and WSL2 implications |
@@ -115,4 +118,7 @@ artifact access are tracked by [issue #290](https://github.com/fakoli/anvil-serv
 | 2026-07 | [2026-07-voice-realtime-proof.md](2026-07-voice-realtime-proof.md) | Voice Realtime proof: official `openai` SDK client against the anvil Realtime server |
 | 2026-07 | [2026-07-voice-16gb-mini.md](2026-07-voice-16gb-mini.md) | Voice on a 16 GB Mini: local STT+TTS with the LLM routed to fakoli-dark (T016) |
 | 2026-07 | [2026-07-voice-16gb-mini.json](2026-07-voice-16gb-mini.json) | Raw evidence for the 16 GB Mini proof |
+| 2026-06-29 | [2026-06-29-harness-intent-routing.md](2026-06-29-harness-intent-routing.md) | Dated multi-harness feasibility research for model-name-as-intent routing, with version-dependent limits |
+| 2026-06-28 | [2026-06-28-planning-capability-eval.md](2026-06-28-planning-capability-eval.md) | Historical Anvil PRD-to-tasks evaluation with complete bounded prompts, outputs, judge records, and reproducible offline aggregates |
+| 2026-06-28 | [2026-06-28-anvil-integration-audit.md](2026-06-28-anvil-integration-audit.md) | Pinned Anvil integration audit: one planning endpoint, no fleet or two-endpoint router |
 | (running) | [blackwell-sm120-lab-notebook.md](blackwell-sm120-lab-notebook.md) | Blackwell sm_120 lab notebook: which models serve (and how) on fakoli-dark |

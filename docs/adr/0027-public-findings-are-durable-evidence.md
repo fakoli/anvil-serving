@@ -83,15 +83,14 @@ preserve public narratives, citation targets, provenance, stable artifact access
 
 This decision supersedes the old evidence-location convention stated in ADR-0008, `CLAUDE.md`, and
 the former `CONTRIBUTING.md` design-history note; it does not change ADR-0008's serving decision.
-Existing private-only grounding is a known legacy gap tracked by issue #175. Legacy sanitization and
-machine-local evidence access are tracked by issue #290. This ADR chooses the policy but does not
-claim that every historical citation or artifact has already been remediated.
+Issue #175 published or gap-recorded the private-only grounding it identified. Legacy sanitization
+and the broader machine-local evidence-access audit remain tracked by issue #290. This ADR chooses
+the policy but does not claim that every historical citation or artifact has already been remediated.
 
 ## Consequences
 
-- New findings, and legacy claims remediated under issue #175, can be followed back to inspectable
-  evidence without private-repository access. Existing private-only grounding remains explicitly
-  incomplete until remediated.
+- New findings, and the legacy claims remediated under issue #175, can be followed back to
+  inspectable evidence or an explicit public gap record without private-repository access.
 - The public repository grows with useful evidence, so contributors and reviewers must enforce
   sanitization, bounded artifact size, indexing, and current-vs-historical labels.
 - ADRs and reference docs remain the source of current policy; findings remain immutable historical

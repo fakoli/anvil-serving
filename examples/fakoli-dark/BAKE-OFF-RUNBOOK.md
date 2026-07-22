@@ -1,4 +1,9 @@
-# Fakoli-Dark bake-off runbook — does the local box earn its keep?
+# Historical Fakoli-Dark bake-off runbook — 2026-06-28
+
+> **Historical record — do not execute as the current Fakoli Dark runbook.** The model IDs,
+> topology, and planning recommendation below describe the 2026-06-28 bake-off. Current Heavy is
+> `gpt-oss-puzzle-88b`; use `anvil-router.live.toml`, the current Compose files, and
+> [`docs/BENCHMARKS.md`](../../docs/BENCHMARKS.md) for present-day configuration and qualification.
 
 **This is the operational instantiation of Anvil's B50 bake-off** (`anvil/docs/how-to/bake-off.md`)
 on *this* machine. It answers one question with data, not metaphor:
@@ -12,19 +17,18 @@ the refiner agent) is **gated on this**. Owning the hardware changes the *supply
 not the *demand* question. Run this first.
 
 > ### Revised 2026-06-28 — what the discovery changed (read this first)
-> Two measured findings reshaped the goals below (the dated finding documents now live in the
-> private companion repo `fakoli/anvil-serving-notes`; their conclusions are summarized here).
+> Two measured public findings reshaped the goals below.
 > **Read them before running:**
-> - `2026-06-28-anvil-integration-audit` *(private notes repo)*
+> - [`2026-06-28-anvil-integration-audit`](../../docs/findings/2026-06-28-anvil-integration-audit.md)
 >   — Anvil is **not** an LLM gateway. It has a **single** `custom_base_url` that backs only its
 >   *planning augmentation* (`plan/score/expand`); it ships **no router** and cannot do heavy-vs-fast
 >   endpoint routing. The critic is a Claude Code subagent (its model comes from frontmatter /
 >   `CLAUDE_CODE_SUBAGENT_MODEL`), **not** from `llm_provider: custom`.
-> - `2026-06-28-planning-capability-eval` *(private notes repo)*
+> - [`2026-06-28-planning-capability-eval`](../../docs/findings/2026-06-28-planning-capability-eval.md)
 >   — On Anvil's real PRD→tasks prompt, local quality is **~55–65% of frontier** (frontier 24.75/25,
 >   fast 16.0, heavy 13.25), with the gap in **dependency/ordering reasoning**. Planning is also *free*
 >   on the Claude subscription. So routing Anvil's planner/critic to local is a **quality downgrade
->   for no cost saving** — it is now **failover-only**, not a steady-state arm.
+>   for no cost saving** — the decision at that time was **failover-only**, not a steady-state arm.
 >
 > **Net effect on the goals:**
 > 1. The bake-off thesis narrows to **capacity-relief via the execution-runner role** (the high-volume
@@ -38,12 +42,12 @@ not the *demand* question. Run this first.
 
 ---
 
-## The box, as two tiers (deployed reality, 2026-06-28)
+## The box, as two tiers (historical deployed snapshot, 2026-06-28)
 
 | Tier | GPU | Status | Role |
 |---|---|---|---|
-| **Heavy local** (Sonnet-equiv) | RTX PRO 6000, 96GB (GPU 1) | **LIVE** — `qwen3-coder-local` (Qwen3-Coder-30B-A3B AWQ) @ SGLang `:30000`, 128K ctx | execution runner for long-context, eligible packets · Tier-0 planning failover |
-| **Fast local** (Haiku-equiv) | RTX 5090, 32GB (GPU 0) | **LIVE** — `gpt-oss-20b` (MXFP4) @ vLLM `:30001`, ~256 tok/s | execution runner for bounded, low-blast packets |
+| **Heavy local** (Sonnet-equiv) | RTX PRO 6000, 96GB (GPU 1) | Observed live then — `qwen3-coder-local` (Qwen3-Coder-30B-A3B AWQ) @ SGLang `:30000`, 128K ctx | execution runner for long-context, eligible packets · Tier-0 planning failover |
+| **Fast local** (Haiku-equiv) | RTX 5090, 32GB (GPU 0) | Observed live then — `gpt-oss-20b` (MXFP4) @ vLLM `:30001`, ~256 tok/s | execution runner for bounded, low-blast packets |
 
 > Both serves are already up (`docker ps` → `sglang`, `vllm-gptoss`). The earlier runbook listed
 > `qwen35-awq-local` and "fast tier not stood up" — both stale. The remaining real build is **not a

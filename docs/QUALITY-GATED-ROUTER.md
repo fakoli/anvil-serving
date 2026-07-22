@@ -9,11 +9,12 @@
 > Sets the product direction for anvil-serving
 > as a **harness-facing** tool for clients that can point at a custom Anthropic/OpenAI-compatible
 > base URL and send a free-form model string, rather than an anvil-coupled serving tier.
-> **Grounded in** (full findings live in the companion notes repo `fakoli/anvil-serving-notes` —
-> *private, not accessible to external readers; the conclusions are restated inline below*):
-> the integration-point audit (the integration point is the runtime, not anvil),
-> the planning-capability eval (local quality is work-class-dependent and *measurable*), and
-> the harness-intent-routing research (what harnesses can actually carry on the wire — verified).
+> **Grounded in:** the public
+> [integration-point audit](findings/2026-06-28-anvil-integration-audit.md) (the integration point is
+> the runtime, not Anvil), [planning-capability eval](findings/2026-06-28-planning-capability-eval.md)
+> (local quality is work-class-dependent and measurable), and
+> [harness-intent-routing research](findings/2026-06-29-harness-intent-routing.md) (the dated evidence
+> for what harnesses could carry on the wire). Each finding labels its historical scope.
 
 ## 1. Thesis
 
@@ -53,8 +54,9 @@ knowledge of which model clears that bar *is* the value. Models become a fungibl
 clients never change when models churn (re-point an intent centrally instead).
 
 **Decision — the descriptor is a closed enum of named presets, carried in the `model` field**
-("model-name-as-intent"). Verified rationale (harness-intent-routing findings,
-`fakoli/anvil-serving-notes` — *private repo; the rationale is summarized here in full*):
+("model-name-as-intent"). The public
+[harness-intent-routing finding](findings/2026-06-29-harness-intent-routing.md) records the dated
+verification rationale:
 unmodified harnesses expose exactly one operator-controllable routing channel — the `model` string,
 which is required in both wire schemas, forwarded verbatim, and free-form (only the *genuine*
 upstream validates model names; a router behind the base_url may reinterpret them). Shipping
@@ -177,8 +179,9 @@ field), **503** (no tier survives the quality + metered-cloud gate).
 A table keyed `(model, work-class)` → `{quality_score, sample_n, last_measured, decision}` where
 `decision ∈ {allow, allow-with-verify, deny}`. Populated by:
 
-1. **Bootstrap** from the shadow-eval harness already built (raw eval data in the private
-   `fakoli/anvil-serving-notes` repo; the harness itself ships here as `anvil-serving eval`):
+1. **Bootstrap** from the published
+   [shadow-eval evidence bundle](findings/eval-data/2026-06-28-planning-capability/PUBLICATION.md) (the supported
+   harness itself ships here as `anvil-serving eval`):
    replay representative requests per work-class to each local tier, grade against cloud
    (deterministic checks + blind/LLM judge), emit the table. Generalize that harness from
    "planning" to arbitrary work-classes.
@@ -463,8 +466,8 @@ TS Plugin SDK; its `before_model_resolve` hook sees prompt plus attachment metad
 attempt loop and can set `modelOverride`/`providerOverride`).
 **Hermes Agent** (open-source MIT) is a clean, *rich* Tier-1 consumer — notably more model slots than
 Claude Code — but its hooks can't alter the outgoing request, so it stays Tier-1 short of a fork
-(OpenClaw/Hermes customization findings in the private `fakoli/anvil-serving-notes` repo; the
-conclusion is as stated here).
+([dated harness research](findings/2026-06-29-harness-intent-routing.md); current OpenClaw behavior
+is pinned by the [public integration contract](OPENCLAW-INTEGRATION-SPEC.md)).
 
 **Reference integration decision — OpenClaw-first (focus, not couple).** anvil-serving concentrates integration
 *depth* on OpenClaw as the first-class client, because it's the one harness that unlocks per-request
