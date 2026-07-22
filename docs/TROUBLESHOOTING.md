@@ -143,7 +143,7 @@ prompt tokens`, clamped to a floor of 1 — it does not reject an oversized prom
 conversation eventually makes every turn's completion budget compute negative and floor to **1
 token**. This caused a live incident (2026-07-02): turns "succeeded" with 1-token responses,
 verification failed them, and the circuit breaker tripped on healthy tiers
-(`docs/OPENCLAW-INTEGRATION-SPEC.md` §2, "live-confirmed failure mode").
+(`docs/OPENCLAW-INTEGRATION-SPEC.md` §2, "contextWindow rule").
 
 **What to check.** Each preset's `contextWindow` in `~/.openclaw/openclaw.json` must equal the
 **largest** context window among the tiers that preset can actually route to — for the reference

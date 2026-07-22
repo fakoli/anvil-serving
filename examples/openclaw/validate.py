@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""validate.py — T013 validate-first tooling for the anvil-serving x OpenClaw integration.
+"""validate.py — T013 validation tooling for the anvil-serving x OpenClaw integration.
 
-Validates the TWO CRITICAL "live gaps" from docs/OPENCLAW-INTEGRATION-SPEC.md §6
-*before* any routing plugin is built (validate-FIRST):
+Revalidates the wire-form contract in docs/OPENCLAW-INTEGRATION-SPEC.md §3 and
+the cadence gate in §6. These checks originally settled the
+pre-plugin live gaps now recorded in that document's §7 history:
 
   1. WIRE FORM   — every outbound ``model`` string is ``(anvil/)?<preset>``, AND
                    the anvil front door accepts BOTH the bare (``planning``) and

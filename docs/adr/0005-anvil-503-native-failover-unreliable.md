@@ -64,7 +64,8 @@ default): those route directly to the configured native provider/model and never
 provider resolution, not anvil-serving's or the plugin's. Ship the following instead:
 
 1. **Correct the previously-inaccurate "safety net" claims** in `plugins/openclaw-anvil-intent-router/`
-   (`route.mjs`, `index.ts`, `README.md`) and `docs/OPENCLAW-INTEGRATION-SPEC.md` §0/§7 — the
+   (`route.mjs`, `index.ts`, `README.md`) and the opening contract/§7 of
+   `docs/OPENCLAW-INTEGRATION-SPEC.md` — the
    keyless-503 → native-failover handoff is reliable ONLY when the plugin does not route to anvil;
    it is NOT reliable once `providerOverride:"anvil"` is in play.
 2. **Operator mitigation A — `ANVIL_CLOUD_CLASSES`.** Move a preset whose local tier is known to

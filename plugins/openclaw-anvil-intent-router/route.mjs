@@ -22,8 +22,9 @@
 //   provider (and 503 again), never reaching the native cloud provider.
 //   Cloud-preferred presets avoid this path by routing directly to the configured
 //   native provider/model instead of touching anvil.
-//   Root cause + operator workaround: docs/OPENCLAW-INTEGRATION-SPEC.md
-//   ("anvil-503 native-failover loop") and docs/adr/0005-anvil-503-native-failover-unreliable.md.
+//   Root cause + operator workaround: docs/OPENCLAW-INTEGRATION-SPEC.md §7
+//   ("native fallback does not escape the override") and
+//   docs/adr/0005-anvil-503-native-failover-unreliable.md.
 //   Practical mitigations (no OpenClaw-side fix available from this repo):
 //     1. Add a preset whose local tier is known to be flaky/exhausted to
 //        `ANVIL_CLOUD_CLASSES` so this plugin never emits a `providerOverride`
