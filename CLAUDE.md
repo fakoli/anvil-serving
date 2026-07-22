@@ -407,15 +407,16 @@ it, and keep the script as a thin example or remove it.
 - `docs/adr/0013-openclaw-layers-and-mcp-control-plane.md` / `0014-tailnet-controller-transport.md`
   — clean OpenClaw layers and split-host controller transport
 - `docs/adr/` — **Architecture Decision Records** — the *why* behind significant design decisions
-- the full 2026-07-02 architecture review record (the PR #96–#102 series: wire fidelity, measured
-  profile, bug bash, swap draining, residency + streaming relay) and the mid-2026 sm_120
-  model-landscape findings now live in the private companion repo `fakoli/anvil-serving-notes`;
-  the durable sm_120 evidence remains in `docs/findings/blackwell-sm120-lab-notebook.md`
+- the full 2026-07-02 architecture-review working record (the PR #96–#102 series: wire fidelity,
+  measured profile, bug bash, swap draining, residency + streaming relay) lives in the private
+  companion repo `fakoli/anvil-serving-notes`; public dated evidence, including the durable sm_120
+  record, follows ADR-0027 under `docs/findings/`
 - `examples/fakoli-dark/` — real two-tier instance (heavy :30000 SGLang, fast :30001 vLLM)
 
-> **Companion repo:** internal design discussions, planning context, dated bake-off findings,
-> and the tracked PRDs live in the private companion repo `fakoli/anvil-serving-notes`
-> (relocated to keep this repo product-focused).
+> **Companion repo:** internal design discussions, planning context, review/session transcripts,
+> and tracked PRDs live in the private companion repo `fakoli/anvil-serving-notes`. Public dated
+> findings and load-bearing evidence remain under `docs/findings/` per ADR-0027; private records may
+> supplement but cannot solely ground a public claim.
 
 ## Architecture Decision Records (ADRs)
 

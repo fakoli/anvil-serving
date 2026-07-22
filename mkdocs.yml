@@ -76,6 +76,7 @@ nav:
       - 'ADR-0013: OpenClaw layers and MCP control plane': adr/0013-openclaw-layers-and-mcp-control-plane.md
       - 'ADR-0014: Tailnet controller transport': adr/0014-tailnet-controller-transport.md
       - 'ADR-0015: Operator skills and sub-agent workflows': adr/0015-operator-skills-and-subagent-workflows.md
+      - 'ADR-0027: Public findings are durable evidence': adr/0027-public-findings-are-durable-evidence.md
       - ADR template: adr/template.md
   - Changelog: changelog.md
 
