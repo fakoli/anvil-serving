@@ -104,6 +104,7 @@ from .modes import (
 from .policy import Needs, route
 from .profile_store import ProfileStore, default_profile
 from .purpose import PurposeRouter
+from .tier_health import build_tier_health
 from .verify import (
     NonEmptyContent,
     NotTruncated,
@@ -934,6 +935,17 @@ class RoutingBackend:
             admission_for=self._admission.acquire,
             mode=self._mode,
         )
+
+    def tier_health(self) -> dict:
+        """Return a live readiness snapshot for EVERY configured serve (#292).
+
+        Surfaces the SAME cached availability state routing already tracks —
+        covering chat ``llm`` tiers, purpose models, and audio routes, not only
+        recently-routed ones — as content-free ``{id, role, status, last_check,
+        latency_ms, reason}`` rows.  No serve host, URL, token, or model id ever
+        appears; a ``reason`` is a bounded category, never a raw message.
+        """
+        return build_tier_health(self._config, self._availability)
 
     def transition_status(self, tier_id: Optional[str] = None) -> dict:
         """Return router-owned admission and readiness state."""
