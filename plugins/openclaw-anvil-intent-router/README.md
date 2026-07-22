@@ -44,8 +44,8 @@ classes) — it does not itself change the M0 keyless-503 handoff design.
 >    returns 503 for those classes, so OpenClaw's (unreliable) native failover
 >    is never invoked. This is a billing decision (ADR-0001) — opt in explicitly.
 >
-> Full root-cause writeup: `docs/OPENCLAW-INTEGRATION-SPEC.md`
-> ("anvil-503 native-failover loop") and
+> Full root-cause writeup: `docs/OPENCLAW-INTEGRATION-SPEC.md` §7
+> ("native fallback does not escape the override") and
 > `docs/adr/0005-anvil-503-native-failover-unreliable.md`.
 
 > **Focus, not couple.** All OpenClaw-specific code lives in this swappable
@@ -390,8 +390,8 @@ The prior wire-form and fire-cadence gaps are already settled; see
 
 **2026-07-01 live E2E finding (new):** the keyless-503 → native-failover safety
 net for local-preferred presets is **not reliable** — see the KNOWN DEFECT
-callout near the top of this file, `docs/OPENCLAW-INTEGRATION-SPEC.md`
-("anvil-503 native-failover loop"), and
+callout near the top of this file, `docs/OPENCLAW-INTEGRATION-SPEC.md` §7
+("native fallback does not escape the override"), and
 `docs/adr/0005-anvil-503-native-failover-unreliable.md`.
 
 ## LIVE integration step (MANUAL — run by a human on the gateway)
