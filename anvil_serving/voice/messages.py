@@ -86,6 +86,7 @@ class LLMChunk(StageMessage):
 
     text: str
     is_final: bool = False
+    joiner: str = ""
 
 
 @dataclass(frozen=True)
@@ -104,6 +105,7 @@ class TTSInput(StageMessage):
     """Text handed to the TTS stage to synthesize into audio."""
 
     text: str
+    joiner: str = ""
 
 
 @dataclass(frozen=True)
@@ -112,6 +114,25 @@ class AudioOut(StageMessage):
 
     pcm: bytes
     sample_rate: int = 24000
+
+
+@dataclass(frozen=True)
+class SpokenText(StageMessage):
+    """Exact text selected once TTS produces its first valid audio chunk.
+
+    The candidate cannot change after its first audio is emitted. If the
+    remaining stream fails, a later ``TTSSynthesisFailed`` suppresses the
+    terminal transcript rather than claiming the whole chunk completed.
+    """
+
+    text: str
+    joiner: str = ""
+    item_id: str = ""
+
+
+@dataclass(frozen=True)
+class TTSSynthesisFailed(StageMessage):
+    """Content-free marker that TTS could not complete this text chunk."""
 
 
 @dataclass(frozen=True)

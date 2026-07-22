@@ -44,3 +44,4 @@ people and the chat logs.
 | [0022](0022-evaluation-evidence-protocol.md) | Evaluation evidence protocol: model-aware, repeated, and comparison-safe | Accepted |
 | [0023](0023-lifecycle-aware-wsl-cache-reclaim.md) | Lifecycle-aware WSL page-cache reclaim | Accepted |
 | [0024](0024-normalized-audio-gateway.md) | Normalized authenticated one-shot audio gateway | Accepted |
+| [0025](0025-tts-authoritative-realtime-assistant-transcripts.md) | TTS-authoritative Realtime assistant transcripts | Accepted |

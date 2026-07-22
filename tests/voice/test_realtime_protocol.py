@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from anvil_serving.voice.messages import AudioOut, EndOfResponse, LLMChunk, LLMToolCall, Transcription
+from anvil_serving.voice.messages import AudioOut, EndOfResponse, LLMToolCall, SpokenText, Transcription
 from anvil_serving.voice.stages.vad import SpeechEvent
 from anvil_serving.voice.realtime.events import (
     ConversationItemCreate,
@@ -134,14 +134,19 @@ def test_dispatch_speech_stopped_yields_stopped_then_committed():
     assert events[1].item_id == "turn-1"
 
 
-def test_dispatch_llm_chunk_to_audio_transcript_delta():
-    msg = LLMChunk(turn_id="t1", turn_revision=0, generation=1, text="Hi there.")
+def test_dispatch_spoken_text_to_audio_transcript_delta():
+    msg = SpokenText(
+        turn_id="t1", turn_revision=0, generation=1, text="Hi there.", item_id="assistant-1"
+    )
     events = dispatch_internal_event(msg, response_id="resp_1")
     assert len(events) == 1
     assert isinstance(events[0], ResponseAudioTranscriptDelta)
     assert events[0].delta == "Hi there."
     assert events[0].turn_id == "t1"
     assert events[0].response_id == "resp_1"
+    assert events[0].item_id == "assistant-1"
+    assert events[0].output_index == 0
+    assert events[0].content_index == 0
 
 
 def test_dispatch_audio_out_to_response_audio_delta_base64():

@@ -25,7 +25,9 @@ through `input_audio_buffer.append`/`commit`, renders live input transcript
 events, cancels the first response with `response.cancel`, sends a second
 spoken turn, and requires a completed assistant audio response after the
 interruption. Capture validation fails if any output for the cancelled response
-arrives after the client sends `response.cancel`.
+arrives after the client sends `response.cancel`. Text-enabled runs additionally
+require assistant transcript deltas whose concatenation equals one correlated
+terminal transcript, with that terminal arriving before `response.done`.
 
 ## Known Caveats
 
@@ -45,10 +47,16 @@ arrives after the client sends `response.cancel`.
 | timestamp (UTC) | turn kind | barge-in tested? | transcript(s) | events captured | audio bytes | completed TTFA / latency ms | proof bundle |
 |---|---|---|---|---:|---:|---|---|
 | 2026-07-06T06:09:48Z | audio/audio | yes | Please count slowly from one to twenty so I can interrupt you.; Interrupting you now, please answer briefly how many countries are in Africa. | 50 | 75800 | 303.35 / 588.02 | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\realtime-sdk-20260706T060944Z.session.json |
+| 2026-07-22T18:14:43Z | audio/audio | yes | Please count slowly from 1 to 20, so I can interrupt you.; Interrupting you now, please answer briefly, how many countries are in Africa? | 40 | 41146 | 253.48 / 414.21 | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\realtime-sdk-20260722T181440Z.session.json |
 
 ## Decision
 
 T014 is satisfied by the 2026-07-06T06:09:48Z run: the official SDK connected,
 audio input produced live transcripts, `response.cancel` interrupted `resp_1`
 with no post-cancel output events, and `resp_2` completed with assistant audio.
-T017 should independently verify the artifact bundle and delivery branch.
+The 2026-07-22T18:14:43Z run additionally proves issue #281's assistant-text
+contract against the live router/STT/TTS topology: `resp_2` streamed the
+assistant transcript `Fifty-five.`, the terminal matched its deltas and preceded
+`response.done`, 41,146 output-audio bytes were captured, and the harness reported
+no acceptance errors. T017 should independently verify the artifact bundle and
+delivery branch.

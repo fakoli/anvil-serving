@@ -15,7 +15,14 @@ from types import SimpleNamespace
 import pytest
 
 from anvil_serving.voice.cancel_scope import CancelScope
-from anvil_serving.voice.messages import AudioOut, LLMToolCall
+from anvil_serving.voice.messages import (
+    AudioOut,
+    EndOfResponse,
+    LLMToolCall,
+    SpokenText,
+    Transcription,
+    TTSSynthesisFailed,
+)
 from anvil_serving.voice.pipeline import VoicePipeline
 from anvil_serving.voice.realtime.service import RealtimeService
 from anvil_serving.voice.realtime.service import (
@@ -433,12 +440,12 @@ def test_text_conversation_item_bridges_straight_to_generate_request():
                 break
             time.sleep(0.05)
 
-        # NOTE: pipeline.audio_out only ever carries AudioOut/EndOfResponse --
-        # VoicePipeline's LLMChunkToTTSInput bridge (pipeline.py) consumes
-        # every LLMChunk and turns it into TTSInput before anything reaches
-        # audio_out, so a "response.output_audio_transcript.delta" (LLMChunk's
-        # dispatch mapping in events.py) never actually appears on this
-        # queue in today's wiring -- assert on what really arrives instead.
+        # Audio-only is the default. The LLM sideband must not change the
+        # established wire contract until the client explicitly requests text.
+        transcript_deltas = [
+            e for e in events if e["type"] == "response.output_audio_transcript.delta"
+        ]
+        assert transcript_deltas == []
         audio_deltas = [e for e in events if e["type"] == "response.output_audio.delta"]
         assert audio_deltas, f"expected at least one audio delta, got: {events}"
         # PUNCH-LIST #3: every delta for this response carries the SAME id
@@ -447,6 +454,323 @@ def test_text_conversation_item_bridges_straight_to_generate_request():
         done_events = [e for e in events if e["type"] == "response.done"]
         assert done_events
         assert done_events[0]["response"]["id"] == response_id
+    finally:
+        pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_text_modality_streams_the_actual_llm_text_and_a_terminal_before_response_done():
+    pipeline, service, sent = _make_service()
+    try:
+        service.handle_client_message(
+            json.dumps({"type": "session.update", "session": {"modalities": ["audio", "text"]}})
+        )
+        service.handle_client_message(
+            json.dumps(
+                {
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "message",
+                        "role": "user",
+                        "content": [{"type": "input_text", "text": "say hello"}],
+                    },
+                }
+            )
+        )
+        service.handle_client_message(json.dumps({"type": "response.create"}))
+        response_id = sent[-1]["response"]["id"]
+
+        events = _drain_until_done(service)
+        transcript_deltas = [
+            e for e in events if e["type"] == "response.output_audio_transcript.delta"
+        ]
+        transcript_done = [
+            e for e in events if e["type"] == "response.output_audio_transcript.done"
+        ]
+        response_done_index = next(
+            index for index, event in enumerate(events) if event["type"] == "response.done"
+        )
+        transcript_done_index = next(
+            index
+            for index, event in enumerate(events)
+            if event["type"] == "response.output_audio_transcript.done"
+        )
+
+        assert [event["delta"] for event in transcript_deltas] == ["Sure, here you go."]
+        assert all(event["response_id"] == response_id for event in transcript_deltas)
+        assert len(transcript_done) == 1
+        assert transcript_done[0]["event_id"]
+        assert transcript_done[0]["transcript"] == "Sure, here you go."
+        assert transcript_done[0]["turn_id"] == transcript_deltas[0]["turn_id"]
+        assert transcript_done[0]["response_id"] == response_id
+        assert transcript_done_index < response_done_index
+        assert events[response_done_index]["response"]["id"] == response_id
+    finally:
+        pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def _fake_output_pipeline():
+    return SimpleNamespace(
+        vad_events=queue.Queue(),
+        transcript_events=queue.Queue(),
+        audio_out=queue.Queue(),
+        cancel_scope=CancelScope(),
+    )
+
+
+def test_spoken_text_is_joined_with_boundaries_and_terminal_precedes_response_done():
+    fake_pipeline = _fake_output_pipeline()
+    service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _event: None, session_id="s1")
+    service.state.session_config = {"output_modalities": ["audio", "text"]}
+    created = service._begin_response("turn-1")
+    generation = fake_pipeline.cancel_scope.current()
+    fake_pipeline.audio_out.put(
+        SpokenText(turn_id="turn-1", turn_revision=0, generation=generation, text="Hello world.")
+    )
+    fake_pipeline.audio_out.put(
+        SpokenText(
+            turn_id="turn-1",
+            turn_revision=0,
+            generation=generation,
+            text="How are you?",
+            joiner=" ",
+        )
+    )
+    fake_pipeline.audio_out.put(
+        EndOfResponse(turn_id="turn-1", turn_revision=0, generation=generation)
+    )
+
+    events = service.drain_pipeline_events()
+
+    assert [event["type"] for event in events] == [
+        "response.output_audio_transcript.delta",
+        "response.output_audio_transcript.delta",
+        "response.output_audio_transcript.done",
+        "response.done",
+    ]
+    assert [event["delta"] for event in events[:2]] == ["Hello world.", " How are you?"]
+    assert events[2]["transcript"] == "Hello world. How are you?"
+    for event in events[:3]:
+        assert event["response_id"] == created["response"]["id"]
+        assert event["item_id"] == "item_%s" % created["response"]["id"]
+        assert event["output_index"] == 0
+        assert event["content_index"] == 0
+
+
+def test_tts_failure_emits_correlated_error_without_claiming_unspoken_text():
+    fake_pipeline = _fake_output_pipeline()
+    service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _event: None, session_id="s1")
+    service.state.session_config = {"output_modalities": ["audio", "text"]}
+    created = service._begin_response("turn-1")
+    fake_pipeline.audio_out.put(
+        TTSSynthesisFailed(turn_id="turn-1", turn_revision=0, generation=0)
+    )
+    fake_pipeline.audio_out.put(
+        EndOfResponse(turn_id="turn-1", turn_revision=0, generation=0)
+    )
+
+    events = service.drain_pipeline_events()
+
+    assert [event["type"] for event in events] == ["error", "response.done"]
+    assert events[0]["error"]["type"] == "assistant_transcript_unavailable"
+    assert events[0]["response_id"] == created["response"]["id"]
+    assert events[1]["response"]["status"] == "failed"
+    assert not any(event["type"].endswith("transcript.done") for event in events)
+
+
+def test_assistant_transcript_limit_is_bounded_and_fails_closed_once():
+    fake_pipeline = _fake_output_pipeline()
+    service = RealtimeService(
+        pipeline=fake_pipeline,
+        send_event=lambda _event: None,
+        session_id="s1",
+        max_assistant_transcript_chars=5,
+    )
+    service.state.session_config = {"output_modalities": ["audio", "text"]}
+    service._begin_response("turn-1")
+    for text in ("12345", "6", "7"):
+        fake_pipeline.audio_out.put(
+            SpokenText(turn_id="turn-1", turn_revision=0, generation=0, text=text)
+        )
+    fake_pipeline.audio_out.put(
+        EndOfResponse(turn_id="turn-1", turn_revision=0, generation=0)
+    )
+
+    events = service.drain_pipeline_events()
+
+    assert [event["type"] for event in events] == [
+        "response.output_audio_transcript.delta",
+        "error",
+        "response.done",
+    ]
+    assert service.state.current_assistant_transcript == ["12345"]
+    assert service.state.current_assistant_transcript_chars == 5
+
+
+def test_response_state_reset_allows_a_second_audio_turn_transcript():
+    fake_pipeline = _fake_output_pipeline()
+    service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _event: None, session_id="s1")
+    service.state.session_config = {"output_modalities": ["audio", "text"]}
+
+    first = service._begin_response("turn-1")["response"]["id"]
+    fake_pipeline.audio_out.put(
+        SpokenText(turn_id="turn-1", turn_revision=0, generation=0, text="First.")
+    )
+    fake_pipeline.audio_out.put(EndOfResponse(turn_id="turn-1", turn_revision=0, generation=0))
+    first_events = service.drain_pipeline_events()
+    service.mark_response_done_sent(first)
+
+    second = service._begin_response("turn-2")["response"]["id"]
+    fake_pipeline.audio_out.put(
+        SpokenText(turn_id="turn-2", turn_revision=0, generation=0, text="Second.")
+    )
+    fake_pipeline.audio_out.put(EndOfResponse(turn_id="turn-2", turn_revision=0, generation=0))
+    second_events = service.drain_pipeline_events()
+
+    assert next(e for e in first_events if e["type"].endswith("transcript.done"))["transcript"] == "First."
+    second_done = next(e for e in second_events if e["type"].endswith("transcript.done"))
+    assert second_done["transcript"] == "Second."
+    assert second_done["response_id"] == second
+
+
+def test_output_modalities_response_override_is_canonical():
+    fake_pipeline = SimpleNamespace(
+        vad_events=queue.Queue(),
+        transcript_events=queue.Queue(),
+        audio_out=queue.Queue(),
+        cancel_scope=CancelScope(),
+    )
+    service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _event: None, session_id="s1")
+    service.state.session_config = {"output_modalities": ["audio"]}
+    created = service._begin_response(
+        "turn-1", response_config={"output_modalities": ["audio", "text"]}
+    )
+    fake_pipeline.audio_out.put(
+        SpokenText(turn_id="turn-1", turn_revision=0, generation=0, text="Canonical.")
+    )
+    fake_pipeline.audio_out.put(
+        EndOfResponse(turn_id="turn-1", turn_revision=0, generation=0)
+    )
+    events = service.drain_pipeline_events()
+
+    assert [event["type"] for event in events] == [
+        "response.output_audio_transcript.delta",
+        "response.output_audio_transcript.done",
+        "response.done",
+    ]
+    assert events[1]["response_id"] == created["response"]["id"]
+
+
+def test_audio_without_authoritative_text_fails_transcript_closed():
+    fake_pipeline = _fake_output_pipeline()
+    service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _event: None, session_id="s1")
+    service.state.session_config = {"output_modalities": ["audio", "text"]}
+    created = service._begin_response("turn-1")
+    fake_pipeline.audio_out.put(
+        AudioOut(turn_id="turn-1", turn_revision=0, generation=0, pcm=b"\x01\x00")
+    )
+    fake_pipeline.audio_out.put(EndOfResponse(turn_id="turn-1", turn_revision=0, generation=0))
+
+    events = service.drain_pipeline_events()
+
+    assert [event["type"] for event in events] == [
+        "response.output_audio.delta",
+        "error",
+        "response.done",
+    ]
+    assert events[1]["response_id"] == created["response"]["id"]
+    assert not any(event["type"].endswith("transcript.done") for event in events)
+
+
+def test_two_backlogged_audio_turns_keep_distinct_response_correlation():
+    fake_pipeline = _fake_output_pipeline()
+    service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _event: None, session_id="s1")
+    service.state.session_config = {"output_modalities": ["audio", "text"]}
+    for turn_id in ("turn-1", "turn-2"):
+        fake_pipeline.transcript_events.put(
+            Transcription(turn_id=turn_id, turn_revision=0, generation=0, text=turn_id)
+        )
+        fake_pipeline.audio_out.put(
+            SpokenText(turn_id=turn_id, turn_revision=0, generation=0, text=turn_id)
+        )
+        fake_pipeline.audio_out.put(
+            EndOfResponse(turn_id=turn_id, turn_revision=0, generation=0)
+        )
+
+    first_events = service.drain_pipeline_events()
+    first_id = next(e["response"]["id"] for e in first_events if e["type"] == "response.created")
+    assert {e.get("response_id") for e in first_events if "response_id" in e} == {first_id}
+    assert next(e for e in first_events if e["type"] == "response.done")["response"]["id"] == first_id
+    assert service.drain_pipeline_events() == []
+    assert fake_pipeline.transcript_events.qsize() == 1
+    assert fake_pipeline.audio_out.qsize() == 2
+    service.mark_response_done_sent(first_id)
+
+    second_events = service.drain_pipeline_events()
+    second_id = next(e["response"]["id"] for e in second_events if e["type"] == "response.created")
+    assert second_id != first_id
+    assert {e.get("response_id") for e in second_events if "response_id" in e} == {second_id}
+    assert next(e for e in second_events if e["type"] == "response.done")["response"]["id"] == second_id
+
+
+def test_response_modalities_override_the_session_text_setting():
+    pipeline, service, sent = _make_service()
+    try:
+        service.handle_client_message(
+            json.dumps({"type": "session.update", "session": {"modalities": ["audio", "text"]}})
+        )
+        service.handle_client_message(
+            json.dumps(
+                {
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "message",
+                        "role": "user",
+                        "content": [{"type": "input_text", "text": "audio only"}],
+                    },
+                }
+            )
+        )
+        service.handle_client_message(
+            json.dumps({"type": "response.create", "response": {"modalities": ["audio"]}})
+        )
+
+        events = _drain_until_done(service)
+        assert sent[-1]["type"] == "response.created"
+        assert not any(
+            event["type"].startswith("response.output_audio_transcript") for event in events
+        )
+        assert any(event["type"] == "response.output_audio.delta" for event in events)
+        assert any(event["type"] == "response.done" for event in events)
+    finally:
+        pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_text_only_modality_does_not_claim_a_spoken_audio_transcript():
+    pipeline, service, sent = _make_service()
+    try:
+        service.handle_client_message(
+            json.dumps({"type": "session.update", "session": {"modalities": ["text"]}})
+        )
+        service.handle_client_message(
+            json.dumps(
+                {
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "message",
+                        "role": "user",
+                        "content": [{"type": "input_text", "text": "text only"}],
+                    },
+                }
+            )
+        )
+        service.handle_client_message(json.dumps({"type": "response.create"}))
+
+        events = _drain_until_done(service)
+        assert sent[-1]["type"] == "response.created"
+        assert not any(
+            event["type"].startswith("response.output_audio_transcript") for event in events
+        )
+        assert any(event["type"] == "response.done" for event in events)
     finally:
         pipeline.shutdown_gracefully(join_timeout=1.0)
 
@@ -533,6 +857,49 @@ def test_audio_buffer_append_commit_drives_the_pipeline_end_to_end():
 
         assert any(e["type"] == "response.output_audio.delta" for e in events)
         assert any(e["type"] == "response.done" for e in events)
+    finally:
+        pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_audio_turn_streams_assistant_transcript_when_session_requests_text():
+    pipeline, service, _sent = _make_service()
+    try:
+        service.handle_client_message(
+            json.dumps({"type": "session.update", "session": {"modalities": ["audio", "text"]}})
+        )
+        speech = base64.b64encode(b"\x01\x02\x03\x04" * 40).decode("ascii")
+        service.handle_client_message(
+            json.dumps({"type": "input_audio_buffer.append", "audio": speech})
+        )
+        service.handle_client_message(json.dumps({"type": "input_audio_buffer.commit"}))
+
+        events = _drain_until_done(service)
+        response_id = next(
+            event["response"]["id"] for event in events if event["type"] == "response.created"
+        )
+        transcript_deltas = [
+            event for event in events if event["type"] == "response.output_audio_transcript.delta"
+        ]
+        transcript_done = next(
+            event for event in events if event["type"] == "response.output_audio_transcript.done"
+        )
+        response_done_index = next(
+            index for index, event in enumerate(events) if event["type"] == "response.done"
+        )
+        transcript_done_index = events.index(transcript_done)
+
+        assert "".join(event["delta"] for event in transcript_deltas) == "Sure, here you go."
+        assert all(event["response_id"] == response_id for event in transcript_deltas)
+        assert transcript_done["transcript"] == "Sure, here you go."
+        assert transcript_done["response_id"] == response_id
+        user_item_id = next(
+            event["item"]["id"]
+            for event in events
+            if event["type"] == "conversation.item.created"
+        )
+        assert transcript_done["item_id"] != user_item_id
+        assert all(event["item_id"] == transcript_done["item_id"] for event in transcript_deltas)
+        assert transcript_done_index < response_done_index
     finally:
         pipeline.shutdown_gracefully(join_timeout=1.0)
 
