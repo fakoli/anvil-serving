@@ -64,6 +64,7 @@
 
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
+import { PRESETS } from "./classify.mjs";
 
 const ENV_NAME_RE = /^[A-Z][A-Z0-9_]*$/;
 
@@ -90,14 +91,7 @@ export const DEFAULT_NATIVE_PROVIDER = "anthropic";
 export const DEFAULT_NATIVE_MODEL = "claude-sonnet-4-5";
 export const DEFAULT_ROUTE_TIMEOUT_MS = 30;
 export const MAX_ROUTE_TIMEOUT_MS = 5000;
-export const ANVIL_PRESETS = new Set([
-  "planning",
-  "quick-edit",
-  "review",
-  "chat",
-  "chat-fast",
-  "long-context",
-]);
+export const ANVIL_PRESETS = new Set(PRESETS);
 
 function configValue(pluginConfig, key) {
   try {

@@ -131,6 +131,14 @@ All notable changes to this project are documented here. The format is based on
   serve logs, and cache deletion now show complete copyable forms. Collector actions are first-class
   command-tree leaves, and writing collector configuration is confirmation-gated.
 
+### Fixed
+
+- **OpenClaw wire validation now tests the integration vocabulary it actually serves.** The
+  validator loads the shipped plugin's runtime preset export, requires every plugin preset in the
+  selected router config, treats optional router-global presets as explicitly out of scope, and
+  validates only Anvil-bound overrides in mixed decision logs. Explicit captures now fail closed on
+  empty, malformed, inconsistent, or non-string route evidence instead of producing false passes.
+
 ## [0.13.2] - 2026-07-14
 
 ### Changed

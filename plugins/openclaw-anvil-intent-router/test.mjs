@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   DEFAULT_CLOUD_CLASSES,
+  ANVIL_PRESETS,
   DEFAULT_NATIVE_MODEL,
   DEFAULT_NATIVE_PROVIDER,
   DEFAULT_ROUTE_TIMEOUT_MS,
@@ -30,13 +31,17 @@ import {
   resolveRouteAuthToken,
 } from "./route.mjs";
 
-import { classify } from "./classify.mjs";
+import { classify, PRESETS } from "./classify.mjs";
 
 const DEFAULT_NATIVE_ROUTE = {
   providerOverride: DEFAULT_NATIVE_PROVIDER,
   modelOverride: DEFAULT_NATIVE_MODEL,
 };
 const HERE = dirname(fileURLToPath(import.meta.url));
+
+test("route context validation uses classify.mjs's preset source of truth", () => {
+  assert.deepEqual([...ANVIL_PRESETS], [...PRESETS]);
+});
 
 // ── makeRoutingDecision unit tests ──────────────────────────────────────────
 
