@@ -179,8 +179,8 @@ what was observed.
 
 Only existing artifacts' size and format are grandfathered; sanitization, correction, and public
 citation requirements still apply. This policy is not authorization for an unreviewed bulk
-migration or deletion. Legacy private-only evidence remains tracked by issue #175; the
-machine-local-path and public-artifact audit is issue #290.
+migration or deletion. Issue #175 published or gap-recorded the private-only evidence it identified;
+the broader machine-local-path and public-artifact audit remains tracked by issue #290.
 
 ## Workflow
 
