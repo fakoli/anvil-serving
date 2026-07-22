@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-07-02
 - **Relates to:** the fakoli-dark heavy tier (`examples/fakoli-dark/docker-compose.yml`, service
-  `sglang`, model `qwen35-awq` = Qwen3.5-35B-A3B AWQ), ADR-0002 (serves are compose-defined)
+  `sglang`, model `qwen35-awq` = Qwen3.5-35B-A3B AWQ), ADR-0002 (serves are compose-defined),
+  ADR-0027 (supersedes this record's evidence-location convention only), issue #175
 
 ## Context
 
@@ -59,10 +60,11 @@ of upstream reports:
   zero errors, confirmed via the server's own `#cached-token` log lines, not just the client-side
   report.
 
-The key numbers above are the complete record of what was measured; the raw benchmark logs from
-this validation session are not committed to this repo (per the existing convention — dated
-trial/bake-off findings live in the private companion repo `fakoli/anvil-serving-notes`, not
-inline in the product repo).
+The key numbers above are the public record of what was measured; the raw benchmark logs from this
+historical validation session were not committed and remain a legacy public-evidence gap tracked by
+issue #175. ADR-0027 supersedes only that old evidence-location convention: future equivalent
+benchmarks publish sanitized findings and bounded raw evidence publicly. It does not change this
+ADR's speculative-decoding decision.
 
 ## Consequences
 

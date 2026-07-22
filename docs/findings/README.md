@@ -7,16 +7,58 @@ docs as the current source of truth. `.json` files are the machine-readable raw 
 backing a companion `.md` narrative. For the current user-facing conclusions and comparable
 configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
+## Policy
+
+These findings remain public as durable evidence under
+[ADR-0027](../adr/0027-public-findings-are-durable-evidence.md). A later benchmark or ADR can
+supersede a recommendation, but it does not erase the historical observation or move its
+load-bearing evidence into a private repository.
+
+- Add and index a sanitized dated narrative with the exact revision/configuration, topology,
+  method, evidence type, result, failures, and caveats.
+- Keep only the bounded raw JSON/CSV/text needed to audit the claim. Each new raw file must be at
+  most 1 MiB, and all checked-in raw evidence from one experiment, qualification, promotion, or
+  evidence packet must total at most 5 MiB. Splitting paths or narratives does not reset the limit.
+  Exceptions must identify the files/total bytes, justify why bounded or external evidence is
+  insufficient, and name the approving reviewer.
+- Absent an approved exception, put larger, binary, or high-volume evidence at an anonymously
+  downloadable, immutable, non-expiring versioned/content-addressed HTTPS URL retained at least as
+  long as the citation.
+  Record its retention owner/term, byte size, SHA-256 digest, and provenance. Expiring CI artifacts,
+  private buckets, and mutable `latest` URLs do not qualify.
+- Sanitize both checked-in and externally stored evidence before publication. Never include secrets,
+  credentials, private prompts, personal data, machine-local tokens, or unrelated logs in either
+  location.
+- Retain evidence while any public doc, ADR, benchmark table, or release note depends on it; there
+  is no age-based pruning. Publish a linked erratum or superseding finding instead of silently
+  overwriting a merged measurement. Corrections use a new artifact path; sensitive/legal removals
+  leave a public tombstone with nonsensitive provenance when safe and lawful.
+- Private notes may preserve planning history, but private-only citations cannot ground a public
+  claim. Restate the claim and its auditable support publicly.
+
+Only existing artifacts' size and format are grandfathered; sanitization, correction, and public
+citation requirements still apply. Any future size cleanup is a separate reviewed migration that
+must preserve public access, provenance, and content hashes.
+The legacy corpus is not retroactively certified: private-only grounding is tracked by
+[issue #175](https://github.com/fakoli/anvil-serving/issues/175), and machine-local paths/public
+artifact access are tracked by [issue #290](https://github.com/fakoli/anvil-serving/issues/290).
+
 | Date | File | Subject |
 |------|------|---------|
 | 2026-07-18 | [2026-07-18-lifecycle-aware-wsl-cache-reclaim.md](2026-07-18-lifecycle-aware-wsl-cache-reclaim.md) | Fakoli Dark managed Puzzle Heavy load: 49.9 GiB cache-growth attribution, page-cache-only reclaim, retained VRAM/health/identity/inference, and exact stopped-state restoration |
 | 2026-07-18 | [2026-07-18-gpt-oss-puzzle-heavy-promotion.md](2026-07-18-gpt-oss-puzzle-heavy-promotion.md) | Pinned GPT-OSS Puzzle 88B Anvil vLLM fix, RTX PRO 6000 functional and benchmark evidence, default Heavy transition, and Gemma 4 rollback |
 | 2026-07-17 | [2026-07-17-gemma4-31b-optimization.md](2026-07-17-gemma4-31b-optimization.md) | Current Google 31B QAT template, 128K baseline, native-MTP compatibility failure, and WSL2 implications |
+| 2026-07-17 | [2026-07-17-gpt-oss-puzzle-qualification.md](2026-07-17-gpt-oss-puzzle-qualification.md) | GPT-OSS Puzzle 88B Anvil vLLM port and RTX PRO 6000 qualification evidence without promotion |
 | 2026-07-16 | [2026-07-16-gemma4-vllm0251-wsl2-c128.md](2026-07-16-gemma4-vllm0251-wsl2-c128.md) | vLLM 0.25.1 WSL2 pinned-memory upgrade, V1/V2 Gemma 4 c1/c8/c128 retest, larger-model sweep, and corrected high-concurrency NVFP4 conclusion |
 | 2026-07-16 | [2026-07-16-gemma4-unsloth-nvfp4-follow-up.md](2026-07-16-gemma4-unsloth-nvfp4-follow-up.md) | Unsloth Gemma 4 NVFP4 12B/26B-A4B/31B Fast/Heavy matrix, direct QAT speed A/B, template/tool regression, and no-promotion result |
 | 2026-07-16 | [2026-07-16-gemma4-chat-template-bakeoff.md](2026-07-16-gemma4-chat-template-bakeoff.md) | July 15 Gemma 4 template matrix on RTX 5090 and PRO 6000, Fast hold, Heavy 12B W4A16 promotion, rollback proof, and raw evidence |
 | 2026-07-13 | [2026-07-13-q36-pro6000-container-recipe.md](2026-07-13-q36-pro6000-container-recipe.md) | First physical RTX PRO 6000 build and characterization of the q36 engine: pinned container recipe, context matrix, MTP A/B, smoke, reasoning, and repeated MMLU-Pro evidence |
 | 2026-07-13 | [2026-07-13-e4b-fast-router-promotion.md](2026-07-13-e4b-fast-router-promotion.md) | Gemma 4 E4B fast-tier router promotion, profile reseed (calibration pending), and OpenClaw harness lockstep (gpu-reservations:T007) |
+| 2026-07-13 | [Gemma 4 E4B promotion evidence README](2026-07-13-gemma4-e4b-fast-promotion-evidence/README.md) | Live RTX 5090 preflight, reservation sizing, and promotion evidence inventory |
+| 2026-07-13 | [2026-07-13-e4b-voice-consult-benchmark.md](2026-07-13-e4b-voice-consult-benchmark.md) | E4B-backed chat-fast voice-consult latency regression that blocked retiring the 35B baseline |
+| 2026-07-13 | [2026-07-13-t011-ocr-rebalance.md](2026-07-13-t011-ocr-rebalance.md) | OCR bring-up and RTX 5090 resident-set rebalance with routed validation |
+| 2026-07-13 | [2026-07-13-t013-vision.md](2026-07-13-t013-vision.md) | Vision serve/preset bring-up, first evictable reservation, routed proof, and eviction validation |
+| 2026-07-13 | [2026-07-13-t015-resident-set.md](2026-07-13-t015-resident-set.md) | Live RTX 5090 full resident-set, ledger, health, and eviction-drain validation |
 | 2026-07-12 | [2026-07-12-thinkingcap-heavy-promotion.md](2026-07-12-thinkingcap-heavy-promotion.md) | ThinkingCap FP8 model-aware functional/quality gates and guarded Heavy promotion with GPT-OSS rollback |
 | 2026-07-12 | [2026-07-12-green-context-mps-capability.md](2026-07-12-green-context-mps-capability.md) | Read-only Green Context/MPS inspector, successful Docker Desktop prerequisite probe on the RTX 5090, and unexecuted creation plan |
 | 2026-07-12 | [docker-desktop-rtx5090-prerequisite.json](2026-07-12-green-context-mps-capability-evidence/docker-desktop-rtx5090-prerequisite.json) | Raw Docker Desktop CUDA 13.1 prerequisite evidence for the UUID-selected RTX 5090; no context or workload created |
@@ -35,6 +77,8 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 | 2026-07-10 | [2026-07-10-qwen35-122b-heavy-candidate.md](2026-07-10-qwen35-122b-heavy-candidate.md) | Qwen3.5-122B-A10B-NVFP4 heavy-tier candidate (fakoli-dark) |
 | 2026-07-10 | [heavy-tier-bakeoff-evidence/qwen35-122b-a10b-vllm-nvfp4-131k.bakeoff.json](heavy-tier-bakeoff-evidence/qwen35-122b-a10b-vllm-nvfp4-131k.bakeoff.json) | Raw heavy-tier bakeoff evidence — Qwen3.5-122B-A10B-NVFP4 |
 | 2026-07-08 | [2026-07-08-voice-latency-final-recommendation.md](2026-07-08-voice-latency-final-recommendation.md) | Voice latency final recommendation (voice-latency-model-ab:T007) |
+| 2026-07-08 | [2026-07-08-fast-tier-llm-bakeoff.md](2026-07-08-fast-tier-llm-bakeoff.md) | RTX 5090 Fast-tier candidate registry, source-backed priors, scoring rubric, and local-gate plan |
+| 2026-07-08 | [2026-07-08-fast-tier-promotion.md](2026-07-08-fast-tier-promotion.md) | Human-gated Qwen3.6-35B-A3B-NVFP4 Fast-tier promotion and validation record |
 | 2026-07-08 | [2026-07-08-stt-model-benchmark.md](2026-07-08-stt-model-benchmark.md) | Dark-host STT benchmark: Parakeet, Qwen3-ASR, and Whisper Turbo |
 | 2026-07-08 | [2026-07-08-voice-latency-ab-final-report.md](2026-07-08-voice-latency-ab-final-report.md) | OpenClaw Talk voice latency candidate A/B status report (evidence synthesis) |
 | 2026-07-08 | [2026-07-08-voice-latency-candidate-matrix.md](2026-07-08-voice-latency-candidate-matrix.md) | Voice latency candidate benchmark matrix (T005) |
