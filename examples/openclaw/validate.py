@@ -5,15 +5,17 @@ Revalidates the wire-form contract in docs/OPENCLAW-INTEGRATION-SPEC.md §3 and
 the cadence gate in §6. These checks originally settled the
 pre-plugin live gaps now recorded in that document's §7 history:
 
-  1. WIRE FORM   — every outbound ``model`` string is ``(anvil/)?<preset>``, AND
-                   the anvil front door accepts BOTH the bare (``planning``) and
-                   the namespaced (``anvil/planning``) wire form.
+  1. WIRE FORM   — every Anvil-bound ``model`` string names a preset exported by
+                   the shipped OpenClaw plugin, AND the anvil front door accepts
+                   BOTH the bare (``planning``) and namespaced
+                   (``anvil/planning``) wire form.
   2. FIRE CADENCE — ``before_model_resolve`` fires once per user message (so the
                    plugin's per-turn classification is real).
 
-Stdlib-only. The two checks are exercised against a committed *representative
-fixture* (``hook-fire-log.jsonl``); the live capture against the real OpenClaw
-install on Fakoli Mini is a MANUAL step documented in README.md.
+Python-stdlib-only; Node is invoked to load the same plugin ESM export OpenClaw
+uses. The two checks are exercised against a committed *representative fixture*
+(``hook-fire-log.jsonl``); the live capture against the real OpenClaw install on
+Fakoli Mini is a MANUAL step documented in README.md.
 
 Usage
 -----
@@ -24,22 +26,24 @@ Usage
 
     # against a REAL live capture (the manual step — see README.md):
     python examples/openclaw/validate.py \
+        --config /path/to/deployed-router.toml \
         --assert-wire-form --capture captured-request.json \
         --assert-fire-cadence real-hook-fire-log.jsonl
 
 Exit status
 -----------
-Non-zero ONLY on a wire-form violation (a captured ``model`` string that does not
-match the regex, or the front door failing to accept both forms) or a malformed
-fire-cadence log. A fire cadence that is not 1 fire / user message is *documented*
-(the actual cadence is printed) but does not by itself fail — per the acceptance
-criterion "fire-count == user-message-count (or the actual cadence is documented)".
+Non-zero on a wire-form violation, unavailable/malformed plugin vocabulary,
+malformed capture/log evidence, or the front door failing to accept both forms.
+A fire cadence that is not 1 fire / user message is *documented* (the actual
+cadence is printed) but does not by itself fail — per the acceptance criterion
+"fire-count == user-message-count (or the actual cadence is documented)".
 """
 from __future__ import annotations
 
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -52,11 +56,49 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 CONFIG_PATH = REPO_ROOT / "configs" / "example.toml"
+PLUGIN_CLASSIFIER_PATH = (
+    REPO_ROOT / "plugins" / "openclaw-anvil-intent-router" / "classify.mjs"
+)
 
-# The wire-form contract (docs/OPENCLAW-INTEGRATION-SPEC.md §3). The OpenClaw
-# selection string is ``anvil/<preset>``; the openai-completions convention puts
-# the bare id on the wire — anvil must accept BOTH, so the optional prefix.
-WIRE_FORM_RE = re.compile(r"^(anvil/)?(planning|quick-edit|review|chat|chat-fast|long-context)$")
+
+def _load_openclaw_preset_ids() -> Tuple[str, ...]:
+    """Load the preset enum exported by the shipped plugin runtime.
+
+    This intentionally executes the same ESM module OpenClaw loads. A stale
+    Python copy cannot make this validator pass after the plugin vocabulary
+    changes. Node is already a prerequisite for running the OpenClaw plugin.
+    """
+    module_uri = PLUGIN_CLASSIFIER_PATH.resolve().as_uri()
+    source = (
+        f"import {{ PRESETS }} from {json.dumps(module_uri)}; "
+        "process.stdout.write(JSON.stringify(PRESETS));"
+    )
+    try:
+        result = subprocess.run(
+            ["node", "--input-type=module", "--eval", source],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        parsed = json.loads(result.stdout)
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+        raise MalformedLog(f"could not load OpenClaw plugin preset vocabulary: {exc}") from exc
+    if (
+        not isinstance(parsed, list)
+        or not parsed
+        or any(not isinstance(preset, str) or not preset for preset in parsed)
+        or len(set(parsed)) != len(parsed)
+    ):
+        raise MalformedLog(
+            "OpenClaw plugin PRESETS must be a non-empty list of unique strings"
+        )
+    return tuple(parsed)
+
+
+def _wire_form_re(preset_ids: Tuple[str, ...]) -> re.Pattern[str]:
+    pattern = "|".join(re.escape(preset) for preset in preset_ids)
+    return re.compile(rf"(?:anvil/)?(?:{pattern})\Z")
 
 
 # --------------------------------------------------------------------------- #
@@ -140,6 +182,8 @@ def _collect_model_strings(
         if not capture.exists():
             raise MalformedLog(f"capture file not found: {capture}")
         text = capture.read_text(encoding="utf-8").strip()
+        if not text:
+            raise MalformedLog(f"capture file is empty: {capture}")
         pairs: List[Tuple[str, str]] = []
         # accept a single JSON object, a JSON array of objects, or JSONL.
         objs: List[Any] = []
@@ -150,14 +194,63 @@ def _collect_model_strings(
             for line in text.splitlines():
                 line = line.strip()
                 if line:
-                    objs.append(json.loads(line))
+                    try:
+                        objs.append(json.loads(line))
+                    except json.JSONDecodeError as exc:
+                        raise MalformedLog(
+                            f"{capture}: invalid JSON capture record ({exc})"
+                        ) from exc
         for i, obj in enumerate(objs):
             if isinstance(obj, str):
                 pairs.append((f"capture[{i}]", obj))
             elif isinstance(obj, dict):
-                model = obj.get("model", obj.get("modelOverride"))
-                if model:
-                    pairs.append((f"capture[{i}].model", str(model)))
+                # A decision log can contain valid native/cloud routes whose
+                # modelOverride is not an Anvil preset. Only Anvil-bound records
+                # prove this wire contract; raw outbound request bodies have a
+                # plain `model` and are always checked.
+                provider = obj.get("providerOverride")
+                destination = obj.get("destination")
+                is_decision_record = (
+                    "providerOverride" in obj or "destination" in obj
+                )
+                if is_decision_record:
+                    model_override = obj.get("modelOverride")
+                    if (
+                        destination not in {"anvil", "native"}
+                        or not isinstance(provider, str)
+                        or not provider.strip()
+                        or provider != provider.strip()
+                        or not isinstance(model_override, str)
+                        or not model_override.strip()
+                    ):
+                        raise MalformedLog(
+                            f"capture[{i}] has malformed decision-route fields"
+                        )
+                    if (destination == "anvil") != (provider == "anvil"):
+                        raise MalformedLog(
+                            f"capture[{i}] has inconsistent destination/providerOverride"
+                        )
+                    if destination == "native":
+                        continue
+                    key = "modelOverride"
+                else:
+                    key = "model" if "model" in obj else "modelOverride"
+                if key not in obj:
+                    raise MalformedLog(
+                        f"capture[{i}] has no model/modelOverride field"
+                    )
+                model = obj[key]
+                if model is None:
+                    raise MalformedLog(f"capture[{i}].{key} is null")
+                pairs.append((f"capture[{i}].{key}", str(model)))
+            else:
+                raise MalformedLog(
+                    f"capture[{i}] is not a JSON object or model string"
+                )
+        if not pairs:
+            raise MalformedLog(
+                "capture contains no Anvil-bound model string to validate"
+            )
         return pairs, f"captured outbound request(s) ({capture.name})"
 
     if fire_records:
@@ -172,10 +265,14 @@ def _collect_model_strings(
 
 
 def check_wire_form(
-    capture: Optional[Path], fire_records: Optional[List[Dict[str, Any]]]
+    capture: Optional[Path],
+    fire_records: Optional[List[Dict[str, Any]]],
+    config_path: Path = CONFIG_PATH,
 ) -> bool:
     """Run both halves of the wire-form check. Returns ``True`` if it passes."""
-    print("[wire-form] outbound `model` string == ^(anvil/)?<preset>$")
+    openclaw_preset_ids = _load_openclaw_preset_ids()
+    wire_form_re = _wire_form_re(openclaw_preset_ids)
+    print("[wire-form] outbound `model` string == ^(anvil/)?<plugin-preset>$")
     passed = True
 
     # (a) captured / logged model strings satisfy the regex.
@@ -183,10 +280,10 @@ def check_wire_form(
     if pairs:
         _info(f"checking {len(pairs)} model string(s) from {origin}")
         for label, model in pairs:
-            if WIRE_FORM_RE.match(model):
+            if wire_form_re.fullmatch(model):
                 _ok(f"{label} = {model!r}")
             else:
-                _fail(f"{label} = {model!r} does NOT match {WIRE_FORM_RE.pattern}")
+                _fail(f"{label} = {model!r} does NOT match {wire_form_re.pattern}")
                 passed = False
     else:
         _info(
@@ -204,32 +301,57 @@ def check_wire_form(
         _fail(f"could not import anvil_serving.router (is it on PYTHONPATH?): {exc}")
         return False
 
-    cfg = load(str(CONFIG_PATH))
+    cfg = load(str(config_path))
 
     def _req(model: str) -> "InternalRequest":
         return InternalRequest(model=model, messages=[Message("user", "hello")], raw={})
 
-    # drift guard: the literal regex must enumerate exactly the canonical presets.
-    regex_ids = {"planning", "quick-edit", "review", "chat", "chat-fast", "long-context"}
-    canonical_ids = {p.id for p in PRESETS}
-    if regex_ids != canonical_ids:
+    # The plugin vocabulary and router-global vocabulary are deliberately
+    # different: optional router presets such as ocr/vision need not be emitted
+    # or mapped by this text/voice integration. Every plugin-emittable preset,
+    # however, must be configured or OpenClaw could select an unroutable model.
+    openclaw_ids = set(openclaw_preset_ids)
+    configured_by_lower = {str(preset).lower(): str(preset) for preset in cfg.presets}
+    missing = sorted(openclaw_ids - set(configured_by_lower))
+    if missing:
         _fail(
-            "wire-form regex preset set has drifted from anvil_serving.router.intent.PRESETS: "
-            f"regex={sorted(regex_ids)} canonical={sorted(canonical_ids)}"
+            "OpenClaw preset(s) are not configured in the target router config: "
+            f"{missing}"
         )
         passed = False
 
-    _info(f"proving front-door accepts both forms for {len(PRESETS)} preset(s)")
-    for p in PRESETS:
-        bare = resolve(_req(p.id), cfg)
-        prefixed = resolve(_req(f"anvil/{p.id}"), cfg)
-        if bare == prefixed and bare.preset == p.id and bare.source == "declared-preset":
-            _ok(f"{p.id!r} == anvil/{p.id!r} -> preset={bare.preset!r}, tiers={bare.candidate_tiers}")
+    global_ids = {p.id for p in PRESETS}
+    global_only = sorted(global_ids - openclaw_ids)
+    configured_only = sorted(set(configured_by_lower) - openclaw_ids)
+    if global_only:
+        _info(f"router-global preset(s) outside the OpenClaw contract: {global_only}")
+    if configured_only:
+        _info(f"configured preset(s) outside the OpenClaw contract: {configured_only}")
+
+    _info(
+        "proving front-door accepts both forms for "
+        f"{len(openclaw_preset_ids)} OpenClaw preset(s)"
+    )
+    for preset_id in openclaw_preset_ids:
+        bare = resolve(_req(preset_id), cfg)
+        prefixed = resolve(_req(f"anvil/{preset_id}"), cfg)
+        configured_id = configured_by_lower.get(preset_id)
+        if (
+            configured_id is not None
+            and bare == prefixed
+            and bare.preset == configured_id
+            and bare.source == "declared-preset"
+        ):
+            _ok(
+                f"{preset_id!r} == anvil/{preset_id!r} -> "
+                f"preset={bare.preset!r}, tiers={bare.candidate_tiers}"
+            )
         else:
             _fail(
-                f"{p.id!r} and anvil/{p.id!r} did NOT resolve identically "
+                f"{preset_id!r} and anvil/{preset_id!r} did NOT resolve identically "
                 f"(bare.preset={bare.preset!r}, prefixed.preset={prefixed.preset!r}, "
-                f"equal={bare == prefixed}, source={bare.source!r})"
+                f"equal={bare == prefixed}, source={bare.source!r}, "
+                f"configured={configured_id is not None})"
             )
             passed = False
 
@@ -304,7 +426,7 @@ def check_fire_cadence(records: List[Dict[str, Any]]) -> Tuple[bool, bool]:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="validate.py",
-        description="Validate the two CRITICAL OpenClaw live gaps (wire-form + fire-cadence).",
+        description="Validate the OpenClaw wire-form and fire-cadence contracts.",
     )
     parser.add_argument(
         "--assert-wire-form",
@@ -313,11 +435,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         "front door accepts both the bare and the anvil/-prefixed form.",
     )
     parser.add_argument(
+        "--config",
+        metavar="FILE",
+        default=str(CONFIG_PATH),
+        help="router config whose preset mappings must cover the plugin vocabulary "
+        "(default: configs/example.toml)",
+    )
+    parser.add_argument(
         "--capture",
         metavar="FILE",
         default=None,
-        help="optional captured outbound request (JSON/JSONL) for the wire-form (a) "
-        "check — this is the LIVE manual artifact; omit to use the fixture's "
+        help="optional outbound request or plugin decision log (JSON/JSONL) for "
+        "the wire-form (a) check; omit to use the cadence fixture's "
         "modelOverride strings.",
     )
     parser.add_argument(
@@ -349,7 +478,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.assert_wire_form:
         capture = Path(args.capture) if args.capture else None
         try:
-            if not check_wire_form(capture, fire_records):
+            if not check_wire_form(capture, fire_records, Path(args.config)):
                 failures.append("wire-form")
         except MalformedLog as exc:
             _fail(str(exc))
