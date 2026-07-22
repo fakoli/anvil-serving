@@ -85,6 +85,9 @@ _ROUTES = {
     "/v1/messages": AnthropicDialect(),
 }
 DECISION_SUMMARY_ENDPOINT = "/v1/decisions"
+#: Per-tier / per-serve live health snapshot (#292). Bearer-authed like every
+#: route except GET /healthz; additive — /health and /v1/decisions are unchanged.
+TIER_HEALTH_ENDPOINT = "/v1/health/tiers"
 TRANSITION_ENDPOINT = "/v1/admin/transition"
 # Purpose-model surfaces (gpu-reservations:T010 / ADR-0017 §7). POST-only,
 # routed by MODEL NAME via an injected PurposeRouter — active only when the
@@ -732,11 +735,22 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         # pre-T010 route list.
                         "routes": sorted(
                             list(_ROUTES)
-                            + [ROUTE_ENDPOINT, DECISION_SUMMARY_ENDPOINT]
+                            + [ROUTE_ENDPOINT, DECISION_SUMMARY_ENDPOINT,
+                               TIER_HEALTH_ENDPOINT]
                             + (list(_PURPOSE_PATHS) if purpose is not None else [])
                             + (list(audio.paths) if audio is not None else [])
                         ),
                     })
+                elif route == TIER_HEALTH_ENDPOINT:
+                    # Live per-tier/per-serve readiness snapshot (#292): surface
+                    # the backend's already-tracked availability for EVERY
+                    # configured serve. A backend without a routing snapshot
+                    # (plain echo/static) has no configured serves -> {"tiers": []}.
+                    health_fn = getattr(backend, "tier_health", None)
+                    if health_fn is None:
+                        routing = getattr(self.server, "anvil_routing", None)
+                        health_fn = getattr(routing, "tier_health", None)
+                    self._json(200, health_fn() if callable(health_fn) else {"tiers": []})
                 elif route == "/v1/models":
                     # Preset discovery: list the configured presets (intent tokens)
                     # as OpenAI-shaped "models" so a harness model picker can find
