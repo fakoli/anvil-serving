@@ -148,6 +148,40 @@ silently change direction and never delete an ADR — supersede it.
   or a reader-facing comparison. Clearly distinguish local measurements from external advisory
   priors. Publishing results never authorizes a routing or production-model promotion.
 
+### Public findings policy
+
+[`ADR-0027`](docs/adr/0027-public-findings-are-durable-evidence.md) makes `docs/findings/` the
+durable public evidence layer. Keep a finding public even after a newer result supersedes its
+recommendation; named docs and ADRs state the current conclusion, while the dated finding preserves
+what was observed.
+
+- Add a dated Markdown narrative to `docs/findings/README.md`. State the exact revision/config,
+  topology, method, evidence type, result, failures, caveats, and current-doc impact.
+- Sanitize every public artifact before publication, whether checked into Git or stored externally.
+  Neither location may contain secrets, credentials, private prompts, personal data, machine-local
+  tokens, or unrelated logs. Check in only the reviewable subset needed to audit the claim. Prefer
+  compact JSON/CSV/text. Each new raw file must be at most 1 MiB, and all checked-in evidence from
+  one experiment, qualification, promotion, or evidence packet must total at most 5 MiB. Splitting
+  it across directories or narratives does not reset the limit. An exception must list the files
+  and total bytes, explain why a bounded subset/external store is insufficient, and name the
+  approving reviewer.
+- External evidence must be anonymously downloadable at an immutable, non-expiring versioned or
+  content-addressed HTTPS URL and retained for at least as long as the citation. Record the retention
+  owner/term, byte size, SHA-256, provenance, and bounded public summary. Expiring CI artifacts,
+  private buckets, and mutable `latest` URLs are not durable evidence.
+- Do not delete findings or raw evidence by age. Correct with a linked erratum or superseding
+  finding and a new corrected-artifact path; ordinary metadata errors never authorize overwriting
+  merged evidence or rewriting Git history. Sensitive/legal removals use a public tombstone when
+  safe and lawful, retaining nonsensitive provenance and linking replacement evidence.
+- Planning discussions, PRDs, review transcripts, and session traces may remain in the private notes
+  repository. Private links are supplementary only: every load-bearing public claim and its
+  auditable support must be available in this repository or a durable public artifact store.
+
+Only existing artifacts' size and format are grandfathered; sanitization, correction, and public
+citation requirements still apply. This policy is not authorization for an unreviewed bulk
+migration or deletion. Legacy private-only evidence remains tracked by issue #175; the
+machine-local-path and public-artifact audit is issue #290.
+
 ## Workflow
 
 1. Branch off `main` (e.g. `fix/...`, `feat/...`, `docs/...`).
@@ -163,7 +197,8 @@ silently change direction and never delete an ADR — supersede it.
 Keep PRs focused: one logical change per PR, with a clear description of the *why*. If you are
 unsure whether a change fits the direction, open an issue first.
 
-> **Design history:** internal design discussions, planning PRDs, dated bake-off findings, and
+> **Design history:** internal design discussions, planning PRDs, review/session transcripts, and
 > pre-pivot spec archives live in the companion repo `fakoli/anvil-serving-notes` *(private — not
-> accessible to external readers; the conclusions this repo relies on are restated in its public
-> docs and ADRs)*.
+> accessible to external readers)*. Public dated findings and load-bearing evidence follow
+> [ADR-0027](docs/adr/0027-public-findings-are-durable-evidence.md); private material may supplement
+> but cannot solely ground a public claim.
