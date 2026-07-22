@@ -8,6 +8,14 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Authenticated normalized one-shot audio gateway.** Opt-in private Dark STT/TTS routes now
+  expose bearer-authenticated JSON `POST /v1/audio/transcriptions` and
+  `POST /v1/audio/speech` on the router, keeping raw serve hosts, audio bytes, transcripts, and
+  synthesis text out of callers and decision records. The gateway bounds inputs, outputs, and
+  upstream wall-clock time; records only safe route/byte/latency metadata; requires resolved
+  front-door auth; and currently exposes the live-qualified Kokoro PCM16 contract with its explicit
+  sample rate. It is a future HTTP-client seam and does not replace the Workbench Realtime relay.
+
 - **Lifecycle-aware WSL page-cache reclaim.** A strict, default-off machine policy in
   `$ANVIL_SERVING_HOME/host.toml` lets confirmed model pulls, recipe loads, and managed serve
   up/adopt/switch/promotion boundaries evaluate one synchronous, readiness-aware cache reclaim.

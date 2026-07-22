@@ -1963,7 +1963,10 @@ def test_voice_proxy_manage_is_persistent_typed_and_model_free(tmp_path, monkeyp
     assert preview["data"]["dry_run"] is True
     assert applied["data"]["applied"] is True
     assert ("up", True) in calls and ("up", False) in calls
-    assert all("audio" not in str(call) for call in calls)
+    # The proxy lifecycle invokes only its own persistent-process operations.
+    # Its topology fixture may legitimately contain an audio-gateway resource;
+    # a path substring is not evidence that this tool managed audio models.
+    assert {call[0] for call in calls} <= {"init", "status", "up"}
 
 
 def test_voice_proxy_manage_preserves_successful_noop_as_not_applied(tmp_path, monkeypatch):

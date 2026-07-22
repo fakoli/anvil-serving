@@ -23,6 +23,46 @@ commands or compose manifests for Hugging Face's `speech-to-speech` project,
 where that project owns the Realtime server. `anvil-serving voice` owns the
 Realtime server and cascade itself.
 
+## One-shot router audio gateway
+
+The Realtime pipeline above uses the Dark-owned raw audio serves directly through its
+topology-derived bridge. The optional **one-shot audio gateway** is for private HTTP clients that
+need dictation or complete read-aloud audio without learning raw host/port details. It is not part
+of the current Workbench Realtime relay and must not replace that relay's WebSocket URL or token.
+Declare `[[router.audio_routes]]` together with `[server].auth_env`; each endpoint remains 404
+unless it has a bound route for its purpose.
+
+```text
+client -- bearer token --> router /v1/audio/* -- private hop --> Dark STT/TTS serve
+```
+
+`POST /v1/audio/transcriptions` accepts JSON
+`{"purpose":"stt","audio_b64":"...","format":"wav|pcm16|webm_opus","is_final":true}`
+and returns `text`, `is_final`, `duration_ms`, `model`, and `request_id`. `duration_ms` is `null`
+when the source container has no reliably derivable duration (for example, `webm_opus`). `pcm16`
+requires an explicit `sample_rate` and is wrapped as WAV before the Parakeet multipart hop. Interim
+audio is rejected: this is a one-shot boundary, not a streaming STT protocol.
+
+`POST /v1/audio/speech` accepts JSON
+`{"purpose":"tts","input":"...","response_format":"pcm16"}` and returns JSON
+`{"audio_b64":"...","format":"pcm16","sample_rate":24000,"model":"...","request_id":"..."}`.
+The router requests Kokoro's live-qualified raw PCM16 contract, validates its media type and whole
+sample framing, then base64-encodes the bytes. WAV and MP3 output remain unavailable until their
+upstream contracts have separate live qualification.
+
+Both endpoints use the same bearer/`x-api-key` authentication as `/v1/responses`. Decisions log
+only opaque route id, byte counts (including rejected bounded upstream responses), outcome,
+latency, and correlation ids; audio bytes/base64, transcript text, and synthesis input are
+excluded. The gateway has a separate bounded concurrency pool for parsed upstream operations and
+input/output caps. It has no provider or chat fallback: a configured raw serve failure is a typed
+error from that route. See [configuration](CONFIGURATION.md#routeraudio_routes) and
+[ADR-0024](adr/0024-normalized-audio-gateway.md).
+
+When a future Workbench HTTP voice surface adopts this gateway, it must use the router base URL
+plus `ANVIL_ROUTER_TOKEN`, send this canonical shape, use the returned `sample_rate` for playback,
+and keep the existing Realtime relay separate. Older `audio`/`model`/`format` adapter shapes are
+not part of this router contract.
+
 ## Command Summary
 
 | Command | What It Does | What It Does Not Do |

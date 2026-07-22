@@ -114,6 +114,13 @@ class DecisionRecord:
     request_id: Optional[str] = None
     workbench_run_id: Optional[str] = None
     task_id: Optional[str] = None
+    # Content-free transport metadata for binary/purpose gateways.  Audio uses
+    # these fields to expose hop volume and elapsed time without retaining the
+    # audio payload, base64, transcript, or synthesis input.  They default to
+    # zero so existing chat decisions remain byte-for-byte compatible.
+    request_bytes: int = 0
+    response_bytes: int = 0
+    latency_ms: int = 0
 
 
 def safe_correlation(value: Any) -> Optional[str]:
@@ -242,7 +249,7 @@ fell_back=<true|false> tiers=<t1>t2>t3|-> prompt=<n> completion=<n>
     """
     served = record.served_tier
     tiers = ">".join(_safe(t) for t in record.requested_tiers) or "-"
-    return (
+    line = (
         f"intent={_safe(record.intent)} "
         f"work_class={_safe(record.work_class)} "
         f"served={_safe(served)} "
@@ -252,6 +259,19 @@ fell_back=<true|false> tiers=<t1>t2>t3|-> prompt=<n> completion=<n>
         f"prompt={record.total_prompt_tokens} "
         f"completion={record.total_completion_tokens}"
     )
+    # Preserve the established eight-field chat audit grammar.  Binary gateway
+    # records add only content-free measurements, satisfying observability
+    # without putting raw audio or transcript text into container logs.
+    request_bytes = max(_int_field(record, "request_bytes"), 0)
+    response_bytes = max(_int_field(record, "response_bytes"), 0)
+    latency_ms = max(_int_field(record, "latency_ms"), 0)
+    if request_bytes or response_bytes or latency_ms:
+        line += (
+            f" request_bytes={request_bytes}"
+            f" response_bytes={response_bytes}"
+            f" latency_ms={latency_ms}"
+        )
+    return line
 
 
 def _field(record: Any, name: str, default: Any = None) -> Any:
@@ -299,6 +319,9 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
     total_prompt = 0
     total_completion = 0
     total_cost = 0.0
+    total_request_bytes = 0
+    total_response_bytes = 0
+    total_latency_ms = 0
     for record in selected:
         attempts = tuple(_field(record, "attempts", ()) or ())
         attempt_items = [_attempt_summary(attempt) for attempt in attempts]
@@ -306,6 +329,9 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
         fell_back = bool(_field(record, "fell_back", False))
         prompt_tokens = _int_field(record, "total_prompt_tokens")
         completion_tokens = _int_field(record, "total_completion_tokens")
+        request_bytes = max(_int_field(record, "request_bytes"), 0)
+        response_bytes = max(_int_field(record, "response_bytes"), 0)
+        latency_ms = max(_int_field(record, "latency_ms"), 0)
         try:
             cost_usd = float(_field(record, "cost_usd", 0.0) or 0.0)
         except (TypeError, ValueError):
@@ -319,6 +345,9 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
         total_prompt += prompt_tokens
         total_completion += completion_tokens
         total_cost += cost_usd
+        total_request_bytes += request_bytes
+        total_response_bytes += response_bytes
+        total_latency_ms += latency_ms
         requested_tiers = tuple(str(t) for t in (_field(record, "requested_tiers", ()) or ()))
         items.append({
             "intent": _summary_safe(_field(record, "intent")),
@@ -329,6 +358,9 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
             "attempts": attempt_items,
             "total_prompt_tokens": prompt_tokens,
             "total_completion_tokens": completion_tokens,
+            "request_bytes": request_bytes,
+            "response_bytes": response_bytes,
+            "latency_ms": latency_ms,
             "cost_usd": round(cost_usd, 8),
             "mode": _summary_safe(_field(record, "mode")),
             "request_id": _summary_safe(safe_correlation(_field(record, "request_id"))),
@@ -345,10 +377,16 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
             "prompt_tokens": total_prompt,
             "completion_tokens": total_completion,
             "cost_usd": round(total_cost, 8),
+            "request_bytes": total_request_bytes,
+            "response_bytes": total_response_bytes,
+            "latency_ms": total_latency_ms,
             "served_tiers": dict(sorted(served_counts.items())),
             "attempt_outcomes": dict(sorted(outcome_counts.items())),
         },
-        "omitted_fields": ["prompt", "messages", "content", "response", "api_key", "authorization", "token"],
+        "omitted_fields": [
+            "prompt", "messages", "content", "response", "api_key",
+            "authorization", "token", "audio", "audio_b64", "input", "text",
+        ],
     }
 
 

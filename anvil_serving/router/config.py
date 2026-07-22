@@ -12,11 +12,14 @@ auth is off.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
+import math
 import os
 import re
 import sys
 import tomllib
+import urllib.parse
 from dataclasses import dataclass, field, replace
 from functools import cached_property
 from types import MappingProxyType
@@ -42,6 +45,13 @@ PURPOSE_EMBEDDING = "embedding"
 PURPOSE_RERANK = "rerank"
 VALID_PURPOSE_KINDS = {PURPOSE_EMBEDDING, PURPOSE_RERANK}
 
+# Audio gateway route purposes.  These routes are deliberately separate from
+# both chat tiers and purpose models: they normalize a configured, operator-
+# owned STT/TTS serve behind the router's authenticated /v1/audio/* surface.
+AUDIO_STT = "stt"
+AUDIO_TTS = "tts"
+VALID_AUDIO_PURPOSES = {AUDIO_STT, AUDIO_TTS}
+
 # An auth reference must be an ENV-VAR NAME, not a secret literal.
 _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
@@ -49,6 +59,9 @@ _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 # charset (e.g. an AWS access key id ``AKIA…`` / ``ASIA…``). Reject those shapes
 # explicitly as defense-in-depth so a pasted key id can't masquerade as a name.
 _SECRET_SHAPED_RE = re.compile(r"^(AKIA|ASIA)[0-9A-Z]{16}$")
+# Keep optional per-audio-route limits no larger than the front door's default
+# body cap without importing front_door (which imports this module).
+_MAX_AUDIO_GATEWAY_BYTES = 32 * 1024 * 1024
 
 _REQUIRED_TIER_KEYS = (
     "id",
@@ -164,6 +177,28 @@ class PurposeModel:
 
 
 @dataclass(frozen=True)
+class AudioRoute:
+    """One Dark-owned audio serve behind the normalized router gateway.
+
+    Audio routes never enter the quality-profile chat pipeline and never have
+    provider fallback.  ``purpose`` selects the fixed request/response
+    normalization (multipart STT or raw-PCM TTS), while ``id`` permits an
+    explicit operator-selected route without disclosing a host to callers.
+    ``source_sample_rate`` is required for TTS because its raw PCM response has
+    no self-describing container.
+    """
+
+    id: str
+    purpose: str  # "stt" | "tts" (VALID_AUDIO_PURPOSES)
+    model: str  # concrete upstream model name; never caller-selected
+    base_url: str  # upstream OpenAI-style base, e.g. http://host.docker.internal:30010/v1
+    source_sample_rate: Optional[int] = None  # required for TTS raw PCM16
+    timeout: Optional[float] = None
+    auth_env: Optional[str] = None  # optional upstream bearer env-var name
+    default: bool = False
+
+
+@dataclass(frozen=True)
 class RouterConfig:
     """Validated router topology: tiers + preset->candidate mapping.
 
@@ -224,6 +259,17 @@ class RouterConfig:
     # absent [[router.purpose_models]] list leaves the front door exactly as
     # before (those endpoints 404).
     purpose_models: tuple["PurposeModel", ...] = ()
+    # Optional request/response audio gateway.  An absent list leaves
+    # /v1/audio/transcriptions and /v1/audio/speech unavailable, preserving the
+    # existing router surface.  Audio stays operator-owned and has no cloud
+    # fallback path.
+    audio_routes: tuple["AudioRoute", ...] = ()
+    # Decoded STT input and normalized TTS output caps.  The encoded JSON body
+    # is also covered by the front-door-wide MAX_BODY_BYTES cap.
+    audio_max_input_bytes: int = 4 * 1024 * 1024
+    audio_max_output_bytes: int = 4 * 1024 * 1024
+    audio_max_text_chars: int = 16 * 1024
+    audio_max_concurrency: int = 4
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
@@ -478,6 +524,7 @@ def _parse_tier(raw: object) -> Tier:
             isinstance(raw_timeout, bool)
             or not isinstance(raw_timeout, (int, float))
             or raw_timeout <= 0
+            or not math.isfinite(raw_timeout)
         ):
             raise ConfigError(
                 f"tier {tid!r}: timeout must be a positive number of seconds "
@@ -624,6 +671,7 @@ def _parse_purpose_model(raw: object) -> PurposeModel:
             isinstance(raw_timeout, bool)
             or not isinstance(raw_timeout, (int, float))
             or raw_timeout <= 0
+            or not math.isfinite(raw_timeout)
         ):
             raise ConfigError(
                 f"purpose model {pid!r}: timeout must be a positive number of "
@@ -638,6 +686,161 @@ def _parse_purpose_model(raw: object) -> PurposeModel:
         base_url=base_url,
         auth_env=auth_env,
         timeout=timeout,
+    )
+
+
+def _parse_audio_route(raw: object) -> AudioRoute:
+    """Parse one ``[[router.audio_routes]]`` table.
+
+    The table is intentionally small and declarative: callers address an
+    audio purpose or route id, never a raw upstream URL or model name.  Audio
+    serve lifecycle stays in ``anvil-serving voice``; this schema owns only
+    ingress routing and contract normalization.
+    """
+    if not isinstance(raw, dict):
+        raise ConfigError(
+            f"audio_routes entry must be a table, got {type(raw).__name__}"
+        )
+
+    route_id = raw.get("id")
+    if not isinstance(route_id, str) or not route_id:
+        raise ConfigError(
+            f"audio route id must be a non-empty string, got {route_id!r}"
+        )
+
+    purpose = raw.get("purpose")
+    if not isinstance(purpose, str) or purpose not in VALID_AUDIO_PURPOSES:
+        raise ConfigError(
+            f"audio route {route_id!r}: purpose {purpose!r} not in "
+            f"{sorted(VALID_AUDIO_PURPOSES)}"
+        )
+
+    model = raw.get("model")
+    if not isinstance(model, str) or not model:
+        raise ConfigError(
+            f"audio route {route_id!r}: model must be a non-empty string "
+            f"(the upstream served model name), got {model!r}"
+        )
+
+    base_url = raw.get("base_url")
+    if not isinstance(base_url, str) or not base_url.lower().startswith(
+        ("http://", "https://")
+    ):
+        raise ConfigError(
+            f"audio route {route_id!r}: base_url must be an http:// or "
+            f"https:// URL (got {base_url!r}); file://, ftp://, and other "
+            "schemes are rejected to prevent SSRF and local-file access"
+        )
+    parsed_url = urllib.parse.urlparse(base_url)
+    try:
+        port = parsed_url.port
+    except ValueError as exc:
+        raise ConfigError(
+            f"audio route {route_id!r}: base_url has an invalid port"
+        ) from exc
+    if port is not None and not (1 <= port <= 65535):
+        raise ConfigError(
+            f"audio route {route_id!r}: base_url port must be from 1 through 65535"
+        )
+    hostname = (parsed_url.hostname or "").lower()
+    if (
+        not hostname
+        or parsed_url.username is not None
+        or parsed_url.password is not None
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        raise ConfigError(
+            f"audio route {route_id!r}: base_url must name a credential-free "
+            "origin without query strings or fragments"
+        )
+    if hostname == "localhost":
+        raise ConfigError(
+            f"audio route {route_id!r}: base_url must use 127.0.0.1 or "
+            "host.docker.internal, never localhost"
+        )
+    if hostname != "host.docker.internal":
+        try:
+            address = ipaddress.ip_address(hostname)
+        except ValueError:
+            raise ConfigError(
+                f"audio route {route_id!r}: base_url host must be "
+                "host.docker.internal or a literal private/tailnet IP address"
+            ) from None
+        allowed_networks = (
+            ipaddress.ip_network("10.0.0.0/8"),
+            ipaddress.ip_network("172.16.0.0/12"),
+            ipaddress.ip_network("192.168.0.0/16"),
+            ipaddress.ip_network("100.64.0.0/10"),
+        )
+        if str(address) != "127.0.0.1" and not any(
+            address in network for network in allowed_networks
+        ):
+            raise ConfigError(
+                f"audio route {route_id!r}: base_url host must be 127.0.0.1, "
+                "RFC1918, or tailnet; public, link-local, wildcard, and "
+                "alternate loopback upstreams are not audio routes"
+            )
+
+    raw_timeout = raw.get("timeout")
+    timeout: Optional[float] = None
+    if raw_timeout is not None:
+        if (
+            isinstance(raw_timeout, bool)
+            or not isinstance(raw_timeout, (int, float))
+            or raw_timeout <= 0
+            or not math.isfinite(raw_timeout)
+        ):
+            raise ConfigError(
+                f"audio route {route_id!r}: timeout must be a positive number "
+                f"of seconds or absent, got {raw_timeout!r}"
+            )
+        timeout = float(raw_timeout)
+
+    source_sample_rate = raw.get("source_sample_rate")
+    if purpose == AUDIO_TTS:
+        if (
+            isinstance(source_sample_rate, bool)
+            or not isinstance(source_sample_rate, int)
+            or not (8_000 <= source_sample_rate <= 192_000)
+        ):
+            raise ConfigError(
+                f"audio route {route_id!r}: TTS source_sample_rate must be a "
+                f"integer from 8000 through 192000, got {source_sample_rate!r}"
+            )
+    elif source_sample_rate is not None:
+        raise ConfigError(
+            f"audio route {route_id!r}: source_sample_rate is valid only for TTS"
+        )
+
+    auth_env = raw.get("auth_env")
+    if auth_env is not None:
+        if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
+            raise ConfigError(
+                f"audio route {route_id!r}: auth_env must name an ENV VAR "
+                f"matching ^[A-Z][A-Z0-9_]*$ (got {auth_env!r})"
+            )
+        if _SECRET_SHAPED_RE.fullmatch(auth_env):
+            raise ConfigError(
+                f"audio route {route_id!r}: auth_env {auth_env!r} is shaped "
+                "like a credential literal, not an env-var name"
+            )
+
+    default = raw.get("default", False)
+    if not isinstance(default, bool):
+        raise ConfigError(
+            f"audio route {route_id!r}: default must be a boolean (true/false)"
+        )
+
+    return AudioRoute(
+        id=route_id,
+        purpose=purpose,
+        model=model,
+        base_url=base_url,
+        source_sample_rate=source_sample_rate,
+        timeout=timeout,
+        auth_env=auth_env,
+        default=default,
     )
 
 
@@ -760,6 +963,7 @@ def load(path: str) -> RouterConfig:
         isinstance(raw_relay_timeout, bool)
         or not isinstance(raw_relay_timeout, (int, float))
         or raw_relay_timeout <= 0
+        or not math.isfinite(raw_relay_timeout)
     ):
         raise ConfigError(
             f"[router].relay_timeout must be a positive number of seconds "
@@ -837,6 +1041,73 @@ def load(path: str) -> RouterConfig:
         seen_purpose_keys.add(key)
         purpose_models.append(pm)
 
+    # ``audio_routes``: optional Dark-owned STT/TTS routes behind the router's
+    # normalized JSON /v1/audio/* gateway.  Unlike purpose models, callers
+    # select a purpose (or explicit route id), not the upstream model.  Multiple
+    # routes may share a purpose, but purpose-only selection must have exactly
+    # one default route (a lone route is its own default).
+    raw_audio = router.get("audio_routes", [])
+    if not isinstance(raw_audio, list):
+        raise ConfigError(
+            f"[router].audio_routes must be a list of tables in {path}"
+        )
+    audio_routes: list[AudioRoute] = []
+    seen_audio_ids: set[str] = set()
+    audio_by_purpose: dict[str, list[AudioRoute]] = {}
+    for raw in raw_audio:
+        audio_route = _parse_audio_route(raw)
+        if (
+            audio_route.id in seen_ids
+            or audio_route.id in seen_purpose_ids
+            or audio_route.id in seen_audio_ids
+        ):
+            raise ConfigError(
+                f"duplicate audio route id: {audio_route.id!r} (audio route ids "
+                "share the audit-trail namespace with tiers and purpose models)"
+            )
+        seen_audio_ids.add(audio_route.id)
+        audio_routes.append(audio_route)
+        audio_by_purpose.setdefault(audio_route.purpose, []).append(audio_route)
+
+    for audio_purpose, routes in audio_by_purpose.items():
+        default_count = sum(1 for route in routes if route.default)
+        if len(routes) > 1 and default_count != 1:
+            raise ConfigError(
+                f"audio purpose {audio_purpose!r} has {len(routes)} routes; "
+                "exactly one must set default = true for purpose-only routing"
+            )
+        if len(routes) == 1 and default_count > 1:  # defensive, unreachable
+            raise ConfigError(
+                f"audio purpose {audio_purpose!r} has more than one default route"
+            )
+
+    def _audio_limit(key: str, default: int) -> int:
+        value = router.get(key, default)
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not (1024 <= value <= _MAX_AUDIO_GATEWAY_BYTES)
+        ):
+            raise ConfigError(
+                f"[router].{key} must be an integer from 1024 through "
+                f"{_MAX_AUDIO_GATEWAY_BYTES} in {path}"
+            )
+        return value
+
+    audio_max_input_bytes = _audio_limit("audio_max_input_bytes", 4 * 1024 * 1024)
+    audio_max_output_bytes = _audio_limit("audio_max_output_bytes", 4 * 1024 * 1024)
+    audio_max_text_chars = _audio_limit("audio_max_text_chars", 16 * 1024)
+    raw_audio_max_concurrency = router.get("audio_max_concurrency", 4)
+    if (
+        isinstance(raw_audio_max_concurrency, bool)
+        or not isinstance(raw_audio_max_concurrency, int)
+        or not (1 <= raw_audio_max_concurrency <= 16)
+    ):
+        raise ConfigError(
+            f"[router].audio_max_concurrency must be an integer from 1 through 16 "
+            f"in {path}"
+        )
+
     availability_probe_interval = _positive_seconds(
         "availability_probe_interval", 5.0
     )
@@ -868,4 +1139,9 @@ def load(path: str) -> RouterConfig:
         availability_probe_timeout=availability_probe_timeout,
         availability_probe_max_bytes=raw_probe_max_bytes,
         purpose_models=tuple(purpose_models),
+        audio_routes=tuple(audio_routes),
+        audio_max_input_bytes=audio_max_input_bytes,
+        audio_max_output_bytes=audio_max_output_bytes,
+        audio_max_text_chars=audio_max_text_chars,
+        audio_max_concurrency=raw_audio_max_concurrency,
     )

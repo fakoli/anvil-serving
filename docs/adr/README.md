@@ -43,3 +43,4 @@ people and the chat logs.
 | [0021](0021-cli-interaction-contract.md) | CLI interaction contract: resource-first, previewable, recoverable, and cross-platform | Accepted |
 | [0022](0022-evaluation-evidence-protocol.md) | Evaluation evidence protocol: model-aware, repeated, and comparison-safe | Accepted |
 | [0023](0023-lifecycle-aware-wsl-cache-reclaim.md) | Lifecycle-aware WSL page-cache reclaim | Accepted |
+| [0024](0024-normalized-audio-gateway.md) | Normalized authenticated one-shot audio gateway | Accepted |
