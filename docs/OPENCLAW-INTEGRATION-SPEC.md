@@ -371,11 +371,13 @@ changing provider config, or changing routing behavior. A valid proof establishe
 8. the decision artifact identifies source, preset, destination, override, routing source, and
    authoritative status without prompt content or secrets.
 
-The historical `examples/openclaw/validate.py` aggregate wire check currently conflates the
-plugin/configured vocabulary with optional router-global presets; that separate tooling defect is
-tracked in [issue #287](https://github.com/fakoli/anvil-serving/issues/287). Until it is fixed, do
-not cite its aggregate result as a passing current gate. The plugin and harness contract tests remain
-the automated proof, and a real gateway capture remains the live proof.
+The `examples/openclaw/validate.py` aggregate wire check loads the shipped plugin's runtime preset
+export, proves that every plugin-emittable preset is configured, and checks bare/namespaced
+equivalence for exactly that vocabulary. Optional router-global presets are reported but do not
+broaden this integration contract. Mixed plugin decision logs validate only schema-consistent
+Anvil-bound overrides; a capture with no Anvil-bound evidence fails. The aggregate fixture command
+is automated proof against the default committed config. Pass the deployed router config with
+`--config` alongside a real gateway capture for live proof.
 
 Unit tests and the synthetic fixture prove deterministic adapter behavior. They do not replace the
 live gateway/provider proof. Likewise, a successful Anvil 503 proves the router's exhaustion

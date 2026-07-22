@@ -34,15 +34,15 @@
 //     docs/OPENCLAW-INTEGRATION-SPEC.md §0/§1); so this plugin mirrors the router's
 //     KEYWORD taxonomy, while the long-context / attachment signals are the
 //     plugin-side analogue of the router's window-pressure / structural hints;
-//   * the returned token is one of anvil's CLOSED preset enum (PRESETS below) and
-//     must match anvil_serving.router.intent.PRESETS — it becomes the wire model
-//     `anvil/<preset>`;
+//   * the returned token is one of this OpenClaw integration's CLOSED preset
+//     enum (PRESETS below) — it becomes the wire model `anvil/<preset>`;
 //   * NEVER throws — any failure degrades to the safe default "chat".
 
 import { readFileSync } from "node:fs";
 
-// The closed preset enum = anvil's wire vocabulary (must match the router's
-// PRESETS and validate.py's WIRE_FORM_RE).
+// The closed preset enum = the OpenClaw plugin's wire vocabulary. Router-global
+// optional presets may be broader; validate.py loads this exported value from
+// the actual plugin runtime instead of maintaining another copy.
 export const PRESETS = /** @type {const} */ ([
   "planning",
   "quick-edit",

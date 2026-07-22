@@ -10,14 +10,12 @@ contract is current §3, and both wire-form and cadence checks remain in the upg
 
 | # | Gap | What "pass" means |
 |---|-----|-------------------|
-| 1 | **Wire `model` value** | Every outbound HTTP `model` string is `^(anvil/)?<preset>$`, **and** the anvil front door accepts **both** the bare (`planning`) and the namespaced (`anvil/planning`) form. The openai-completions convention puts the bare id on the wire; OpenClaw's selection string is `anvil/<preset>` — so anvil must accept both. |
+| 1 | **Wire `model` value** | Every Anvil-bound HTTP `model` string names a plugin preset, **and** the anvil front door accepts **both** the bare (`planning`) and the namespaced (`anvil/planning`) form. The openai-completions convention puts the bare id on the wire; OpenClaw's selection string is `anvil/<preset>` — so anvil must accept both. Native-bound routes use their configured native model id and are not Anvil wire evidence. |
 | 2 | **Firing cadence** | `before_model_resolve` fires **once per user message** (so the plugin's per-turn classification is real), confirmed by logging every fire across a multi-turn conversation. Per session: fire-count == user-message-count. |
 
-> **Current tooling caveat:** the aggregate wire check in `validate.py` is red because it compares
-> this plugin/config vocabulary with optional router-global `ocr` and `vision` presets that the
-> example config intentionally leaves unmapped. This is tracked in
-> [issue #287](https://github.com/fakoli/anvil-serving/issues/287). Do not cite the aggregate command
-> as a current pass until that defect is fixed; the cadence capture remains useful.
+The aggregate command is green on the committed fixture. The validator loads the shipped plugin's
+actual runtime preset export, so optional router-global presets such as `ocr` and `vision` do not
+silently broaden the OpenClaw contract.
 
 A pass on both gaps unblocks building the real `before_model_resolve` routing
 plugin and the router-side model-name parser (T014) against a confirmed contract,
@@ -27,7 +25,7 @@ instead of an assumed one.
 
 | File | What it is |
 |------|------------|
-| `validate.py` | Stdlib-only CLI that checks both gaps. PASS/FAIL per check; non-zero exit only on a wire-form violation or a malformed log. |
+| `validate.py` | Python-stdlib CLI that checks both gaps and uses the OpenClaw/Node runtime to load the shipped plugin preset export. PASS/FAIL per check; malformed capture evidence fails closed. |
 | `colo_smoke.py` | Stdlib-only COLO smoke/eval runner for Fakoli Mini OpenClaw -> Fakoli Dark anvil-serving. Writes story-mapped JSON evidence in fixture or live mode. |
 | `hook-fire-log.jsonl` | **A REPRESENTATIVE FIXTURE — not a live capture.** Every record carries `"synthetic": true`. Models a clean 3-message session (one fire per message) so `validate.py` has something to assert against in CI. |
 | `logging-hook/index.ts` | A minimal, **logging-only** `before_model_resolve` plugin. On each fire it appends a JSONL record and returns `{}` (records cadence; **does not route**). This is the instrument you install on the live Fakoli-Mini gateway to produce a REAL `hook-fire-log.jsonl`. |
@@ -272,12 +270,15 @@ python examples/openclaw/validate.py \
     --assert-fire-cadence examples/openclaw/hook-fire-log.jsonl
 ```
 
-- **`--assert-wire-form`** does two things: (a) checks that the model strings it
-  can see match the regex — with no `--capture`, it uses the fixture's
-  `modelOverride` selection strings — and (b) the load-bearing proof: it imports
-  `anvil_serving.router.intent` and asserts `resolve()` maps `planning` and
-  `anvil/planning` (for **every** preset) to the *same* result. (b) is what
-  proves the front door accepts both wire forms.
+- **`--assert-wire-form`** does two things: (a) loads the actual `PRESETS` export
+  from the shipped plugin and checks visible Anvil-bound model strings against
+  that vocabulary — with no `--capture`, it uses the fixture's `modelOverride`
+  selection strings — and (b) the load-bearing proof: it imports
+  `anvil_serving.router.intent` and asserts `resolve()` maps each plugin preset
+  and its `anvil/`-prefixed form to the same configured result. Optional
+  router-global presets are reported separately and do not fail this plugin
+  contract. `--config FILE` selects the router config for that resolver/mapping
+  proof; it defaults to the committed `configs/example.toml`.
 - **`--assert-fire-cadence <log>`** groups fires by session and asserts
   fire-count == user-message-count. If the cadence is *not* 1 fire/message it
   prints the ACTUAL cadence and does **not** fail on that basis alone (the
@@ -294,6 +295,9 @@ The current routing plugin emits `providerOverride:"anvil"` plus a bare preset
 both bare and namespaced model strings.
 In a real run these come from two different artifacts: cadence from the hook's
 log, wire-form `(a)` from a separately **captured outbound request** (`--capture`).
+A current plugin `decision_log.jsonl` is also accepted: schema-consistent native
+routes are skipped, every Anvil-bound `modelOverride` is checked, and a capture
+with no Anvil-bound evidence fails rather than claiming proof.
 
 ## The LIVE validation (MANUAL — must be run by a human on Fakoli Mini)
 
@@ -348,7 +352,9 @@ log, wire-form `(a)` from a separately **captured outbound request** (`--capture
    ```
 3. **Validate the captured wire form**:
    ```bash
-   python examples/openclaw/validate.py --assert-wire-form --capture captured-request.json
+   python examples/openclaw/validate.py \
+     --config /path/to/deployed-router.toml \
+     --assert-wire-form --capture captured-request.json
    ```
    This settles whether the wire value is the bare id or the `anvil/`-prefixed
    ref. anvil already accepts **both** (proven by check `(b)`), so either result
@@ -358,6 +364,7 @@ log, wire-form `(a)` from a separately **captured outbound request** (`--capture
 
 ```bash
 python examples/openclaw/validate.py \
+    --config /path/to/deployed-router.toml \
     --assert-wire-form --capture captured-request.json \
     --assert-fire-cadence /abs/path/hook-fire-log.jsonl
 ```
