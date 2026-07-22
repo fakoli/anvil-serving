@@ -54,6 +54,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **OpenClaw integration documentation is now a current-state contract.** The canonical spec leads
+  with the shipped hook, generated setup path, model-id and maximum-reachable-tier context-window
+  rules, ownership boundaries, and upgrade proof. Historical research and incidents are condensed
+  into a linked appendix instead of interrupting the operational contract.
+
 - **Repo-scoped Workbench guidance now matches the current CLI and MCP control plane.** The Codex,
   Claude Code, and OpenClaw workbench skills catalog all structured tools, distinguish capacity
   probes from repeated quality evaluation, cover reservations/transitions/promotion/telemetry/host

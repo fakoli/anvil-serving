@@ -41,7 +41,7 @@
         "serves-multiplex": 4,
         "serves-render": 10,
         "voice-audio": 30,
-        "voice-proxy": 53,
+        "voice-proxy": 50,
         "voice-sidecar": 18
       },
       "files_by_category": {
@@ -113,7 +113,7 @@
         "serves-multiplex": 9,
         "serves-render": 18,
         "voice-audio": 57,
-        "voice-proxy": 80,
+        "voice-proxy": 77,
         "voice-sidecar": 45
       },
       "files_by_category": {
