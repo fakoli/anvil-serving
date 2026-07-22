@@ -4,13 +4,20 @@ This directory holds the historical **validate-FIRST** tooling for the
 anvil-serving × OpenClaw integration. The production routing plugin now lives in
 [`plugins/openclaw-anvil-intent-router/`](../../plugins/openclaw-anvil-intent-router/);
 keep using this directory for the wire-form/cadence validator and logging hook.
-The original T013 purpose was to settle the **two CRITICAL live gaps** called out in
-[`docs/OPENCLAW-INTEGRATION-SPEC.md`](../../docs/OPENCLAW-INTEGRATION-SPEC.md) §6:
+The original T013 purpose was to settle two critical live gaps now recorded in the
+[`OpenClaw integration contract`](../../docs/OPENCLAW-INTEGRATION-SPEC.md) history (§7). The model-id
+contract is current §3, and both wire-form and cadence checks remain in the upgrade gate (§6):
 
 | # | Gap | What "pass" means |
 |---|-----|-------------------|
 | 1 | **Wire `model` value** | Every outbound HTTP `model` string is `^(anvil/)?<preset>$`, **and** the anvil front door accepts **both** the bare (`planning`) and the namespaced (`anvil/planning`) form. The openai-completions convention puts the bare id on the wire; OpenClaw's selection string is `anvil/<preset>` — so anvil must accept both. |
 | 2 | **Firing cadence** | `before_model_resolve` fires **once per user message** (so the plugin's per-turn classification is real), confirmed by logging every fire across a multi-turn conversation. Per session: fire-count == user-message-count. |
+
+> **Current tooling caveat:** the aggregate wire check in `validate.py` is red because it compares
+> this plugin/config vocabulary with optional router-global `ocr` and `vision` presets that the
+> example config intentionally leaves unmapped. This is tracked in
+> [issue #287](https://github.com/fakoli/anvil-serving/issues/287). Do not cite the aggregate command
+> as a current pass until that defect is fixed; the cadence capture remains useful.
 
 A pass on both gaps unblocks building the real `before_model_resolve` routing
 plugin and the router-side model-name parser (T014) against a confirmed contract,
