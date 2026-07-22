@@ -30,6 +30,27 @@ def test_realtime_app_outbound_queue_prunes_queued_output_on_cancel():
     outbound = realtime_app._OutboundEvents()
     outbound.enqueue({"type": "response.created", "response": {"id": "resp_1"}})
     outbound.enqueue({"type": "response.output_audio.delta", "response_id": "resp_1", "delta": "AAAA"})
+    outbound.enqueue(
+        {
+            "type": "response.output_audio_transcript.delta",
+            "response_id": "resp_1",
+            "delta": "Stale text.",
+        }
+    )
+    outbound.enqueue(
+        {
+            "type": "response.output_audio_transcript.done",
+            "response_id": "resp_1",
+            "transcript": "Stale text.",
+        }
+    )
+    outbound.enqueue(
+        {
+            "type": "error",
+            "response_id": "resp_1",
+            "error": {"type": "assistant_transcript_unavailable", "message": "stale"},
+        }
+    )
     outbound.enqueue({"type": "response.done", "response": {"id": "resp_1", "status": "completed"}})
     outbound.enqueue(
         {"type": "response.done", "response": {"id": "resp_1", "status": "cancelled"}},
@@ -53,6 +74,8 @@ def test_capture_validation_rejects_output_after_cancel_request():
             "input_audio_bytes": 4,
             "output_audio_bytes": 4,
             "transcripts": ["hello"],
+            "assistant_transcript_proven": True,
+            "assistant_transcript_errors": [],
             "barge_in_sent": True,
             "cancelled_response_seen": True,
             "completed_after_barge_in": True,
@@ -115,6 +138,28 @@ def test_run_session_with_official_sdk_barges_in_against_scripted_server():
                     if len(response_ids) == 2:
                         conn.send_json(
                             {
+                                "type": "response.output_audio_transcript.delta",
+                                "event_id": "evt_transcript_delta_%s" % response_id,
+                                "response_id": response_id,
+                                "item_id": "turn-2",
+                                "output_index": 0,
+                                "content_index": 0,
+                                "delta": "There are 54 countries in Africa.",
+                            }
+                        )
+                        conn.send_json(
+                            {
+                                "type": "response.output_audio_transcript.done",
+                                "event_id": "evt_transcript_done_%s" % response_id,
+                                "response_id": response_id,
+                                "item_id": "turn-2",
+                                "output_index": 0,
+                                "content_index": 0,
+                                "transcript": "There are 54 countries in Africa.",
+                            }
+                        )
+                        conn.send_json(
+                            {
                                 "type": "response.done",
                                 "event_id": "evt_done_%s" % response_id,
                                 "response": {"id": response_id, "status": "completed"},
@@ -153,3 +198,5 @@ def test_run_session_with_official_sdk_barges_in_against_scripted_server():
     assert done.wait(timeout=1.0)
     assert paths and paths[0].split("?", 1)[0] == "/v1/realtime"
     assert "response.cancel" in [event.get("type") for event in received]
+    session_update = next(event for event in received if event.get("type") == "session.update")
+    assert session_update["session"]["output_modalities"] == ["audio", "text"]

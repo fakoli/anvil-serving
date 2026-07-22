@@ -31,7 +31,7 @@ import itertools
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Type
 
-from ..messages import AudioOut, EndOfResponse, LLMChunk, LLMToolCall, Transcription
+from ..messages import AudioOut, EndOfResponse, LLMToolCall, SpokenText, Transcription
 from ..stages.vad import SpeechEvent
 
 # --------------------------------------------------------------------------- #
@@ -239,7 +239,7 @@ class ResponseCreated(ServerEvent):
 @dataclass(frozen=True)
 class ResponseAudioTranscriptDelta(ServerEvent):
     """Text delta for the assistant's spoken reply (from an
-    :class:`~anvil_serving.voice.messages.LLMChunk`).
+    authoritative :class:`~anvil_serving.voice.messages.SpokenText`).
 
     Wire type renamed ``response.audio_transcript.delta`` ->
     ``response.output_audio_transcript.delta`` (PUNCH-LIST #3) to match the
@@ -252,6 +252,27 @@ class ResponseAudioTranscriptDelta(ServerEvent):
     delta: str = ""
     turn_id: str = ""
     response_id: str = ""
+    item_id: str = ""
+    output_index: int = 0
+    content_index: int = 0
+
+
+@dataclass(frozen=True)
+class ResponseAudioTranscriptDone(ServerEvent):
+    """Terminal transcript for an assistant response's spoken audio.
+
+    The transcript is assembled from :class:`SpokenText` instances emitted
+    only after successful synthesis, so it reflects any TTS fallback
+    normalization. ``response_id`` correlates this terminal event with the
+    matching ``response.created`` and ``response.done`` events.
+    """
+
+    transcript: str = ""
+    turn_id: str = ""
+    response_id: str = ""
+    item_id: str = ""
+    output_index: int = 0
+    content_index: int = 0
 
 
 @dataclass(frozen=True)
@@ -432,7 +453,9 @@ def _dispatch_speech_event(msg: SpeechEvent, id_source: IdSource, response_id: O
     ]
 
 
-def _dispatch_llm_chunk(msg: LLMChunk, id_source: IdSource, response_id: Optional[str]) -> List[ServerEvent]:
+def _dispatch_spoken_text(
+    msg: SpokenText, id_source: IdSource, response_id: Optional[str]
+) -> List[ServerEvent]:
     return [
         ResponseAudioTranscriptDelta(
             type="response.output_audio_transcript.delta",
@@ -440,6 +463,9 @@ def _dispatch_llm_chunk(msg: LLMChunk, id_source: IdSource, response_id: Optiona
             delta=msg.text,
             turn_id=msg.turn_id,
             response_id=response_id or "",
+            item_id=msg.item_id or msg.turn_id,
+            output_index=0,
+            content_index=0,
         )
     ]
 
@@ -514,7 +540,7 @@ def _dispatch_end_of_response(msg: EndOfResponse, id_source: IdSource, response_
 DISPATCH: Dict[type, _DispatchFn] = {
     Transcription: _dispatch_transcription,
     SpeechEvent: _dispatch_speech_event,
-    LLMChunk: _dispatch_llm_chunk,
+    SpokenText: _dispatch_spoken_text,
     LLMToolCall: _dispatch_llm_tool_call,
     AudioOut: _dispatch_audio_out,
     EndOfResponse: _dispatch_end_of_response,

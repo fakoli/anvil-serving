@@ -61,7 +61,14 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from ..messages import GenerateRequest, Transcription
+from ..messages import (
+    AudioOut,
+    EndOfResponse,
+    GenerateRequest,
+    SpokenText,
+    Transcription,
+    TTSSynthesisFailed,
+)
 from .events import (
     ClientEvent,
     ConversationItemCreate,
@@ -70,7 +77,9 @@ from .events import (
     InputAudioBufferClear,
     InputAudioBufferCommit,
     ResponseCancel,
+    ResponseAudioTranscriptDone,
     ResponseCreate,
+    ResponseDone,
     SessionUpdate,
     dispatch_internal_event,
     make_error_event,
@@ -108,6 +117,13 @@ DEFAULT_FLUSH_SILENCE_FRAMES = 12
 DEFAULT_MAX_AUDIO_IN_QUEUE = int(os.environ.get("ANVIL_VOICE_MAX_AUDIO_IN_QUEUE", "500"))
 MINI_OWNER = "mini"
 DEFAULT_STOP_TIMEOUT_SECONDS = 5.0
+#: Hard per-response cap for assistant transcript text retained in memory.
+#: The wire still streams each successful TTS-selected chunk immediately;
+#: exceeding the cap emits a content-free correlated error and suppresses the
+#: terminal transcript rather than retaining or claiming a truncated answer.
+DEFAULT_MAX_ASSISTANT_TRANSCRIPT_CHARS = int(
+    os.environ.get("ANVIL_VOICE_MAX_ASSISTANT_TRANSCRIPT_CHARS", "65536")
+)
 
 
 @dataclass(frozen=True)
@@ -338,6 +354,26 @@ class SessionState:
     #: (see ``drain_pipeline_events``). Cleared in lockstep with
     #: ``current_turn_id``.
     current_response_id: Optional[str] = None
+    current_output_item_id: Optional[str] = None
+    #: Whether the active response explicitly requested text output. Audio-only
+    #: sessions keep their established wire behavior and never receive
+    #: assistant transcript events.
+    current_response_wants_text: bool = False
+    #: Exact text chunks successfully synthesized by TTS for the active
+    #: response. Raw audio never enters this buffer or a transcript event.
+    current_assistant_transcript: List[str] = field(default_factory=list)
+    current_assistant_transcript_chars: int = 0
+    #: ``True`` after the one allowed transcript terminal was built for the
+    #: active response. A separate flag avoids duplicate terminals when the
+    #: LLM and TTS sidebands are drained in different polls.
+    assistant_transcript_done: bool = False
+    #: A failed synthesis or transcript-size limit makes the transcript
+    #: unavailable. Keep this distinct from a completed empty transcript so
+    #: the server never labels partial or unspoken text as complete.
+    assistant_transcript_unavailable: bool = False
+    response_audio_seen: bool = False
+    response_output_failed: bool = False
+    response_terminal_queued: bool = False
 
 
 class RealtimeService:
@@ -346,7 +382,7 @@ class RealtimeService:
     ``pipeline`` must expose ``audio_in`` (a ``queue.Queue`` of raw PCM
     frames), ``audio_out`` (a ``queue.Queue`` of
     :class:`~anvil_serving.voice.messages.AudioOut`/``EndOfResponse``),
-    ``vad_events``/``transcript_events`` (the PUNCH-LIST #3 sideband queues
+    ``vad_events``/``transcript_events`` (the sideband queues
     :meth:`drain_pipeline_events` also drains -- see ``pipeline.py``'s class
     docstring; only needed if a caller actually calls that method),
     ``cancel_scope`` (a :class:`~anvil_serving.voice.cancel_scope.CancelScope`),
@@ -368,6 +404,7 @@ class RealtimeService:
         frame_bytes: int = DEFAULT_FRAME_BYTES,
         flush_silence_frames: int = DEFAULT_FLUSH_SILENCE_FRAMES,
         max_audio_in_queue: int = DEFAULT_MAX_AUDIO_IN_QUEUE,
+        max_assistant_transcript_chars: int = DEFAULT_MAX_ASSISTANT_TRANSCRIPT_CHARS,
     ) -> None:
         self.pipeline = pipeline
         self.send_event = send_event
@@ -379,6 +416,9 @@ class RealtimeService:
         #: queue maxsize -- a fast committer must never be able to block this
         #: connection's own thread.
         self.max_audio_in_queue = max_audio_in_queue
+        if max_assistant_transcript_chars <= 0:
+            raise ValueError("max_assistant_transcript_chars must be positive")
+        self.max_assistant_transcript_chars = max_assistant_transcript_chars
         self._audio_buffer = bytearray()
         # ONE id source, owned by THIS instance (i.e. per-connection, since
         # one RealtimeService == one connection) -- shared between the
@@ -447,7 +487,9 @@ class RealtimeService:
             server_event_to_dict(make_error_event(etype, message, id_source=self._evt_id))
         )
 
-    def _begin_response(self, turn_id: str) -> Dict[str, Any]:
+    def _begin_response(
+        self, turn_id: str, *, response_config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """Mint a fresh, unique ``response.id`` and build the ``response.created``
         wire event for it (PUNCH-LIST #3).
 
@@ -471,6 +513,17 @@ class RealtimeService:
         response_id = "resp_%d" % next(self._response_id_counter)
         self.state.current_turn_id = turn_id
         self.state.current_response_id = response_id
+        self.state.current_output_item_id = "item_%s" % response_id
+        self.state.current_response_wants_text = _response_requests_text(
+            self.state.session_config, response_config
+        )
+        self.state.current_assistant_transcript = []
+        self.state.current_assistant_transcript_chars = 0
+        self.state.assistant_transcript_done = False
+        self.state.assistant_transcript_unavailable = False
+        self.state.response_audio_seen = False
+        self.state.response_output_failed = False
+        self.state.response_terminal_queued = False
         return {
             "type": "response.created",
             "event_id": self._evt_id(),
@@ -600,8 +653,9 @@ class RealtimeService:
         # into the LLM stage's own input queue -- skipping VAD/STT entirely,
         # exactly mirroring what ``pipeline.py``'s TranscriptionToGenerate
         # bridge does for an audio-driven turn.
+        response_created = self._begin_response(turn_id, response_config=event.response)
         self.pipeline.llm.in_queue.put(request)
-        self.send_event(self._begin_response(turn_id))
+        self.send_event(response_created)
 
     def _on_response_cancel(self, event: ResponseCancel) -> None:
         # Barge-in: bump the shared generation counter so every stage still
@@ -627,8 +681,7 @@ class RealtimeService:
             # true).
             return
         response_id = self.state.current_response_id
-        self.state.current_turn_id = None
-        self.state.current_response_id = None
+        self._reset_response_state()
         self.send_event(
             {
                 "type": "response.done",
@@ -654,14 +707,155 @@ class RealtimeService:
             and response_id != self.state.current_response_id
         ):
             return
+        self._reset_response_state()
+
+    def _reset_response_state(self) -> None:
         self.state.current_turn_id = None
         self.state.current_response_id = None
+        self.state.current_output_item_id = None
+        self.state.current_response_wants_text = False
+        self.state.current_assistant_transcript = []
+        self.state.current_assistant_transcript_chars = 0
+        self.state.assistant_transcript_done = False
+        self.state.assistant_transcript_unavailable = False
+        self.state.response_audio_seen = False
+        self.state.response_output_failed = False
+        self.state.response_terminal_queued = False
 
     # -- outbound: pipeline output -> server events ----------------------------
+    def _matches_current_response(self, item: Any) -> bool:
+        return bool(
+            self.state.current_response_id
+            and self.state.current_turn_id
+            and self.state.current_turn_id == getattr(item, "turn_id", None)
+        )
+
+    def _fail_assistant_transcript(self, item: Any, *, reason: str) -> List[Dict[str, Any]]:
+        """Fail closed once without exposing answer text or synthesized audio."""
+        if (
+            not self.state.current_response_wants_text
+            or self.state.assistant_transcript_unavailable
+            or not self._matches_current_response(item)
+        ):
+            return []
+        self.state.assistant_transcript_unavailable = True
+        self.state.assistant_transcript_done = True
+        error = server_event_to_dict(
+            make_error_event("assistant_transcript_unavailable", reason, id_source=self._evt_id)
+        )
+        error["response_id"] = self.state.current_response_id or ""
+        return [error]
+
+    def _drain_spoken_text(self, item: SpokenText) -> List[Dict[str, Any]]:
+        if (
+            not self.state.current_response_wants_text
+            or self.state.assistant_transcript_unavailable
+            or not self._matches_current_response(item)
+        ):
+            return []
+        delta = item.joiner + item.text
+        new_size = self.state.current_assistant_transcript_chars + len(delta)
+        if new_size > self.max_assistant_transcript_chars:
+            return self._fail_assistant_transcript(
+                item,
+                reason="assistant transcript exceeded the configured size limit",
+            )
+        self.state.current_assistant_transcript.append(delta)
+        self.state.current_assistant_transcript_chars = new_size
+        wire_item = SpokenText(
+            turn_id=item.turn_id,
+            turn_revision=item.turn_revision,
+            generation=item.generation,
+            text=delta,
+            item_id=self.state.current_output_item_id or "",
+        )
+        return [
+            server_event_to_dict(server_event)
+            for server_event in dispatch_internal_event(
+                wire_item, id_source=self._evt_id, response_id=self.state.current_response_id
+            )
+        ]
+
+    def _drain_audio_output(self, item: Any) -> List[Dict[str, Any]]:
+        """Map FIFO TTS output, including authoritative spoken text."""
+        if isinstance(item, SpokenText):
+            return self._drain_spoken_text(item)
+        if isinstance(item, TTSSynthesisFailed):
+            if self._matches_current_response(item):
+                self.state.response_output_failed = True
+            return self._fail_assistant_transcript(
+                item,
+                reason="speech synthesis did not complete for the assistant response",
+            )
+        out: List[Dict[str, Any]] = []
+        if isinstance(item, AudioOut) and self._matches_current_response(item):
+            self.state.response_audio_seen = True
+        if (
+            isinstance(item, EndOfResponse)
+            and self.state.current_response_wants_text
+            and self._matches_current_response(item)
+            and not self.state.assistant_transcript_unavailable
+            and not self.state.assistant_transcript_done
+        ):
+            if self.state.response_audio_seen and not self.state.current_assistant_transcript:
+                out.extend(
+                    self._fail_assistant_transcript(
+                        item,
+                        reason="speech audio completed without authoritative assistant text",
+                    )
+                )
+            else:
+                self.state.assistant_transcript_done = True
+                out.append(
+                    server_event_to_dict(
+                        ResponseAudioTranscriptDone(
+                            type="response.output_audio_transcript.done",
+                            event_id=self._evt_id(),
+                            transcript="".join(self.state.current_assistant_transcript),
+                            turn_id=item.turn_id,
+                            response_id=self.state.current_response_id or "",
+                            item_id=self.state.current_output_item_id or "",
+                            output_index=0,
+                            content_index=0,
+                        )
+                    )
+                )
+        if (
+            isinstance(item, EndOfResponse)
+            and self._matches_current_response(item)
+            and self.state.response_output_failed
+        ):
+            self.state.assistant_transcript_done = True
+            out.append(
+                server_event_to_dict(
+                    ResponseDone(
+                        type="response.done",
+                        event_id=self._evt_id(),
+                        response={
+                            "id": self.state.current_response_id or "",
+                            "turn_id": item.turn_id,
+                            "status": "failed",
+                        },
+                    )
+                )
+            )
+            self.state.response_terminal_queued = True
+            return out
+        out.extend(
+            server_event_to_dict(server_event)
+            for server_event in dispatch_internal_event(
+                item, id_source=self._evt_id, response_id=self.state.current_response_id
+            )
+        )
+        if isinstance(item, EndOfResponse) and self._matches_current_response(item):
+            self.state.response_terminal_queued = True
+        return out
+
     def drain_pipeline_events(self, *, max_items: Optional[int] = None) -> List[Dict[str, Any]]:
         """Drain whatever is CURRENTLY buffered on ``pipeline.vad_events``,
         ``pipeline.transcript_events``, and ``pipeline.audio_out`` (in that
-        order -- see below), mapping each item through
+        order -- see below), mapping each item
+        through
         :func:`events.dispatch_internal_event`.
 
         Non-blocking: returns as soon as every queue reports empty (does not
@@ -671,8 +865,8 @@ class RealtimeService:
         whether to loop-and-send (as ``pool.py``'s session-drive loop does) or
         just collect (as tests do).
 
-        PUNCH-LIST #3 -- three sideband/bookkeeping queues, drained in THIS
-        order, on purpose: ``vad_events`` (VAD's own ``SpeechEvent`` --
+        The sideband/bookkeeping queues are drained in THIS order, on purpose:
+        ``vad_events`` (VAD's own ``SpeechEvent`` --
         started/stopped/committed) always causally PRECEDES anything the STT
         stage could have produced from the ``VADAudio`` segment VAD just
         flushed, which in turn always PRECEDES anything the LLM/TTS stages
@@ -701,7 +895,7 @@ class RealtimeService:
         ``pipeline.cancel_scope``'s generation, but items produced by the
         now-superseded turn (e.g. an ``AudioOut`` synthesized before the
         cancel landed) may still be sitting in a queue when this drains it.
-        Every per-generation-tagged item (``AudioOut``, ``LLMChunk``,
+        Every per-generation-tagged item (``AudioOut``, ``SpokenText``,
         ``EndOfResponse``, ``Transcription``, ``SpeechEvent`` -- anything
         carrying ``.generation``) is dropped here if it predates the CURRENT
         generation, so no stale audio/text from a superseded reply ever
@@ -711,11 +905,23 @@ class RealtimeService:
         """
         out: List[Dict[str, Any]] = []
         count = 0
-        for q in (
-            self.pipeline.vad_events,
-            self.pipeline.transcript_events,
-            self.pipeline.audio_out,
-        ):
+        queue_kinds = (
+            ("vad", getattr(self.pipeline, "vad_events", None)),
+            ("transcript", getattr(self.pipeline, "transcript_events", None)),
+            ("audio", getattr(self.pipeline, "audio_out", None)),
+        )
+        for kind, q in queue_kinds:
+            if q is None:
+                continue
+            if kind in ("transcript", "audio") and self.state.response_terminal_queued:
+                continue
+            if kind == "transcript" and self.state.current_response_id is not None:
+                # Strict single-flight: leave the next completed audio turn
+                # queued until the transport has sent and retired the current
+                # response terminal. Otherwise fully draining this sideband
+                # can overwrite response correlation before FIFO TTS output
+                # for the earlier turn is mapped.
+                continue
             while max_items is None or count < max_items:
                 try:
                     item = q.get_nowait()
@@ -725,12 +931,20 @@ class RealtimeService:
                 gen = getattr(item, "generation", None)
                 if gen is not None and self.pipeline.cancel_scope.is_stale(gen):
                     continue
-                for server_event in dispatch_internal_event(
-                    item, id_source=self._evt_id, response_id=self.state.current_response_id
-                ):
-                    out.append(server_event_to_dict(server_event))
+                if kind == "audio":
+                    out.extend(self._drain_audio_output(item))
+                else:
+                    for server_event in dispatch_internal_event(
+                        item, id_source=self._evt_id, response_id=self.state.current_response_id
+                    ):
+                        out.append(server_event_to_dict(server_event))
                 if isinstance(item, Transcription) and item.is_final:
                     out.append(self._begin_response(item.turn_id))
+                    break
+                if kind == "audio" and isinstance(item, EndOfResponse):
+                    # Do not consume a later turn's FIFO output until the
+                    # sender has written this terminal and reset the response.
+                    break
         return out
 
 
@@ -748,3 +962,27 @@ def _extract_text(item: Dict[str, Any]) -> Optional[str]:
             if isinstance(text, str) and text:
                 parts.append(text)
     return "\n".join(parts) if parts else None
+
+
+def _response_requests_text(
+    session_config: Dict[str, Any], response_config: Optional[Dict[str, Any]] = None
+) -> bool:
+    """Return whether this response requested a spoken-audio transcript.
+
+    A response-level ``output_modalities`` (or legacy ``modalities``) field
+    overrides the session for that one response; otherwise the current
+    session setting applies. This event is a
+    transcript of audio the pipeline speaks, so the narrow supported contract
+    requires BOTH ``audio`` and ``text``. Missing or malformed modality lists
+    deliberately opt out, preserving audio-only behavior rather than guessing
+    that text is desired.
+    """
+    source: Any = session_config
+    if isinstance(response_config, dict) and (
+        "output_modalities" in response_config or "modalities" in response_config
+    ):
+        source = response_config
+    modalities = None
+    if isinstance(source, dict):
+        modalities = source.get("output_modalities", source.get("modalities"))
+    return isinstance(modalities, list) and "audio" in modalities and "text" in modalities

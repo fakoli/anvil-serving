@@ -627,6 +627,33 @@ or 5xx response blocks startup.
 Loopback binds may omit `realtime_token_env` for trusted local development.
 Non-loopback binds require a bearer token env var in the manifest.
 
+### Assistant transcript events
+
+Audio-only sessions keep the established event stream. A client that explicitly
+sets `output_modalities = ["audio", "text"]` (the legacy `modalities` spelling is
+also accepted) additionally receives:
+
+1. `response.output_audio_transcript.delta` after each successfully synthesized
+   TTS text chunk;
+2. one `response.output_audio_transcript.done` before the matching
+   `response.done`.
+
+Each delta and terminal carries `response_id`, `item_id`, `output_index`, and
+`content_index`. The terminal transcript equals the concatenated deltas. Text is
+reported when the exact selected candidate starts producing valid audio, so a
+conservative fallback normalization is reflected without waiting for the whole
+synthesis chunk. Lexical boundary metadata preserves spaces between words and
+sentences without inventing spaces inside hard-split tokens or CJK. Failed or empty
+synthesis is never labeled complete. A synthesis failure or the bounded
+transcript-size limit produces one correlated `assistant_transcript_unavailable`
+error and no transcript terminal; synthesis failure also ends the response as
+failed.
+Raw audio, credentials, and answer text are excluded from that error.
+
+The official SDK proof harness requests both modalities and validates delta/terminal
+correlation, equality, and terminal-before-response ordering. See
+[ADR-0025](adr/0025-tts-authoritative-realtime-assistant-transcripts.md).
+
 ## Benchmark And Validation
 
 Use `voice benchmark` for a quick configured end-to-end sample. For reference

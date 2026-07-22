@@ -411,6 +411,33 @@ def test_llm_stage_splits_long_speech_chunks_on_word_boundaries():
     assert any(isinstance(m, EndOfResponse) for m in out)
 
 
+def test_llm_stage_marks_word_boundaries_but_not_hard_token_splits():
+    def words(_text, _config):
+        yield "one two three"
+
+    word_stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(speech_chunk_max_chars=7),
+        stream_fn=words,
+    )
+    word_chunks = [m for m in word_stage.process(_gen_request()) if isinstance(m, LLMChunk)]
+    assert [(chunk.text, chunk.joiner) for chunk in word_chunks] == [
+        ("one two", ""),
+        ("three", " "),
+    ]
+
+    def token(_text, _config):
+        yield "abcdefghij"
+
+    token_stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(speech_chunk_max_chars=6),
+        stream_fn=token,
+    )
+    token_chunks = [m for m in token_stage.process(_gen_request()) if isinstance(m, LLMChunk)]
+    assert "".join(chunk.joiner + chunk.text for chunk in token_chunks) == "abcdefghij"
+
+
 def test_llm_stage_remembers_completed_turns_for_next_request():
     calls = []
 

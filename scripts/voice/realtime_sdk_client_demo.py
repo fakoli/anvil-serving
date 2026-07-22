@@ -314,6 +314,8 @@ def _summarize_responses(responses: Mapping[str, Dict[str, Any]]) -> List[Dict[s
                     else None
                 ),
                 "audio_bytes": item.get("audio_bytes", 0),
+                "assistant_transcript": item.get("assistant_transcript"),
+                "assistant_transcript_proven": bool(item.get("assistant_transcript_proven")),
             }
         )
     return out
@@ -329,6 +331,9 @@ def _validate_capture(summary: Mapping[str, Any]) -> List[str]:
         errors.append("no assistant output audio was received")
     if not summary.get("transcripts"):
         errors.append("no live input transcript event was observed")
+    if not summary.get("assistant_transcript_proven"):
+        errors.append("no correlated terminal assistant transcript was proven")
+    errors.extend(str(error) for error in summary.get("assistant_transcript_errors", []))
     if not summary.get("barge_in_sent"):
         errors.append("response.cancel was not sent")
     if not summary.get("cancelled_response_seen"):
@@ -483,6 +488,7 @@ def run_session(
     input_audio = bytearray()
     transcripts: List[str] = []
     responses: Dict[str, Dict[str, Any]] = {}
+    assistant_transcript_errors: List[str] = []
     cancelled_response_ids = set()
     state: Dict[str, Any] = {
         "connected": False,
@@ -517,7 +523,7 @@ def run_session(
                     "type": "session.update",
                     "session": {
                         "type": "realtime",
-                        "output_modalities": ["audio"],
+                        "output_modalities": ["audio", "text"],
                         "input_audio_format": "pcm16",
                         "output_audio_format": "pcm16",
                     },
@@ -529,6 +535,7 @@ def run_session(
             first_audio_at: Optional[float] = None
             active_response_id: Optional[str] = None
             deadline = time.monotonic() + timeout
+            event_index = 0
 
             async def maybe_send_barge_in() -> None:
                 nonlocal next_turn_index
@@ -554,6 +561,7 @@ def run_session(
                 except asyncio.TimeoutError:
                     continue
                 raw = _event_to_dict(event)
+                event_index += 1
                 _capture_event(events, "server", raw)
                 etype = _event_type(raw)
                 print("<- %s" % etype, flush=True)
@@ -567,10 +575,61 @@ def run_session(
                         transcripts.append(transcript)
                         print("transcript: %s" % transcript, flush=True)
 
-                if etype == "response.output_audio_transcript.delta" and raw.get("delta"):
-                    print("assistant transcript delta: %s" % raw["delta"], flush=True)
+                if etype == "response.output_audio_transcript.delta":
+                    rid = _response_id(raw)
+                    delta = raw.get("delta")
+                    if not rid or not isinstance(delta, str):
+                        assistant_transcript_errors.append(
+                            "assistant transcript delta was missing response correlation or text"
+                        )
+                    else:
+                        item = responses.setdefault(rid, {"created_at": None, "audio_bytes": 0})
+                        item.setdefault("assistant_transcript_parts", []).append(delta)
+                        for field in ("item_id", "output_index", "content_index"):
+                            if raw.get(field) in (None, ""):
+                                assistant_transcript_errors.append(
+                                    "%s assistant transcript delta missing %s" % (rid, field)
+                                )
+                        print("assistant transcript delta: %s" % delta, flush=True)
+
+                if etype == "response.output_audio_transcript.done":
+                    rid = _response_id(raw)
+                    transcript = raw.get("transcript")
+                    if not rid or not isinstance(transcript, str):
+                        assistant_transcript_errors.append(
+                            "assistant transcript terminal was missing response correlation or text"
+                        )
+                    else:
+                        item = responses.setdefault(rid, {"created_at": None, "audio_bytes": 0})
+                        assembled = "".join(item.get("assistant_transcript_parts", []))
+                        if assembled != transcript:
+                            assistant_transcript_errors.append(
+                                "%s assistant transcript terminal did not match streamed deltas" % rid
+                            )
+                        for field in ("item_id", "output_index", "content_index"):
+                            if raw.get(field) in (None, ""):
+                                assistant_transcript_errors.append(
+                                    "%s assistant transcript terminal missing %s" % (rid, field)
+                                )
+                        item["assistant_transcript"] = transcript
+                        item["assistant_transcript_done_index"] = event_index
 
                 rid = _response_id(raw)
+                if etype in (
+                    "response.output_audio.delta",
+                    "response.output_audio_transcript.delta",
+                    "response.output_audio_transcript.done",
+                ):
+                    if rid in cancelled_response_ids:
+                        state["output_after_cancel_events"] = int(
+                            state.get("output_after_cancel_events", 0)
+                        ) + 1
+                    if state.get("barge_in_sent") and rid == state.get(
+                        "cancel_requested_response_id"
+                    ):
+                        state["output_after_cancel_request_events"] = int(
+                            state.get("output_after_cancel_request_events", 0)
+                        ) + 1
                 if etype == "response.created":
                     response = raw.get("response")
                     if isinstance(response, Mapping):
@@ -588,14 +647,6 @@ def run_session(
                             chunk = b""
                         output_audio.extend(chunk)
                         rid = _response_id(raw)
-                        if rid in cancelled_response_ids:
-                            state["output_after_cancel_events"] = int(
-                                state.get("output_after_cancel_events", 0)
-                            ) + 1
-                        if state.get("barge_in_sent") and rid == state.get("cancel_requested_response_id"):
-                            state["output_after_cancel_request_events"] = int(
-                                state.get("output_after_cancel_request_events", 0)
-                            ) + 1
                         if rid:
                             item = responses.setdefault(rid, {"created_at": None, "audio_bytes": 0})
                             item["audio_bytes"] = int(item.get("audio_bytes", 0)) + len(chunk)
@@ -618,6 +669,15 @@ def run_session(
                             cancelled_response_ids.add(rid)
                     if status == "completed" and not state["barge_in_sent"]:
                         state["first_response_done"] = True
+                    if status == "completed" and rid:
+                        item = responses[rid]
+                        terminal_index = item.get("assistant_transcript_done_index")
+                        if terminal_index is None or terminal_index >= event_index:
+                            assistant_transcript_errors.append(
+                                "%s completed without an earlier assistant transcript terminal" % rid
+                            )
+                        else:
+                            item["assistant_transcript_proven"] = True
                     if state["barge_in_sent"] and status == "completed":
                         state["completed_after_barge_in"] = True
                         break
@@ -648,6 +708,10 @@ def run_session(
         "input_audio_bytes": len(input_audio),
         "output_audio_bytes": len(output_audio),
         "responses": _summarize_responses(responses),
+        "assistant_transcript_proven": any(
+            bool(item.get("assistant_transcript_proven")) for item in responses.values()
+        ),
+        "assistant_transcript_errors": assistant_transcript_errors,
     }
     errors = _validate_capture(summary) if capture else []
     summary["acceptance_errors"] = errors
@@ -663,6 +727,13 @@ def run_session(
         )
     if errors:
         print("realtime_sdk_client_demo: capture failed acceptance: %s" % "; ".join(errors), file=sys.stderr)
+        return 1
+    if assistant_transcript_errors:
+        print(
+            "realtime_sdk_client_demo: assistant transcript proof failed: %s"
+            % "; ".join(assistant_transcript_errors),
+            file=sys.stderr,
+        )
         return 1
     return rc
 

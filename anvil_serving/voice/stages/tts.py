@@ -62,7 +62,14 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
 from ..cancel_scope import CancelScope
-from ..messages import AudioOut, EndOfResponse, LLMToolCall, TTSInput
+from ..messages import (
+    AudioOut,
+    EndOfResponse,
+    LLMToolCall,
+    SpokenText,
+    TTSInput,
+    TTSSynthesisFailed,
+)
 from .base import BaseStage
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8091/v1"
@@ -373,7 +380,9 @@ StreamFn = Callable[[str, TTSStageConfig], Iterator[bytes]]
 
 class TTSStage(BaseStage):
     """Synthesizes each :class:`TTSInput` into one or more resampled
-    :class:`AudioOut` chunks, streamed incrementally; forwards
+    :class:`AudioOut` chunks, streamed incrementally, with the exact selected
+    :class:`SpokenText` emitted after the candidate's first valid audio;
+    forwards
     :class:`EndOfResponse` unchanged.
 
     ``process`` is a GENERATOR: each resampled :class:`AudioOut` chunk is
@@ -443,6 +452,7 @@ class TTSStage(BaseStage):
                         resampled = resample_int16(
                             data, self.config.source_sample_rate, self.config.target_sample_rate
                         )
+                        first_audio = not emitted_audio
                         emitted_audio = True
                         yield AudioOut(
                             turn_id=item.turn_id,
@@ -451,13 +461,57 @@ class TTSStage(BaseStage):
                             pcm=resampled,
                             sample_rate=self.config.target_sample_rate,
                         )
-                    return
+                        if first_audio:
+                            yield SpokenText(
+                                turn_id=item.turn_id,
+                                turn_revision=item.turn_revision,
+                                generation=item.generation,
+                                text=text,
+                                joiner=item.joiner,
+                            )
+                    if emitted_audio:
+                        return
+                    last_error = TTSClientError(
+                        "TTS stage: synthesis completed without valid audio"
+                    )
+                    break
                 except (http.client.HTTPException, OSError) as exc:
                     if emitted_audio:
+                        yield TTSSynthesisFailed(
+                            turn_id=item.turn_id,
+                            turn_revision=item.turn_revision,
+                            generation=item.generation,
+                        )
                         raise
                     last_error = exc
                     if attempts >= self._pre_audio_stream_retry_attempts:
                         break
                     attempts += 1
+                except TTSClientError:
+                    # Preserve the pre-existing retry taxonomy: protocol,
+                    # auth, and explicit upstream HTTP failures were never
+                    # retried or normalized into a fallback request.
+                    yield TTSSynthesisFailed(
+                        turn_id=item.turn_id,
+                        turn_revision=item.turn_revision,
+                        generation=item.generation,
+                    )
+                    raise
+                except Exception:
+                    # Unexpected synthesis/decoder failures are not safe to
+                    # retry or normalize, but the downstream response still
+                    # needs an explicit content-free failure marker so it
+                    # cannot claim the intended text was spoken.
+                    yield TTSSynthesisFailed(
+                        turn_id=item.turn_id,
+                        turn_revision=item.turn_revision,
+                        generation=item.generation,
+                    )
+                    raise
         if last_error is not None:
+            yield TTSSynthesisFailed(
+                turn_id=item.turn_id,
+                turn_revision=item.turn_revision,
+                generation=item.generation,
+            )
             raise last_error

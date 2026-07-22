@@ -18,7 +18,13 @@ from types import SimpleNamespace
 import pytest
 
 from anvil_serving.voice.cancel_scope import CancelScope
-from anvil_serving.voice.messages import AudioOut, EndOfResponse, TTSInput
+from anvil_serving.voice.messages import (
+    AudioOut,
+    EndOfResponse,
+    SpokenText,
+    TTSInput,
+    TTSSynthesisFailed,
+)
 from anvil_serving.voice.serves._common import ServeNotConfigured
 from anvil_serving.voice.serves.tts import TTSServe, TTSServeConfig
 from anvil_serving.voice.realtime.ws import make_ws_server, serve_forever_in_background
@@ -471,9 +477,10 @@ def test_tts_stage_emits_resampled_audio_chunks():
     # both checks below see every item.
     out = list(stage.process(_tts_input()))
 
-    assert all(isinstance(m, AudioOut) for m in out)
-    assert all(m.sample_rate == 16000 for m in out)
-    total_out_samples = sum(len(m.pcm) // 2 for m in out)
+    audio_out = [m for m in out if isinstance(m, AudioOut)]
+    assert all(m.sample_rate == 16000 for m in audio_out)
+    assert [m.text for m in out if isinstance(m, SpokenText)] == ["hello"]
+    total_out_samples = sum(len(m.pcm) // 2 for m in audio_out)
     total_in_samples = len(audio) // 2
     assert total_out_samples == round(total_in_samples * (16000 / 24000))
 
@@ -490,7 +497,7 @@ def test_tts_stage_handles_odd_byte_chunk_boundaries():
     config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)  # no resampling noise
     stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
     out = list(stage.process(_tts_input()))
-    combined = b"".join(m.pcm for m in out)
+    combined = b"".join(m.pcm for m in out if isinstance(m, AudioOut))
     assert combined == full
 
 
@@ -512,7 +519,8 @@ def test_tts_stage_retries_pre_audio_incomplete_read_once():
     out = list(stage.process(_tts_input()))
 
     assert calls == 2
-    assert b"".join(m.pcm for m in out) == audio
+    assert b"".join(m.pcm for m in out if isinstance(m, AudioOut)) == audio
+    assert [m.text for m in out if isinstance(m, SpokenText)] == ["hello"]
 
 
 def test_tts_stage_falls_back_to_separator_safe_text_after_pre_audio_failures():
@@ -532,7 +540,8 @@ def test_tts_stage_falls_back_to_separator_safe_text_after_pre_audio_failures():
     out = list(stage.process(_tts_input(text="up-to-date forecast")))
 
     assert calls == ["up-to-date forecast", "up-to-date forecast", "up to date forecast"]
-    assert b"".join(m.pcm for m in out) == audio
+    assert b"".join(m.pcm for m in out if isinstance(m, AudioOut)) == audio
+    assert [m.text for m in out if isinstance(m, SpokenText)] == ["up to date forecast"]
 
 
 def test_tts_stage_does_not_retry_after_audio_emitted():
@@ -549,10 +558,66 @@ def test_tts_stage_does_not_retry_after_audio_emitted():
     config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
     stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
 
+    yielded = []
     with pytest.raises(http.client.IncompleteRead):
-        list(stage.process(_tts_input()))
+        for item in stage.process(_tts_input()):
+            yielded.append(item)
 
     assert calls == 1
+    assert any(isinstance(item, TTSSynthesisFailed) for item in yielded)
+    assert [item.text for item in yielded if isinstance(item, SpokenText)] == ["hello"]
+
+
+def test_tts_client_errors_preserve_the_existing_no_retry_contract():
+    calls = []
+
+    def rejected_stream(text, _config):
+        calls.append(text)
+        raise TTSClientError("upstream rejected request")
+        yield  # pragma: no cover - makes this a generator
+
+    stage = TTSStage(in_queue=None, stream_fn=rejected_stream)
+    yielded = []
+
+    with pytest.raises(TTSClientError, match="rejected request"):
+        for item in stage.process(_tts_input(text="up-to-date")):
+            yielded.append(item)
+
+    assert calls == ["up-to-date"]
+    assert len([item for item in yielded if isinstance(item, TTSSynthesisFailed)]) == 1
+
+
+def test_tts_stage_marks_an_empty_synthesis_as_failed_without_spoken_text():
+    stage = TTSStage(in_queue=None, stream_fn=lambda _text, _config: iter(()))
+    yielded = []
+
+    with pytest.raises(TTSClientError, match="without valid audio"):
+        for item in stage.process(_tts_input()):
+            yielded.append(item)
+
+    assert len([item for item in yielded if isinstance(item, TTSSynthesisFailed)]) == 1
+    assert not any(isinstance(item, SpokenText) for item in yielded)
+
+
+def test_tts_stage_marks_an_unexpected_synthesis_failure_without_retrying():
+    calls = 0
+
+    def broken_stream(_text, _config):
+        nonlocal calls
+        calls += 1
+        raise ValueError("decoder contract violation")
+        yield  # pragma: no cover - makes this a generator
+
+    stage = TTSStage(in_queue=None, stream_fn=broken_stream)
+    yielded = []
+
+    with pytest.raises(ValueError, match="decoder contract violation"):
+        for item in stage.process(_tts_input()):
+            yielded.append(item)
+
+    assert calls == 1
+    assert len([item for item in yielded if isinstance(item, TTSSynthesisFailed)]) == 1
+    assert not any(isinstance(item, SpokenText) for item in yielded)
 
 
 def test_tts_stage_aborts_on_mid_stream_barge_in():
@@ -566,7 +631,7 @@ def test_tts_stage_aborts_on_mid_stream_barge_in():
     config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
     stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
     out = list(stage.process(_tts_input()))
-    combined = b"".join(m.pcm for m in out)
+    combined = b"".join(m.pcm for m in out if isinstance(m, AudioOut))
     assert combined == _int16_bytes([1, 2])
 
 

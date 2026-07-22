@@ -30,6 +30,8 @@ RESPONSE_OUTPUT_YIELD_S = 0.01
 _RESPONSE_OUTPUT_EVENT_TYPES = {
     "response.output_audio.delta",
     "response.output_audio_transcript.delta",
+    "response.output_audio_transcript.done",
+    "error",
     "response.done",
 }
 
@@ -174,10 +176,7 @@ def build_realtime_server_from_manifest(
                         conn.send_text(json.dumps(event))
                     except OSError:
                         return
-                if event.get("type") in (
-                    "response.output_audio.delta",
-                    "response.output_audio_transcript.delta",
-                ):
+                if event.get("type") == "response.output_audio.delta":
                     time.sleep(RESPONSE_OUTPUT_YIELD_S)
 
         sender_thread = threading.Thread(

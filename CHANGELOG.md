@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Realtime assistant transcript streaming.** Sessions that explicitly request both
+  `audio` and `text` now receive TTS-authoritative
+  `response.output_audio_transcript.delta` events followed by
+  `response.output_audio_transcript.done`, correlated to the same response and content
+  item as `response.created` and `response.done`. The terminal equals the streamed
+  deltas, fallback-normalized text is reported exactly, failed synthesis never claims
+  unspoken text, and per-response retention is bounded. Audio-only sessions retain
+  their existing audio event stream. See ADR-0025.
+
 - **Authenticated normalized one-shot audio gateway.** Opt-in private Dark STT/TTS routes now
   expose bearer-authenticated JSON `POST /v1/audio/transcriptions` and
   `POST /v1/audio/speech` on the router, keeping raw serve hosts, audio bytes, transcripts, and
