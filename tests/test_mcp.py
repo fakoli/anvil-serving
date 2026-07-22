@@ -2779,6 +2779,265 @@ def test_workflow_packet_voice_artifacts_are_scoped_to_voice_pipeline(tmp_path, 
     assert "artifacts[0].evidence_scope" in fields
     assert "artifacts[0].promotion_quality_evidence" in fields
 
+    for malformed in (
+        {"kind": ["voice-benchmark"], "path": str(voice_artifact)},
+        {
+            "kind": "benchmark",
+            "path": str(voice_artifact),
+            "evidence_scope": ["voice-pipeline"],
+            "promotion_quality_evidence": True,
+        },
+    ):
+        env = mcp.call_tool("workflow_packet_validate", {
+            "packet": _workflow_packet(artifacts=[malformed]),
+        })
+        assert env["ok"] is True
+        assert env["data"]["valid"] is False
+        assert any(
+            error["field"] in {"artifacts[0].kind", "artifacts[0].evidence_scope"}
+            for error in env["data"]["errors"]
+        )
+
+    disguised_voice_evidence = _workflow_packet(artifacts=[{
+        "kind": "benchmark",
+        "path": str(voice_artifact),
+        "evidence_scope": "voice-pipeline",
+        "promotion_quality_evidence": True,
+    }])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": disguised_voice_evidence})
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "artifacts[0].kind" in fields
+    assert "artifacts[0].promotion_quality_evidence" in fields
+
+    slash_scope = _workflow_packet(artifacts=[{
+        "kind": "benchmark",
+        "path": str(voice_artifact),
+        "evidence_scope": "voice/pipeline",
+        "promotion_quality_evidence": True,
+    }])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": slash_scope})
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "artifacts[0].evidence_scope" in fields
+    assert "artifacts[0].promotion_quality_evidence" in fields
+
+
+@pytest.mark.parametrize("token", ["voice", "stt", "tts", "realtime"])
+def test_workflow_packet_voice_inference_ignores_tool_result_paths(token):
+    artifact = ".anvil/benchmarks/local.json"
+    neutral_tool = dict(
+        _workflow_packet()["tools_used"][0],
+        data={"allowed_roots": ["C:/worktrees/anvil-serving"]},
+    )
+    realtime_path_tool = dict(
+        neutral_tool,
+        data={"allowed_roots": [f"C:/worktrees/{token}/anvil-serving"]},
+    )
+
+    neutral = mcp.call_tool("workflow_packet_validate", {
+        "packet": _workflow_packet(tools_used=[neutral_tool], artifacts=[artifact]),
+    })
+    realtime_path = mcp.call_tool("workflow_packet_validate", {
+        "packet": _workflow_packet(tools_used=[realtime_path_tool], artifacts=[artifact]),
+    })
+
+    assert neutral["ok"] is True
+    assert neutral["data"]["valid"] is True
+    assert realtime_path["ok"] is True
+    assert realtime_path["data"]["valid"] == neutral["data"]["valid"]
+    assert realtime_path["data"]["errors"] == neutral["data"]["errors"]
+    assert (
+        realtime_path["data"]["normalized_packet"]["artifacts"]
+        == neutral["data"]["normalized_packet"]["artifacts"]
+    )
+    assert (
+        realtime_path["data"]["normalized_packet"]["tools_used"][0]["data"]
+        == realtime_path_tool["data"]
+    )
+
+
+@pytest.mark.parametrize("field", ["request", "tool_name"])
+def test_workflow_packet_voice_inference_ignores_free_form_paths(field):
+    packet = _workflow_packet(artifacts=[".anvil/benchmarks/local.json"])
+    path = "C:/worktrees/realtime/anvil-serving/README.md"
+    if field == "request":
+        packet["request"] = f"review {path}"
+    else:
+        packet["tools_used"][0]["name"] = path
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    assert env["data"]["errors"] == []
+
+
+@pytest.mark.parametrize("field", ["request", "tool_name", "target"])
+def test_workflow_packet_voice_inference_ignores_filename_metadata(field):
+    packet = _workflow_packet(artifacts=[".anvil/benchmarks/local.json"])
+    filename = "voice-benchmark.json"
+    if field == "request":
+        packet["request"] = f"review {filename}."
+    elif field == "tool_name":
+        packet["tools_used"][0]["name"] = "voice-benchmark.py"
+    else:
+        packet["targets"]["input_file"] = filename
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    assert env["data"]["errors"] == []
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "voice.bin",
+        "voice.safetensors",
+        "voice.gguf",
+        "realtime.bak",
+        "stt.onnx",
+        "tts.pt",
+        "report.voice",
+        "manifest.realtime",
+    ],
+)
+def test_workflow_packet_voice_inference_ignores_arbitrary_request_and_target_filenames(filename):
+    for packet in (
+        _workflow_packet(
+            request=f"review {filename}",
+            artifacts=[".anvil/benchmarks/local.json"],
+        ),
+        _workflow_packet(
+            targets={"artifact_path": filename},
+            artifacts=[".anvil/benchmarks/local.json"],
+        ),
+        _workflow_packet(
+            targets={"voice_path": filename},
+            artifacts=[".anvil/benchmarks/local.json"],
+        ),
+        _workflow_packet(
+            tools_used=[dict(_workflow_packet()["tools_used"][0], name=filename)],
+            artifacts=[".anvil/benchmarks/local.json"],
+        ),
+    ):
+        env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+        assert env["ok"] is True
+        assert env["data"]["valid"] is True
+        assert env["data"]["errors"] == []
+
+
+@pytest.mark.parametrize("field", ["filePath", "artifactPath", "file-path"])
+def test_workflow_packet_voice_inference_ignores_path_field_naming_styles(field):
+    env = mcp.call_tool("workflow_packet_validate", {
+        "packet": _workflow_packet(
+            targets={field: "voice/realtime"},
+            artifacts=[".anvil/benchmarks/local.json"],
+        ),
+    })
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    assert env["data"]["errors"] == []
+
+
+def test_workflow_packet_voice_inference_still_uses_semantic_tool_name():
+    voice_tool = dict(_workflow_packet()["tools_used"][0], name="realtime_probe")
+
+    env = mcp.call_tool("workflow_packet_validate", {
+        "packet": _workflow_packet(tools_used=[voice_tool], artifacts=[".anvil/benchmarks/local.json"]),
+    })
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "artifacts[0]" for error in env["data"]["errors"])
+
+
+def test_workflow_packet_voice_inference_recognizes_stt_tts_request():
+    for request in (
+        "run STT/TTS.",
+        "run TTS/STT benchmark",
+        "qualify voice/realtime integration",
+        "qualify voice/stt/realtime integration",
+        "qualify voice.benchmark integration",
+        "qualify voice.sidecar integration",
+        "qualify voice:dark.v1 integration",
+    ):
+        env = mcp.call_tool("workflow_packet_validate", {
+            "packet": _workflow_packet(
+                request=request,
+                artifacts=[".anvil/benchmarks/local.json"],
+            ),
+        })
+
+        assert env["ok"] is True
+        assert env["data"]["valid"] is False
+        assert any(error["field"] == "artifacts[0]" for error in env["data"]["errors"])
+
+
+def test_workflow_packet_voice_inference_uses_semantic_target_value():
+    for targets in (
+        {"pipeline": {"mode": "realtime"}},
+        {"resource": "voice:dark"},
+        {"workflow": "voice.benchmark"},
+    ):
+        env = mcp.call_tool("workflow_packet_validate", {
+            "packet": _workflow_packet(
+                targets=targets,
+                artifacts=[".anvil/benchmarks/local.json"],
+            ),
+        })
+
+        assert env["ok"] is True
+        assert env["data"]["valid"] is False
+        assert any(error["field"] == "artifacts[0]" for error in env["data"]["errors"])
+
+
+def test_workflow_packet_voice_inference_uses_namespaced_tool_name():
+    for name in ("voice:sidecar", "voice.benchmark"):
+        tool = dict(_workflow_packet()["tools_used"][0], name=name)
+        env = mcp.call_tool("workflow_packet_validate", {
+            "packet": _workflow_packet(tools_used=[tool], artifacts=[".anvil/benchmarks/local.json"]),
+        })
+
+        assert env["ok"] is True
+        assert env["data"]["valid"] is False
+        assert any(error["field"] == "artifacts[0]" for error in env["data"]["errors"])
+
+
+def test_workflow_packet_voice_inference_ignores_drive_relative_path():
+    env = mcp.call_tool("workflow_packet_validate", {
+        "packet": _workflow_packet(
+            request="review C:realtime",
+            artifacts=[".anvil/benchmarks/local.json"],
+        ),
+    })
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    assert env["data"]["errors"] == []
+
+
+@pytest.mark.parametrize("field", ["request", "tool_name", "target"])
+@pytest.mark.parametrize("relative_path", ["docs/realtime", "docs/realtime.bak"])
+def test_workflow_packet_voice_inference_ignores_relative_paths(field, relative_path):
+    packet = _workflow_packet(artifacts=[".anvil/benchmarks/local.json"])
+    if field == "request":
+        packet["request"] = f"review {relative_path}"
+    elif field == "tool_name":
+        packet["tools_used"][0]["name"] = relative_path
+    else:
+        packet["targets"]["evidence_dir"] = relative_path
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    assert env["data"]["errors"] == []
+
 
 def _operator_workflow_packet_from_fixture(fixture, evidence_root):
     artifact_path = None
