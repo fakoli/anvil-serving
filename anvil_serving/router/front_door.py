@@ -44,7 +44,7 @@ import sys
 import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 from .backends import EchoBackend
 from .audio import (
@@ -175,7 +175,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   presets: Iterable[Preset], exhaustion_status: int = 503,
                   auth_token: Optional[str] = None,
                   purpose: Optional[PurposeRouter] = None,
-                  audio: Optional[AudioGateway] = None):
+                  audio: Optional[AudioGateway] = None,
+                  response_model_resolver: Optional[Callable[[str], str]] = None):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -219,6 +220,22 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             return hmac.compare_digest(
                 supplied.encode("utf-8"), auth_token.encode("utf-8")
             )
+
+        @staticmethod
+        def _response_model(requested_model: str) -> str:
+            """Resolve wire identity through an explicitly injected capability.
+
+            Plain/plugin backends cannot alter response identity through request
+            mutation. Resolver failures retain the compatibility-safe requested
+            model rather than failing an otherwise successful inference.
+            """
+            if response_model_resolver is None:
+                return requested_model
+            try:
+                value = response_model_resolver(requested_model)
+            except Exception:
+                return requested_model
+            return value if isinstance(value, str) and value else requested_model
 
         def _no_tier_response(self, e: NoAvailableTierError,
                               dialect: Optional[Dialect] = None) -> None:
@@ -319,6 +336,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             ``multiplexer.relay``).
             """
             chunked = self.request_version == "HTTP/1.1"
+            requested_model = request.model
 
             # Resolve the backend's delta stream BEFORE committing a 200 so a
             # PRE-stream routing failure can still be a real HTTP error. A routing
@@ -381,6 +399,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     get_structured=(
                         _get_structured_fn if callable(_get_structured_fn) else None
                     ),
+                    response_model=self._response_model(requested_model),
                 )
                 for frame in frames:
                     if not frame:
@@ -1062,6 +1081,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # backend can raise here, so surface a clean error in the
                 # dialect's native envelope rather than dropping the request with
                 # a traceback.
+                requested_model = request.model
                 try:
                     text = "".join(backend.generate(request))
                     # Read structured fields AFTER the generator is drained so the
@@ -1070,7 +1090,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     # backend doesn't expose get_last_structured (text-path safety).
                     _get_fn = getattr(backend, "get_last_structured", None)
                     _structured = _get_fn() if callable(_get_fn) else None
-                    payload = dialect.render(request, text, structured=_structured)
+                    payload = dialect.render(
+                        request,
+                        text,
+                        structured=_structured,
+                        response_model=self._response_model(requested_model),
+                    )
                 except NoAvailableTierError as e:
                     # Keyless handoff contract — see the streaming path above for
                     # the full rationale (ADR-0001 §Mechanism, advise-and-defer:T004).
@@ -1100,7 +1125,9 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
                 exhaustion_status: int = 503,
                 auth_token: Optional[str] = None,
                 purpose: Optional[PurposeRouter] = None,
-                audio: Optional[AudioGateway] = None) -> ThreadingHTTPServer:
+                audio: Optional[AudioGateway] = None,
+                response_model_resolver: Optional[Callable[[str], str]] = None,
+) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
     Pass ``port=0`` to bind an ephemeral port (read it back from
@@ -1126,7 +1153,10 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     resolved ``auth_token`` and exposes the same-token-authenticated JSON
     ``POST /v1/audio/transcriptions`` and
     ``POST /v1/audio/speech`` routes. When ``None`` (the default), both audio
-    routes stay 404. Call
+    routes stay 404. ``response_model_resolver`` is an optional routing-owned
+    capability used to select the model identifier emitted on the wire. When
+    absent, dialects always echo the requested model, regardless of backend or
+    plugin request mutation. Call
     ``server.serve_forever()`` (typically on a background thread) to run.
     """
     if audio is not None and auth_token is None:
@@ -1138,7 +1168,7 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     httpd = ThreadingHTTPServer(
         (host, port),
         _make_handler(backend, timeout, presets, exhaustion_status, auth_token,
-                      purpose, audio),
+                      purpose, audio, response_model_resolver),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd

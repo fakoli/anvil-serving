@@ -270,6 +270,11 @@ class RouterConfig:
     audio_max_output_bytes: int = 4 * 1024 * 1024
     audio_max_text_chars: int = 16 * 1024
     audio_max_concurrency: int = 4
+    # Issue #180 / ADR-0026 — compatibility-preserving wire transparency.
+    # Appended to preserve positional construction of older optional fields.
+    # Default False keeps response.model equal to the caller's routing token;
+    # True reports the tier id that actually served across every chat dialect.
+    transparent_response_model: bool = False
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
@@ -980,6 +985,14 @@ def load(path: str) -> RouterConfig:
         )
     verify_local_min: bool = raw_verify_local_min
 
+    raw_transparent_response_model = router.get("transparent_response_model", False)
+    if not isinstance(raw_transparent_response_model, bool):
+        raise ConfigError(
+            f"[router].transparent_response_model must be a boolean "
+            f"(true/false) in {path}"
+        )
+    transparent_response_model: bool = raw_transparent_response_model
+
     # ``profile_path``: optional path to a measured ``profile.json`` (written by
     # profile_bootstrap). Only the SHAPE is validated here; readability/content
     # are checked where it is consumed (serve.build_server), which fail-fasts
@@ -1134,6 +1147,7 @@ def load(path: str) -> RouterConfig:
         cost_sync=cost_sync,
         relay_timeout=relay_timeout,
         verify_local_min=verify_local_min,
+        transparent_response_model=transparent_response_model,
         profile_path=profile_path,
         availability_probe_interval=availability_probe_interval,
         availability_probe_timeout=availability_probe_timeout,

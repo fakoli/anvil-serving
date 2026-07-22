@@ -489,10 +489,11 @@ plugin narrow and re-validate on gateway upgrades. Buildable spec + live-validat
   names/descriptions, so presets are first-class in the harness UI. Claude Code populates its
   `/model` picker from a gateway's `/v1/models` when `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`;
   `ANTHROPIC_CUSTOM_MODEL_OPTION` is the single-entry alternative.
-- **Transparent response.** The abstraction is on the *request*; the *response* stays honest — set
-  the response `model` to the **real** model/tier that served (OpenRouter does this), and log the
-  `(declared-or-inferred intent → tier → verify result → fallback?)` decision. Hiding what ran kills
-  debuggability and the local-first trust story.
+- **Transparent response.** The abstraction is on the *request*. Operators can opt into honest
+  wire identity with `[router].transparent_response_model = true`, which sets response `model` to
+  the **tier that actually served** across every chat dialect, while the compatibility default
+  continues to echo the requested routing token. The router always logs the
+  `(declared-or-inferred intent → tier → verify result → fallback?)` decision. See ADR-0026.
 - **Session stickiness + mapping versioning.** Don't swap models mid-conversation unless
   quality/health forces it (turn-level switch boundaries). The same intent may route differently as
   the profile recalibrates — surface a mapping version and allow pinning for reproducibility.
@@ -551,7 +552,7 @@ The router data plane and quality-profile control plane now ship alongside the l
   hand-authored table. Serve `/v1/models` preset discovery.
 - **M2 — verify-and-fallback:** cheap structural verify + verify-gated fallback (streaming commit window;
   cloud escalation is the opt-in keyed mode — the keyless default returns an exhaustion-503 for
-  gateway handoff) **and transparent responses** (echo the served model/tier). First release
+  gateway handoff) **and opt-in transparent responses** (echo the served tier when configured). First release
   delivering the unique promise.
 - **M3 — measured table + plugin SDK:** generalize the shadow-eval to populate the quality profile
   per work-class; replace the hand-authored table with operator-promoted artifacts; add guarded live

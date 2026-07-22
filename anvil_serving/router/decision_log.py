@@ -172,22 +172,20 @@ def compute_cost_usd(tier: Any, prompt_tokens: int, completion_tokens: int) -> f
 # --------------------------------------------------------------------------- #
 # transparency surface (T010; QGR §9; R012 metadata-only)
 # --------------------------------------------------------------------------- #
-# A dialect uses these to make a routed response *name what actually ran* and to
-# emit a content-free audit line. They read only the record's existing metadata
-# fields — tier ids, the fallback flag, token COUNTS — and never any message
-# text, response content, or a verifier's raw reason string (R012).
+# These helpers expose content-free audit metadata. They read only the record's
+# existing fields — tier ids, the fallback flag, token COUNTS — and never any
+# message text, response content, or a verifier's raw reason string (R012).
 def served_model(record: DecisionRecord) -> Optional[str]:
     """The real tier id that served, or ``None`` if exhausted.
 
-    What a dialect sets as the response ``model`` so the response names the tier
-    that actually ran (QGR §9 transparency), not the abstract intent the caller
-    asked for.
+    Wire dialects report this value only through the default-off routing-owned
+    resolver in ADR-0026. The helper itself is an audit metadata utility.
     """
     return record.served_tier
 
 
 def response_metadata(record: DecisionRecord) -> Mapping[str, Any]:
-    """The transparent-response block a dialect attaches to a routed reply.
+    """Build a transparent, content-free audit metadata block.
 
     A read-only mapping naming the ACTUAL served tier and whether a fallback
     occurred (AC1): ``served_tier``, ``fell_back``, ``work_class``, ``intent``,

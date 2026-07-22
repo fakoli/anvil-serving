@@ -324,14 +324,15 @@ class ResponsesDialect:
             output.append({"id": _new_id("fc_"), "type": "function_call", "status": "completed", "call_id": call_id, "name": str(call.get("name") or ""), "arguments": str(arguments)})
         return output
 
-    def render(self, request: InternalRequest, text: str, *, structured: Any = None) -> Dict[str, Any]:
+    def render(self, request: InternalRequest, text: str, *, structured: Any = None, response_model: Optional[str] = None) -> Dict[str, Any]:
         response_id = _new_id("resp_")
-        return {"id": response_id, "object": "response", "created_at": int(time.time()), "status": "completed", "model": request.model, "output": self._output(response_id, text, structured), "usage": self._usage(request, text, structured)}
+        return {"id": response_id, "object": "response", "created_at": int(time.time()), "status": "completed", "model": response_model or request.model, "output": self._output(response_id, text, structured), "usage": self._usage(request, text, structured)}
 
-    def stream(self, request: InternalRequest, deltas: Iterable[str], *, get_structured: Optional[Callable[[], Any]] = None) -> Iterator[bytes]:
+    def stream(self, request: InternalRequest, deltas: Iterable[str], *, get_structured: Optional[Callable[[], Any]] = None, response_model: Optional[str] = None) -> Iterator[bytes]:
         response_id = _new_id("resp_")
         created_at = int(time.time())
-        base = {"response": {"id": response_id, "object": "response", "created_at": created_at, "status": "in_progress", "model": request.model, "output": []}}
+        model = response_model or request.model
+        base = {"response": {"id": response_id, "object": "response", "created_at": created_at, "status": "in_progress", "model": model, "output": []}}
         yield _event("response.created", base)
         yield _event("response.in_progress", base)
         message_id: str | None = None
@@ -376,7 +377,7 @@ class ResponsesDialect:
             yield _event("response.function_call_arguments.done", {"item_id": call["id"], "output_index": output_index, "arguments": call["arguments"]})
             yield _event("response.output_item.done", {"output_index": output_index, "item": call})
             output_index += 1
-        completed = {"id": response_id, "object": "response", "created_at": created_at, "status": "completed", "model": request.model, "output": output, "usage": self._usage(request, text, structured)}
+        completed = {"id": response_id, "object": "response", "created_at": created_at, "status": "completed", "model": model, "output": output, "usage": self._usage(request, text, structured)}
         yield _event("response.completed", {"response": completed})
 
     def render_error(self, status: int, etype: str, message: str) -> Dict[str, Any]:

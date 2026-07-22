@@ -686,6 +686,23 @@ def test_verify_local_min_non_bool_raises(tmp_path):
         load(_write_toml(tmp_path, body))
 
 
+# ── issue #180 — opt-in served-tier wire model ─────────────────────────────
+def test_transparent_response_model_defaults_false_and_accepts_opt_in(tmp_path):
+    default_cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    enabled_cfg = load(
+        _write_toml(tmp_path, "transparent_response_model = true\n" + _BASE_TIER)
+    )
+
+    assert default_cfg.transparent_response_model is False
+    assert enabled_cfg.transparent_response_model is True
+
+
+def test_transparent_response_model_rejects_non_boolean(tmp_path):
+    body = 'transparent_response_model = "served"\n' + _BASE_TIER
+    with pytest.raises(ConfigError, match="transparent_response_model must be a boolean"):
+        load(_write_toml(tmp_path, body))
+
+
 # ── genericity:T003 — per-tier extra_body ───────────────────────────────────
 def test_extra_body_absent_defaults_to_none(tmp_path):
     """extra_body absent -> None (no regression: body is unchanged from today)."""

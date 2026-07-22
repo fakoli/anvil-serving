@@ -45,3 +45,4 @@ people and the chat logs.
 | [0023](0023-lifecycle-aware-wsl-cache-reclaim.md) | Lifecycle-aware WSL page-cache reclaim | Accepted |
 | [0024](0024-normalized-audio-gateway.md) | Normalized authenticated one-shot audio gateway | Accepted |
 | [0025](0025-tts-authoritative-realtime-assistant-transcripts.md) | TTS-authoritative Realtime assistant transcripts | Accepted |
+| [0026](0026-opt-in-transparent-response-model.md) | Opt-in transparent response model reports the served tier | Accepted |

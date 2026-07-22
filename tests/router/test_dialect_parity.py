@@ -1,4 +1,4 @@
-"""Dialect parity: both shipped wire dialects implement the same router surface (#46).
+"""Dialect parity: all shipped wire dialects implement the same router surface (#46).
 
 The front door (``front_door.py``) calls a FIXED surface on whichever
 :class:`~anvil_serving.router.dialects.Dialect` a route resolves to::
@@ -10,11 +10,9 @@ The front door (``front_door.py``) calls a FIXED surface on whichever
     dialect.render_error(status, etype, message)
 
 The ``Dialect`` Protocol is ``runtime_checkable`` but ``isinstance`` only checks
-attribute NAMES — and the Protocol does NOT even declare the keyword-only
-``get_structured`` / ``structured`` parameters the router actually passes. So a
-new dialect could satisfy the Protocol yet silently miss a method the router
-relies on, or a keyword it depends on. This parity test pins the REAL required
-surface across BOTH dialects so a future third dialect can't regress it.
+attribute NAMES. A new dialect could satisfy the Protocol yet silently miss a
+keyword the router depends on. This parity test pins the REAL required surface
+across all dialects so a future dialect cannot regress it.
 
 Focused parity assertions — not a framework. Hermetic, stdlib + pytest only.
 """
@@ -28,17 +26,21 @@ import pytest
 from anvil_serving.router.dialects import Dialect
 from anvil_serving.router.dialects.anthropic import AnthropicDialect
 from anvil_serving.router.dialects.openai import OpenAIDialect
+from anvil_serving.router.dialects.responses import ResponsesDialect
 
-# The two shipped dialects, instantiated.  A new dialect added to the codebase
+# The shipped dialects, instantiated. A new dialect added to the codebase
 # should be added here so it is held to the same parity contract.
-DIALECT_CLASSES = (AnthropicDialect, OpenAIDialect)
+DIALECT_CLASSES = (AnthropicDialect, OpenAIDialect, ResponsesDialect)
 
 # The surface the router (front_door.py) relies on for EVERY dialect.
 REQUIRED_METHODS = ("parse_request", "stream", "render", "render_error")
 
-# Keyword params the router passes that the Protocol does NOT declare — pinned
-# here so a dialect that drops them is caught (the text path silently changes).
-REQUIRED_KWARGS = {"stream": "get_structured", "render": "structured"}
+# Keyword params the router passes, pinned here so a dialect that drops them is
+# caught even though runtime Protocol checks only verify attribute presence.
+REQUIRED_KWARGS = {
+    "stream": ("get_structured", "response_model"),
+    "render": ("structured", "response_model"),
+}
 
 
 def _dialects():
@@ -65,7 +67,7 @@ def test_dialect_exposes_all_required_methods(dialect):
 
 
 def test_dialects_expose_identical_public_surface():
-    """Both dialects must present the SAME public attribute/method set.
+    """All dialects must present the SAME public attribute/method set.
 
     Compared as sets so a method present on one but not the other fails here,
     by construction — the parity guarantee a new dialect must uphold.
@@ -84,13 +86,19 @@ def test_dialects_expose_identical_public_surface():
 
 
 @pytest.mark.parametrize("dialect", _dialects(), ids=lambda d: d.name)
-@pytest.mark.parametrize("method,kwarg", sorted(REQUIRED_KWARGS.items()))
+@pytest.mark.parametrize(
+    "method,kwarg",
+    [
+        (method, kwarg)
+        for method, kwargs in sorted(REQUIRED_KWARGS.items())
+        for kwarg in kwargs
+    ],
+)
 def test_dialect_methods_accept_router_passed_kwargs(dialect, method, kwarg):
     """``stream``/``render`` must accept the structured-fields kwarg the router passes.
 
-    The Protocol omits these keyword-only params, so this is the only guard that a
-    new dialect keeps them (front_door.py calls ``stream(..., get_structured=...)``
-    and ``render(..., structured=...)`` unconditionally).
+    Runtime Protocol checks do not inspect method signatures, so this guards the
+    keyword arguments front_door.py passes unconditionally.
     """
     sig = inspect.signature(getattr(dialect, method))
     assert kwarg in sig.parameters, (
@@ -100,5 +108,5 @@ def test_dialect_methods_accept_router_passed_kwargs(dialect, method, kwarg):
 
 def test_shipped_dialect_names_are_distinct_and_expected():
     names = [cls().name for cls in DIALECT_CLASSES]
-    assert names == ["anthropic", "openai"]
+    assert names == ["anthropic", "openai", "responses"]
     assert len(set(names)) == len(names)  # no two dialects share a name

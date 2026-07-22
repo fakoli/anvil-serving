@@ -95,6 +95,7 @@ class AnthropicDialect:
         deltas: Iterable[str],
         *,
         get_structured: Optional[Callable[[], Any]] = None,
+        response_model: Optional[str] = None,
     ) -> Iterator[bytes]:
         """Stream the response as Anthropic named SSE events.
 
@@ -112,7 +113,7 @@ class AnthropicDialect:
         delivering partial tool-call JSON to the harness.
         """
         msg_id = _new_id("msg_")
-        model = request.model
+        model = response_model or request.model
         input_tokens = _input_tokens(request)
 
         yield _event("message_start", {
@@ -220,6 +221,7 @@ class AnthropicDialect:
         text: str,
         *,
         structured: Any = None,
+        response_model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Build a non-streaming Anthropic message response.
 
@@ -262,7 +264,7 @@ class AnthropicDialect:
             "id": _new_id("msg_"),
             "type": "message",
             "role": "assistant",
-            "model": request.model,
+            "model": response_model or request.model,
             "content": content,
             "stop_reason": _anthropic_stop_reason(_finish_reason),
             "stop_sequence": None,

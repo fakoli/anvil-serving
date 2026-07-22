@@ -19,7 +19,7 @@ is intentionally minimal but real.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, Iterable, Iterator, Mapping
+from typing import Any, Callable, Dict, Iterable, Iterator, Mapping, Optional
 
 from ..internal import InternalRequest
 
@@ -39,10 +39,24 @@ class Dialect(Protocol):
     def parse_request(self, body: Mapping[str, Any]) -> InternalRequest:
         ...
 
-    def stream(self, request: InternalRequest, deltas: Iterable[str]) -> Iterator[bytes]:
+    def stream(
+        self,
+        request: InternalRequest,
+        deltas: Iterable[str],
+        *,
+        get_structured: Optional[Callable[[], Any]] = None,
+        response_model: Optional[str] = None,
+    ) -> Iterator[bytes]:
         ...
 
-    def render(self, request: InternalRequest, text: str) -> Dict[str, Any]:
+    def render(
+        self,
+        request: InternalRequest,
+        text: str,
+        *,
+        structured: Any = None,
+        response_model: Optional[str] = None,
+    ) -> Dict[str, Any]:
         ...
 
     def render_error(self, status: int, etype: str, message: str) -> Dict[str, Any]:
