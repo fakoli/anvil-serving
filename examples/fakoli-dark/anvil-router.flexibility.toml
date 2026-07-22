@@ -41,6 +41,12 @@ mapping_version = "2026-07-12.flexibility-thinkingcap-heavy"
 # default model that spent its budget reasoning — gotcha #6/#9) becomes a 503 so
 # the gateway fails over instead of serving empty content.
 verify_local_min = true
+# Voice routes are mode-independent: the same authenticated router listener
+# normalizes Dark-owned STT/TTS while the chat-tier mode changes.
+audio_max_input_bytes = 8388608
+audio_max_output_bytes = 8388608
+audio_max_text_chars = 16384
+audio_max_concurrency = 2
 
 # ── Specialized-engine flexibility tier: ThinkingCap Qwen3.6-27B FP8 via vLLM ─
 # The high-capability single-turn workhorse. `engine`/`quantization`/`params` are
@@ -81,6 +87,21 @@ quantization  = "nvfp4"
 timeout       = 180.0
 params        = { gpu_memory_utilization = 0.85, max_model_len = 32768, max_num_seqs = 2, kv_cache_dtype = "fp8", reasoning_parser = "qwen3", tool_call_parser = "qwen3_coder", trust_remote_code = true }
 extra_body    = { chat_template_kwargs = { enable_thinking = false } }
+
+[[router.audio_routes]]
+id       = "dark-stt"
+purpose  = "stt"
+model    = "tdt-0.6b-v3"
+base_url = "http://host.docker.internal:30010/v1"
+timeout  = 25.0
+
+[[router.audio_routes]]
+id                 = "dark-tts"
+purpose            = "tts"
+model              = "kokoro"
+base_url           = "http://host.docker.internal:30011/v1"
+source_sample_rate = 24000
+timeout            = 25.0
 
 # preset -> ordered candidate tier pool (filter then rank). Flexibility mode is
 # quality-first / single-turn: ThinkingCap leads, with the canonical Fast serve

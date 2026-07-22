@@ -56,7 +56,7 @@ import os
 import sys
 import threading
 from http.server import ThreadingHTTPServer
-from typing import Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 # RelayBackend now lives in .backends.relay (#46); it is imported (and so
 # re-exported from this module's namespace) here because build_backend_for_tier
@@ -69,6 +69,7 @@ from .availability import (
     HttpHealthAvailability,
 )
 from .admission import AdmissionLease, TierAdmission
+from .audio import AudioGateway
 from .backends.cloud import DiscoveryTransport, Transport, discover_single_model
 from .config import (
     ConfigError,
@@ -1135,6 +1136,7 @@ def build_server(
     profile: Optional[ProfileStore] = None,
     env: Optional[Mapping[str, str]] = None,
     transport: Optional[Transport] = None,
+    audio_transport: Optional[Callable[..., Any]] = None,
     timeout: Optional[float] = 120,
     mode: Optional[str] = None,
     availability: Optional[object] = None,
@@ -1152,6 +1154,10 @@ def build_server(
     :func:`build_backends` (cloud tiers missing creds are skipped with a stderr
     warning). The bound tier ids and routing backend are stashed on the returned
     server as ``anvil_tiers`` / ``anvil_routing`` for introspection.
+
+    ``audio_transport`` is a separate test seam for configured normalized-audio
+    routes. It deliberately does not reuse ``transport``: production audio
+    transport enforces its own byte cap, no-proxy policy, and redirect rejection.
 
     **Front-door auth (ADR-0004 / T001):** the optional ``[server].auth_env``
     key is resolved to its secret value from ``env`` (``os.environ`` when
@@ -1188,6 +1194,11 @@ def build_server(
                 f"secret, or remove [server].auth_env to run without front-door "
                 f"auth"
             )
+    if config.audio_routes and auth_token is None:
+        raise ConfigError(
+            "[[router.audio_routes]] require a resolved [server].auth_env; "
+            "the normalized audio gateway is never available without bearer authentication"
+        )
 
     backends_injected = backends is not None
     if backends is None:
@@ -1290,19 +1301,38 @@ def build_server(
             decision_log=routing._decision_log,
         )
 
+    # One-shot STT/TTS uses an independent normalized gateway rather than the
+    # chat policy pipeline or the realtime proxy.  It shares the metadata-only
+    # decision log, has no provider fallback, and remains absent unless the
+    # operator declares Dark-owned [[router.audio_routes]].
+    audio: Optional[AudioGateway] = None
+    if config.audio_routes:
+        audio = AudioGateway(
+            config.audio_routes,
+            max_input_bytes=config.audio_max_input_bytes,
+            max_output_bytes=config.audio_max_output_bytes,
+            max_text_chars=config.audio_max_text_chars,
+            max_concurrency=config.audio_max_concurrency,
+            default_timeout=config.relay_timeout,
+            env=env,
+            transport=audio_transport,
+            decision_log=routing._decision_log,
+        )
+
     # Advertise the canonical intent vocabulary on GET /v1/models (T004): the
     # presets ARE the "models" a harness model picker addresses.
     # Pass exhaustion_status from config so the front door uses the operator-
     # configured keyless handoff signal (ADR-0001 §Mechanism, T004).
     httpd = make_server(host, port, routing, timeout=timeout, presets=PRESETS,
                         exhaustion_status=config.exhaustion_status,
-                        auth_token=auth_token, purpose=purpose)
+                        auth_token=auth_token, purpose=purpose, audio=audio)
     # Stash what we bound for introspection (serve()'s banner + tests).
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
     httpd.anvil_availability = availability  # type: ignore[attr-defined]
     httpd.anvil_admission = routing._admission  # type: ignore[attr-defined]
     httpd.anvil_purpose = purpose  # type: ignore[attr-defined]
+    httpd.anvil_audio = audio  # type: ignore[attr-defined]
     return httpd
 
 
@@ -1334,6 +1364,11 @@ def serve(
     routes = "POST /v1/chat/completions, POST /v1/messages, GET /v1/models"
     if getattr(httpd, "anvil_purpose", None) is not None:
         routes += ", POST /v1/embeddings, POST /v1/rerank"
+    audio = getattr(httpd, "anvil_audio", None)
+    if audio is not None:
+        routes += "".join(
+            ", POST " + audio_path for audio_path in audio.paths
+        )
     print(
         f"anvil-serving front door on http://{actual_host}:{actual_port}\n"
         f"  tiers bound: {tiers}\n"

@@ -123,6 +123,11 @@ The main table: tier topology, preset map, and routing policy knobs.
 | `availability_probe_timeout` | number (seconds) | `1.0` | Per-probe timeout for local-tier readiness checks. A failed probe skips that tier before inference and does not increment its circuit breaker. |
 | `availability_probe_max_bytes` | integer (256–1048576) | `65536` | Maximum `/v1/models` response bytes read by identity readiness. Oversized responses fail closed. |
 | `purpose_models` | array of tables | `[]` | Purpose-model serves (embedding/rerank) routed **by model name** on `POST /v1/embeddings` and `POST /v1/rerank` (see `[[router.purpose_models]]` below). Absent or empty leaves both endpoints 404. |
+| `audio_routes` | array of tables | `[]` | Dark-owned STT/TTS routes for the normalized, token-authenticated `POST /v1/audio/transcriptions` and `POST /v1/audio/speech` gateway. Requires a resolved `[server].auth_env`; each endpoint is exposed only when it has a bound route. Audio never enters chat routing or provider fallback. |
+| `audio_max_input_bytes` | integer (1024–33554432) | `4194304` | Decoded STT audio cap. The front door rejects an oversized encoded JSON body before reading it. |
+| `audio_max_output_bytes` | integer (1024–33554432) | `4194304` | Raw upstream TTS and normalized output cap. |
+| `audio_max_text_chars` | integer (1024–33554432) | `16384` | Maximum characters accepted in a TTS `input`. The encoded request cap accounts for JSON escaping. |
+| `audio_max_concurrency` | integer (1–16) | `4` | Independent, non-blocking audio-upstream admission pool. It is acquired after a complete bounded JSON request is parsed, so a slow upload cannot pin STT/TTS capacity; a saturated upstream pool returns 503. |
 
 ## `[[router.tiers]]`
 
@@ -232,6 +237,55 @@ id       = "reranker-local"
 kind     = "rerank"
 model    = "qwen3-reranker-0.6b"
 base_url = "http://127.0.0.1:30006/v1"
+```
+
+## `[[router.audio_routes]]`
+
+The audio gateway ([ADR-0024](adr/0024-normalized-audio-gateway.md)) is opt-in, requires a
+resolved `[server].auth_env`, and is separate from purpose models and chat tiers. A caller supplies
+an endpoint-matching `purpose` or an opaque route id; it never supplies an upstream host or model
+name. The configured route is the only upstream: there is no chat or cloud fallback. Audio route
+ids share the decision-log namespace with tier and purpose-model ids. An endpoint is advertised and
+accepts POST only when at least one route for its purpose is bound.
+
+The audio limits are decoded-byte and text limits. Their encoded HTTP requests
+also remain bounded by `ANVIL_MAX_BODY_BYTES` (32 MiB by default), so raise that
+outer limit deliberately if a deployment must accept a larger encoded body.
+
+For the reference container topology, use `host.docker.internal` so the router container reaches
+the Dark host's loopback-only Parakeet/Kokoro ports. Other routes must use `127.0.0.1`, an RFC1918
+literal, or a tailnet literal; public, link-local, wildcard, and alternate loopback hosts are
+rejected. `localhost`, URL credentials, query strings, and fragments are rejected.
+
+| Key | Type | Meaning |
+|---|---|---|
+| `id` | string, non-empty | Opaque route/audit id, unique across tiers, purpose models, and audio routes. |
+| `purpose` | `"stt"` \| `"tts"` | Normalization selected by this route. The request endpoint must match it. |
+| `model` | string, non-empty | Fixed served-model name sent upstream; callers cannot override it. |
+| `base_url` | string | Private OpenAI-style upstream base, such as `http://host.docker.internal:30010/v1`. |
+| `source_sample_rate` | integer 8000–192000 | Required for `tts`, because PCM16 has no self-describing sample rate; absent for `stt`. |
+| `timeout` | positive number (seconds) | Optional wall-clock deadline; defaults to `relay_timeout`. Slow response reads cannot extend it. |
+| `auth_env` | env-var name | Optional bearer token for the raw private upstream. An unresolved value disables that route rather than choosing another route. |
+| `default` | boolean | Required exactly once per purpose when multiple routes share a purpose. A single route is its own default. |
+
+```toml
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+
+[[router.audio_routes]]
+id       = "dark-stt"
+purpose  = "stt"
+model    = "tdt-0.6b-v3"
+base_url = "http://host.docker.internal:30010/v1"
+timeout  = 25.0
+
+[[router.audio_routes]]
+id                 = "dark-tts"
+purpose            = "tts"
+model              = "kokoro"
+base_url           = "http://host.docker.internal:30011/v1"
+source_sample_rate = 24000
+timeout            = 25.0
 ```
 
 ## `[modes]` manifest
