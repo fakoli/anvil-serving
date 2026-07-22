@@ -385,8 +385,8 @@ the current live citation is
 > 3. The decision log's `destination` field correctly records `"native"` vs `"anvil"` for each turn.
 
 The prior wire-form and fire-cadence gaps are already settled; see
-`docs/OPENCLAW-INTEGRATION-SPEC.md` and `docs/adr/0005-anvil-503-native-failover-unreliable.md`
-(the dated live-validation runbook now lives in the private `fakoli/anvil-serving-notes` repo).
+`docs/OPENCLAW-INTEGRATION-SPEC.md`, `docs/adr/0005-anvil-503-native-failover-unreliable.md`, and
+the public `docs/findings/2026-07-04-openclaw-keyless-failover.md` evidence snapshot.
 
 **2026-07-01 live E2E finding (new):** the keyless-503 → native-failover safety
 net for local-preferred presets is **not reliable** — see the KNOWN DEFECT
