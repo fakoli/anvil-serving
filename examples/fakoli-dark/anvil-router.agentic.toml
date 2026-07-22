@@ -50,6 +50,12 @@ availability_probe_interval = 5
 availability_probe_timeout = 1
 # The deployed router image reads this path inside the anvil-router-cfg volume.
 profile_path = "/etc/anvil/profile.json"
+# Authenticated, normalized one-shot voice routes (ADR-0024). The raw audio
+# serves stay Dark-local; only the router's existing :8000 listener is exposed.
+audio_max_input_bytes = 8388608
+audio_max_output_bytes = 8388608
+audio_max_text_chars = 16384
+audio_max_concurrency = 2
 
 # gemma4-e4b-it's chat template honors chat_template_kwargs.enable_thinking (verified in the
 # cached snapshot's chat_template.jinja), so the fast tier keeps thinking disabled like the
@@ -158,6 +164,21 @@ id       = "reranker-local"
 kind     = "rerank"
 model    = "qwen3-reranker-0.6b"
 base_url = "http://host.docker.internal:30006/v1"
+
+[[router.audio_routes]]
+id       = "dark-stt"
+purpose  = "stt"
+model    = "tdt-0.6b-v3"
+base_url = "http://host.docker.internal:30010/v1"
+timeout  = 25.0
+
+[[router.audio_routes]]
+id                 = "dark-tts"
+purpose            = "tts"
+model              = "kokoro"
+base_url           = "http://host.docker.internal:30011/v1"
+source_sample_rate = 24000
+timeout            = 25.0
 
 # heavy-first where quality matters; chat-fast pins to the fast tier first.
 # ocr/vision route ONLY to their VLM tiers — the text tiers cannot read image

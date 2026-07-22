@@ -17,7 +17,9 @@ heavy local serve, and an optional, explicitly-metered cloud endpoint.
    (`POST /v1/chat/completions`). It also serves `GET /v1/models` (the preset vocabulary),
    `POST /v1/route` (a routing decision without generation), `GET /v1/decisions` (recent decision
    records), and `GET /healthz`. Optional bearer/`x-api-key` token auth covers every route except
-   the health check.
+   the health check. When explicitly configured, the same listener also exposes a normalized,
+   one-shot `POST /v1/audio/transcriptions` and `POST /v1/audio/speech` gateway to private
+   Dark-owned STT/TTS serves; it is outside the chat policy/fallback ladder.
 2. **Intent resolution** (`router/intent.py`) turns the request's `model` field into a work class
    and a candidate tier pool, in strict precedence: a **declared preset** (`planning`,
    `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, `ocr`, `vision`), else a **pinned tier id**, else

@@ -29,7 +29,8 @@ token-authenticated private/tailnet controller that lets a gateway host operate 
 router, serve, or voice host without making raw SSH the product contract.
 
 For a private delivery cockpit, the optional separate **Anvil Workbench** product uses the
-router's stateless `/v1/responses` compatibility surface and records safe run/task/request
+router's stateless `/v1/responses` compatibility surface and can use the normalized one-shot
+`/v1/audio/*` gateway after migrating to its canonical contract. It records safe run/task/request
 correlation in decision evidence. Its hub lifecycle is available through
 `anvil-serving workbench`. Anvil Serving owns only the optional container lifecycle and private
 exposure; Workbench owns its product logic and remains independently deployable, outside the

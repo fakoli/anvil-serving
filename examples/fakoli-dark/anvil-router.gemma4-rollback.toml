@@ -10,6 +10,11 @@ verify_local_min = true
 availability_probe_interval = 5
 availability_probe_timeout = 1
 profile_path = "/etc/anvil/profile.json"
+# Keep the authenticated voice gateway unchanged through a Heavy rollback.
+audio_max_input_bytes = 8388608
+audio_max_output_bytes = 8388608
+audio_max_text_chars = 16384
+audio_max_concurrency = 2
 
 [[router.tiers]]
 id            = "fast-local"
@@ -83,6 +88,21 @@ id       = "reranker-local"
 kind     = "rerank"
 model    = "qwen3-reranker-0.6b"
 base_url = "http://host.docker.internal:30006/v1"
+
+[[router.audio_routes]]
+id       = "dark-stt"
+purpose  = "stt"
+model    = "tdt-0.6b-v3"
+base_url = "http://host.docker.internal:30010/v1"
+timeout  = 25.0
+
+[[router.audio_routes]]
+id                 = "dark-tts"
+purpose            = "tts"
+model              = "kokoro"
+base_url           = "http://host.docker.internal:30011/v1"
+source_sample_rate = 24000
+timeout            = 25.0
 
 [router.presets]
 chat         = ["heavy-local", "fast-local"]
