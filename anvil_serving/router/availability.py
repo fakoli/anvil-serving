@@ -28,7 +28,7 @@ import json
 import os
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Dict, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
@@ -53,6 +53,14 @@ class AvailabilityResult:
 
     ``reason`` is a stable, content-free code suitable for decision metadata.
     Raw exception messages and URLs are intentionally excluded.
+
+    ``latency_ms`` and ``checked_at`` are optional freshness metadata stamped by
+    :meth:`HttpHealthAvailability.check` when it actually runs a probe (they stay
+    ``None`` for the no-probe / not-configured paths and for
+    :class:`AlwaysAvailable`).  They exist so a readiness snapshot can report
+    *when* a serve was last checked and *how long* that probe took without
+    re-probing on every read.  They are trailing/defaulted so every existing
+    positional construction and field-wise assertion is unaffected.
     """
 
     available: bool
@@ -60,6 +68,8 @@ class AvailabilityResult:
     reason: str
     expected_model: Optional[str] = None
     observed_model: Optional[str] = None
+    latency_ms: Optional[int] = None
+    checked_at: Optional[float] = None
 
 
 class AlwaysAvailable:
@@ -90,6 +100,7 @@ class HttpHealthAvailability:
         *,
         opener: Optional[Callable[..., object]] = None,
         clock: Callable[[], float] = time.monotonic,
+        wall_clock: Callable[[], float] = time.time,
         env: Optional[Mapping[str, str]] = None,
     ) -> None:
         self._probe_interval = config.availability_probe_interval
@@ -97,6 +108,9 @@ class HttpHealthAvailability:
         self._probe_max_bytes = config.availability_probe_max_bytes
         self._opener = opener if opener is not None else _direct_opener()
         self._clock = clock
+        # Monotonic clock drives cache expiry; a separate wall clock stamps
+        # ``checked_at`` so a readiness snapshot can render a real timestamp.
+        self._wall_clock = wall_clock
         self._env = os.environ if env is None else env
         self._lock = threading.Lock()
         self._cache: Dict[str, tuple[float, AvailabilityResult]] = {}
@@ -119,7 +133,16 @@ class HttpHealthAvailability:
             if cached is not None and now - cached[0] < self._probe_interval:
                 return cached[1]
 
+        started = self._clock()
         result = self._probe(url, tier)
+        # Stamp freshness metadata so a readiness snapshot reports when this serve
+        # was last probed and how long it took. Cached and returned together, so a
+        # subsequent cache hit reflects the ACTUAL last probe, not the read time.
+        result = replace(
+            result,
+            latency_ms=max(0, int(round((self._clock() - started) * 1000))),
+            checked_at=self._wall_clock(),
+        )
         with self._lock:
             self._cache[tier.id] = (self._clock(), result)
         return result
