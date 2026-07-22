@@ -4,11 +4,13 @@
 - **Task:** `advise-and-defer:T005` — "Live-validate the OpenClaw failover trigger (resolve the ADR-0001 UNCONFIRMED)"
 - **Resolves:** the `Must validate live (currently UNCONFIRMED)` item in
   [ADR-0001 §Mechanism](../adr/0001-cloud-cost-and-subscription-auth.md)
-- **Related:** [ADR-0005](../adr/0005-anvil-503-native-failover-unreliable.md) (the reliability caveat);
-  the dated live-validation runbook (Gap 4) and advise-and-defer plan referenced at the time now
-  live in the private `fakoli/anvil-serving-notes` repo
+- **Related:** [ADR-0005](../adr/0005-anvil-503-native-failover-unreliable.md) (the reliability caveat)
 
 ## The question
+
+The original Gap 4 runbook and advise-and-defer plan were planning inputs, not the public evidence
+for this result. This finding, ADR-0005, and the current integration contract preserve the
+load-bearing claim without requiring private-repository access.
 
 anvil's keyless (local-only, no cloud API key) default returns a **503 with zero streamed local
 tokens** when it exhausts its local candidate tiers. ADR-0001 designed the keyless handoff around a

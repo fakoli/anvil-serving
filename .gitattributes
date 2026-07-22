@@ -6,3 +6,6 @@ docs/CLI-COMMAND-MANIFEST.json text eol=lf
 # its opening/closing fences invisible and silently empties the rule set.
 .claude/gate-router.local.md text eol=lf
 docs/findings/*-evidence/** -text
+# This published historical bundle uses byte hashes as evidence bindings. Keep
+# every text artifact LF-stable so the verifier behaves identically on Windows.
+docs/findings/eval-data/2026-06-28-planning-capability/** text eol=lf
