@@ -8,6 +8,16 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Bearer-authed per-tier/serve health snapshot.** `GET /v1/health/tiers` returns a live
+  readiness snapshot for EVERY configured serve — chat `llm` tiers, purpose models, and audio
+  routes — not only recently-routed ones, so a configured-but-idle tier is no longer
+  indistinguishable from a down one. It reuses the router's already-tracked, cached availability
+  probe (the same state that produces `skipped-unavailable` / `health_transport_*` in routing), so
+  polling adds no heavy new probe path. Each row carries only `{id, role, status, last_check,
+  latency_ms, reason}`: a serve host, URL, upstream token, or model id never appears, and a
+  `reason` is a bounded content-free category. Authenticated with the router bearer like every
+  route except `GET /healthz`; `/health` and `/v1/decisions` are unchanged. Resolves #292.
+
 - **Opt-in transparent response models.** `[router].transparent_response_model = true`
   makes Chat Completions, Anthropic Messages, and Responses output the tier id that
   actually served in their wire `model` field, including verified fallback and streaming
