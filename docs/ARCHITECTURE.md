@@ -86,9 +86,12 @@ sequenceDiagram
 The routing outcome is recorded server-side: every request that walks the fallback ladder writes
 a metadata-only decision record (`router/decision_log.py`) — work class, per-tier attempts,
 verifier *names*, token counts, and outcomes, never response content or secrets — retrievable via
-`GET /v1/decisions`. (The wire response's `model` field echoes the caller's routing token;
-requests refused before the ladder runs, and cloud-tier `allow` responses streamed straight
-through, are visible in the stderr log rather than the decision record.)
+`GET /v1/decisions`. By default the wire response's `model` field echoes the caller's routing
+token for harness compatibility. Operators can set `[router].transparent_response_model = true`
+to report the tier id that actually served across Chat Completions, Anthropic Messages, and
+Responses, including streaming and verified fallback paths ([ADR-0026](adr/0026-opt-in-transparent-response-model.md)).
+Requests refused before the ladder runs, and uncorrelated cloud-tier `allow` responses streamed
+straight through, are visible in the stderr log rather than the decision record.
 
 ## The Tier Ladder And The Two Cost Postures
 

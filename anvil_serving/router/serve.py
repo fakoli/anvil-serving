@@ -584,6 +584,13 @@ class RoutingBackend:
         """
         return getattr(self._thread_local, "last_result", None)
 
+    def response_model(self, requested_model: str) -> str:
+        """Resolve the wire model for the current request-handler thread."""
+        if not self._config.transparent_response_model:
+            return requested_model
+        served_tier = getattr(self._thread_local, "last_served_tier", None)
+        return served_tier or requested_model
+
     def _tier_verdict(self, tier_id: str, work_class: Optional[str]) -> str:
         """Profile verdict for ``(tier_id, work_class)``: allow / allow-with-verify / deny.
 
@@ -627,6 +634,10 @@ class RoutingBackend:
         return snapshot
 
     def generate(self, request: InternalRequest) -> Iterator[str]:
+        # Clear request-thread state before every route so a subsequent request
+        # on a reused HTTP worker can never inherit the prior winning tier. The
+        # requested routing token itself is never rewritten.
+        self._thread_local.last_served_tier = None
         # Eagerly resolve intent + policy BEFORE returning any iterator so that
         # a routing failure raises here — the front door catches NoAvailableTierError
         # before committing a streaming 200 and answers a clean 503.
@@ -744,10 +755,12 @@ class RoutingBackend:
                         work_class, bound_tiers, kind="unavailable"
                     )
                 self._note_selected(result.served_tier)
+                self._thread_local.last_served_tier = result.served_tier
                 self._thread_local.last_result = result.structured
                 return iter([result.text])
             # Selected at route time, before the backend call (AC3 residency).
             self._note_selected(available_tiers[0])
+            self._thread_local.last_served_tier = available_tiers[0]
             self._thread_local.last_result = None  # cleared; set when stream finishes
             _fragments: List[str] = []
 
@@ -824,6 +837,7 @@ class RoutingBackend:
         # The verify walk may have escalated past the first candidate: record
         # the tier that ACTUALLY served as the resident (AC3 residency).
         self._note_selected(result.served_tier)
+        self._thread_local.last_served_tier = result.served_tier
 
         # Propagate the winning tier's structured fields to our thread-local so
         # the dialect layer can render real stop_reason / tool_calls (#42).
@@ -1325,7 +1339,8 @@ def build_server(
     # configured keyless handoff signal (ADR-0001 §Mechanism, T004).
     httpd = make_server(host, port, routing, timeout=timeout, presets=PRESETS,
                         exhaustion_status=config.exhaustion_status,
-                        auth_token=auth_token, purpose=purpose, audio=audio)
+                        auth_token=auth_token, purpose=purpose, audio=audio,
+                        response_model_resolver=routing.response_model)
     # Stash what we bound for introspection (serve()'s banner + tests).
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
