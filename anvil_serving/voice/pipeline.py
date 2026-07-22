@@ -49,7 +49,16 @@ from dataclasses import fields
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from .cancel_scope import CancelScope
-from .messages import AudioOut, EndOfResponse, GenerateRequest, LLMToolCall, TTSInput, Transcription, VADAudio
+from .messages import (
+    AudioOut,
+    EndOfResponse,
+    GenerateRequest,
+    LLMToolCall,
+    SpokenText,
+    TTSInput,
+    Transcription,
+    VADAudio,
+)
 from .stages.base import PIPELINE_END, BaseStage, ThreadManager
 from .stages.llm import LLMStage, LLMStageConfig
 from .stages.llm import StreamFn as LLMStreamFn
@@ -121,6 +130,7 @@ class LLMChunkToTTSInput(BaseStage):
             turn_revision=item.turn_revision,
             generation=item.generation,
             text=text,
+            joiner=getattr(item, "joiner", ""),
         )
 
 
@@ -141,12 +151,21 @@ class EchoTTSStage(BaseStage):
             return item
         if not isinstance(item, TTSInput):
             return None
-        return AudioOut(
-            turn_id=item.turn_id,
-            turn_revision=item.turn_revision,
-            generation=item.generation,
-            pcm=item.text.encode("utf-8"),
-        )
+        return [
+            AudioOut(
+                turn_id=item.turn_id,
+                turn_revision=item.turn_revision,
+                generation=item.generation,
+                pcm=item.text.encode("utf-8"),
+            ),
+            SpokenText(
+                turn_id=item.turn_id,
+                turn_revision=item.turn_revision,
+                generation=item.generation,
+                text=item.text,
+                joiner=item.joiner,
+            ),
+        ]
 
 
 #: A stage factory takes the queue a stage should read from and the list of
@@ -163,21 +182,19 @@ class VoicePipeline:
     manages their background threads as one unit.
 
     ``audio_in`` is where raw PCM frames (or :data:`PIPELINE_END`) are fed in;
-    ``audio_out`` is where synthesized :class:`AudioOut` (and forwarded
-    :class:`EndOfResponse`) items land. Everything in between is internal
+    ``audio_out`` is where synthesized :class:`AudioOut`, exact
+    :class:`SpokenText`, and forwarded :class:`EndOfResponse` items land.
+    Everything in between is internal
     plumbing a caller does not need to touch.
 
-    ``vad_events``/``transcript_events`` (PUNCH-LIST #3) are read-only SIDEBAND
+    ``vad_events``/``transcript_events`` are read-only SIDEBAND
     queues a realtime-server layer (:mod:`~anvil_serving.voice.realtime.service`)
-    drains to surface the input-side lifecycle -- VAD's
-    :class:`~anvil_serving.voice.stages.vad.SpeechEvent`
-    (started/stopped) and the STT stage's :class:`Transcription` -- onto the
-    wire. These are FAN-OUT DUPLICATES, not the primary path: the VAD stage's
-    ``VADAudio``/``SpeechEvent`` output still goes to the STT stage exactly as
-    before (via the internal ``vad_to_stt`` queue), and the STT stage's
-    ``Transcription`` output still goes to the ``TranscriptionToGenerate``
-    bridge exactly as before. A caller draining ``vad_events``/
-    ``transcript_events`` observes copies of what already flows through the
+    drains to surface lifecycle events. They contain, respectively, VAD's
+    :class:`~anvil_serving.voice.stages.vad.SpeechEvent` and STT's
+    :class:`Transcription`. These are FAN-OUT DUPLICATES, not the primary
+    path: VAD still feeds STT, STT still feeds ``TranscriptionToGenerate``, and
+    LLM output still feeds ``LLMChunkToTTSInput`` exactly as before. A caller
+    draining a sideband observes copies of what already flows through the
     pipeline; it never consumes the primary queue's items or perturbs
     downstream processing (each is `queue.Queue.put` onto its OWN queue, per
     `BaseStage._emit_one`'s already-existing multi-out_queues fan-out -- see
@@ -225,7 +242,7 @@ class VoicePipeline:
         llm_to_bridge: "queue.Queue[Any]" = queue.Queue()
         bridge_to_tts: "queue.Queue[Any]" = queue.Queue()
         self.audio_out: "queue.Queue[Any]" = queue.Queue()
-        # PUNCH-LIST #3 sideband queues -- see the class docstring's note.
+        # Realtime sideband queues -- see the class docstring's note.
         self.vad_events: "queue.Queue[Any]" = queue.Queue()
         self.transcript_events: "queue.Queue[Any]" = queue.Queue()
 

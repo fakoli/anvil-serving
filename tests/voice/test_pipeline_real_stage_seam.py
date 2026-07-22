@@ -28,8 +28,13 @@ Dependency-light: fake ``stream_fn``s only, no real HTTP/socket, no GPU/torch.
 """
 from __future__ import annotations
 
-from anvil_serving.voice.messages import AudioOut, EndOfResponse
-from anvil_serving.voice.pipeline import EchoSTTStage, EchoTTSStage, VoicePipeline, real_pipeline_kwargs_from_manifest
+from anvil_serving.voice.messages import AudioOut, EndOfResponse, SpokenText
+from anvil_serving.voice.pipeline import (
+    EchoSTTStage,
+    EchoTTSStage,
+    VoicePipeline,
+    real_pipeline_kwargs_from_manifest,
+)
 from anvil_serving.voice.stages.base import BaseStage
 from anvil_serving.voice.stages.llm import LLMStageConfig
 from anvil_serving.voice.stages.stt import STTStage, STTStageConfig
@@ -95,6 +100,7 @@ def test_stage_factories_are_wired_to_the_pipelines_own_queues():
 
     # Same shape on the LLM -> TTS side, through llm_bridge.
     assert pipeline.llm_bridge.in_queue is captured["llm"][1][0]
+    assert captured["llm"][1] == [pipeline.llm_bridge.in_queue]
     assert pipeline.llm_bridge.out_queues == [captured["tts"][0]]
 
     # TTS's output queue IS the pipeline's own audio_out.
@@ -225,7 +231,9 @@ def test_real_stt_and_tts_stages_flow_a_message_end_to_end():
 
     audio_items = [m for m in items if isinstance(m, AudioOut)]
     end_items = [m for m in items if isinstance(m, EndOfResponse)]
+    spoken_items = [m for m in items if isinstance(m, SpokenText)]
     assert audio_items, f"expected at least one real-stage AudioOut, got: {items}"
     assert end_items, f"expected an EndOfResponse, got: {items}"
+    assert [item.text for item in spoken_items] == ["Hi there.", "How can I help?"]
     # Every produced AudioOut chunk carries the REAL TTS stage's resampled bytes.
     assert all(a.pcm for a in audio_items)

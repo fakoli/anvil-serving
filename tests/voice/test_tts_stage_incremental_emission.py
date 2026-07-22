@@ -40,7 +40,7 @@ from typing import List
 import pytest
 
 from anvil_serving.voice.cancel_scope import CancelScope
-from anvil_serving.voice.messages import AudioOut, EndOfResponse, TTSInput
+from anvil_serving.voice.messages import AudioOut, EndOfResponse, SpokenText, TTSInput
 from anvil_serving.voice.stages.tts import TTSStage, TTSStageConfig
 
 
@@ -140,6 +140,10 @@ def test_first_audio_chunk_reaches_output_queue_before_second_chunk_is_sent(bloc
         first = out_q.get(timeout=5.0)
         assert isinstance(first, AudioOut)
         assert first.pcm == _AUDIO_1
+
+        spoken = out_q.get(timeout=5.0)
+        assert isinstance(spoken, SpokenText)
+        assert spoken.text == "hello"
 
         # Chunk 2 must NOT be on the queue yet -- the server is still parked
         # on block_event.wait() and has not written it to the socket, so the
