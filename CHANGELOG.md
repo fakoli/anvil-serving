@@ -54,6 +54,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **Private-only evidence grounding has been removed.** The historical Anvil integration audit,
+  planning-capability evaluation, complete bounded eval bundle, and harness-routing research are
+  now public dated findings. Load-bearing docs link those public records; missing ADR-0008 raw logs
+  are recorded as an evidence gap instead of being implied to exist privately.
+
 - **Public dated findings now have a durable evidence policy.** Findings remain inspectable after
   their recommendations are superseded, while prospective raw artifacts are sanitized, bounded,
   indexed, correction-preserving, and externalized with stable URLs and hashes when too large for
@@ -923,9 +928,11 @@ the six post-launch hardening issues (#42, #45, #46, #47, #52, #53).
   transport failover) and *opt-in keyed* (router-internal escalation → 200). Documented
   in `docs/QUALITY-GATED-ROUTER.md` and `docs/PLAN-advise-and-defer.md`.
 - **Docs and visual assets refreshed** to reflect advise-and-defer terminology (local-only
-  default, opt-in metered cloud, keyless handoff, $0-metered framing). Internal
-  design/planning/findings documents relocated to the private companion repo
-  `fakoli/anvil-serving-notes`; public docs retain the product-facing surface.
+  default, opt-in metered cloud, keyless handoff, $0-metered framing). Selected internal planning,
+  findings, and PRD records were copied to the private companion repo
+  `fakoli/anvil-serving-notes`; the three later-removed planning/review documents remained
+  recoverable in public Git history but were not present in the notes-repository audit recorded by
+  the 2026-07-22 public-evidence publication finding.
 - **Internal maintainability (#46).** `RelayBackend` decoupled into the backends package;
   dialect/privacy magic strings replaced with named constants; a dialect parity test pins both
   dialects' surface. Behavior-preserving — no wire change.
@@ -1040,7 +1047,7 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
   is a representative fixture, not a live capture.
 - **Most promotion verdicts are seed/expected.** Per-work-class promotion decisions in the
   shipped profile are hand-seeded and pending real-traffic calibration; only `planning` rests on
-  hard eval data (in the companion notes repo `fakoli/anvil-serving-notes`).
+  [published hard eval data](https://github.com/fakoli/anvil-serving/blob/main/docs/findings/2026-06-28-planning-capability-eval.md).
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
