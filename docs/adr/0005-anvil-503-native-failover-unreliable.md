@@ -4,8 +4,7 @@
 - **Date:** 2026-07-01
 - **Relates to:** [ADR-0001](0001-cloud-cost-and-subscription-auth.md) (keyless handoff mechanism this
   finding falsifies part of), `docs/OPENCLAW-INTEGRATION-SPEC.md` §7,
-  `docs/findings/2026-07-04-openclaw-keyless-failover.md` (the dated evidence snapshot; the
-  original live-validation runbook now lives in the private `fakoli/anvil-serving-notes` repo),
+  `docs/findings/2026-07-04-openclaw-keyless-failover.md` (the public dated evidence snapshot),
   `plugins/openclaw-anvil-intent-router/`
 
 ## Context
@@ -78,8 +77,8 @@ provider resolution, not anvil-serving's or the plugin's. Ship the following ins
    a bound cloud tier **inside the same `provider="anvil"` HTTP response** — anvil never returns 503
    for those classes, so OpenClaw's native failover (reliable or not) is never invoked. This requires
    the explicit billing opt-in ADR-0001 already gates; it is not a silent behavior change.
-4. **Record this as a live-validation gap (Gap 4)** — reproduction steps preserved in
-   `docs/findings/2026-07-04-openclaw-keyless-failover.md` and the private notes repo —
+4. **Record this as a live-validation gap (Gap 4)** — reproduction steps are preserved publicly in
+   `docs/findings/2026-07-04-openclaw-keyless-failover.md` —
    so a future OpenClaw release can be re-tested and this ADR revisited (if
    OpenClaw's attempt loop changes, mitigation B remains valid regardless — it never depends on
    OpenClaw's failover behavior at all).

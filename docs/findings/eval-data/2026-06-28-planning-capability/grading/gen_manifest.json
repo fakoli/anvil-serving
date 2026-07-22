@@ -1,0 +1,46 @@
+[
+  {
+    "prd": "prdA-backlog",
+    "model": "heavy",
+    "model_id": "qwen3-coder-local",
+    "ok": true,
+    "elapsed_s": 8.3,
+    "completion_tokens": 1649,
+    "tok_per_s": 198.1,
+    "chars": 7510,
+    "file": "out_prdA-backlog__heavy.md"
+  },
+  {
+    "prd": "prdA-backlog",
+    "model": "fast",
+    "model_id": "gpt-oss-20b",
+    "ok": true,
+    "elapsed_s": 20.7,
+    "completion_tokens": 5333,
+    "tok_per_s": 257.3,
+    "chars": 11398,
+    "file": "out_prdA-backlog__fast.md"
+  },
+  {
+    "prd": "prdB-multiprd",
+    "model": "heavy",
+    "model_id": "qwen3-coder-local",
+    "ok": true,
+    "elapsed_s": 18.0,
+    "completion_tokens": 3407,
+    "tok_per_s": 188.9,
+    "chars": 12977,
+    "file": "out_prdB-multiprd__heavy.md"
+  },
+  {
+    "prd": "prdB-multiprd",
+    "model": "fast",
+    "model_id": "gpt-oss-20b",
+    "ok": true,
+    "elapsed_s": 15.2,
+    "completion_tokens": 3881,
+    "tok_per_s": 255.6,
+    "chars": 9543,
+    "file": "out_prdB-multiprd__fast.md"
+  }
+]
