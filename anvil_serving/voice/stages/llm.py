@@ -442,6 +442,32 @@ def _split_speakable_text(text: str, max_chars: int) -> List[str]:
     return chunks
 
 
+@dataclass(frozen=True)
+class _SpeakableChunk:
+    text: str
+    joiner: str = ""
+
+
+def _split_speakable_chunks(
+    text: str, max_chars: int, *, initial_joiner: str = ""
+) -> List[_SpeakableChunk]:
+    """Split text while preserving whether each removed boundary was space."""
+    remaining = _normalize_speakable(text)
+    chunks: List[_SpeakableChunk] = []
+    joiner = initial_joiner
+    while len(remaining) > max_chars:
+        cut = _speakable_split_cut(remaining, max_chars)
+        chunk = remaining[:cut].strip()
+        boundary_is_space = cut < len(remaining) and remaining[cut].isspace()
+        if chunk:
+            chunks.append(_SpeakableChunk(chunk, joiner))
+        joiner = " " if boundary_is_space else ""
+        remaining = remaining[cut:].strip()
+    if remaining:
+        chunks.append(_SpeakableChunk(remaining, joiner))
+    return chunks
+
+
 class SentenceBatcher:
     """Accumulates streamed text deltas and yields complete, TTS-cleaned
     sentence chunks as soon as sentence-ending punctuation arrives.
@@ -457,36 +483,51 @@ class SentenceBatcher:
         self.max_chars = max_chars
         self._buf = ""
         self._pending_separator = False
+        self._next_chunk_joiner = ""
 
     def feed(self, delta: str) -> List[str]:
         """Feed one text delta; return zero or more completed sentences."""
+        return [chunk.text for chunk in self.feed_chunks(delta)]
+
+    def feed_chunks(self, delta: str) -> List[_SpeakableChunk]:
+        """Feed a delta and retain the lexical boundary before each chunk."""
         if delta and self._pending_separator and not delta[:1].isspace():
             self._buf += " "
         if delta:
             self._pending_separator = False
         self._buf += delta
-        out: List[str] = []
+        out: List[_SpeakableChunk] = []
         parts = _SENTENCE_END_RE.split(self._buf)
         if len(parts) > 1:
             *complete, remainder = parts
             self._buf = remainder
             for part in complete:
-                out.extend(_split_speakable_text(part, self.max_chars))
-        out.extend(self._drain_long_prefix())
+                out.extend(
+                    _split_speakable_chunks(
+                        part, self.max_chars, initial_joiner=self._next_chunk_joiner
+                    )
+                )
+                self._next_chunk_joiner = " "
+        out.extend(self._drain_long_prefix_chunks())
         return out
 
     def _drain_long_prefix(self) -> List[str]:
+        return [chunk.text for chunk in self._drain_long_prefix_chunks()]
+
+    def _drain_long_prefix_chunks(self) -> List[_SpeakableChunk]:
         raw_had_trailing_space = bool(self._buf and self._buf[-1].isspace())
         cleaned = _normalize_speakable(self._buf)
         if len(cleaned) <= self.max_chars:
             return []
 
-        chunks: List[str] = []
+        chunks: List[_SpeakableChunk] = []
         while len(cleaned) > self.max_chars:
             cut = _speakable_split_cut(cleaned, self.max_chars)
             chunk = cleaned[:cut].strip()
+            boundary_is_space = cut < len(cleaned) and cleaned[cut].isspace()
             if chunk:
-                chunks.append(chunk)
+                chunks.append(_SpeakableChunk(chunk, self._next_chunk_joiner))
+            self._next_chunk_joiner = " " if boundary_is_space else ""
             cleaned = cleaned[cut:].strip()
         self._buf = cleaned
         self._pending_separator = raw_had_trailing_space and bool(self._buf)
@@ -494,9 +535,15 @@ class SentenceBatcher:
 
     def flush_chunks(self) -> List[str]:
         """Return all trailing speakable chunks once the stream has ended."""
-        chunks = _split_speakable_text(self._buf, self.max_chars)
+        return [chunk.text for chunk in self.flush_speakable_chunks()]
+
+    def flush_speakable_chunks(self) -> List[_SpeakableChunk]:
+        chunks = _split_speakable_chunks(
+            self._buf, self.max_chars, initial_joiner=self._next_chunk_joiner
+        )
         self._buf = ""
         self._pending_separator = False
+        self._next_chunk_joiner = ""
         return chunks
 
     def flush(self) -> Optional[str]:
@@ -857,12 +904,13 @@ class LLMStage(BaseStage):
                     if not isinstance(event, LLMStreamTextDelta):
                         continue
                     assistant_parts.append(event.text)
-                    for sentence in batcher.feed(event.text):
+                    for sentence in batcher.feed_chunks(event.text):
                         yield LLMChunk(
                             turn_id=item.turn_id,
                             turn_revision=item.turn_revision,
                             generation=item.generation,
-                            text=sentence,
+                            text=sentence.text,
+                            joiner=sentence.joiner,
                         )
                 if not tool_calls:
                     break
@@ -872,12 +920,13 @@ class LLMStage(BaseStage):
                     yield timeout
                     break
                 tool_rounds += 1
-                for pre_tool_text in batcher.flush_chunks():
+                for pre_tool_text in batcher.flush_speakable_chunks():
                     yield LLMChunk(
                         turn_id=item.turn_id,
                         turn_revision=item.turn_revision,
                         generation=item.generation,
-                        text=pre_tool_text,
+                        text=pre_tool_text.text,
+                        joiner=pre_tool_text.joiner,
                     )
                 assistant_content = "".join(assistant_parts).strip() or None
                 turn_messages.append(self._assistant_tool_message(tool_calls, assistant_content))
@@ -929,14 +978,15 @@ class LLMStage(BaseStage):
         if self.cancel_scope.is_stale(item.generation):
             return
 
-        trailing_chunks = batcher.flush_chunks()
+        trailing_chunks = batcher.flush_speakable_chunks()
         for index, trailing in enumerate(trailing_chunks):
             yield LLMChunk(
                 turn_id=item.turn_id,
                 turn_revision=item.turn_revision,
                 generation=item.generation,
-                text=trailing,
+                text=trailing.text,
                 is_final=index == len(trailing_chunks) - 1,
+                joiner=trailing.joiner,
             )
         self._remember_completed_turn(item.text, "".join(assistant_parts))
         yield EndOfResponse(
