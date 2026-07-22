@@ -48,6 +48,13 @@ _WORKFLOW_SOURCE_CLASSES = {"mcp", "controller", "cli", "manual", "fixture"}
 _WORKFLOW_RECOMMENDATIONS = {"promote", "do_not_promote", "needs_more_data", "blocked"}
 _WORKFLOW_VOICE_ARTIFACT_KINDS = {"voice-benchmark", "voice-sidecar-render"}
 _WORKFLOW_VOICE_CONTEXT_RE = re.compile(r"(^|[^a-z0-9])(voice|stt|tts|realtime)([^a-z0-9]|$)", re.I)
+_WORKFLOW_SEMANTIC_IDENTIFIER_RE = re.compile(r"^[a-z0-9][a-z0-9_.:-]*$", re.I)
+_WORKFLOW_DRIVE_RELATIVE_RE = re.compile(r"^[a-z]:", re.I)
+_WORKFLOW_PATH_FIELD_RE = re.compile(r"(^|_)(path|file|filename|dir|directory|root|roots)(_|$)", re.I)
+_WORKFLOW_DOTTED_DOMAIN_SEGMENTS = frozenset({
+    "benchmark", "pipeline", "realtime", "sidecar", "stt", "tts", "voice",
+})
+_WORKFLOW_VERSION_SEGMENT_RE = re.compile(r"^v[0-9]+$", re.I)
 _MAX_ERROR_BODY_BYTES = 4096
 _MAX_ARGUMENT_BYTES = 1024 * 1024
 _MAX_CONTEXT_BYTES = 16 * 1024
@@ -647,16 +654,105 @@ def _workflow_error(errors: list[dict[str, Any]], field: str, message: str, deta
     errors.append({"field": field, "message": message, "details": details or {}})
 
 
-def _workflow_mentions_voice(value: Any) -> bool:
+def _workflow_is_dotted_domain_symbol(value: str) -> bool:
+    parts = value.split(".")
+    if len(parts) < 2 or not all(_WORKFLOW_SEMANTIC_IDENTIFIER_RE.fullmatch(part) for part in parts):
+        return False
+    if not _WORKFLOW_VOICE_CONTEXT_RE.search(parts[0]):
+        return False
+    return all(
+        part.casefold() in _WORKFLOW_DOTTED_DOMAIN_SEGMENTS
+        or _WORKFLOW_VERSION_SEGMENT_RE.fullmatch(part)
+        for part in parts[1:]
+    )
+
+
+def _workflow_symbol_mentions_voice(value: Any) -> bool:
     if isinstance(value, str):
-        return bool(_WORKFLOW_VOICE_CONTEXT_RE.search(value))
+        symbol = value.strip("'\"()[]{}<>,;!?").rstrip(".")
+        if not symbol or _WORKFLOW_DRIVE_RELATIVE_RE.match(symbol) or "\\" in symbol:
+            return False
+        if "." in symbol and not _workflow_is_dotted_domain_symbol(symbol):
+            return False
+        if "/" in symbol:
+            parts = symbol.split("/")
+            # Mixed slash strings are paths. Only an all-domain chain is a
+            # semantic label, for example ``voice/stt/realtime``.
+            if len(parts) < 2 or not all(_WORKFLOW_VOICE_CONTEXT_RE.fullmatch(part) for part in parts):
+                return False
+        elif not _WORKFLOW_SEMANTIC_IDENTIFIER_RE.fullmatch(symbol):
+            return False
+        return bool(_WORKFLOW_VOICE_CONTEXT_RE.search(symbol))
     if isinstance(value, list):
-        return any(_workflow_mentions_voice(item) for item in value)
+        return any(_workflow_symbol_mentions_voice(item) for item in value)
     if isinstance(value, dict):
         for key, item in value.items():
-            if _workflow_mentions_voice(key) or _workflow_mentions_voice(item):
+            if _workflow_symbol_mentions_voice(key) or _workflow_symbol_mentions_voice(item):
                 return True
     return False
+
+
+def _workflow_request_mentions_voice(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    for raw_token in value.split():
+        if _workflow_symbol_mentions_voice(raw_token):
+            return True
+    return False
+
+
+def _workflow_is_path_field(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    normalized = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", value).replace("-", "_")
+    return bool(_WORKFLOW_PATH_FIELD_RE.search(normalized))
+
+
+def _workflow_targets_mention_voice(value: Any) -> bool:
+    if isinstance(value, list):
+        return any(_workflow_targets_mention_voice(item) for item in value)
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if _workflow_is_path_field(key):
+                continue
+            if _workflow_symbol_mentions_voice(key):
+                return True
+            if _workflow_targets_mention_voice(item):
+                return True
+        return False
+    return _workflow_symbol_mentions_voice(value)
+
+
+def _workflow_artifacts_declare_voice(artifacts: list[Any]) -> bool:
+    for artifact in artifacts:
+        if not isinstance(artifact, dict):
+            continue
+        for field in ("kind", "evidence_scope"):
+            value = artifact.get(field)
+            if isinstance(value, str) and _WORKFLOW_VOICE_CONTEXT_RE.search(value):
+                return True
+    return False
+
+
+def _workflow_voice_context(packet: dict[str, Any], artifacts: list[Any]) -> bool:
+    """Infer voice intent from semantic workflow declarations only.
+
+    Tool results and filesystem-bearing values are deliberately excluded: fields
+    such as ``data.allowed_roots`` and artifact paths describe execution context,
+    not the workflow's evidence domain.
+    """
+    tools_used = packet.get("tools_used")
+    tool_names = [
+        tool.get("name")
+        for tool in tools_used
+        if isinstance(tool, dict)
+    ] if isinstance(tools_used, list) else []
+    return (
+        _workflow_request_mentions_voice(packet.get("request"))
+        or _workflow_targets_mention_voice(packet.get("targets"))
+        or _workflow_symbol_mentions_voice(tool_names)
+        or _workflow_artifacts_declare_voice(artifacts)
+    )
 
 
 def _normalize_workflow_artifacts(packet: dict[str, Any], errors: list[dict[str, Any]]) -> list[Any]:
@@ -664,12 +760,7 @@ def _normalize_workflow_artifacts(packet: dict[str, Any], errors: list[dict[str,
     if not isinstance(artifacts, list):
         _workflow_error(errors, "artifacts", "artifacts must be an array")
         return []
-    voice_context = _workflow_mentions_voice({
-        "request": packet.get("request"),
-        "targets": packet.get("targets"),
-        "tools_used": packet.get("tools_used"),
-        "artifacts": artifacts,
-    })
+    voice_context = _workflow_voice_context(packet, artifacts)
     normalized = []
     for index, artifact in enumerate(artifacts):
         field = "artifacts[%d]" % index
@@ -698,7 +789,13 @@ def _normalize_workflow_artifacts(packet: dict[str, Any], errors: list[dict[str,
             _workflow_error(errors, field + ".path", exc.message, {"code": exc.code, **exc.details})
             continue
         if isinstance(item, dict):
-            is_voice_artifact = item.get("kind") in _WORKFLOW_VOICE_ARTIFACT_KINDS
+            kind = item.get("kind")
+            if kind is not None and not isinstance(kind, str):
+                _workflow_error(errors, field + ".kind", "artifact kind must be a string")
+            evidence_scope = item.get("evidence_scope")
+            if evidence_scope is not None and not isinstance(evidence_scope, str):
+                _workflow_error(errors, field + ".evidence_scope", "artifact evidence_scope must be a string")
+            is_voice_artifact = isinstance(kind, str) and kind in _WORKFLOW_VOICE_ARTIFACT_KINDS
             if voice_context and not is_voice_artifact:
                 _workflow_error(
                     errors,
