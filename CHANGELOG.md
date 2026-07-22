@@ -8,6 +8,12 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Opt-in transparent response models.** `[router].transparent_response_model = true`
+  makes Chat Completions, Anthropic Messages, and Responses output the tier id that
+  actually served in their wire `model` field, including verified fallback and streaming
+  paths. The default remains the caller's routing token for harness compatibility. See
+  ADR-0026.
+
 - **Realtime assistant transcript streaming.** Sessions that explicitly request both
   `audio` and `text` now receive TTS-authoritative
   `response.output_audio_transcript.delta` events followed by

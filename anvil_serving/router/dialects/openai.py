@@ -95,6 +95,7 @@ class OpenAIDialect:
         deltas: Iterable[str],
         *,
         get_structured: Optional[Callable[[], Any]] = None,
+        response_model: Optional[str] = None,
     ) -> Iterator[bytes]:
         """Stream the response as OpenAI Chat Completions SSE chunks.
 
@@ -111,7 +112,7 @@ class OpenAIDialect:
         """
         cid = _new_id("chatcmpl-")
         created = int(time.time())
-        model = request.model
+        model = response_model or request.model
         # 1) opening chunk announces the assistant role.
         yield _sse(_chunk(cid, created, model, {"role": "assistant"}, None))
         # 2) one chunk per text delta.
@@ -161,6 +162,7 @@ class OpenAIDialect:
         text: str,
         *,
         structured: Any = None,
+        response_model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Build a non-streaming Chat Completions response.
 
@@ -205,7 +207,7 @@ class OpenAIDialect:
             "id": _new_id("chatcmpl-"),
             "object": "chat.completion",
             "created": int(time.time()),
-            "model": request.model,
+            "model": response_model or request.model,
             "choices": [
                 {
                     "index": 0,
