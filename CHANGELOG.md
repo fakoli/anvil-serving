@@ -54,6 +54,12 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **Public dated findings now have a durable evidence policy.** Findings remain inspectable after
+  their recommendations are superseded, while prospective raw artifacts are sanitized, bounded,
+  indexed, correction-preserving, and externalized with stable URLs and hashes when too large for
+  reviewable Git storage. Private notes may supplement but never solely ground a public claim. See
+  ADR-0027.
+
 - **OpenClaw integration documentation is now a current-state contract.** The canonical spec leads
   with the shipped hook, generated setup path, model-id and maximum-reachable-tier context-window
   rules, ownership boundaries, and upgrade proof. Historical research and incidents are condensed

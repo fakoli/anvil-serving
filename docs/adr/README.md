@@ -46,3 +46,4 @@ people and the chat logs.
 | [0024](0024-normalized-audio-gateway.md) | Normalized authenticated one-shot audio gateway | Accepted |
 | [0025](0025-tts-authoritative-realtime-assistant-transcripts.md) | TTS-authoritative Realtime assistant transcripts | Accepted |
 | [0026](0026-opt-in-transparent-response-model.md) | Opt-in transparent response model reports the served tier | Accepted |
+| [0027](0027-public-findings-are-durable-evidence.md) | Public findings are durable evidence | Accepted |
