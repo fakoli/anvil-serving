@@ -47,6 +47,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Iterable, Optional
 
 from .backends import EchoBackend
+from .audio import (
+    AudioGateway,
+    AudioGatewayError,
+    SPEECH_PATH,
+    TRANSCRIPTIONS_PATH,
+    audio_purpose_for_path,
+)
 from .config import PURPOSE_EMBEDDING, PURPOSE_RERANK
 from .decision_log import safe_correlation, summarize_decisions
 from .dialects import Dialect
@@ -87,6 +94,9 @@ _PURPOSE_PATHS = {
     EMBEDDINGS_PATH: PURPOSE_EMBEDDING,
     RERANK_PATH: PURPOSE_RERANK,
 }
+# Request/response voice gateway paths. They are active only when an
+# AudioGateway is injected from configured ``[[router.audio_routes]]``.
+_AUDIO_PATHS = (TRANSCRIPTIONS_PATH, SPEECH_PATH)
 
 # --------------------------------------------------------------------------- #
 # Resource caps (DoS protection)
@@ -164,7 +174,8 @@ def _correlation_from_headers(headers) -> dict:
 def _make_handler(backend: Backend, timeout: Optional[float],
                   presets: Iterable[Preset], exhaustion_status: int = 503,
                   auth_token: Optional[str] = None,
-                  purpose: Optional[PurposeRouter] = None):
+                  purpose: Optional[PurposeRouter] = None,
+                  audio: Optional[AudioGateway] = None):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -277,6 +288,28 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             else:
                 self.close_connection = True
             self._error(status, etype, message, dialect=dialect)
+
+        def _flush_closing_response(self) -> None:
+            """Let a close-after-response error reach the peer before TCP RST.
+
+            A bounded, non-blocking receive after flushing is deliberately not
+            a body drain: the declared body may be arbitrarily large.  It just
+            absorbs bytes already queued by the peer so Windows does not
+            truncate the error response when ``close_connection`` tears down an
+            unread request body.
+            """
+            try:
+                self.wfile.flush()
+                prior_timeout = self.connection.gettimeout()
+                try:
+                    self.connection.settimeout(0.0)
+                    self.connection.recv(_CLOSE_DRAIN_CAP)
+                except OSError:
+                    pass
+                finally:
+                    self.connection.settimeout(prior_timeout)
+            except Exception:
+                pass
 
         def _write_sse(self, dialect: Dialect, request) -> None:
             """Stream the backend's deltas as native SSE, flushed per event.
@@ -501,6 +534,34 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             self._json(200, payload)
 
+        # --- normalized one-shot audio gateway ----------------------------
+        def _handle_audio(self, kind: str, body: dict) -> None:
+            """Handle an authenticated JSON ``/v1/audio/*`` request.
+
+            The dedicated audio seam keeps raw Dark STT/TTS protocol quirks
+            out of callers and out of the generic chat/purpose pipelines.
+            AudioGateway errors are sanitized: no raw audio, transcript,
+            synthesis text, or upstream host reaches callers or router logs.
+            """
+            correlation = _correlation_from_headers(self.headers)
+            try:
+                if kind == "stt":
+                    payload = audio.dispatch_transcription(body, correlation=correlation)
+                else:
+                    payload = audio.dispatch_speech(body, correlation=correlation)
+            except AudioGatewayError as e:
+                self._error(e.status, e.etype, e.message, dialect=_OPENAI_DIALECT)
+                return
+            except Exception as e:  # noqa: BLE001 - never expose content/upstream details
+                print(
+                    f"[anvil] 500 audio gateway {kind} error: {type(e).__name__}",
+                    file=sys.stderr,
+                )
+                self._error(500, "internal_error", "internal audio gateway error",
+                            dialect=_OPENAI_DIALECT)
+                return
+            self._json(200, payload)
+
         def _transition_status(self, tier_id: Optional[str]) -> None:
             status_fn = getattr(backend, "transition_status", None)
             if not callable(status_fn):
@@ -654,6 +715,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                             list(_ROUTES)
                             + [ROUTE_ENDPOINT, DECISION_SUMMARY_ENDPOINT]
                             + (list(_PURPOSE_PATHS) if purpose is not None else [])
+                            + (list(audio.paths) if audio is not None else [])
                         ),
                     })
                 elif route == "/v1/models":
@@ -685,7 +747,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._json(200, summary)
                 elif route in _ROUTES or route == ROUTE_ENDPOINT or (
                     purpose is not None and route in _PURPOSE_PATHS
-                ):
+                ) or (audio is not None and route in audio.paths):
                     # Known POST-only route requested with GET → 405 Method Not
                     # Allowed with Allow: POST (RFC 7231 §6.5.5).  Use the
                     # dialect's native error envelope when one is bound to the
@@ -693,6 +755,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     # dialect-backed) uses the generic shape.
                     _dial405: Optional[Dialect] = _ROUTES.get(route)
                     if _dial405 is None and route in _PURPOSE_PATHS:
+                        _dial405 = _OPENAI_DIALECT
+                    if _dial405 is None and audio is not None and route in audio.paths:
                         _dial405 = _OPENAI_DIALECT
                     _msg405 = "this route only accepts POST requests"
                     self._json(
@@ -835,9 +899,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             purpose_kind: Optional[str] = (
                 _PURPOSE_PATHS.get(path) if purpose is not None else None
             )
+            audio_kind: Optional[str] = audio_purpose_for_path(path)
+            if audio_kind is not None and (audio is None or not audio.has_purpose(audio_kind)):
+                audio_kind = None
 
             dialect: Optional[Dialect] = _ROUTES.get(path)
             if dialect is None and purpose_kind is not None:
+                dialect = _OPENAI_DIALECT
+            if dialect is None and audio_kind is not None:
                 dialect = _OPENAI_DIALECT
             if (
                 dialect is None
@@ -848,6 +917,60 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # keep-alive socket in sync, then 404.
                 self._fail_framing(404, "not_found", f"no route {path}",
                                    drainable, n)
+                return
+
+            # Audio requests carry a base64 blob, so cap the *encoded* body
+            # before rfile.read() or json.loads() materializes it.  The small
+            # audio-only pool protects the upstream hop, but is intentionally
+            # acquired only after a complete JSON request is parsed: a client
+            # that drips an otherwise legal body must not pin scarce TTS/STT
+            # capacity while it is still being read.
+            if audio_kind is not None:
+                if has_te:
+                    self._fail_framing(
+                        411, "invalid_request",
+                        "chunked request bodies are unsupported; send Content-Length",
+                        drainable=False, n=0, dialect=dialect,
+                    )
+                    return
+                if dup_cl:
+                    self._fail_framing(
+                        400, "invalid_request", "duplicate Content-Length headers",
+                        drainable=False, n=0, dialect=dialect,
+                    )
+                    return
+                if cl_invalid:
+                    self._fail_framing(
+                        400, "invalid_request", f"invalid Content-Length: {cl_all[0]!r}",
+                        drainable=False, n=0, dialect=dialect,
+                    )
+                    return
+                if n > min(MAX_BODY_BYTES, audio.max_request_body_bytes):
+                    self._fail_framing(
+                        413, "payload_too_large", "audio request body too large",
+                        drainable=False, n=0, dialect=dialect,
+                    )
+                    self._flush_closing_response()
+                    return
+                raw = self.rfile.read(n) if n else b""
+                try:
+                    body = json.loads(raw or b"{}")
+                except Exception as e:
+                    self._error(400, "invalid_request", f"bad JSON body: {e}",
+                                dialect=dialect)
+                    return
+                if not isinstance(body, dict):
+                    self._error(400, "invalid_request", "body must be a JSON object",
+                                dialect=dialect)
+                    return
+                if not audio.acquire():
+                    self._error(503, "server_busy", "audio gateway busy; try again later",
+                                dialect=dialect)
+                    return
+                try:
+                    self._handle_audio(audio_kind, body)
+                finally:
+                    audio.release()
                 return
 
             # --- Reject any Transfer-Encoding header (411) -------------------
@@ -884,24 +1007,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     "request body too large",
                     drainable=False, n=0, dialect=dialect,
                 )
-                # Bounded drain: flush the 413 response, then take whatever body
-                # bytes are already in the OS receive buffer (non-blocking — no
-                # waiting for more data) so TCP can push the 413 to the client
-                # before the RST from close_connection.  We cannot safely drain
-                # the full body (it may be gigabytes); this read is capped and
-                # non-blocking so it never blocks the thread.
-                try:
-                    self.wfile.flush()
-                    _t = self.connection.gettimeout()
-                    try:
-                        self.connection.settimeout(0.0)
-                        self.connection.recv(_CLOSE_DRAIN_CAP)
-                    except OSError:
-                        pass
-                    finally:
-                        self.connection.settimeout(_t)
-                except Exception:
-                    pass
+                self._flush_closing_response()
                 return
 
             raw = self.rfile.read(n) if n else b""  # body drained from here on
@@ -993,7 +1099,8 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
                 presets: Optional[Iterable[Preset]] = None,
                 exhaustion_status: int = 503,
                 auth_token: Optional[str] = None,
-                purpose: Optional[PurposeRouter] = None) -> ThreadingHTTPServer:
+                purpose: Optional[PurposeRouter] = None,
+                audio: Optional[AudioGateway] = None) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
     Pass ``port=0`` to bind an ephemeral port (read it back from
@@ -1014,9 +1121,16 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     :class:`~anvil_serving.router.purpose.PurposeRouter` (gpu-reservations:T010):
     when set, ``POST /v1/embeddings`` and ``POST /v1/rerank`` are routed by
     model name through it (under the same token auth); when ``None`` (the
-    default) both paths stay 404 exactly as before. Call
+    default) both paths stay 404 exactly as before. ``audio`` is an optional
+    :class:`~anvil_serving.router.audio.AudioGateway`; when set it requires a
+    resolved ``auth_token`` and exposes the same-token-authenticated JSON
+    ``POST /v1/audio/transcriptions`` and
+    ``POST /v1/audio/speech`` routes. When ``None`` (the default), both audio
+    routes stay 404. Call
     ``server.serve_forever()`` (typically on a background thread) to run.
     """
+    if audio is not None and auth_token is None:
+        raise ValueError("an AudioGateway requires a resolved front-door auth token")
     if backend is None:
         backend = EchoBackend()
     if presets is None:
@@ -1024,7 +1138,7 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     httpd = ThreadingHTTPServer(
         (host, port),
         _make_handler(backend, timeout, presets, exhaustion_status, auth_token,
-                      purpose),
+                      purpose, audio),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd

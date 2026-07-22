@@ -138,6 +138,28 @@ def test_no_localhost_in_local_endpoints():
             assert "127.0.0.1" in t.base_url
 
 
+def test_fakoli_dark_router_recipes_preserve_normalized_audio_routes():
+    """Chat-mode changes and the Heavy rollback must not drop voice ingress."""
+    for path in (
+        FAKOLI_LIVE,
+        FAKOLI_AGENTIC,
+        FAKOLI_FLEXIBILITY,
+        FAKOLI_GEMMA4_ROLLBACK,
+    ):
+        cfg = load(str(path))
+        routes = {route.id: route for route in cfg.audio_routes}
+        assert set(routes) == {"dark-stt", "dark-tts"}, path.name
+        assert routes["dark-stt"].purpose == "stt"
+        assert routes["dark-stt"].base_url == "http://host.docker.internal:30010/v1"
+        assert routes["dark-stt"].timeout == 25.0
+        assert routes["dark-tts"].purpose == "tts"
+        assert routes["dark-tts"].base_url == "http://host.docker.internal:30011/v1"
+        assert routes["dark-tts"].source_sample_rate == 24_000
+        assert routes["dark-tts"].timeout == 25.0
+        assert cfg.audio_max_input_bytes == 8 * 1024 * 1024
+        assert cfg.audio_max_concurrency == 2
+
+
 # ── AC2: auth refs are env-var NAMES, never secrets ───────────────────────────
 def test_auth_refs_are_env_names_not_secrets(monkeypatch):
     # Every referenced env var UNSET -> load must still succeed (no secret read).
@@ -623,6 +645,13 @@ def test_relay_timeout_zero_raises(tmp_path):
 def test_relay_timeout_negative_raises(tmp_path):
     body = "relay_timeout = -1\n" + _BASE_TIER
     with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+@pytest.mark.parametrize("value", ("nan", "inf", "-inf"))
+def test_relay_timeout_rejects_non_finite_values(tmp_path, value):
+    body = f"relay_timeout = {value}\n" + _BASE_TIER
+    with pytest.raises(ConfigError, match="relay_timeout"):
         load(_write_toml(tmp_path, body))
 
 
