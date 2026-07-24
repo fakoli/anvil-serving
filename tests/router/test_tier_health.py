@@ -15,8 +15,6 @@ import threading
 from contextlib import contextmanager
 from typing import Optional
 
-import pytest
-
 from anvil_serving.router.availability import (
     AlwaysAvailable,
     AvailabilityResult,
