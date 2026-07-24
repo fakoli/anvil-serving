@@ -106,6 +106,7 @@ def build_realtime_server_from_manifest(
     pool_size: Optional[int] = None,
     session_id_prefix: str = "voice-run",
     sender_thread_name_prefix: str = "voice-run-sender",
+    allow_non_loopback: bool = False,
 ) -> Tuple[Any, SessionPool]:
     """Build a configured Realtime WebSocket server and backing session pool.
 
@@ -116,6 +117,11 @@ def build_realtime_server_from_manifest(
 
     Returns ``(server, pool)``. The server socket is bound, but the caller
     still owns ``serve_forever`` startup and shutdown.
+
+    ``allow_non_loopback`` forwards to ``make_ws_server`` to opt out of the F2
+    non-loopback bind guard -- used only by the Docker-managed proxy container
+    (``voice proxy run --host 0.0.0.0``), which binds wide in-container but is
+    published only to ``127.0.0.1`` on the host.
     """
     voice_table: Dict[str, Any] = dict(voice or data.get("voice", {}))
     size = int(pool_size if pool_size is not None else voice_table.get("pool_size", DEFAULT_POOL_SIZE))
@@ -204,5 +210,6 @@ def build_realtime_server_from_manifest(
         on_connect,
         extra_routes={"/pool": pool.pool_status, "/usage": pool.usage_stats},
         token_env=voice_table.get("realtime_token_env"),
+        allow_non_loopback=allow_non_loopback,
     )
     return server, pool

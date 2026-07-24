@@ -696,6 +696,7 @@ def make_ws_server(
     extra_routes: Optional[Dict[str, IntrospectionRoute]] = None,
     token_env: Optional[str] = None,
     idle_timeout: Optional[float] = DEFAULT_IDLE_TIMEOUT_SECONDS,
+    allow_non_loopback: bool = False,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the Realtime WebSocket server.
 
@@ -727,6 +728,15 @@ def make_ws_server(
     handler thread can sit blocked in ``recv()`` with nothing arriving before
     the connection is closed and the thread exits; ``None``/``0`` disables it.
     Defaults to ``DEFAULT_IDLE_TIMEOUT_SECONDS``.
+
+    ``allow_non_loopback`` opts OUT of the F2 non-loopback bind guard for a
+    trusted deployment topology that already isolates the socket -- the
+    Docker-managed proxy container binds ``0.0.0.0`` INSIDE the container but is
+    published only to ``127.0.0.1`` on the host (see the voice-proxy compose
+    example), so the wide bind is not actually network-reachable. It is a
+    deliberate, caller-supplied override (``anvil-serving voice proxy run
+    --host 0.0.0.0`` on the managed direct-endpoint path); the default stays
+    fail-closed for every other caller.
     """
     if on_connect is None:
         def on_connect(conn: WebSocketConnection, path: str) -> None:  # pragma: no cover - trivial default
@@ -740,7 +750,7 @@ def make_ws_server(
                 "token_env names %r, which is not set (or empty) in the environment" % token_env
             )
 
-    if not _is_loopback_host(host) and auth_token is None:
+    if not _is_loopback_host(host) and auth_token is None and not allow_non_loopback:
         raise ValueError(
             "refusing to bind non-loopback host %r for the Realtime WS server "
             "without a bearer token configured -- pass token_env=<ENV_VAR_NAME> "
