@@ -55,3 +55,30 @@ api_key_env = "ANVIL_VOICE_STT_TOKEN"   # optional; omit if the serve is unauthe
 base_url = "http://127.0.0.1:8091/v1"
 model = "kokoro-82m"
 api_key_env = "ANVIL_VOICE_TTS_TOKEN"   # optional; omit if the serve is unauthenticated
+
+# OPTIONAL: how the Realtime voice PROXY itself is run. Absent by default -- the
+# proxy keeps its historical NATIVE-process behavior (PID/log under
+# ~/.anvil-serving/run, resolved via a topology document). Declare this table to
+# run it instead as a Docker-MANAGED CONTAINER (reusing the anvil-serving image
+# running `anvil-serving voice proxy run`), configured with DIRECT downstream
+# endpoints so it is harness-INDEPENDENT (no per-harness topology resolution).
+#
+#   [voice.proxy]
+#   lifecycle    = "managed"          # managed (container) | native (default) | external
+#   serve_name   = "realtime-proxy"   # the [[serve]] entry fronting the container
+#   manifest_path = "../fakoli-dark/serves.voice.toml"  # serves manifest declaring it
+#   listen_host  = "127.0.0.1"        # host-side probe address (published loopback mapping)
+#   listen_port  = 8765
+#   # ready_url  = "http://127.0.0.1:8765/usage"   # explicit readiness probe (defaults to {listen}/usage)
+#   # DIRECT downstream endpoints -- when all three are set, `voice proxy run`
+#   # wires them verbatim and SKIPS topology/forwarder resolution entirely.
+#   # These legitimately point at cross-host tailnet/LAN addresses.
+#   stt_url      = "http://100.87.34.66:30110/v1"
+#   tts_url      = "http://100.87.34.66:30111/v1"
+#   router_url   = "http://100.87.34.66:8000/v1"
+#
+# Bring the managed proxy up with `anvil-serving voice proxy up`; bring the
+# STT/TTS audio serves up first with `anvil-serving voice audio up` (the proxy
+# preflights STT/TTS/router on run, so it comes last). The in-container bind is
+# 0.0.0.0 via `--host 0.0.0.0` on the launch command; it is published only to
+# 127.0.0.1 on the host (see examples/fakoli-dark/docker-compose.voice-proxy.yml).
