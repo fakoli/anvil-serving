@@ -75,7 +75,12 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install ruff
-        run: python -m pip install ruff
+        # Pin ruff: an unpinned install grabbed 0.16.0, which promoted new rules
+        # (UP031 etc.) into the default set the repo relies on (pyproject sets no
+        # `select`), red-lining ~3600 pre-existing violations repo-wide on every
+        # PR. Pin to the last version whose default matches the codebase; adopt
+        # newer rules deliberately (with an explicit `select`) in a separate change.
+        run: python -m pip install ruff==0.15.20
       - name: Ruff check
         run: ruff check .
 
