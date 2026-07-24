@@ -280,7 +280,8 @@ _EXPECTED_HOME_FILES = {
     "example-flexibility.toml", "example-with-cloud.toml", "modes.toml",
     "host.toml", "serve-recipes.toml",
     "serves.toml", "serves.voice.toml", "serves.comfyui.toml",
-    "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.comfyui.yml",
+    "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.voice-proxy.yml",
+    "docker-compose.comfyui.yml",
     "operator-topology.toml", ".env.example", "voice.toml", "edge.toml",
 }
 
@@ -300,9 +301,10 @@ def test_scaffold_home_group_tags_resolve(tmp_path):
     groups = {row["group"] for row in summary["groups"]}
     # The full operational group vocabulary must resolve from the scaffold alone.
     assert {"voice", "fast-only", "heavy-only", "embedding", "llm-stack", "comfy"} <= groups
-    # `serves up --group voice` must resolve the STT/TTS serves with zero editing.
+    # `serves up --group voice` must resolve the whole voice stack with zero
+    # editing: the STT/TTS audio serves plus the managed realtime proxy.
     voice_members = serves.resolve_group(serves_set, "voice")
-    assert {s["name"] for s in voice_members} == {"stt", "tts"}
+    assert {s["name"] for s in voice_members} == {"stt", "tts", "realtime-proxy"}
 
 
 def test_scaffold_home_router_configs_modes_and_recipes_parse(tmp_path):
