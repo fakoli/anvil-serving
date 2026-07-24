@@ -807,6 +807,103 @@ def test_accepts_loopback_realtime_host_without_token_env():
     voice_config.validate_manifest(data)  # trusted-local default: should not raise
 
 
+# --------------------------------------------------------------------------- #
+# [voice.proxy] -- optional managed-container / direct-endpoint proxy config
+# --------------------------------------------------------------------------- #
+def test_manifest_without_proxy_table_is_valid():
+    data = _valid_manifest()
+    assert "proxy" not in data["voice"]
+    voice_config.validate_manifest(data)  # backward-compatible: still valid
+
+
+@pytest.mark.parametrize("lifecycle", ["managed", "native", "external"])
+def test_accepts_valid_proxy_lifecycles(lifecycle):
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {"lifecycle": lifecycle}
+    voice_config.validate_manifest(data)  # should not raise
+
+
+def test_rejects_invalid_proxy_lifecycle():
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {"lifecycle": "sidecar"}
+    with pytest.raises(voice_config.ConfigError, match="voice.proxy.lifecycle"):
+        voice_config.validate_manifest(data)
+
+
+def test_accepts_managed_proxy_with_serve_name_and_manifest_path():
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {
+        "lifecycle": "managed",
+        "serve_name": "realtime-proxy",
+        "manifest_path": "examples/fakoli-dark/serves.voice.toml",
+        "listen_host": "127.0.0.1",
+        "listen_port": 8765,
+    }
+    voice_config.validate_manifest(data)
+
+
+def test_accepts_managed_proxy_with_direct_endpoints_including_tailnet_hosts():
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {
+        "lifecycle": "managed",
+        "stt_url": "http://100.87.34.66:30110/v1",
+        "tts_url": "http://100.87.34.66:30111/v1",
+        "router_url": "http://100.87.34.66:8000/v1",
+    }
+    voice_config.validate_manifest(data)  # non-loopback direct endpoints are allowed
+
+
+def test_rejects_localhost_in_proxy_direct_endpoint():
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {
+        "lifecycle": "managed",
+        "stt_url": "http://localhost:30110/v1",
+    }
+    with pytest.raises(voice_config.ConfigError, match="localhost"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_non_loopback_proxy_listen_host():
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {"listen_host": "0.0.0.0"}
+    with pytest.raises(voice_config.ConfigError, match="127.0.0.1"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_non_integer_proxy_listen_port():
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {"listen_port": "8765"}
+    with pytest.raises(voice_config.ConfigError, match="integer"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_proxy_ready_url_with_credentials():
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {"ready_url": "http://user:pass@127.0.0.1:8765/usage"}
+    with pytest.raises(voice_config.ConfigError, match="credentials"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_nonpositive_proxy_ready_timeout():
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {"ready_timeout": 0}
+    with pytest.raises(voice_config.ConfigError, match="positive"):
+        voice_config.validate_manifest(data)
+
+
+def test_loopback_proxy_needs_no_realtime_token_env():
+    """A managed loopback proxy is trusted-local -- no realtime_token_env is
+    required (only voice.realtime_host non-loopback triggers that)."""
+    data = _valid_manifest()
+    data["voice"]["proxy"] = {
+        "lifecycle": "managed",
+        "listen_host": "127.0.0.1",
+        "listen_port": 8765,
+    }
+    assert "realtime_token_env" not in data["voice"]
+    voice_config.validate_manifest(data)  # should not raise
+
+
 def test_missing_section_raises():
     data = _valid_manifest()
     del data["voice"]["stt"]

@@ -24,3 +24,18 @@ engine = "audio"
 health = "/health"
 groups = ["voice"]             # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.voice-audio.yml up -d tts"
+
+# Realtime voice proxy as a Docker-MANAGED CONTAINER (reuses the anvil-serving
+# image running `anvil-serving voice proxy run`). Harness-independent: it is
+# configured with DIRECT stt/tts/router endpoints in [voice.proxy], so it never
+# resolves per-harness topology. Brought up with `anvil-serving voice proxy up`
+# (managed lifecycle), after the audio serves (`anvil-serving voice audio up`).
+[[serve]]
+name = "realtime-proxy"
+container = "anvil-voice-proxy"
+port = 8765
+model = "anvil-realtime-proxy"
+engine = "audio"
+health = "/usage"              # the proxy's readiness route (pool usage stats)
+groups = ["voice"]             # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.voice-proxy.yml up -d realtime-proxy"

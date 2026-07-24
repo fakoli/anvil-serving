@@ -201,7 +201,7 @@ def resolve_proxy_targets(
             name=operation,
             resource_role="realtime-proxy",
             supported_transports=("local", "controller"),
-            execution_runtime_roles=("native",),
+            execution_runtime_roles=("native", "docker"),
             mutation_class="service",
             recovery_capable=False,
             gpu_role_required=False,
@@ -812,6 +812,75 @@ def _validate_native_lifecycle(table: dict, name: str, lifecycle: str, parsed_ba
             _string(table, key)
 
 
+def _validate_proxy(data: dict) -> None:
+    """Validate the OPTIONAL ``[voice.proxy]`` table.
+
+    Absent by default (backward-compatible: an existing manifest with no
+    ``[voice.proxy]`` table validates unchanged, and the proxy keeps its
+    historical NATIVE-process behavior). When present it declares how the
+    Realtime voice proxy is run and, for the harness-independent
+    Docker-managed CONTAINER path, its DIRECT downstream endpoints.
+
+    Fields (all optional):
+      * ``lifecycle`` -- ``managed`` (Docker container), ``native`` (same-host
+        process, the historical default), or ``external``. DEFAULT ``native``.
+      * ``serve_name`` / ``manifest_path`` / ``serves_manifest`` -- select the
+        ``[[serve]]`` entry (managed lifecycle) fronting the proxy container.
+      * ``ready_url`` -- explicit readiness probe (defaults to
+        ``{listen_host}:{listen_port}/usage``).
+      * ``listen_host`` (default 127.0.0.1) / ``listen_port`` (default 8765) --
+        the host-side address the proxy is reachable/probed at (the published
+        loopback mapping of the container; the in-container bind is a separate
+        ``--host``/``--port`` on the launch command).
+      * ``stt_url`` / ``tts_url`` / ``router_url`` -- DIRECT downstream
+        endpoints. When all three are set, ``voice proxy run`` wires them
+        verbatim and skips topology/forwarder resolution entirely.
+    """
+    voice = _section(data, "voice")
+    if "proxy" not in voice:
+        return
+    table = _section(data, "voice", "proxy")
+    lifecycle = table.get("lifecycle", "native")
+    if lifecycle not in _LIFECYCLES:
+        raise ConfigError(
+            "voice.proxy.lifecycle must be one of %s" % ", ".join(sorted(_LIFECYCLES))
+        )
+    for key in ("serve_name", "manifest_path", "serves_manifest"):
+        if key in table:
+            _string(table, key)
+    if "ready_url" in table:
+        _parsed_url(
+            _string(table, "ready_url"),
+            key="voice.proxy.ready_url",
+            schemes=("http", "https"),
+        )
+    listen_host = _string(table, "listen_host", "127.0.0.1")
+    # The host-side probe address is loopback by convention (the container's
+    # published mapping). A wildcard/loopback-mis-spelling here would never be
+    # a valid address to PROBE, so reject the same bad spellings config #1
+    # rejects everywhere -- the in-container 0.0.0.0 bind is a separate
+    # `--host` on the launch command, never this field.
+    _validate_host(listen_host, key="voice.proxy.listen_host")
+    if "listen_port" in table:
+        _int(table, "listen_port", 8765)
+    for key in ("stt_url", "tts_url", "router_url"):
+        if key in table:
+            # DIRECT downstream endpoints legitimately point at non-loopback
+            # tailnet/LAN hosts (the whole point of the harness-independent
+            # container) -- `_parsed_url` allows those and only rejects the bad
+            # loopback spellings / embedded credentials / query strings.
+            _parsed_url(
+                _string(table, key),
+                key="voice.proxy.%s" % key,
+                schemes=("http", "https"),
+            )
+    for key in ("timeout", "ready_timeout", "stop_timeout"):
+        if key in table:
+            _positive_float(table, key)
+    # Loopback listener needs no realtime token (trusted-local default), so --
+    # unlike voice.realtime_host -- no realtime_token_env is required here.
+
+
 def validate_manifest(data: dict) -> None:
     """Validate the voice manifest without touching the network or a filesystem serve."""
     if not isinstance(data, dict):
@@ -877,6 +946,7 @@ def validate_manifest(data: dict) -> None:
 
     _validate_endpoint(data, "stt")
     _validate_endpoint(data, "tts")
+    _validate_proxy(data)
 
 
 def describe(data: dict) -> str:

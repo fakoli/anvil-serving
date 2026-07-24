@@ -1,0 +1,49 @@
+# Realtime voice proxy as a Docker-MANAGED CONTAINER for the OpenClaw Talk
+# reference topology. Reuses the locally built anvil-serving release image
+# (same tag as the router, anvil-serving:0.13.2) running the package CLI verb
+# `anvil-serving voice proxy run`. Managed via `anvil-serving voice proxy up`
+# (managed [voice.proxy] lifecycle), after the STT/TTS audio serves
+# (`anvil-serving voice audio up`); do not docker-run by hand.
+#
+# Harness-INDEPENDENT: the proxy is configured with DIRECT stt/tts/router
+# endpoints in the mounted voice manifest's [voice.proxy] table, so it never
+# resolves per-harness topology or stands up loopback forwarders. It binds
+# 0.0.0.0:8765 INSIDE the container (--host/--port on the command) but is
+# published ONLY to 127.0.0.1 on the host, so the wide in-container bind is not
+# network-reachable (matches make_ws_server's allow_non_loopback opt-out).
+#
+# Build that image with the repository Dockerfile; bump this tag together with
+# the router tag on each release. VOICE_IMAGE is a per-invocation candidate
+# override for pre-release verification.
+name: anvil-voice-proxy
+
+services:
+  realtime-proxy:
+    image: ${VOICE_IMAGE:-anvil-serving:0.13.2}
+    container_name: anvil-voice-proxy
+    restart: unless-stopped
+    command:
+      - anvil-serving
+      - voice
+      - proxy
+      - run
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8765"
+      - --config
+      - /etc/anvil/voice.toml
+    ports:
+      # Published ONLY to loopback on the host (never LAN) -- the in-container
+      # 0.0.0.0 bind is reachable only through this 127.0.0.1 mapping.
+      - "${VOICE_PROXY_PUBLISH:-127.0.0.1}:8765:8765"
+    environment:
+      # Optional bearer tokens for the DIRECT downstream endpoints, resolved by
+      # env-var NAME in the voice manifest (never a literal in a file).
+      ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
+      ANVIL_VOICE_STT_TOKEN: ${ANVIL_VOICE_STT_TOKEN:-}
+      ANVIL_VOICE_TTS_TOKEN: ${ANVIL_VOICE_TTS_TOKEN:-}
+    volumes:
+      # The voice manifest (with a [voice.proxy] direct-endpoint table) lives on
+      # the host and is mounted read-only into the container at /etc/anvil.
+      - "${VOICE_CONFIG_DIR:-./voice}:/etc/anvil:ro"

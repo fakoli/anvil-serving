@@ -62,6 +62,7 @@ from .realtime.app import build_realtime_server_from_manifest
 from .realtime.ws import serve_forever_in_background
 from .realtime_service import ProxyProcessConfig, RealtimeProxyProcessService
 from .serves import native as native_serve
+from .serves import proxy as proxy_serve
 from .serves import stt as stt_serve
 from .serves import tts as tts_serve
 from .serves._common import ServeNotConfigured
@@ -711,6 +712,61 @@ def _proxy_context(targets: voice_config.ResolvedProxyTargets) -> str:
     )
 
 
+def _proxy_lifecycle_mode(voice: Dict[str, Any]) -> str:
+    """The declared ``[voice.proxy].lifecycle`` (default ``native``)."""
+    proxy = voice.get("proxy", {}) if isinstance(voice, dict) else {}
+    return proxy.get("lifecycle", "native") if isinstance(proxy, dict) else "native"
+
+
+def _proxy_direct_targets(voice: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    """Return the DIRECT downstream endpoints from ``[voice.proxy]``, or None.
+
+    Harness-independent path: when ``[voice.proxy]`` declares all three of
+    ``stt_url``/``tts_url``/``router_url``, ``voice proxy run`` wires them
+    verbatim and skips topology/forwarder resolution entirely. Missing any one
+    means "not a direct config" -> the topology path is used (backward
+    compatible)."""
+    proxy = voice.get("proxy", {}) if isinstance(voice, dict) else {}
+    if not isinstance(proxy, dict):
+        return None
+    stt_url = proxy.get("stt_url")
+    tts_url = proxy.get("tts_url")
+    router_url = proxy.get("router_url")
+    if stt_url and tts_url and router_url:
+        return {"stt_url": stt_url, "tts_url": tts_url, "router_url": router_url}
+    return None
+
+
+def _proxy_serve_base_url(voice: Dict[str, Any]) -> str:
+    """Host-side base URL the managed proxy container is reachable/probed at.
+
+    Built from ``[voice.proxy].listen_host``/``listen_port`` (the container's
+    published loopback mapping), NOT the in-container ``--host 0.0.0.0`` bind.
+    """
+    proxy = voice.get("proxy", {}) if isinstance(voice, dict) else {}
+    host = proxy.get("listen_host", "127.0.0.1")
+    port = int(proxy.get("listen_port", 8765))
+    return "http://%s:%d" % (host, port)
+
+
+def _proxy_serve_from_config(args, voice: Dict[str, Any], manifest_dir: str | None) -> proxy_serve.ProxyServe:
+    """Construct the Docker-managed :class:`ProxyServe` from ``[voice.proxy]``,
+    mirroring ``_audio_serves``' per-serve construction for STT/TTS."""
+    proxy = dict(voice.get("proxy", {}))
+    config_kwargs: Dict[str, Any] = {
+        "base_url": _proxy_serve_base_url(voice),
+        "model": "anvil-realtime-proxy",
+    }
+    if proxy.get("serve_name"):
+        config_kwargs["serve_name"] = proxy["serve_name"]
+    if proxy.get("ready_url"):
+        config_kwargs["ready_url"] = proxy["ready_url"]
+    manifest_path = proxy.get("manifest_path") or proxy.get("serves_manifest")
+    if manifest_path:
+        config_kwargs["manifest_path"] = _resolve_manifest_reference(manifest_path, manifest_dir)
+    return proxy_serve.ProxyServe(proxy_serve.ProxyServeConfig(**config_kwargs))
+
+
 def _proxy_process_service(
     args,
     data: dict,
@@ -743,8 +799,57 @@ def _print_proxy_process_result(result: dict) -> int:
     return int(result.get("returncode", 0))
 
 
+def _cmd_proxy_managed_lifecycle(args, action: str, resolved) -> int:
+    """Docker-MANAGED proxy up/down/restart, mirroring the audio managed
+    branch: delegate to :class:`ProxyServe` (which delegates to
+    ``anvil_serving.serves``). No topology resolution -- the managed container
+    is harness-independent."""
+    voice = resolved.data.get("voice", {})
+    serve = _proxy_serve_from_config(args, voice, resolved.data.get("_manifest_dir"))
+    dry_run = getattr(args, "dry_run", False)
+    print(
+        "voice proxy %s: managed serve_name=%s base_url=%s"
+        % (action, serve.config.serve_name, serve.config.base_url)
+    )
+    try:
+        if action == "up":
+            rc = serve.bring_up(dry_run=dry_run)
+        elif action == "down":
+            rc = serve.tear_down(dry_run=dry_run)
+        elif action == "restart":
+            rc = serve.tear_down(dry_run=dry_run)
+            if rc == 0:
+                rc = serve.bring_up(dry_run=dry_run)
+        else:  # pragma: no cover - guarded by the subparser choices
+            raise ValueError("unknown managed proxy action %r" % action)
+    except ServeNotConfigured as exc:
+        return _print_proxy_process_result({
+            "action": action,
+            "lifecycle": "managed",
+            "returncode": 0,
+            "state": "not_configured",
+            "detail": str(exc),
+            "serve_name": serve.config.serve_name,
+        })
+    return _print_proxy_process_result({
+        "action": action,
+        "lifecycle": "managed",
+        "returncode": rc,
+        "dry_run": dry_run,
+        "serve_name": serve.config.serve_name,
+        "endpoint": serve.realtime_url,
+    })
+
+
 def cmd_proxy_lifecycle(args):
     action = args.proxy_action
+    resolved, err = _load_resolved_config(args)
+    if err:
+        print("voice proxy %s: %s" % (action, err), file=sys.stderr)
+        return 2
+    assert resolved is not None
+    if _proxy_lifecycle_mode(resolved.data.get("voice", {})) == "managed":
+        return _cmd_proxy_managed_lifecycle(args, action, resolved)
     data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, action)
     if err:
         print("voice proxy %s: %s" % (action, err), file=sys.stderr)
@@ -757,6 +862,29 @@ def cmd_proxy_lifecycle(args):
 
 
 def cmd_proxy_status(args):
+    resolved, err = _load_resolved_config(args)
+    if err:
+        print("voice proxy status: %s" % err, file=sys.stderr)
+        return 2
+    assert resolved is not None
+    if _proxy_lifecycle_mode(resolved.data.get("voice", {})) == "managed":
+        voice = resolved.data.get("voice", {})
+        serve = _proxy_serve_from_config(args, voice, resolved.data.get("_manifest_dir"))
+        try:
+            readiness = serve.wait_ready()
+        except subprocess.TimeoutExpired as exc:
+            print("voice proxy status: timed out -- %s" % exc, file=sys.stderr)
+            return 1
+        return _print_proxy_process_result({
+            "action": "status",
+            "lifecycle": "managed",
+            "serve_name": readiness.name,
+            "docker_state": readiness.docker_state,
+            "ready": readiness.ready,
+            "detail": readiness.detail,
+            "endpoint": serve.realtime_url,
+            "returncode": 0 if readiness.ready else 1,
+        })
     data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, "status")
     if err:
         print("voice proxy status: %s" % err, file=sys.stderr)
@@ -767,6 +895,23 @@ def cmd_proxy_status(args):
 
 
 def cmd_proxy_logs(args):
+    resolved, err = _load_resolved_config(args)
+    if err:
+        print("voice proxy logs: %s" % err, file=sys.stderr)
+        return 2
+    assert resolved is not None
+    if _proxy_lifecycle_mode(resolved.data.get("voice", {})) == "managed":
+        voice = resolved.data.get("voice", {})
+        serve = _proxy_serve_from_config(args, voice, resolved.data.get("_manifest_dir"))
+        try:
+            manifest = generic_serves.load_manifest(serve._lifecycle.manifest_path)
+            rc = generic_serves.cmd_logs(
+                manifest, [serve.config.serve_name], tail=str(args.tail)
+            )
+        except (FileNotFoundError, ServeNotConfigured) as exc:
+            print("voice proxy logs: managed log read failed -- %s" % exc, file=sys.stderr)
+            return 1
+        return int(rc)
     data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, "logs")
     if err:
         print("voice proxy logs: %s" % err, file=sys.stderr)
@@ -878,7 +1023,7 @@ def _check_required_endpoints_reachable(voice: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _build_realtime_server(data: dict, voice: Dict[str, Any]):
+def _build_realtime_server(data: dict, voice: Dict[str, Any], *, allow_non_loopback: bool = False):
     """Wire the REAL cascade together: a `SessionPool` of real `VoicePipeline`
     instances (STT/TTS out-of-process serves + the LLM stage routed at the
     anvil router -- see `pipeline.real_pipeline_factory_from_manifest`)
@@ -894,8 +1039,15 @@ def _build_realtime_server(data: dict, voice: Dict[str, Any]):
     F2 guard, honored here rather than duplicated) -- the caller (`cmd_run`)
     turns that into a clean, non-crashing CLI error instead of a traceback.
     Nothing is bound/started before that guard runs.
+
+    ``allow_non_loopback`` forwards the same-named opt-out to
+    :func:`build_realtime_server_from_manifest` -> ``make_ws_server``'s F2 bind
+    guard, for the Docker-managed proxy container that binds ``0.0.0.0``
+    in-container but is published only to ``127.0.0.1`` on the host.
     """
-    return build_realtime_server_from_manifest(data, voice)
+    return build_realtime_server_from_manifest(
+        data, voice, allow_non_loopback=allow_non_loopback
+    )
 
 
 def _wait_forever_default() -> None:
@@ -910,7 +1062,79 @@ def _wait_forever_default() -> None:
         time.sleep(1.0)
 
 
+def _serve_realtime_forever(server, pool) -> int:
+    """Shared foreground serve loop for both the topology and direct paths."""
+    thread = serve_forever_in_background(server)
+    host, port = server.server_address[:2]
+    print(
+        "voice proxy run: realtime server up at ws://%s:%d/v1/realtime (pool size %d)"
+        % (host, port, pool.size)
+    )
+    try:
+        _wait_forever_default()
+    except KeyboardInterrupt:
+        print("\nvoice proxy run: interrupted -- shutting down")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5.0)
+    return 0
+
+
+def _cmd_run_direct(args, resolved, direct: Dict[str, str]) -> int:
+    """Harness-independent `voice proxy run`: wire the DIRECT downstream
+    endpoints from ``[voice.proxy]`` verbatim, skipping topology/forwarder
+    resolution entirely. The in-container bind is ``--host``/``--port`` (or the
+    ``[voice.proxy]`` listen_host/listen_port), independent of the manifest's
+    ``realtime_host``/``realtime_port``."""
+    data = copy.deepcopy(resolved.data)
+    voice = data["voice"]
+    proxy = dict(voice.get("proxy", {}))
+    voice.setdefault("stt", {})["base_url"] = direct["stt_url"]
+    voice.setdefault("tts", {})["base_url"] = direct["tts_url"]
+    voice.setdefault("llm", {})["base_url"] = direct["router_url"]
+    bind_host = getattr(args, "host", None) or proxy.get("listen_host", "127.0.0.1")
+    bind_port = getattr(args, "port", None) or int(proxy.get("listen_port", 8765))
+    voice["realtime_host"] = bind_host
+    voice["realtime_port"] = bind_port
+
+    summary = _identity_summary(resolved)
+    print(
+        "voice proxy run: manifest OK (direct) -- %s -- bind=%s:%d stt=%s tts=%s router=%s"
+        % (summary, bind_host, bind_port, direct["stt_url"], direct["tts_url"], direct["router_url"])
+    )
+
+    problem = _check_required_endpoints_reachable(voice)
+    if problem:
+        print(
+            "voice proxy run: %s -- refusing to start a session pool against an "
+            "unreachable endpoint. Bring up the configured serves/router first and retry."
+            % problem,
+            file=sys.stderr,
+        )
+        return 1
+
+    allow_non_loopback = not _host_is_loopback(bind_host)
+    try:
+        server, pool = _build_realtime_server(
+            data, voice, allow_non_loopback=allow_non_loopback
+        )
+    except ValueError as exc:
+        print("voice proxy run: %s" % exc, file=sys.stderr)
+        return 2
+    return _serve_realtime_forever(server, pool)
+
+
 def cmd_run(args):
+    resolved, err = _load_resolved_config(args)
+    if err:
+        print("voice proxy run: %s" % err, file=sys.stderr)
+        return 2
+    assert resolved is not None
+    direct = _proxy_direct_targets(resolved.data.get("voice", {}))
+    if direct is not None:
+        return _cmd_run_direct(args, resolved, direct)
+
     data, targets, resolved, err, error_code = _resolve_proxy_operation(args, "run")
     if err:
         print("voice proxy run: %s" % err, file=sys.stderr)
@@ -940,21 +1164,7 @@ def cmd_run(args):
         print("voice proxy run: %s" % exc, file=sys.stderr)
         return 2
 
-    thread = serve_forever_in_background(server)
-    host, port = server.server_address[:2]
-    print(
-        "voice proxy run: realtime server up at ws://%s:%d/v1/realtime (pool size %d)"
-        % (host, port, pool.size)
-    )
-    try:
-        _wait_forever_default()
-    except KeyboardInterrupt:
-        print("\nvoice proxy run: interrupted -- shutting down")
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5.0)
-    return 0
+    return _serve_realtime_forever(server, pool)
 
 
 def cmd_benchmark(args):
@@ -1314,6 +1524,16 @@ def build_parser():
 
     sp = proxy_sub.add_parser("run", help="run the realtime server in the foreground")
     add_proxy_resolution(sp)
+    sp.add_argument(
+        "--host",
+        help="override the in-process realtime bind host (e.g. 0.0.0.0 inside a "
+             "managed container published only to 127.0.0.1); native path stays loopback-only",
+    )
+    sp.add_argument(
+        "--port",
+        type=_tcp_port,
+        help="override the in-process realtime bind port (defaults to [voice.proxy].listen_port or 8765)",
+    )
     sp.add_argument(
         "--candidate",
         help="candidate label recorded in run logs; defaults to overlay file stem",
