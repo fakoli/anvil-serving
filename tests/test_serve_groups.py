@@ -357,5 +357,5 @@ def test_shipped_example_group_catalog():
     catalog = {row["group"]: row["serves"] for row in serves.groups_summary(s)["groups"]}
     assert catalog["llm-stack"] == ["fast", "embeddings", "reranker", "ocr", "vision", "heavy"]
     assert catalog["ocr"] == ["ocr"]
-    assert catalog["voice"] == ["stt", "tts"]
+    assert catalog["voice"] == ["stt", "tts", "realtime-proxy"]
     assert catalog["comfy"] == ["comfyui"]

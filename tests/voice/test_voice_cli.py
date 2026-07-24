@@ -418,6 +418,193 @@ def test_proxy_lifecycle_is_mini_owned_and_never_invokes_audio_handlers(
     assert "stt_proxy=http://127.0.0.1:30110/v1" in output
 
 
+# --------------------------------------------------------------------------- #
+# Managed (Docker-container) proxy lifecycle + direct-endpoint run + `voice
+# up`/`down` aggregate (voice-proxy-managed-container).
+# --------------------------------------------------------------------------- #
+MANAGED_PROXY_MANIFEST = VALID_MANIFEST + """
+
+[voice.proxy]
+lifecycle = "managed"
+serve_name = "realtime-proxy"
+listen_host = "127.0.0.1"
+listen_port = 8765
+"""
+
+DIRECT_PROXY_MANIFEST = VALID_MANIFEST + """
+
+[voice.proxy]
+lifecycle = "managed"
+stt_url = "http://100.87.34.66:30110/v1"
+tts_url = "http://100.87.34.66:30111/v1"
+router_url = "http://100.87.34.66:8000/v1"
+listen_host = "127.0.0.1"
+listen_port = 8765
+"""
+
+
+@pytest.fixture
+def managed_proxy_manifest(tmp_path):
+    p = tmp_path / "voice_managed.toml"
+    p.write_text(MANAGED_PROXY_MANIFEST, encoding="utf-8")
+    return str(p)
+
+
+@pytest.fixture
+def direct_proxy_manifest(tmp_path):
+    p = tmp_path / "voice_direct.toml"
+    p.write_text(DIRECT_PROXY_MANIFEST, encoding="utf-8")
+    return str(p)
+
+
+def _no_topology_guard(monkeypatch):
+    monkeypatch.setattr(
+        voice_cli,
+        "_resolve_proxy_operation",
+        lambda *a, **k: pytest.fail("managed/direct proxy path resolved topology"),
+    )
+
+
+@pytest.mark.parametrize("action", ["up", "down", "restart"])
+def test_managed_proxy_lifecycle_delegates_to_proxy_serve_without_topology(
+    action, managed_proxy_manifest, monkeypatch, capsys
+):
+    _no_topology_guard(monkeypatch)
+    calls = []
+    monkeypatch.setattr(
+        voice_cli.proxy_serve.ProxyServe,
+        "bring_up",
+        lambda self, **kw: calls.append(("bring_up", kw.get("dry_run"))) or 0,
+    )
+    monkeypatch.setattr(
+        voice_cli.proxy_serve.ProxyServe,
+        "tear_down",
+        lambda self, **kw: calls.append(("tear_down", kw.get("dry_run"))) or 0,
+    )
+
+    rc = voice_cli.main(["proxy", action, "--config", managed_proxy_manifest, "--dry-run"])
+
+    assert rc == 0
+    if action == "up":
+        assert calls == [("bring_up", True)]
+    elif action == "down":
+        assert calls == [("tear_down", True)]
+    else:  # restart: down then up
+        assert calls == [("tear_down", True), ("bring_up", True)]
+    out = capsys.readouterr().out
+    assert "managed serve_name=realtime-proxy" in out
+
+
+def test_managed_proxy_up_reports_serve_not_configured_gracefully(
+    managed_proxy_manifest, monkeypatch, capsys
+):
+    from anvil_serving.voice.serves._common import ServeNotConfigured
+
+    def raise_not_configured(self, **kw):
+        raise ServeNotConfigured("no [[serve]] entry named 'realtime-proxy'")
+
+    monkeypatch.setattr(voice_cli.proxy_serve.ProxyServe, "bring_up", raise_not_configured)
+
+    rc = voice_cli.main(["proxy", "up", "--config", managed_proxy_manifest])
+
+    assert rc == 0  # not-configured is an expected pre-declaration state, not a crash
+    out = capsys.readouterr().out
+    assert "not_configured" in out
+
+
+def test_managed_proxy_status_uses_wait_ready(managed_proxy_manifest, monkeypatch, capsys):
+    from anvil_serving.voice.serves._common import ServeReadiness
+
+    _no_topology_guard(monkeypatch)
+    monkeypatch.setattr(
+        voice_cli.proxy_serve.ProxyServe,
+        "wait_ready",
+        lambda self, **kw: ServeReadiness(
+            name="realtime-proxy", docker_state="running", ready=True, detail="healthy"
+        ),
+    )
+
+    rc = voice_cli.main(["proxy", "status", "--config", managed_proxy_manifest])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert '"ready": true' in out
+    assert '"docker_state": "running"' in out
+
+
+def _direct_run_fakes(monkeypatch, seen):
+    class _FakeServer:
+        server_address = ("127.0.0.1", 8765)
+
+        def shutdown(self):
+            pass
+
+        def server_close(self):
+            pass
+
+    class _FakeThread:
+        def join(self, timeout=None):
+            pass
+
+    class _FakePool:
+        size = 2
+
+    def _fake_build(data, voice, *, allow_non_loopback=False):
+        seen["stt"] = voice["stt"]["base_url"]
+        seen["tts"] = voice["tts"]["base_url"]
+        seen["llm"] = voice["llm"]["base_url"]
+        seen["realtime_host"] = voice["realtime_host"]
+        seen["realtime_port"] = voice["realtime_port"]
+        seen["allow_non_loopback"] = allow_non_loopback
+        return _FakeServer(), _FakePool()
+
+    monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
+    monkeypatch.setattr(voice_cli, "_build_realtime_server", _fake_build)
+    monkeypatch.setattr(voice_cli, "serve_forever_in_background", lambda server: _FakeThread())
+    monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
+
+
+def test_run_direct_endpoints_skip_topology_and_wire_verbatim(
+    direct_proxy_manifest, monkeypatch, capsys
+):
+    _no_topology_guard(monkeypatch)
+    seen = {}
+    _direct_run_fakes(monkeypatch, seen)
+
+    # NOTE: no --topology is passed at all -- the direct path must not need it.
+    rc = voice_cli.main(["proxy", "run", "--config", direct_proxy_manifest])
+
+    assert rc == 0
+    assert seen["stt"] == "http://100.87.34.66:30110/v1"
+    assert seen["tts"] == "http://100.87.34.66:30111/v1"
+    assert seen["llm"] == "http://100.87.34.66:8000/v1"
+    assert seen["realtime_host"] == "127.0.0.1"
+    assert seen["realtime_port"] == 8765
+    assert seen["allow_non_loopback"] is False
+    out = capsys.readouterr().out
+    assert "(direct)" in out
+    assert "ws://127.0.0.1:8765/v1/realtime" in out
+
+
+def test_run_direct_host_port_override_allows_wildcard_bind(
+    direct_proxy_manifest, monkeypatch
+):
+    _no_topology_guard(monkeypatch)
+    seen = {}
+    _direct_run_fakes(monkeypatch, seen)
+
+    rc = voice_cli.main([
+        "proxy", "run", "--config", direct_proxy_manifest, "--host", "0.0.0.0", "--port", "9999",
+    ])
+
+    assert rc == 0
+    assert seen["realtime_host"] == "0.0.0.0"
+    assert seen["realtime_port"] == 9999
+    # A wildcard in-container bind opts out of the F2 loopback guard (published
+    # only to 127.0.0.1 on the host).
+    assert seen["allow_non_loopback"] is True
+
+
 def test_profiles_command_lists_and_describes_profiles(tmp_path, capsys):
     manifest = tmp_path / "voice_profiles.toml"
     manifest.write_text(
