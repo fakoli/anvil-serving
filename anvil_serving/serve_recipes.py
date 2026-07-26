@@ -336,6 +336,47 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         value = serve.get(key, [])
         if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
             raise RecipeError("recipe.serve.%s must be an array of strings" % key)
+    entrypoint = serve.get("entrypoint")
+    if entrypoint is not None:
+        if (
+            not isinstance(entrypoint, list)
+            or not entrypoint
+            or not all(isinstance(item, str) and item and "\n" not in item and "\r" not in item and "\x00" not in item for item in entrypoint)
+            or entrypoint[0].startswith("-")
+        ):
+            raise RecipeError(
+                "recipe.serve.entrypoint must be a non-empty argv array with an executable first item"
+            )
+    model_flag = serve.get("model_flag")
+    if model_flag is not None:
+        if (
+            entrypoint is None
+            or not isinstance(model_flag, str)
+            or not model_flag.startswith("-")
+            or any(ch.isspace() for ch in model_flag)
+            or "\x00" in model_flag
+        ):
+            raise RecipeError(
+                "recipe.serve.model_flag must be a single option and requires recipe.serve.entrypoint"
+            )
+    ipc = serve.get("ipc")
+    if ipc is not None and ipc not in {"host", "none", "private", "shareable"}:
+        raise RecipeError("recipe.serve.ipc must be one of host, none, private, or shareable")
+    shm_size = serve.get("shm_size")
+    if (
+        shm_size is not None
+        and (
+            not isinstance(shm_size, str)
+            or not re.fullmatch(r"[1-9][0-9]*(?:[kKmMgGtT][bB]?)?", shm_size)
+        )
+    ):
+        raise RecipeError("recipe.serve.shm_size must be a positive Docker size such as 16gb")
+    ulimits = serve.get("ulimits", [])
+    if (
+        not isinstance(ulimits, list)
+        or not all(isinstance(item, str) and item and "\n" not in item and "\r" not in item and "\x00" not in item for item in ulimits)
+    ):
+        raise RecipeError("recipe.serve.ulimits must be an array of non-empty Docker ulimit strings")
 
 
 def format_registry(registry: dict) -> str:
@@ -449,7 +490,22 @@ def docker_run_argv(recipe: dict, *, container: str | None = None) -> list[str]:
     port = serve.get("port")
     if port is not None:
         argv += ["-p", "127.0.0.1:%s:%s" % (port, port)]
-    argv += [serve["image"], recipe["model"]]
+    if serve.get("ipc"):
+        argv += ["--ipc", serve["ipc"]]
+    if serve.get("shm_size"):
+        argv += ["--shm-size", serve["shm_size"]]
+    for ulimit in serve.get("ulimits", []):
+        argv += ["--ulimit", ulimit]
+    entrypoint = serve.get("entrypoint")
+    if entrypoint:
+        argv += ["--entrypoint", entrypoint[0]]
+    argv += [serve["image"]]
+    if entrypoint:
+        argv += entrypoint[1:]
+    model_flag = serve.get("model_flag")
+    if model_flag:
+        argv.append(model_flag)
+    argv.append(recipe["model"])
     for flag in serve.get("flags", []):
         try:
             tokens = shlex.split(flag)
@@ -464,8 +520,9 @@ def docker_run_argv(recipe: dict, *, container: str | None = None) -> list[str]:
 def reconstruct_docker_run(recipe: dict) -> str:
     """Reconstruct the reproducible `docker run` for a recipe.
 
-    The image ENTRYPOINT is `vllm serve`, so the model is a POSITIONAL after the
-    image (NO extra 'serve'); flags follow the model.
+    The default image ENTRYPOINT is `vllm serve`, so the model is positional after
+    the image. Recipes can instead supply ``serve.entrypoint`` and ``model_flag``
+    for images such as NVIDIA's API-server image that require ``--model MODEL``.
     """
     return shlex.join(docker_run_argv(recipe))
 
@@ -571,6 +628,17 @@ def capture_from_container(name, *, _run=subprocess.run) -> dict:
 
     # Args = [maybe 'serve'] [maybe MODEL positional] --flag val --flag val ...
     args = [a for a in (inspect.get("Args") or []) if isinstance(a, str)]
+    raw_entrypoint = config.get("Entrypoint")
+    if isinstance(raw_entrypoint, str):
+        entrypoint = [raw_entrypoint]
+    elif isinstance(raw_entrypoint, list) and all(isinstance(item, str) for item in raw_entrypoint):
+        entrypoint = raw_entrypoint
+    else:
+        entrypoint = []
+    model_flag = None
+    if entrypoint and entrypoint != ["vllm"] and len(args) >= 2 and args[0] == "--model":
+        model_flag = "--model"
+        args = args[2:]
     first_flag = next((i for i, t in enumerate(args) if t.startswith("-")), len(args))
     flags = _group_flags(args[first_flag:])
 
@@ -580,6 +648,10 @@ def capture_from_container(name, *, _run=subprocess.run) -> dict:
         serve["engine"] = engine
     if config.get("Image"):
         serve["image"] = config["Image"]
+    if entrypoint and entrypoint != ["vllm"]:
+        serve["entrypoint"] = entrypoint
+    if model_flag:
+        serve["model_flag"] = model_flag
     port = _port_from_inspect(inspect)
     if port is not None:
         serve["port"] = port
