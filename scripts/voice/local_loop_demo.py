@@ -54,14 +54,11 @@ import json
 import math
 import os
 import queue
-import re
 import struct
 import sys
 import tempfile
 import threading
 import time
-import urllib.error
-import urllib.request
 import wave
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -389,129 +386,6 @@ def meter_inputs(
     return 0
 
 
-def redact_route_error(text: str) -> str:
-    """Redact bearer tokens from route-probe errors before writing evidence."""
-    return re.sub(r"Bearer\s+[^'\"\s\\]+", "Bearer <redacted>", text)
-
-
-def route_decision_probe(
-    data: Dict[str, Any], *, prompt: str = "voice local-loop route proof",
-    prompt_source: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Capture a content-light `/v1/route` decision for the manifest's LLM endpoint.
-
-    This is a decision-only corroboration. The actual live turn still flows through
-    `voice.llm.base_url` via `LLMStage`; this probe records the same router target,
-    model preset, and returned provider/model without dumping secrets.
-    """
-    llm = data["voice"]["llm"]
-    base_url = llm["base_url"].rstrip("/")
-    url = base_url + "/route"
-    body = {
-        "model": llm["model"],
-        "messages": [{"role": "user", "content": prompt}],
-        "modality": "voice",
-    }
-    headers = {"Content-Type": "application/json"}
-    token = None
-    env_name = llm.get("api_key_env")
-    if env_name:
-        token = (os.environ.get(env_name) or "").strip()
-        if token:
-            headers["Authorization"] = "Bearer " + token
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(body).encode("utf-8"),
-        headers=headers,
-        method="POST",
-    )
-    source = prompt_source or (
-        "captured transcript" if prompt != "voice local-loop route proof" else "default probe"
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 - manifest-validated private/local URL
-            raw = resp.read().decode("utf-8", "replace")
-            try:
-                parsed: Any = json.loads(raw or "{}")
-            except ValueError:
-                parsed = {"raw": raw[:1000]}
-            validation_errors = route_validation_errors(llm, parsed)
-            return {
-                "ok": not validation_errors,
-                "url": url,
-                "status": getattr(resp, "status", resp.getcode()),
-                "request_model": llm["model"],
-                "auth_env": env_name,
-                "prompt_source": source,
-                "response": parsed,
-                "validation_errors": validation_errors,
-            }
-    except urllib.error.HTTPError as exc:
-        body_text = ""
-        try:
-            body_text = exc.read(1000).decode("utf-8", "replace")
-        except Exception:
-            body_text = ""
-        return {
-            "ok": False,
-            "url": url,
-            "status": exc.code,
-            "request_model": llm["model"],
-            "auth_env": env_name,
-            "prompt_source": source,
-            "error": redact_route_error(body_text or str(exc)),
-        }
-    except Exception as exc:  # noqa: BLE001 - evidence capture should report, not crash import paths
-        return {
-            "ok": False,
-            "url": url,
-            "request_model": llm["model"],
-            "auth_env": env_name,
-            "prompt_source": source,
-            "error": redact_route_error("%s: %s" % (type(exc).__name__, exc)),
-        }
-
-
-def route_validation_errors(llm: Dict[str, Any], parsed: Any) -> List[str]:
-    if not isinstance(parsed, dict):
-        return ["route response is not a JSON object"]
-    errors: List[str] = []
-    provider = parsed.get("provider")
-    served_model = parsed.get("model")
-    tier = parsed.get("tier")
-    if not provider:
-        errors.append("route response missing provider")
-    if not served_model:
-        errors.append("route response missing model")
-
-    expected_provider = llm.get("expected_route_provider")
-    expected_model = llm.get("expected_route_model")
-    expected_tier = llm.get("expected_route_tier")
-    if not expected_provider:
-        errors.append("voice.llm.expected_route_provider is required for capture route proof")
-    if not expected_model:
-        errors.append("voice.llm.expected_route_model is required for capture route proof")
-    if not expected_tier:
-        errors.append("voice.llm.expected_route_tier is required for capture route proof")
-
-    if expected_provider and provider != expected_provider:
-        errors.append("expected provider %s, got %s" % (expected_provider, provider))
-    if expected_model and served_model != expected_model:
-        errors.append("expected model %s, got %s" % (expected_model, served_model))
-    if expected_tier and tier != expected_tier:
-        errors.append("expected tier %s, got %s" % (expected_tier, tier))
-    return errors
-
-
-def route_failure_summary(route_proof: Dict[str, Any]) -> str:
-    if not route_proof:
-        return "unknown error"
-    route_issue = route_proof.get("error")
-    if not route_issue:
-        route_issue = "; ".join(route_proof.get("validation_errors", []))
-    return route_issue or "unknown error"
-
-
 def write_capture(
     prefix: str,
     input_frames: List[bytes],
@@ -520,7 +394,7 @@ def write_capture(
     output_sample_rate: int,
     turns: List[TurnMetric],
     events: List[Dict[str, Any]],
-    route_proof: Dict[str, Any],
+    llm_model: str,
     manifest_summary: str,
     *,
     append_finding: bool = True,
@@ -544,7 +418,7 @@ def write_capture(
         "turns": completed_turns,
         "turns_completed": len(turns),
         "barge_in_observed": barge_in_observed,
-        "route_proof": route_proof,
+        "llm_model": llm_model,
         "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     Path(latency_path).parent.mkdir(parents=True, exist_ok=True)
@@ -563,7 +437,7 @@ def write_capture(
         },
         "notes": [
             "Recorded mic input and assistant playback are raw PCM WAV containers.",
-            "Route proof is a decision-only /v1/route probe; live turns use the same voice.llm endpoint.",
+            "The configured LLM alias is recorded; the live turns provide the serving evidence.",
             "Automated proof does not replace human listening quality review.",
         ],
     }
@@ -578,8 +452,6 @@ def write_capture(
     avg_ttfa_str = ("%.1f" % (sum(avg_ttfa) / len(avg_ttfa))) if avg_ttfa else "n/a"
     latencies = [t.turn_latency_ms for t in turns if t.turn_latency_ms is not None]
     avg_latency_str = ("%.1f" % (sum(latencies) / len(latencies))) if latencies else "n/a"
-    route_response = route_proof.get("response") if route_proof.get("ok") else None
-    route_provider = route_response.get("provider") if isinstance(route_response, dict) else "unproven"
     finding_row_written = False
     if append_finding:
         finding_row_written = append_finding_row(
@@ -589,7 +461,7 @@ def write_capture(
                 "yes" if barge_in_observed else "no",
                 avg_ttfa_str,
                 avg_latency_str,
-                route_provider,
+                llm_model,
                 input_wav_path,
                 output_wav_path,
                 session_path,
@@ -615,7 +487,6 @@ def capture_acceptance_passed(
     capture_prefix: Optional[str],
     turns: List[TurnMetric],
     events: List[Dict[str, Any]],
-    route_proof: Dict[str, Any],
     min_turns: int,
     output_frames: Optional[List[bytes]],
 ) -> bool:
@@ -625,8 +496,6 @@ def capture_acceptance_passed(
     if not barge_in_observed:
         return False
     if len(turns) < min_turns:
-        return False
-    if not route_proof or not route_proof.get("ok"):
         return False
     if not has_acceptance_turn(turns, require_barge_in=True):
         return False
@@ -726,16 +595,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             file=sys.stderr,
         )
         return 2
-    if capture_prefix:
-        startup_route_proof = route_decision_probe(data)
-        if not startup_route_proof.get("ok"):
-            print(
-                "local_loop_demo: route preflight failed before audio: %s"
-                % route_failure_summary(startup_route_proof),
-                file=sys.stderr,
-            )
-            return 2
-
     vad_config = VADConfig(frame_ms=args.frame_ms, silence_ms=args.silence_ms)
     pipeline_config = real_pipeline_config_from_manifest(
         data, vad_config=vad_config, vad_model=SimpleEnergyVADModel(threshold=args.vad_threshold),
@@ -764,7 +623,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     turn_state: Dict[str, Dict[str, Any]] = {}
     turn_metrics: List[TurnMetric] = []
     stop_event = threading.Event()
-    route_proof = {}
     input_frozen_after_barge = False
     ignored_input_frames_after_barge = 0
     active_playback_lock = threading.Lock()
@@ -1097,16 +955,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         shutdown_pipeline_and_playback()
 
     print("local_loop_demo: %d turn(s) completed" % len(turn_metrics))
-    if capture_prefix:
-        route_prompt = next((t.transcript for t in turn_metrics if t.transcript), None)
-        route_proof = route_decision_probe(data, prompt=route_prompt or "voice local-loop route proof")
     barge_in_observed = any(t.barge_in for t in turn_metrics) or any(e.get("barge_in") for e in events)
     acceptance_capture = should_append_successful_finding(
         capture_acceptance_passed(
             capture_prefix,
             turn_metrics,
             events,
-            route_proof,
             args.min_turns,
             output_frames,
         ),
@@ -1124,7 +978,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             pipeline_config.tts.target_sample_rate,
             turn_metrics,
             events,
-            route_proof,
+            data["voice"]["llm"]["model"],
             voice_config.describe(data),
             append_finding=acceptance_capture,
             finding_status=finding_status,
@@ -1174,12 +1028,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     if capture_prefix and not (output_frames and any(output_frames)):
         print(
             "local_loop_demo: capture requires a non-empty assistant output recording",
-            file=sys.stderr,
-        )
-        return 1
-    if capture_prefix and (not route_proof or not route_proof.get("ok")):
-        print(
-            "local_loop_demo: route proof failed: %s" % route_failure_summary(route_proof),
             file=sys.stderr,
         )
         return 1

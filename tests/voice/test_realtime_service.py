@@ -324,7 +324,7 @@ def test_session_update_configures_llm_instructions_and_tools_without_model_over
             )
         )
         assert sent[-1]["type"] == "session.updated"
-        assert pipeline.llm.config.model == "chat-fast"
+        assert pipeline.llm.config.model == "llm.voice"
         assert pipeline.llm.config.system_prompt == "Use OpenClaw session context."
         assert pipeline.llm.config.tools == [
             {
@@ -378,7 +378,7 @@ def test_response_create_applies_response_scoped_instructions_and_tools_without_
         )
 
         assert sent[-1]["type"] == "response.created"
-        assert pipeline.llm.config.model == "chat-fast"
+        assert pipeline.llm.config.model == "llm.voice"
         assert pipeline.llm.config.system_prompt == "Response prompt."
         assert pipeline.llm.config.tools == [
             {"type": "function", "function": {"name": "openclaw_agent_consult"}}

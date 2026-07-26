@@ -682,13 +682,13 @@ class AudioGateway:
         served = outcome == "served"
         meta = correlation or {}
         record = DecisionRecord(
-            work_class="audio-" + purpose,
-            requested_tiers=(route.id,),
+            kind="audio-" + purpose,
+            requested_tier=route.id,
             attempts=(
                 AttemptRecord(
                     tier_id=route.id,
-                    verifier_passed=served,
-                    verify_reason="audio gateway" if served else "audio upstream error",
+                    succeeded=served,
+                    reason="audio gateway" if served else "audio upstream error",
                     prompt_tokens=0,
                     completion_tokens=0,
                     outcome=outcome,
@@ -697,8 +697,7 @@ class AudioGateway:
             served_tier=route.id if served else None,
             total_prompt_tokens=0,
             total_completion_tokens=0,
-            fell_back=False,
-            intent=purpose,
+            route=purpose,
             request_id=meta.get("request_id"),
             workbench_run_id=meta.get("workbench_run_id"),
             task_id=meta.get("task_id"),

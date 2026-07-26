@@ -22,11 +22,9 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
-import threading
 import urllib.error
 import urllib.parse
 import urllib.request
-import uuid
 from collections.abc import Mapping
 from typing import Any, Callable, Dict, Iterable, Optional
 
@@ -70,7 +68,6 @@ _RAW_SECRET_AWARE_TOOLS = frozenset({
     "decision_summary",
     "openclaw_sync",
     "preflight_probe",
-    "route_decision",
 })
 _SECRET_ENV_RE = re.compile(r"(?:^|_)(?:API_KEY|AUTHORIZATION|CREDENTIAL|PASSWORD|PRIVATE_KEY|SECRET|TOKEN)(?:$|_)")
 _LOG_SECRET_PATTERNS = (
@@ -498,7 +495,7 @@ def _has_workspace_marker(path: str) -> bool:
                 text = f.read(4096)
         except OSError:
             return False
-        if "# anvil-serving" in text or "quality-gated local-model router" in text:
+        if "# anvil-serving" in text or "local-model serving" in text:
             return True
     return False
 
@@ -814,7 +811,7 @@ def _normalize_workflow_artifacts(packet: dict[str, Any], errors: list[dict[str,
                     _workflow_error(
                         errors,
                         field + ".promotion_quality_evidence",
-                        "voice artifacts are not router work-class promotion evidence",
+                        "voice artifacts are not LLM serve qualification evidence",
                     )
             item["path"] = normalized_path
             normalized.append(item)
@@ -824,7 +821,7 @@ def _normalize_workflow_artifacts(packet: dict[str, Any], errors: list[dict[str,
 
 
 def _is_approved_promote_tool(tool: dict[str, Any]) -> bool:
-    if tool.get("name") != "router_promote":
+    if tool.get("name") != "serves_promote":
         return False
     if tool.get("ok") is not True or tool.get("dry_run") is not False or tool.get("confirmed") is not True:
         return False
@@ -939,7 +936,7 @@ def validate_workflow_packet(packet: Any) -> dict[str, Any]:
         _workflow_error(
             errors,
             "promoted",
-            "promoted=true requires a human-approved router_promote tool result",
+            "promoted=true requires a human-approved serves_promote tool result",
         )
     if packet.get("recommendation") == "promote" and not has_approved_promote:
         if packet.get("human_gate_required") is not True:
@@ -968,12 +965,9 @@ def _redact_log_text(value: str) -> str:
     return out
 
 
-def _router_cli_argv(action: str, *, container: str = "", compose: str = "",
-                     service: str = "", env_file: str = "", dry_run: bool = False,
-                     profile: str = "", config: str = "", cfg_volume: str = "",
-                     image: str = "", profile_dest: str = "", config_dest: str = "",
-                     no_reload: bool = False, no_verify: bool = False,
-                     validate_only: bool = False) -> list[str]:
+def _router_manage_cli_argv(action: str, *, container: str = "", compose: str = "",
+                            service: str = "", env_file: str = "", dry_run: bool = False,
+                            no_verify: bool = False) -> list[str]:
     argv = [sys.executable, "-m", "anvil_serving.cli", "router", action]
     if container:
         argv += ["--container", container]
@@ -985,24 +979,8 @@ def _router_cli_argv(action: str, *, container: str = "", compose: str = "",
         argv += ["--env-file", env_file]
     if dry_run:
         argv.append("--dry-run")
-    if profile:
-        argv += ["--profile", profile]
-    if config:
-        argv += ["--config", config]
-    if cfg_volume:
-        argv += ["--cfg-volume", cfg_volume]
-    if image:
-        argv += ["--image", image]
-    if profile_dest:
-        argv += ["--profile-dest", profile_dest]
-    if config_dest:
-        argv += ["--config-dest", config_dest]
-    if no_reload:
-        argv.append("--no-reload")
     if no_verify:
         argv.append("--no-verify")
-    if validate_only:
-        argv.append("--validate-only")
     return argv
 
 
@@ -1059,7 +1037,7 @@ def tool_router_manage(args: dict) -> dict:
     no_verify = _arg_bool(args.get("no_verify"), False, name="no_verify")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
     preview = dry_run or not confirm
-    argv = _router_cli_argv(
+    argv = _router_manage_cli_argv(
         action,
         container=container,
         compose=compose if action in {"up", "down"} else "",
@@ -1191,189 +1169,6 @@ def tool_decision_summary(args: dict) -> dict:
     summary["source"] = source
     summary["path"] = path or None
     return _ok(summary)
-
-
-def tool_router_promote(args: dict) -> dict:
-    from . import router_manage
-
-    profile = _str_arg(args, "profile", required=True)
-    config = _str_arg(args, "config", "")
-    current_profile = _str_arg(args, "current_profile", "")
-    current_config = _str_arg(args, "current_config", "")
-    container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
-    cfg_volume = _str_arg(args, "cfg_volume", router_manage.DEFAULT_CFG_VOLUME)
-    image = _str_arg(args, "image", router_manage.DEFAULT_IMAGE)
-    if not image or image.startswith("-") or any(
-        ord(ch) < 33 or ord(ch) == 127 for ch in image
-    ):
-        raise ToolError(
-            "bad_image",
-            "image must be a non-option Docker image reference without whitespace/control characters",
-        )
-    profile_dest = _str_arg(args, "profile_dest", router_manage.DEFAULT_PROFILE_DEST)
-    config_dest = _str_arg(args, "config_dest", router_manage.DEFAULT_CONFIG_DEST)
-    no_reload = _arg_bool(args.get("no_reload"), False, name="no_reload")
-    validate_only = _arg_bool(args.get("validate_only"), False, name="validate_only")
-    dry_run = _arg_bool(
-        args.get("dry_run"),
-        False if validate_only else True,
-        name="dry_run",
-    )
-    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
-    human_approved = _arg_bool(args.get("human_approved"), False, name="human_approved")
-    diff_limit = _bounded_int_arg(args, "diff_limit", 50, min_value=1, max_value=500)
-    timeout_seconds = _bounded_int_arg(
-        args, "timeout_seconds", 300, min_value=1, max_value=1800
-    )
-    max_output_bytes = _bounded_int_arg(
-        args, "max_output_bytes", 65536, min_value=1024, max_value=1048576
-    )
-
-    try:
-        preview = router_manage.promotion_preview(
-            profile,
-            config_path=config or None,
-            current_profile_path=current_profile or None,
-            current_config_path=current_config or None,
-            profile_dest=profile_dest,
-            config_dest=config_dest,
-            diff_limit=diff_limit,
-        )
-    except FileNotFoundError as exc:
-        raise ToolError("promotion_file_not_found", str(exc))
-    except Exception as exc:
-        raise ToolError("bad_promotion_candidate", str(exc))
-
-    apply_requested = confirm and not dry_run
-    argv = _router_cli_argv(
-        "promote",
-        container=container,
-        profile=profile,
-        config=config,
-        cfg_volume=cfg_volume,
-        image=image,
-        profile_dest=profile_dest,
-        config_dest=config_dest,
-        no_reload=no_reload,
-        dry_run=dry_run if validate_only else not apply_requested,
-        validate_only=validate_only,
-    )
-    target = {
-        "container": container,
-        "cfg_volume": cfg_volume,
-        "image": image,
-        "profile_dest": profile_dest,
-        "config_dest": config_dest,
-        "no_reload": no_reload,
-        "timeout_seconds": timeout_seconds,
-        "max_output_bytes": max_output_bytes,
-    }
-    if validate_only:
-        if dry_run:
-            raise ToolError(
-                "validation_not_run",
-                "router validate_only requires dry_run=false; omit dry_run or set it to false",
-                {"target": target, "preview": preview},
-            )
-        if not confirm:
-            raise ToolError(
-                "confirmation_required",
-                "router validation executes the selected container image; set confirm=true",
-                {"target": target, "preview": preview, "command": argv},
-            )
-        capture_meta = {}
-
-        def bounded_validation_run(command, **kwargs):
-            completed, meta = _run_bounded_router_validation(
-                command,
-                timeout=timeout_seconds,
-                max_output_bytes=max_output_bytes,
-                input_text=kwargs.get("input"),
-                encoding=kwargs.get("encoding") or "utf-8",
-            )
-            capture_meta.update(meta)
-            return completed
-
-        rc, stdout, stderr = _capture(lambda: router_manage.cmd_promote(
-            profile,
-            config_path=config or None,
-            container=container,
-            cfg_volume=cfg_volume,
-            image=image,
-            profile_dest=profile_dest,
-            config_dest=config_dest,
-            no_reload=no_reload,
-            validate_only=True,
-            _run=bounded_validation_run,
-        ))
-        result = {
-            "applied": False,
-            "validated": rc == 0,
-            "validate_only": True,
-            "dry_run": False,
-            "human_gate_required": False,
-            "target": target,
-            "command": argv,
-            "preview": preview,
-            "returncode": rc,
-            "stdout": stdout,
-            "stderr": stderr,
-            "stdout_truncated": capture_meta.get("stdout_truncated", False),
-            "stderr_truncated": capture_meta.get("stderr_truncated", False),
-            "execution_constraints": {
-                "pull": "never",
-                "network": "none",
-                "memory": "512m",
-                "cpus": "1",
-                "pids_limit": 128,
-            },
-        }
-        if rc != 0:
-            raise ToolError(
-                "command_failed",
-                "router promote --validate-only exited with status %s" % rc,
-                result,
-            )
-        return _ok(result)
-    if apply_requested and not human_approved:
-        raise ToolError(
-            "human_approval_required",
-            "router promotion apply requires confirm=true, dry_run=false, and human_approved=true",
-            {"target": target, "preview": preview},
-        )
-    if not apply_requested:
-        return _ok({
-            "applied": False,
-            "dry_run": True,
-            "human_gate_required": True,
-            "target": target,
-            "command": argv,
-            "preview": preview,
-        })
-    rc, stdout, stderr = _capture(lambda: router_manage.cmd_promote(
-        profile,
-        config_path=config or None,
-        container=container,
-        cfg_volume=cfg_volume,
-        image=image,
-        profile_dest=profile_dest,
-        config_dest=config_dest,
-        no_reload=no_reload,
-    ))
-    result = {
-        "applied": rc == 0,
-        "dry_run": False,
-        "human_approved": human_approved,
-        "target": target,
-        "command": argv,
-        "preview": preview,
-        "returncode": rc,
-        "stdout": stdout,
-        "stderr": stderr,
-    }
-    if rc != 0:
-        raise ToolError("command_failed", "router promote exited with status %s" % rc, result)
-    return _ok(result)
 
 
 def tool_serves_status(args: dict) -> dict:
@@ -1633,120 +1428,6 @@ def _run_argv_spooled(argv: list[str], *, timeout: Optional[int], max_output_byt
         if proc.returncode != 0:
             raise ToolError("command_failed", "command exited with status %s" % proc.returncode, result)
         return result
-
-
-def _run_bounded_router_validation(
-        argv: list[str], *, timeout: int, max_output_bytes: int,
-        input_text: Optional[str], encoding: str) -> tuple[subprocess.CompletedProcess, dict]:
-    """Run one Docker validation with bounded pipes and deterministic cleanup.
-
-    Validation images must already be local, have no network, and run inside
-    tight process/CPU/memory limits. Output is drained continuously but only the
-    first ``max_output_bytes`` per stream is retained. A timeout force-removes
-    the named daemon-side container after killing the Docker CLI.
-    """
-    if argv[:2] != ["docker", "run"]:
-        raise ToolError(
-            "unsafe_validation_command",
-            "router validation runner accepts only docker run",
-            {"command": argv},
-        )
-    container_name = "anvil-router-validate-" + uuid.uuid4().hex[:16]
-    command = argv[:2] + [
-        "--name", container_name,
-        "--pull", "never",
-        "--network", "none",
-        "--memory", "512m",
-        "--cpus", "1",
-        "--pids-limit", "128",
-    ] + argv[2:]
-    try:
-        proc = subprocess.Popen(
-            command,
-            stdin=subprocess.PIPE if input_text is not None else subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-    except FileNotFoundError:
-        raise
-
-    retained = {"stdout": bytearray(), "stderr": bytearray()}
-    truncated = {"stdout": False, "stderr": False}
-
-    def drain(name, stream):
-        while True:
-            chunk = stream.read(8192)
-            if not chunk:
-                break
-            remaining = max_output_bytes - len(retained[name])
-            if remaining > 0:
-                retained[name].extend(chunk[:remaining])
-            if len(chunk) > max(remaining, 0):
-                truncated[name] = True
-
-    def write_input():
-        if proc.stdin is None:
-            return
-        try:
-            proc.stdin.write((input_text or "").encode(encoding))
-        except (BrokenPipeError, OSError):
-            pass
-        finally:
-            try:
-                proc.stdin.close()
-            except OSError:
-                pass
-
-    threads = [
-        threading.Thread(target=drain, args=("stdout", proc.stdout), daemon=True),
-        threading.Thread(target=drain, args=("stderr", proc.stderr), daemon=True),
-        threading.Thread(target=write_input, daemon=True),
-    ]
-    for thread in threads:
-        thread.start()
-    try:
-        returncode = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        try:
-            proc.kill()
-        except OSError:
-            pass
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            pass
-        try:
-            cleanup = subprocess.run(
-                ["docker", "rm", "-f", container_name],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            cleanup_returncode = cleanup.returncode
-        except (OSError, subprocess.TimeoutExpired):
-            cleanup_returncode = None
-        raise ToolError(
-            "timeout",
-            "router validation timed out; validation container cleanup was attempted",
-            {
-                "command": command,
-                "timeout": timeout,
-                "cleanup_returncode": cleanup_returncode,
-            },
-        )
-    finally:
-        for thread in threads:
-            thread.join(timeout=5)
-
-    stdout = retained["stdout"].decode(encoding, "replace")
-    stderr = retained["stderr"].decode(encoding, "replace")
-    return (
-        subprocess.CompletedProcess(command, returncode, stdout, stderr),
-        {
-            "stdout_truncated": truncated["stdout"],
-            "stderr_truncated": truncated["stderr"],
-        },
-    )
 
 
 def tool_serves_manage(args: dict) -> dict:
@@ -2360,11 +2041,6 @@ def tool_cache_prune_plan(args: dict) -> dict:
     })
 
 
-def _route_url(base_url: str) -> str:
-    base = base_url.rstrip("/")
-    return base if base.endswith("/route") else base + "/route"
-
-
 def _decisions_url(base_url: str, limit: int) -> str:
     base = base_url.rstrip("/")
     if base.endswith("/decisions"):
@@ -2374,42 +2050,6 @@ def _decisions_url(base_url: str, limit: int) -> str:
     else:
         url = base + "/v1/decisions"
     return url + "?" + urllib.parse.urlencode({"limit": str(limit)})
-
-
-def tool_route_decision(args: dict) -> dict:
-    base_url = _safe_probe_url(_str_arg(args, "base_url", "http://127.0.0.1:8000/v1"))
-    model = _str_arg(args, "model", "chat")
-    prompt = _str_arg(args, "prompt", required=True)
-    api_key_env = _probe_api_key_env(args)
-    timeout = _bounded_int_arg(args, "timeout_seconds", 5, min_value=1, max_value=60)
-    body = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt}]}).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
-    token = ""
-    if api_key_env:
-        token = os.environ.get(api_key_env)
-        if token:
-            headers["Authorization"] = "Bearer " + token
-            headers["x-api-key"] = token
-    req = urllib.request.Request(_route_url(base_url), data=body, headers=headers, method="POST")
-    try:
-        with _urlopen_no_proxy_no_redirect(req, timeout=timeout) as resp:
-            raw = resp.read().decode("utf-8")
-            parsed = json.loads(raw or "{}")
-            return _ok(_redact_secret(
-                {"status": getattr(resp, "status", resp.getcode()), "response": parsed},
-                token,
-            ))
-    except urllib.error.HTTPError as exc:
-        details, raw = _http_error_details(exc, token)
-        try:
-            details["response"] = _redact_secret(json.loads(raw), token)
-        except ValueError:
-            pass
-        if exc.code == 503:
-            return _fail("no_available_tier", "route decision returned HTTP 503", details)
-        raise ToolError("route_http_error", "route decision returned HTTP %s" % exc.code, details)
-    except Exception as exc:
-        raise ToolError("route_probe_failed", _redact_secret(str(exc), token), {"base_url": base_url})
 
 
 def tool_openclaw_sync(args: dict) -> dict:
@@ -2423,42 +2063,10 @@ def tool_openclaw_sync(args: dict) -> dict:
             "raw api_key is not accepted; set api_key_env to the credential env var name",
         )
     api_key_env = _probe_api_key_env({"api_key_env": _str_arg(args, "api_key_env", "ANVIL_ROUTER_TOKEN")})
-    native_provider = _str_arg(args, "native_provider", "")
-    native_model = _str_arg(args, "native_model", "")
-    plugin_dir = _str_arg(args, "plugin_dir", "")
-    tool_profile = _str_arg(args, "tool_profile", "")
-    exec_mode = _str_arg(args, "exec_mode", "")
-    client_side_routing = _arg_bool(
-        args.get("client_side_routing"),
-        False,
-        name="client_side_routing",
-    )
-    route_endpoint = _str_arg(args, "route_endpoint", "")
-    if route_endpoint:
-        route_endpoint = _safe_probe_url(route_endpoint)
-    route_auth_env = _str_arg(args, "route_auth_env", "")
-    if route_auth_env:
-        try:
-            harness._validate_env_var_name(route_auth_env, arg_name="route_auth_env")
-        except ValueError as exc:
-            raise ToolError("bad_route_auth_env", str(exc), {"route_auth_env": route_auth_env})
-    route_timeout_ms = None
-    if "route_timeout_ms" in args:
-        route_timeout_ms = _bounded_int_arg(
-            args,
-            "route_timeout_ms",
-            500,
-            min_value=1,
-            max_value=5000,
-        )
     gateway_host = _str_arg(args, "gateway_host", "")
     gateway_user = _str_arg(args, "gateway_user", "")
     gateway_path = _str_arg(args, "gateway_path", "~/.openclaw/openclaw.json")
     out = _str_arg(args, "out", "")
-    skills = _arg_bool(args.get("skills"), False, name="skills")
-    skill_dir = _str_arg(args, "skill_dir", "")
-    if skill_dir and not skills:
-        raise ToolError("bad_argument", "skill_dir requires skills=true")
     voice = _arg_bool(args.get("voice"), False, name="voice")
     voice_realtime_url = _str_arg(
         args,
@@ -2520,17 +2128,6 @@ def tool_openclaw_sync(args: dict) -> dict:
             config,
             base_url=base_url,
             api_key_env=api_key_env,
-            native_provider=native_provider or None,
-            native_model=native_model or None,
-            plugin_dir=plugin_dir or None,
-            tool_profile=tool_profile or None,
-            exec_mode=exec_mode or None,
-            authoritative_route=not client_side_routing,
-            route_endpoint=route_endpoint or None,
-            route_auth_env=route_auth_env or None,
-            route_timeout_ms=route_timeout_ms,
-            skills=skills,
-            skill_dir=skill_dir or None,
             voice=voice,
             voice_realtime_url=voice_realtime_url,
             voice_model=voice_model or None,
@@ -2550,17 +2147,6 @@ def tool_openclaw_sync(args: dict) -> dict:
         "gateway_user": gateway_user or None,
         "gateway_path": gateway_path,
         "out": out or None,
-        "native_provider": native_provider or None,
-        "native_model": native_model or None,
-        "plugin_dir": plugin_dir or None,
-        "tool_profile": tool_profile or None,
-        "exec_mode": exec_mode or None,
-        "authoritative_route": not client_side_routing,
-        "route_endpoint": preview.get("route_endpoint"),
-        "route_auth_env": preview.get("route_auth_env"),
-        "route_timeout_ms": preview.get("route_timeout_ms"),
-        "skills": skills,
-        "skill_dir": skill_dir or None,
         "voice": voice,
         "voice_realtime_url": voice_realtime_url if voice else None,
         "voice_model": preview.get("voice_model") if voice else None,
@@ -2583,23 +2169,11 @@ def tool_openclaw_sync(args: dict) -> dict:
             {"target": target},
         )
     applied_payload = {}
-    applied_validation = {}
     rc, stdout, stderr = _capture(lambda: harness.cmd_sync_openclaw(
         config,
         out=out or None,
         base_url=base_url,
         api_key_env=api_key_env,
-        native_provider=native_provider or None,
-        native_model=native_model or None,
-        plugin_dir=plugin_dir or None,
-        tool_profile=tool_profile or None,
-        exec_mode=exec_mode or None,
-        authoritative_route=not client_side_routing,
-        route_endpoint=route_endpoint or None,
-        route_auth_env=route_auth_env or None,
-        route_timeout_ms=route_timeout_ms,
-        skills=skills,
-        skill_dir=skill_dir or None,
         voice=voice,
         voice_realtime_url=voice_realtime_url,
         voice_model=voice_model or None,
@@ -2621,22 +2195,11 @@ def tool_openclaw_sync(args: dict) -> dict:
             if arg_name in args
         ),
         _applied_payload=applied_payload,
-        _applied_validation=applied_validation,
     ))
     if rc == 0 and applied_payload:
         preview = harness._openclaw_payload_summary(
             applied_payload,
-            skills=skills,
             voice=voice,
-            plugin_manifest_verified=applied_validation.get(
-                "plugin_manifest_verified"
-            ),
-            native_model_verified=applied_validation.get(
-                "native_model_verified"
-            ),
-            plugin_runtime_verified=applied_validation.get(
-                "plugin_runtime_verified"
-            ),
         )
     result = {
         "applied": rc == 0,
@@ -2647,31 +2210,9 @@ def tool_openclaw_sync(args: dict) -> dict:
         "preview": {
             "model_count": preview["model_count"],
             "model_ids": preview["model_ids"],
-            "plugin_id": preview["plugin_id"],
             "base_url": preview["base_url"],
             "api_key": preview["api_key"],
-            "plugin_enabled": preview["plugin_enabled"],
-            "plugin_load_paths": preview["plugin_load_paths"],
-            "native_primary": preview["native_primary"],
-            "native_provider": preview["native_provider"],
-            "native_model": preview["native_model"],
-            "route_endpoint": preview["route_endpoint"],
-            "route_auth_env": preview["route_auth_env"],
-            "route_timeout_ms": preview["route_timeout_ms"],
-            "tool_profile": preview["tool_profile"],
-            "exec_mode": preview["exec_mode"],
-            "fresh_config_ready": preview["fresh_config_ready"],
-            "fresh_config_issues": preview["fresh_config_issues"],
-            "plugin_manifest_verified": preview["plugin_manifest_verified"],
-            "native_model_verified": preview["native_model_verified"],
-            "plugin_runtime_verified": preview["plugin_runtime_verified"],
-            "fresh_setup_ready": preview["fresh_setup_ready"],
-            "fresh_setup_issues": preview["fresh_setup_issues"],
-            "skills": preview["skills"],
-            "skill_name": preview["skill_name"],
-            "skill_load_dirs": preview["skill_load_dirs"],
-            "agent_names": preview["agent_names"],
-            "agent_models": preview["agent_models"],
+            "direct_aliases": preview["direct_aliases"],
             "voice": preview["voice"],
             "voice_provider": preview["voice_provider"],
             "voice_realtime_url": preview["voice_realtime_url"],
@@ -3143,7 +2684,7 @@ def _operation_records(
 ) -> Iterable[dict[str, Any]]:
     for node in nodes:
         path = parent + (node.name,)
-        if node.visible and node.tombstone is None and node.remote_operation is not None:
+        if node.visible and node.remote_operation is not None:
             remote = node.remote_operation
             yield {
                 "name": "-".join(path),
@@ -3415,29 +2956,6 @@ TOOLS: Dict[str, dict] = {
         }),
         "handler": tool_decision_summary,
     },
-    "router_promote": {
-        "description": "Validate or preview router promotion. Validation executes the selected image and requires confirm=true; apply also requires dry_run=false and human_approved=true.",
-        "inputSchema": _schema({
-            "profile": {"type": "string"},
-            "config": {"type": "string"},
-            "current_profile": {"type": "string"},
-            "current_config": {"type": "string"},
-            "container": {"type": "string"},
-            "cfg_volume": {"type": "string"},
-            "image": {"type": "string"},
-            "profile_dest": {"type": "string"},
-            "config_dest": {"type": "string"},
-            "no_reload": {"type": "boolean"},
-            "validate_only": {"type": "boolean"},
-            "dry_run": {"type": "boolean"},
-            "confirm": {"type": "boolean"},
-            "human_approved": {"type": "boolean"},
-            "diff_limit": _bounded_integer_schema(1, 500, 50),
-            "timeout_seconds": _bounded_integer_schema(1, 1800, 300),
-            "max_output_bytes": _bounded_integer_schema(1024, 1048576, 65536),
-        }, required=["profile"]),
-        "handler": tool_router_promote,
-    },
     "serves_status": {
         "description": "Inspect model serves from a serves.toml manifest.",
         "inputSchema": _schema({
@@ -3588,44 +3106,16 @@ TOOLS: Dict[str, dict] = {
         }),
         "handler": tool_cache_prune_plan,
     },
-    "route_decision": {
-        "description": "POST a prompt to the router /v1/route decision endpoint.",
-        "inputSchema": _schema({
-            "base_url": {"type": "string"},
-            "model": {"type": "string"},
-            "prompt": {"type": "string"},
-            "api_key_env": {"type": "string"},
-            "timeout_seconds": _bounded_integer_schema(1, 60, 5),
-        }, required=["prompt"]),
-        "handler": tool_route_decision,
-    },
     "openclaw_sync": {
-        "description": "Preview or apply a complete OpenClaw gateway setup from a router config, including the Anvil provider, intent-router plugin contract, and optional tool policy.",
+        "description": "Preview or apply an OpenClaw provider config from the router's direct model aliases.",
         "inputSchema": _schema({
             "config": {"type": "string"},
             "base_url": {"type": "string"},
             "api_key_env": {"type": "string"},
-            "native_provider": {"type": "string"},
-            "native_model": {"type": "string"},
-            "plugin_dir": {"type": "string"},
-            "tool_profile": {
-                "type": "string",
-                "enum": ["coding", "full", "messaging", "minimal"],
-            },
-            "exec_mode": {
-                "type": "string",
-                "enum": ["allowlist", "ask", "auto", "deny", "full"],
-            },
-            "client_side_routing": {"type": "boolean"},
-            "route_endpoint": {"type": "string"},
-            "route_auth_env": {"type": "string"},
-            "route_timeout_ms": _bounded_integer_schema(1, 5000, 500),
             "gateway_host": {"type": "string"},
             "gateway_user": {"type": "string"},
             "gateway_path": {"type": "string"},
             "out": {"type": "string"},
-            "skills": {"type": "boolean"},
-            "skill_dir": {"type": "string"},
             "voice": {"type": "boolean"},
             "voice_realtime_url": {"type": "string"},
             "voice_model": {"type": "string"},

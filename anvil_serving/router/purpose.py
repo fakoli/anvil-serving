@@ -7,7 +7,7 @@ request's ``model`` field is resolved against the configured
 
 This is deliberately NOT the chat pipeline:
 
-* No intent classification, no policy, no verify/fallback ladder — a purpose
+* No classifier, policy, verifier, or fallback ladder — a purpose
   request names exactly one serve or it fails. **An unknown model name is a
   clean HTTP 404 naming the configured models for that kind; it is never a
   fallthrough to chat routing** (the T010 acceptance criterion).
@@ -16,7 +16,7 @@ This is deliberately NOT the chat pipeline:
   stdlib ``urllib`` transport the tier backends use, and the upstream JSON is
   returned to the caller unchanged.
 * Every dispatched request is recorded in the shared
-  :class:`~anvil_serving.router.decision_log.DecisionLog` (work_class =
+  :class:`~anvil_serving.router.decision_log.DecisionLog` (kind =
   ``"embedding"`` / ``"rerank"``) and emits the standard content-free
   ``decision_line`` to stderr, so purpose traffic shows up in ``GET
   /v1/decisions`` and the container logs alongside chat decisions.
@@ -212,13 +212,13 @@ class PurposeRouter:
     ) -> None:
         served = outcome == "served"
         record = DecisionRecord(
-            work_class=kind,
-            requested_tiers=(purpose_id,),
+            kind=kind,
+            requested_tier=purpose_id,
             attempts=(
                 AttemptRecord(
                     tier_id=purpose_id,
-                    verifier_passed=served,
-                    verify_reason=reason,
+                    succeeded=served,
+                    reason=reason,
                     prompt_tokens=prompt_tokens,
                     completion_tokens=0,
                     outcome=outcome,
@@ -227,8 +227,7 @@ class PurposeRouter:
             served_tier=purpose_id if served else None,
             total_prompt_tokens=prompt_tokens,
             total_completion_tokens=0,
-            fell_back=False,
-            intent=kind,
+            route=kind,
         )
         if self._log is not None:
             self._log.record(record)

@@ -217,7 +217,7 @@ def test_real_stt_and_tts_stages_flow_a_message_end_to_end():
         vad_config=VADConfig(frame_ms=50, silence_ms=200),
         stt_config=stt_config,
         stt_stream_fn=fake_stt_stream,
-        llm_config=LLMStageConfig(model="chat-fast", base_url="http://127.0.0.1:9/v1"),
+        llm_config=LLMStageConfig(model="llm.voice", base_url="http://127.0.0.1:9/v1"),
         llm_stream_fn=_fake_llm_stream,
         tts_config=tts_config,
         tts_stream_fn=fake_tts_stream,

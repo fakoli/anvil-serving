@@ -120,7 +120,6 @@ def _get(host, port, path, headers=None) -> Tuple[int, Dict[str, str], bytes]:
 # --------------------------------------------------------------------------- #
 BASE_TOML = """
 [router]
-mapping_version = "test"
 
 [[router.tiers]]
 id            = "fast-local"
@@ -132,8 +131,8 @@ privacy       = "local"
 tool_support  = true
 auth_env      = "ANVIL_FAST_LOCAL_KEY"
 
-[router.presets]
-chat = ["fast-local"]
+[router.model_routes]
+llm.primary = "fast-local"
 """
 
 PURPOSE_TOML = BASE_TOML + """
@@ -245,7 +244,7 @@ def test_dispatch_embeddings_relays_verbatim_and_logs_decision():
 
     record = log.last
     assert record is not None
-    assert record.work_class == "embedding"
+    assert record.kind == "embedding"
     assert record.served_tier == "embeddings-local"
     assert record.total_prompt_tokens == 7
     assert record.attempts[0].outcome == "served"
@@ -361,12 +360,12 @@ def test_front_door_unknown_embedding_model_is_404_not_chat():
     router = PurposeRouter([EMBED_PM], transport=transport)
     with purpose_server(router) as (host, port):
         status, data = _post(host, port, "/v1/embeddings", {
-            "model": "planning", "input": "x",  # a CHAT preset name
+            "model": "llm.primary", "input": "x",  # a chat alias, not a purpose model
         })
     assert status == 404
     err = json.loads(data)["error"]
     assert err["type"] == "model_not_found"
-    assert "planning" in err["message"]
+    assert "llm.primary" in err["message"]
     assert transport.calls == []  # nothing upstream; StaticBackend untouched
 
 

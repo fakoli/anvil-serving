@@ -76,8 +76,6 @@ def test_gate_router_config_is_parseable_on_windows_and_covers_agent_surfaces():
         '".claude/gate-router.local.md"',
         '".gitattributes"',
         '"skills/**"',
-        '"examples/openclaw/**"',
-        '"plugins/openclaw-anvil-intent-router/**"',
     ):
         assert any(rule.startswith(surface) for rule in rules)
 

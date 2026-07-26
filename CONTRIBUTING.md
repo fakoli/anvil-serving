@@ -36,9 +36,9 @@ Two design invariants sit right behind those rules — new code must respect the
 
 - **No self-verification.** Every correctness gate (a verifier, preflight, the eval judge) must be
   independent of the model that produced the output it checks.
-- **Secrets are env-var names, never values.** Configs carry names like `ANVIL_ROUTER_TOKEN`;
-  `router/secrets.py` redacts resolved values from logs and decision records. Do not add a code
-  path that stores or prints a raw credential.
+- **Secrets are env-var names, never values.** Configs carry names like
+  `ANVIL_ROUTER_TOKEN`. Do not add a code path that stores or prints a raw
+  credential.
 
 ## Module map
 
@@ -49,9 +49,9 @@ these fit together at runtime.
 | Area | Modules | One-liner |
 |------|---------|-----------|
 | CLI | `cli.py` | Verb dispatch; each verb lazily imports its module. |
-| Router data plane | `router/front_door.py`, `router/dialects/`, `router/intent.py`, `router/classify.py`, `router/policy.py`, `router/profile_store.py`, `router/fallback.py`, `router/verify.py`, `router/commit_window.py`, `router/serve.py`, `router/backends/` | HTTP front door, wire dialects, intent → policy → verify-and-fallback pipeline, backend composition. |
-| Router support | `router/config.py`, `router/decision_log.py`, `router/metrics.py`, `router/secrets.py`, `router/fingerprint.py`, `router/discovery.py`, `router/seams.py`, `router/registry.py` | Config loading, audit records, redaction, serve fingerprints, `/v1/models` payload, typed extension seams. |
-| Quality loop | `profile.py`, `eval.py`, `calibrate.py`, `score.py`, `router/profile_bootstrap.py`, `router/calibrate.py` | Usage measurement, shadow eval, guarded profile write-back, role scoring. |
+| Router data plane | `router/front_door.py`, `router/dialects/`, `router/serve.py`, `router/availability.py`, `router/admission.py` | Authenticated direct-alias gateway, wire dialects, streaming relay, readiness, and admission control. |
+| Router support | `router/config.py`, `router/decision_log.py`, `router/discovery.py` | Direct topology loading, metadata-only audit records, and `/v1/models` alias advertisement. |
+| Evaluation | `profile.py`, `eval.py`, `score.py`, `preflight.py`, `benchmark.py` | Usage measurement plus repeatable endpoint qualification and benchmark evidence. |
 | Local serving tools | `serves.py`, `models.py`, `deploy.py`, `init.py`, `preflight.py`, `benchmark.py`, `multiplexer.py`, `cache_prune.py`, `doctor.py`, `host.py` | Compose-defined serves, model catalog, tuned compose rendering, correctness/capacity gates, single-GPU swapping, environment checks. |
 | Control plane | `mcp.py`, `controller.py`, `harness.py`, `router_manage.py` | Guarded MCP tools, tailnet HTTP controller, harness config sync, deployed-router lifecycle. |
 | Voice | `voice/`, `voice_sidecar.py` | Realtime voice pipeline and speech-to-speech sidecar rendering. |
@@ -59,20 +59,9 @@ these fit together at runtime.
 
 ## Extension recipes
 
-The router's stages are typed seams (`typing.Protocol`, catalogued in `router/seams.py`), so most
-extensions are "implement the Protocol, register it where the pipeline is composed" — no framework.
-The design rules for all of them: a plugin that throws is treated as a fallback trigger, data-plane
-code respects a latency budget, and heavy work goes async. Details in
-[Quality-gated router §10](docs/QUALITY-GATED-ROUTER.md#10-extensibility--plugin-seams).
-
-**Add a verifier** (structural response check):
-
-1. Implement the `Verifier` protocol in `anvil_serving/router/verify.py`: a class with `name` and
-   `verify(view: ResponseView) -> VerifyResult`. Keep it cheap, purely local (no I/O), and bounded
-   (see the existing `MAX_SCAN_BYTES` guards).
-2. Add it to `default_verifiers()` (order matters — cheap checks first) or wire it per-preset.
-3. Mirror an existing test file in `tests/router/` (e.g. the `verify` tests): cover pass, fail,
-   and the pathological input that motivated the bound.
+The data plane is intentionally small. Extensions should preserve the direct-alias
+contract and use the existing modules rather than recreate policy or fallback layers.
+Details are in [Thin capability gateway](docs/THIN-CAPABILITY-GATEWAY.md).
 
 **Add a wire dialect** (a new protocol the front door speaks):
 
@@ -86,8 +75,8 @@ code respects a latency budget, and heavy work goes async. Details in
 
 **Add a backend** (how a tier is called):
 
-1. Subclass or mirror `router/backends/relay.py` / `cloud.py` (urllib only — no SDK), or
-   `local.py` for deterministic in-process backends.
+1. Mirror `router/backends/relay.py` (urllib only — no SDK), or `local.py` for
+   deterministic in-process backends.
 2. Compose it in `router/serve.py`'s `build_backends` based on tier config.
 3. Tests must be hermetic: fake the HTTP layer, never call a real endpoint.
 
@@ -127,9 +116,6 @@ silently change direction and never delete an ADR — supersede it.
   only to supported Anvil JSON commands plus `git rev-parse --verify HEAD`; it never reads or
   copies Anvil state files directly. Review dispositions must name the exact HEAD; each observed
   proof must name its full Git commit, which the gate verifies is an ancestor of that HEAD.
-- The OpenClaw plugin has its own `node --test` suite under
-  `plugins/openclaw-anvil-intent-router/`; `tests/router/test_keyword_parity.py` guards drift
-  between the plugin's classifier data and the Python classifier.
 
 ## Docs
 

@@ -2,7 +2,7 @@
 
 A *serve recipe* is a reproducible record of HOW to serve a model on our hardware:
 the exact `docker run` (engine / image / env / flags / quant / port), the hardware
-it ran on, the MEASURED numbers, and the intent it is best suited for. The registry
+it ran on, the MEASURED numbers, and the workloads it fits. The registry
 (`configs/serve-recipes.toml`) is a list of `[[recipe]]` tables.
 
 Stdlib-only, on purpose:
@@ -288,7 +288,7 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
     if not isinstance(model, str) or not model.strip():
         raise RecipeError("recipe.model must be a non-empty string")
     for key in (
-        "serve", "hardware", "measured", "intent", "download", "sources",
+        "serve", "hardware", "measured", "fit", "download", "sources",
         "bakeoff", "activation",
     ):
         if key in recipe and not isinstance(recipe[key], dict):

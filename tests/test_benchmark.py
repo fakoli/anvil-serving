@@ -258,8 +258,8 @@ import tomllib        # noqa: E402
 def _recipe_args(**over):
     base = dict(
         model="local-heavy", recipe_model=None, recipe_status="verified",
-        recipe_from_container="heavy-serve", recipe_intent="flexibility,quality",
-        recipe_mode="flexibility", recipe_out="-",
+        recipe_from_container="heavy-serve", recipe_fit="benchmark-quality,quality",
+        recipe_out="-",
     )
     base.update(over)
     return argparse.Namespace(**base)
@@ -294,7 +294,7 @@ def _fake_hardware(gpu_uuid=None):
     return {"gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q", "vram_total_gb": 96}
 
 
-def test_build_recipe_assembles_measured_serve_and_intent():
+def test_build_recipe_assembles_measured_serve_and_fit():
     r = bm.build_recipe(_recipe_args(), _STUB_SUMMARY,
                         capture=_fake_capture, hardware=_fake_hardware)
     assert r["model"] == "local-heavy"  # defaults to --model
@@ -308,7 +308,7 @@ def test_build_recipe_assembles_measured_serve_and_intent():
     assert r["serve"]["context_tokens"] == 131072
     assert r["measured"]["throughput_single_tok_s"] == 183.2  # rounded from THIS run
     assert r["measured"]["context_tokens"] == 131072
-    assert r["intent"] == {"suited": ["flexibility", "quality"], "mode": "flexibility"}
+    assert r["fit"] == {"suited": ["benchmark-quality", "quality"]}
 
 
 def test_build_recipe_labels_concurrent_throughput_as_aggregate():
@@ -366,7 +366,7 @@ def test_main_recipe_out_end_to_end_is_hermetic(monkeypatch, capsys):
         "--base-url", "http://127.0.0.1:30002/v1", "--model", "local-heavy",
         "--requests", "2", "--concurrency", "2", "--max-model-len", "131072",
         "--recipe-out", "-", "--recipe-from-container", "heavy-serve",
-        "--recipe-intent", "flexibility", "--recipe-mode", "flexibility",
+        "--recipe-fit", "benchmark-quality",
     ])
     assert rc in (0, None)
     out = capsys.readouterr().out
@@ -374,7 +374,7 @@ def test_main_recipe_out_end_to_end_is_hermetic(monkeypatch, capsys):
     block = out[out.index("[[recipe]]"):]
     parsed = tomllib.loads("schema='x'\n" + block)["recipe"][0]
     assert parsed["model"] == "local-heavy"
-    assert parsed["intent"]["mode"] == "flexibility"
+    assert parsed["fit"]["suited"] == ["benchmark-quality"]
 
 
 def test_main_incomplete_run_skips_verified_recipe(monkeypatch, tmp_path, capsys):

@@ -160,14 +160,12 @@ def test_router_service_passes_token_from_environment():
 
 
 def test_router_service_mounts_the_config_volume():
-    # The router reads config + profile from the anvil-router-cfg VOLUME at /etc/anvil
-    # (mounted read-only). This replaced the old repo bind-mount because `anvil-serving
-    # router promote` writes the promoted profile/config INTO that volume out-of-band — a
-    # read-only repo bind-mount cannot be a promotion target.
+    # The router reads its direct-alias config from the anvil-router-cfg volume
+    # at /etc/anvil (mounted read-only).
     services = _service_blocks(_compose_text())
     router = services["router"]
     assert re.search(r'anvil-router-cfg:/etc/anvil(:ro)?', router), (
-        "router service must mount the anvil-router-cfg volume at /etc/anvil (the promote target)"
+        "router service must mount the anvil-router-cfg volume at /etc/anvil"
     )
 
 

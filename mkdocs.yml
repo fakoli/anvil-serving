@@ -1,7 +1,6 @@
 site_name: anvil-serving
 site_description: >-
-  The quality-gated local-model router for coding agents.
-  Run local where it is measured safe. Verify risky local output. Keep cloud explicit.
+  Benchmark and serve local models through a thin capability gateway.
 site_url: https://fakoli.github.io/anvil-serving/
 repo_url: https://github.com/fakoli/anvil-serving
 repo_name: fakoli/anvil-serving
@@ -39,7 +38,7 @@ nav:
       - Configuration: CONFIGURATION.md
       - Terminology: TERMINOLOGY.md
   - Product design:
-      - Quality-gated router (deep dive): QUALITY-GATED-ROUTER.md
+      - Thin capability gateway: THIN-CAPABILITY-GATEWAY.md
   - Operations:
       - Operator playbooks: OPERATOR-PLAYBOOKS.md
       - Troubleshooting: TROUBLESHOOTING.md

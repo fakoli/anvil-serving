@@ -25,8 +25,8 @@ acknowledge within a few business days and will coordinate a fix and disclosure 
 
 ## Scope and threat model
 
-anvil-serving is a **network-facing server** that routes coding-harness traffic and can hold
-**cloud-provider credentials** for its cloud fallback tier. Keep this in mind:
+anvil-serving is a **network-facing server** that proxies coding-harness traffic
+to configured local model endpoints. Keep this in mind:
 
 - The server binds `127.0.0.1` by default. **Built-in authentication is opt-in, not automatic**:
   configure `[server].auth_env = "ANVIL_ROUTER_TOKEN"` (any env-var NAME matching
@@ -39,20 +39,18 @@ anvil-serving is a **network-facing server** that routes coding-harness traffic 
   [ADR-0004](docs/adr/0004-router-as-a-service-containerized-and-authed.md).
 - **A token is required before you bind the router to a non-loopback address.** If you bind it
   to a non-loopback address (`--host 0.0.0.0`, or a LAN/tailnet IP) without configuring
-  `auth_env`, **any** caller reachable on that network can drive routing and, if you have an
-  opt-in metered cloud tier configured, **consume your cloud credentials via fallback**.
+  `auth_env`, **any** caller reachable on that network can drive configured model endpoints.
   Configure `auth_env` first, always, whenever the router is reachable from anywhere other than
   the box it runs on. Treat network-level identity — a Tailscale ACL, a firewall rule, a private
   mesh — as **defense-in-depth on top of the token**, never as a substitute for it.
 - **The token secret itself is never stored in a config file** — only its env-var NAME is (via
-  `auth_env`), matching the convention already used for cloud-tier credentials. The value is
-  redacted from logs and the decision record by the same `secrets.py` machinery.
+  `auth_env`). Request metadata and decision records must never contain credential values.
 - **In the Docker/Compose deployment** (see the README's "Run the router in Docker" section),
   the router is the **only** service published beyond loopback; the local model serves
   (SGLang/vLLM) stay on the internal Docker network / loopback, reachable **only** by the
   router (by service name) — never publish a raw serve directly.
-- Cloud credentials are referenced by **env-var name** and are redacted from logs and the decision
-  record. Do not paste raw keys into config files.
+- Upstream credentials are referenced by **env-var name**. Do not paste raw keys into
+  config files, logs, or decision records.
 - The test suite is hermetic and never makes real network or LLM calls.
 
 Out of scope: vulnerabilities in third-party inference engines (SGLang, vLLM), in the cloud

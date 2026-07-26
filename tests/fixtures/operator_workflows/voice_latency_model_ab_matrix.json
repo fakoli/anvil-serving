@@ -44,7 +44,7 @@
         "provider": "fast-local",
         "model": "qwen36-27b",
         "tier": "local",
-        "work_class": "chat-fast",
+        "work_class": "llm.voice",
         "route_source": "docs/findings/2026-07-07-voice-latency-baseline.md"
       },
       "source_revision": {
@@ -87,7 +87,7 @@
         "provider": "fast-local",
         "model": "qwen36-27b",
         "tier": "local",
-        "work_class": "chat-fast",
+        "work_class": "llm.voice",
         "route_source": "manifest expected_route fields"
       },
       "source_revision": {
@@ -136,7 +136,7 @@
         "provider": "direct-vllm",
         "model": "qwen3-32b-nvfp4",
         "tier": "candidate",
-        "work_class": "chat-fast",
+        "work_class": "llm.voice",
         "route_source": "examples/voice/openclaw-anvil-voice.toml"
       },
       "source_revision": {
@@ -185,7 +185,7 @@
         "provider": "direct-vllm",
         "model": "gemma4-12b-it",
         "tier": "candidate",
-        "work_class": "chat-fast",
+        "work_class": "llm.voice",
         "route_source": "examples/voice/openclaw-anvil-voice.toml"
       },
       "source_revision": {
@@ -234,7 +234,7 @@
         "provider": "direct-vllm",
         "model": "gemma4-e4b-it",
         "tier": "candidate",
-        "work_class": "chat-fast",
+        "work_class": "llm.voice",
         "route_source": "examples/voice/openclaw-anvil-voice.toml"
       },
       "source_revision": {
@@ -283,7 +283,7 @@
         "provider": "direct-vllm",
         "model": "qwen3-32b-nvfp4",
         "tier": "candidate",
-        "work_class": "chat-fast",
+        "work_class": "llm.voice",
         "route_source": "examples/voice/openclaw-anvil-voice.toml"
       },
       "source_revision": {

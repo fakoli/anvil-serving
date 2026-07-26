@@ -37,92 +37,28 @@ class DialectError(Exception):
 
 
 class NoAvailableTierError(Exception):
-    """No quality-gated tier served a request's work class.
-
-    Raised by the routing backend (T012) from two DISTINCT situations that
-    render as the same 503 to the harness but need different operator-facing
-    diagnosis (v0.7.1 — a live incident showed the pre-v0.7.1 single message
-    pointed at "credentials/reachability" for BOTH, costing real debugging time
-    on the exhausted case, where the tiers were bound and reachable the whole
-    time):
-
-    * ``kind="unbound"`` (the default) — every tier in the gated/allowed
-      candidate list is unbound — e.g. the only tier the quality gate permits
-      for ``planning`` is a cloud tier whose credential env var is unset, so it
-      was skipped at startup. The router does NOT fall back to an out-of-gate
-      tier: availability must never silently override the quality gate. Here
-      "configure credentials/endpoint" IS the right, accurate remediation.
-    * ``kind="exhausted"`` — every gated, BOUND candidate was actually
-      attempted (relayed to) and failed verification or the relay call itself;
-      the tiers were reachable and credentialed the whole time. The message
-      says so instead of pointing at credentials/reachability — see the
-      decision log for which candidate failed which check.
-    * ``kind="over_context"`` — the request's estimated size exceeds the
-      ``context_limit`` of EVERY candidate tier, so no tier can physically hold
-      it. This is a caller problem (too-large request), not a server
-      availability problem: the front door renders it as a clean **413 Payload
-      Too Large** rather than the exhaustion status, so an over-context request
-      is refused up front instead of being forwarded to a too-small tier (which
-      would 400 at the model with an "input exceeds maximum context length"
-      traceback).
-    * ``kind="unavailable"`` — candidates are configured, bound, and allowed,
-      but their explicit runtime readiness checks currently report unavailable.
-      No inference request was sent and no circuit failure was recorded.
-
-    Both kinds are the SAME exception type (the front door's
-    ``except NoAvailableTierError`` contract is unchanged; only the message —
-    and this ``kind`` attribute — differ), defined here alongside
-    :class:`DialectError` so the front door can catch it without importing the
-    routing layer (which would be a cycle).
-
-    Carries ``work_class``, the gated ``candidates``, and ``kind`` for the
-    operator / caller.
-    """
+    """A configured direct route cannot dispatch to its single tier."""
 
     def __init__(
         self,
-        work_class: Optional[str],
+        model: Optional[str],
         candidates: Sequence[str],
         *,
         kind: str = "unbound",
     ):
-        self.work_class = work_class
+        self.model = model
         self.candidates = tuple(candidates)
         self.kind = kind
-        cands = list(self.candidates)
-        if kind == "exhausted":
-            super().__init__(
-                f"no quality-gated tier served work_class={work_class!r}: all "
-                f"{len(cands)} bound candidate tier(s) {cands} were attempted "
-                f"and failed (verification or relay error); see the decision "
-                f"log for the per-tier failure reasons. The tiers were bound "
-                f"and reachable -- this is not a credentials/endpoint problem."
-            )
-        elif kind == "over_context":
-            super().__init__(
-                f"request too large for work_class={work_class!r}: its "
-                f"estimated context exceeds the context_limit of every "
-                f"candidate tier {cands}, so no tier can hold it. Send a "
-                f"smaller request, or add/route to a larger-context tier -- "
-                f"this is a payload-size problem, not a credentials/endpoint "
-                f"or availability problem."
-            )
-        elif kind == "unavailable":
-            super().__init__(
-                f"no quality-gated tier is currently ready for "
-                f"work_class={work_class!r}: configured candidate tier(s) "
-                f"{cands} failed runtime readiness and were not dispatched. "
-                f"Start the intended serve or wait for its health check to "
-                f"recover; no circuit-breaker failure was recorded."
-            )
-        else:
-            super().__init__(
-                f"no quality-gated tier available for work_class={work_class!r}: "
-                f"gated candidates {cands} are unbound. Configure that tier's "
-                f"credentials/endpoint (set its auth_env, or make the local "
-                f"base_url reachable); the router refuses to bypass the quality "
-                f"gate by serving from a tier the gate did not allow."
-            )
+        detail = {
+            "unknown_model": "model alias is not configured",
+            "over_context": "request exceeds the configured tier context window",
+            "unsupported_tools": "configured tier does not support tools",
+            "unavailable": "configured tier is not ready",
+            "unbound": "configured tier has no bound backend",
+        }.get(kind, "configured tier could not serve the request")
+        super().__init__(
+            f"{detail}: model={model!r}, tiers={list(self.candidates)!r}"
+        )
 
 
 @dataclass
@@ -138,7 +74,7 @@ class InternalRequest:
     """Dialect-neutral request handed to a :class:`Backend`.
 
     Both wire schemas normalize into this. ``raw`` keeps the original parsed
-    body so later stages (routing, verify) can inspect dialect-specific fields
+    body so the relay can preserve dialect-specific fields
     without re-parsing; ``dialect`` records which front door admitted it.
     """
 
@@ -166,12 +102,10 @@ class InternalRequest:
 class StructuredResult:
     """Structured fields from a backend response, carried as a per-thread side channel.
 
-    Backends that surface structured fields (``CloudBackend`` / ``RelayBackend``)
-    populate a ``threading.local`` during each ``generate()`` call. After the
-    generator is fully drained, callers read ``get_last_structured()`` to build a
-    :class:`~anvil_serving.router.verify.ResponseView` with a real
-    ``finish_reason`` and ``tool_calls``, making ``NotTruncated`` and
-    ``ToolCallJSONValid`` genuinely live on the serve path (#42 / #52).
+    A relay backend populates a ``threading.local`` during each ``generate()``
+    call. After the generator is fully drained, the dialect layer reads
+    ``get_last_structured()`` to preserve upstream ``finish_reason``,
+    ``tool_calls``, and token usage in the direct response.
 
     ``finish_reason``: raw upstream stop reason, passed through verbatim.
       Anthropic: ``"end_turn"`` / ``"tool_use"`` / ``"max_tokens"`` / ``"stop_sequence"``.
@@ -185,8 +119,7 @@ class StructuredResult:
     ``usage``: the upstream's REAL token accounting, normalized to
     ``{"input_tokens": int, "output_tokens": int}`` (Anthropic wire names;
     OpenAI's ``prompt_tokens``/``completion_tokens`` are mapped in).  ``None``
-    when the upstream reported none — the dialect layer then falls back to the
-    word-count estimate as before.  Harnesses use these numbers for context
+    when the upstream reported none. Harnesses use these numbers for context
     management, so passing the real counts through matters.
     """
 

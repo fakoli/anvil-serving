@@ -14,7 +14,8 @@ public_copy_date: 2026-07-22
 > **Provenance.** Output of a multi-agent research workflow that web-searched official docs and
 > adversarially verified each load-bearing claim. Citations are inline (official docs preferred).
 > Low-confidence / version-dependent facts are flagged explicitly. This is the evidence base for
-> the intent-addressing design in [`../QUALITY-GATED-ROUTER.md`](../QUALITY-GATED-ROUTER.md).
+> the former intent-addressing design, superseded by
+> [ADR-0028](../adr/0028-serving-benchmarks-and-thin-capability-gateway.md).
 
 > **Historical scope.** This is the sanitized public copy of the 2026-06-29 research snapshot, not
 > a claim that every third-party harness still exposes the same controls. The source digest and

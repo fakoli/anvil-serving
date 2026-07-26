@@ -56,7 +56,7 @@ def test_visible_commands_link_to_existing_reference_pages_and_headings():
         )
 
 
-def test_manifest_records_recursive_paths_metadata_and_tombstones():
+def test_manifest_records_recursive_paths_and_metadata():
     records = {record["path"]: record for record in manifest_data()["commands"]}
 
     assert "eval benchmark external compare" in records
@@ -79,14 +79,7 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
         "--dry-run" in option["flags"]
         for option in records["serves render"]["options"]
     )
-    for path in ("serves rm", "serves adopt"):
-        removed_yes = next(
-            option for option in records[path]["options"] if "--yes" in option["flags"]
-        )
-        assert removed_yes["tombstone"]["replacement"] == "--confirm"
-    assert records["serve"]["tombstone"]["replacement"] == "router run"
     assert records["mcp"]["handler"] is None
-    assert records["mcp"]["tombstone"]["replacement"] == "mcp serve"
     assert records["mcp serve"]["handler"] == "anvil_serving.mcp:main"
     assert records["router status"]["remote_operation"]["tool"] == "router_status"
     assert records["router endpoint"]["handler"] == "anvil_serving.router_endpoint:main"
@@ -105,9 +98,6 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     } <= set(records["eval preflight"]["remote_operation"]["allowed_arguments"])
     assert records["eval benchmark capacity"]["remote_operation"] is None
     assert records["eval benchmark quality"]["remote_operation"] is None
-    assert records["eval benchmark run"]["tombstone"]["replacement"] == (
-        "eval benchmark capacity or eval benchmark quality"
-    )
     assert records["eval benchmark external export"]["mutation_class"] == "mutate"
     assert records["harness sync openclaw"]["remote_operation"]["tool"] == "openclaw_sync"
     assert records["harness restart openclaw"]["recovery_capable"] is True
@@ -143,10 +133,6 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
         "allowed_arguments": ["timeout_seconds", "max_output_bytes"],
         "positional_arguments": [],
     }
-    for path in ("eval bootstrap", "eval calibrate"):
-        assert any(
-            "--dry-run" in option["flags"] for option in records[path]["options"]
-        )
     assert any(
         "--dry-run" in option["flags"]
         for option in records["eval benchmark external import"]["options"]
@@ -263,9 +249,6 @@ def test_repo_workbench_surfaces_catalog_current_mcp_tools_and_cli_gaps():
     catalog_paths = (
         root / ".agents" / "skills" / "anvil-serving-workbench" / "SKILL.md",
         root / ".claude" / "skills" / "anvil-serving-workbench" / "SKILL.md",
-        root / "examples" / "openclaw" / "skills" / "anvil-serving-workbench" / "SKILL.md",
-        root / "docs" / "OPERATOR-SKILLS-AND-SUBAGENTS.md",
-        root / "CLAUDE.md",
     )
 
     for path in catalog_paths:
@@ -278,7 +261,7 @@ def test_repo_workbench_surfaces_catalog_current_mcp_tools_and_cli_gaps():
         }
         assert not missing, f"{path.relative_to(root)} omits MCP tools: {sorted(missing)}"
 
-    for path in catalog_paths[:3]:
+    for path in catalog_paths[:2]:
         text = path.read_text(encoding="utf-8")
         for command in (
             "models recipes list/show",

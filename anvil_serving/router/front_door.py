@@ -16,7 +16,6 @@ purpose-model surfaces routed by MODEL NAME, never through chat routing:
 
 Each request is parsed into a single :class:`~anvil_serving.router.internal.InternalRequest`
 and passed through to ONE injectable :class:`~anvil_serving.router.internal.Backend`.
-Intent routing, multiple tiers, and verify/fallback are LATER tasks — not here.
 
 Design constraints (binding):
 
@@ -44,7 +43,7 @@ import sys
 import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Callable, Iterable, Optional
+from typing import Iterable, Optional
 
 from .backends import EchoBackend
 from .audio import (
@@ -66,14 +65,11 @@ from .dialects.embeddings import (
 )
 from .dialects.openai import OpenAIDialect
 from .dialects.responses import ResponsesDialect
-from .discovery import models_payload, ROUTE_ENDPOINT
-from .intent import PRESETS, Preset, WORK_CLASS_TO_PRESET
+from .discovery import models_payload
 from .internal import (
     Backend,
     DialectError,
-    InternalRequest,
     NoAvailableTierError,
-    normalize_messages,
 )
 from .purpose import PurposeError, PurposeRouter
 
@@ -175,15 +171,15 @@ def _correlation_from_headers(headers) -> dict:
 
 
 def _make_handler(backend: Backend, timeout: Optional[float],
-                  presets: Iterable[Preset], exhaustion_status: int = 503,
+                  model_routes: Iterable[str], exhaustion_status: int = 503,
                   auth_token: Optional[str] = None,
                   purpose: Optional[PurposeRouter] = None,
-                  audio: Optional[AudioGateway] = None,
-                  response_model_resolver: Optional[Callable[[str], str]] = None):
+                  audio: Optional[AudioGateway] = None):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
         server_version = "anvil"
+        sys_version = ""
         # Finite idle timeout: with HTTP/1.1 keep-alive on a ThreadingHTTPServer,
         # an abandoned connection would otherwise pin a daemon thread blocked in
         # readline() forever (thread/FD leak). A timed-out read makes
@@ -216,7 +212,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             itself is never logged: on failure only a generic message is sent.
             """
             if auth_token is None:
-                return True  # [server].auth_env unset -> auth OFF (back-compat)
+                return True  # [server].auth_env unset -> auth OFF
             supplied = _extract_bearer_token(self.headers)
             if supplied is None:
                 return False
@@ -224,36 +220,26 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 supplied.encode("utf-8"), auth_token.encode("utf-8")
             )
 
-        @staticmethod
-        def _response_model(requested_model: str) -> str:
-            """Resolve wire identity through an explicitly injected capability.
-
-            Plain/plugin backends cannot alter response identity through request
-            mutation. Resolver failures retain the compatibility-safe requested
-            model rather than failing an otherwise successful inference.
-            """
-            if response_model_resolver is None:
-                return requested_model
-            try:
-                value = response_model_resolver(requested_model)
-            except Exception:
-                return requested_model
-            return value if isinstance(value, str) and value else requested_model
-
         def _no_tier_response(self, e: NoAvailableTierError,
                               dialect: Optional[Dialect] = None) -> None:
             """Render a :class:`NoAvailableTierError` to the right HTTP status.
 
-            An ``over_context`` error (the request exceeds every tier's
+            An ``over_context`` error (the request exceeds its configured tier's
             context window) is a CALLER problem -> a clean **413 Payload Too
             Large**, refusing the over-sized request up front instead of
             forwarding it to a too-small tier that would 400 at the model. Every
-            other kind (``unbound`` / ``exhausted``) is a server availability
+            other dispatch failure is a server availability
             signal -> the operator-configured ``exhaustion_status`` (default 503,
             the keyless-handoff signal per ADR-0001 §Mechanism). The detailed
             message is logged server-side; the client gets a sanitised generic
             message (tier identities / remediation are internal-operator info).
             """
+            if getattr(e, "kind", None) == "unknown_model":
+                self._error(
+                    404, "model_not_found", "unknown configured model",
+                    dialect=dialect,
+                )
+                return
             if getattr(e, "kind", None) == "over_context":
                 print(f"[anvil] 413 over-context request: {e}", file=sys.stderr)
                 self._error(
@@ -267,7 +253,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   file=sys.stderr)
             self._error(
                 exhaustion_status, "service_unavailable",
-                "no quality-gated tier is available for this request",
+                "the configured model service is unavailable",
                 dialect=dialect,
             )
 
@@ -341,15 +327,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             chunked = self.request_version == "HTTP/1.1"
             requested_model = request.model
 
-            # Resolve the backend's delta stream BEFORE committing a 200 so a
-            # PRE-stream routing failure can still be a real HTTP error. A routing
-            # backend (T012) selects its tier eagerly at generate()-call time, so
-            # if no quality-gated tier is bound for this work class it raises
-            # NoAvailableTierError HERE — before any header is sent — and we
-            # answer a clean exhaustion status instead of a 200 + empty/truncated
-            # body. (For a plain generator backend this call is a no-op: its body
-            # runs lazily, so the M0 mid-stream close-on-error contract below is
-            # unchanged.)
+            # Resolve the direct backend's delta stream BEFORE committing a 200
+            # so an unavailable tier can still produce a real HTTP error instead
+            # of a 200 with an empty or truncated body.
             #
             # Any other exception from generate() is also surfaced as a clean 500
             # here, before the 200 is committed, so the client always sees a real
@@ -357,17 +337,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             try:
                 deltas = backend.generate(request)
             except NoAvailableTierError as e:
-                # Keyless handoff contract (ADR-0001 §Mechanism, advise-and-defer:T004).
-                # exhaustion_status is the signal the gateway's transport failover
-                # keys on to re-run this request on the native subscription provider.
-                # Default 503 is chosen because OpenClaw classifies it as "overloaded"
-                # (transport failover) — pending live validation in T005. Configurable
-                # via [router].exhaustion_status to match a different gateway's trigger.
-                # C3 holds: the commit-window fully buffered + verified the local
-                # tier's response before raising — nothing local was streamed before
-                # this point. This is an honest availability signal, not partial output.
-                # (An over_context error is instead a clean 413 — see
-                # _no_tier_response — refused up front, never forwarded.)
+                # The configured exhaustion status lets the caller apply its own
+                # transport retry policy.
                 self._no_tier_response(e, dialect=dialect)
                 return
             except Exception as e:
@@ -402,7 +373,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     get_structured=(
                         _get_structured_fn if callable(_get_structured_fn) else None
                     ),
-                    response_model=self._response_model(requested_model),
+                    response_model=requested_model,
                 )
                 for frame in frames:
                     if not frame:
@@ -428,109 +399,13 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         except Exception:
                             pass
 
-        # --- /v1/route decision endpoint (advise-and-defer:T007) ------------
-        def _handle_route_decision(self, body: dict) -> None:
-            """Handle ``POST /v1/route`` — routing brain, no backend serving.
-
-            Accepts a ``/v1/chat/completions``-shaped body plus an optional
-            ``signals`` object ``{work_class, token_estimate, urgency}`` (T007
-            contract).  If ``signals.work_class`` is present it is mapped to
-            the corresponding preset id via :data:`WORK_CLASS_TO_PRESET` (so
-            ``"bounded-edit"`` -> ``"quick-edit"``) before being set as the
-            request ``model``; ``intent.resolve`` then classifies it as a
-            declared-preset rather than inferring from the message content.
-
-            Calls ``backend.decide(request)`` if the backend exposes that
-            method (i.e. is a :class:`~anvil_serving.router.serve.RoutingBackend`).
-            A plain echo/static backend returns 503 ("routing brain not
-            available") — intentional: the decision endpoint has no meaning
-            without a routing backend.
-
-            **Never** calls ``backend.generate()`` or any tier backend.
-            """
-            # Extract signals override (optional; must be a dict).
-            raw_signals = body.get("signals")
-            signals: dict = raw_signals if isinstance(raw_signals, dict) else {}
-
-            # Build an InternalRequest from the completions-shaped body.
-            messages = normalize_messages(body.get("messages") or [])
-            model = str(body.get("model") or "")
-            max_tokens = body.get("max_tokens")
-
-            # signals.work_class: map taxonomy key → preset id so
-            # intent.resolve() treats it as a declared-preset.
-            if signals.get("work_class"):
-                wc = str(signals["work_class"])
-                model = WORK_CLASS_TO_PRESET.get(wc, wc)
-
-            # signals.token_estimate: optional max_tokens override.
-            if signals.get("token_estimate") is not None:
-                try:
-                    max_tokens = int(signals["token_estimate"])
-                except (TypeError, ValueError):
-                    pass  # ignore non-integer; keep body's max_tokens
-
-            request = InternalRequest(
-                model=model,
-                messages=messages,
-                max_tokens=max_tokens,
-                stream=False,
-                dialect="route",
-                raw=dict(body),
-            )
-
-            # The routing brain lives on RoutingBackend.decide(); a plain
-            # static/echo backend has no decide() → this endpoint has no
-            # meaning without a routing backend.
-            decide_fn = getattr(backend, "decide", None)
-            if decide_fn is None:
-                self._error(
-                    503, "service_unavailable",
-                    "routing brain not available (server is not configured "
-                    "with a routing backend)",
-                )
-                return
-
-            try:
-                result = decide_fn(request)
-            except NoAvailableTierError as e:
-                # over_context -> a clean 413 (caller sent too large a request):
-                # the decision endpoint must not imply a too-small tier is
-                # servable. Every other kind keeps /v1/route's existing 503.
-                if getattr(e, "kind", None) == "over_context":
-                    print(
-                        f"[anvil] 413 /v1/route over-context request: {e}",
-                        file=sys.stderr,
-                    )
-                    self._error(
-                        413, "payload_too_large",
-                        "request exceeds the context window of every available "
-                        "tier; send a smaller request",
-                    )
-                    return
-                print(
-                    f"[anvil] 503 /v1/route no available tier: {e}",
-                    file=sys.stderr,
-                )
-                self._error(
-                    503, "service_unavailable",
-                    "no quality-gated tier is available for this request",
-                )
-                return
-            except Exception as e:
-                print(f"[anvil] 500 /v1/route error: {e}", file=sys.stderr)
-                self._error(500, "internal_error", "internal error")
-                return
-
-            self._json(200, result)
-
         # --- purpose-model surfaces (gpu-reservations:T010) -----------------
         def _handle_purpose(self, kind: str, body: dict) -> None:
             """Handle ``POST /v1/embeddings`` / ``POST /v1/rerank``.
 
             Validates the wire shape (``dialects.embeddings``), then routes BY
             MODEL NAME through the injected :class:`PurposeRouter` — never
-            through the chat intent/policy pipeline. An unknown model name is
+            through the chat alias path. An unknown model name is
             a clean 404 naming the configured models (T010 acceptance
             criterion: no fallthrough to chat routing). Responses and errors
             speak the OpenAI envelope, the native shape for both surfaces.
@@ -728,14 +603,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._json(200, {
                         "status": "ok",
                         "dialects": sorted(d.name for d in _ROUTES.values()),
-                        # Advertise the decision endpoint alongside dialect routes
-                        # (ROUTE_ENDPOINT from discovery.py, T007), plus the
-                        # purpose-model surfaces when a PurposeRouter is bound
-                        # (T010) — unconfigured servers advertise exactly the
-                        # pre-T010 route list.
                         "routes": sorted(
                             list(_ROUTES)
-                            + [ROUTE_ENDPOINT, DECISION_SUMMARY_ENDPOINT,
+                            + [DECISION_SUMMARY_ENDPOINT,
                                TIER_HEALTH_ENDPOINT]
                             + (list(_PURPOSE_PATHS) if purpose is not None else [])
                             + (list(audio.paths) if audio is not None else [])
@@ -752,10 +622,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         health_fn = getattr(routing, "tier_health", None)
                     self._json(200, health_fn() if callable(health_fn) else {"tiers": []})
                 elif route == "/v1/models":
-                    # Preset discovery: list the configured presets (intent tokens)
-                    # as OpenAI-shaped "models" so a harness model picker can find
-                    # them. Derived from the canonical presets passed in.
-                    self._json(200, models_payload(presets))
+                    self._json(200, models_payload(model_routes))
                 elif route == DECISION_SUMMARY_ENDPOINT:
                     query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                     raw_limit = (query.get("limit") or ["20"])[0]
@@ -778,14 +645,13 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     else:
                         summary = summarize_decisions(getattr(decision_log, "records", ()), limit=limit)
                     self._json(200, summary)
-                elif route in _ROUTES or route == ROUTE_ENDPOINT or (
+                elif route in _ROUTES or (
                     purpose is not None and route in _PURPOSE_PATHS
                 ) or (audio is not None and route in audio.paths):
                     # Known POST-only route requested with GET → 405 Method Not
                     # Allowed with Allow: POST (RFC 7231 §6.5.5).  Use the
                     # dialect's native error envelope when one is bound to the
-                    # path (a purpose path speaks OpenAI); /v1/route (not
-                    # dialect-backed) uses the generic shape.
+                    # path (a purpose path speaks OpenAI).
                     _dial405: Optional[Dialect] = _ROUTES.get(route)
                     if _dial405 is None and route in _PURPOSE_PATHS:
                         _dial405 = _OPENAI_DIALECT
@@ -915,15 +781,6 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
 
             # --- Route check (establishes dialect for dialect-aware errors) --
-            #
-            # /v1/route is the standalone routing-decision endpoint (T007).
-            # It is NOT dialect-backed — it accepts a completions-shaped body
-            # and returns a decision JSON — so it is treated separately from
-            # the SSE-streaming dialect routes.  Pre-body framing errors on
-            # this path use the generic error envelope (dialect=None); the
-            # body is parsed and dispatched AFTER the shared framing checks.
-            is_route_decision = (path == ROUTE_ENDPOINT)
-
             # Purpose-model surfaces (T010): active only when a PurposeRouter
             # was injected — otherwise these paths fall through to the 404
             # below, exactly the pre-T010 behaviour. Errors (including the
@@ -942,9 +799,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if dialect is None and audio_kind is not None:
                 dialect = _OPENAI_DIALECT
             if (
-                dialect is None
-                and not is_route_decision
-                and not is_transition
+                dialect is None and not is_transition
             ):
                 # Unknown route — drain body if well-framed to keep the
                 # keep-alive socket in sync, then 404.
@@ -1059,12 +914,6 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._handle_transition(body)
                 return
 
-            # /v1/route: run the routing brain and return the decision;
-            # never parse with a dialect and never call backend.generate().
-            if is_route_decision:
-                self._handle_route_decision(body)
-                return
-
             # /v1/embeddings + /v1/rerank (T010): routed by MODEL NAME through
             # the PurposeRouter — never parsed as a chat dialect and never
             # dispatched to backend.generate() (no fallthrough to chat).
@@ -1108,7 +957,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         request,
                         text,
                         structured=_structured,
-                        response_model=self._response_model(requested_model),
+                        response_model=requested_model,
                     )
                 except NoAvailableTierError as e:
                     # Keyless handoff contract — see the streaming path above for
@@ -1135,12 +984,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 def make_server(host: str = "127.0.0.1", port: int = 8000,
                 backend: Optional[Backend] = None,
                 timeout: Optional[float] = 120,
-                presets: Optional[Iterable[Preset]] = None,
+                model_routes: Iterable[str] = (),
                 exhaustion_status: int = 503,
                 auth_token: Optional[str] = None,
                 purpose: Optional[PurposeRouter] = None,
                 audio: Optional[AudioGateway] = None,
-                response_model_resolver: Optional[Callable[[str], str]] = None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -1148,10 +996,9 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     ``server.server_address[1]``). ``backend`` defaults to :class:`EchoBackend`.
     ``timeout`` is the per-connection idle read timeout in seconds (finite by
     default so abandoned keep-alive sockets can't leak threads/FDs); pass
-    ``None`` to disable. ``presets`` are the work-class tokens ``GET /v1/models``
-    advertises; defaults to the canonical :data:`~anvil_serving.router.intent.PRESETS`
-    (injectable like ``backend`` for tests). ``exhaustion_status`` is the HTTP
-    status returned when all quality-gated tiers are exhausted (default 503 —
+    ``None`` to disable. ``model_routes`` are the complete configured aliases
+    ``GET /v1/models`` advertises. ``exhaustion_status`` is the HTTP
+    status returned when the configured tier is unavailable (default 503 —
     the keyless handoff signal; see :class:`~anvil_serving.router.config.RouterConfig`
     and ADR-0001 §Mechanism). ``auth_token`` is the RESOLVED secret (already read
     from ``os.environ`` once by the caller, e.g. ``serve.build_server`` from
@@ -1167,22 +1014,20 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     resolved ``auth_token`` and exposes the same-token-authenticated JSON
     ``POST /v1/audio/transcriptions`` and
     ``POST /v1/audio/speech`` routes. When ``None`` (the default), both audio
-    routes stay 404. ``response_model_resolver`` is an optional routing-owned
-    capability used to select the model identifier emitted on the wire. When
-    absent, dialects always echo the requested model, regardless of backend or
-    plugin request mutation. Call
-    ``server.serve_forever()`` (typically on a background thread) to run.
+    routes stay 404. Dialects echo the caller-selected alias in the wire
+    response. Call ``server.serve_forever()`` (typically on a background
+    thread) to run.
     """
     if audio is not None and auth_token is None:
         raise ValueError("an AudioGateway requires a resolved front-door auth token")
     if backend is None:
         backend = EchoBackend()
-    if presets is None:
-        presets = PRESETS
     httpd = ThreadingHTTPServer(
         (host, port),
-        _make_handler(backend, timeout, presets, exhaustion_status, auth_token,
-                      purpose, audio, response_model_resolver),
+        _make_handler(
+            backend, timeout, model_routes, exhaustion_status, auth_token,
+            purpose, audio,
+        ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd
@@ -1191,9 +1036,13 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
 def serve(host: str = "127.0.0.1", port: int = 8000,
           backend: Optional[Backend] = None,
           timeout: Optional[float] = 120,
-          auth_token: Optional[str] = None) -> None:
+          auth_token: Optional[str] = None,
+          model_routes: Iterable[str] = ("echo",)) -> None:
     """Build and run the front door until interrupted."""
-    httpd = make_server(host, port, backend, timeout, auth_token=auth_token)
+    httpd = make_server(
+        host, port, backend, timeout, model_routes=model_routes,
+        auth_token=auth_token,
+    )
     actual_host, actual_port = httpd.server_address[:2]
     print(f"anvil-serving front door on http://{actual_host}:{actual_port}  "
           f"(routes: {', '.join(sorted(_ROUTES))})")

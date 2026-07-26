@@ -3,7 +3,7 @@
 This recipe wires Hugging Face's `speech-to-speech` project to use anvil-serving as its LLM
 backend. `speech-to-speech` keeps ownership of the voice-agent loop: VAD, STT, turn-taking,
 Realtime WebSocket, and TTS. anvil-serving sits behind it as the OpenAI-compatible text model
-router.
+gateway.
 
 Do not point an OpenAI Realtime client at anvil. Point that client at `speech-to-speech`. Point
 `speech-to-speech`'s LLM backend at anvil.
@@ -17,21 +17,10 @@ route at `http://127.0.0.1:8000/v1/chat/completions`.
 anvil-serving router run --config configs/example.toml
 ```
 
-For voice turns, start with the `chat` preset. It maps to the low-latency local tiers in the
-default config and avoids the planning profile's local-only deny path.
-
-For true token-by-token voice latency, create a voice-specific copy of the router config and set
-this key inside the existing `[router]` table:
-
-```toml
-verify_local_min = false
-```
-
-Only do this after `anvil-serving eval preflight --confirm` passes for the local chat tier. The default
-`verify_local_min = true` keeps a minimal empty/truncated-output safety check on, which can buffer a
-local response before `speech-to-speech` sees the first text delta. Disabling it does not disable
-tool safety: any request that declares tools or `tool_choice` still uses a buffered contract check,
-so unadvertised or malformed calls cannot reach OpenClaw.
+For voice turns, select the configured `llm.voice` alias. It maps directly to
+the low-latency voice LLM tier and relays streaming responses without a
+classifier, fallback chain, or response verifier. Qualify that explicit serve
+with `anvil-serving eval preflight --confirm` before relying on it.
 
 ## 2. Start speech-to-speech
 
@@ -44,7 +33,7 @@ speech-to-speech \
   --stt parakeet-tdt \
   --llm_backend chat-completions \
   --tts qwen3 \
-  --model_name chat \
+  --model_name llm.voice \
   --responses_api_base_url "http://127.0.0.1:8000/v1" \
   --responses_api_api_key "" \
   --responses_api_stream \
@@ -74,15 +63,14 @@ speech-to-speech \
   --stt parakeet-tdt \
   --llm_backend chat-completions \
   --tts qwen3 \
-  --model_name chat \
+  --model_name llm.voice \
   --responses_api_base_url "http://127.0.0.1:8000/v1" \
   --responses_api_api_key "$ANVIL_ROUTER_TOKEN" \
   --responses_api_stream \
   --enable_live_transcription
 ```
 
-The API key is only the router bearer token in this setup. It is not a cloud provider key unless
-your anvil config explicitly opts into a metered cloud tier. Hugging Face `speech-to-speech` accepts
+The API key is only the router bearer token in this setup. It is not a model-provider key. Hugging Face `speech-to-speech` accepts
 this token as a command argument today; `--with-auth` expands the env var into process argv at
 runtime, so use it only on private hosts where process listings, shell history, and Docker metadata
 are protected. Prefer the unauthenticated loopback default for single-host development.
@@ -114,8 +102,8 @@ Connect your Realtime client to `speech-to-speech`, not anvil:
 ws://127.0.0.1:8765/v1/realtime
 ```
 
-Anvil does not implement `/v1/realtime` or proxy audio frames. Its role here is to quality-gate
-and route the LLM requests that `speech-to-speech` makes after STT produces text.
+Anvil does not implement `/v1/realtime` or proxy audio frames. Its role here is to proxy the
+explicit LLM alias that `speech-to-speech` sends after STT produces text.
 
 ## 4. Bridge through OpenClaw Gateway
 
@@ -128,7 +116,7 @@ iOS companion
   -> OpenClaw Gateway WebSocket
   -> speech-to-speech Realtime sidecar ws://127.0.0.1:8765/v1/realtime
   -> anvil-serving Chat Completions http://127.0.0.1:8000/v1
-  -> local model tiers / optional configured cloud tier
+  -> configured local LLM serve
 ```
 
 If OpenClaw Gateway and the sidecar run on the same machine, use the loopback sidecar URL above. If
@@ -163,7 +151,7 @@ anvil-serving.
 Suggested first pass:
 
 - STT: Parakeet TDT 0.6B class.
-- LLM: `--model_name chat` through anvil-serving.
+- LLM: `--model_name llm.voice` through anvil-serving.
 - TTS: the smallest Qwen3-TTS variant that passes the live voice demo.
 
 Fully local STT plus TTS plus a small GGUF LLM on a 16 GB box is experimental until measured. Do
@@ -182,8 +170,7 @@ Record this checklist for each run:
 ## Notes
 
 - Use `127.0.0.1` for local URLs on Windows.
-- Use `--model_name chat` for the first run. `planning` is intentionally denied on local-only
-  configs unless a measured profile says otherwise.
+- Use the configured `--model_name llm.voice` direct alias for the first run.
 - If you need the voice agent to call tools, keep `--llm_backend chat-completions`; anvil's
   OpenAI relay preserves tool definitions and tool-call history on that path.
 - If you want `speech-to-speech` to use its default Responses API backend, anvil would need a

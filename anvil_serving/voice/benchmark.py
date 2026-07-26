@@ -259,10 +259,7 @@ def _route_identity_from_manifest(data: Mapping[str, Any]) -> Dict[str, Any]:
     llm = voice.get("llm", {}) if isinstance(voice, Mapping) else {}
     return {
         "endpoint_host": _json_scalar(llm.get("expected_endpoint_host")),
-        "provider": _json_scalar(llm.get("expected_route_provider")),
-        "model": _json_scalar(llm.get("expected_route_model")),
-        "tier": _json_scalar(llm.get("expected_route_tier")),
-        "work_class": _json_scalar(llm.get("expected_route_work_class")),
+        "alias": _json_scalar(llm.get("model")),
     }
 
 
@@ -277,10 +274,7 @@ def _evidence_identity(
 ) -> Dict[str, Any]:
     route = {
         "endpoint_host": None,
-        "provider": None,
-        "model": None,
-        "tier": None,
-        "work_class": None,
+        "alias": None,
     }
     if route_identity:
         for key in route:

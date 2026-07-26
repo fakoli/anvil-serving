@@ -25,12 +25,10 @@ realtime_port = 8765
 # realtime_token_env = "ANVIL_VOICE_REALTIME_TOKEN"  # required if realtime_host is non-loopback (LAN/tailnet)
 
 # The brain: OpenAI Chat Completions ONLY (never the Responses API), pointed
-# at the anvil router by default so every voice turn inherits anvil's
-# work-class routing + structural verify + cloud fallback with zero glue.
+# at the anvil gateway using the explicit low-latency voice alias.
 [voice.llm]
 base_url = "http://127.0.0.1:8000/v1"
-model = "chat-fast"            # an anvil intent preset (see anvil_serving/router/intent.py) --
-                                # low-latency, routed fast-tier-first (flexibility:T018)
+model = "llm.voice"
 stream = true
 api_key_env = "ANVIL_ROUTER_TOKEN"   # env var holding the router's bearer token; optional
 # history_max_turns = 8               # completed user/assistant turns remembered inside one Realtime session; 0 disables

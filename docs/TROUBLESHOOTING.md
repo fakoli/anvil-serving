@@ -8,54 +8,24 @@ For a from-scratch setup walkthrough, start with [Getting started](GETTING-START
 
 ## The router returns HTTP 503
 
-**What it means.** In the keyless (local-only) default, a 503 on a completion request is the
-router's *designed* exhaustion signal, not a crash: no quality-gated tier passed for this request,
-and rather than serve unverified output the router refuses cleanly so a downstream gateway can
-hand the request to its own provider (ADR-0001). The response body says
-`no quality-gated tier is available for this request`. The status code is configurable via
-`[router].exhaustion_status` (default 503; any 100–599 integer —
-`anvil_serving/router/config.py`).
-
-There are two distinct exhaustion cases, logged differently on the server side
-(`anvil_serving/router/serve.py`):
-
-- **Unbound:** the gated candidate tiers have no working backend binding (endpoint or
-  credentials not configured/reachable).
-- **Exhausted:** the tiers *were* bound and reachable, but every candidate's response failed
-  structural verification (or was guarded out by the budget or circuit breaker).
+**What it means.** The direct alias named by the request has no ready local serve, is
+quiesced, or has reached its admission limit. The gateway does not choose another model.
 
 A third 503 is unrelated to routing: `server busy; try again later` means the concurrency cap
 was hit (see [Request rejected with 413 or a size cap](#request-rejected-with-413-or-a-size-cap)).
 
 **What to check.**
 
-- `POST http://127.0.0.1:8000/v1/route` with the same payload — a no-generation routing probe
-  whose response includes the routing `reason` (deny, metered-cloud gate, unknown tier, ...).
-  Note that an *unbound* 503 is raised before the fallback walk runs, so `GET /v1/decisions`
-  has no record of that request — the router's stderr log and `/v1/route` are the diagnostic
-  surfaces.
-- Profile deny rows for the work class: the quality gate fails closed, so an unmeasured *local*
-  tier on an eval-proven-weak class (e.g. `planning`) is denied by design
-  (`anvil_serving/router/policy.py`).
-- Tier reachability: is the serve actually up? `anvil-serving eval preflight --base-url
-  http://127.0.0.1:30001/v1 --model <served-name>`.
-- Did the request pin a denied tier? A wire `model` field naming a concrete tier id is a
-  *preference*, never a gate override: a denied pin is redirected to the work-class's gated pool,
-  and if that pool is also all-denied you get a clean 503 (`policy.py`, the pin-redirect logic).
+- `GET http://127.0.0.1:8000/v1/decisions` to identify the requested alias and its
+  readiness or admission result.
+- Confirm the configured serve is up, then run `anvil-serving eval preflight --base-url
+  http://127.0.0.1:<port>/v1 --model <served-name>`.
+- Inspect the alias-to-tier binding in `[router.model_routes]`; unknown aliases are 404,
+  while a known alias with no admissible local tier is 503.
 
-**Fix.** Bind/repair the missing tier, promote a reviewed profile that allows the class, or
-configure an opt-in cloud tier for the class (see
-[Cloud never gets used](#cloud-never-gets-used)).
-
-**ADR-0005 caveat for OpenClaw operators.** Do not rely on OpenClaw's native failover
-(`agents.defaults.model.fallbacks`) to escape this 503 on plugin-routed turns. Live validation
-(ADR-0005, [`docs/adr/0005-anvil-503-native-failover-unreliable.md`](adr/0005-anvil-503-native-failover-unreliable.md))
-showed the 503 *does* trip OpenClaw's failover, but the plugin's `providerOverride: "anvil"` pins
-the provider for the run's entire attempt loop — the fallback models are re-resolved against
-anvil and 503 again. Mitigations: move at-risk presets into the cloud-preferred set via
-`ANVIL_CLOUD_CLASSES` (those turns never touch anvil), or — the durable fix — enable anvil's own
-opt-in metered cloud tier so escalation happens *inside* anvil and no 503 is ever returned for
-those classes.
+**Fix.** Start or repair the configured local serve, then readmit it after any transition.
+If the requested capability should use another model, change its explicit alias binding and
+restart or reload the router.
 
 ## Preflight fails
 
@@ -71,7 +41,7 @@ Exit code 0 means all passed; 1 means at least one failed.
   Confirm the serve is listening and the `--base-url` port matches (heavy `:30000`, fast `:30001`
   in the examples).
 - **Wrong `--model` name:** the value must be the serve's `--served-model-name`, not the HF repo
-  id or a router preset. A mismatch surfaces as an HTTP 404 / model-not-found error from the
+  id or a gateway alias. A mismatch surfaces as an HTTP 404 / model-not-found error from the
   serve.
 - **Thinking-budget timeout or false-fail:** inspect the reported `finish_reason`, visible length,
   reasoning-channel length, and reasoning-token usage. For a functional gate on Qwen-style
@@ -87,20 +57,17 @@ Exit code 0 means all passed; 1 means at least one failed.
 **Fix.** Address the specific failing test; do not trust throughput numbers from a serve that
 has not passed preflight.
 
-## Responses come back empty / verification keeps failing
+## Responses come back empty
 
-**What it means.** Thinking-by-default models spend a small `max_tokens` budget entirely on
-hidden reasoning and return a *valid-looking* response with empty content. The router's
-`NonEmptyContent` verifier (`anvil_serving/router/verify.py`) exists for exactly this: it fails a
-response with empty/whitespace text *and* no tool calls, with the note
-`empty content and no tool calls (thinking-budget starvation?)`. Each failure escalates to the
-next candidate tier; if all candidates fail the same way you get the exhaustion 503.
+**What it means.** Thinking-by-default models can spend a small `max_tokens` budget entirely on
+hidden reasoning and return an empty visible response. The thin gateway preserves that upstream
+result; it does not retry another model.
 
 **What to check.**
 
 - Is the tier's model a thinking-by-default model (Qwen3.5, gpt-oss, GLM, ...)?
 - Is the caller sending a small `max_tokens` (< 4096)?
-- `GET /v1/decisions` — repeated `non_empty_content` failures against one tier confirm it.
+- Inspect the upstream serve response and its generation settings.
 
 **Fix.** Either disable thinking on the tier — in the tier's config:
 
@@ -112,48 +79,21 @@ extra_body = { chat_template_kwargs = { enable_thinking = false } }
 answers. gpt-oss-style models ignore `enable_thinking` and need the budget approach. Full
 per-model settings walkthrough: [Model settings](MODEL-SETTINGS-EXAMPLE.md).
 
-## Cloud never gets used
-
-**What it means.** This is the shipped default, and it is a billing decision, not a bug.
-`[router].metered_cloud` is the explicit gate: a `privacy = "cloud"` tier is a routing candidate
-*only* for work-classes listed there. When the list is absent or empty — as in
-`configs/example.toml` — cloud is never a candidate, even if a cloud tier is defined and even for
-custom presets (`anvil_serving/router/policy.py`, the metered-cloud gate; ADR-0001,
-[`docs/adr/0001-cloud-cost-and-subscription-auth.md`](adr/0001-cloud-cost-and-subscription-auth.md)).
-
-**What to check.** `POST /v1/route` with the same payload — the routing probe's `reason` shows
-when the metered-cloud gate excluded a cloud tier (drop reasons are not part of the
-`GET /v1/decisions` summary).
-
-**Fix.** If you *want* metered cloud for specific classes, start from
-`configs/example-with-cloud.toml` and list them explicitly:
-
-```toml
-[router]
-metered_cloud = ["planning"]
-```
-
-Cloud credentials go in env vars only — never in config files.
-
 ## OpenClaw shows the wrong context window / requests get clamped
 
 **What it means.** OpenClaw computes `max_completion_tokens = declared contextWindow − actual
-prompt tokens`, clamped to a floor of 1 — it does not reject an oversized prompt. If a preset's
-`contextWindow` in the OpenClaw provider config understates the real routed window, a growing
+prompt tokens`, clamped to a floor of 1 — it does not reject an oversized prompt. If an alias's
+`contextWindow` in the OpenClaw provider config understates its direct tier's window, a growing
 conversation eventually makes every turn's completion budget compute negative and floor to **1
-token**. This caused a live incident (2026-07-02): turns "succeeded" with 1-token responses,
-verification failed them, and the circuit breaker tripped on healthy tiers
-(`docs/OPENCLAW-INTEGRATION-SPEC.md` §2, "contextWindow rule").
+token**.
 
-**What to check.** Each preset's `contextWindow` in `~/.openclaw/openclaw.json` must equal the
-**largest** context window among the tiers that preset can actually route to — for the reference
-config that is `heavy-local`'s `131072`, for *every* preset, because every preset either routes
-to `heavy-local` directly or can escalate to it.
+**What to check.** Each alias's `contextWindow` in
+`~/.openclaw/openclaw.json` must equal its one configured tier's context
+window. In the reference config, `llm.primary` uses `heavy-local`'s `131072`
+window and `llm.voice` uses `fast-local`'s `32768` window.
 
-**Fix.** Set all presets' `contextWindow` to the largest routed tier window, or better, let the
-product render it: `anvil-serving harness sync openclaw --config configs/example.toml`. (v0.7.1
-also hardened the router side: a caller-capped `length` stop now passes the `NotTruncated`
-verifier instead of 503ing — but correct `contextWindow` values remain the real fix.)
+**Fix.** Let the product render the exact per-alias values:
+`anvil-serving harness sync openclaw --config configs/example.toml`.
 
 ## Port already in use
 
@@ -286,19 +226,13 @@ The install is stdlib-only — no required runtime dependencies.
 
 ## Where to look when diagnosing
 
-- **`GET http://127.0.0.1:8000/v1/decisions`** — per-request decision summary from the decision
-  log (`?limit=1..500`, default 20): work class, requested tiers, per-tier attempts (including
-  verify failures), served tier, tokens, and cost. Requests refused *before* the fallback walk
-  (unbound or over-context) write no record — check the stderr log for those.
-- **`POST http://127.0.0.1:8000/v1/route`** — a no-generation routing probe for one payload:
-  returns the selected tier, confidence, and the routing `reason` (deny, metered-cloud gate,
-  ...).
+- **`GET http://127.0.0.1:8000/v1/decisions`** — per-request metadata from the decision
+  log (`?limit=1..500`, default 20): requested alias, selected tier, status, tokens, and cost.
 - **`anvil-serving router logs`** — docker logs for the deployed router container
   (`--tail`/`--since`/`--follow`). Exhaustion and over-context refusals are logged to stderr
   with the tier list and reason.
 - **MCP tools** — `anvil-serving mcp tools` exposes `router_status` and
-  `decision_summary` (plus `route_decision` for a no-serve routing probe against
-  `POST /v1/route`), locally or via the split-host controller.
+  `decision_summary`, locally or via the split-host controller.
 - **Playbooks** — step-by-step operator workflows for status, preflight, benchmark, and OpenClaw
   sync live in [Operator playbooks](OPERATOR-PLAYBOOKS.md).
 ## A promotion stopped before container mutation

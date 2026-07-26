@@ -45,10 +45,9 @@ _RECIPE = {
         ],
     },
     "measured": {"throughput_single_tok_s": 183.2},
-    "intent": {
-        "suited": ["flexibility", "quality"],
+    "fit": {
+        "suited": ["benchmark-quality", "quality"],
         "not_suited": ["agentic-interactive"],
-        "mode": "flexibility",
     },
     "download": {"note": "single copy", "command": "anvil-serving models pull openai/gpt-oss-120b"},
 }
@@ -74,7 +73,7 @@ def test_format_recipe_emits_recipe_array_header_and_nested_tables():
     assert block.startswith("[[recipe]]\n")
     assert "[recipe.hardware]" in block
     assert "[recipe.serve]" in block
-    assert "[recipe.intent]" in block
+    assert "[recipe.fit]" in block
     # bool stays a TOML bool (not the Python "True"); float keeps its point.
     assert "streaming = true" in block
     assert "total_params_b = 116.8" in block
