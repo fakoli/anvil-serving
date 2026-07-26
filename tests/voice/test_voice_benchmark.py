@@ -116,7 +116,7 @@ def test_run_benchmark_computes_all_four_metrics():
     assert result["stt_hypothesis"] == "hello world"
     assert result["llm_reply"] == "reply"
     assert result["evidence"]["schema_version"] == EVIDENCE_SCHEMA_VERSION
-    assert result["evidence"]["identity"]["llm"]["model"] == "chat-fast"
+    assert result["evidence"]["identity"]["llm"]["model"] == "llm.voice"
     assert result["evidence"]["runs"][0]["latency"]["ttfa_ms"] == 1200.0
     assert result["evidence"]["runs"][0]["latency"]["total_turn_latency_ms"] == 1500.0
     assert result["evidence"]["runs"][0]["latency"]["llm_stage_latency_ms"] == 600.0
@@ -141,7 +141,7 @@ def test_run_benchmark_populates_transcript_tool_and_topology_evidence():
 
     result = run_benchmark(
         stt_config=STTStageConfig(base_url="http://100.87.34.66:30110/v1", model="parakeet"),
-        llm_config=LLMStageConfig(base_url="http://100.87.34.66:8000/v1", model="chat-fast"),
+        llm_config=LLMStageConfig(base_url="http://100.87.34.66:8000/v1", model="llm.voice"),
         tts_config=TTSStageConfig(base_url="http://100.87.34.66:30111/v1", model="kokoro"),
         pcm=b"\x00\x00",
         sample_rate=16000,
@@ -382,12 +382,9 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
             },
             "llm": {
                 "base_url": "http://127.0.0.1:8000/v1",
-                "model": "chat-fast",
+                "model": "llm.voice",
                 "stream": True,
                 "timeout": 33.0,
-                "expected_route_provider": "fast-local",
-                "expected_route_model": "qwen36-35b-a3b-nvfp4",
-                "expected_route_tier": "local",
             },
             "tts": {
                 "base_url": "http://127.0.0.1:8091/v1",
@@ -439,12 +436,10 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
     assert identity["profile"] == "mini-audio"
     assert identity["candidate"] == "qwen36-baseline"
     assert identity["llm"]["base_url"] == "http://127.0.0.1:8000/v1"
-    assert identity["llm"]["model"] == "chat-fast"
+    assert identity["llm"]["model"] == "llm.voice"
     assert identity["stt"]["model"] == "parakeet"
     assert identity["tts"]["model"] == "kokoro-82m"
-    assert identity["route"]["provider"] == "fast-local"
-    assert identity["route"]["model"] == "qwen36-35b-a3b-nvfp4"
-    assert identity["route"]["tier"] == "local"
+    assert identity["route"]["alias"] == "llm.voice"
 
 
 def test_run_benchmark_from_manifest_generates_sample_pcm_when_none_given():
@@ -517,10 +512,7 @@ def test_build_evidence_record_has_stable_json_schema_fields():
         candidate="baseline",
         route_identity={
             "endpoint_host": "100.87.34.66",
-            "provider": "fast-local",
-            "model": "qwen36-35b-a3b-nvfp4",
-            "tier": "local",
-            "work_class": "chat-fast",
+            "alias": "llm.voice",
         },
     )
 
@@ -540,12 +532,9 @@ def test_build_evidence_record_has_stable_json_schema_fields():
             "base_url": "http://127.0.0.1:30011/v1",
             "model": "kokoro",
         },
-        "route": {
-            "endpoint_host": "100.87.34.66",
-            "provider": "fast-local",
-            "model": "qwen36-35b-a3b-nvfp4",
-            "tier": "local",
-            "work_class": "chat-fast",
+            "route": {
+                "endpoint_host": "100.87.34.66",
+                "alias": "llm.voice",
         },
     }
     assert evidence["topology"] == {

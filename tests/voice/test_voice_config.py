@@ -199,9 +199,6 @@ def test_fakoli_mini_manifest_is_valid_and_preserves_route_contract():
     assert data["voice"]["llm"]["base_url"] == "http://100.87.34.66:8000/v1"
     assert data["voice"]["llm"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
     assert data["voice"]["llm"]["expected_endpoint_host"] == "100.87.34.66"
-    assert data["voice"]["llm"]["expected_route_provider"] == "fast-local"
-    assert data["voice"]["llm"]["expected_route_model"] == "qwen36-35b-a3b-nvfp4"
-    assert data["voice"]["llm"]["expected_route_tier"] == "local"
     assert data["voice"]["llm"]["system_prompt"].endswith("I understand.")
     assert data["voice"]["llm"]["temperature"] == 0.0
     assert data["voice"]["llm"]["max_tokens"] == 8
@@ -305,8 +302,6 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     assert candidate["voice"]["llm"]["base_url"] == "http://100.87.34.66:39000/v1"
     assert candidate["voice"]["llm"]["model"] == "qwen3-32b-nvfp4"
     assert candidate["voice"]["llm"]["api_key_env"] == "ANVIL_CANDIDATE_LLM_TOKEN"
-    assert candidate["voice"]["llm"]["expected_route_provider"] == "direct-vllm"
-    assert candidate["voice"]["llm"]["expected_route_model"] == "qwen3-32b-nvfp4"
     assert candidate["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
     assert candidate["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
     assert candidate["voice"]["stt"]["lifecycle"] == "external"

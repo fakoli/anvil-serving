@@ -1,351 +1,105 @@
 <div align="center">
 
-![anvil-serving - the quality-gated local-model router for coding agents](assets/banner.png)
+![anvil-serving - local model serving and a thin capability gateway](assets/banner.png)
 
 # anvil-serving
 
-> **Benchmark and serve local models; expose them through a thin capability gateway.**
->
-> *Run local where it is measured safe. Verify risky local output. Keep cloud explicit.*
+> **Benchmark and serve local models through one explicit capability gateway.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Source Version](https://img.shields.io/badge/source-0.13.2-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
 
 </div>
 
-Benchmark and operate local model serves, then point a coding agent or harness at one
-anvil-serving endpoint. The router is a thin, authenticated capability gateway: a configured
-model alias can select a tier directly, while the established intent/profile routing path remains
-available for callers that use it. Structural verification remains available where the legacy
-quality profile requires it.
+anvil-serving runs and benchmarks local model serves, then exposes their named
+capabilities through one authenticated endpoint. It is deliberately a thin
+gateway: a caller chooses a configured `model` alias, and that alias maps to
+one local tier. There is no request classifier, quality-profile router,
+semantic fallback, cloud escalation, or hidden substitute model.
 
-The primary product focus is repeatable local serving and benchmark evidence. The reference
-topology uses an RTX PRO 6000 for primary LLM candidates and an RTX 5090 for a low-latency voice
-LLM, STT/TTS, embeddings, reranking, and on-demand ComfyUI. The gateway retains protocol
-translation, SSE, readiness, admission, and decision evidence around those capabilities. It is not
-a generic token proxy.
+The reference topology serves primary LLM work on the RTX PRO 6000. The RTX
+5090 handles a low-latency voice LLM, STT/TTS, embeddings, reranking, and
+on-demand ComfyUI. The gateway keeps authentication, dialect translation,
+streaming, readiness, admission, and decision evidence consistent across those
+capabilities.
 
-For OpenClaw and agent-assisted operations, anvil-serving also exposes a structured control plane:
-`anvil-serving mcp serve` for same-host stdio MCP, and `anvil-serving controller serve` for a
-token-authenticated private/tailnet controller that lets a gateway host operate a separate
-router, serve, or voice host without making raw SSH the product contract.
+## Direct capability contract
 
-For a private delivery cockpit, the optional separate **Anvil Workbench** product uses the
-router's stateless `/v1/responses` compatibility surface and can use the normalized one-shot
-`/v1/audio/*` gateway after migrating to its canonical contract. It records safe run/task/request
-correlation in decision evidence. Its hub lifecycle is available through
-`anvil-serving workbench`. Anvil Serving owns only the optional container lifecycle and private
-exposure; Workbench owns its product logic and remains independently deployable, outside the
-router and Anvil State authority boundaries.
-See [Workbench integration](docs/WORKBENCH.md).
-
-## Why It Exists
-
-Local models can be cheap and fast for bounded coding work, but they are not uniformly reliable.
-The planning eval that shaped anvil-serving found local outputs were usually structurally valid,
-while dependency and ordering reasoning lagged far behind frontier models. Static routing by model
-name, regex, or cost cannot catch that.
-
-anvil-serving routes with evidence:
-
-| Need | anvil-serving behavior |
-|------|------------------------|
-| Keep proven work local | `allow` rows in the quality profile stay on local tiers. |
-| Verify risky work | `allow-with-verify` rows buffer and check output before returning it. |
-| Avoid known local failures | `deny` rows skip local or exhaust cleanly. |
-| Stop a model serve safely | Configured local health checks remove an unavailable tier before inference and automatically readmit it after recovery. |
-| Preserve one agent endpoint | Anthropic Messages, OpenAI Chat Completions, and the supported stateless Responses subset terminate at the router. |
-| Keep billing explicit | The default config has no cloud API key; metered cloud is opt-in. |
-| Operate safely | MCP/controller tools expose status, route probes, voice lifecycle, preflight, benchmark, and OpenClaw sync. |
-
-## How It Works
-
-For a direct capability route, callers send a configured alias in the `model` field:
-
-```text
-llm.primary   llm.voice
+```toml
+[router.model_routes]
+llm.primary = "heavy-local"
+llm.voice = "fast-local"
+vision.ocr = "ocr-local"
+vision.general = "vision-local"
 ```
 
-A matched alias (case-insensitive, with the optional `anvil/` or `anvil:` namespace removed)
-selects its one configured local tier before the legacy intent, policy, profile,
-residency, or fallback selection path. Authentication, dialect translation, SSE, readiness,
-admission, and decision logging still apply. In this first additive slice, an unmatched value
-remains on the legacy path; it is not a strict unknown-model 404.
+Send one of those aliases as the chat `model`. Matching is case-insensitive
+after trimming; compatibility prefixes are not accepted. `/v1/models` advertises the
+configured aliases. Unknown or missing chat aliases return 404. An unavailable
+selected tier returns an exhaustion error, not an alternate model.
 
-Legacy callers can still send a workload intent in the `model` field:
+Purpose models and audio are equally explicit: embeddings and reranking use
+their configured model names on dedicated endpoints, while STT/TTS use
+operator-configured audio routes. ComfyUI is lifecycle-managed rather than a
+chat capability.
 
-```text
-planning   quick-edit   review   chat   chat-fast   long-context   ocr   vision
-```
+## Quick start
 
-The legacy path maps that intent to candidate tiers, filters them by hard constraints, ranks by the
-quality profile, and optionally verifies the response before returning it. If the caller cannot set
-an intent, the Tier-0 classifier infers the work class from the request. This path is retained for
-compatibility, but new intelligent-routing growth is frozen pending compatibility acceptance.
-
-```mermaid
-flowchart LR
-    H["agent / harness"] --> FD["front door<br/>Anthropic + OpenAI"]
-    FD --> INT["intent<br/>preset or classifier"]
-    INT --> POL{"quality profile<br/>filter, then rank"}
-    POL -->|"allow"| L["local tier"]
-    POL -->|"allow-with-verify"| V["verify"]
-    POL -->|"deny"| E["exhaustion or opt-in cloud"]
-    L --> R["response"]
-    V -->|"pass"| R
-    V -->|"fail"| E
-```
-
-Every routed request is logged as a metadata-only decision record — work class, tier attempts,
-verify outcomes, token counts — retrievable from the router's `/v1/decisions` endpoint.
-
-Slow model replacement is coordinated without a cluster scheduler. The guarded promotion
-transaction quiesces only the affected tier, waits for its active generations, keeps an unrelated
-GPU tier resident for policy-approved fallback, and requires the replacement to advertise the
-exact configured model name before it can re-enter rotation. See
-[ADR-0018](docs/adr/0018-router-transition-safety.md).
-
-## Evaluate Quickly
-
-The only prerequisite is **Python >= 3.11** — the runtime is standard-library only. Docker (and a
-GPU) matter only when you stand up real local model serves.
-
-Install from a clone when evaluating the current `main` documentation and control-plane commands:
+Python 3.11+ is the only runtime prerequisite. Docker and a GPU are required
+only for real local model serves.
 
 ```bash
 pip install -e .
+anvil-serving router run --config configs/example.toml
 ```
 
-`pip install anvil-serving` installs the latest published package, which can lag `main`; use it
-only when you do not need unreleased commands such as MCP/controller operations.
-
-First prove the front door with the built-in echo backend. This requires no GPU and no model server:
-
-```bash
-python -m anvil_serving.router
-```
-
-If port `8000` is already in use, pass `--port <free-port>` and use that port in the URLs below.
-
-Then, in another shell:
+With local tiers running, call the gateway:
 
 ```bash
 curl -s http://127.0.0.1:8000/v1/models
 curl -s http://127.0.0.1:8000/v1/chat/completions \
   -H 'content-type: application/json' \
-  -d '{"model":"chat","messages":[{"role":"user","content":"hello from anvil-serving"}]}'
+  -d '{"model":"llm.primary","messages":[{"role":"user","content":"hello"}]}'
 ```
 
-To route real local tiers, start compatible OpenAI-style model serves on the URLs named in
-`configs/example.toml` (`anvil-serving serves` manages them as Docker Compose services), validate
-them with `preflight`, then run:
+Use `anvil-serving eval preflight` before mapping a real model to an alias, and
+record capacity and quality evidence with `anvil-serving eval benchmark`. A
+mapping is an exposure decision, not a model promotion claim.
 
-```bash
-anvil-serving router run --config configs/example.toml
-```
+## What it provides
 
-Use `127.0.0.1` for local URLs.
-
-Full walkthrough: [Getting started](docs/GETTING-STARTED.md).
-
-## Command Surface
-
-One CLI covers the router, the local serving tools, the measurement loop that feeds the quality
-profile, and the control plane. Navigation and examples: [CLI reference](docs/CLI.md);
-focused `--help` is the authoritative full flag reference.
-Run `anvil-serving --help` for the grouped command surface, `anvil-serving <command> --help` for
-focused action flags, and `anvil-serving --version` to verify the installed build.
-
-**Data plane** — run and manage the router:
-
-| Command | Purpose |
-|---------|---------|
-| `anvil-serving router run` | Start the Anthropic/OpenAI router front door. |
-| `anvil-serving router` | Manage the deployed router container, token, logs, reloads, and profile promotion. |
-| `anvil-serving router endpoint` | Show the live router listen address/port and this node's Tailscale MagicDNS name. |
-
-**Local serving tools** — stand up and validate the tiers the router routes across:
-
-| Command | Purpose |
-|---------|---------|
-| `anvil-serving serves` | Manage local model serves through Docker Compose. |
-| `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and select, manage, or guarded-load recorded serve recipes (`recipes`). |
-| `anvil-serving serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
-| `anvil-serving init` | Scaffold every canonical router/config template plus the full operational config home (or a single-model bring-up with `--single-model`). |
-| `anvil-serving eval preflight` | Correctness-check a model endpoint before trusting it. |
-| `anvil-serving eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. |
-| `anvil-serving eval benchmark quality` | Run repeated quality suites with model-aware reasoning evidence. |
-| `anvil-serving eval benchmark external` | Import and compare external inference benchmark priors. |
-| `anvil-serving serves multiplex` | Swap a single resident model on one GPU (SGLang and vLLM backends). |
-| `anvil-serving models cache prune` | Plan Hugging Face cache cleanup (plan-only, never deletes on its own). |
-| `anvil-serving doctor` | Preflight the environment a router deploy depends on (Python, Docker, Compose, GPU runtime). |
-| `anvil-serving upgrade` | Upgrade an installed CLI to the newest stable PyPI release through its owning package manager. |
-| `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings (memory caps, mmap gotchas). |
-| `anvil-serving host gpu-sharing inspect` | Inspect CUDA Green Context and MPS capability without changing GPU state. |
-| `anvil-serving host gpu-sharing probe` | Audit and run the confirmation-gated Docker CUDA prerequisite probe on an exact GPU UUID. |
-| `anvil-serving host status` | Inspect a local or topology-targeted host through its authenticated controller. |
-
-**Quality loop** — the measurements behind the routing profile:
-
-| Command | Purpose |
-|---------|---------|
-| `anvil-serving eval usage` | Measure real coding-agent usage to right-size local tiers. |
-| `anvil-serving eval` | Run the shadow-eval harness; bootstrap a quality profile from it. |
-| `anvil-serving eval calibrate` | Grade confirmed local traffic with an independent judge and write a candidate profile (never auto-promotes). |
-| `anvil-serving models score` | Rank models for a role from a transcribed benchmark table. |
-
-**Control plane and integrations:**
-
-| Command | Purpose |
-|---------|---------|
-| `anvil-serving harness sync openclaw` | Render OpenClaw model config from live router presets. |
-| `anvil-serving harness status openclaw` | Read bounded OpenClaw gateway status from its declared owner. |
-| `anvil-serving topology show|validate|resolve` | Inspect and resolve deployment ownership offline. |
-| `anvil-serving mcp serve` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
-| `anvil-serving mcp tools` | Print the MCP tool catalog as JSON. |
-| `anvil-serving controller` | Expose the same MCP tool contract over a token-authenticated private/tailnet HTTP controller. |
-| `anvil-serving voice` | Manage STT/TTS lifecycle, switch voice profiles, bridge private audio endpoints, run the local Realtime voice server, benchmark voice turns, and delegate nested `voice sidecar` operations. |
-| `anvil-serving voice sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
-
-### Fresh OpenClaw gateway setup
-
-Use the harness sync as the setup owner instead of hand-merging a provider fragment. A fresh
-gateway needs a native provider/model for safe cloud-preferred turns, an absolute plugin path
-that is visible on the gateway, and explicit tool/exec policies:
-
-```bash
-anvil-serving harness sync openclaw \
-  --config configs/example.toml \
-  --base-url http://100.87.34.66:8000/v1 \
-  --native-provider openai \
-  --native-model gpt-5.6-sol \
-  --plugin-dir /absolute/path/to/openclaw-anvil-intent-router \
-  --tool-profile full \
-  --exec-mode auto \
-  --out ~/.openclaw/openclaw.json \
-  --restart
-```
-
-The sync enables the plugin, grants its conversation hook, registers its load path, configures the
-authoritative `<base-url>/route` decision endpoint, and keeps the native model as OpenClaw's primary
-instead of making `anvil/chat` the failure-prone default. `--tool-profile full` exposes OpenClaw's
-full agent tool surface. `--exec-mode auto` uses allowlist-plus-review execution: approval misses can
-offer **Allow Always**, while reviewed or already allowlisted commands can proceed. Do not use
-`ask=always` when durable approval is desired; OpenClaw intentionally removes Allow Always in that
-mode. Omit either tool flag when merging a gateway whose operator-owned tool policy must stay
-unchanged.
-
-Fresh writes and overwrites fail closed if either policy flag is omitted. Existing-config merges
-may omit either flag to preserve the gateway operator's current tool and approval policy. A
-first-time merge into a nonempty gateway is held to the same complete-setup contract. Explicit
-provider and route options replace old Anvil values; omitted options preserve them, and
-`--client-side-routing` removes stale authoritative-route settings.
-
-`--plugin-dir` must already contain `openclaw.plugin.json` with the packaged Anvil plugin id. The
-sync verifies that manifest locally or over SCP before changing the config. For a fresh sync to the
-real default gateway path, it also asks OpenClaw to confirm that the native fallback model is
-available and that the plugin runtime imported its routing hook. Preview output distinguishes
-`fresh_config_ready` (the rendered prerequisites are complete) from `fresh_setup_ready` (gateway
-manifest, model, and runtime checks have all passed).
-
-Provision `ANVIL_ROUTER_TOKEN` in the gateway process environment when the router is authenticated.
-For a remote gateway, use `--gateway-host` and make `--plugin-dir` an absolute path on that remote
-host. The `openclaw_sync` MCP/controller tool accepts the same setup fields. For ongoing diagnosis,
-verify with
-`openclaw plugins inspect openclaw-anvil-intent-router --runtime --json` and
-`openclaw exec-policy show --json`.
-
-### CLI Compatibility Notes
-
-Canonical command changes:
-
-- `anvil-serving deploy` → `anvil-serving serves render`
-- `anvil-serving external-bench` → `anvil-serving eval benchmark external`
-- `anvil-serving cache-prune` → `anvil-serving models cache prune`
-- `anvil-serving score` → `anvil-serving models score`
-
-Removed forms fail with migration guidance instead of silently dispatching. See the
-[CLI migration table](docs/CLI.md#migration-from-legacy-commands) for every replacement.
-
-## Cost And Security Defaults
-
-- **Local-only by default:** `configs/example.toml` contains no cloud tier and no cloud API key.
-- **Opt-in cloud:** `configs/example-with-cloud.toml` shows explicit metered cloud routing. Only
-  work classes listed in `[router].metered_cloud` can use that tier.
-- **Credentials by env var:** configs name env vars such as `ANTHROPIC_API_KEY`; they never contain
-  literal secrets.
-- **Loopback first:** the front door binds `127.0.0.1` by default.
-- **Token before exposure:** configure `[server].auth_env = "ANVIL_ROUTER_TOKEN"` before publishing
-  the router beyond loopback.
-- **Controller token required:** bind `anvil-serving controller serve` only to `127.0.0.1` or a
-  private/tailnet address and set `ANVIL_CONTROLLER_TOKEN` through `--auth-token-env`; unauthenticated
-  loopback is an explicit development opt-out, not the default.
-
-See [SECURITY.md](SECURITY.md) for the threat model and vulnerability reporting path.
-
-## Status
-
-**The source tree is versioned 0.13.2, while published tags and package releases can lag `main`.**
-The router, local serving tools, host management, router/serve/voice lifecycle verbs, harness sync,
-and OpenClaw MCP/controller control plane all ship on `main`. Install from a clone when evaluating
-those main-only surfaces. The control plane keeps the request data plane clean: OpenClaw's hook
-plugin handles per-turn intent, the router handles quality and configured fallback/exhaustion, and
-MCP/controller tools handle explicit operations such as status, voice lifecycle, preflight,
-benchmarking, and OpenClaw config sync.
-
-## Known Limitations
-
-- OpenClaw native failover does not reliably escape a plugin-pinned provider for local-preferred
-  classes. Use `ANVIL_CLOUD_CLASSES` or anvil-serving's opt-in cloud tier for at-risk classes.
-- Most shipped promotion verdicts are seed verdicts, pending operator-promoted real-traffic
-  calibration. The planning-class deny decision has hard eval evidence; other classes should be
-  remeasured on your served models.
-- The local-tier quickstart requires compatible model serves already running at the configured
-  `base_url` values. Use the echo-backend path above for a no-GPU evaluator smoke test.
+| Surface | Purpose |
+|---|---|
+| `anvil-serving router run` | Authenticated Anthropic/OpenAI-compatible capability gateway. |
+| `anvil-serving serves` | Compose-backed model lifecycle, GPU reservation, and switching tools. |
+| `anvil-serving eval preflight` | Functional qualification of a concrete endpoint. |
+| `anvil-serving eval benchmark` | Capacity and quality evidence collection. |
+| `anvil-serving models` | Model cache, source, and serve-recipe management. |
+| `anvil-serving voice` | Operator-owned STT/TTS, bridge, Realtime, and voice benchmark lifecycle. |
+| `anvil-serving mcp serve` / `controller` | Structured same-host or private control-plane access. |
 
 ## Documentation
 
-Start with the path that matches you:
+- [Getting started](docs/GETTING-STARTED.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [Thin capability gateway](docs/THIN-CAPABILITY-GATEWAY.md)
+- [CLI reference](docs/CLI.md)
+- [Serves and evaluation](docs/SERVES-AND-EVAL.md)
+- [Voice pipeline](docs/VOICE.md)
+- [Benchmark guide](docs/benchmarks/index.md)
+- [OpenClaw integration](docs/OPENCLAW-INTEGRATION-SPEC.md)
+- [ADRs](docs/adr/README.md)
 
-- **Evaluating anvil-serving?** This README → [Getting started](docs/GETTING-STARTED.md) (no-GPU
-  smoke test) → [Architecture](docs/ARCHITECTURE.md) → the full
-  [Quality-gated router](docs/QUALITY-GATED-ROUTER.md) design reference.
-- **Operating a deployment?** [Getting started](docs/GETTING-STARTED.md) (real tiers) →
-  [Configuration reference](docs/CONFIGURATION.md) → [CLI reference](docs/CLI.md) →
-  [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md) →
-  [Troubleshooting](docs/TROUBLESHOOTING.md); [`examples/fakoli-dark/`](examples/fakoli-dark/)
-  contains an offline Dark/Mini topology reference alongside the existing machine-specific
-  two-GPU operational artifacts.
-- **Contributing?** [CONTRIBUTING.md](CONTRIBUTING.md) (module map and extension recipes) →
-  [Architecture](docs/ARCHITECTURE.md) → [ADRs](docs/adr/README.md).
+## Security and operating boundaries
 
-| Read this | When you need |
-|-----------|---------------|
-| [Getting started](docs/GETTING-STARTED.md) | No-GPU smoke test, real-tier setup, and harness pointers. |
-| [Architecture](docs/ARCHITECTURE.md) | The concise system overview: request path, tier ladder, quality profile, deployment shapes. |
-| [Configuration reference](docs/CONFIGURATION.md) | Every `[server]`/`[router]`/tier/mode key, env vars, and the shipped example configs. |
-| [CLI reference](docs/CLI.md) | Every verb, subcommand, and key flag. |
-| [Troubleshooting](docs/TROUBLESHOOTING.md) | Symptom-first fixes: 503 exhaustion, preflight failures, empty responses, auth. |
-| [Quality-gated router](docs/QUALITY-GATED-ROUTER.md) | The full design reference: intent presets, quality profile, verification, fallback, integrations. |
-| [Terminology](docs/TERMINOLOGY.md) | Product naming, user-facing terms, and technical definitions. |
-| [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md) | MCP/controller workflows for status, preflight, benchmark, OpenClaw sync, and promotion evidence. |
-| [Operator skills and sub-agents](docs/OPERATOR-SKILLS-AND-SUBAGENTS.md) | Verb coverage, skill design, and small-model sub-agent workflow slices. |
-| [Device topologies](docs/DEVICE-TOPOLOGIES.md) | Spreading gateway, voice, router, and serve roles across hosts over private connectivity. |
-| [Model settings](docs/MODEL-SETTINGS-EXAMPLE.md) | Thinking/sampling settings and model-specific serve flags. |
-| [Serves & eval](docs/SERVES-AND-EVAL.md) | Local serve lifecycle and eval entry points. |
-| [Voice pipeline](docs/VOICE.md) | Native voice runtime commands, multi-device audio/LLM topology, Realtime server, and benchmarks. |
-| [RTX PRO 6000 benchmark guide](docs/benchmarks/index.md) | Decision tables for quality, concurrency, context, and generation, with model recipes and gotchas. |
-| [Benchmark result archive](docs/BENCHMARKS.md) | Chronological model, voice, and end-to-end results with their tested configurations and caveats. |
-| [External benchmarks](docs/EXTERNAL-BENCHMARKS.md) | Import, report, export, and compare advisory benchmark data. |
-| [OpenClaw integration](docs/OPENCLAW-INTEGRATION-SPEC.md) | Reference integration contract and current caveats. |
-| [Hugging Face speech-to-speech](examples/huggingface-speech-to-speech/) | Voice sidecar recipe for Realtime audio with anvil-routed LLM turns. |
-| [ADRs](docs/adr/README.md) | Architecture decisions and rationale. |
-| [Findings](docs/findings/README.md) | Dated evidence snapshots behind the decisions. |
-| [Changelog](CHANGELOG.md) | Release history. |
+- Use `127.0.0.1`, never `localhost`, for same-host URLs.
+- Keep router authentication enabled before exposing it beyond loopback.
+- Store credentials only through environment-variable references.
+- Treat readiness and preflight as different checks: readiness says a serve can
+  receive traffic; preflight and benchmark evidence establish whether it should.
+- Fakoli Mini is model-free in the reference topology. Its local audio proxy
+  ports forward to Dark; they do not make Mini a serving host.
 
-Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and the
-[code of conduct](CODE_OF_CONDUCT.md).
-
-MIT licensed.
+See [SECURITY.md](SECURITY.md) for the threat model and reporting policy.

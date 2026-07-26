@@ -6,15 +6,31 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Breaking changes
+
+- **The router is now a thin, direct capability gateway.** The intent
+  classifier, work classes, policy profiles, residency selection, verification
+  and commit-window chain, fallback and cloud escalation, calibration, route
+  fingerprinting, traffic-window quality metrics, and `/v1/route` endpoint
+  have been removed. `[router].model_routes` is the complete chat alias
+  vocabulary: every normalized alias maps to exactly one local tier, every
+  chat tier must be addressable, and an unknown alias returns
+  `model_not_found`. Legacy commands, options, configuration keys, presets,
+  mode manifests, and compatibility tombstones are not accepted.
+
+- **Reference hardware roles are explicit.** The RTX PRO 6000 is the primary
+  LLM serving host. The RTX 5090 is reserved for the low-latency voice LLM,
+  STT/TTS, embeddings, reranking, and optional ComfyUI workloads. This change
+  does not promote a model or claim new live hardware qualification.
+
 ### Added
 
-- **Additive direct model routes.** `[router.model_routes]` maps normalized chat model aliases to
-  exactly one configured local tier before the legacy intent, quality-profile, residency, and
-  alternate fallback selection path. Aliases cannot shadow preset/tier tokens or target cloud
-  tiers. Direct routes retain authentication, Anthropic/OpenAI dialect handling, SSE, readiness,
-  admission, hard context/tool constraints, minimal local verification, and metadata-only
-  decision logs. Alias misses remain on the compatibility path in this first slice, and
-  `/v1/models` advertises configured aliases without duplicating legacy presets. See ADR-0028.
+- **Direct model aliases.** `[router].model_routes` maps normalized chat model
+  aliases to one local tier. Direct routes retain authentication,
+  Anthropic/OpenAI dialect handling, raw SSE relay, readiness, admission,
+  context/tool constraints, metadata-only decision logs, purpose models, and
+  the audio gateway. `/v1/models` advertises only configured aliases. See
+  ADR-0028.
 
 - **Bearer-authed per-tier/serve health snapshot.** `GET /v1/health/tiers` returns a live
   readiness snapshot for EVERY configured serve — chat `llm` tiers, purpose models, and audio
@@ -25,12 +41,6 @@ All notable changes to this project are documented here. The format is based on
   latency_ms, reason}`: a serve host, URL, upstream token, or model id never appears, and a
   `reason` is a bounded content-free category. Authenticated with the router bearer like every
   route except `GET /healthz`; `/health` and `/v1/decisions` are unchanged. Resolves #292.
-
-- **Opt-in transparent response models.** `[router].transparent_response_model = true`
-  makes Chat Completions, Anthropic Messages, and Responses output the tier id that
-  actually served in their wire `model` field, including verified fallback and streaming
-  paths. The default remains the caller's routing token for harness compatibility. See
-  ADR-0026.
 
 - **Realtime assistant transcript streaming.** Sessions that explicitly request both
   `audio` and `text` now receive TTS-authoritative
@@ -68,15 +78,14 @@ All notable changes to this project are documented here. The format is based on
   Compose/container/router transition with exact loopback bindings, cross-platform locks,
   operation-owned router artifact snapshots, compare-and-swap drift protection, fresh gate
   evidence, bounded failure handling, and automatic rollback only while router state is known.
-  The earlier `--recipe MODEL` spelling remains available as a compatibility alias.
 
 ### Changed
 
-- **Serving and benchmark evidence are now the product center.** The reference topology assigns
-  primary LLM inference to the RTX PRO 6000 and uses the RTX 5090 for a low-latency voice LLM,
-  STT/TTS, embeddings, reranking, and on-demand ComfyUI. The established intelligent-routing path
-  remains available for compatibility, but new growth is frozen pending explicit migration
-  acceptance. No serve or model is promoted by this framing change.
+- **Serving and benchmark evidence are now the product center.** The reference
+  topology assigns primary LLM inference to the RTX PRO 6000 and uses the RTX
+  5090 for a low-latency voice LLM, STT/TTS, embeddings, reranking, and
+  on-demand ComfyUI. The former intelligent-routing path is removed rather than
+  retained for compatibility.
 
 - **Private-only evidence grounding has been removed.** The historical Anvil integration audit,
   planning-capability evaluation, complete bounded eval bundle, and harness-routing research are
@@ -101,7 +110,7 @@ All notable changes to this project are documented here. The format is based on
   the lifecycle MCP tools when available and keeps audio profiles separate from candidate LLM
   overlays. Contract tests prevent future command-tree, MCP, and checked-in skill drift.
   Adversarial hardening adds source-freshness and recipe CRUD/load playbooks, exact three-part
-  promotion gates, `router_promote` validate-only parity, LF-safe repo gate routing, and
+  promotion gates, LF-safe repo gate routing, and
   spec-independent reviewer probes. OpenClaw no longer auto-generates critic roles through the
   candidate-routed Anvil provider.
 
@@ -110,7 +119,7 @@ All notable changes to this project are documented here. The format is based on
   behavior and safety notes, local arguments, global options, and its owning reference
   page in a width-bounded layout. Heavy model selection is the direct
   `serves switch heavy MODEL` preview/apply flow; `serves rm` and `serves adopt` now use
-  only the canonical `--confirm` spelling, with explicit migration errors for `--yes`.
+  only the canonical `--confirm` spelling.
   Command examples and guidance are versioned in the machine manifest, parser-tested,
   and ratcheted in the exhaustive per-leaf UX audit; deterministic local merge-gate
   routing now mirrors the repository's CI and strict documentation checks.

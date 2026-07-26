@@ -100,7 +100,7 @@ anvil-serving harness sync openclaw --config configs/example.toml --dry-run
 anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --base-url http://100.87.34.66:8000/v1 --skills --confirm
 ```
 
-The router configuration supplies presets and context limits. `--base-url`
+The router configuration supplies direct aliases and their tier context limits. `--base-url`
 defaults to `http://127.0.0.1:8000/v1`; when OpenClaw runs on another host, set
 the router address that gateway can reach. Credential flags name environment
 variables—secret values are never written into an operator command.

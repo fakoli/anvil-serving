@@ -1,1963 +1,365 @@
-"""anvil-serving harness — own the HARNESS-side config, not just the router.
+"""OpenClaw direct-alias provider sync and bounded gateway lifecycle helpers."""
+from __future__ import annotations
 
-`serves` manages the model backends and `router` manages the deployed front door; this verb
-extends that ownership to the harness anvil fronts (CLAUDE.md golden rule "anvil-serving owns the
-harness-side config too"). It RENDERS the harness's config FROM the live router config so the two
-never drift — instead of hand-editing the gateway out-of-band.
-
-v1 target: **OpenClaw**. `harness sync openclaw --config <router.toml>` emits the OpenClaw provider
-config — one selectable model per router preset, each `contextWindow` set to the LARGEST tier that
-preset can route to (the contextWindow-clamp gotcha, docs/OPENCLAW-INTEGRATION-SPEC.md §2). It
-does NOT emit per-preset thinking overrides: the router owns reasoning/thinking per tier now
-(heavy `reasoning_effort`, fast `enable_thinking`), so re-declaring them on the harness is stale.
-Pass `--voice` to also render OpenClaw Talk realtime config for the Anvil Voice provider.
-
-`--skills` also renders the OpenClaw-visible workbench skill and Anvil sub-agent roles. It only
-touches Anvil-owned skill/agent keys and keeps operator-owned providers, agents, plugins, and
-skills around it.
-
-The OpenClaw GATEWAY is typically REMOTE from the router (e.g. Fakoli Mini -> fakoli-dark), so this
-either EMITS the config (stdout or `--out`) OR pushes it to the remote gateway over ssh with
-`--gateway-host` — MERGING the anvil provider into the remote `~/.openclaw/openclaw.json` (preserving
-the operator's other providers/agents/plugins) and backing up the remote first; `--overwrite` does a
-full write.
-
-OpenClaw reads its config at gateway STARTUP, so a config change is only picked up after a restart:
-`harness sync openclaw ... --restart` restarts the gateway after the push, and `harness restart
-openclaw [--gateway-host <mini>]` restarts it on its own — `openclaw gateway restart`, run locally or
-over ssh (a single command invocation, not a shell script, so it stays portable against any-OS gateway).
-
-stdlib-only (ssh via `subprocess`, injected for tests).
-"""
 import argparse
 import ipaddress
 import json
 import os
 import re
-import socket
 import subprocess
 import sys
-import tempfile
 import urllib.parse
 
-# Per-preset OpenClaw hints (advisory display/caps; contextWindow is computed from the router).
-# maxTokens is the harness's output cap; input declares modalities (review accepts images).
-_PRESET_MAX_TOKENS = {
-    "planning": 32000, "review": 16000, "long-context": 16000,
-    "quick-edit": 8192, "chat": 8192,
-}
-_PRESET_INPUT = {"review": ["text", "image"]}
-_DEFAULT_MAX_TOKENS = 8192
 
-# The OpenClaw `plugins.entries` key MUST equal the PACKAGED plugin id
-# (plugins/openclaw-anvil-intent-router/openclaw.plugin.json), or the before_model_resolve hook never
-# gets its allowConversationAccess gate and intent routing silently no-ops. (The OPENCLAW-INTEGRATION-
-# SPEC recipe predates the plugin's `openclaw-` rename; the plugin README + LIVE-VALIDATION are right.)
-_PLUGIN_ID = "openclaw-anvil-intent-router"
-_GATEWAY_HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
-_GATEWAY_USER_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+_HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 DEFAULT_TRANSPORT_TIMEOUT_SECONDS = 120
 DEFAULT_STATUS_MAX_OUTPUT_BYTES = 64 * 1024
-_REMOTE_RESTART_COMMAND = "openclaw gateway restart"
-_REMOTE_MODELS_VALIDATE_COMMAND = "openclaw models list --json"
-_REMOTE_PLUGIN_VALIDATE_COMMAND = (
-    "openclaw plugins inspect openclaw-anvil-intent-router --runtime --json"
-)
-_DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
 DEFAULT_ANVIL_VOICE_REALTIME_URL = "ws://127.0.0.1:8765/v1/realtime"
-_DEFAULT_ANVIL_VOICE_MODEL = "chat-fast"
-_DEFAULT_ANVIL_VOICE_CONSULT_MODEL = ""
-_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL = "off"
-_DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE = "lightweight"
-_ANVIL_VOICE_CONSULT_THINKING_LEVELS = frozenset({
-    "off",
-    "minimal",
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-    "adaptive",
-    "max",
-})
-_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODES = frozenset({"full", "lightweight"})
-_ANVIL_VOICE_CONSULT_ROUTING = "force-agent-consult"
-_LEGACY_GENERATED_NATIVE_ROUTE = {
-    "nativeProvider": "anthropic",
-    "nativeModel": "claude-sonnet-4-5",
-}
-_OPENCLAW_TOOL_PROFILES = frozenset({"minimal", "coding", "messaging", "full"})
-_OPENCLAW_EXEC_MODES = frozenset({"deny", "allowlist", "ask", "auto", "full"})
-_LOOPBACK_ROUTE_TIMEOUT_MS = 30
-_REMOTE_ROUTE_TIMEOUT_MS = 500
-_WORKBENCH_SKILL_NAME = "anvil-serving-workbench"
-_OPENCLAW_AGENT_ROLES = (
-    ("anvil-orchestrator", ("planning", "review", "chat"), "planning", False),
-    ("anvil-inventory-scout", ("chat-fast", "chat"), "chat", True),
-    ("anvil-route-analyst", ("chat-fast", "chat"), "chat", True),
-    ("anvil-serve-operator", ("chat-fast", "chat"), "chat", True),
-    ("anvil-preflight-runner", ("chat-fast", "chat"), "chat", True),
-    ("anvil-benchmark-runner", ("chat-fast", "chat"), "chat", True),
-    ("anvil-evidence-reporter", ("chat-fast", "chat"), "chat", True),
-)
-_OPENCLAW_LEGACY_AGENT_NAMES = frozenset({
-    "anvil-probe-evidence-runner",
-})
-_OPENCLAW_UNSAFE_REVIEWER_NAMES = frozenset({
-    "anvil-quality-critic",
-    "anvil-adversarial-reviewer",
-})
+_DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
+_THINKING_LEVELS = frozenset({"off", "minimal", "low", "medium", "high", "xhigh", "adaptive", "max"})
+_BOOTSTRAP_CONTEXT_MODES = frozenset({"full", "lightweight"})
 
 
-def _title(preset_id):
-    """`quick-edit` -> `Quick Edit` for the OpenClaw display name."""
-    return " ".join(w.capitalize() for w in preset_id.replace("_", "-").split("-"))
-
-
-def _route_endpoint_from_base_url(base_url):
-    return base_url.rstrip("/") + "/route"
-
-
-def _route_timeout_for_base_url(base_url):
-    try:
-        host = urllib.parse.urlparse(base_url).hostname or ""
-        loopback = ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        loopback = False
-    return _LOOPBACK_ROUTE_TIMEOUT_MS if loopback else _REMOTE_ROUTE_TIMEOUT_MS
-
-
-def _is_absolute_gateway_path(path):
-    """Return whether *path* is absolute on a supported gateway platform.
-
-    The controller and OpenClaw gateway do not have to run the same OS, so
-    ``os.path.isabs`` cannot be used here: on Windows it rejects a valid Unix
-    gateway path such as ``/opt/anvil/plugin``.  Recognize fully-qualified
-    POSIX, Windows drive, and Windows UNC paths independent of the controller.
-    """
-    return bool(
-        isinstance(path, str)
-        and path
-        and (
-            path.startswith("/")
-            or re.match(r"^[A-Za-z]:[\\\\/]", path)
-            or path.startswith("\\\\")
-        )
-    )
-
-
-def _native_model_ref(provider, model):
-    return "%s/%s" % (provider, model)
-
-
-def _native_route_from_model_ref(value):
-    if not isinstance(value, str) or "/" not in value:
-        return None
-    provider, model = value.split("/", 1)
-    provider, model = provider.strip(), model.strip()
-    if not provider or not model or provider == "anvil":
-        return None
-    return {"nativeProvider": provider, "nativeModel": model}
-
-
-def render_openclaw_provider(
-        config, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
-        native_provider=None, native_model=None, plugin_dir=None,
-        tool_profile=None, exec_mode=None, authoritative_route=True, route_endpoint=None,
-        route_auth_env=None, route_timeout_ms=None):
-    """Render the OpenClaw provider + agent config dict from a loaded RouterConfig.
-
-    One model per preset; `contextWindow` = max `context_limit` among the preset's candidate
-    tiers (so a request within the window always fits SOME routed tier — clamp gotcha). No
-    per-preset thinking overrides (the router owns reasoning/thinking per tier).
-    """
-    native_provider = (native_provider or "").strip()
-    native_model = (native_model or "").strip()
-    if bool(native_provider) != bool(native_model):
-        raise ValueError("native_provider and native_model must be provided together")
-    if plugin_dir and not _is_absolute_gateway_path(plugin_dir):
-        raise ValueError("plugin_dir must be an absolute path visible on the OpenClaw gateway")
-    if tool_profile and tool_profile not in _OPENCLAW_TOOL_PROFILES:
-        raise ValueError(
-            "tool_profile must be one of: %s" % ", ".join(sorted(_OPENCLAW_TOOL_PROFILES))
-        )
-    if exec_mode and exec_mode not in _OPENCLAW_EXEC_MODES:
-        raise ValueError(
-            "exec_mode must be one of: %s" % ", ".join(sorted(_OPENCLAW_EXEC_MODES))
-        )
-    if route_timeout_ms is not None:
-        if (isinstance(route_timeout_ms, bool) or not isinstance(route_timeout_ms, int)
-                or not 1 <= route_timeout_ms <= 5000):
-            raise ValueError("route_timeout_ms must be an integer between 1 and 5000")
-    route_auth_env = _validate_env_var_name(
-        route_auth_env or api_key_env,
-        arg_name="route_auth_env",
-    )
-
-    models = []
-    for preset_id, tier_ids in config.presets.items():
-        windows = [config.tier(t).context_limit for t in tier_ids]
-        ctx = max(windows) if windows else 0
-        models.append({
-            "id": preset_id,
-            "name": "Anvil · " + _title(preset_id),
-            # reasoning:true surfaces OpenClaw's per-message reasoning selector. Every preset can
-            # route to the reasoning-capable heavy tier, whose reasoning_effort is a soft default
-            # (extra_body_defaults) the request overrides; a fast-only fallback ignores it harmlessly.
-            "reasoning": True,
-            "input": _PRESET_INPUT.get(preset_id, ["text"]),
-            "contextWindow": ctx,
-            "maxTokens": _PRESET_MAX_TOKENS.get(preset_id, _DEFAULT_MAX_TOKENS),
-        })
-    plugin_config = {}
-    if native_provider and native_model:
-        plugin_config.update({
-            "nativeProvider": native_provider,
-            "nativeModel": native_model,
-        })
-    if authoritative_route:
-        plugin_config.update({
-            "routeEndpoint": route_endpoint or _route_endpoint_from_base_url(base_url),
-            "routeAuthEnv": route_auth_env,
-            "routeTimeoutMs": (
-                route_timeout_ms
-                if route_timeout_ms is not None
-                else _route_timeout_for_base_url(base_url)
-            ),
-        })
-
-    agent_defaults = {
-        "models": {"anvil/" + m["id"]: {} for m in models},
-    }
-    if native_provider and native_model:
-        agent_defaults["model"] = {
-            "primary": _native_model_ref(native_provider, native_model),
-        }
-
-    rendered = {
-        "models": {
-            "mode": "merge",
-            "providers": {
-                "anvil": {
-                    "baseUrl": base_url,
-                    "apiKey": "${%s}" % api_key_env,
-                    "api": "openai-completions",
-                    "models": models,
-                }
-            },
-        },
-        # agents.defaults.models is OpenClaw's DROPDOWN ALLOWLIST — a preset only shows in the picker
-        # if it has an entry here. So list EVERY preset, with EMPTY params (no per-preset thinking
-        # override — the router owns reasoning/thinking per tier). Deleting these entries removes the
-        # anvil presets from OpenClaw entirely (the 2026-07-04 regression); the goal is to strip only
-        # the stale params, KEEPING the allowlist entry.
-        "agents": {"defaults": agent_defaults},
-        "plugins": {"entries": {_PLUGIN_ID: {
-            "enabled": True,
-            "hooks": {"allowConversationAccess": True},
-            **({"config": plugin_config} if plugin_config else {}),
-        }}},
-    }
-    if plugin_dir:
-        rendered["plugins"]["load"] = {"paths": [plugin_dir]}
-    if tool_profile or exec_mode:
-        rendered["tools"] = {}
-        if tool_profile:
-            rendered["tools"]["profile"] = tool_profile
-        if exec_mode:
-            rendered["tools"]["exec"] = {"mode": exec_mode}
-    return rendered
-
-
-def _validate_env_var_name(value, *, arg_name):
-    if not value:
-        return None
+def _validate_env(value, name):
     if not isinstance(value, str) or not _ENV_NAME_RE.fullmatch(value):
-        raise ValueError("%s must be an ENV_VAR_NAME" % arg_name)
+        raise ValueError("%s must be an ENV_VAR_NAME" % name)
     return value
 
 
-def _is_tailscale_v4(addr):
-    try:
-        ip = ipaddress.ip_address(addr)
-    except ValueError:
-        return False
-    return ip.version == 4 and ip in ipaddress.ip_network("100.64.0.0/10")
+def _validate_gateway_host(host):
+    if not isinstance(host, str) or not _HOST_RE.fullmatch(host):
+        raise ValueError("gateway_host must be a hostname or IP address without shell syntax")
+    return host
 
 
-def _is_safe_voice_ip(addr):
-    ip = ipaddress.ip_address(addr)
-    if ip.is_unspecified or ip.is_link_local or ip.is_multicast or ip.is_reserved:
-        return False
-    if ip.version == 4:
-        rfc1918 = (
-            ipaddress.ip_network("10.0.0.0/8"),
-            ipaddress.ip_network("172.16.0.0/12"),
-            ipaddress.ip_network("192.168.0.0/16"),
-        )
-        return bool(ip.is_loopback or _is_tailscale_v4(addr) or any(ip in network for network in rfc1918))
-    return bool(ip.is_loopback or ip in ipaddress.ip_network("fc00::/7"))
+def _normalize_voice_consult_thinking_level(value):
+    if value not in _THINKING_LEVELS:
+        raise ValueError("voice consult thinking level must be one of: %s" % ", ".join(sorted(_THINKING_LEVELS)))
+    return value
 
 
-def _is_loopback_voice_host(host):
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
+def _normalize_voice_consult_bootstrap_context_mode(value):
+    if value not in _BOOTSTRAP_CONTEXT_MODES:
+        raise ValueError("voice consult bootstrap context mode must be one of: %s" % ", ".join(sorted(_BOOTSTRAP_CONTEXT_MODES)))
+    return value
 
 
-def _validate_voice_realtime_host(host):
-    normalized = host.lower().rstrip(".")
-    if normalized == "local" + "host":
-        raise ValueError("voice realtime URL must use 127.0.0.1 or a private/tailnet host")
-    try:
-        if not _is_safe_voice_ip(host):
-            raise ValueError(
-                "voice realtime URL host must be loopback, private, or tailnet-safe"
-            )
-        return _is_loopback_voice_host(host)
-    except ValueError as exc:
-        if "voice realtime URL" in str(exc):
-            raise
-    if normalized.endswith(".local") or normalized.endswith(".ts.net"):
-        return False
-    try:
-        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
-    except OSError as exc:
-        raise ValueError("voice realtime URL host could not be resolved safely: %s" % exc)
-    addrs = []
-    for info in infos:
-        try:
-            addrs.append(info[4][0])
-        except (IndexError, TypeError):
-            pass
-    if not addrs or any(not _is_safe_voice_ip(addr) for addr in addrs):
-        raise ValueError("voice realtime URL host must resolve only to loopback, private, or tailnet addresses")
-    return all(_is_loopback_voice_host(addr) for addr in addrs)
-
-
-def _validate_realtime_url(value, *, api_key_env=None):
+def _validate_voice_realtime_url(value, *, api_key_env=None):
     if not isinstance(value, str) or not value:
         raise ValueError("voice realtime URL must be a non-empty ws:// or wss:// URL")
     parsed = urllib.parse.urlparse(value)
     if parsed.scheme not in ("ws", "wss") or not parsed.netloc:
         raise ValueError("voice realtime URL must be a ws:// or wss:// URL")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
-        raise ValueError("voice realtime URL must not embed credentials, query strings, or fragments")
-    loopback = _validate_voice_realtime_host(parsed.hostname or "")
-    if not loopback and not api_key_env:
+        raise ValueError(
+            "voice realtime URL must not embed credentials, query strings, or fragments"
+        )
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if host == "localhost":
+        raise ValueError("voice realtime URL must use 127.0.0.1")
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        raise ValueError(
+            "voice realtime URL host must be loopback, private, or tailnet-safe"
+        ) from None
+    tailnet = address.version == 4 and address in ipaddress.ip_network("100.64.0.0/10")
+    safe = address.is_loopback or address.is_private or tailnet
+    if not safe or address.is_unspecified or address.is_multicast:
+        raise ValueError(
+            "voice realtime URL host must be loopback, private, or tailnet-safe"
+        )
+    if not address.is_loopback and not api_key_env:
         raise ValueError(
             "non-loopback Anvil Voice realtime URLs require --voice-api-key-env"
         )
     return value
 
 
-def _normalize_voice_consult_thinking_level(value):
-    normalized = (value or "").strip().lower()
-    if not normalized:
-        return None
-    if normalized not in _ANVIL_VOICE_CONSULT_THINKING_LEVELS:
-        raise ValueError(
-            "voice consult thinking level must be one of: %s"
-            % ", ".join(sorted(_ANVIL_VOICE_CONSULT_THINKING_LEVELS))
-        )
-    return normalized
+def _title(value):
+    return " ".join(part.capitalize() for part in value.replace("_", "-").split("-"))
 
 
-def _normalize_voice_consult_bootstrap_context_mode(value):
-    normalized = (value or "").strip().lower()
-    if not normalized:
-        return None
-    if normalized not in _ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODES:
-        raise ValueError(
-            "voice consult bootstrap context mode must be one of: %s"
-            % ", ".join(sorted(_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODES))
-        )
-    return normalized
+def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN", **_ignored):
+    """Render ordinary OpenAI-compatible OpenClaw models for direct aliases."""
+    _validate_env(api_key_env, "api_key_env")
+    routes = getattr(config, "model_routes", {})
+    if not routes:
+        raise ValueError("router config declares no [router.model_routes]")
+    models = [
+        {
+            "id": alias,
+            "name": "Anvil · " + _title(alias),
+            "reasoning": True,
+            "input": ["text"],
+            "contextWindow": config.tier(tier_id).context_limit,
+            "maxTokens": 8192,
+        }
+        for alias, tier_id in routes.items()
+    ]
+    return {
+        "models": {"mode": "merge", "providers": {"anvil": {
+            "baseUrl": base_url, "apiKey": "${%s}" % api_key_env,
+            "api": "openai-completions", "models": models,
+        }}},
+        "agents": {"defaults": {"models": {model["id"]: {} for model in models}}},
+    }
 
 
-def render_openclaw_voice_config(
-        *, realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
-        model=_DEFAULT_ANVIL_VOICE_MODEL,
-        consult_model=None,
-        consult_thinking_level=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
-        consult_bootstrap_context_mode=_DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE,
-        api_key_env=None):
-    """Render OpenClaw Talk realtime config for the Anvil Voice gateway-relay provider."""
-    env_name = _validate_env_var_name(api_key_env, arg_name="voice_api_key_env")
-    normalized_consult_model = (consult_model or "").strip()
-    normalized_consult_thinking_level = _normalize_voice_consult_thinking_level(
-        consult_thinking_level
-    )
-    normalized_consult_bootstrap_context_mode = _normalize_voice_consult_bootstrap_context_mode(
-        consult_bootstrap_context_mode
-    )
-    provider_config = {
-        "realtimeUrl": _validate_realtime_url(realtime_url, api_key_env=env_name),
-        "model": model or _DEFAULT_ANVIL_VOICE_MODEL,
+def _voice_alias(config, explicit=None):
+    if explicit:
+        return explicit
+    routes = getattr(config, "model_routes", {})
+    for alias in ("llm.voice", "llm.primary"):
+        if alias in routes:
+            return alias
+    return next(iter(routes), "llm.primary")
+
+
+def render_openclaw_voice_config(*, realtime_url, model, consult_model="", consult_thinking_level="off", consult_bootstrap_context_mode="lightweight", api_key_env=None):
+    _normalize_voice_consult_thinking_level(consult_thinking_level)
+    _normalize_voice_consult_bootstrap_context_mode(consult_bootstrap_context_mode)
+    env_name = _validate_env(api_key_env, "voice_api_key_env") if api_key_env else None
+    provider = {
+        "realtimeUrl": _validate_voice_realtime_url(
+            realtime_url, api_key_env=env_name
+        ),
+        "model": model,
         "silenceDurationMs": 200,
     }
     if env_name:
-        provider_config["apiKey"] = {"source": "env", "provider": "default", "id": env_name}
-    return {
-        "talk": {
-            **({"consultModel": normalized_consult_model} if normalized_consult_model else {}),
-            **(
-                {"consultThinkingLevel": normalized_consult_thinking_level}
-                if normalized_consult_thinking_level
-                else {}
-            ),
-            **(
-                {"consultBootstrapContextMode": normalized_consult_bootstrap_context_mode}
-                if normalized_consult_bootstrap_context_mode
-                else {}
-            ),
-            "realtime": {
+        provider["apiKey"] = {
+            "source": "env", "provider": "default", "id": env_name,
+        }
+    talk = {"realtime": {
                 "mode": "realtime",
                 "transport": "gateway-relay",
                 "brain": "agent-consult",
-                "consultRouting": _ANVIL_VOICE_CONSULT_ROUTING,
+                "consultRouting": "force-agent-consult",
                 "provider": "anvil",
-                "providers": {"anvil": provider_config},
-            }
-        }
-    }
-
-
-def _openclaw_voice_consult_model(config, explicit=None):
-    explicit = (explicit or "").strip()
-    if explicit:
-        return explicit
-    return _anvil_preset_ref(config, ("chat-fast", "chat"), fallback="chat")
-
-
-def _openclaw_voice_model(config, explicit=None):
-    explicit = (explicit or "").strip()
-    if explicit:
-        return explicit
-    presets = getattr(config, "presets", {}) or {}
-    if "chat-fast" in presets:
-        return "chat-fast"
-    if "chat" in presets:
-        return "chat"
-    for preset_id in presets:
-        return str(preset_id)
-    return _DEFAULT_ANVIL_VOICE_MODEL
-
-
-def _anvil_preset_ref(config, preferred, *, fallback="chat", allow_first_fallback=True):
-    presets = getattr(config, "presets", {}) or {}
-    for preset_id in preferred:
-        if preset_id in presets:
-            return "anvil/" + preset_id
-    if "chat" in presets:
-        return "anvil/chat"
-    if allow_first_fallback:
-        for preset_id in presets:
-            return "anvil/" + str(preset_id)
-    return "anvil/" + fallback
-
-
-def render_openclaw_skills(config, *, skill_dir=None):
-    """Render Anvil-owned OpenClaw skill and sub-agent config.
-
-    ``skill_dir`` enables checkout-loaded skills through ``skills.load.extraDirs``. When omitted,
-    the payload assumes the workbench skill was installed into OpenClaw's workspace skill directory
-    with ``openclaw skills install ... --as anvil-serving-workbench``.
-
-    Independent critic/reviewer roles are intentionally not generated: binding
-    them to an ``anvil/*`` preset can route review back to the candidate model.
-    Configure those roles through a separate provider or external harness.
-    """
-    roles = []
-    for role_name, preferred_presets, fallback, allow_first_fallback in _OPENCLAW_AGENT_ROLES:
-        roles.append({
-            "name": role_name,
-            "model": _anvil_preset_ref(
-                config,
-                preferred_presets,
-                fallback=fallback,
-                allow_first_fallback=allow_first_fallback,
-            ),
-            "skills": [_WORKBENCH_SKILL_NAME],
-        })
-    out = {
-        "agents": {
-            "defaults": {"skills": [_WORKBENCH_SKILL_NAME]},
-            "list": roles,
-        },
-    }
-    if skill_dir:
-        out["skills"] = {"load": {"extraDirs": [skill_dir]}}
-    return out
-
-
-def _merge_unique_strings(existing, additions):
-    out = []
-    for value in existing if isinstance(existing, list) else []:
-        if isinstance(value, str) and value not in out:
-            out.append(value)
-    for value in additions if isinstance(additions, list) else []:
-        if isinstance(value, str) and value not in out:
-            out.append(value)
-    return out
-
-
-def _is_anvil_plugin_path(value):
-    if not isinstance(value, str):
-        return False
-    normalized = value.replace("\\", "/").rstrip("/")
-    return normalized.rsplit("/", 1)[-1] == _PLUGIN_ID
-
-
-def _is_stale_openclaw_agent(role):
-    """Match only Anvil-owned legacy roles, preserving independent rebinds."""
-    if not isinstance(role, dict):
-        return False
-    name = role.get("name")
-    if name in _OPENCLAW_LEGACY_AGENT_NAMES:
-        return True
-    model = role.get("model")
-    return (
-        name in _OPENCLAW_UNSAFE_REVIEWER_NAMES
-        and isinstance(model, str)
-        and model.startswith("anvil/")
-    )
-
-
-def _merge_openclaw_skill_config(out, rendered):
-    """Merge Anvil-owned skill/agent keys from ``rendered`` into ``out`` in place."""
-    rendered_skills = rendered.get("skills") if isinstance(rendered.get("skills"), dict) else {}
-    rendered_load = rendered_skills.get("load") if isinstance(rendered_skills.get("load"), dict) else {}
-    rendered_dirs = rendered_load.get("extraDirs") if isinstance(rendered_load.get("extraDirs"), list) else []
-    if rendered_dirs:
-        skills = out.setdefault("skills", {})
-        if not isinstance(skills, dict):
-            skills = {}
-            out["skills"] = skills
-        load = skills.setdefault("load", {})
-        if not isinstance(load, dict):
-            load = {}
-            skills["load"] = load
-        load["extraDirs"] = _merge_unique_strings(load.get("extraDirs", []), rendered_dirs)
-
-    rendered_agents = rendered.get("agents") if isinstance(rendered.get("agents"), dict) else {}
-    rendered_defaults = (
-        rendered_agents.get("defaults") if isinstance(rendered_agents.get("defaults"), dict) else {}
-    )
-    rendered_default_skills = rendered_defaults.get("skills")
-    rendered_roles = rendered_agents.get("list")
-    if rendered_default_skills or rendered_roles:
-        agents = out.setdefault("agents", {})
-        if not isinstance(agents, dict):
-            agents = {}
-            out["agents"] = agents
-        defaults = agents.setdefault("defaults", {})
-        if not isinstance(defaults, dict):
-            defaults = {}
-            agents["defaults"] = defaults
-        if rendered_default_skills:
-            defaults["skills"] = _merge_unique_strings(
-                defaults.get("skills", []),
-                rendered_default_skills,
-            )
-        if isinstance(rendered_roles, list):
-            existing_roles = agents.get("list", [])
-            if not isinstance(existing_roles, list):
-                existing_roles = []
-            rendered_by_name = {
-                role.get("name"): role
-                for role in rendered_roles
-                if isinstance(role, dict) and isinstance(role.get("name"), str)
-            }
-            preserved = [
-                role for role in existing_roles
-                if not (
-                    isinstance(role, dict)
-                    and (
-                        role.get("name") in rendered_by_name
-                        or _is_stale_openclaw_agent(role)
-                    )
-                )
-            ]
-            agents["list"] = preserved + list(rendered_by_name.values())
-    return out
-
-
-def _with_openclaw_skills(provider, skills_payload):
-    out = json.loads(json.dumps(provider))
-    return _merge_openclaw_skill_config(out, skills_payload)
-
-
-def _merge_openclaw_voice_config(out, rendered):
-    rendered_talk = rendered.get("talk") if isinstance(rendered.get("talk"), dict) else {}
-    rendered_rt = rendered_talk.get("realtime") if isinstance(rendered_talk.get("realtime"), dict) else {}
-    rendered_providers = (
-        rendered_rt.get("providers") if isinstance(rendered_rt.get("providers"), dict) else {}
-    )
-    rendered_anvil = rendered_providers.get("anvil")
-    if not isinstance(rendered_anvil, dict):
-        return out
-
-    talk = out.setdefault("talk", {})
-    if not isinstance(talk, dict):
-        talk = {}
-        out["talk"] = talk
-    for key, value in rendered_talk.items():
-        if key != "realtime":
-            talk[key] = value
-    realtime = talk.setdefault("realtime", {})
-    if not isinstance(realtime, dict):
-        realtime = {}
-        talk["realtime"] = realtime
-    for key, value in rendered_rt.items():
-        if key != "providers":
-            realtime[key] = value
-    providers = realtime.setdefault("providers", {})
-    if not isinstance(providers, dict):
-        providers = {}
-        realtime["providers"] = providers
-    existing_anvil = providers.get("anvil") if isinstance(providers.get("anvil"), dict) else {}
-    merged_anvil = json.loads(json.dumps(existing_anvil))
-    merged_anvil.update(rendered_anvil)
-    providers["anvil"] = merged_anvil
-    return out
-
-
-def _with_openclaw_voice_config(provider, voice_payload):
-    out = json.loads(json.dumps(provider))
-    return _merge_openclaw_voice_config(out, voice_payload)
-
-
-# --------------------------------------------------------------------------- #
-# remote (ssh) sync — the OpenClaw gateway is typically REMOTE from the router
-# --------------------------------------------------------------------------- #
-
-def _ssh_target(host, user):
-    _validate_gateway_target(host, user)
-    return ("%s@%s" % (user, host)) if user else host
-
-
-def _normalize_timeout_seconds(value):
-    if isinstance(value, bool) or not isinstance(value, int) or value < 1 or value > 7200:
-        raise ValueError("timeout_seconds must be an integer between 1 and 7200")
-    return value
-
-
-def _ssh_options(timeout_seconds):
-    timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
-    connect_timeout = max(1, min(int(timeout_seconds), 60))
-    return [
-        "-o", "BatchMode=yes",
-        "-o", "StrictHostKeyChecking=yes",
-        "-o", "ConnectTimeout=%d" % connect_timeout,
-        "-o", "ServerAliveInterval=5",
-        "-o", "ServerAliveCountMax=1",
-    ]
-
-
-def _validate_gateway_target(host, user=None):
-    """Reject SSH/SCP option injection before user strings reach OpenSSH."""
-    if not host or not isinstance(host, str) or not _GATEWAY_HOST_RE.fullmatch(host):
-        raise ValueError("gateway host must be a DNS name or IPv4-style token, not an SSH option")
-    if user and (not isinstance(user, str) or not _GATEWAY_USER_RE.fullmatch(user) or user.startswith("-")):
-        raise ValueError("gateway user must not be an SSH option")
-
-
-def _is_default_openclaw_config_path(path):
-    return (
-        os.path.abspath(os.path.expanduser(path))
-        == os.path.abspath(os.path.expanduser(_DEFAULT_OPENCLAW_CONFIG_PATH))
-    )
-
-
-def _is_stdout_out(path):
-    return not path or path == "-"
-
-
-def _merge_anvil_provider(
-        existing, rendered, *, replace_provider_keys=(), replace_route_keys=(),
-        remove_route_config=False):
-    """Merge ONLY anvil-owned keys of `rendered` into the operator's existing OpenClaw config,
-    preserving their OTHER providers / agents / plugins / skills. Returns a NEW dict."""
-    out = json.loads(json.dumps(existing))  # deep copy
-    models = out.setdefault("models", {})
-    models["mode"] = "merge"
-    providers = models.setdefault("providers", {})
-    existing_anvil = providers.get("anvil") or {}
-    new_anvil = dict(rendered["models"]["providers"]["anvil"])
-    # Preserve live connection settings when the caller omitted their CLI/MCP
-    # options.  Explicit options are authoritative: silently retaining an old
-    # URL or key makes a successful sync report values that were never written.
-    replace_provider_keys = frozenset(replace_provider_keys)
-    replace_route_keys = frozenset(replace_route_keys)
-    for k in ("baseUrl", "apiKey"):
-        if existing_anvil.get(k) and k not in replace_provider_keys:
-            new_anvil[k] = existing_anvil[k]
-    providers["anvil"] = new_anvil
-    defaults = out.setdefault("agents", {}).setdefault("defaults", {})
-    rendered_defaults = rendered["agents"]["defaults"]
-    rendered_default_model = rendered_defaults.get("model")
-    if isinstance(rendered_default_model, dict) and rendered_default_model.get("primary"):
-        defaults["model"] = json.loads(json.dumps(rendered_default_model))
-    # Re-assert the anvil/* DROPDOWN ALLOWLIST: drop any stale entries (they may carry an old
-    # thinking override) then re-add the rendered ones (EMPTY params). Keeping the entries is
-    # essential — deleting them removes the presets from OpenClaw's picker entirely.
-    dmodels = defaults.setdefault("models", {})
-    if isinstance(dmodels, dict):
-        for k in [k for k in dmodels if str(k).startswith("anvil/")]:
-            del dmodels[k]
-        dmodels.update(rendered_defaults["models"])
-    plugins = out.setdefault("plugins", {})
-    rendered_plugins = rendered.get("plugins", {})
-    rendered_load = rendered_plugins.get("load")
-    if isinstance(rendered_load, dict) and isinstance(rendered_load.get("paths"), list):
-        load = plugins.setdefault("load", {})
-        if not isinstance(load, dict):
-            load = {}
-            plugins["load"] = load
-        existing_paths = load.get("paths") if isinstance(load.get("paths"), list) else []
-        preserved_paths = [path for path in existing_paths if not _is_anvil_plugin_path(path)]
-        load["paths"] = _merge_unique_strings(preserved_paths, rendered_load["paths"])
-    entries = plugins.setdefault("entries", {})
-    rendered_entry = rendered["plugins"]["entries"][_PLUGIN_ID]
-    existing_entry = entries.get(_PLUGIN_ID)
-    if isinstance(existing_entry, dict):
-        merged_entry = json.loads(json.dumps(existing_entry))
-        merged_entry["enabled"] = True
-        hooks = merged_entry.setdefault("hooks", {})
-        if not isinstance(hooks, dict):
-            hooks = {}
-        hooks.update(rendered_entry["hooks"])
-        merged_entry["hooks"] = hooks
-        config = merged_entry.get("config")
-        config = json.loads(json.dumps(config)) if isinstance(config, dict) else {}
-        existing_primary = (
-            defaults.get("model", {}).get("primary")
-            if isinstance(defaults.get("model"), dict)
-            else None
-        )
-        inferred_native = _native_route_from_model_ref(existing_primary)
-        if (
-            inferred_native
-            and all(config.get(key) == value for key, value in _LEGACY_GENERATED_NATIVE_ROUTE.items())
-        ):
-            for key in _LEGACY_GENERATED_NATIVE_ROUTE:
-                config.pop(key, None)
-        rendered_config = rendered_entry.get("config")
-        if remove_route_config:
-            for key in ("routeEndpoint", "routeAuthEnv", "routeTimeoutMs"):
-                config.pop(key, None)
-        if isinstance(rendered_config, dict):
-            rendered_config = json.loads(json.dumps(rendered_config))
-            if (
-                not remove_route_config
-                and "routeEndpoint" not in config
-                and rendered_config.get("routeEndpoint")
-            ):
-                rendered_config["routeEndpoint"] = _route_endpoint_from_base_url(
-                    new_anvil["baseUrl"]
-                )
-            for key in ("routeEndpoint", "routeAuthEnv", "routeTimeoutMs"):
-                if remove_route_config:
-                    rendered_config.pop(key, None)
-                elif key in config and key not in replace_route_keys:
-                    rendered_config.pop(key, None)
-            config.update(rendered_config)
-        if inferred_native and not (
-            config.get("nativeProvider") and config.get("nativeModel")
-        ):
-            config.update(inferred_native)
-        if config:
-            merged_entry["config"] = config
-        else:
-            merged_entry.pop("config", None)
-        entries[_PLUGIN_ID] = merged_entry
-    else:
-        merged_entry = json.loads(json.dumps(rendered_entry))
-        existing_primary = (
-            defaults.get("model", {}).get("primary")
-            if isinstance(defaults.get("model"), dict)
-            else None
-        )
-        inferred_native = _native_route_from_model_ref(existing_primary)
-        if inferred_native:
-            config = merged_entry.setdefault("config", {})
-            if not (config.get("nativeProvider") and config.get("nativeModel")):
-                config.update(inferred_native)
-        entries[_PLUGIN_ID] = merged_entry
-    rendered_tools = rendered.get("tools")
-    if isinstance(rendered_tools, dict) and (
-        rendered_tools.get("profile") or isinstance(rendered_tools.get("exec"), dict)
-    ):
-        tools = out.setdefault("tools", {})
-        if not isinstance(tools, dict):
-            tools = {}
-            out["tools"] = tools
-        if rendered_tools.get("profile"):
-            tools["profile"] = rendered_tools["profile"]
-        rendered_exec = rendered_tools.get("exec")
-        if isinstance(rendered_exec, dict) and rendered_exec.get("mode"):
-            exec_config = tools.setdefault("exec", {})
-            if not isinstance(exec_config, dict):
-                exec_config = {}
-                tools["exec"] = exec_config
-            exec_config["mode"] = rendered_exec["mode"]
-    out = _merge_openclaw_skill_config(out, rendered)
-    return _merge_openclaw_voice_config(out, rendered)
-
-
-def _fresh_openclaw_setup_issues(payload):
-    issues = []
-    defaults = payload.get("agents", {}).get("defaults", {})
-    primary = defaults.get("model", {}).get("primary") if isinstance(defaults, dict) else None
-    native_route = _native_route_from_model_ref(primary)
-    plugins = payload.get("plugins", {})
-    entries = plugins.get("entries") if isinstance(plugins, dict) else None
-    plugin_entry = entries.get(_PLUGIN_ID) if isinstance(entries, dict) else None
-    plugin_config = plugin_entry.get("config") if isinstance(plugin_entry, dict) else None
-    if (
-        not native_route
-        or not isinstance(plugin_config, dict)
-        or plugin_config.get("nativeProvider") != native_route["nativeProvider"]
-        or plugin_config.get("nativeModel") != native_route["nativeModel"]
-    ):
-        issues.append("native provider/model")
-    if not isinstance(plugin_entry, dict) or plugin_entry.get("enabled") is not True:
-        issues.append("enabled Anvil plugin entry")
-    paths = plugins.get("load", {}).get("paths") if isinstance(plugins, dict) else None
-    installs = plugins.get("installs") if isinstance(plugins, dict) else None
-    managed_install = (
-        isinstance(installs, dict)
-        and isinstance(installs.get(_PLUGIN_ID), dict)
-    )
-    if (
-        not managed_install
-        and (
-            not isinstance(paths, list)
-            or not any(_is_anvil_plugin_path(path) for path in paths)
-        )
-    ):
-        issues.append("gateway-visible plugin directory")
-    tools = payload.get("tools", {})
-    if not isinstance(tools, dict) or tools.get("profile") not in _OPENCLAW_TOOL_PROFILES:
-        issues.append("explicit tool profile")
-    exec_config = tools.get("exec") if isinstance(tools, dict) else None
-    if not isinstance(exec_config, dict) or exec_config.get("mode") not in _OPENCLAW_EXEC_MODES:
-        issues.append("explicit exec mode")
-    return issues
-
-
-def _anvil_plugin_dir(payload):
-    plugins = payload.get("plugins", {})
-    paths = plugins.get("load", {}).get("paths") if isinstance(plugins, dict) else None
-    if isinstance(paths, list):
-        for path in reversed(paths):
-            if _is_anvil_plugin_path(path):
-                return path
-    return None
-
-
-def _validate_plugin_manifest_text(text, *, source):
-    try:
-        manifest = json.loads(text)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("Anvil plugin manifest at %s is not valid JSON: %s" % (source, exc))
-    if not isinstance(manifest, dict) or manifest.get("id") != _PLUGIN_ID:
-        found = manifest.get("id") if isinstance(manifest, dict) else None
-        raise ValueError(
-            "Anvil plugin manifest at %s has id %r; expected %r"
-            % (source, found, _PLUGIN_ID)
-        )
-
-
-def _validate_local_plugin_manifest(payload):
-    """Prove a configured local plugin path contains the expected manifest."""
-    plugin_dir = _anvil_plugin_dir(payload)
-    if not plugin_dir:
-        # A managed install has no config load path to inspect here.
-        plugins = payload.get("plugins", {})
-        installs = plugins.get("installs") if isinstance(plugins, dict) else None
-        return bool(isinstance(installs, dict) and isinstance(installs.get(_PLUGIN_ID), dict))
-    manifest_path = os.path.join(plugin_dir, "openclaw.plugin.json")
-    try:
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            text = f.read()
-    except OSError as exc:
-        raise ValueError(
-            "Anvil plugin is not installed at %s: cannot read openclaw.plugin.json (%s)"
-            % (plugin_dir, exc)
-        )
-    _validate_plugin_manifest_text(text, source=manifest_path)
-    return True
-
-
-def _has_anvil_integration(payload):
-    providers = payload.get("models", {}).get("providers", {})
-    plugins = payload.get("plugins", {})
-    entries = plugins.get("entries") if isinstance(plugins, dict) else None
-    installs = plugins.get("installs") if isinstance(plugins, dict) else None
-    return bool(
-        (isinstance(providers, dict) and isinstance(providers.get("anvil"), dict))
-        or (isinstance(entries, dict) and isinstance(entries.get(_PLUGIN_ID), dict))
-        or (isinstance(installs, dict) and isinstance(installs.get(_PLUGIN_ID), dict))
-        or _anvil_plugin_dir(payload)
-    )
-
-
-def _blocking_openclaw_setup_issues(payload):
-    """Return setup omissions that cannot be proven by OpenClaw at runtime.
-
-    A current OpenClaw managed plugin install may live in its state database
-    rather than ``plugins.load.paths``/legacy ``plugins.installs``.  Therefore a
-    missing config path is allowed only when an enabled plugin entry exists; the
-    subsequent runtime inspection must prove that install.  Native routing,
-    plugin enablement, and explicit tool/exec policy are config-owned and can
-    never be inferred from the presence of one legacy Anvil fragment.
-    """
-    issues = _fresh_openclaw_setup_issues(payload)
-    plugins = payload.get("plugins", {})
-    entries = plugins.get("entries") if isinstance(plugins, dict) else None
-    entry = entries.get(_PLUGIN_ID) if isinstance(entries, dict) else None
-    managed_runtime_can_prove_plugin = (
-        isinstance(entry, dict) and entry.get("enabled") is True
-    )
-    return [
-        issue for issue in issues
-        if not (
-            issue == "gateway-visible plugin directory"
-            and managed_runtime_can_prove_plugin
-        )
-    ]
-
-
-def _payload_for_existing_config(
-        existing_text, rendered, *, overwrite, path, replace_provider_keys=(),
-        replace_route_keys=(), remove_route_config=False):
-    if overwrite or not existing_text.strip():
-        issues = _fresh_openclaw_setup_issues(rendered)
-        if issues:
-            raise ValueError(
-                "refusing incomplete fresh OpenClaw setup for %s: missing %s. "
-                "Provide --native-provider/--native-model, --plugin-dir, "
-                "--tool-profile, and --exec-mode."
-                % (path, " and ".join(issues))
-            )
-        return rendered, "overwrite" if existing_text.strip() else "created"
-    try:
-        existing = json.loads(existing_text)
-    except ValueError:
-        raise ValueError(
-            "refusing to merge: %s is not plain JSON (JSON5/comments?). Re-run with "
-            "--overwrite (back up the file first), or edit it by hand." % path
-        )
-    merged = _merge_anvil_provider(
-        existing,
-        rendered,
-        replace_provider_keys=replace_provider_keys,
-        replace_route_keys=replace_route_keys,
-        remove_route_config=remove_route_config,
-    )
-    issues = _blocking_openclaw_setup_issues(merged)
-    if issues:
-        phase = "first-time " if not _has_anvil_integration(existing) else "partial "
-        raise ValueError(
-            "refusing incomplete %sOpenClaw integration for %s: missing %s. "
-            "Provide --native-provider/--native-model, --plugin-dir when the plugin "
-            "is not managed by OpenClaw, --tool-profile, and --exec-mode."
-            % (phase, path, " and ".join(issues))
-        )
-    return merged, "merged"
-
-
-def _tmpfile():
-    fd, p = tempfile.mkstemp(prefix="anvil-harness-", suffix=".json")
-    os.close(fd)
-    return p
-
-
-def _gateway_plugin_manifest_path(plugin_dir):
-    trimmed = plugin_dir.rstrip("/\\")
-    windows_style = bool(re.match(r"^[A-Za-z]:[\\/]", trimmed) or trimmed.startswith("\\\\"))
-    separator = "\\" if windows_style else "/"
-    return trimmed + separator + "openclaw.plugin.json"
-
-
-def _sync_over_ssh(host, user, path, rendered, *, overwrite,
-                   replace_provider_keys=(), replace_route_keys=(),
-                   remove_route_config=False,
-                   timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _run,
-                   _applied_payload=None, _applied_validation=None):
-    """Push the rendered config to a remote gateway with portable OpenSSH calls.
-
-    Config and manifest transport is SCP-only: read and merge locally, push the
-    original to ``<path>.bak``, then write.  A first-time default-path setup also
-    runs two fixed, shell-syntax-free OpenClaw inspection commands over SSH so a
-    missing native model or unloaded plugin cannot be reported as ready.  No
-    operator value is interpolated into either command, which keeps the calls
-    portable across Windows, macOS, and Linux gateways.
-    """
-    try:
-        tgt = _ssh_target(host, user)
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
-    try:
-        timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
-    remote = "%s:%s" % (tgt, path)
-    read_tmp, write_tmp, manifest_tmp = _tmpfile(), _tmpfile(), _tmpfile()
-    ssh_opts = _ssh_options(timeout_seconds)
-    try:
-        # 1. READ the remote via scp. A MISSING file is a clean "create", not a hard error.
-        try:
-            r = _run(["scp", "-q", *ssh_opts, "--", remote, read_tmp],
-                     capture_output=True, text=True, timeout=timeout_seconds)
-        except FileNotFoundError:
-            print("scp not available on PATH (install the OpenSSH client)", file=sys.stderr)
-            return 1
-        except subprocess.TimeoutExpired:
-            print("timed out reading %s over scp" % remote, file=sys.stderr)
-            return 1
-        existed = r.returncode == 0
-        err = (r.stderr or "").strip()
-        if not existed and err and "no such file" not in err.lower():
-            print("cannot reach %s over scp: %s" % (remote, err), file=sys.stderr)
-            return 1
-        with open(read_tmp, "r", encoding="utf-8") as f:
-            existing_text = f.read() if existed else ""
-        try:
-            existing_payload = json.loads(existing_text) if existing_text.strip() else {}
-        except ValueError:
-            existing_payload = {}
-        setup_validation_needed = (
-            overwrite
-            or not existed
-            or bool(_fresh_openclaw_setup_issues(existing_payload))
-        )
-
-        # 2. MERGE / OVERWRITE locally.
-        try:
-            payload, mode = _payload_for_existing_config(
-                existing_text, rendered, overwrite=overwrite, path="remote %s" % path,
-                replace_provider_keys=replace_provider_keys,
-                replace_route_keys=replace_route_keys,
-                remove_route_config=remove_route_config,
-            )
-        except ValueError as exc:
-            print(str(exc).replace("back up the file first", "a .bak is taken first"), file=sys.stderr)
-            return 1
-
-        # A syntactically plausible path is not installation evidence.  Probe
-        # the expected manifest over the same shell-free SCP transport before
-        # changing the gateway config, and verify its packaged plugin id.
-        plugin_dir = _anvil_plugin_dir(payload)
-        if plugin_dir:
-            manifest_remote = "%s:%s" % (
-                tgt, _gateway_plugin_manifest_path(plugin_dir)
-            )
-            try:
-                manifest_read = _run(
-                    ["scp", "-q", *ssh_opts, "--", manifest_remote, manifest_tmp],
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout_seconds,
-                )
-            except subprocess.TimeoutExpired:
-                print("timed out validating Anvil plugin at %s" % plugin_dir, file=sys.stderr)
-                return 1
-            if manifest_read.returncode != 0:
-                print(
-                    "Anvil plugin is not installed at %s on %s: %s"
-                    % (plugin_dir, tgt, (manifest_read.stderr or "manifest not readable").strip()),
-                    file=sys.stderr,
-                )
-                return 1
-            try:
-                with open(manifest_tmp, "r", encoding="utf-8") as f:
-                    _validate_plugin_manifest_text(f.read(), source=manifest_remote)
-            except (OSError, ValueError) as exc:
-                print(str(exc), file=sys.stderr)
-                return 1
-            if _applied_validation is not None:
-                _applied_validation["plugin_manifest_verified"] = True
-        with open(write_tmp, "w", encoding="utf-8") as f:
-            f.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
-
-        # 3. BACKUP (push the ORIGINAL content back as .bak — portable, no remote shell) then WRITE.
-        if existed:
-            try:
-                b = _run(["scp", "-q", *ssh_opts, "--", read_tmp, "%s.bak" % remote],
-                         capture_output=True, text=True, timeout=timeout_seconds)
-            except subprocess.TimeoutExpired:
-                print("WARNING: timed out backing up %s" % remote, file=sys.stderr)
-                b = None
-            if b is not None and b.returncode != 0:
-                print("WARNING: could not back up %s: %s"
-                      % (remote, (b.stderr or "").strip()), file=sys.stderr)
-        try:
-            w = _run(["scp", "-q", *ssh_opts, "--", write_tmp, remote],
-                     capture_output=True, text=True, timeout=timeout_seconds)
-        except subprocess.TimeoutExpired:
-            print("timed out writing %s over scp" % remote, file=sys.stderr)
-            return 1
-        if w.returncode != 0:
-            print("FAILED to write %s: %s" % (remote, (w.stderr or w.stdout or "").strip()),
-                  file=sys.stderr)
-            return 1
-
-        def _runtime_validation_failure(message):
-            print(message, file=sys.stderr)
-            if existed:
-                try:
-                    restore = _run(
-                        ["scp", "-q", *ssh_opts, "--", read_tmp, remote],
-                        capture_output=True,
-                        text=True,
-                        timeout=timeout_seconds,
-                    )
-                except (FileNotFoundError, subprocess.TimeoutExpired):
-                    restore = None
-                if restore is not None and restore.returncode == 0:
-                    print("restored the previous OpenClaw config after validation failure",
-                          file=sys.stderr)
-                else:
-                    print("WARNING: could not restore the previous OpenClaw config; use the .bak",
-                          file=sys.stderr)
-            else:
-                # No original file exists to restore.  Remove only the fixed
-                # default config path we just created, through the SFTP
-                # protocol (no platform-specific remote shell syntax and no
-                # user-controlled path in the batch command).
-                try:
-                    cleanup = _run(
-                        ["sftp", "-q", *ssh_opts, "-b", "-", "--", tgt],
-                        input="rm .openclaw/openclaw.json\n",
-                        capture_output=True,
-                        text=True,
-                        timeout=timeout_seconds,
-                    )
-                except (FileNotFoundError, subprocess.TimeoutExpired):
-                    cleanup = None
-                if cleanup is not None and cleanup.returncode == 0:
-                    print("removed the unvalidated newly created OpenClaw config",
-                          file=sys.stderr)
-                else:
-                    print(
-                        "WARNING: could not remove the unvalidated newly created config; "
-                        "remove ~/.openclaw/openclaw.json before restarting the gateway",
-                        file=sys.stderr,
-                    )
-            return 1
-
-        if setup_validation_needed and path == _DEFAULT_OPENCLAW_CONFIG_PATH:
-            validation_outputs = []
-            for command in (
-                _REMOTE_MODELS_VALIDATE_COMMAND,
-                _REMOTE_PLUGIN_VALIDATE_COMMAND,
-            ):
-                try:
-                    check = _run(
-                        ["ssh", *ssh_opts, "--", tgt, command],
-                        capture_output=True,
-                        text=True,
-                        timeout=timeout_seconds,
-                    )
-                except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
-                    return _runtime_validation_failure(
-                        "OpenClaw runtime validation failed on %s: %s" % (tgt, exc)
-                    )
-                if check.returncode != 0:
-                    return _runtime_validation_failure(
-                        "OpenClaw runtime validation failed on %s: %s"
-                        % (tgt, (check.stderr or check.stdout or "unknown error").strip())
-                    )
-                validation_outputs.append(check.stdout)
-            try:
-                runtime_validation = _validate_openclaw_runtime_payload(
-                    payload, *validation_outputs
-                )
-            except ValueError as exc:
-                return _runtime_validation_failure(str(exc))
-            if _applied_validation is not None:
-                _applied_validation.update(runtime_validation)
-        if _applied_payload is not None:
-            _applied_payload.clear()
-            _applied_payload.update(json.loads(json.dumps(payload)))
-        n = len(rendered["models"]["providers"]["anvil"]["models"])
-        print("synced OpenClaw provider (%d preset models, %s) -> %s%s"
-              % (n, mode, remote, " (backup taken)" if existed else ""))
-        return 0
-    finally:
-        for t in (read_tmp, write_tmp, manifest_tmp):
-            try:
-                os.unlink(t)
-            except OSError:
-                pass
-
-
-def _validate_openclaw_runtime_payload(payload, models_text, plugin_text):
-    """Validate native fallback and plugin import from OpenClaw JSON output."""
-    try:
-        models_result = json.loads(models_text)
-        plugin_result = json.loads(plugin_text)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("OpenClaw validation did not return valid JSON: %s" % exc)
-
-    defaults = payload.get("agents", {}).get("defaults", {})
-    native_ref = defaults.get("model", {}).get("primary") if isinstance(defaults, dict) else None
-    catalog = models_result.get("models") if isinstance(models_result, dict) else None
-    match = next(
-        (
-            row for row in catalog
-            if isinstance(row, dict) and row.get("key") == native_ref
-        ),
-        None,
-    ) if isinstance(catalog, list) else None
-    if not isinstance(match, dict) or match.get("available") is not True:
-        raise ValueError(
-            "OpenClaw cannot use native fallback model %r (models list did not mark it available)"
-            % native_ref
-        )
-
-    plugin = plugin_result.get("plugin") if isinstance(plugin_result, dict) else None
-    if not (
-        isinstance(plugin, dict)
-        and plugin.get("id") == _PLUGIN_ID
-        and plugin.get("enabled") is True
-        and plugin.get("imported") is True
-        and plugin.get("status") == "loaded"
-        and not plugin.get("error")
-        and isinstance(plugin.get("hookCount"), int)
-        and plugin.get("hookCount") >= 1
-    ):
-        reason = plugin.get("error") if isinstance(plugin, dict) else "plugin missing"
-        raise ValueError(
-            "OpenClaw did not load the Anvil routing plugin with its hook (%s)" % reason
-        )
-    return {"native_model_verified": True, "plugin_runtime_verified": True}
-
-
-def _restart_openclaw_gateway(host, user, *, timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _run):
-    """Restart the OpenClaw gateway so it picks up config changes — `openclaw gateway restart`,
-    locally or over ssh when the gateway is remote (--gateway-host). It's a single command
-    invocation (NOT a shell script), so it stays portable against a Windows/macOS/Linux gateway.
-    Returns 0/1."""
-    try:
-        timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
-    if host:
-        try:
-            target = _ssh_target(host, user)
-        except ValueError as exc:
-            print(str(exc), file=sys.stderr)
-            return 2
-        argv = ["ssh", *_ssh_options(timeout_seconds), "--", target, _REMOTE_RESTART_COMMAND]
-        where, missing = target, "ssh"
-    else:
-        argv, where, missing = ["openclaw", "gateway", "restart"], "local", "openclaw"
-    try:
-        r = _run(argv, capture_output=True, text=True, timeout=timeout_seconds)
-    except FileNotFoundError:
-        print("cannot restart gateway: %s not available on PATH" % missing, file=sys.stderr)
-        return 1
-    except subprocess.TimeoutExpired:
-        print("timed out restarting the OpenClaw gateway on %s" % where, file=sys.stderr)
-        return 1
-    if r.returncode != 0:
-        print("FAILED to restart the OpenClaw gateway on %s: %s"
-              % (where, (r.stderr or r.stdout or "").strip()), file=sys.stderr)
-        return 1
-    print("restarted the OpenClaw gateway on %s (settings reloaded)" % where)
-    return 0
-
-
-def cmd_restart_openclaw(gateway_host=None, gateway_user=None,
-                         timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
-                         dry_run=False, _run=subprocess.run):
-    if dry_run:
-        if gateway_host:
-            try:
-                target = _ssh_target(gateway_host, gateway_user)
-                timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
-            except ValueError as exc:
-                print(str(exc), file=sys.stderr)
-                return 2
-            argv = ["ssh", *_ssh_options(timeout_seconds), "--", target, _REMOTE_RESTART_COMMAND]
-        else:
-            argv = ["openclaw", "gateway", "restart"]
-        print(json.dumps({"dry_run": True, "command": argv}, sort_keys=True))
-        return 0
-    return _restart_openclaw_gateway(gateway_host, gateway_user,
-                                     timeout_seconds=timeout_seconds, _run=_run)
-
-
-def openclaw_gateway_status(*, timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
-                            max_output_bytes=DEFAULT_STATUS_MAX_OUTPUT_BYTES,
-                            _run=subprocess.run):
-    """Return bounded local OpenClaw gateway status without shell execution."""
-    timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
-    if isinstance(max_output_bytes, bool) or not isinstance(max_output_bytes, int):
-        raise ValueError("max_output_bytes must be an integer")
-    if not 1024 <= max_output_bytes <= 1024 * 1024:
-        raise ValueError("max_output_bytes must be between 1024 and 1048576")
-    argv = ["openclaw", "gateway", "status", "--json"]
-    with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
-        try:
-            proc = _run(argv, stdout=stdout_file, stderr=stderr_file, timeout=timeout_seconds)
-        except FileNotFoundError as exc:
-            return {"ok": False, "command": argv, "returncode": None, "error": str(exc)}
-        except subprocess.TimeoutExpired:
-            return {
-                "ok": False,
-                "command": argv,
-                "returncode": None,
-                "error": "OpenClaw gateway status timed out",
-            }
-        stdout_file.seek(0)
-        stderr_file.seek(0)
-        stdout_raw = stdout_file.read(max_output_bytes + 1)
-        stderr_raw = stderr_file.read(max_output_bytes + 1)
-    stdout = stdout_raw[:max_output_bytes].decode("utf-8", "replace")
-    stderr = stderr_raw[:max_output_bytes].decode("utf-8", "replace")
-    result = {
-        "ok": proc.returncode == 0,
-        "command": argv,
-        "returncode": proc.returncode,
-        "stdout": stdout,
-        "stderr": stderr,
-        "stdout_truncated": len(stdout_raw) > max_output_bytes,
-        "stderr_truncated": len(stderr_raw) > max_output_bytes,
-    }
-    if stdout and not result["stdout_truncated"]:
-        try:
-            parsed = json.loads(stdout)
-        except ValueError:
-            parsed = None
-        if isinstance(parsed, dict):
-            result["status"] = parsed
+                "providers": {"anvil": provider},
+            },
+            "consultThinkingLevel": consult_thinking_level,
+            "consultBootstrapContextMode": consult_bootstrap_context_mode}
+    if consult_model:
+        talk["consultModel"] = consult_model
+    return talk
+
+
+def _with_voice(payload, voice):
+    result = json.loads(json.dumps(payload))
+    result["talk"] = voice
     return result
 
 
-def cmd_status_openclaw(timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
-                        max_output_bytes=DEFAULT_STATUS_MAX_OUTPUT_BYTES,
-                        _run=subprocess.run):
-    try:
-        result = openclaw_gateway_status(
-            timeout_seconds=timeout_seconds,
-            max_output_bytes=max_output_bytes,
-            _run=_run,
-        )
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
-    stream = sys.stdout if result["ok"] else sys.stderr
-    print(json.dumps(result, indent=2, sort_keys=True), file=stream)
-    return 0 if result["ok"] else 1
-
-
-def _openclaw_payload_summary(
-        provider, *, skills=False, voice=False, plugin_manifest_verified=None,
-        native_model_verified=None, plugin_runtime_verified=None):
-    """Summarize the payload that will actually be written to OpenClaw."""
+def _openclaw_payload_summary(provider, *, skills=False, voice=False, **_ignored):
     models = provider["models"]["providers"]["anvil"]["models"]
-    roles = provider.get("agents", {}).get("list", [])
-    load_dirs = provider.get("skills", {}).get("load", {}).get("extraDirs", [])
     realtime = provider.get("talk", {}).get("realtime", {})
-    voice_anvil = realtime.get("providers", {}).get("anvil", {}) if isinstance(realtime, dict) else {}
-    plugin_entry = provider.get("plugins", {}).get("entries", {}).get(_PLUGIN_ID, {})
-    plugin_config = plugin_entry.get("config") if isinstance(plugin_entry, dict) else {}
-    plugin_paths = provider.get("plugins", {}).get("load", {}).get("paths", [])
-    defaults = provider.get("agents", {}).get("defaults", {})
-    native_primary = defaults.get("model", {}).get("primary") if isinstance(defaults, dict) else None
-    config_issues = _fresh_openclaw_setup_issues(provider)
-    setup_issues = list(config_issues)
-    if not config_issues and plugin_manifest_verified is not True:
-        setup_issues.append("plugin manifest not verified on gateway")
-    if not config_issues and native_model_verified is not True:
-        setup_issues.append("native model not verified by OpenClaw")
-    if not config_issues and plugin_runtime_verified is not True:
-        setup_issues.append("plugin runtime not verified by OpenClaw")
+    talk = provider.get("talk", {})
+    voice_provider = realtime.get("providers", {}).get("anvil", {}) if isinstance(realtime, dict) else {}
     return {
         "provider": provider,
         "model_count": len(models),
-        "model_ids": [m["id"] for m in models],
-        "plugin_id": _PLUGIN_ID,
+        "model_ids": [model["id"] for model in models],
         "base_url": provider["models"]["providers"]["anvil"]["baseUrl"],
         "api_key": provider["models"]["providers"]["anvil"]["apiKey"],
-        "plugin_enabled": plugin_entry.get("enabled") if isinstance(plugin_entry, dict) else None,
-        "plugin_load_paths": list(plugin_paths) if isinstance(plugin_paths, list) else [],
-        "native_primary": native_primary,
-        "native_provider": plugin_config.get("nativeProvider") if isinstance(plugin_config, dict) else None,
-        "native_model": plugin_config.get("nativeModel") if isinstance(plugin_config, dict) else None,
-        "route_endpoint": plugin_config.get("routeEndpoint") if isinstance(plugin_config, dict) else None,
-        "route_auth_env": plugin_config.get("routeAuthEnv") if isinstance(plugin_config, dict) else None,
-        "route_timeout_ms": plugin_config.get("routeTimeoutMs") if isinstance(plugin_config, dict) else None,
-        "tool_profile": provider.get("tools", {}).get("profile"),
-        "exec_mode": provider.get("tools", {}).get("exec", {}).get("mode"),
-        "fresh_config_ready": not config_issues,
-        "fresh_config_issues": config_issues,
-        "plugin_manifest_verified": plugin_manifest_verified is True,
-        "native_model_verified": native_model_verified is True,
-        "plugin_runtime_verified": plugin_runtime_verified is True,
-        "fresh_setup_ready": not setup_issues,
-        "fresh_setup_issues": setup_issues,
-        "skills": bool(skills),
-        "skill_name": _WORKBENCH_SKILL_NAME if skills else None,
-        "skill_load_dirs": list(load_dirs) if isinstance(load_dirs, list) else [],
-        "agent_names": [r.get("name") for r in roles if isinstance(r, dict) and r.get("name")],
-        "agent_models": {
-            r.get("name"): r.get("model")
-            for r in roles
-            if isinstance(r, dict) and r.get("name")
-        },
+        "direct_aliases": True,
+        "skills": False,
         "voice": bool(voice),
         "voice_provider": realtime.get("provider") if isinstance(realtime, dict) else None,
-        "voice_realtime_url": voice_anvil.get("realtimeUrl") if isinstance(voice_anvil, dict) else None,
-        "voice_model": voice_anvil.get("model") if isinstance(voice_anvil, dict) else None,
-        "voice_consult_model": provider.get("talk", {}).get("consultModel"),
-        "voice_consult_thinking_level": provider.get("talk", {}).get("consultThinkingLevel"),
-        "voice_consult_bootstrap_context_mode": provider.get("talk", {}).get(
-            "consultBootstrapContextMode"
-        ),
+        "voice_realtime_url": voice_provider.get("realtimeUrl"),
+        "voice_model": voice_provider.get("model"),
+        "voice_consult_model": talk.get("consultModel"),
+        "voice_consult_thinking_level": talk.get("consultThinkingLevel"),
+        "voice_consult_bootstrap_context_mode": talk.get("consultBootstrapContextMode"),
     }
 
 
-def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
-                          native_provider=None, native_model=None, plugin_dir=None,
-                          tool_profile=None, exec_mode=None, authoritative_route=True,
-                          route_endpoint=None, route_auth_env=None, route_timeout_ms=None,
-                          skills=False, skill_dir=None, voice=False,
-                          voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
-                          voice_model=None,
-                          voice_consult_model=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
-                          voice_consult_thinking_level=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
-                          voice_consult_bootstrap_context_mode=(
-                              _DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE
-                          ),
-                          voice_api_key_env=None, _load=None):
-    """Return the rendered OpenClaw sync payload without writing it anywhere."""
+def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN", voice=False,
+                          voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL, voice_model=None,
+                          voice_consult_model="", voice_consult_thinking_level="off",
+                          voice_consult_bootstrap_context_mode="lightweight", voice_api_key_env=None,
+                          _load=None, **_ignored):
     if _load is None:
         from .router.config import load as _load
     config = _load(config_path)
-    provider = render_openclaw_provider(
-        config,
-        base_url=base_url,
-        api_key_env=api_key_env,
-        native_provider=native_provider,
-        native_model=native_model,
-        plugin_dir=plugin_dir,
-        tool_profile=tool_profile,
-        exec_mode=exec_mode,
-        authoritative_route=authoritative_route,
-        route_endpoint=route_endpoint,
-        route_auth_env=route_auth_env,
-        route_timeout_ms=route_timeout_ms,
-    )
-    if skills:
-        provider = _with_openclaw_skills(provider, render_openclaw_skills(config, skill_dir=skill_dir))
+    provider = render_openclaw_provider(config, base_url=base_url, api_key_env=api_key_env)
     if voice:
-        voice_payload = render_openclaw_voice_config(
-            realtime_url=voice_realtime_url,
-            model=_openclaw_voice_model(config, voice_model),
-            consult_model=_openclaw_voice_consult_model(config, voice_consult_model),
+        alias = _voice_alias(config, voice_model)
+        provider = _with_voice(provider, render_openclaw_voice_config(
+            realtime_url=voice_realtime_url, model=alias,
+            consult_model=voice_consult_model or alias,
             consult_thinking_level=voice_consult_thinking_level,
             consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
             api_key_env=voice_api_key_env,
-        )
-        provider = _with_openclaw_voice_config(provider, voice_payload)
-    try:
-        plugin_manifest_verified = _validate_local_plugin_manifest(provider)
-    except ValueError:
-        plugin_manifest_verified = False
-    return _openclaw_payload_summary(
-        provider,
-        skills=skills,
-        voice=voice,
-        plugin_manifest_verified=plugin_manifest_verified,
-    )
+        ))
+    return _openclaw_payload_summary(provider, voice=voice)
 
 
-def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=False,
-                      native_provider=None, native_model=None, plugin_dir=None,
-                      tool_profile=None, exec_mode=None, authoritative_route=True,
-                      route_endpoint=None, route_auth_env=None, route_timeout_ms=None,
-                      skill_dir=None, voice=False,
-                      voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
-                      voice_model=None,
-                      voice_consult_model=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
-                      voice_consult_thinking_level=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
-                      voice_consult_bootstrap_context_mode=(
-                          _DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE
-                      ),
-                      voice_api_key_env=None,
-                      gateway_host=None, gateway_user=None,
-                      gateway_path=_DEFAULT_OPENCLAW_CONFIG_PATH, overwrite=False, restart=False,
+def _merge_provider(existing, rendered):
+    result = json.loads(json.dumps(existing)) if isinstance(existing, dict) else {}
+    models = result.setdefault("models", {})
+    models["mode"] = "merge"
+    models.setdefault("providers", {})["anvil"] = rendered["models"]["providers"]["anvil"]
+    defaults = result.setdefault("agents", {}).setdefault("defaults", {})
+    defaults["models"] = rendered["agents"]["defaults"]["models"]
+    # Delete the only Anvil-owned compatibility path. Other installed plugins remain.
+    plugins = result.get("plugins")
+    if isinstance(plugins, dict):
+        entries = plugins.get("entries")
+        if isinstance(entries, dict):
+            entries.pop("openclaw-anvil-intent-router", None)
+    if "talk" in rendered:
+        result["talk"] = rendered["talk"]
+    return result
+
+
+def _write_local(path, rendered, overwrite):
+    existed = os.path.exists(path)
+    old = ""
+    if existed:
+        with open(path, "r", encoding="utf-8") as handle:
+            old = handle.read()
+    if existed and not overwrite:
+        try:
+            existing = json.loads(old) if old.strip() else {}
+        except ValueError as exc:
+            raise ValueError("OpenClaw config must be JSON when merging: %s" % exc) from exc
+        rendered = _merge_provider(existing, rendered)
+    if existed:
+        with open(path + ".bak", "w", encoding="utf-8") as handle:
+            handle.write(old)
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(json.dumps(rendered, indent=2, ensure_ascii=False) + "\n")
+    return "merged" if existed and not overwrite else "written"
+
+
+def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, voice=False,
+                      voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL, voice_model=None,
+                      voice_consult_model="", voice_consult_thinking_level="off",
+                      voice_consult_bootstrap_context_mode="lightweight", voice_api_key_env=None,
+                      gateway_host=None, gateway_user=None, overwrite=False, restart=False,
                       timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _load=None,
-                      _run=subprocess.run, _replace_provider_keys=(),
-                      _applied_payload=None, _applied_validation=None):
-    if skill_dir and not skills:
-        print("--skill-dir requires --skills", file=sys.stderr)
-        return 2
-    if _load is None:
-        from .router.config import load as _load
+                      _applied_payload=None, **_ignored):
     try:
-        config = _load(config_path)
-    except FileNotFoundError:
-        print("router config not found: %s" % config_path, file=sys.stderr)
-        return 2
-    except Exception as e:  # malformed config
-        print("cannot load router config %s: %s" % (config_path, e), file=sys.stderr)
-        return 2
-    if not getattr(config, "presets", None):
-        print("router config %s declares no [router.presets] — nothing to sync." % config_path,
-              file=sys.stderr)
-        return 1
-    try:
-        provider = render_openclaw_provider(
-            config,
-            base_url=base_url,
-            api_key_env=api_key_env,
-            native_provider=native_provider,
-            native_model=native_model,
-            plugin_dir=plugin_dir,
-            tool_profile=tool_profile,
-            exec_mode=exec_mode,
-            authoritative_route=authoritative_route,
-            route_endpoint=route_endpoint,
-            route_auth_env=route_auth_env,
-            route_timeout_ms=route_timeout_ms,
+        preview = openclaw_sync_preview(
+            config_path, base_url=base_url, api_key_env=api_key_env, voice=voice,
+            voice_realtime_url=voice_realtime_url, voice_model=voice_model,
+            voice_consult_model=voice_consult_model,
+            voice_consult_thinking_level=voice_consult_thinking_level,
+            voice_consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
+            voice_api_key_env=voice_api_key_env, _load=_load,
         )
-        if skills:
-            provider = _with_openclaw_skills(provider, render_openclaw_skills(config, skill_dir=skill_dir))
-        if voice:
-            voice_payload = render_openclaw_voice_config(
-                realtime_url=voice_realtime_url,
-                model=_openclaw_voice_model(config, voice_model),
-                consult_model=_openclaw_voice_consult_model(config, voice_consult_model),
-                consult_thinking_level=voice_consult_thinking_level,
-                consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
-                api_key_env=voice_api_key_env,
-            )
-            provider = _with_openclaw_voice_config(provider, voice_payload)
-    except ValueError as exc:
+    except (OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
-
-    replace_route_keys = tuple(
-        key for key, value in (
-            ("routeEndpoint", route_endpoint),
-            ("routeAuthEnv", route_auth_env),
-            ("routeTimeoutMs", route_timeout_ms),
-        )
-        if value is not None
-    )
-
-    if gateway_host:  # push to the REMOTE gateway over ssh (Mini -> the router)
-        rc = _sync_over_ssh(gateway_host, gateway_user, gateway_path, provider,
-                            overwrite=overwrite,
-                            replace_provider_keys=_replace_provider_keys,
-                            replace_route_keys=replace_route_keys,
-                            remove_route_config=not authoritative_route,
-                            timeout_seconds=timeout_seconds, _run=_run,
-                            _applied_payload=_applied_payload,
-                            _applied_validation=_applied_validation)
-        if rc == 0 and restart:  # so the gateway picks up the new config
-            return _restart_openclaw_gateway(gateway_host, gateway_user,
-                                             timeout_seconds=timeout_seconds, _run=_run)
-        return rc
-
-    if restart and _is_stdout_out(out):
-        print("--restart with a stdout-only sync would reload the gateway's OLD config (nothing "
-              "was applied). Use --gateway-host <host>, or --out %s." % _DEFAULT_OPENCLAW_CONFIG_PATH,
-              file=sys.stderr)
+    payload = preview["provider"]
+    if gateway_host:
+        print("remote OpenClaw sync is no longer supported; render locally and apply on the gateway", file=sys.stderr)
         return 2
-    if restart and out and not _is_default_openclaw_config_path(out):
-        print("--restart with --out requires the real local OpenClaw config path (%s); "
-              "%s looks like a preview file." % (_DEFAULT_OPENCLAW_CONFIG_PATH, out),
-              file=sys.stderr)
-        return 2
-
-    text = json.dumps(provider, indent=2, ensure_ascii=False) + "\n"
-    if out and out != "-":
-        existing_text = ""
-        existed = os.path.exists(out)
-        if existed:
-            try:
-                with open(out, "r", encoding="utf-8") as f:
-                    existing_text = f.read()
-            except OSError as exc:
-                print("cannot read existing OpenClaw config %s: %s" % (out, exc), file=sys.stderr)
-                return 1
-        try:
-            existing_payload = json.loads(existing_text) if existing_text.strip() else {}
-        except ValueError:
-            existing_payload = {}
-        setup_validation_needed = (
-            overwrite
-            or not existed
-            or bool(_fresh_openclaw_setup_issues(existing_payload))
-        )
-        try:
-            payload, mode = _payload_for_existing_config(existing_text, provider,
-                                                         overwrite=overwrite, path=out,
-                                                         replace_provider_keys=(
-                                                             _replace_provider_keys
-                                                         ),
-                                                         replace_route_keys=replace_route_keys,
-                                                         remove_route_config=(
-                                                             not authoritative_route
-                                                         ))
-        except ValueError as exc:
-            print(str(exc), file=sys.stderr)
-            return 1
-        try:
-            plugin_manifest_verified = _validate_local_plugin_manifest(payload)
-        except ValueError as exc:
-            print(str(exc), file=sys.stderr)
-            return 1
-        if _applied_validation is not None:
-            _applied_validation["plugin_manifest_verified"] = plugin_manifest_verified
-        if existed and existing_text:
-            try:
-                with open(out + ".bak", "w", encoding="utf-8") as f:
-                    f.write(existing_text)
-            except OSError as exc:
-                print("WARNING: could not back up %s: %s" % (out, exc), file=sys.stderr)
-        with open(out, "w", encoding="utf-8") as f:
-            f.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
-        if _applied_payload is not None:
-            _applied_payload.clear()
-            _applied_payload.update(json.loads(json.dumps(payload)))
-
-        def _local_runtime_validation_failure(message):
-            print(message, file=sys.stderr)
-            try:
-                if existed:
-                    with open(out, "w", encoding="utf-8") as f:
-                        f.write(existing_text)
-                    print("restored the previous OpenClaw config after validation failure",
-                          file=sys.stderr)
-                else:
-                    os.unlink(out)
-                    print("removed the unvalidated newly created OpenClaw config",
-                          file=sys.stderr)
-            except OSError as exc:
-                print("WARNING: could not roll back OpenClaw config: %s" % exc,
-                      file=sys.stderr)
-            return 1
-
-        if setup_validation_needed and _is_default_openclaw_config_path(out):
-            validation_env = dict(os.environ)
-            validation_env["OPENCLAW_CONFIG_PATH"] = os.path.abspath(
-                os.path.expanduser(out)
-            )
-            validation_outputs = []
-            for argv in (
-                ["openclaw", "models", "list", "--json"],
-                [
-                    "openclaw", "plugins", "inspect", _PLUGIN_ID,
-                    "--runtime", "--json",
-                ],
-            ):
-                try:
-                    check = _run(
-                        argv,
-                        capture_output=True,
-                        text=True,
-                        timeout=timeout_seconds,
-                        env=validation_env,
-                    )
-                except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
-                    return _local_runtime_validation_failure(
-                        "OpenClaw runtime validation failed: %s" % exc
-                    )
-                if check.returncode != 0:
-                    return _local_runtime_validation_failure(
-                        "OpenClaw runtime validation failed: %s"
-                        % (check.stderr or check.stdout or "unknown error").strip()
-                    )
-                validation_outputs.append(check.stdout)
-            try:
-                runtime_validation = _validate_openclaw_runtime_payload(
-                    payload, *validation_outputs
-                )
-            except ValueError as exc:
-                return _local_runtime_validation_failure(str(exc))
-            if _applied_validation is not None:
-                _applied_validation.update(runtime_validation)
-        n = len(provider["models"]["providers"]["anvil"]["models"])
-        suffix = ""
-        if skills:
-            suffix = ", %d workbench agents" % len(provider.get("agents", {}).get("list", []))
-        if voice:
-            suffix += ", Anvil Voice realtime"
-        print("wrote OpenClaw provider config (%d preset models%s, %s) -> %s"
-              % (n, suffix, mode, out))
-        print("  apply on the OpenClaw gateway at ~/.openclaw/openclaw.json, or push directly with "
-              "--gateway-host <mini> (ssh; merges by default, backs up the remote first).")
+    if not out or out == "-":
+        sys.stdout.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
     else:
-        sys.stdout.write(text)
-        if _applied_payload is not None:
-            _applied_payload.clear()
-            _applied_payload.update(json.loads(json.dumps(provider)))
-    if restart:  # config emitted locally; restart the LOCAL gateway to pick it up
-        return _restart_openclaw_gateway(None, None, timeout_seconds=timeout_seconds, _run=_run)
+        try:
+            mode = _write_local(os.path.expanduser(out), payload, overwrite)
+        except (OSError, ValueError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print("wrote OpenClaw direct-alias provider (%d aliases, %s) -> %s" % (
+            preview["model_count"], mode, out))
+    if _applied_payload is not None:
+        _applied_payload.clear()
+        _applied_payload.update(payload)
+    if restart:
+        return cmd_restart_openclaw(timeout_seconds=timeout_seconds)
     return 0
 
 
+def cmd_restart_openclaw(gateway_host=None, gateway_user=None, *, timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                         dry_run=False, _run=subprocess.run):
+    if gateway_host:
+        host = _validate_gateway_host(gateway_host)
+        target = (gateway_user + "@" if gateway_user else "") + host
+        argv = ["ssh", target, "openclaw", "gateway", "restart"]
+    else:
+        argv = ["openclaw", "gateway", "restart"]
+    if dry_run:
+        print(" ".join(argv))
+        return 0
+    try:
+        completed = _run(argv, capture_output=True, text=True, timeout=timeout_seconds)
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        print("OpenClaw restart failed: %s" % exc, file=sys.stderr)
+        return 1
+    if completed.returncode:
+        print((completed.stderr or completed.stdout or "OpenClaw restart failed").strip(), file=sys.stderr)
+        return 1
+    return 0
+
+
+def openclaw_gateway_status(*, timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                            max_output_bytes=DEFAULT_STATUS_MAX_OUTPUT_BYTES, _run=subprocess.run):
+    try:
+        completed = _run(["openclaw", "gateway", "status", "--json"], capture_output=True,
+                         text=True, timeout=timeout_seconds)
+    except FileNotFoundError:
+        return {"ok": False, "error": "openclaw is not installed"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "OpenClaw gateway status timed out"}
+    stdout = (completed.stdout or "")[:max_output_bytes]
+    stderr = (completed.stderr or "")[:max_output_bytes]
+    result = {"ok": completed.returncode == 0, "returncode": completed.returncode,
+              "stdout": stdout, "stderr": stderr,
+              "stdout_truncated": len(completed.stdout or "") > max_output_bytes,
+              "stderr_truncated": len(completed.stderr or "") > max_output_bytes}
+    if result["ok"]:
+        try:
+            result["status"] = json.loads(stdout)
+        except ValueError:
+            pass
+    return result
+
+
+def cmd_status_openclaw(**kwargs):
+    result = openclaw_gateway_status(**kwargs)
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0 if result["ok"] else 1
+
+
 def _build_parser():
-    p = argparse.ArgumentParser(
-        prog="anvil-serving harness",
-        description="Own the harness-side config: render a harness's model/provider config FROM "
-                    "the live router config so the two never drift. v1: OpenClaw models.")
-    actions = p.add_subparsers(dest="action", required=True)
-    sync_action = actions.add_parser("sync", help="render the harness config from the router config")
-    sync_targets = sync_action.add_subparsers(dest="harness", required=True)
-    sync = sync_targets.add_parser("openclaw", help="render or apply OpenClaw provider/model config")
-    sync.add_argument("--config",
-                      help="router config TOML to render the harness models from (its presets + tier context limits). Required for sync.")
-    sync.add_argument("--out", help="write the harness config here (default: stdout).")
-    sync.add_argument("--base-url", default="http://127.0.0.1:8000/v1",
-                      help="the router front door the harness dials (default: %(default)s; use the router's reachable host when the gateway is REMOTE).")
-    sync.add_argument("--api-key-env", default="ANVIL_ROUTER_TOKEN",
-                      help="env var name holding the router bearer token (default: %(default)s); the emitted config references it by name, never the secret.")
-    sync.add_argument("--native-provider",
-                      help="native OpenClaw provider used as the safe default and for cloud-preferred turns; required with --native-model for a fresh config.")
-    sync.add_argument("--native-model",
-                      help="model id within --native-provider; required with --native-provider for a fresh config.")
-    sync.add_argument("--plugin-dir",
-                      help="absolute, gateway-visible path to the openclaw-anvil-intent-router plugin; required for a fresh config and replaces stale Anvil plugin paths.")
-    sync.add_argument("--tool-profile", choices=sorted(_OPENCLAW_TOOL_PROFILES),
-                      help="explicit OpenClaw tool profile to apply; omit to preserve an existing gateway policy.")
-    sync.add_argument("--exec-mode", choices=sorted(_OPENCLAW_EXEC_MODES),
-                      help="explicit host-command policy; use auto for reviewed execution with durable Allow Always choices, or omit to preserve existing policy.")
-    sync.add_argument("--client-side-routing", action="store_true",
-                      help="disable authoritative /v1/route probes and use only the plugin classifier.")
-    sync.add_argument("--route-endpoint",
-                      help="authoritative route URL (default: <base-url>/route).")
-    sync.add_argument("--route-auth-env",
-                      help="env var name holding the route endpoint token (default: --api-key-env).")
-    sync.add_argument("--route-timeout-ms", type=int,
-                      help="authoritative route timeout, 1-5000 ms (default: 30 loopback, 500 remote).")
-    sync.add_argument("--gateway-host",
-                      help="push the config to a REMOTE OpenClaw gateway over ssh (e.g. fakoli-mini); MERGES the anvil provider into the remote config by default.")
-    sync.add_argument("--gateway-user", help="ssh user for --gateway-host (default: your ssh config).")
-    sync.add_argument("--gateway-path", default=_DEFAULT_OPENCLAW_CONFIG_PATH,
-                      help="remote OpenClaw config path for --gateway-host (default: %(default)s).")
-    sync.add_argument("--overwrite", action="store_true",
-                      help="OVERWRITE the target config instead of merging Anvil-owned keys (backup taken first).")
-    sync.add_argument("--restart", action="store_true",
-                      help="restart the OpenClaw gateway so it picks up the new config.")
-    sync.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
-                      help="bound each ssh/scp/openclaw subprocess call (default: %(default)s).")
-    sync.add_argument("--skills", action="store_true",
-                      help="also render/apply OpenClaw-visible workbench skill and Anvil sub-agent config.")
-    sync.add_argument("--skill-dir",
-                      help="with --skills: add this OpenClaw-gateway-visible directory to skills.load.extraDirs.")
-    sync.add_argument("--voice", action="store_true",
-                      help="also render/apply OpenClaw Talk realtime config for the Anvil Voice provider.")
-    sync.add_argument("--voice-realtime-url", default=DEFAULT_ANVIL_VOICE_REALTIME_URL,
-                      help="with --voice: Anvil Voice WebSocket URL (default: %(default)s).")
-    sync.add_argument("--voice-model",
-                      help="with --voice: model sent to the Anvil Voice realtime session (default: chat-fast when configured, else chat).")
-    sync.add_argument("--voice-consult-model", default=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
-                      help="with --voice: OpenClaw model used for forced agent consults (default: anvil/chat-fast when configured, else anvil/chat).")
-    sync.add_argument("--voice-consult-thinking-level", default=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
-                      help="with --voice: OpenClaw thinking level for forced agent consults (default: %(default)s for lower latency).")
-    sync.add_argument("--voice-consult-bootstrap-context-mode",
-                      default=_DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE,
-                      help="with --voice: OpenClaw bootstrap context mode for forced agent consults (default: %(default)s to skip workspace bootstrap files).")
-    sync.add_argument("--voice-api-key-env",
-                      help="with --voice: env var name for the Anvil Voice bearer token; omitted for loopback.")
-    sync.add_argument("--dry-run", action="store_true",
-                      help="render and validate the sync without writing or restarting.")
-
-    restart_action = actions.add_parser("restart", help="restart the gateway so it picks up config changes")
-    restart_targets = restart_action.add_subparsers(dest="harness", required=True)
-    restart = restart_targets.add_parser("openclaw", help="restart the OpenClaw gateway locally or over SSH")
-    restart.add_argument("--gateway-host", help="OpenClaw gateway host for SSH restart.")
-    restart.add_argument("--gateway-user", help="ssh user for --gateway-host.")
-    restart.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
-                         help="bound each subprocess call (default: %(default)s).")
-    restart.add_argument("--dry-run", action="store_true",
-                         help="show the fixed restart command without running it.")
-    for flag in (
-        "--api-key-env",
-        "--base-url",
-        "--config",
-        "--exec-mode",
-        "--out",
-        "--native-model",
-        "--native-provider",
-        "--plugin-dir",
-        "--route-auth-env",
-        "--route-endpoint",
-        "--route-timeout-ms",
-        "--skill-dir",
-        "--tool-profile",
-        "--voice-api-key-env",
-        "--voice-consult-bootstrap-context-mode",
-        "--voice-consult-model",
-        "--voice-consult-thinking-level",
-        "--voice-model",
-        "--voice-realtime-url",
-    ):
-        restart.add_argument(flag, help=argparse.SUPPRESS)
-    for flag in ("--client-side-routing", "--overwrite", "--skills", "--voice"):
-        restart.add_argument(flag, action="store_true", help=argparse.SUPPRESS)
-
-    status_action = actions.add_parser("status", help="show bounded gateway status")
-    status_targets = status_action.add_subparsers(dest="harness", required=True)
-    status = status_targets.add_parser("openclaw", help="show bounded OpenClaw gateway status")
-    status.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
-                        help="bound the status subprocess (default: %(default)s).")
-    status.add_argument("--max-output-bytes", type=int, default=DEFAULT_STATUS_MAX_OUTPUT_BYTES,
-                        help="bound stdout and stderr reads (default: %(default)s).")
-    return p
+    parser = argparse.ArgumentParser(prog="anvil-serving harness")
+    actions = parser.add_subparsers(dest="action", required=True)
+    sync = actions.add_parser("sync").add_subparsers(dest="target", required=True).add_parser("openclaw")
+    sync.add_argument("--config", required=True)
+    sync.add_argument("--out")
+    sync.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
+    sync.add_argument("--api-key-env", default="ANVIL_ROUTER_TOKEN")
+    sync.add_argument("--voice", action="store_true")
+    sync.add_argument("--voice-realtime-url", default=DEFAULT_ANVIL_VOICE_REALTIME_URL)
+    sync.add_argument("--voice-model")
+    sync.add_argument("--voice-api-key-env")
+    sync.add_argument("--overwrite", action="store_true")
+    restart = actions.add_parser("restart").add_subparsers(dest="target", required=True).add_parser("openclaw")
+    restart.add_argument("--gateway-host")
+    restart.add_argument("--gateway-user")
+    restart.add_argument("--dry-run", action="store_true")
+    status = actions.add_parser("status").add_subparsers(dest="target", required=True).add_parser("openclaw")
+    status.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS)
+    return parser
 
 
 def main(argv=None):
-    argv = list(sys.argv[1:] if argv is None else argv)
-    provided_options = {
-        arg.split("=", 1)[0]
-        for arg in argv
-        if isinstance(arg, str) and arg.startswith("--")
-    }
-    p = _build_parser()
-    a = p.parse_args(argv)
-
-    if a.action == "restart" and a.harness == "openclaw":
-        # `restart` only restarts the gateway; sync-only flags would be silently discarded, which
-        # reads as "it did something" — reject them so the misuse is visible.
-        sync_only_flags = {
-            "--api-key-env",
-            "--base-url",
-            "--config",
-            "--exec-mode",
-            "--out",
-            "--native-model",
-            "--native-provider",
-            "--overwrite",
-            "--plugin-dir",
-            "--route-auth-env",
-            "--route-endpoint",
-            "--route-timeout-ms",
-            "--skill-dir",
-            "--skills",
-            "--tool-profile",
-            "--client-side-routing",
-            "--voice",
-            "--voice-api-key-env",
-            "--voice-consult-bootstrap-context-mode",
-            "--voice-consult-model",
-            "--voice-consult-thinking-level",
-            "--voice-model",
-            "--voice-realtime-url",
-        }
-        stray = sorted(sync_only_flags.intersection(provided_options))
-        if stray:
-            print("restart openclaw takes only --gateway-host/--gateway-user; drop %s (it does not "
-                  "sync)." % ", ".join(stray), file=sys.stderr)
-            return 2
-        return cmd_restart_openclaw(gateway_host=a.gateway_host, gateway_user=a.gateway_user,
-                                    timeout_seconds=a.timeout_seconds, dry_run=a.dry_run)
-
-    if a.action == "status" and a.harness == "openclaw":
-        return cmd_status_openclaw(
-            timeout_seconds=a.timeout_seconds,
-            max_output_bytes=a.max_output_bytes,
-        )
-
-    if a.action == "sync" and a.harness == "openclaw":
-        if not a.config:
-            print("harness sync openclaw requires --config <router.toml>", file=sys.stderr)
-            return 2
-        if a.skill_dir and not a.skills:
-            print("--skill-dir requires --skills", file=sys.stderr)
-            return 2
-        if a.dry_run:
-            try:
-                preview = openclaw_sync_preview(
-                    a.config,
-                    base_url=a.base_url,
-                    api_key_env=a.api_key_env,
-                    native_provider=a.native_provider,
-                    native_model=a.native_model,
-                    plugin_dir=a.plugin_dir,
-                    tool_profile=a.tool_profile,
-                    exec_mode=a.exec_mode,
-                    authoritative_route=not a.client_side_routing,
-                    route_endpoint=a.route_endpoint,
-                    route_auth_env=a.route_auth_env,
-                    route_timeout_ms=a.route_timeout_ms,
-                    skills=a.skills,
-                    skill_dir=a.skill_dir,
-                    voice=a.voice,
-                    voice_realtime_url=a.voice_realtime_url,
-                    voice_model=a.voice_model,
-                    voice_consult_model=a.voice_consult_model,
-                    voice_consult_thinking_level=a.voice_consult_thinking_level,
-                    voice_consult_bootstrap_context_mode=(
-                        a.voice_consult_bootstrap_context_mode
-                    ),
-                    voice_api_key_env=a.voice_api_key_env,
-                )
-            except (OSError, ValueError) as exc:
-                print(str(exc), file=sys.stderr)
-                return 2
-            print(json.dumps({"applied": False, "dry_run": True, "preview": preview},
-                             indent=2, sort_keys=True))
-            return 0
-        # A stdout-only sync isn't applied to the gateway's config file, so restarting would just
-        # reload the OLD config and falsely report success. Require an APPLIED target for --restart.
-        if a.restart and not a.gateway_host and _is_stdout_out(a.out):
-            print("--restart with a stdout-only sync would reload the gateway's OLD config (nothing "
-                  "was applied). Use --gateway-host <host>, or --out %s." % _DEFAULT_OPENCLAW_CONFIG_PATH,
-                  file=sys.stderr)
-            return 2
-        if (a.restart and a.out and a.out != "-" and not a.gateway_host
-                and not _is_default_openclaw_config_path(a.out)):
-            print("--restart with --out requires the real local OpenClaw config path (%s); "
-                  "%s looks like a preview file." % (_DEFAULT_OPENCLAW_CONFIG_PATH, a.out),
-                  file=sys.stderr)
-            return 2
-        return cmd_sync_openclaw(a.config, out=a.out, base_url=a.base_url,
-                                 api_key_env=a.api_key_env,
-                                 native_provider=a.native_provider,
-                                 native_model=a.native_model,
-                                 plugin_dir=a.plugin_dir,
-                                 tool_profile=a.tool_profile,
-                                 exec_mode=a.exec_mode,
-                                 authoritative_route=not a.client_side_routing,
-                                 route_endpoint=a.route_endpoint,
-                                 route_auth_env=a.route_auth_env,
-                                 route_timeout_ms=a.route_timeout_ms,
-                                 skills=a.skills,
-                                 skill_dir=a.skill_dir, voice=a.voice,
-                                 voice_realtime_url=a.voice_realtime_url,
-                                 voice_model=a.voice_model,
-                                 voice_consult_model=a.voice_consult_model,
-                                 voice_consult_thinking_level=a.voice_consult_thinking_level,
-                                 voice_consult_bootstrap_context_mode=(
-                                     a.voice_consult_bootstrap_context_mode
-                                 ),
-                                 voice_api_key_env=a.voice_api_key_env,
-                                 gateway_host=a.gateway_host, gateway_user=a.gateway_user,
-                                 gateway_path=a.gateway_path, overwrite=a.overwrite,
-                                 restart=a.restart, timeout_seconds=a.timeout_seconds,
-                                 _replace_provider_keys=tuple(
-                                     key for option, key in (
-                                         ("--base-url", "baseUrl"),
-                                         ("--api-key-env", "apiKey"),
-                                     )
-                                     if option in provided_options
-                                 ))
-    return 2
+    args = _build_parser().parse_args(argv)
+    if args.action == "sync":
+        return cmd_sync_openclaw(args.config, out=args.out, base_url=args.base_url,
+                                 api_key_env=args.api_key_env, voice=args.voice,
+                                 voice_realtime_url=args.voice_realtime_url,
+                                 voice_model=args.voice_model, voice_api_key_env=args.voice_api_key_env,
+                                 overwrite=args.overwrite)
+    if args.action == "restart":
+        return cmd_restart_openclaw(args.gateway_host, args.gateway_user, dry_run=args.dry_run)
+    return cmd_status_openclaw(timeout_seconds=args.timeout_seconds)
 
 
 if __name__ == "__main__":

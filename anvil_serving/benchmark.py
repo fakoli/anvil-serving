@@ -1549,8 +1549,8 @@ def build_recipe(a, summary, *, capture=None, hardware=None):
 
     The reproducible half (image/env/flags/port + gpu_uuid) comes from
     `capture_from_container`; the hardware name/VRAM from `capture_hardware`; the
-    [recipe.measured] numbers from THIS run's `summary`; and [recipe.intent] from the
-    --recipe-* flags. `capture` / `hardware` are injectable for hermetic tests.
+    [recipe.measured] numbers from THIS run's `summary`; and [recipe.fit] from
+    ``--recipe-fit``. `capture` / `hardware` are injectable for hermetic tests.
     """
     sr = _serve_recipes()
     capture = capture or sr.capture_from_container
@@ -1599,13 +1599,13 @@ def build_recipe(a, summary, *, capture=None, hardware=None):
         measured["context_tokens"] = ctx
     if measured: recipe["measured"] = measured
 
-    intent = {}
-    if a.recipe_intent:
-        suited = [s.strip() for s in a.recipe_intent.split(",") if s.strip()]
-        if suited: intent["suited"] = suited
-    if a.recipe_mode:
-        intent["mode"] = a.recipe_mode
-    if intent: recipe["intent"] = intent
+    fit = {}
+    if a.recipe_fit:
+        suited = [s.strip() for s in a.recipe_fit.split(",") if s.strip()]
+        if suited:
+            fit["suited"] = suited
+    if fit:
+        recipe["fit"] = fit
 
     return recipe
 
@@ -1758,10 +1758,8 @@ def main(argv=None, *, prog=None):
                          "reproducible docker config + THIS run's measured numbers.", "legacy"))
     ap.add_argument("--recipe-from-container", default=None, metavar="NAME",
                     help=help_for("docker container to capture for legacy recipe output", "legacy"))
-    ap.add_argument("--recipe-intent", default=None, metavar="CSV",
-                    help=help_for("legacy recipe intent CSV", "legacy"))
-    ap.add_argument("--recipe-mode", default=None,
-                    help=help_for("legacy recipe mode", "legacy"))
+    ap.add_argument("--recipe-fit", default=None, metavar="CSV",
+                    help=help_for("workload-fit labels retained with the recipe", "capacity"))
     ap.add_argument("--recipe-status", default="verified",
                     help=help_for("legacy recipe provenance status", "legacy"))
     ap.add_argument("--recipe-model", default=None, metavar="NAME",
@@ -1832,8 +1830,8 @@ def main(argv=None, *, prog=None):
         },
         "quality": {
             "--bakeoff", "--requests", "--concurrency", "--burst", "--ctx-tokens",
-            "--json-out", "--recipe-out", "--recipe-from-container", "--recipe-intent",
-            "--recipe-mode", "--recipe-status", "--recipe-model",
+            "--json-out", "--recipe-out", "--recipe-from-container", "--recipe-fit",
+            "--recipe-status", "--recipe-model",
         },
     }
     if workload is not None:

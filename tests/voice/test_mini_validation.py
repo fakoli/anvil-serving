@@ -81,8 +81,6 @@ def _supported_result() -> dict:
         "llm_endpoint_is_fakoli_dark": True,
         "llm_auth_env": "ANVIL_ROUTER_TOKEN",
         "llm_auth_env_present": True,
-        "route_proof": {"ok": True},
-        "route_auth_negative": {"auth_enforced": True},
         "benchmark_sample": _benchmark_sample_ok(),
         "benchmark_sample_error": None,
         "benchmark": _benchmark_ok(),
@@ -262,8 +260,6 @@ def test_build_verdict_rejects_non_target_failure_as_unsupported():
         "llm_endpoint_is_fakoli_dark": False,
         "llm_auth_env": None,
         "llm_auth_env_present": False,
-        "route_proof": {"ok": False},
-        "route_auth_negative": {"auth_enforced": True},
         "benchmark": None,
         "benchmark_error": "connection refused",
     })
@@ -285,7 +281,6 @@ def test_build_verdict_rejects_missing_memory_audio_and_auth():
         "tts": {"ready": True, "bring_up_ok": True, "container_mem_after_benchmark": None},
         "llm_endpoint_is_fakoli_dark": False,
         "llm_auth_env_present": False,
-        "route_auth_negative": {"auth_enforced": False},
         "benchmark_sample": None,
         "benchmark_sample_error": "no audio",
         "benchmark": {
@@ -310,7 +305,6 @@ def test_build_verdict_rejects_missing_memory_audio_and_auth():
     assert "tts_audio_too_short" in verdict["failure_modes"]
     assert "llm_not_routed_to_remote_fakoli_dark" in verdict["failure_modes"]
     assert "llm_auth_token_unset" in verdict["failure_modes"]
-    assert "llm_auth_not_enforced" in verdict["failure_modes"]
     assert "benchmark_sample_error" in verdict["failure_modes"]
     assert "benchmark_sample_missing" in verdict["failure_modes"]
 
@@ -358,17 +352,6 @@ def test_build_verdict_rejects_non_loopback_stt_or_tts_endpoint():
 
     assert "stt_not_local_loopback" in mini_validation.build_verdict(stt_bad)["failure_modes"]
     assert "tts_not_local_loopback" in mini_validation.build_verdict(tts_bad)["failure_modes"]
-
-
-def test_build_verdict_rejects_failed_route_proof_even_with_remote_url():
-    from scripts.voice import mini_validation
-
-    result = _supported_result()
-    result["route_proof"] = {"ok": False, "validation_errors": ["wrong tier"]}
-    verdict = mini_validation.build_verdict(result)
-
-    assert verdict["status"] == "unsupported"
-    assert "llm_not_routed_to_remote_fakoli_dark" in verdict["failure_modes"]
 
 
 def test_build_verdict_rejects_missing_endpoint_model_proof():

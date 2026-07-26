@@ -1,4 +1,4 @@
-"""Runtime tier availability for health-aware routing.
+"""Runtime tier availability for direct local routing.
 
 Router configuration describes which upstreams *may* serve a request.  This
 module answers the narrower runtime question: is a configured local upstream
@@ -6,19 +6,16 @@ ready right now?  A cached, bounded HTTP health probe keeps a stopped or
 starting model container out of the request path without rewriting router TOML
 or teaching the router how to operate Docker.
 
-The default implementation is deliberately conservative and backwards
-compatible:
+The default implementation is deliberately conservative:
 
-* cloud tiers are not probed;
 * local tiers without ``health_path`` are treated as available;
 * configured probes use the tier's scheme/authority and replace only the path;
 * probe failures return structured state and never raise into routing;
 * results are cached for ``probe_interval`` seconds to avoid request-time probe
   storms, and a recovered endpoint is automatically readmitted after expiry.
 
-This is readiness, not quality.  A structurally bad model response still flows
-through the independent verifier/profile machinery and must not be confused
-with endpoint availability.
+This is readiness, not model-quality evaluation. Quality is established by the
+separate benchmark and preflight tools.
 """
 from __future__ import annotations
 

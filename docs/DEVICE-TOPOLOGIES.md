@@ -63,7 +63,7 @@ Point `[voice.llm].base_url` at the reachable router host:
 ```toml
 [voice.llm]
 base_url = "http://anvil-gpu.tailnet.example:8000/v1"
-model = "chat-fast"
+model = "llm.voice"
 api_key_env = "ANVIL_ROUTER_TOKEN"
 ```
 

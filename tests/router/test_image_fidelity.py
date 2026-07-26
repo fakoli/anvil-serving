@@ -2,8 +2,8 @@
 (gpu-reservations:T011).
 
 The relay rebuilds the upstream body from the flattened InternalRequest, which
-keeps only text — before this fix an OCR/vision request routed to a
-vision-capable tier (e.g. the "ocr" preset -> a PaddleOCR-VL serve) silently
+keeps only text — before this fix an OCR/vision request relayed to a
+vision-capable tier (for example `vision.ocr` -> a PaddleOCR-VL serve) silently
 lost the image the caller sent: the tier answered a text-only prompt and the
 failure was invisible. These tests pin:
 

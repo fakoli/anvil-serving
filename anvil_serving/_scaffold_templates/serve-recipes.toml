@@ -49,9 +49,8 @@ flags = [
 preflight = "Guarded functional and thinking-enabled preflight passed during the 2026-07-12 Heavy promotion."
 promotion_evidence = "docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/"
 
-[recipe.intent]
+[recipe.fit]
 suited = ["heavy", "agentic", "long-context", "planning", "review"]
-mode = "agentic-heavy"
 rationale = "Immediate validated rollback for Gemma 4 Heavy; preserves tool use and thinking support without the currently incompatible MTP path."
 
 [[recipe]]
@@ -94,11 +93,10 @@ flags = [
 
 [recipe.measured]
 voice_baseline = "Fast-tier bakeoff control: voice total 1130.21 ms, LLM stage 814.83 ms; loaded-endpoint TTFT 6203.94 ms, E2E 9041.91 ms, approx decode 67.65 tok/s."
-route_proof = "previous fast-local / qwen36-27b / chat-fast via fakoli-dark router"
+route_proof = "previous fast-local / qwen36-27b / voice-llm via fakoli-dark router"
 
-[recipe.intent]
-suited = ["chat-fast", "voice", "agentic-conversation", "low-latency"]
-mode = "agentic"
+[recipe.fit]
+suited = ["voice-llm", "voice", "agentic-conversation", "low-latency"]
 rationale = "Previous OpenClaw Talk baseline and control: local, tool-capable, session-memory path worked, but the 35B-A3B bakeoff candidate beat it on latency."
 
 [recipe.sources]
@@ -168,10 +166,9 @@ preflight = "ALL PASS — smoke(coding), structured-JSON, needle@128k, 20/20 too
 stable_under_load = "12-concurrent burst: 12/12, no crash / NaN / CUDA error"
 reasoning = "reasoning-by-default (parser=openai_gptoss); gate via reasoning_effort, NOT enable_thinking; needs adequate max_tokens"
 
-[recipe.intent]
-suited = ["flexibility", "quality", "long-context", "planning", "review"]
+[recipe.fit]
+suited = ["single-turn-quality", "quality", "long-context", "planning", "review"]
 not_suited = ["agentic-interactive"]
-mode = "flexibility"
 rationale = "A 120B-class quality ceiling-raise for NON-agentic single-turn work, where prefix/radix cache is irrelevant."
 
 [recipe.download]
@@ -222,9 +219,8 @@ flags = [
 throughput_single_tok_s = 340
 preflight = "validated in trial; NOT swapped into prod (pending measured A/B vs the qwen35-awq incumbent)"
 
-[recipe.intent]
+[recipe.fit]
 suited = ["heavy", "quality", "agentic-candidate"]
-mode = "either"
 rationale = "DENSE (not MoE) so it sidesteps the sm_120 MoE-NVFP4 grouped-GEMM crash; NVFP4 ~1.8x faster than FP8, ~half the VRAM."
 
 [[recipe]]
@@ -285,9 +281,8 @@ loaded_endpoint_e2e_ms = 2302.37
 approx_decode_tok_s = 236.16
 hard_gates = "loads on Fakoli Dark RTX 5090; Heavy not disrupted; voice cycle pass; tool pass; session pass; 32K context target preserved"
 
-[recipe.intent]
-suited = ["chat-fast", "voice", "agentic-conversation", "low-latency"]
-mode = "agentic"
+[recipe.fit]
+suited = ["voice-llm", "voice", "agentic-conversation", "low-latency"]
 rationale = "Promoted Fast recipe after beating the 27B production control on measured voice and loaded-endpoint latency while preserving tool and session behavior."
 
 [recipe.sources]
@@ -542,9 +537,8 @@ flags = [
 preflight = "Promotion passed disabled-thinking smoke/JSON, 240K needle, 20/20 tools, and separate enabled-thinking reasoning evidence."
 promotion_evidence = "docs/findings/2026-07-16-gemma4-chat-template-bakeoff-evidence/"
 
-[recipe.intent]
+[recipe.fit]
 suited = ["heavy", "agentic", "long-context", "planning", "review"]
-mode = "agentic-heavy"
 rationale = "Immediate validated rollback for GPT-OSS Puzzle Heavy; retains the July 16 guarded promotion evidence and 256K window."
 
 [[recipe]]
@@ -592,9 +586,8 @@ preflight = "Production Fast preflight passed on vLLM 0.25.1; the July 16 repeat
 promotion_evidence = "docs/findings/2026-07-13-gemma4-e4b-fast-promotion-evidence/"
 vllm_0251_evidence = "docs/findings/2026-07-16-gemma4-vllm0251-wsl2-evidence/production-fast-preflight.json"
 
-[recipe.intent]
-suited = ["chat-fast", "voice", "agentic-conversation", "low-latency"]
-mode = "agentic"
+[recipe.fit]
+suited = ["voice-llm", "voice", "agentic-conversation", "low-latency"]
 rationale = "Current standard Fast model: preserves the measured quality gate and 32K context while fitting alongside the resident voice and purpose-model services."
 
 [[recipe]]
@@ -632,9 +625,8 @@ flags = [
   "--max-model-len 32768",
 ]
 
-[recipe.intent]
+[recipe.fit]
 suited = ["voice-candidate", "latency-floor"]
-mode = "experiment"
 rationale = "Useful for measuring the fastest plausible Gemma Talk path; likely too small to trust until tool-call and conversation-memory validation pass."
 
 [[recipe]]
@@ -653,10 +645,9 @@ note = "GDN-hybrid (Gated-DeltaNet): NO prefix/radix-cache serving path on sm_12
 quality_note = "MEASURED planning-quality WIN: 0.66 vs 0.43 for the incumbent — a real quality lift"
 preflight = "NOT re-validated; parked pending a cached serving path"
 
-[recipe.intent]
-suited = ["flexibility", "quality"]
-mode = "flexibility"
-rationale = "Prefix cache is load-bearing for AGENTIC work but IRRELEVANT for single-turn FLEXIBILITY work — so a GDN hybrid becomes viable precisely in flexibility mode. Cache-off is a feature here, not a bug."
+[recipe.fit]
+suited = ["single-turn-quality", "quality"]
+rationale = "Prefix cache is load-bearing for AGENTIC work but IRRELEVANT for single-turn SINGLE-TURN QUALITY work — so a GDN hybrid becomes viable precisely in single-turn quality workloads. Cache-off is a feature here, not a bug."
 
 [[recipe]]
 model = "nvidia/Qwen3.5-122B-A10B-NVFP4"
@@ -729,9 +720,8 @@ tool_calls = "Historical 20/20 result for the former profile; not current-profil
 reasoning = "Historical result for the former profile; not current-profile qualification."
 caveats = "The captured NGC 26.06/BF16-KV configuration has a successful operator-confirmed startup, but no recorded Anvil preflight or benchmark yet."
 
-[recipe.intent]
+[recipe.fit]
 suited = ["quality", "long-context", "planning", "review", "research"]
-mode = "flexibility"
 rationale = "Working NGC 26.06 Compose candidate for quality, long-context, planning, and review. It is not promoted and the current BF16-KV profile needs its own functional and benchmark evidence."
 
 [[recipe]]
@@ -789,10 +779,9 @@ deterministic_planning_eval = "1/5 passed; milestone-execution session-evals sui
 vram_used_mib_after_benchmark = 89336
 caveats = "The Marlin W4A16 path was 21% slower than the prior local NVFP4 result and did not reproduce external llama.cpp MXFP4_MOE speed. FP8 KV remains an accuracy caveat without calibrated scales."
 
-[recipe.intent]
+[recipe.fit]
 suited = ["benchmark-candidate", "long-context-experiment"]
 not_suited = ["promoted-heavy", "planning", "review"]
-mode = "flexibility"
 rationale = "Serving correctness and 131K context passed, but throughput regressed versus local NVFP4 and deterministic planning passed only 1/5. Keep reproducible for engine/weight A/B; do not promote."
 
 [recipe.sources]
@@ -840,9 +829,8 @@ intelligence_checks = "1/2 (idle-host re-measure; 0/2 on the pre-fix concurrent-
 preflight = "ALL PASS"
 caveats = "single-request TTFT was erratic (17-41 s) on WSL 2.6.2; resolved by WSL 2.7.10 — treat WSL >= 2.7 as part of the recipe"
 
-[recipe.intent]
+[recipe.fit]
 suited = ["long-context", "experimental"]
-mode = "flexibility"
 rationale = "Functional at full 131k with workarounds, but 15 tok/s single-stream decode is far below the fast-tier incumbent. Keep experimental; revisit on newer engine releases."
 
 [[recipe]]
@@ -876,9 +864,8 @@ tool_calls = "PASS (20/20)"
 intelligence_checks = "0/2"
 preflight = "pass within window (needle probe exceeds 64k claim by design)"
 
-[recipe.intent]
+[recipe.fit]
 suited = ["multimodal", "experimental"]
-mode = "flexibility"
 rationale = "Only multimodal-capable candidate that serves. Keep experimental until a stable engine release lists the arch."
 
 [[recipe]]
@@ -911,9 +898,8 @@ tool_calls = "PASS (20/20)"
 intelligence_checks = "1/2"
 caveats = "vendor-reported SOTA claims not verified and not used"
 
-[recipe.intent]
+[recipe.fit]
 suited = ["planning", "review", "long-context", "quality"]
-mode = "flexibility"
 rationale = "Retain as agentic/long-context specialist. NOT promoted to heavy-local."
 
 [[recipe]]
@@ -948,9 +934,8 @@ intelligence_checks = "2/2 — only candidate matching the heavy baseline"
 vram_used_gb = 94.3
 caveats = "community expert-pruned (REAP) checkpoint of MiniMax-M2.7 — not an official release; long-tail quality unaudited; decode ~half the gpt-oss-120b production baseline"
 
-[recipe.intent]
+[recipe.fit]
 suited = ["quality", "planning", "review"]
-mode = "flexibility"
 rationale = "Best measured heavy-role candidate of the 2026-07-10 bakeoff. NOT promoted — community provenance, VRAM ceiling, and decode gap vs production baseline all need resolution first."
 
 [[recipe]]
@@ -986,9 +971,8 @@ intelligence_checks = "2/2"
 preflight = "ALL PASS"
 caveats = "long-generation A/B probe (3x1024 tokens, temp 0); the standard short-completion benchmark under-generates for MTP comparison — see candidate-nemotron-puzzle-75b-mtp-ab-longgen.json"
 
-[recipe.intent]
+[recipe.fit]
 suited = ["quality", "planning", "review", "long-context"]
-mode = "flexibility"
 rationale = "Best measured heavy-role candidate of the 2026-07 bakeoff: official NVIDIA checkpoint, perfect suite sweep at 131k, 137 tok/s with MTP (1.50x verified). NOT promoted — requires a pinned stable engine release and an operator decision."
 
 [[recipe]]
@@ -1023,9 +1007,8 @@ intelligence_checks = "2/2"
 preflight = "ALL PASS"
 caveats = "community checkpoint; author-reported 1.74x MTP speedup not reproduced (we measured 1.36x at 262k/2-seq) — direction consistent, magnitude config-dependent"
 
-[recipe.intent]
+[recipe.fit]
 suited = ["long-context", "quality", "planning"]
-mode = "flexibility"
 rationale = "The community-favorite Qwen3.6-27B in a 262k big-KV heavy configuration with working MTP. NOT promoted — community provenance and engine pin need operator decisions."
 
 [[recipe]]
@@ -1060,9 +1043,8 @@ tool_calls = "PASS (preflight 20/20)"
 intelligence_checks = "2/2"
 caveats = "decode below the community 5090 reference (214 tok/s, newer build) — build freshness matters on this arch; llama.cpp MTP (--spec-type draft-mtp, MTP-GGUF artifacts) untested"
 
-[recipe.intent]
-suited = ["chat-fast", "agentic-conversation", "quality"]
-mode = "flexibility"
+[recipe.fit]
+suited = ["voice-llm", "agentic-conversation", "quality"]
 rationale = "Strongest fast-tier candidate measured: matches the heavy baseline's intelligence sweep at fast-tier latency. NOT promoted; graduation preflight and an MTP pass are the obvious next steps."
 
 [[recipe]]
@@ -1094,9 +1076,8 @@ context_validation = "65536-token window verified (TTFT 6.4 s cold)"
 tool_calls = "PASS (preflight 20/20)"
 intelligence_checks = "1/2"
 
-[recipe.intent]
-suited = ["voice", "low-latency", "chat-fast"]
-mode = "flexibility"
+[recipe.fit]
+suited = ["voice", "low-latency", "voice-llm"]
 rationale = "Low-latency small-model specialist (61 ms TTFT). NOT promoted; check PLE issue status before any quality-sensitive role."
 
 [[recipe]]
@@ -1162,9 +1143,8 @@ flags = [
 ]
 note = "Native Harmony template; no chat-template override. The pinned checkpoint omits <|call|> token 200012 from generation_config.json, so fork commit 485463b3 plus the full generation-config override restore it as an EOS token. FlashInfer MXFP4/MXFP8 MoE stays disabled through --moe-backend marlin. Follow docs/benchmarks/gpt-oss-puzzle-88b-recipe.md; do not substitute a stock vLLM image."
 
-[recipe.intent]
+[recipe.fit]
 suited = ["heavy", "agentic", "quality", "long-context", "planning", "review"]
-mode = "agentic-heavy"
 rationale = "Ready Heavy rollback. The exact-commit image passed direct functional, long-context, repeated tool-call, Responses, streaming, and tool-result gates on the RTX PRO 6000."
 
 [recipe.activation]
@@ -1235,7 +1215,7 @@ flags = [
 ]
 note = "Qualified Heavy profile. Keep thinking disabled by default: one enabled-thinking preflight exhausted 4352 completion tokens entirely in reasoning with no visible answer, while the disabled path passed every repeated gate. Do not add --quantization; the checkpoint declares compressed-tensors NVFP4 itself."
 
-[recipe.intent]
+[recipe.fit]
 suited = [
   "heavy",
   "agentic",
@@ -1244,7 +1224,6 @@ suited = [
   "planning",
   "review",
 ]
-mode = "agentic-heavy"
 rationale = "Current Heavy-tier candidate validated with thinking disabled on one RTX PRO 6000. Retained evidence covers functional behavior, repeated tool/session/intelligence checks, and context through roughly 244K actual prompt tokens."
 
 [recipe.activation]
@@ -1306,9 +1285,8 @@ flags = [
 ]
 note = "Working non-MTP baseline. The source Compose leaves MTP disabled until Pi and OpenClaw tool-loop testing passes; use enable_thinking per request and preserve prior reasoning for multi-turn sessions. The model revision is not pinned by the source Compose."
 
-[recipe.intent]
-suited = ["chat-fast", "agentic-conversation", "coding"]
-mode = "agentic"
+[recipe.fit]
+suited = ["voice-llm", "agentic-conversation", "coding"]
 rationale = "Operator-confirmed working ThinkingCap configuration for the RTX 5090; no route or promotion change is implied."
 
 [[recipe]]
@@ -1369,9 +1347,8 @@ flags = [
 ]
 note = "Captured from the commented Compose profile. It uses mutable model/tokenizer revision main and a commit-named nightly image; resolve immutable revisions before reproducible qualification."
 
-[recipe.intent]
-suited = ["chat-fast", "agentic-conversation", "coding"]
-mode = "agentic"
+[recipe.fit]
+suited = ["voice-llm", "agentic-conversation", "coding"]
 rationale = "Working RTX 5090 Laguna XS candidate, retained for managed-lifecycle work rather than promotion."
 
 [[recipe]]

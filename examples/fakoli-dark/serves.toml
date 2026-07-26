@@ -135,7 +135,7 @@ groups = ["embedding", "llm-stack"]  # serve groups (serves up/down/status --gro
 up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
 
 # ── OCR serve (gpu-reservations:T011) ──
-# PaddleOCR-VL-1.6 behind the router's "ocr" intent preset (ocr-local -> :30007).
+# PaddleOCR-VL-1.6 behind the gateway's "vision.ocr" direct alias (ocr-local -> :30007).
 # Declared as an ADR-0017 `resident` reservation on the multi-tenant 5090; the
 # 5120 MiB budget is HONEST-MEASURED on the sibling sm_120 card with this exact
 # image+flags (see docker-compose.yml's ocr service note: 1.82 GiB weights +
@@ -165,7 +165,7 @@ groups = ["ocr", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
 
 # ── Vision serve (gpu-reservations:T013) ──
-# Qwen3-VL-4B-Instruct behind the router's "vision" intent preset (vision-local ->
+# Qwen3-VL-4B-Instruct behind the gateway's "vision.general" direct alias (vision-local ->
 # :30008): general image understanding (describe/ground a screenshot or photo) —
 # distinct from `ocr`'s verbatim document extraction. Declared as the first ADR-0017
 # `EVICTABLE` reservation on the multi-tenant 5090: it runs opportunistically when the
@@ -206,9 +206,7 @@ name = "laguna-s-2.1-heavy"
 target = "heavy"
 rollback = "heavy-gptoss-puzzle-rollback"
 router_config = "{dir}/anvil-router.live.toml"
-router_profile = "{dir}/../../docs/findings/2026-07-26-laguna-s-qualification-evidence/promotion-profile.json"
 rollback_router_config = "{dir}/anvil-router.gptoss-puzzle-rollback.toml"
-rollback_router_profile = "{dir}/../../docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/promotion-profile.json"
 affected_tiers = ["heavy-local"]
 drain_timeout = 120
 needle_ctx = 120000

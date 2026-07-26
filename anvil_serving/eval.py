@@ -6,9 +6,7 @@ is one line:
 
   eval preflight [--tier heavy|fast] [extra flags...]   correctness gate vs a live endpoint
   eval benchmark [--tier heavy|fast] [extra flags...]   throughput / request-replay
-  eval planning  [--live]                               planning-capability bake-off
-                                                        (offline re-grade by default)
-  eval bootstrap                                        replay eval fixtures -> quality profile
+  eval benchmark [--tier primary] [extra flags...]      throughput / request-replay
 
 `preflight`/`benchmark` resolve `--base-url`/`--model` from the serves manifest
 (examples/fakoli-dark/serves.toml), so `eval preflight --tier fast` just works
@@ -26,19 +24,6 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-# The committed eval fixtures live under tests/fixtures/ (the dated findings tree was
-# relocated to the private notes repo); fall back to the legacy docs/findings path so a
-# checkout that still carries it keeps working.
-_EVAL_DATA_CANDIDATES = (
-    os.path.join(REPO, "tests", "fixtures", "eval-data"),
-    os.path.join(REPO, "docs", "findings", "eval-data"),
-)
-EVAL_DATA_ROOT = next(
-    (p for p in _EVAL_DATA_CANDIDATES if os.path.isdir(p)), _EVAL_DATA_CANDIDATES[0]
-)
-PLANNING_DIR = os.path.join(EVAL_DATA_ROOT, "2026-06-28-planning-capability")
-
-
 def _tiers(manifest=None):
     """tier name -> {base_url, model, port, health, container} from the manifest.
 
@@ -185,67 +170,11 @@ def _run_endpoint_eval(script, a, extra, _call=subprocess.call, _open=urllib.req
     return _call([sys.executable, os.path.join(HERE, script)] + argv)
 
 
-def _run_planning(a, _call=subprocess.call):
-    d = os.path.abspath(a.dir)  # absolute so cwd=d doesn't double-join the script path
-    rc = 0
-    if not a.offline:
-        print("[planning] eval_gen.py (LIVE -- needs the heavy+fast serves up) ...")
-        rc = _call([sys.executable, os.path.join(d, "eval_gen.py")], cwd=d)
-        if rc:
-            print("[planning] eval_gen failed (are the serves up? `anvil-serving serves up`)",
-                  file=sys.stderr)
-            return rc
-        print("[planning] note: the frontier baseline + blind judges are human-agent "
-              "steps (see the eval README) -- run them before aggregate for a fresh panel.")
-    print("[planning] grade_struct.py (deterministic) ...")
-    rc = _call([sys.executable, os.path.join(d, "grade_struct.py")], cwd=d) or rc
-    if rc:
-        # Don't aggregate over stale/partial grading output.
-        print("[planning] grade_struct failed; skipping aggregate", file=sys.stderr)
-        return rc
-    print("[planning] aggregate.py ...")
-    rc = _call([sys.executable, os.path.join(d, "aggregate.py")], cwd=d) or rc
-    if rc == 0:
-        print("[planning] done -> %s" % os.path.join(d, "grading"))
-    return rc
-
-
-def _run_bootstrap(a, _call=subprocess.call):
-    eval_data = os.path.abspath(os.path.expanduser(a.eval_data))
-    out = os.path.abspath(os.path.expanduser(a.out))
-    if not os.path.isdir(eval_data):
-        print("anvil-serving eval bootstrap: eval-data directory does not exist: %s" % eval_data,
-              file=sys.stderr)
-        return 2
-    parent = os.path.dirname(out) or os.getcwd()
-    if not os.path.isdir(parent):
-        print("anvil-serving eval bootstrap: output directory does not exist: %s" % parent,
-              file=sys.stderr)
-        return 2
-    if os.path.exists(out) and not a.overwrite:
-        print(
-            "anvil-serving eval bootstrap: output exists: %s; choose another --out or "
-            "pass --overwrite (a numbered backup is created)" % out,
-            file=sys.stderr,
-        )
-        return 2
-    print("[bootstrap] profile_bootstrap --replay %s -> %s" % (eval_data, out))
-    if a.dry_run:
-        print("  deferred: fixture replay, candidate profile write")
-        return 0
-    if os.path.exists(out):
-        from .guard import backup_file
-        backup = backup_file(out)
-        print("backed up existing profile -> %s" % backup)
-    return _call([sys.executable, "-m", "anvil_serving.router.profile_bootstrap",
-                  "--replay", eval_data, "--out", out])
-
-
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     p = argparse.ArgumentParser(
         prog="anvil-serving eval",
-        description="Run the project's evaluations (preflight / benchmark / planning / bootstrap).")
+        description="Run the project's endpoint evaluations (preflight / benchmark).")
     sub = p.add_subparsers(dest="kind")
 
     for name, helptext in (("preflight", "correctness gate vs a live endpoint"),
@@ -260,46 +189,21 @@ def main(argv=None):
                                            "(skips the tier reachability gate).")
         sp.add_argument("--model", help="override the served model id.")
 
-    spp = sub.add_parser("planning", help="removed; use eval benchmark quality --suite-file")
-    spp.add_argument("--offline", action="store_true", default=True,
-                     help="re-grade committed eval-data only (the default; no serves needed).")
-    spp.add_argument("--live", dest="offline", action="store_false",
-                     help="also run eval_gen.py against live serves first.")
-    spp.add_argument("--dir", default=PLANNING_DIR, help="eval-data dir (default: %(default)s).")
-
-    spb = sub.add_parser(
-        "bootstrap", help="replay retained eval fixtures into a candidate quality profile",
-        description=(
-            "Build a reviewable candidate profile from an explicit fixture directory.\n\n"
-            "Examples:\n"
-            "  anvil-serving eval bootstrap --eval-data ./eval-data --out ./profile.json --dry-run\n"
-            "  anvil-serving eval bootstrap --eval-data ./eval-data --out ./profile.json --confirm"
-        ),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    spb.add_argument("--eval-data", required=True, help="retained eval fixture directory")
-    spb.add_argument("--out", required=True, help="candidate profile JSON path")
-    spb.add_argument("--overwrite", action="store_true",
-                     help="replace an existing output after making a numbered backup")
-    spb.add_argument("--dry-run", action="store_true",
-                     help="validate and print the plan without replaying or writing")
-
     if not argv:
         p.print_help()
         return 0
     # parse_known_args so preflight/benchmark can pass extra flags through WITHOUT a
     # `--` separator; other verbs reject unknowns explicitly.
-    a, unknown = p.parse_known_args(argv)
+    try:
+        a, unknown = p.parse_known_args(argv)
+    except SystemExit as exc:
+        return int(exc.code or 2)
     if a.kind in ("preflight", "benchmark"):
         if unknown and unknown[0] == "--":   # tolerate an explicit separator too
             unknown = unknown[1:]
         return _run_endpoint_eval(a.kind + ".py", a, unknown)
     if unknown:
         p.error("unrecognized arguments: %s" % " ".join(unknown))
-    if a.kind == "planning":
-        return _run_planning(a)
-    if a.kind == "bootstrap":
-        return _run_bootstrap(a)
     p.print_help()
     return 0
 

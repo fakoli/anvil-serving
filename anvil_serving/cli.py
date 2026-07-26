@@ -16,7 +16,7 @@ from collections.abc import Mapping, Sequence
 
 from . import __version__
 from . import guard
-from .command_tree import COMMAND_TREE, CommandNode, CommandOption, Tombstone
+from .command_tree import COMMAND_TREE, CommandNode, CommandOption
 from .operator_output import (
     EXIT_CODES,
     OutputOptions,
@@ -66,7 +66,6 @@ _RESOLUTION_VALUE_OPTIONS = {
 _HANDLER_PROGS = {
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
     "anvil_serving.benchmark_evidence": "anvil-serving eval benchmark evidence",
-    "anvil_serving.calibrate": "anvil-serving eval calibrate",
     "anvil_serving.controller": "anvil-serving controller",
     "anvil_serving.collectors": "anvil-serving collectors",
     "anvil_serving.observability.dashboard.app": "anvil-serving dashboard serve",
@@ -91,7 +90,7 @@ _HANDLER_PROGS = {
     "anvil_serving.topology_cli": "anvil-serving topology",
     "anvil_serving.upgrade": "anvil-serving upgrade",
     "anvil_serving.voice.cli": "anvil-serving voice",
-    "anvil_serving.voice_sidecar": "anvil-serving voice-sidecar",
+    "anvil_serving.voice_sidecar": "anvil-serving voice sidecar",
     "anvil_serving.workbench": "anvil-serving workbench",
 }
 
@@ -203,10 +202,6 @@ def _resolve(argv: Sequence[str]):
         if node is None:
             return tuple(path), tuple(argv[index + 1 :]), token, tuple(nodes)
         path.append(node)
-        # A leaf tombstone owns every following positional token. Tombstoned
-        # groups can still contain canonical children (for example, ``mcp``).
-        if node.tombstone is not None and not node.children:
-            return tuple(path), tuple(argv[index + 1 :]), None, tuple(nodes)
         if node.handler is not None and not node.children:
             return tuple(path), tuple(argv[index + 1 :]), None, tuple(nodes)
         nodes = node.children
@@ -216,7 +211,7 @@ def _resolve(argv: Sequence[str]):
 def _print_help() -> None:
     print(
         textwrap.fill(
-            "anvil-serving - quality-gated local-model router and serving workbench",
+            "anvil-serving - local-model serving, benchmarking, and capability gateway",
             width=_help_width(),
             break_long_words=False,
             break_on_hyphens=False,
@@ -326,27 +321,12 @@ def _handler_argv(path: Sequence[CommandNode]) -> tuple[str, ...]:
 
 
 def _hidden_leaf_help_flags(path: Sequence[CommandNode]) -> frozenset[str]:
-    """Options owned by the dispatcher or removed from the public interface."""
-    flags = {
+    """Options owned by the dispatcher rather than the leaf handler."""
+    return frozenset({
         flag
         for option in COMMAND_TREE.global_options
         for flag in option.flags
-    }
-    flags.update(
-        flag
-        for item in path
-        for option in item.options
-        if option.tombstone is not None
-        for flag in option.flags
-    )
-    return frozenset(flags)
-
-
-def _hidden_leaf_help_arguments(path: Sequence[CommandNode]) -> frozenset[str]:
-    """Compatibility positionals accepted by handlers but absent from the public CLI."""
-    if tuple(item.name for item in path) == ("mcp", "serve"):
-        return frozenset({"{list-tools}"})
-    return frozenset()
+    })
 
 
 def _global_options_for_path(path: Sequence[CommandNode]) -> tuple[CommandOption, ...]:
@@ -512,7 +492,6 @@ def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> Non
     usage, local_sections = _normalized_leaf_sections(
         rendered,
         hidden_flags=_hidden_leaf_help_flags(path),
-        hidden_arguments=_hidden_leaf_help_arguments(path),
     )
 
     print("anvil-serving %s" % command)
@@ -608,7 +587,7 @@ def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> Non
     dispatcher_options = tuple(
         option
         for option in node.options
-        if "--confirm" in option.flags and option.tombstone is None
+        if "--confirm" in option.flags
     )
     print("\nGlobal options:")
     rendered_global_options = []
@@ -676,57 +655,13 @@ def _unknown_command(token: str, path: Sequence[CommandNode], siblings: Sequence
     if matches:
         match = _find(siblings, matches[0])
         assert match is not None
-        suggestion = match.tombstone.replacement if match.tombstone else match.name
-        print("Did you mean '%s'?" % suggestion, file=sys.stderr)
+        print("Did you mean '%s'?" % match.name, file=sys.stderr)
     help_path = " ".join(node.name for node in path)
     help_command = "anvil-serving%s --help" % ((" " + help_path) if help_path else "")
     print("Run '%s' to see available %s." % (
         help_command,
         "actions" if path else "commands",
     ), file=sys.stderr)
-    return 2
-
-
-def _tombstone_option(path: Sequence[CommandNode], rest: Sequence[str]) -> CommandOption | None:
-    """Return the first declared removed option, without invoking a parser."""
-    options = COMMAND_TREE.global_options + tuple(
-        option for node in path for option in node.options
-    )
-    for token in rest:
-        if token == "--":
-            break
-        for option in options:
-            if option.tombstone is None:
-                continue
-            if any(token == flag or token.startswith(f"{flag}=") for flag in option.flags):
-                return option
-    return None
-
-
-def _tombstone(path: Sequence[CommandNode], rest: Sequence[str]) -> tuple[str, Tombstone] | None:
-    """Find a removed command or option before a handler can be resolved."""
-    option = _tombstone_option(path, rest)
-    if option is not None:
-        assert option.tombstone is not None
-        flag = next(flag for flag in option.flags if any(
-            token == flag or token.startswith(f"{flag}=") for token in rest
-        ))
-        return f"{_command_name(path)} {flag}", option.tombstone
-    node = path[-1]
-    if node.tombstone is not None:
-        return _command_name(path), node.tombstone
-    return None
-
-
-def _tombstone_message(removed: str, tombstone: Tombstone) -> str:
-    return (
-        "anvil-serving: `%s` was removed; use `%s` instead. See %s."
-        % (removed, tombstone.replacement, tombstone.docs_anchor)
-    )
-
-
-def _refuse_tombstone(removed: str, tombstone: Tombstone) -> int:
-    print(_tombstone_message(removed, tombstone), file=sys.stderr)
     return 2
 
 
@@ -1347,9 +1282,6 @@ def _dispatch(
     if help_requested and node.children:
         _print_focused_help(path)
         return 0
-    removed = _tombstone(path, rest)
-    if removed is not None:
-        return _refuse_tombstone(*removed)
     if help_requested and node.handler is not None and not node.children:
         if _print_leaf_help(path):
             return 0
@@ -1494,8 +1426,11 @@ def _dispatch(
     prefix = _handler_argv(path)
     if node.handler.forward_resolution_options:
         rest = (*rest, *_resolution_options_argv(resolution_options))
-    with guard.confirmation_scope(confirmed):
-        result = handler([*prefix, *rest])
+    try:
+        with guard.confirmation_scope(confirmed):
+            result = handler([*prefix, *rest])
+    except SystemExit as exc:
+        return int(exc.code or 0)
     return 0 if result is None else int(result)
 
 
@@ -1554,23 +1489,6 @@ def _error_for_exit(rc: int, message: str) -> OperatorError:
 def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     """Run the dispatcher and emit its text output as one JSON result envelope."""
     path, rest, unknown, _siblings = _resolve(argv)
-    if unknown is None and path:
-        removed = _tombstone(path, rest)
-        if removed is not None:
-            label, tombstone = removed
-            print(render_json(error_envelope(
-                " ".join(argv),
-                None,
-                UsageError(
-                    _tombstone_message(label, tombstone),
-                    code="removed_command",
-                    details={
-                        "replacement": tombstone.replacement,
-                        "docs_anchor": tombstone.docs_anchor,
-                    },
-                ),
-            )))
-            return 2
     stdout, stderr = io.StringIO(), io.StringIO()
     execution_meta: dict[str, object] = {}
     try:

@@ -68,7 +68,7 @@ separator.
 - Read commands are bounded by default. Long-running commands such as `router run`
   and `mcp serve` remain in the foreground until stopped.
 - Mutating commands expose `--dry-run` where a preview is meaningful and use one
-  consent spelling: `--confirm`. Removed consent aliases fail with the replacement.
+  consent spelling: `--confirm`.
 - `--json` is the stable automation surface. Human-readable output may improve over
   time without changing the result envelope.
 - Resource-owner commands resolve through the declared topology. SSH is a recovery
@@ -77,7 +77,7 @@ separator.
 
 ## Complete command index
 
-This generated index is the exhaustive public and migration surface. The family
+This generated index is the exhaustive public surface. The family
 pages above are organized for reading; this table is optimized for lookup and is
 checked against the canonical command tree in CI. Its option column records dispatcher
 policy; focused `--help` remains authoritative for each leaf's complete workload flags,
@@ -88,12 +88,11 @@ required operands, choices, and defaults.
 |---|---|---|---|
 | `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | `--out-dir`<br>`--single-model`<br>`--model`<br>`--catalog-dir`<br>`--gpu`<br>`--served-name`<br>`--tier-id`<br>`--port`<br>`--context`<br>`--engine`<br>`--disable-thinking`<br>`--bind`<br>`--expose-lan` |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
-| `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--mode`<br>`--host`<br>`--port` |
+| `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
 | `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `router promote` | Promote a reviewed router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--profile`<br>`--config`<br>`--validate-only` |
 | `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | `--container`<br>`--host`<br>`--port`<br>`--no-tailscale` |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
@@ -130,8 +129,6 @@ required operands, choices, and defaults.
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
 | `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--logs-dir`<br>`--out-dir`<br>`--analysis-timeout` |
 | `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--manifest`<br>`--recipe`<br>`--registry`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--timeout-seconds`<br>`--thinking-mode`<br>`--reasoning-effort`<br>`--visible-answer-tokens`<br>`--reasoning-headroom-tokens`<br>`--checks`<br>`--needle-ctx`<br>`--tool-batch`<br>`--reasoning-evidence`<br>`--allowed-finish-reasons`<br>`--output` |
-| `eval bootstrap` | Build a candidate quality profile from retained fixtures. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `eval calibrate` | Measure local tiers into a reviewable candidate profile. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--manifest`<br>`--recipe`<br>`--registry`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--timeout-seconds`<br>`--thinking-mode`<br>`--reasoning-effort`<br>`--visible-answer-tokens`<br>`--reasoning-headroom-tokens`<br>`--requests`<br>`--concurrency`<br>`--ctx-tokens`<br>`--max-tokens`<br>`--max-model-len`<br>`--burst`<br>`--engine`<br>`--gpu`<br>`--output` |
 | `eval benchmark quality` | Run repeated quality suites and retain comparison evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--manifest`<br>`--recipe`<br>`--registry`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--timeout-seconds`<br>`--thinking-mode`<br>`--reasoning-effort`<br>`--visible-answer-tokens`<br>`--reasoning-headroom-tokens`<br>`--suite`<br>`--suite-file`<br>`--candidate-id`<br>`--config-id`<br>`--eval-repetitions`<br>`--eval-min-pass-rate`<br>`--engine`<br>`--gpu`<br>`--source-recipe`<br>`--control-status`<br>`--control-evidence`<br>`--output` |
@@ -176,7 +173,7 @@ required operands, choices, and defaults.
 | `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | `--config`<br>`--service-name`<br>`--with-auth` |
 | `harness` | Manage harness integration. | `read` / `bounded` | - |
 | `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
-| `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--out`<br>`--base-url`<br>`--api-key-env`<br>`--native-provider`<br>`--native-model`<br>`--plugin-dir`<br>`--tool-profile`<br>`--exec-mode`<br>`--client-side-routing`<br>`--route-endpoint`<br>`--route-auth-env`<br>`--route-timeout-ms`<br>`--gateway-host`<br>`--gateway-user`<br>`--gateway-path`<br>`--overwrite`<br>`--restart`<br>`--timeout-seconds`<br>`--skills`<br>`--skill-dir`<br>`--voice`<br>`--voice-realtime-url`<br>`--voice-model`<br>`--voice-consult-model`<br>`--voice-consult-thinking-level`<br>`--voice-consult-bootstrap-context-mode`<br>`--voice-api-key-env` |
+| `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--out`<br>`--base-url`<br>`--api-key-env`<br>`--overwrite`<br>`--voice`<br>`--voice-realtime-url`<br>`--voice-model`<br>`--voice-api-key-env` |
 | `harness restart` | Restart the harness | `read` / `bounded` | - |
 | `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--gateway-host`<br>`--gateway-user`<br>`--timeout-seconds` |
 | `harness status` | Show harness status | `read` / `bounded` | - |
@@ -223,71 +220,6 @@ required operands, choices, and defaults.
 | `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name` |
 | `workbench logs` | Read bounded Workbench hub stack logs. | `read` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name`<br>`--tail`<br>`--follow` |
 <!-- END GENERATED CLI MANIFEST INDEX -->
-
-## Migration from legacy commands
-
-The current CLI keeps removed paths as tombstones so an old command fails with a
-specific replacement instead of becoming an unknown command. Use the replacement
-shown by focused help. Common moves include:
-
-| Legacy path | Current path |
-| --- | --- |
-| `serve` | `router run` |
-| `deploy` | `serves render` |
-| `multiplexer` | `serves multiplex` |
-| `cache-prune` | `models cache prune` |
-| `score` | `models score` |
-| `profile` | `eval usage` |
-| `preflight` | `eval preflight` |
-| `benchmark` | `eval benchmark run` |
-| `external-bench` | `eval benchmark external` |
-| `calibrate` | `eval calibrate` |
-| `gpus` | `host gpus` |
-| `voice-sidecar` | `voice sidecar` |
-| `onboard` | `init` |
-
-<!-- BEGIN GENERATED CLI TOMBSTONES -->
-| Removed path | Replacement |
-|---|---|
-| `serves rm --yes` | `--confirm` |
-| `serves adopt --yes` | `--confirm` |
-| `models cache prune --yes` | `--confirm` |
-| `models recipe` | `models recipes` |
-| `models recipe list` | `models recipes list` |
-| `models recipe show` | `models recipes show` |
-| `eval planning` | `eval benchmark quality --suite-file PATH` |
-| `eval calibrate --i-understand-this-calls-real-tiers` | `--confirm` |
-| `eval benchmark run` | `eval benchmark capacity or eval benchmark quality` |
-| `voice up` | `voice audio up` |
-| `voice down` | `voice audio down` |
-| `voice run` | `voice proxy run` |
-| `voice bridge` | `voice proxy bridge` |
-| `voice start` | `voice audio up` |
-| `voice stop` | `voice audio down` |
-| `mcp` | `mcp serve` |
-| `mcp --list-tools` | `mcp tools` |
-| `mcp serve --list-tools` | `mcp tools` |
-| `mcp tools --list-tools` | `mcp tools` |
-| `mcp list-tools` | `mcp tools` |
-| `mcp list-tools --list-tools` | `mcp tools` |
-| `controller serve --allow-unauthenticated-loopback` | `Configure the token named by --auth-token-env` |
-| `host restart-docker --force` | `--confirm` |
-| `host reset-wsl --force` | `--confirm` |
-| `host reclaim --yes` | `--confirm` |
-| `serve` | `router run` |
-| `deploy` | `serves render` |
-| `multiplexer` | `serves multiplex` |
-| `cache-prune` | `models cache prune` |
-| `score` | `models score` |
-| `profile` | `eval usage` |
-| `preflight` | `eval preflight` |
-| `benchmark` | `eval benchmark capacity` |
-| `external-bench` | `eval benchmark external` |
-| `calibrate` | `eval calibrate` |
-| `gpus` | `host gpus` |
-| `voice-sidecar` | `voice sidecar` |
-| `onboard` | `init` |
-<!-- END GENERATED CLI TOMBSTONES -->
 
 ## Related references
 

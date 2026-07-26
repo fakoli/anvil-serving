@@ -6,19 +6,21 @@
 
 ## What you're working in
 
-A quality-gated local-model router (`anvil_serving/router/`) plus a serving substrate
+A local-model serving and benchmark substrate plus a thin capability gateway
+(`anvil_serving/router/`).
 (`eval usage`, `models sync`, `serves render`, `eval preflight`, `eval benchmark run`,
 `serves multiplex`, plus `init`, `doctor`, and `host gpus`). The router is shipped (v0.7.x): token-authed
 containerized service, cross-dialect tool translation, true upstream SSE streaming,
-residency-aware routing. The canonical product description is `README.md`; do not contradict it.
+readiness, admission, and metadata-only decisions. The canonical product description is
+`README.md`; do not contradict it.
 
 ## Read before you write
 
 1. **`README.md`** — source of truth for current product framing.
 2. **`CLAUDE.md`** — architecture module map, gotchas, design decisions.
-3. **The file(s) you're about to change** — read them fully before editing. Avoid
-   writing code that duplicates existing logic; `verify.py`, `fallback.py`, and
-   `policy.py` already implement the hot-path; extend through the `seams.py` hooks.
+3. **The file(s) you're about to change** — read them fully before editing. The
+   gateway is direct-only: extend its explicit route, protocol, readiness, or
+   admission seams; do not reintroduce inferred routing or fallback behavior.
 
 ## Code conventions
 
@@ -54,9 +56,9 @@ residency-aware routing. The canonical product description is `README.md`; do no
   runs accurately. Publishing evidence never bypasses the human gate for promotion.
 - **Return dicts, not print-side-effects** in library code. CLI wrappers print; modules return.
 - **Never self-verify.** Don't write a check that uses the same model to validate its own
-  output. Correctness gates (`verify.py`, `preflight.py`, `eval.py`) are independent.
-- **Cloud credentials via env vars only.** `secrets.py` handles resolution and redaction.
-  Never put a key in a config file, a test fixture, or a log line.
+  output. Preflight and benchmark gates must be independent.
+- **Credentials via env vars only.** Never put a key in a config file, a test fixture,
+  a decision record, or a log line.
 - All new model-calling code MUST use the **Claude Agent SDK** (not the raw `anthropic`
   SDK or a direct `api.anthropic.com` call). See the golden rule in `CLAUDE.md`.
 
@@ -92,19 +94,17 @@ Use model depth at decision boundaries, then reduce it for bounded execution:
 
 ## Working with the router
 
-The extension seams are in `router/seams.py` — use them rather than patching core modules
-when adding adapter plugins (e.g. the OpenClaw adapter in `plugins/`). The plugin contract
-is documented in `docs/OPENCLAW-INTEGRATION-SPEC.md`.
-
-Routing decisions write to `DecisionLog`; quality calibration reads from `ProfileStore`.
-Both are in-process; no daemon, no MCP, no external process required for the router itself.
+Chat aliases in `[router.model_routes]` map to exactly one local tier. Unknown aliases
+are 404s; unavailable selected tiers are errors. Keep auth, dialect translation, streaming,
+readiness, admission, and `DecisionLog` intact. The OpenClaw adapter contract is documented
+in `docs/OPENCLAW-INTEGRATION-SPEC.md`.
 
 ## What NOT to do
 
 - Don't add an `anthropic` SDK import or a direct `api.anthropic.com` call. Flag it instead.
 - Don't bind to `localhost` — use `127.0.0.1`.
 - Don't add FastAPI, uvicorn, or any async framework to the router or substrate.
-- Don't auto-promote a tuned model config or a routing policy change without a human gate.
+- Don't auto-promote a model config without a human gate and recorded preflight/benchmark evidence.
 - Don't make ad hoc lifecycle or operations scripts the way to run the product.
   Scripts may be demos, fixtures, or validation harnesses, but durable operations
   belong behind the `anvil-serving` utility surface.

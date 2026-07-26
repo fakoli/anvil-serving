@@ -1,438 +1,119 @@
-# anvil-serving — context for Claude Code
+# CLAUDE.md — anvil-serving product context
 
-**What this is:** a local-model serving and benchmarking substrate with a thin, network-facing
-capability gateway for Anthropic and OpenAI-compatible traffic. The reference hardware focus is an
-RTX PRO 6000 primary LLM and an RTX 5090 for low-latency voice LLM, STT/TTS, embeddings, reranking,
-and on-demand ComfyUI. The gateway retains auth, dialect translation, SSE, readiness, admission,
-and decision logs. Its established quality-gated intent/profile router remains available for
-compatibility, but new intelligent-routing growth is frozen while direct capability routes are
-accepted. Install, run `anvil-serving router run`, and point a harness at
-`http://127.0.0.1:8000`.
+## Product
 
-The router is **shipped** on `main`. The source tree is versioned v0.13.2, while published tags and
-package releases can lag `main`. Main includes the OpenClaw MCP/control-plane work:
-`anvil-serving mcp serve` for same-host stdio MCP and
-`anvil-serving controller serve` for split-host operation over a private, token-authenticated
-tailnet transport. v0.7.x added wire fidelity (tools/tool-history forwarding, real SSE streaming,
-sampling params), production hardening, and heavy-tier speculative decoding (ADR-0008). v0.6.0 made
-the router a containerized, token-authed service (ADR-0004); v0.5.0 shipped generic onboarding
-(ADR-0003); v0.4.x shipped advise-and-defer and Docker-Compose-defined serves. The local serving
-tools (`eval usage`, `models sync`, `serves render`, `eval preflight`,
-`eval benchmark capacity`, `eval benchmark quality`, `serves multiplex`)
-ship and right-size the local tiers the router routes across.
+anvil-serving is a local-model serving and benchmark substrate with a thin,
+authenticated capability gateway. Its current product center is repeatable
+local serving, preflight, and benchmark evidence. It is not an intent-driven
+model router.
 
-Source of truth for product framing: **`README.md`**.
+The gateway accepts Anthropic Messages, OpenAI Chat Completions, and the
+supported stateless Responses subset. `[router.model_routes]` is the complete
+chat vocabulary: one normalized caller alias maps to exactly one local tier.
+Unknown or missing aliases return 404. A selected tier that cannot serve returns
+an error; it is not replaced by another tier.
 
----
+The gateway retains token authentication, protocol/tool translation, true
+upstream SSE relay, readiness, admission control, and metadata-only
+`DecisionLog` records. It also hosts deterministic purpose-model and audio
+routes. It has no classifier, presets, policy/profile routing, residency
+selection, fallback chain, cloud tier, response verifier, commit window, or
+routing calibration loop.
 
-## Cloud tier: opt-in / off by default
+## Reference topology
 
-The shipped default (`configs/example.toml`) is **local-only**: anvil holds no cloud API key and
-incurs $0 metered API billing. The opt-in metered cloud tier (`configs/example-with-cloud.toml`)
-must be explicitly configured; only work-classes listed in `[router].metered_cloud` are eligible
-to route to a cloud tier. Never add a metered cloud tier silently — it is a billing decision.
-See [ADR-0001](docs/adr/0001-cloud-cost-and-subscription-auth.md) and the
-[Configuration reference](docs/CONFIGURATION.md).
+- **Fakoli Dark / RTX PRO 6000:** primary LLM candidates and the router.
+- **Fakoli Dark / RTX 5090:** low-latency voice LLM, STT/TTS, embeddings,
+  reranking, and optional ComfyUI.
+- **Fakoli Mini:** OpenClaw Gateway and voice Realtime/proxy only. It is
+  model-free in the reference topology. Mini loopback audio proxy ports forward
+  to Dark; they do not host models.
 
----
+`127.0.0.1` is host-relative. Never substitute `localhost` in URLs, examples,
+or tests. Use private/tailnet addresses for cross-host traffic.
 
-## Golden rule: call Claude through the Claude Agent SDK, never the raw Anthropic API
+## Module map
 
-Any code that programmatically calls Claude/Anthropic models — product features (the
-discovery / `analyze` / tuning loops) and any helper script — MUST use the **Claude Agent
-SDK** (which runs on the user's Claude subscription), NOT the plain `anthropic` SDK or a
-direct `api.anthropic.com` request authenticated with an `ANTHROPIC_API_KEY`. The raw API
-bills usage separately; the Agent SDK uses the subscription. If a raw-API path appears
-unavoidable, STOP and flag it for a human decision — do not add it silently. (Known existing
-exception to migrate: the `CloudBackend` / `RelayBackend` transparent relay currently uses
-raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK.)
-
----
-
-## Architecture
-
-```
+```text
 anvil_serving/
-  cli.py               dispatch: models | serves | eval | init | doctor | voice |
-                                 router | harness | host | mcp | controller |
-                                 eval usage | eval preflight |
-                                 eval benchmark capacity | eval benchmark quality |
-                                 eval benchmark external | eval calibrate |
-                                 serves render | serves multiplex |
-                                 models cache prune | models score | voice sidecar
-  config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
-  profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
-  models.py            `sync`: scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py);
-                       `pull`: download a HF repo into a NAMED docker volume via `hf download` (avoids 9P, gotcha #15)
-  deploy.py            render tuned SGLang docker-compose for a given gpu + model
-  preflight.py         correctness gate against any OpenAI-compatible endpoint
-  benchmark.py         replay measured request distribution (TTFT, throughput, prefix-cache hit)
-  multiplexer.py       single-resident model swap on one GPU (SGLang + vLLM backends)
-  eval.py              unified shadow-eval harness (generalised planning-capability eval)
-  score.py             role-suitability scorer over a transcribed benchmark table (model selection)
-  serves.py            model-serve lifecycle verb
-  cache_prune.py       HF cache cleanup helper
-  router_manage.py     deployed-router container/token/log/reload/profile-promotion lifecycle
-  harness.py           render/apply OpenClaw harness config from router presets
-  host.py              WSL/Docker Desktop host inspection and remediation helpers
-  mcp.py               stdio MCP server + remote-controller proxy for operational tools
-  controller.py        stdlib HTTP controller for tailnet-safe split-host MCP forwarding
-  calibrate.py         CLI wrapper for router profile calibration helpers
-  voice/               local realtime voice pipeline prototype and serve helpers
-
-  router/              THE MAIN PRODUCT — all shipped
-    serve.py           `anvil-serving router run` entrypoint: config → backends → front door
-    front_door.py      ThreadingHTTPServer accepting Anthropic Messages + OpenAI Chat Completions,
-                       binding 127.0.0.1 (never localhost — see gotchas), SSE streaming
-    intent.py          PRESETS enum (planning/quick-edit/review/chat/chat-fast/long-context/ocr/vision) + resolve()
-    classify.py        Tier-0 work-class classifier (infers intent from raw payload)
-    policy.py          residency-aware routing: hard constraints → profile deny → cost order
-    fallback.py        ordered tier walk: serve → verify → escalate; retry cap + circuit breaker
-    verify.py          cheap inline structural verifiers (NonEmptyContent, ToolCallJSONValid,
-                       CodeParses, DiffWellFormed, NotTruncated, RefusalMarker …)
-    commit_window.py   streaming commit window: buffer + verify before first byte → harness
-    profile_store.py   quality profile: (tier, work_class) → {score, decision, fingerprint, …}
-    profile_bootstrap.py  bootstrap profile from shadow-eval / async calibration
-    calibrate.py       async off-hot-path LLM-judge calibration loop
-    fingerprint.py     serve fingerprint: model + quant + engine + flags (stale-row detection)
-    decision_log.py    per-request DecisionRecord with per-tier token accounting
-    metrics.py         traffic and routing metrics
-    registry.py        backend/tier registry
-    seams.py           typed extension seams (hook points for plugins/adapters)
-    secrets.py         credential resolution + redaction (never log keys)
-    discovery.py       /v1/models payload (advertises preset vocabulary)
-    config.py          RouterConfig: tiers, presets, budget, circuit-breaker params
-    internal.py        InternalRequest, Message, Backend protocol, NoAvailableTierError
-    dialects/          anthropic.py + openai.py (wire-dialect parse + response rendering);
-                       translate.py (cross-dialect tool/tool-history translation, #96)
-    backends/          cloud.py (CloudBackend: urllib relay to Anthropic/OpenAI);
-                       relay.py (RelayBackend: relay to local SGLang/vLLM, auth-optional);
-                       sse.py (upstream SSE parse + stream assemblers, true streaming #102);
-                       local.py (StaticBackend/EchoBackend: deterministic in-process demo backends)
-
-templates/   configs/   docs/   examples/fakoli-dark/   plugins/
+  cli.py                  CLI dispatch
+  serves.py               Compose-backed model lifecycle and GPU reservations
+  models.py               model cache/source/recipe management
+  preflight.py            endpoint functional qualification
+  eval.py                 benchmark and evaluation commands
+  router/
+    config.py             direct topology, aliases, purpose/audio routes
+    serve.py              deterministic chat relay backend
+    front_door.py         auth, protocol endpoints, streaming
+    availability.py       readiness cache/probes
+    admission.py          concurrency controls
+    decision_log.py       metadata-only audit records
+    discovery.py          configured alias advertisement
+    dialects/             Anthropic/OpenAI translation
+  voice/                  owned STT/TTS, bridge, Realtime operations
+  controller.py, mcp.py   private and stdio control-plane surfaces
 ```
 
-### Request path (one sentence per module)
-1. **`front_door`** receives the request, parses it with the matching **`dialects/`** parser into
-   an `InternalRequest`, and hands it to the injected backend.
-2. **`serve.RoutingBackend`** first checks `[router.model_routes]` for a normalized `model` alias
-   (case-insensitive, optional `anvil/` or `anvil:` prefix removed); a match selects one configured
-   local tier directly. Aliases cannot shadow preset or tier tokens and cannot target cloud tiers.
-   An unmatched value keeps the compatibility path:
-   `intent.resolve()` (preset from `model` field, or Tier-0 `classify`) then `policy.route()` to
-   get an ordered candidate list. Slice 1 does not turn unmatched names into strict 404s.
-3. **`fallback`** walks candidates; for each, `verify` runs cheap structural checks on the
-   assembled response; on failure it escalates to the next tier.
-4. For streaming on fail-prone classes, **`commit_window`** buffers the local response and
-   verifies before forwarding the first byte.
-5. Every decision is written to **`decision_log`**. Measured calibration write-back is guarded and
-   operator-promoted: `anvil-serving eval calibrate` measures explicitly confirmed local tiers, grades
-   with the independent Agent-SDK judge, writes a candidate profile, and never auto-promotes it.
-   Continuous production sampling is still future work; the deployed router uses the built-in seed
-   profile unless `[router].profile_path` points at a reviewed artifact.
+## Routing contract
 
----
-
-## Run / dev
-
-```bash
-pip install -e .               # stdlib-only; no required runtime deps
-anvil-serving router run --config configs/example.toml   # start the router on 127.0.0.1:8000
-anvil-serving --help           # all verbs
-
-# Local serving tools:
-anvil-serving eval usage --out-dir .
-anvil-serving models sync --out ./model-library
-anvil-serving serves render --model /path/to/model --gpu 1 --context 131072 --served-name local
-anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local --confirm
-anvil-serving eval benchmark capacity --base-url http://127.0.0.1:30000/v1 --model local --burst 20 --confirm
-
-# Harness/control-plane operations:
-anvil-serving harness sync openclaw --config configs/example.toml --dry-run
-anvil-serving harness restart openclaw --dry-run
-anvil-serving mcp tools
-export ANVIL_CONTROLLER_TOKEN="<controller-secret>"
-anvil-serving controller serve --host 100.64.0.10 --auth-token-env ANVIL_CONTROLLER_TOKEN
-anvil-serving mcp serve --controller-url http://100.64.0.10:8765 --auth-env ANVIL_CONTROLLER_TOKEN
+```toml
+[router.model_routes]
+llm.primary = "heavy-local"
+llm.voice = "fast-local"
+vision.ocr = "ocr-local"
+vision.general = "vision-local"
 ```
 
-Point a harness at the router:
-```bash
-export ANTHROPIC_BASE_URL="http://127.0.0.1:8000"
-export ANTHROPIC_MODEL="planning"   # an intent preset, sent verbatim in the model field
-```
-Cloud credentials go in env vars only — never in config files. The front door binds
-`127.0.0.1` by default; see `SECURITY.md` before binding publicly.
+Aliases are lowercase after trimming; compatibility prefixes are not accepted.
+They map only to local tiers. The tier's `model` is the concrete
+upstream served model name and must not be confused with the public alias.
 
-**Before `anvil submit` or opening a PR, run `scripts/pre-submit.sh`.** It regenerates the
-CLI reference audit (docs/CLI-REFERENCE-AUDIT.json) and runs the full test suite — the
-whole-repo invariants that task-scoped verification can miss. A red pre-submit means **do
-not submit**: fix it (commit a regenerated audit, make the suite green) first. This exists
-because adding/removing a file without regenerating the audit passes narrow task checks but
-reds the global `test_repository_scope_inventories_match` at the review gate.
+Embeddings and reranking route by exact configured model on their dedicated
+endpoints. STT/TTS routes are operator-selected under `/v1/audio/*`. ComfyUI is
+lifecycle-managed rather than a chat alias.
 
----
+## Evidence boundaries
 
-## The hard-won gotchas (don't relearn these)
+Readiness only establishes that a configured endpoint can receive traffic.
+`eval preflight` and benchmark artifacts establish whether the endpoint is a
+qualified capability. A configuration mapping never promotes a model. Publish
+user-relevant benchmark results as dated findings with raw-artifact links and
+the engine, hardware, quantization, context, concurrency, metrics, failures,
+and caveats.
 
-1. **`127.0.0.1`, never `localhost`.** On Windows, `localhost` triggers a ~21-second IPv6
-   DNS stall before it falls through to the loopback address. Every URL in configs,
-   tests, and examples uses `127.0.0.1` explicitly. This is baked into `front_door.py`'s
-   default bind address.
-2. **Stdlib-only.** The router and local serving tools are stdlib-only by design. No FastAPI, no
-   aiohttp, no openai SDK in the hot path — `http.server.ThreadingHTTPServer` + `urllib`.
-   Don't add a runtime dependency without explicit sign-off.
-3. **WSL2 load OOM:** no `memory=` in `.wslconfig` → VM caps at ~50% host;
-   `--weight-loader-disable-mmap` then loads the whole model into RAM → OOM-kill
-   (`scheduler died, exit code -9`). Fix: raise WSL memory (64 GB on a 96 GB host).
-4. **mmap over virtiofs** (Windows bind mount → Linux container) is pathologically slow;
-   disable it, but then watch RAM (see above).
-5. **GGUF != SGLang/vLLM.** GGUF is llama.cpp-only; SGLang and vLLM need safetensors.
-   `models sync` flags this in INDEX.md's "SGLang-loadable" column.
-6. **Thinking-by-default models** (Qwen3.5, gpt-oss, etc.) return *empty* content with a
-   small `max_tokens` budget — they spend it reasoning. Disable per request with
-   `chat_template_kwargs:{enable_thinking:false}` or give >= 4096 tokens. Preflight and
-   benchmark must send the disable params or they time out.
-7. **Blackwell sm_120 caveats:** some FP8 MoE paths hang post-load; AWQ/compressed-tensors
-   via Marlin works. Run `preflight` before trusting a new model on sm_120.
-8. **Never self-verify.** Agents that check their own output game the check. Every
-   correctness gate (verify module, preflight, eval) must be independent of the model
-   that produced the output.
-9. **Thinking-budget starvation is a real failure mode.** `NonEmptyContent` in `verify.py`
-   exists specifically because a local model on a small `max_tokens` budget produces valid
-   JSON with an empty `content` array — looks successful, is wrong. The verifier catches this.
-10. **NVFP4 on Blackwell (sm_120) works — and is the preferred local quant.** NVIDIA's
-    `nvidia/*-NVFP4` checkpoints (TensorRT Model Optimizer; native FP4, vs AWQ→Marlin) serve on
-    sm_120 with `vllm/vllm-openai:nightly` via `--quantization modelopt_fp4 --kv-cache-dtype fp8`
-    (selects FlashInfer CUTLASS NVFP4 GEMM + MoE kernels). For Qwen NVFP4 add
-    `--reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder
-    --trust-remote-code`. Still `preflight` the large-prefill path (NVFP4 long-context was rough).
-11. **MSYS mangles docker container paths in Git Bash.** `docker run … --model /model` becomes
-    `C:/Program Files/Git/model` (vLLM then errors `Repo id must be in the form …`). Prefix the
-    docker invocation with `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'` (as
-    `examples/fakoli-dark/serve-fast-*.sh` already do).
-12. **`hf download` lock deadlock.** Concurrent/interrupted downloads to the same `--local-dir`
-    deadlock on `.cache/huggingface/.gitignore.lock` (logs: "Still waiting to acquire lock"). Kill
-    the procs, `rm` that lock file, resume one download — it's resumable; the stall is the lock,
-    not a rate-limit. (Unauthenticated HF works; there is no `HF_TOKEN` in the box's `.env`.)
-13. **Multi-GPU pinning needs `CUDA_DEVICE_ORDER=PCI_BUS_ID`.** Pin by UUID
-    (`-e CUDA_VISIBLE_DEVICES=<GPU-uuid> -e CUDA_DEVICE_ORDER=PCI_BUS_ID`) or the model loads on
-    the wrong card. fakoli-dark: 5090/fast `GPU-04d3b6e7…`, RTX PRO 6000 96 GB/heavy `GPU-d0f446cf…`.
-    Large model pulls go to **`D:`** (empty 4 TB Samsung NVMe), not the OS drive.
-14. **vLLM 0.25.1+ needs `VLLM_WSL2_ENABLE_PIN_MEMORY=1` on this WSL2/Docker box.** Older images
-    failed Model Runner V2 initialization because WSL2 disabled pinned host memory/UVA. The 0.25.1
-    opt-in reached healthy Gemma 4 V2 serves on both local Blackwell cards. Production Gemma still
-    sets `VLLM_USE_V2_MODEL_RUNNER=0`: V2 currently warns that `thinking_token_budget` is unsupported,
-    so use it only in explicit lab lanes until that behavior gate closes.
-15. **Serve from a named docker volume, not a `C:/…` bind-mount.** Windows bind-mounts read over 9P
-    (~15 MB/s → 18–90 min loads); a `vllm-hfcache` volume on D:-backed ext4 (pass the HF repo-id as
-    `--model`) loads natively (~15 s). The 9P mount is the real cold-load tax.
-16. **On sm_120, prefer PLAIN-DENSE NVFP4.** MoE-NVFP4 grouped-GEMM produces garbage / crashes
-    (upstream: CUTLASS #3096, vLLM #31085 / #33416); hybrid-attention / Gated-DeltaNet re-introduces a
-    prefill-workspace overflow; block-scaled FP8 is a dead-end (DeepGEMM `layout.hpp:76: Unknown
-    recipe`, or ~14 tok/s with `VLLM_USE_DEEP_GEMM=0`). Root cause: consumer sm_120 uses the `mma.*`
-    ISA path, less mature than datacenter sm_100 `tcgen05.*`.
-17. **NVFP4 ≈1.8× faster than FP8 on sm_120** (measured, dense Qwen3-32B: 340 vs 190 tok/s), ~half
-    the VRAM — the FP4:FP8 hardware ceiling. Prefer NVFP4 as the local quant.
-18. **RedHat `*-NVFP4` checkpoints are compressed-tensors-packed → OMIT `--quantization`**
-    (auto-detect); forcing `--quantization modelopt_fp4` fails the config-match check on stable vLLM.
-    (Contrast gotcha 10: NVIDIA `nvidia/*-NVFP4` Model-Optimizer checkpoints *do* take `modelopt_fp4`.)
-19. **Community prior art — cross-ref before burning a load cycle on a new model:**
-    `local-inference-lab/rtx6kpro` wiki (closest thing to a master list of sm_120-working models) +
-    `0xsero/blackwell-gpu-wiki` (the sm_100-vs-sm_120 "why it breaks" reference).
-20. **Validate Docker CUDA in the Docker layer, not the default WSL distro.** These are three
-    different environments: native Windows, an ordinary distro such as `Ubuntu-24.04`, and the
-    `docker-desktop` WSL VM that owns Docker's Linux `dockerd`/`containerd`. Native Windows toolkit
-    versions do not describe a Linux container. Ordinary Ubuntu can validate the WSL `libcuda` stub
-    and any runtime installed in that distro, but it does not prove the Docker image path.
-    `docker-desktop` is intentionally minimal: expect `/dev/dxg` and the Windows-driver
-    `/usr/lib/wsl/lib/libcuda.so` stub, but not necessarily `nvidia-smi`, `nvcc`, `libcudart`, or MPS.
-    Those user-space components come from the selected CUDA image. For container capability claims,
-    inspect the `docker-desktop` substrate, then validate versions/symbols inside a Compose-managed,
-    GPU-UUID-pinned image. Keep these runtime observations out of stable topology identity.
-21. **The `gemma4-unified` vLLM image crashes on a UUID `CUDA_VISIBLE_DEVICES` pin.** Its
-    `vllm/kernels/oink_ops.py` import calls `has_device_capability()` → `int(CUDA_VISIBLE_DEVICES)`
-    (`ValueError: invalid literal for int() … 'GPU-04d3…'`), surfacing as the opaque
-    "Model architectures [...] failed to be inspected" registry error. For that image, pin by
-    PCI-ordered INDEX instead: `CUDA_DEVICE_ORDER=PCI_BUS_ID` + `CUDA_VISIBLE_DEVICES=0`
-    (fakoli-dark: bus 01:00.0 = 5090 < 03:00.0 = PRO 6000, so 0 is deterministic). This was the
-    root cause of the 2026-07-08 voice A/B gemma4 candidates "failed before STT". Gotcha #13's
-    UUID rule still applies to every image that parses UUIDs (nightly, pinned sha256 releases).
-22. **vLLM's AUTO memory profiling lies on a busy WSL2 GPU — size the KV cache explicitly.**
-    `cudaMemGetInfo` under WSL2 passthrough returns an incoherent free-memory view on a
-    shared card (a fresh engine saw "30.2 GiB free" while `nvidia-smi` showed ~12.6): during
-    the profile run the view reconciles toward reality and vLLM attributes the entire delta
-    to itself as a phantom "non-torch forward increase" (~13.8 GiB for Qwen3-VL-4B), computing
-    NEGATIVE available KV at any budget a multi-tenant reservation allows. Fix: pass
-    `--kv-cache-memory-bytes <bytes>` (v0.23 image) to bypass measurement-based sizing;
-    keep `--gpu-memory-utilization` as the declared ceiling. First hit: T013's vision serve
-    (`examples/fakoli-dark/docker-compose.yml`, `vision` service note). Small engines whose
-    total footprint stays far below the phantom floor (embeddings/reranker/ocr) load fine,
-    which is why this stayed hidden until a mid-size VLM.
+## Working rules
 
----
+1. Use only the standard library in `anvil_serving/` unless explicitly approved.
+2. Secrets are environment-variable references only; never commit a literal.
+3. Return dictionaries from library code; CLI wrappers print.
+4. Durable lifecycle, host, routing, voice, and benchmark operations belong in
+   the `anvil-serving` CLI and, where useful, MCP/controller surfaces.
+5. New model-calling code uses the Claude Agent SDK, never the raw Anthropic SDK
+   or a direct `api.anthropic.com` request.
+6. Do not claim a local qualification without recorded test evidence.
+7. Do not modify `specs/archive/`.
 
-## Key design decisions (the "why")
+## Agent model strategy
 
-- **The `model` field is the capability channel.** It is present in both Anthropic Messages and
-  OpenAI Chat Completions, forwarded verbatim, and free-form. `[router.model_routes]` normalized
-  aliases select a single local tier before legacy intent/policy/profile/residency/fallback
-  selection. They cannot shadow preset/tier tokens or target cloud tiers. Named
-  presets (`planning`, `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, `ocr`, `vision`)
-  remain the compatibility surface for callers that do not use an alias; unmatched names still
-  reach that path in slice 1 rather than returning a strict unknown-model 404.
-- **Tier-0 classifier is the universal floor.** For harnesses that can't set the model
-  field (or don't), `classify.py` infers work-class from the raw payload (token count,
-  `thinking` flag, tool types, image content, system-prompt fingerprint).
-- **Filter, then rank.** `policy.route()` runs hard constraints → profile deny → cost order.
-  It never routes a `deny` work-class to local, regardless of availability.
-- **The integration point is the harness, not anvil's state engine.** Anvil core is NOT an
-  LLM gateway; it exposes one `custom_base_url` for optional planning augmentation. The
-  router lives where agent traffic actually flows: in front of the harness.
-- **OpenClaw is the reference integration, not the dependency.** The `before_model_resolve` hook
-  unlocks per-request client-side intent; it ships as a thin adapter plugin in `plugins/`, not a
-  core dependency. The front door is protocol-standard and works with any harness.
+Use model depth at decision boundaries, then reduce it for bounded execution:
 
----
+- Use **GPT-5.6 Sol with high reasoning** for behavior-first PRDs, product or
+  architecture boundaries, cross-cutting breaking changes, and final removal
+  review.
+- Use **GPT-5.6 Terra with medium reasoning** for focused implementation tasks
+  whose acceptance criteria and verification commands are explicit. Raise Terra
+  to high for parser, router, migration, or edge-case-heavy work.
+- Use Terra low or medium for mechanical renames, fixtures, inventories,
+  documentation synchronization, and straightforward tests.
+- Prefer PR-sized tasks and the lowest reasoning effort that reliably passes an
+  independent verification gate. Do not use stronger reasoning as a substitute
+  for recorded tests or human promotion approval.
 
-## Golden rule: anvil-serving owns the harness-side config too, not just the router
+## Documentation
 
-anvil-serving manages the model serves (`serves`) and the deployed router (`router`) as first-class
-verbs (ADR-0012). That ownership MUST extend to the **harness** it fronts: anvil-serving is the
-source of truth for the harness's model/provider config, its per-preset knobs, and its
-skills/modules/agent configuration — **starting with OpenClaw**.
-
-1. **Keep the harness config in lockstep with the router — in the SAME change.** Any change to the
-   router's intent configuration (presets, tier topology, per-tier reasoning/thinking knobs, context
-   limits) REQUIRES a matching harness-config update. Updating the router's intent config but leaving
-   the OpenClaw setup stale is the anti-pattern to avoid. Example (2026-07-04): promoting heavy to
-   gpt-oss-120b `reasoning_effort=high` (which IGNORES `enable_thinking`) and fast to Qwen3.6-27B
-   (which sets `enable_thinking=false` on the tier) means the OpenClaw provider's per-preset
-   `agents.defaults.models["anvil/*"].params.chat_template_kwargs.enable_thinking` overrides are now
-   the ROUTER's job and the PARAMS must be stripped — but KEEP the `agents.defaults.models["anvil/*"]`
-   ENTRIES themselves (set to `{}`): that map is OpenClaw's DROPDOWN ALLOWLIST, so deleting the
-   entries removes the presets from the picker entirely (2026-07-04 regression). Each preset's
-   `contextWindow` must still equal the LARGEST routed tier window (131072 = heavy), per the
-   contextWindow-clamp gotcha in `docs/OPENCLAW-INTEGRATION-SPEC.md`.
-2. **Use the product control surface, not hand-edits, for normal operations.** `anvil-serving harness
-   sync openclaw` renders the correct OpenClaw provider + agent config from the live router config,
-   and `anvil-serving harness restart openclaw` reloads the gateway. For agent/operator workflows,
-   prefer `anvil-serving mcp serve`; in split-host mode, run `anvil-serving controller serve` on the
-   anvil-serving host and bridge from the gateway or operator host with
-   `anvil-serving mcp serve --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
-3. **Know the MCP verbs and their safety gates.** `anvil-serving mcp tools` exposes the complete
-   structured catalog: `operation_contracts`; router status/log/lifecycle/transition/decision/route
-   and promotion tools (`router_status`, `router_logs`, `router_manage`, `router_transition`,
-   `decision_summary`, `route_decision`, `router_promote`); serve status/reservation/lifecycle/log
-   and promotion tools (`serves_status`, `reservation_status`, `serves_manage`, `serves_logs`,
-   `serves_promote`); `voice_manage` and `voice_proxy_manage`; host/model/telemetry tools
-   (`doctor_summary`, `host_summary`, `gpu_inventory`, `observability_collect`, `host_manage`,
-   `models_inventory`, `cache_prune_plan`); OpenClaw tools (`openclaw_sync`,
-   `openclaw_gateway_status`, `openclaw_gateway_restart`); and evidence tools
-   (`preflight_probe`, `benchmark_probe`, `benchmark_artifact`, `workflow_packet_validate`,
-   `external_bench_sources`, `external_bench_list`, `external_bench_report`,
-   `external_bench_compare`). `benchmark_probe` and `benchmark_artifact` are capacity tools;
-   repeated quality evaluation remains `eval benchmark quality` until it has a dedicated wrapper.
-   Mutating or expensive probes stay dry-run unless `confirm=true`; numeric knobs are bounded;
-   booleans must be real booleans; raw `api_key` values are rejected. Router/serve promotion apply
-   additionally requires `human_approved=true`. Probe tools only accept `ANVIL_ROUTER_TOKEN` as
-   `api_key_env`, redact the resolved token from responses/errors, and restrict target URLs to
-   loopback/private/tailnet hosts (never `localhost`, wildcard, link-local, metadata, or public IPs).
-   Proxy mode likewise validates `--controller-url` before sending `ANVIL_CONTROLLER_TOKEN`.
-4. **Treat the OpenClaw plugin as an expanded adapter, not just a classifier.** The checked-in plugin
-   supports `cloudClasses`, optional authoritative `routeEndpoint` + `routeAuthEnv` + `routeTimeoutMs`,
-   `nativeProvider`/`nativeModel` for cloud-preferred and route-exhausted turns, and JSONL decision
-   logging with `routingSource` and `routeEndpointConfigured`. Keep `openclaw.plugin.json`
-   `configSchema`, `route.d.mts`, `package.json` `compat.pluginApi`, generated fixtures, and docs in
-   sync whenever those capabilities change.
-
-Note: in the current reference deployment, the OpenClaw **gateway** runs on **Fakoli Mini**.
-Additional laptops or hosts may take that role later when they are reachable over Tailscale or
-another private or direct path. The anvil-serving host owns router, serve, model, benchmark,
-preflight, and harness-rendering operations; the gateway host owns gateway-local apply/restart
-actions. Keep that boundary intact unless a tool explicitly supports crossing it.
-
-For OpenClaw Talk / Anvil Voice work, name the command host before interpreting any loopback URL.
-The reference topology is:
-
-- **Fakoli Mini:** OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude Code,
-  and Codex. Its 16 GB RAM is reserved for those runtimes; do not run STT, TTS,
-  or LLM model serves on Mini for reference testing.
-- **Fakoli Dark:** router at `http://100.87.34.66:8000/v1`, candidate LLM
-  serves on direct candidate ports, and STT/TTS model endpoints or Dark-owned
-  bridge ports.
-- **`dark-audio`:** Mini reaches Dark audio through Dark's private bridge ports
-  such as `100.87.34.66:30110` and `100.87.34.66:30111`, after the bridge is
-  actually listening on Dark.
-- **`mini-dark-audio-proxy`:** Mini reaches `127.0.0.1:30110` and
-  `127.0.0.1:30111` on Mini, where those Mini-local proxy listeners forward to
-  Dark audio. Those URLs are not valid from a Windows/operator checkout and do
-  not imply Mini is hosting models.
-- **`mini-audio`:** optional same-host/local-audio mode only. Do not use it for
-  normal OpenClaw Talk validation, latency candidate A/B, or reference evidence
-  unless the task explicitly tests Mini-local audio.
-
-A non-gateway checkout failing to reach `127.0.0.1:30110` or `30111` is a
-topology negative control for the Mini-side proxy path, not proof that Mini or
-Dark audio is down. A probe of `127.0.0.1:30010` or `30011` is same-host native
-audio only and is not part of the reference Mini topology. Use private/tailnet
-addresses for cross-device endpoints.
-
-Controller auth is required by default even on `127.0.0.1`; use
-`--allow-unauthenticated-loopback` only for explicit local development tests.
-
----
-
-## Golden rule: operational utilities belong in anvil-serving
-
-Any repeatable utility that manages lifecycle, host state, ports, voice/audio
-routing, harness config, router/serve state, or OpenClaw/agent operations MUST
-be integrated into the `anvil-serving` product surface: a CLI verb first, and an
-MCP/controller wrapper when agents or split-host operation need it. Do not make
-random one-off scripts the canonical way to operate the system.
-
-Scripts are acceptable for demos, fixtures, migrations, and validation harnesses
-when they are not the lifecycle/control surface. If a script starts becoming the
-way operators switch profiles, open ports, restart services, sync configs, or
-run recurring operations, promote that behavior into `anvil_serving/`, document
-it, and keep the script as a thin example or remove it.
-
----
-
-## Docs map
-
-- `README.md` — evaluator-facing product framing, smoke test, command surface, and docs map
-- `docs/GETTING-STARTED.md` — no-GPU front-door smoke test, real-tier setup, and harness pointers
-- `docs/ARCHITECTURE.md` — concise system overview (request path, tier ladder, calibration loop,
-  deployment shapes) with diagrams
-- `docs/CONFIGURATION.md` — full config reference: `[server]`/`[router]`/tier/mode keys + env vars
-- `docs/CLI.md` — full CLI reference: every verb, subcommand, and key flag
-- `docs/TROUBLESHOOTING.md` — symptom-first fixes (503 exhaustion, preflight, empty content, auth)
-- `docs/TERMINOLOGY.md` — product naming, user-facing terms, and technical definitions
-- `docs/QUALITY-GATED-ROUTER.md` — full design (intent presets, tier ladder, verify-fallback, profile)
-- `docs/OPENCLAW-INTEGRATION-SPEC.md` — current OpenClaw adapter, setup, ownership, and validation contract
-- `docs/OPERATOR-PLAYBOOKS.md` — MCP/controller playbooks for status, preflight, benchmark,
-  OpenClaw sync, and promotion evidence
-- `docs/adr/0013-openclaw-layers-and-mcp-control-plane.md` / `0014-tailnet-controller-transport.md`
-  — clean OpenClaw layers and split-host controller transport
-- `docs/adr/` — **Architecture Decision Records** — the *why* behind significant design decisions
-- related 2026-07-02 architecture-review working materials (the PR #96–#102 series: wire fidelity,
-  measured profile, bug bash, swap draining, residency + streaming relay) live in the private
-  companion repo `fakoli/anvil-serving-notes`; the 2026-07-22 publication audit records exactly
-  what was and was not present, while public dated evidence follows ADR-0027 under `docs/findings/`
-- `examples/fakoli-dark/` — real two-tier instance (heavy :30000 SGLang, fast :30001 vLLM)
-
-> **Companion repo:** internal design discussions, planning context, review/session transcripts,
-> and tracked PRDs live in the private companion repo `fakoli/anvil-serving-notes`. Public dated
-> findings and load-bearing evidence remain under `docs/findings/` per ADR-0027; private records may
-> supplement but cannot solely ground a public claim.
-
-## Architecture Decision Records (ADRs)
-
-Significant architecture/design decisions are recorded as **ADRs in `docs/adr/`** — one file per
-decision (`NNNN-short-kebab-title.md`), Context → Decision → Consequences (start from
-`docs/adr/template.md`). When you make or change a non-trivial design decision (a contract, a
-routing/auth model, a dependency, a protocol or security choice), **add or supersede an ADR** —
-never silently change direction, and never delete an ADR (supersede it). Index + convention:
-`docs/adr/README.md`. First record: `docs/adr/0001-cloud-cost-and-subscription-auth.md`.
+- `README.md` — product framing and quick start
+- `docs/ARCHITECTURE.md` — current request path and topology
+- `docs/CONFIGURATION.md` — direct-gateway configuration contract
+- `docs/THIN-CAPABILITY-GATEWAY.md` — gateway boundary and omissions
+- `docs/OPENCLAW-INTEGRATION-SPEC.md` — harness ownership and direct aliases
+- `docs/adr/0028-serving-benchmarks-and-thin-capability-gateway.md` — rationale

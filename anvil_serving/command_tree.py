@@ -1,8 +1,8 @@
 """Declarative Operator CLI v2 command tree and manifest renderer.
 
 This module is deliberately independent of the current root dispatcher.  It
-defines the public v2 surface so later migration tasks can drive dispatch,
-help, and tombstones from one validated declaration.
+defines the public v2 surface so dispatch and help derive from one validated
+declaration.
 """
 from __future__ import annotations
 
@@ -65,21 +65,12 @@ class HandlerRef:
 
 
 @dataclass(frozen=True)
-class Tombstone:
-    """Migration guidance for a removed path or option."""
-
-    replacement: str
-    docs_anchor: str
-
-
-@dataclass(frozen=True)
 class CommandOption:
-    """A visible CLI option, including declarative option tombstones."""
+    """A visible CLI option."""
 
     flags: tuple[str, ...]
     summary: str
     value_name: str | None = None
-    tombstone: Tombstone | None = None
     output_policy: str | None = None
     requires_confirmation: bool = False
 
@@ -136,7 +127,6 @@ class CommandNode:
     execution_policy: str = "offline"
     output_policy: str = "bounded"
     docs_anchor: str = "docs/CLI.md"
-    tombstone: Tombstone | None = None
     visible: bool = True
     group: str | None = None
     remote_operation: RemoteOperation | None = None
@@ -183,14 +173,6 @@ def _option(
         value_name=value_name,
         output_policy=output_policy,
         requires_confirmation=requires_confirmation,
-    )
-
-
-def _removed_option(*flags: str, replacement: str) -> CommandOption:
-    return CommandOption(
-        flags=flags,
-        summary="Removed option.",
-        tombstone=Tombstone(replacement, "docs/CLI.md#migration-from-legacy-commands"),
     )
 
 
@@ -257,7 +239,6 @@ def _node(
     execution_policy: str = "offline",
     output_policy: str = "bounded",
     docs_anchor: str = CLI_DOC,
-    tombstone: Tombstone | None = None,
     visible: bool = True,
     group: str | None = None,
     remote_operation: RemoteOperation | None = None,
@@ -282,7 +263,6 @@ def _node(
         execution_policy=execution_policy,
         output_policy=output_policy,
         docs_anchor=docs_anchor,
-        tombstone=tombstone,
         visible=visible,
         group=group,
         remote_operation=remote_operation,
@@ -395,18 +375,12 @@ def _with_review_metadata(
 
 def build_command_tree() -> CommandTree:
     """Build the complete canonical v2 tree without importing command handlers."""
-    migration_docs = "docs/CLI.md#migration-from-legacy-commands"
-
-    def removed(replacement: str) -> Tombstone:
-        return Tombstone(replacement, migration_docs)
-
     action_options = (_option("--dry-run", summary="Preview without mutating state."),)
     confirm_options = action_options + (_option("--confirm", summary="Confirm the guarded mutation."),)
     manifest_option = _option("--manifest", summary="Serve manifest TOML.", value_name="PATH")
     recipe_registry_option = _option("--registry", summary="Serve-recipe registry TOML.", value_name="PATH")
     recipe_file_option = _option("--recipe-file", summary="TOML file containing one recipe.", value_name="PATH")
     recipe_container_option = _option("--container", summary="New Docker container name.", value_name="NAME")
-    removed_yes_option = _removed_option("--yes", replacement="--confirm")
     group_option = _option(
         "--group",
         summary="Act on every serve tagged NAME across the manifest set (repeatable; 'all' selects every serve).",
@@ -420,18 +394,15 @@ def build_command_tree() -> CommandTree:
                 "run", "Run the router in the foreground.", "anvil_serving.router.serve",
                 role="router", mutation="process", argv_prefix=(), output_policy="foreground",
                 options=(
-                    _option("--config", summary="Router TOML; alternatively configure ANVIL_MODE.", value_name="PATH"),
-                    _option("--mode", summary="Configured router mode; alternatively use ANVIL_MODE.", value_name="agentic|flexibility"),
+                    _option("--config", summary="Direct capability-gateway TOML.", value_name="PATH"),
                     _option("--host", summary="Router bind host.", value_name="ADDRESS"),
                     _option("--port", summary="Router bind port.", value_name="PORT"),
                 ),
                 examples=(
                     _example("anvil-serving router run --config configs/example.toml", "Run one exact router configuration in the foreground."),
-                    _example("anvil-serving router run --mode agentic --host 127.0.0.1 --port 8000", "Resolve agentic mode and bind it to loopback."),
                 ),
                 configuration_notes=(
-                    "--config selects an exact TOML and bypasses mode resolution.",
-                    "Mode precedence is --mode, ANVIL_MODE, modes manifest, then the built-in default.",
+                    "--config selects the exact direct-alias topology.",
                 ),
                 behavior_notes=(
                     "Runs in the foreground until interrupted.",
@@ -474,39 +445,6 @@ def build_command_tree() -> CommandTree:
                     ("up", "Start the deployed router."), ("down", "Stop the deployed router."),
                     ("restart", "Restart the deployed router."), ("reload", "Reload router configuration."),
                 )
-            ),
-            _resource_node(
-                "promote",
-                "Promote a reviewed router configuration.",
-                "anvil_serving.router_manage",
-                role="router",
-                mutation="mutate",
-                options=confirm_options + (
-                    _option("--profile", summary="Reviewed profile JSON to promote.", value_name="PATH"),
-                    _option("--config", summary="Optional router configuration to promote.", value_name="PATH"),
-                    _option("--validate-only", summary="Validate without changing router state."),
-                ),
-                remote_operation=_remote(
-                    "router_promote",
-                    confirmed=(("human_approved", True),),
-                    allowed=(
-                        "container", "dry_run", "profile", "config", "cfg_volume",
-                        "image", "profile_dest", "config_dest", "no_reload",
-                        "validate_only",
-                    ),
-                ),
-                examples=(
-                    _example("anvil-serving router promote --profile ./candidate-profile.json --dry-run", "Validate and preview a reviewed profile promotion."),
-                    _example("anvil-serving router promote --profile ./candidate-profile.json --confirm", "Write the reviewed profile and reload the router."),
-                ),
-                configuration_notes=(
-                    "--profile is required; --config optionally promotes a matching router configuration.",
-                    "Container, image, volume, and destination flags default to the deployed router layout.",
-                ),
-                behavior_notes=(
-                    "Preview and --validate-only do not write router configuration.",
-                    "Promotion validates with the deployed image and never replaces the independent human quality gate.",
-                ),
             ),
             _resource_node(
                 "endpoint",
@@ -778,9 +716,9 @@ def build_command_tree() -> CommandTree:
             configuration_notes=serves_manifest_configuration,
             behavior_notes=(
                 "Preview resolves names without removing a container.",
-                "Apply requires --confirm; the removed --yes spelling is refused with guidance.",
+                "Apply requires --confirm.",
             ),
-            options=confirm_options + (manifest_option, removed_yes_option),
+            options=confirm_options + (manifest_option,),
             remote_operation=_remote(
                 "serves_manage", fixed=(("action", "rm"),), positionals=("names",)
             ),
@@ -807,7 +745,7 @@ def build_command_tree() -> CommandTree:
                 "Preview validates the manifest-owned replacement without recreating it.",
                 "Apply requires --confirm and verifies the adopted serve.",
             ),
-            options=confirm_options + (manifest_option, removed_yes_option),
+            options=confirm_options + (manifest_option,),
             remote_operation=_remote(
                 "serves_manage", fixed=(("action", "adopt"),), positionals=("names",)
             ),
@@ -1264,7 +1202,6 @@ def build_command_tree() -> CommandTree:
                     mutation="mutate",
                     options=confirm_options + (
                         _option("--execute", summary="Delete the planned cache candidates.", requires_confirmation=True),
-                        _removed_option("--yes", replacement="--confirm"),
                         _option("--mixture", summary="Comma-separated model ids to protect.", value_name="MODELS"),
                         _option("--include-servable", summary="Also delete candidates servable elsewhere."),
                         _option("--allow-empty-mixture", summary="Allow a broad wipe with no protected mixture."),
@@ -1290,16 +1227,6 @@ def build_command_tree() -> CommandTree:
                     ),
                 ),
             ), docs_anchor=f"{MODELS_DOC}#cache-prune"),
-            _node(
-                "recipe",
-                "Removed singular recipe spelling.",
-                children=(
-                    _node("list", "Removed singular recipe list path.", tombstone=removed("models recipes list"), visible=False),
-                    _node("show", "Removed singular recipe show path.", tombstone=removed("models recipes show"), visible=False),
-                ),
-                tombstone=removed("models recipes"),
-                visible=False,
-            ),
         ),
         docs_anchor=MODELS_DOC,
     )
@@ -1458,25 +1385,6 @@ def build_command_tree() -> CommandTree:
                     ),
                 ),
             ),
-            _node(
-                "planning", "Removed source-checkout planning harness.",
-                tombstone=removed("eval benchmark quality --suite-file PATH"),
-                visible=False,
-            ),
-            _resource_node(
-                "bootstrap", "Build a candidate quality profile from retained fixtures.",
-                "anvil_serving.eval", role="evaluation", mutation="mutate",
-                options=confirm_options,
-            ),
-            _resource_node(
-                "calibrate", "Measure local tiers into a reviewable candidate profile.",
-                "anvil_serving.calibrate", role="evaluation", mutation="mutate",
-                argv_prefix=(), options=confirm_options + (
-                    _removed_option(
-                        "--i-understand-this-calls-real-tiers", replacement="--confirm"
-                    ),
-                ),
-            ),
             _node("benchmark", "Run or import benchmark evidence.", children=(
                 _resource_node(
                     "capacity", "Measure endpoint latency, throughput, context, and cache behavior.",
@@ -1512,11 +1420,6 @@ def build_command_tree() -> CommandTree:
                         _option("--control-evidence", summary="Structured local reasoning-control proof.", value_name="PATH"),
                         _option("--output", summary="Atomic quality artifact path.", value_name="PATH"),
                     ),
-                ),
-                _node(
-                    "run", "Removed ambiguous benchmark path.",
-                    tombstone=removed("eval benchmark capacity or eval benchmark quality"),
-                    visible=False,
                 ),
                 _node(
                     "evidence",
@@ -1592,46 +1495,6 @@ def build_command_tree() -> CommandTree:
             "behavior_notes": (
                 "Dry-run validates target, checks, budgets, and output without sending model requests.",
                 "Apply records visible output, finish reason, reasoning evidence, and every selected check before returning the gate result.",
-            ),
-        },
-        "eval bootstrap": {
-            "examples": (
-                _example(
-                    "anvil-serving eval bootstrap --eval-data tests/fixtures/eval-data --out candidate-profile.json --dry-run",
-                    "Preview replaying retained fixtures into a candidate profile.",
-                ),
-                _example(
-                    "anvil-serving eval bootstrap --eval-data tests/fixtures/eval-data --out candidate-profile.json --confirm",
-                    "Write the reviewed candidate profile without promoting it.",
-                ),
-            ),
-            "configuration_notes": (
-                "--eval-data must name an existing retained-fixture directory and --out must have an existing parent directory.",
-                "An existing output is refused unless --overwrite is selected; replacement creates a numbered backup.",
-            ),
-            "behavior_notes": (
-                "Dry-run validates the replay plan without reading fixtures through the evaluator or writing output.",
-                "Apply writes only a candidate quality profile; it never changes the deployed router profile.",
-            ),
-        },
-        "eval calibrate": {
-            "examples": (
-                _example(
-                    "anvil-serving eval calibrate --config configs/example.toml --eval-data tests/fixtures/eval-data --out candidate-profile.json --endpoint fast-local=http://127.0.0.1:30001/v1 --endpoint heavy-local=http://127.0.0.1:30000/v1 --dry-run",
-                    "Validate every selected local tier and the independent-judge plan.",
-                ),
-                _example(
-                    "anvil-serving eval calibrate --mode agentic --eval-data tests/fixtures/eval-data --out candidate-profile.json --endpoint fast-local=http://127.0.0.1:30001/v1 --endpoint heavy-local=http://127.0.0.1:30000/v1 --confirm",
-                    "Measure the confirmed agentic-mode tiers into a candidate profile.",
-                ),
-            ),
-            "configuration_notes": (
-                "Select tiers with --config, --mode, ANVIL_MODE, or the active modes manifest; an explicit --config bypasses mode resolution.",
-                "Repeat --endpoint TIER=URL for every local tier, exactly matching the selected router configuration.",
-            ),
-            "behavior_notes": (
-                "Dry-run validates selectors, endpoints, fixture data, and output without calling tiers or the judge.",
-                "Apply uses an independent Agent-SDK judge and writes only a reviewable candidate; it never promotes routing trust.",
             ),
         },
         "eval benchmark capacity": {
@@ -1965,11 +1828,6 @@ def build_command_tree() -> CommandTree:
                 _node("command", "Render a sidecar command.", handler=_handler("anvil_serving.voice_sidecar", argv_prefix=("command",)), options=(_option("--config", summary="Sidecar manifest TOML.", value_name="PATH"), _option("--with-auth", summary="Include the referenced router-token argument."))),
                 _node("compose", "Render sidecar compose configuration.", handler=_handler("anvil_serving.voice_sidecar", argv_prefix=("compose",)), options=(_option("--config", summary="Sidecar manifest TOML.", value_name="PATH"), _option("--service-name", summary="Rendered Compose service name.", value_name="NAME"), _option("--with-auth", summary="Include the referenced router-token argument."))),
             ), docs_anchor=f"{VOICE_CLI_DOC}#speech-to-speech-sidecar"),
-            *(_node(name, "Removed voice command.", tombstone=removed(replacement), visible=False) for name, replacement in (
-                ("up", "voice audio up"), ("down", "voice audio down"),
-                ("run", "voice proxy run"), ("bridge", "voice proxy bridge"),
-                ("start", "voice audio up"), ("stop", "voice audio down"),
-            )),
         ),
         docs_anchor=VOICE_CLI_DOC,
     )
@@ -2215,33 +2073,14 @@ def build_command_tree() -> CommandTree:
     }
     voice = _with_review_metadata(voice, voice_review_metadata)
     harness_sync_options = confirm_options + (
-        _option("--config", summary="Router configuration used to render presets.", value_name="PATH"),
+        _option("--config", summary="Router configuration used to render direct aliases.", value_name="PATH"),
         _option("--out", summary="Local OpenClaw configuration destination.", value_name="PATH"),
         _option("--base-url", summary="Router front-door URL visible to OpenClaw.", value_name="URL"),
         _option("--api-key-env", summary="Router bearer-token environment variable.", value_name="ENV"),
-        _option("--native-provider", summary="Safe native OpenClaw provider.", value_name="PROVIDER"),
-        _option("--native-model", summary="Model id within the safe native provider.", value_name="MODEL"),
-        _option("--plugin-dir", summary="Absolute gateway-visible Anvil plugin directory.", value_name="PATH"),
-        _option("--tool-profile", summary="Explicit OpenClaw tool-surface profile.", value_name="PROFILE"),
-        _option("--exec-mode", summary="Explicit OpenClaw host-command policy.", value_name="MODE"),
-        _option("--client-side-routing", summary="Disable authoritative router decisions in the plugin."),
-        _option("--route-endpoint", summary="Authoritative Anvil route-decision URL.", value_name="URL"),
-        _option("--route-auth-env", summary="Route-decision token environment variable.", value_name="ENV"),
-        _option("--route-timeout-ms", summary="Authoritative route-decision timeout.", value_name="MILLISECONDS"),
-        _option("--gateway-host", summary="Remote OpenClaw gateway reached with OpenSSH.", value_name="HOST"),
-        _option("--gateway-user", summary="SSH user for the remote gateway.", value_name="USER"),
-        _option("--gateway-path", summary="Remote OpenClaw configuration path.", value_name="PATH"),
         _option("--overwrite", summary="Replace the target instead of merging Anvil-owned keys."),
-        _option("--restart", summary="Restart OpenClaw after applying configuration."),
-        _option("--timeout-seconds", summary="Per-process SSH, SCP, or OpenClaw timeout.", value_name="SECONDS"),
-        _option("--skills", summary="Include the workbench skill and Anvil agent roles."),
-        _option("--skill-dir", summary="Gateway-visible OpenClaw skill directory.", value_name="PATH"),
         _option("--voice", summary="Include OpenClaw Talk configuration for Anvil Voice."),
         _option("--voice-realtime-url", summary="Anvil Voice realtime WebSocket URL.", value_name="URL"),
         _option("--voice-model", summary="Model used by the realtime voice session.", value_name="MODEL"),
-        _option("--voice-consult-model", summary="OpenClaw model used for forced consults.", value_name="MODEL"),
-        _option("--voice-consult-thinking-level", summary="Thinking level used for forced consults.", value_name="LEVEL"),
-        _option("--voice-consult-bootstrap-context-mode", summary="Forced-consult bootstrap context mode.", value_name="MODE"),
         _option("--voice-api-key-env", summary="Anvil Voice bearer-token environment variable.", value_name="ENV"),
     )
     harness_restart_options = confirm_options + (
@@ -2257,13 +2096,8 @@ def build_command_tree() -> CommandTree:
         ("sync", "Synchronize harness configuration", "mutate", False, harness_sync_options, _remote(
             "openclaw_sync", confirmed=(("confirm", True),),
             allowed=(
-                "config", "base_url", "api_key_env", "native_provider", "native_model",
-                "plugin_dir", "tool_profile", "exec_mode", "client_side_routing",
-                "route_endpoint", "route_auth_env", "route_timeout_ms", "out", "overwrite",
-                "restart", "skills", "skill_dir", "voice", "voice_realtime_url", "voice_model",
-                "voice_consult_model", "voice_consult_thinking_level",
-                "voice_consult_bootstrap_context_mode", "voice_api_key_env", "dry_run",
-                "timeout_seconds",
+                "config", "base_url", "api_key_env", "out", "overwrite", "voice",
+                "voice_realtime_url", "voice_model", "voice_api_key_env", "dry_run",
             ),
         )),
         ("restart", "Restart the harness", "mutate", True, harness_restart_options, _remote(
@@ -2298,8 +2132,7 @@ def build_command_tree() -> CommandTree:
             remote_operation=_remote(mode="mcp-bridge"),
         ),
         _resource_node("tools", "List bounded MCP tools.", "anvil_serving.mcp", role="operator", argv_prefix=("list-tools",), remote_operation=_remote(mode="mcp-bridge")),
-        _node("list-tools", "Removed MCP tool-listing command.", tombstone=removed("mcp tools"), visible=False),
-    ), options=(_removed_option("--list-tools", replacement="mcp tools"),), tombstone=removed("mcp serve"), docs_anchor=f"{CONTROL_PLANE_DOC}#mcp")
+    ), docs_anchor=f"{CONTROL_PLANE_DOC}#mcp")
     controller = _node("controller", "Manage the private controller service.", children=(
         _resource_node(
             "serve",
@@ -2313,7 +2146,6 @@ def build_command_tree() -> CommandTree:
                 _option("--auth-token-env", summary="Controller token environment variable.", value_name="ENV"),
                 _option("--allow-public-bind", summary="Permit an authenticated public or wildcard bind."),
                 _option("--allow-operation", summary="Allowed controller operation; repeatable.", value_name="NAME"),
-                _removed_option("--allow-unauthenticated-loopback", replacement="Configure the token named by --auth-token-env"),
             ),
             output_policy="foreground",
         ),
@@ -2432,9 +2264,7 @@ def build_command_tree() -> CommandTree:
             role="host",
             mutation="mutate",
             recovery=True,
-            options=confirm_options + (
-                _removed_option("--force", replacement="--confirm"),
-            ),
+            options=confirm_options,
             execution_runtime_roles=("native",),
             execution_host_os=("windows", "macos"),
             docs_anchor=f"{HOST_DOC}#repair-the-host",
@@ -2452,9 +2282,7 @@ def build_command_tree() -> CommandTree:
             role="host",
             mutation="mutate",
             recovery=True,
-            options=confirm_options + (
-                _removed_option("--force", replacement="--confirm"),
-            ),
+            options=confirm_options,
             execution_runtime_roles=("native",),
             execution_host_os=("windows",),
             docs_anchor=f"{HOST_DOC}#repair-the-host",
@@ -2474,7 +2302,6 @@ def build_command_tree() -> CommandTree:
         mutation="mutate", execution_runtime_roles=("native",), execution_host_os=("windows",),
         options=confirm_options + (
             _option("--force", summary="Override the active model-load refusal."),
-            _removed_option("--yes", replacement="--confirm"),
             _option("--watch", summary="Foreground reclaim watchdog loop.", output_policy="follow"),
             _option("--threshold-gb", summary="Watch-mode cache threshold.", value_name="GB"),
             _option("--interval", summary="Watch-mode polling interval.", value_name="SECONDS"),
@@ -2951,17 +2778,17 @@ def build_command_tree() -> CommandTree:
                     "Render and validate the OpenClaw integration without writing or restarting.",
                 ),
                 _example(
-                    "anvil-serving harness sync openclaw --config configs/example.toml --base-url http://100.87.34.66:8000/v1 --native-provider openai --native-model gpt-5.6-sol --plugin-dir /opt/anvil/openclaw-anvil-intent-router --tool-profile full --exec-mode auto --gateway-host fakoli-mini --confirm",
-                    "Apply the complete reviewed setup on a remote gateway.",
+                    "anvil-serving harness sync openclaw --config configs/example.toml --base-url http://100.87.34.66:8000/v1 --out ~/.openclaw/openclaw.json --confirm",
+                    "Write the configured direct aliases into one local OpenClaw configuration.",
                 ),
             ),
             "configuration_notes": (
                 "--base-url defaults to http://127.0.0.1:8000/v1; a remote gateway needs the router address it can actually reach.",
-                "Fresh setup requires --native-provider/--native-model plus an absolute --plugin-dir; --tool-profile and --exec-mode change tool policy only when explicit.",
+                "The generated provider exposes only aliases declared in [router.model_routes].",
             ),
             "behavior_notes": (
-                "Dry-run reports whether the provider, native fallback, plugin load path, authoritative route, and tool policy form a complete fresh setup.",
-                "Apply replaces stale Anvil plugin paths, preserves unrelated operator configuration, writes a backup when a target exists, and restarts only when --restart is explicit.",
+                "Dry-run renders direct aliases without writing a file or contacting the gateway.",
+                "Apply preserves unrelated operator configuration and writes a backup when a target exists.",
             ),
         },
         "harness restart openclaw": {
@@ -3340,7 +3167,7 @@ def build_command_tree() -> CommandTree:
             _node("eval", eval_node.summary, children=eval_node.children, docs_anchor=eval_node.docs_anchor, group="Quality loop"),
             _node("voice", voice.summary, children=voice.children, docs_anchor=voice.docs_anchor, group="Voice"),
             _node("harness", harness.summary, children=harness.children, docs_anchor=harness.docs_anchor, group="Control plane & integrations"),
-            _node("mcp", mcp.summary, children=mcp.children, options=mcp.options, handler=mcp.handler, docs_anchor=mcp.docs_anchor, tombstone=mcp.tombstone, visible=mcp.visible, group="Control plane & integrations"),
+            _node("mcp", mcp.summary, children=mcp.children, options=mcp.options, handler=mcp.handler, docs_anchor=mcp.docs_anchor, visible=mcp.visible, group="Control plane & integrations"),
             _node("controller", controller.summary, children=controller.children, docs_anchor=controller.docs_anchor, group="Control plane & integrations"),
             _node("host", host.summary, children=host.children, docs_anchor=host.docs_anchor, group="Local serving tools"),
             _resource_node(
@@ -3375,13 +3202,6 @@ def build_command_tree() -> CommandTree:
             _node("dashboard", dashboard.summary, children=dashboard.children, docs_anchor=dashboard.docs_anchor, group="Local serving tools"),
             _node("edge", edge.summary, children=edge.children, docs_anchor=edge.docs_anchor, group="Control plane & integrations"),
             _node("workbench", workbench.summary, children=workbench.children, docs_anchor=workbench.docs_anchor, group="Control plane & integrations"),
-            *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
-                ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
-                ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),
-                ("preflight", "eval preflight"), ("benchmark", "eval benchmark capacity"),
-                ("external-bench", "eval benchmark external"), ("calibrate", "eval calibrate"),
-                ("gpus", "host gpus"), ("voice-sidecar", "voice sidecar"), ("onboard", "init"),
-            )),
         )
     tree = CommandTree(
         nodes=tuple(
@@ -3484,12 +3304,7 @@ def _validate_nodes(
                 f"duplicate option {sorted(duplicate_inherited)[0]!r} on {label!r}"
             )
         _validate_policy(node, label)
-        if node.tombstone is not None:
-            if node.handler is not None:
-                raise CommandTreeError(f"tombstone {label!r} must not declare a handler")
-            if not node.tombstone.replacement or not node.tombstone.docs_anchor:
-                raise CommandTreeError(f"tombstone {label!r} requires replacement and documentation")
-        elif not node.children and node.handler is None:
+        if not node.children and node.handler is None:
             raise CommandTreeError(f"command {label!r} has no handler")
         if node.handler is not None and resolve_handlers:
             node.handler.resolve()
@@ -3512,8 +3327,6 @@ def _validate_options(options: tuple[CommandOption, ...], label: str) -> None:
             if flag in flags:
                 raise CommandTreeError(f"duplicate option {flag!r} on {label!r}")
             flags.add(flag)
-        if option.tombstone is not None and (not option.tombstone.replacement or not option.tombstone.docs_anchor):
-            raise CommandTreeError(f"option tombstone on {label!r} requires replacement and documentation")
         if option.output_policy is not None and option.output_policy not in _OUTPUT_POLICIES:
             raise CommandTreeError(f"option on {label!r} has an invalid output policy")
 
@@ -3601,7 +3414,6 @@ def _manifest_records(nodes: tuple[CommandNode, ...], parent: tuple[str, ...], i
             "gpu_role_required": node.gpu_role_required,
             "handler": node.handler.name if node.handler else None,
             "remote_operation": _remote_operation_data(node.remote_operation),
-            "tombstone": _tombstone_data(node.tombstone),
             "docs_anchor": node.docs_anchor,
         }
         yield from _manifest_records(node.children, path, options)
@@ -3612,7 +3424,6 @@ def _option_data(option: CommandOption) -> dict[str, object]:
         "flags": list(option.flags),
         "summary": option.summary,
         "value_name": option.value_name,
-        "tombstone": _tombstone_data(option.tombstone),
         "output_policy": option.output_policy,
         "requires_confirmation": option.requires_confirmation,
     }
@@ -3629,12 +3440,6 @@ def _remote_operation_data(remote: RemoteOperation | None) -> dict[str, object] 
         "allowed_arguments": list(remote.allowed_arguments),
         "positional_arguments": list(remote.positional_arguments),
     }
-
-
-def _tombstone_data(tombstone: Tombstone | None) -> dict[str, str] | None:
-    if tombstone is None:
-        return None
-    return {"replacement": tombstone.replacement, "docs_anchor": tombstone.docs_anchor}
 
 
 def render_manifest(tree: CommandTree = COMMAND_TREE) -> bytes:

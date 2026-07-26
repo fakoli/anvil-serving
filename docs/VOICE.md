@@ -13,10 +13,10 @@ Realtime client
   -> Realtime audio output
 ```
 
-The intent is to keep voice ownership local while still using anvil-serving's
-router for the LLM turn. STT and TTS stay as replaceable out-of-process serves;
-the LLM request still goes through the quality-gated router, so voice turns can
-use the same local-first, verified, opt-in-cloud policy as text agents.
+The voice loop stays local while anvil-serving's gateway handles the LLM turn.
+STT and TTS remain replaceable out-of-process serves; the LLM request selects a
+configured direct alias such as `llm.voice`, normally backed by the low-latency
+model on the RTX 5090.
 
 The voice pipeline is different from `voice sidecar`. `voice sidecar` renders
 commands or compose manifests for Hugging Face's `speech-to-speech` project,
@@ -143,7 +143,7 @@ realtime_port = 8765
 
 [voice.llm]
 base_url = "http://127.0.0.1:8000/v1"
-model = "chat-fast"
+model = "llm.voice"
 stream = true
 api_key_env = "ANVIL_ROUTER_TOKEN"
 history_max_turns = 8
@@ -203,7 +203,7 @@ Manifest hygiene follows the rest of the repo:
   PCM. Keep `response_format = "pcm"` because the pipeline still emits raw PCM
   internally. The older `cartesia` spelling is accepted as a local wire-protocol
   alias; it is not a full Cartesia cloud integration.
-- `voice.llm.model` remains the manifest-owned Anvil router preset. Realtime
+- `voice.llm.model` remains the manifest-owned direct Anvil alias. Realtime
   clients may send `session.model`, but Anvil Voice does not let that field
   override local routing.
 
@@ -556,7 +556,7 @@ anvil-serving harness sync openclaw \
   --base-url http://100.87.34.66:8000/v1 \
   --voice \
   --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
-  --voice-consult-model anvil/chat-fast \
+  --voice-consult-model llm.voice \
   --voice-consult-thinking-level off \
   --voice-consult-bootstrap-context-mode lightweight \
   --out ./openclaw.anvil.json
@@ -564,7 +564,7 @@ anvil-serving harness sync openclaw \
 
 The generated Talk config selects the OpenClaw provider id `anvil` and points
 it at the Anvil Voice Realtime server. It also pins forced OpenClaw agent
-consults to the low-latency `anvil/chat-fast` preset and disables consult
+consults to the low-latency `llm.voice` model and disables consult
 thinking for lower spoken-turn latency. It also keeps forced consults on
 OpenClaw's lightweight bootstrap path so workspace bootstrap files such as
 `MEMORY.md` are not injected into every spoken turn, without changing the
@@ -573,7 +573,7 @@ session's normal selected model:
 ```json5
 {
   talk: {
-    consultModel: "anvil/chat-fast",
+    consultModel: "llm.voice",
     consultThinkingLevel: "off",
     consultBootstrapContextMode: "lightweight",
     realtime: {
@@ -585,7 +585,7 @@ session's normal selected model:
       providers: {
         anvil: {
           realtimeUrl: "ws://127.0.0.1:8765/v1/realtime",
-          model: "fast-local",
+          model: "llm.voice",
           silenceDurationMs: 200
         }
       }
@@ -595,10 +595,10 @@ session's normal selected model:
 ```
 
 `--voice-consult-model` is optional when the router config exposes the
-`chat-fast` preset; `harness sync openclaw --voice` selects `anvil/chat-fast`
-by default and falls back to `anvil/chat` if the preset is absent. Pass
-`--voice-consult-model anvil/chat` to switch the forced consult path back to
-the standard chat preset. `--voice-consult-thinking-level` defaults to `off`
+`llm.voice` alias; `harness sync openclaw --voice` selects
+`llm.voice` by default and falls back to `llm.primary` if the
+voice alias is absent. Pass `--voice-consult-model llm.primary` to use
+the primary LLM explicitly. `--voice-consult-thinking-level` defaults to `off`
 so old Talk configs that carried `consultThinkingLevel: "low"` are reset during
 sync; raise it only when an operator deliberately trades latency for reasoning.
 `--voice-consult-bootstrap-context-mode` defaults to `lightweight` and replaces
@@ -698,10 +698,10 @@ anvil-serving voice benchmark \
 
 Do not combine `--candidate-overlay` with the direct candidate flags. Both
 paths preserve the selected audio profile and only replace `[voice.llm]` for
-the benchmark process. They do not promote the candidate, change the router's
-Fast preset, or make OpenClaw use the candidate outside this explicit run.
+the benchmark process. They do not promote the candidate, change the direct
+voice alias, or make OpenClaw use the candidate outside this explicit run.
 
-For Fast-tier LLM bakeoffs, pair `voice benchmark` with
+For voice-LLM bakeoffs, pair `voice benchmark` with
 `anvil-serving eval benchmark quality` against the same loaded endpoint and record
 the final `anvil-serving serves --manifest examples/fakoli-dark/serves.toml
 status` after restoring production Fast. Voice benchmark JSON is stage-latency

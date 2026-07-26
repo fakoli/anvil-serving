@@ -521,9 +521,9 @@ def test_eval_benchmark_external_dispatches_and_removed_roots_refuse(capsys):
     assert "# External Benchmark Comparison" in capsys.readouterr().out
 
     assert top_cli.main(["external-bench", "list"]) == 2
-    assert "was removed" in capsys.readouterr().err
+    assert "unknown command: external-bench" in capsys.readouterr().err
     assert top_cli.main(["benchmark", "external", "list"]) == 2
-    assert "was removed" in capsys.readouterr().err
+    assert "unknown command: benchmark" in capsys.readouterr().err
 
 
 def test_external_import_requires_confirmation_but_dry_run_never_writes(capsys):
