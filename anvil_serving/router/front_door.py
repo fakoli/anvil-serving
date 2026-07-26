@@ -179,7 +179,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   auth_token: Optional[str] = None,
                   purpose: Optional[PurposeRouter] = None,
                   audio: Optional[AudioGateway] = None,
-                  response_model_resolver: Optional[Callable[[str], str]] = None):
+                  response_model_resolver: Optional[Callable[[str], str]] = None,
+                  model_routes: Iterable[str] = ()):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -755,7 +756,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     # Preset discovery: list the configured presets (intent tokens)
                     # as OpenAI-shaped "models" so a harness model picker can find
                     # them. Derived from the canonical presets passed in.
-                    self._json(200, models_payload(presets))
+                    self._json(200, models_payload(presets, model_routes))
                 elif route == DECISION_SUMMARY_ENDPOINT:
                     query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                     raw_limit = (query.get("limit") or ["20"])[0]
@@ -1141,6 +1142,7 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
                 purpose: Optional[PurposeRouter] = None,
                 audio: Optional[AudioGateway] = None,
                 response_model_resolver: Optional[Callable[[str], str]] = None,
+                model_routes: Iterable[str] = (),
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -1182,7 +1184,7 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     httpd = ThreadingHTTPServer(
         (host, port),
         _make_handler(backend, timeout, presets, exhaustion_status, auth_token,
-                      purpose, audio, response_model_resolver),
+                      purpose, audio, response_model_resolver, model_routes),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd

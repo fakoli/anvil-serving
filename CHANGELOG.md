@@ -8,6 +8,14 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Additive direct model routes.** `[router.model_routes]` maps normalized chat model aliases to
+  exactly one configured local tier before the legacy intent, quality-profile, residency, and
+  alternate fallback selection path. Aliases cannot shadow preset/tier tokens or target cloud
+  tiers. Direct routes retain authentication, Anthropic/OpenAI dialect handling, SSE, readiness,
+  admission, hard context/tool constraints, minimal local verification, and metadata-only
+  decision logs. Alias misses remain on the compatibility path in this first slice, and
+  `/v1/models` advertises configured aliases without duplicating legacy presets. See ADR-0028.
+
 - **Bearer-authed per-tier/serve health snapshot.** `GET /v1/health/tiers` returns a live
   readiness snapshot for EVERY configured serve — chat `llm` tiers, purpose models, and audio
   routes — not only recently-routed ones, so a configured-but-idle tier is no longer
@@ -63,6 +71,12 @@ All notable changes to this project are documented here. The format is based on
   The earlier `--recipe MODEL` spelling remains available as a compatibility alias.
 
 ### Changed
+
+- **Serving and benchmark evidence are now the product center.** The reference topology assigns
+  primary LLM inference to the RTX PRO 6000 and uses the RTX 5090 for a low-latency voice LLM,
+  STT/TTS, embeddings, reranking, and on-demand ComfyUI. The established intelligent-routing path
+  remains available for compatibility, but new growth is frozen pending explicit migration
+  acceptance. No serve or model is promoted by this framing change.
 
 - **Private-only evidence grounding has been removed.** The historical Anvil integration audit,
   planning-capability evaluation, complete bounded eval bundle, and harness-routing research are

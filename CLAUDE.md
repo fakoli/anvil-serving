@@ -1,10 +1,13 @@
 # anvil-serving — context for Claude Code
 
-**What this is:** a network-facing, quality-gated router that fronts the Anthropic and OpenAI APIs
-and routes coding-harness traffic across local and cloud model tiers — with per-request structural
-verification, configured cloud fallback, or clean exhaustion for gateway handoff. Install, run
-`anvil-serving router run`, point your harness at `http://127.0.0.1:8000`, and you get *local where it is
-measured safe, explicit escalation where it is not*.
+**What this is:** a local-model serving and benchmarking substrate with a thin, network-facing
+capability gateway for Anthropic and OpenAI-compatible traffic. The reference hardware focus is an
+RTX PRO 6000 primary LLM and an RTX 5090 for low-latency voice LLM, STT/TTS, embeddings, reranking,
+and on-demand ComfyUI. The gateway retains auth, dialect translation, SSE, readiness, admission,
+and decision logs. Its established quality-gated intent/profile router remains available for
+compatibility, but new intelligent-routing growth is frozen while direct capability routes are
+accepted. Install, run `anvil-serving router run`, and point a harness at
+`http://127.0.0.1:8000`.
 
 The router is **shipped** on `main`. The source tree is versioned v0.13.2, while published tags and
 package releases can lag `main`. Main includes the OpenClaw MCP/control-plane work:
@@ -113,8 +116,12 @@ templates/   configs/   docs/   examples/fakoli-dark/   plugins/
 ### Request path (one sentence per module)
 1. **`front_door`** receives the request, parses it with the matching **`dialects/`** parser into
    an `InternalRequest`, and hands it to the injected backend.
-2. **`serve.RoutingBackend`** calls `intent.resolve()` (preset from `model` field, or Tier-0
-   `classify`) then `policy.route()` to get an ordered candidate list.
+2. **`serve.RoutingBackend`** first checks `[router.model_routes]` for a normalized `model` alias
+   (case-insensitive, optional `anvil/` or `anvil:` prefix removed); a match selects one configured
+   local tier directly. Aliases cannot shadow preset or tier tokens and cannot target cloud tiers.
+   An unmatched value keeps the compatibility path:
+   `intent.resolve()` (preset from `model` field, or Tier-0 `classify`) then `policy.route()` to
+   get an ordered candidate list. Slice 1 does not turn unmatched names into strict 404s.
 3. **`fallback`** walks candidates; for each, `verify` runs cheap structural checks on the
    assembled response; on failure it escalates to the next tier.
 4. For streaming on fail-prone classes, **`commit_window`** buffers the local response and
@@ -268,10 +275,13 @@ reds the global `test_repository_scope_inventories_match` at the review gate.
 
 ## Key design decisions (the "why")
 
-- **The `model` field is the routing channel.** It's present in both Anthropic Messages and
-  OpenAI Chat Completions, forwarded verbatim, and free-form. Named presets in the model
-  field (`planning`, `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, `ocr`, `vision`) is the right
-  wire surface for harnesses that can be configured (Claude Code, Aider, Codex CLI).
+- **The `model` field is the capability channel.** It is present in both Anthropic Messages and
+  OpenAI Chat Completions, forwarded verbatim, and free-form. `[router.model_routes]` normalized
+  aliases select a single local tier before legacy intent/policy/profile/residency/fallback
+  selection. They cannot shadow preset/tier tokens or target cloud tiers. Named
+  presets (`planning`, `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, `ocr`, `vision`)
+  remain the compatibility surface for callers that do not use an alias; unmatched names still
+  reach that path in slice 1 rather than returning a strict unknown-model 404.
 - **Tier-0 classifier is the universal floor.** For harnesses that can't set the model
   field (or don't), `classify.py` infers work-class from the raw payload (token count,
   `thinking` flag, tool types, image content, system-prompt fingerprint).

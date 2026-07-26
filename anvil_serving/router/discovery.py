@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from .intent import PRESETS, Preset
+from .intent import PRESETS, Preset, parse_model
 
 OWNED_BY = "anvil-serving"
 
@@ -46,7 +46,22 @@ def model_entry(preset: Preset) -> dict:
     }
 
 
-def models_payload(presets: Iterable[Preset] = PRESETS) -> dict:
+def model_route_entry(alias: str) -> dict:
+    """Build one discovery entry for a configured exact model alias."""
+    return {
+        "id": alias,
+        "object": "model",
+        "name": alias,
+        "description": "Configured direct model route",
+        "owned_by": OWNED_BY,
+        "created": CREATED,
+    }
+
+
+def models_payload(
+    presets: Iterable[Preset] = PRESETS,
+    model_routes: Iterable[str] = (),
+) -> dict:
     """Build the OpenAI ``/v1/models`` response from the canonical presets.
 
     ``presets`` defaults to :data:`~anvil_serving.router.intent.PRESETS` — the
@@ -54,7 +69,11 @@ def models_payload(presets: Iterable[Preset] = PRESETS) -> dict:
     shape is OpenAI's list envelope so off-the-shelf OpenAI clients (and the
     Claude Code gateway model picker) parse it directly.
     """
-    return {
-        "object": "list",
-        "data": [model_entry(p) for p in presets],
-    }
+    entries = [model_entry(p) for p in presets]
+    seen = {parse_model(entry["id"]) for entry in entries}
+    for alias in model_routes:
+        normalized = parse_model(alias)
+        if normalized and normalized not in seen:
+            entries.append(model_route_entry(alias))
+            seen.add(normalized)
+    return {"object": "list", "data": entries}

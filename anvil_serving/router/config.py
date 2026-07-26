@@ -275,6 +275,14 @@ class RouterConfig:
     # Default False keeps response.model equal to the caller's routing token;
     # True reports the tier id that actually served across every chat dialect.
     transparent_response_model: bool = False
+    # Optional exact caller model aliases that bypass the intent/profile policy
+    # pipeline and bind directly to one configured tier.  The loader validates
+    # their normalized keys; keeping the configured spelling here lets model
+    # discovery advertise precisely what an operator configured. Appended to
+    # preserve positional construction of the pre-existing optional fields.
+    model_routes: Mapping[str, str] = field(
+        default_factory=lambda: MappingProxyType({}), hash=False
+    )
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
@@ -905,6 +913,65 @@ def load(path: str) -> RouterConfig:
                 )
         presets[name] = tuple(cands)
 
+    # ``model_routes`` is deliberately separate from presets: a mapped alias
+    # selects exactly one tier before intent classification and quality-policy
+    # routing.  Normalize keys using the same wire-token rules as intent.py so
+    # aliases are unambiguous for the front door (including ``anvil/`` forms).
+    raw_model_routes = router.get("model_routes", {})
+    if not isinstance(raw_model_routes, dict):
+        raise ConfigError(f"[router].model_routes must be a table in {path}")
+
+    def _normalized_alias(alias: str) -> str:
+        normalized = alias.strip().lower()
+        for prefix in ("anvil/", "anvil:"):
+            if normalized.startswith(prefix):
+                return normalized[len(prefix):].strip()
+        return normalized
+
+    model_routes: dict[str, str] = {}
+    seen_model_aliases: set[str] = set()
+    # Direct aliases are a new capability vocabulary, not an override for the
+    # established preset/tier tokens. Import locally to avoid config.py <->
+    # intent.py import-time coupling while keeping PRESETS the canonical source.
+    from .intent import PRESETS
+
+    reserved_model_aliases = {
+        _normalized_alias(preset.id) for preset in PRESETS
+    }
+    reserved_model_aliases.update(
+        _normalized_alias(name) for name in presets
+    )
+    reserved_model_aliases.update(
+        _normalized_alias(tier_id) for tier_id in seen_ids
+    )
+    tiers_by_id = {tier.id: tier for tier in tiers}
+    for alias, tier_id in raw_model_routes.items():
+        if not isinstance(alias, str) or not _normalized_alias(alias):
+            raise ConfigError(
+                f"model route alias must be a non-empty string, got {alias!r}"
+            )
+        normalized_alias = _normalized_alias(alias)
+        if normalized_alias in seen_model_aliases:
+            raise ConfigError(
+                f"duplicate model route alias (case-insensitive): {alias!r}"
+            )
+        if normalized_alias in reserved_model_aliases:
+            raise ConfigError(
+                f"model route alias {alias!r} conflicts with a reserved "
+                "preset or tier model token"
+            )
+        if not isinstance(tier_id, str) or tier_id not in seen_ids:
+            raise ConfigError(
+                f"model route {alias!r} references unknown tier id: {tier_id!r}"
+            )
+        if tiers_by_id[tier_id].privacy != "local":
+            raise ConfigError(
+                f"model route {alias!r} must target a privacy='local' tier; "
+                "direct aliases cannot bypass the metered-cloud billing gate"
+            )
+        seen_model_aliases.add(normalized_alias)
+        model_routes[alias] = tier_id
+
     mapping_version = router.get("mapping_version")
     if not isinstance(mapping_version, str) or not mapping_version:
         raise ConfigError(f"[router].mapping_version must be a non-empty string in {path}")
@@ -1142,6 +1209,7 @@ def load(path: str) -> RouterConfig:
         tiers=tuple(tiers),
         presets=MappingProxyType(presets),
         mapping_version=mapping_version,
+        model_routes=MappingProxyType(model_routes),
         metered_cloud=metered_cloud,
         exhaustion_status=exhaustion_status,
         cost_sync=cost_sync,

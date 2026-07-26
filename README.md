@@ -4,7 +4,7 @@
 
 # anvil-serving
 
-> **The quality-gated local-model router for coding agents.**
+> **Benchmark and serve local models; expose them through a thin capability gateway.**
 >
 > *Run local where it is measured safe. Verify risky local output. Keep cloud explicit.*
 
@@ -15,13 +15,17 @@
 
 </div>
 
-Point a coding agent or harness at one anvil-serving endpoint. Per request, the router resolves a
-workload intent, chooses a fast-local, heavy-local, or opt-in cloud tier from a measured quality
-profile, and runs structural verification where the profile says a local answer must be checked
-before it reaches the agent.
+Benchmark and operate local model serves, then point a coding agent or harness at one
+anvil-serving endpoint. The router is a thin, authenticated capability gateway: a configured
+model alias can select a tier directly, while the established intent/profile routing path remains
+available for callers that use it. Structural verification remains available where the legacy
+quality profile requires it.
 
-anvil-serving is not a generic token proxy. It is a local-first routing layer that answers the
-question a proxy cannot answer: **is this local model trusted for this kind of work?**
+The primary product focus is repeatable local serving and benchmark evidence. The reference
+topology uses an RTX PRO 6000 for primary LLM candidates and an RTX 5090 for a low-latency voice
+LLM, STT/TTS, embeddings, reranking, and on-demand ComfyUI. The gateway retains protocol
+translation, SSE, readiness, admission, and decision evidence around those capabilities. It is not
+a generic token proxy.
 
 For OpenClaw and agent-assisted operations, anvil-serving also exposes a structured control plane:
 `anvil-serving mcp serve` for same-host stdio MCP, and `anvil-serving controller serve` for a
@@ -58,15 +62,28 @@ anvil-serving routes with evidence:
 
 ## How It Works
 
-Callers send a workload intent in the `model` field:
+For a direct capability route, callers send a configured alias in the `model` field:
+
+```text
+llm.primary   llm.voice
+```
+
+A matched alias (case-insensitive, with the optional `anvil/` or `anvil:` namespace removed)
+selects its one configured local tier before the legacy intent, policy, profile,
+residency, or fallback selection path. Authentication, dialect translation, SSE, readiness,
+admission, and decision logging still apply. In this first additive slice, an unmatched value
+remains on the legacy path; it is not a strict unknown-model 404.
+
+Legacy callers can still send a workload intent in the `model` field:
 
 ```text
 planning   quick-edit   review   chat   chat-fast   long-context   ocr   vision
 ```
 
-The router maps that intent to candidate tiers, filters them by hard constraints, ranks by the
+The legacy path maps that intent to candidate tiers, filters them by hard constraints, ranks by the
 quality profile, and optionally verifies the response before returning it. If the caller cannot set
-an intent, the Tier-0 classifier infers the work class from the request.
+an intent, the Tier-0 classifier infers the work class from the request. This path is retained for
+compatibility, but new intelligent-routing growth is frozen pending compatibility acceptance.
 
 ```mermaid
 flowchart LR

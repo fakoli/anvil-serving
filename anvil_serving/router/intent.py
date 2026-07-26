@@ -1,14 +1,16 @@
 """Intent resolution: presets, Tier-0 classifier, override (harness-router:T003).
 
 Turns a caller's request into an :class:`Intent` — the work class plus the
-ordered pool of candidate tier ids a later ranking stage will pick from. Three
+ordered pool of candidate tier ids a later ranking stage will pick from. Four
 sources feed it, in precedence order:
 
-1. **declared-preset** — the ``model`` field names a configured preset
+1. **model-route** — the ``model`` field exactly matches a configured direct
+   alias and selects its one configured tier.
+2. **declared-preset** — the ``model`` field names a configured preset
    (``"planning"``, ``"quick-edit"``, ...). Optionally namespaced ``anvil/``.
-2. **pinned** — the ``model`` field names a concrete tier id. This is the
+3. **pinned** — the ``model`` field names a concrete tier id. This is the
    override escape hatch: skip inference, route straight to that one tier.
-3. **inferred** — anything else (unknown or empty model): hand off to the
+4. **inferred** — anything else (unknown or empty model): hand off to the
    Tier-0 :func:`~anvil_serving.router.classify.classify` heuristics.
 
 Precedence is deliberate: **declared-preset is checked BEFORE pin**, so if a
@@ -176,7 +178,7 @@ class Intent:
 
     work_class: Optional[str]
     preset: Optional[str]
-    source: str  # "declared-preset" | "inferred" | "pinned"
+    source: str  # "model-route" | "declared-preset" | "inferred" | "pinned"
     candidate_tiers: tuple[str, ...]
     ambiguous: bool
     decision: Mapping[str, Any] = field(compare=False, hash=False)
@@ -241,11 +243,19 @@ def resolve(request: InternalRequest, config: RouterConfig) -> Intent:
     # Case-insensitive lookup tables mapping the normalized (lower-cased) token
     # back to the ACTUAL-cased config key, so a mixed-case preset/tier id is
     # reachable. ``parse_model`` already lower-cased ``m``.
+    model_route_lc = {parse_model(alias): tier_id for alias, tier_id in config.model_routes.items()}
     preset_lc = {p.lower(): p for p in config.presets}
     tier_lc = {t.id.lower(): t.id for t in config.tiers}
 
-    if m and m in preset_lc:
-        # 1. Declared preset: caller named the routing class directly.
+    if m and m in model_route_lc:
+        # 1. Exact configured model route: bypass classification and policy.
+        preset = None
+        work_class = None
+        candidate_tiers = (model_route_lc[m],)
+        source = "model-route"
+        ambiguous = False
+    elif m and m in preset_lc:
+        # 2. Declared preset: caller named the routing class directly.
         #    Checked BEFORE pin so a preset shadows a same-named tier id.
         actual_preset = preset_lc[m]
         preset = actual_preset
@@ -258,7 +268,7 @@ def resolve(request: InternalRequest, config: RouterConfig) -> Intent:
         source = "declared-preset"
         ambiguous = False
     elif m and m in tier_lc:
-        # 2. Pinned: caller named a concrete tier id (override escape hatch).
+        # 3. Pinned: caller named a concrete tier id (override escape hatch).
         actual_tier = tier_lc[m]
         preset = None
         work_class = classify(request).work_class
@@ -266,7 +276,7 @@ def resolve(request: InternalRequest, config: RouterConfig) -> Intent:
         source = "pinned"
         ambiguous = False
     else:
-        # 3. Inferred: unknown/empty model -> Tier-0 classifier.
+        # 4. Inferred: unknown/empty model -> Tier-0 classifier.
         c = classify(request)
         work_class = c.work_class
         source = "inferred"

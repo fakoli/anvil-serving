@@ -111,6 +111,7 @@ The main table: tier topology, preset map, and routing policy knobs.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `tiers` | array of tables | required, non-empty | The serving endpoints the router may route to (see below). Duplicate tier ids are rejected. |
+| `model_routes` | table | `{}` | Caller `model` alias -> one known local tier-id capability map. Matching is case-insensitive after trimming and removing an optional `anvil/` or `anvil:` prefix. Aliases cannot shadow preset/tier tokens or target cloud tiers. A match selects that tier before the legacy intent/policy/profile/residency/fallback selection path; an unmatched value remains on the legacy path in slice 1 (not a strict unknown-model 404). |
 | `presets` | table | `{}` | Preset name -> ordered candidate tier-id list (see below). |
 | `mapping_version` | string | required, non-empty | Version stamp for this preset->tier mapping; recorded per request in the decision log. |
 | `metered_cloud` | list of strings | `[]` | **The billing gate.** The only work-classes permitted to route to a `privacy = "cloud"` tier. Absent or empty means a cloud tier is *never* a routing candidate, regardless of what preset pools include it ([ADR-0001](adr/0001-cloud-cost-and-subscription-auth.md)). |
@@ -204,6 +205,33 @@ value falls through to the Tier-0 classifier, which infers a work class from the
 the inferred preset is missing from your config, the request collapses to the safer tier. Config
 preset names are otherwise free-form — a custom name works as a declared preset for any caller
 that sends it, it just isn't advertised by `/v1/models`.
+
+## `[router.model_routes]`
+
+An additive direct capability map from a wire `model` alias to one known local tier id:
+
+```toml
+[router.model_routes]
+"llm.primary" = "heavy-local"
+"llm.voice"   = "fast-local"
+```
+
+The router trims and lower-cases the caller's `model` and removes an optional `anvil/` or
+`anvil:` prefix before matching. When that normalized value matches an alias, the router selects
+the mapped tier before the
+legacy intent resolver, policy, quality profile, residency selection, or fallback walk. The normal
+front-door concerns still apply: token auth, dialect translation, SSE behavior, tier readiness,
+admission limits, and metadata-only decision logging. The map does not create a new serving
+endpoint or change the tier's configured upstream `model`.
+
+Aliases must be distinct from the normalized canonical preset ids, configured preset names, and
+tier ids. They may target only `privacy = "local"` tiers; direct aliases cannot bypass the
+`metered_cloud` billing gate. Invalid aliases fail config loading at startup.
+
+This is intentionally additive in slice 1. An alias miss continues through the existing preset /
+Tier-0 classifier path, and therefore is **not** a strict unknown-model 404. Use purpose-model
+routes for embeddings and reranking and audio routes for STT/TTS; those deterministic surfaces do
+not enter chat capability routing.
 
 ## `[[router.purpose_models]]`
 

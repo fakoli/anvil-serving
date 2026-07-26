@@ -355,6 +355,7 @@ def route_with_fallback(
     verifier_timeout: Optional[float] = None,
     max_buffer_bytes: Optional[int] = _DEFAULT_MAX_BUFFER_BYTES,
     mode: Optional[str] = None,
+    intent: Optional[str] = None,
 ) -> FallbackResult:
     """Walk ``decision.tiers`` in order, serving the first tier that verifies.
 
@@ -503,6 +504,7 @@ def route_with_fallback(
                 for a in attempts
             ),
             cost_usd=cost_usd,
+            intent=intent,
             # Active serving mode (ADR-0011 / flexibility:T013); None (a --config
             # boot with no mode) leaves the record identical to pre-T013.
             mode=mode,

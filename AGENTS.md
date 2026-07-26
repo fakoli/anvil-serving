@@ -71,6 +71,25 @@ anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model <name>
 For router changes, the unit tests in `tests/router/` are the primary gate. Integration
 tests against a live local tier require `preflight`.
 
+## Agent model strategy
+
+Use model depth at decision boundaries, then reduce it for bounded execution:
+
+- Use **GPT-5.6 Sol with high reasoning** for behavior-first PRDs, product or
+  architecture boundaries, cross-cutting compatibility changes, and final
+  deprecation/removal review.
+- Use **GPT-5.6 Terra with medium reasoning** for focused implementation tasks
+  whose acceptance criteria and verification commands are already explicit.
+  Raise Terra to high for parser, router, migration, or edge-case-heavy work.
+- Use Terra low or medium for mechanical renames, fixtures, inventories,
+  documentation synchronization, and straightforward tests.
+- Prefer PR-sized tasks and the lowest reasoning effort that reliably passes
+  the independent verification gate. Avoid Max, Ultra, and subagent fan-out
+  unless the work is both genuinely difficult and cleanly decomposable.
+- A stronger planning pass is an efficiency measure only when it reduces
+  ambiguity and rework; it does not replace recorded tests or human promotion
+  approval.
+
 ## Working with the router
 
 The extension seams are in `router/seams.py` — use them rather than patching core modules

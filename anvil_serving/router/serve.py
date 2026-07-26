@@ -56,6 +56,7 @@ import os
 import sys
 import threading
 from http.server import ThreadingHTTPServer
+from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 # RelayBackend now lives in .backends.relay (#46); it is imported (and so
@@ -101,7 +102,7 @@ from .modes import (
 )
 
 
-from .policy import Needs, route
+from .policy import Needs, RoutingDecision, route
 from .profile_store import ProfileStore, default_profile
 from .purpose import PurposeRouter
 from .tier_health import build_tier_health
@@ -634,6 +635,48 @@ class RoutingBackend:
                 )
         return snapshot
 
+    def _routing_decision(self, intent, request: InternalRequest) -> RoutingDecision:
+        """Resolve the direct model-route branch or the legacy policy branch.
+
+        A direct route deliberately has a one-tier pool and never calls the
+        classifier-driven policy.  It retains the policy's request-level hard
+        constraints here because those protect the selected backend itself.
+        """
+        needs = _needs_for(request)
+        if intent.source != "model-route":
+            return route(
+                intent,
+                self._config,
+                self._profile,
+                residency=self._residency(),
+                needs=needs,
+            )
+
+        tier_id = intent.candidate_tiers[0]
+        tier = self._config.tier(tier_id)
+        dropped_by_context = (
+            (tier_id,) if needs.min_context > tier.context_limit else ()
+        )
+        dropped_by_constraint = (
+            (tier_id,)
+            if dropped_by_context or (needs.needs_tools and not tier.tool_support)
+            else ()
+        )
+        return RoutingDecision(
+            () if dropped_by_constraint else (tier_id,),
+            None,
+            notes=MappingProxyType({
+                "work_class": None,
+                "pool": (tier_id,),
+                "routing_source": "model-route",
+                "quality_gate": "bypassed: model-route",
+                "dropped_by_constraint": dropped_by_constraint,
+                "dropped_by_context": dropped_by_context,
+                "dropped_by_metered_gate": (),
+                "dropped_by_deny": (),
+            }),
+        )
+
     def generate(self, request: InternalRequest) -> Iterator[str]:
         # Clear request-thread state before every route so a subsequent request
         # on a reused HTTP worker can never inherit the prior winning tier. The
@@ -643,12 +686,8 @@ class RoutingBackend:
         # a routing failure raises here — the front door catches NoAvailableTierError
         # before committing a streaming 200 and answers a clean 503.
         intent = resolve(request, self._config)
-        # Residency-aware routing (AC3 anti-thrash): pass the local tier that
-        # last served so policy.route() defers swap-forcing non-resident locals
-        # behind the resident local + cloud. An optimisation, not correctness:
-        # with no residency yet (None) the config cost order is untouched.
-        decision = route(intent, self._config, self._profile,
-                         residency=self._residency(), needs=_needs_for(request))
+        model_route = intent.source == "model-route"
+        decision = self._routing_decision(intent, request)
 
         # Narrow to tiers for which we hold a live backend (preserve gate order).
         # The policy deny-filter already ran; what remains is allow / allow-with-verify.
@@ -693,12 +732,17 @@ class RoutingBackend:
                 work_class,
                 [NonEmptyContent(), NotTruncated()],
                 availability,
+                intent="model-route" if model_route else None,
             )
             raise NoAvailableTierError(
                 work_class, bound_tiers, kind="unavailable"
             )
 
-        first_verdict = self._tier_verdict(available_tiers[0], work_class)
+        first_verdict = (
+            "allow"
+            if model_route
+            else self._tier_verdict(available_tiers[0], work_class)
+        )
         first_tier = self._config.tier(available_tiers[0])
         raw = request.raw if isinstance(request.raw, Mapping) else {}
         # Tool contracts are a correctness boundary, not an optional quality
@@ -750,37 +794,79 @@ class RoutingBackend:
                     work_class,
                     [NonEmptyContent(), NotTruncated()],
                     availability,
+                    intent="model-route" if model_route else None,
                 )
                 if result.exhausted:
                     raise NoAvailableTierError(
                         work_class, bound_tiers, kind="unavailable"
                     )
-                self._note_selected(result.served_tier)
+                if not model_route:
+                    self._note_selected(result.served_tier)
                 self._thread_local.last_served_tier = result.served_tier
                 self._thread_local.last_result = result.structured
                 return iter([result.text])
             # Selected at route time, before the backend call (AC3 residency).
-            self._note_selected(available_tiers[0])
+            if not model_route:
+                self._note_selected(available_tiers[0])
             self._thread_local.last_served_tier = available_tiers[0]
             self._thread_local.last_result = None  # cleared; set when stream finishes
             _fragments: List[str] = []
+
+            def _record_direct_stream_failure(reason: str) -> None:
+                if not model_route:
+                    return
+                prompt_tokens = estimate_tokens(
+                    [m.content for m in request.messages]
+                )
+                correlation = request_correlation(request)
+                self._decision_log.record(DecisionRecord(
+                    work_class=work_class,
+                    requested_tiers=bound_tiers,
+                    attempts=(
+                        AttemptRecord(
+                            available_tiers[0],
+                            False,
+                            reason,
+                            prompt_tokens,
+                            0,
+                            "error",
+                        ),
+                    ),
+                    served_tier=None,
+                    total_prompt_tokens=prompt_tokens,
+                    total_completion_tokens=0,
+                    fell_back=False,
+                    mode=self._mode,
+                    intent="model-route",
+                    **correlation,
+                ))
 
             def _complete_allow() -> None:
                 _fn = getattr(inner_backend, "get_last_structured", None)
                 structured = _fn() if callable(_fn) else None
                 self._thread_local.last_result = structured
                 correlation = request_correlation(request)
-                # Historically a raw trusted-allow stream has no decision-log
-                # record; adding it after a long stream changes chronological
-                # ordering for existing operational consumers. Workbench asks
-                # explicitly for durable lineage, so only correlated direct
-                # streams receive this supplemental record.
-                if not any(correlation.values()):
+                # Preserve the historical no-record behavior for uncorrelated
+                # legacy trusted streams. Correlated Workbench traffic and every
+                # direct model route require durable decision evidence.
+                if not any(correlation.values()) and not model_route:
                     return
                 text = "".join(_fragments)
-                usage = getattr(structured, "usage", None) if structured is not None else None
-                prompt_tokens = int(usage.get("input_tokens", 0)) if usage is not None else estimate_tokens([m.content for m in request.messages])
-                completion_tokens = int(usage.get("output_tokens", 0)) if usage is not None else estimate_tokens([text])
+                usage = (
+                    getattr(structured, "usage", None)
+                    if structured is not None
+                    else None
+                )
+                prompt_tokens = (
+                    int(usage.get("input_tokens", 0))
+                    if usage is not None
+                    else estimate_tokens([m.content for m in request.messages])
+                )
+                completion_tokens = (
+                    int(usage.get("output_tokens", 0))
+                    if usage is not None
+                    else estimate_tokens([text])
+                )
                 try:
                     cost_usd = compute_cost_usd(first_tier, prompt_tokens, completion_tokens)
                 except Exception:  # noqa: BLE001 - observability cannot fail a response
@@ -788,21 +874,40 @@ class RoutingBackend:
                 record = DecisionRecord(
                     work_class=work_class,
                     requested_tiers=bound_tiers,
-                    attempts=(AttemptRecord(available_tiers[0], True, "allow", prompt_tokens, completion_tokens, "served"),),
+                    attempts=(
+                        AttemptRecord(
+                            available_tiers[0],
+                            True,
+                            "allow",
+                            prompt_tokens,
+                            completion_tokens,
+                            "served",
+                        ),
+                    ),
                     served_tier=available_tiers[0],
                     total_prompt_tokens=prompt_tokens,
                     total_completion_tokens=completion_tokens,
                     fell_back=False,
                     cost_usd=cost_usd,
                     mode=self._mode,
+                    intent="model-route" if model_route else None,
                     **correlation,
                 )
                 self._decision_log.record(record)
 
             def _generate_allow() -> Iterator[str]:
-                for delta in inner_backend.generate(request):
-                    _fragments.append(delta)
-                    yield delta
+                try:
+                    for delta in inner_backend.generate(request):
+                        _fragments.append(delta)
+                        yield delta
+                except GeneratorExit:
+                    _record_direct_stream_failure("client_disconnected")
+                    raise
+                except BaseException as exc:
+                    _record_direct_stream_failure(
+                        f"backend_error_{type(exc).__name__}"
+                    )
+                    raise
 
             return _AdmissionIterator(
                 _generate_allow, lease, _complete_allow
@@ -823,7 +928,12 @@ class RoutingBackend:
             else [NonEmptyContent(), NotTruncated()]
         )
         result = self._route_with_verify(
-            request, bound_tiers, work_class, verifiers, availability
+            request,
+            bound_tiers,
+            work_class,
+            verifiers,
+            availability,
+            intent="model-route" if model_route else None,
         )
         if result.exhausted:
             # Every gated, bound candidate failed verify (or was guarded out by the
@@ -837,7 +947,8 @@ class RoutingBackend:
 
         # The verify walk may have escalated past the first candidate: record
         # the tier that ACTUALLY served as the resident (AC3 residency).
-        self._note_selected(result.served_tier)
+        if not model_route:
+            self._note_selected(result.served_tier)
         self._thread_local.last_served_tier = result.served_tier
 
         # Propagate the winning tier's structured fields to our thread-local so
@@ -856,6 +967,7 @@ class RoutingBackend:
         work_class: Optional[str],
         verifiers: Sequence,
         availability: Mapping[str, AvailabilityResult],
+        intent: Optional[str] = None,
     ):
         """Buffer + run ``verifiers`` over ``bound_tiers`` via
         :func:`~anvil_serving.router.fallback.route_with_fallback`.
@@ -934,6 +1046,7 @@ class RoutingBackend:
             availability_for=lambda tier_id: availability[tier_id],
             admission_for=self._admission.acquire,
             mode=self._mode,
+            intent=intent,
         )
 
     def tier_health(self) -> dict:
@@ -1054,10 +1167,7 @@ class RoutingBackend:
         from .dialects import _new_id
 
         intent = resolve(request, self._config)
-        # Residency passed read-only so /v1/route reflects the real anti-thrash
-        # order; decide() never serves, so it never UPDATES residency.
-        decision = route(intent, self._config, self._profile,
-                         residency=self._residency(), needs=_needs_for(request))
+        decision = self._routing_decision(intent, request)
 
         # Narrow to tiers that are both gated (allow / allow-with-verify) AND
         # have a live backend — mirrors generate()'s bound-tier logic exactly
@@ -1103,7 +1213,7 @@ class RoutingBackend:
 
         # Confidence: deterministic scheme (see docstring).
         source = intent.source
-        if source == "declared-preset":
+        if source in ("declared-preset", "model-route"):
             confidence: float = 1.0
         elif source == "pinned":
             confidence = 0.9
@@ -1116,7 +1226,9 @@ class RoutingBackend:
         notes = decision.notes
         quality_gate = str(notes.get("quality_gate", ""))
         denied = list(notes.get("dropped_by_deny", ()))
-        if source == "declared-preset":
+        if source == "model-route":
+            src_label = "model-route"
+        elif source == "declared-preset":
             src_label = f"preset={intent.preset!r}"
         elif source == "pinned":
             src_label = "pinned"
@@ -1352,7 +1464,8 @@ def build_server(
     httpd = make_server(host, port, routing, timeout=timeout, presets=PRESETS,
                         exhaustion_status=config.exhaustion_status,
                         auth_token=auth_token, purpose=purpose, audio=audio,
-                        response_model_resolver=routing.response_model)
+                        response_model_resolver=routing.response_model,
+                        model_routes=config.model_routes)
     # Stash what we bound for introspection (serve()'s banner + tests).
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]

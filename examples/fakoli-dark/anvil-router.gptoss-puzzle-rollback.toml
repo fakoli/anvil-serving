@@ -103,6 +103,13 @@ base_url           = "http://host.docker.internal:30011/v1"
 source_sample_rate = 24000
 timeout            = 25.0
 
+[router.model_routes]
+# Additive direct capability aliases. A matched alias selects its named tier before
+# legacy intent/profile/residency/fallback selection; unmatched models remain on the
+# legacy path in slice 1. These are captured topology intent, not live qualification.
+"llm.primary" = "heavy-local"
+"llm.voice"   = "fast-local"
+
 [router.presets]
 chat         = ["heavy-local", "fast-local"]
 chat-fast    = ["fast-local", "heavy-local"]
