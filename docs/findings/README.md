@@ -46,6 +46,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-26 | [2026-07-26-laguna-s-heavy-qualification.md](2026-07-26-laguna-s-heavy-qualification.md) | Laguna S 2.1 NVFP4 thinking-control diagnosis, repeated 240K quality gate, capacity evidence, and guarded Heavy promotion |
 | 2026-07-22 | [2026-07-22-private-evidence-publication-audit.md](2026-07-22-private-evidence-publication-audit.md) | #175 inventory, sanitized public publication, offline rerun, and exact missing-mirror record |
 | 2026-07-22 | [2026-07-22-adr-0008-evidence-gap.md](2026-07-22-adr-0008-evidence-gap.md) | Public provenance correction for ADR-0008 raw logs that were never committed and could not be found |
 | 2026-07-18 | [2026-07-18-lifecycle-aware-wsl-cache-reclaim.md](2026-07-18-lifecycle-aware-wsl-cache-reclaim.md) | Fakoli Dark managed Puzzle Heavy load: 49.9 GiB cache-growth attribution, page-cache-only reclaim, retained VRAM/health/identity/inference, and exact stopped-state restoration |

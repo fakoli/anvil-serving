@@ -8,7 +8,7 @@
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-16**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-26**.
 
 ## Read these results correctly
 
@@ -81,15 +81,37 @@ recorded intent rather than a claim of hard server-side partitioning.
 
 These rows are from the [Fast-tier LLM bakeoff](findings/2026-07-08-fast-tier-llm-bakeoff.md) and its [human-gated promotion record](findings/2026-07-08-fast-tier-promotion.md). The voice artifacts in that bakeoff measure STT, LLM, and TTS stage timing, but their STT hypothesis is empty with WER `1.0`; they are **not** semantic speech-recognition accuracy results. The displayed decode rate is derived from the recorded evidence as `output_tokens * 1000 / (e2e_ms - ttft_ms)`.
 
+## Laguna S 2.1 Heavy qualification (2026-07-26)
+
+The current Heavy tier is **`poolside/Laguna-S-2.1-NVFP4`**, served as
+`laguna-s-2.1-nvfp4` on the RTX PRO 6000 with a 262,144-token window. The
+deployment pins checkpoint revision
+`07614121b31898586430f189d27a25a0be310843` and vLLM image
+`nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1`. The router forces
+`chat_template_kwargs.enable_thinking=false`.
+
+Thinking-disabled smoke, JSON, 120K promotion retrieval, and tools 10/10 passed.
+The repeated protocol-v3 gate also passed 32K, 128K, and 240K context retrieval,
+tools 3/3, multi-turn recall 3/3, unified diff 3/3, and timeout triage 3/3.
+The first thinking-enabled smoke exhausted the full 4,352-token completion
+allowance without a visible answer; an immediate rerun passed. That intermittent
+exhaustion is why disabled thinking is part of the production contract.
+
+Short-output capacity completed 10/10 at concurrency one and 40/40 at concurrency
+eight. TTFT p50 was 0.07 seconds at c1 and 3.44 seconds at c8; aggregate output
+was 75.46 and 83.24 tok/s. These are batch-capacity figures, not controlled
+long-decode rates. GPT-OSS Puzzle 88B is the sole declared managed rollback.
+Commands, exact identity, failure evidence, and raw artifacts are in the
+[Laguna S qualification record](findings/2026-07-26-laguna-s-heavy-qualification.md).
+
 ## GPT-OSS Puzzle 88B Heavy compatibility (2026-07-18)
 
-The current Heavy tier is **`nvidia/gpt-oss-puzzle-88B`**, served as
+The former Heavy tier and current rollback is **`nvidia/gpt-oss-puzzle-88B`**, served as
 `gpt-oss-puzzle-88b` from an exact local Anvil vLLM image on the RTX PRO 6000.
 The deployment pins checkpoint revision
 `9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2`, serves a 131,072-token window
 with FP8 KV cache, and uses the native Harmony template and OpenAI tool parser.
-The router supplies `reasoning_effort=high` by default. Official Gemma 4 12B IT
-QAT W4A16 is the immediate managed rollback. The complete reusable procedure is
+The router supplies `reasoning_effort=high` by default. The complete reusable procedure is
 the [GPT-OSS Puzzle 88B recipe](benchmarks/gpt-oss-puzzle-88b-recipe.md).
 
 This transition is not a cross-model quality or throughput ranking. The exact
@@ -131,7 +153,7 @@ regression comparator. Full artifacts, WSL2 scope, and failure evidence are in t
 [dated optimization finding](findings/2026-07-17-gemma4-31b-optimization.md). **No Heavy
 promotion changed.**
 
-Official Gemma 4 12B IT QAT W4A16 is the immediate Heavy rollback, served as
+Official Gemma 4 12B IT QAT W4A16 is a historical Heavy rollback, served as
 `gemma4-12b-it-w4a16-ct` through vLLM 0.25.1 on the RTX PRO 6000 with FP8 KV,
 a 256K context limit, five admitted sequences, and thinking enabled by router
 default. It replaced ThinkingCap after the July 16 human-approved guarded

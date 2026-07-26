@@ -1,0 +1,26 @@
+{
+  "schema": "anvil-serving.operator-observation/v1",
+  "observed_at": "2026-07-26T18:00:00Z",
+  "model": "laguna-s-2.1-nvfp4",
+  "base_url": "http://127.0.0.1:39017/v1",
+  "engine": "vllm-0.23.1rc1.dev1327-gf25953cc5",
+  "thinking": {
+    "mode": "enabled",
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    }
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 4096,
+    "max_completion_tokens": 4352
+  },
+  "check": "smoke (short coding)",
+  "passed": false,
+  "elapsed_seconds": 45.9,
+  "finish_reason": "length",
+  "visible_answer_chars": 0,
+  "reasoning_chars": 18840,
+  "failure_class": "reasoning_exhaustion",
+  "provenance": "Retained from the first live preflight console result. The subsequent full preflight rerun is retained separately and passed, establishing intermittent rather than deterministic failure."
+}
