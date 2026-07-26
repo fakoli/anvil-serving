@@ -3,6 +3,8 @@
 # This is deliberately separate from the live compose file. The q36 candidate
 # and `heavy` are mutually exclusive because both own physical GPU 1. Use the
 # `anvil-serving serves` lifecycle declared in serves.q36.toml.
+name: fakoli-experiment
+
 services:
   q36-pro6000:
     build:
