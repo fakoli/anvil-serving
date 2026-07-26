@@ -27,7 +27,6 @@ owning documentation link.
 | `router down` | Stop the deployed router. |
 | `router restart` | Restart the deployed router. |
 | `router reload` | Reload router configuration. |
-| `router promote` | Promote a reviewed router configuration. |
 | `router status` | Show bounded router status. |
 | `router logs` | Read bounded router logs or explicitly follow new output. |
 
@@ -50,15 +49,14 @@ owning documentation link.
 
 ```bash
 anvil-serving router run --config configs/example.toml
-anvil-serving router run --mode agentic --host 127.0.0.1 --port 8000
+anvil-serving router run --config configs/example.toml --host 127.0.0.1 --port 8000
 ```
 
-Configuration can come from `--config` or the environment. The router remains a
-stdlib-only foreground service; use the lifecycle commands when the deployment is
-managed by the operator substrate. `--config` selects one exact TOML and bypasses
-mode resolution. Otherwise mode precedence is `--mode`, `ANVIL_MODE`, the modes
-manifest, then the built-in default. The default bind is `127.0.0.1`; do not expose
-a non-loopback bind without an operator-provided authentication layer.
+`--config` is required and selects one exact direct-alias topology. The router
+remains a stdlib-only foreground service; use the lifecycle commands when the
+deployment is managed by the operator substrate. The default bind is
+`127.0.0.1`; do not expose a non-loopback bind without an operator-provided
+authentication layer.
 
 ## Inspect the deployment
 
@@ -86,19 +84,16 @@ anvil-serving router token --reveal --confirm
 Only the second form prints the local token value. Avoid using it in automation or
 captured logs.
 
-## Lifecycle and promotion
+## Lifecycle
 
 ```bash
 anvil-serving router up --dry-run
 anvil-serving router up --confirm
 anvil-serving router reload --confirm
-anvil-serving router promote --profile ./candidate-profile.json --dry-run
-anvil-serving router promote --profile ./candidate-profile.json --confirm
 ```
 
 Lifecycle mutations are guarded. Preview them first when `--dry-run` is available,
-then repeat with `--confirm`. Promotion never substitutes for the independent human
-quality gate. Compose operations resolve `--compose` first, then the operator-home
+then repeat with `--confirm`. Compose operations resolve `--compose` first, then the operator-home
 Compose file, then the packaged deployment example. Container lifecycle operations
 default to `anvil-router`.
 
@@ -119,7 +114,7 @@ stopping new admissions, waiting for active work, and returning a tier to servic
 
 ## Related references
 
-- [Quality-gated router](../QUALITY-GATED-ROUTER.md)
+- [Thin capability gateway](../THIN-CAPABILITY-GATEWAY.md)
 - [Configuration](../CONFIGURATION.md)
 - [Operator playbooks](../OPERATOR-PLAYBOOKS.md)
 - [Troubleshooting](../TROUBLESHOOTING.md)

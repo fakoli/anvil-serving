@@ -131,6 +131,10 @@ RESERVED_GROUP = "all"
 # to (matching the promotion plans' router_health_url default host).
 EVICTION_DRAIN_TIMEOUT = 120
 DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
+DEFAULT_ROUTER_CONTAINER = "anvil-router"
+DEFAULT_ROUTER_CFG_VOLUME = "anvil-router-cfg"
+_ROUTER_CFG_SIDE_MOUNT = "/cfg"
+_ROUTER_CFG_PATH = "/cfg/config.toml"
 LIFECYCLE_READINESS_TIMEOUT_SECONDS = 600
 LIFECYCLE_READINESS_POLL_SECONDS = 2
 _ENGINE_MARKERS = {
@@ -524,15 +528,15 @@ def load_promotions(path):
     """Load guarded model-promotion plans from a serves manifest.
 
     Paths are resolved relative to the manifest, matching ``serve.up``. A plan
-    names both the promoted and rollback serve plus both router states, so a
-    failed health/preflight/router gate can restore the complete deployment.
+    names the promoted and rollback serve, the fixed router tier ids, and one
+    complete direct-only router config for each model identity.
     """
     with open(path, "rb") as f:
         data = tomllib.load(f)
     mdir = os.path.dirname(os.path.abspath(path))
     required = (
-        "name", "target", "rollback", "router_config", "router_profile",
-        "rollback_router_config", "rollback_router_profile",
+        "name", "target", "rollback", "affected_tiers",
+        "router_config", "rollback_router_config",
     )
     plans = []
     for raw in data.get("promotion", []):
@@ -541,14 +545,20 @@ def load_promotions(path):
         if missing:
             raise ValueError("promotion entry missing required field(s) %s: %r" % (
                 ", ".join(missing), raw))
-        for field in (
-            "router_config", "router_profile", "rollback_router_config",
-            "rollback_router_profile",
-        ):
+        legacy = sorted(
+            field for field in ("router_profile", "rollback_router_profile")
+            if field in plan
+        )
+        if legacy:
+            raise ValueError(
+                "promotion entry contains removed profile field(s): %s"
+                % ", ".join(legacy)
+            )
+        for field in ("router_config", "rollback_router_config"):
             value = str(plan[field]).replace("{dir}", mdir)
-            if not os.path.isabs(value):
-                value = os.path.join(mdir, value)
-            plan[field] = os.path.abspath(value)
+            plan[field] = os.path.abspath(
+                value if os.path.isabs(value) else os.path.join(mdir, value)
+            )
         plan.setdefault("candidate", None)
         affected = plan.get("affected_tiers")
         if (
@@ -611,84 +621,155 @@ def _exact_serve(serves, name):
 
 
 def _validate_promotion_topology(serves, plan):
-    """Prove affected tiers map only to the managed serve pair."""
-    from urllib.parse import urlsplit
-    from .router.config import load as load_router
+    """Validate both complete direct configs against their selected serve."""
+    from .router.config import load as load_router_config
 
-    forward = load_router(plan["router_config"])
-    rollback = load_router(plan["rollback_router_config"])
     target = _exact_serve(serves, plan["target"])
     old = _exact_serve(serves, plan["rollback"])
     affected = set(plan["affected_tiers"])
-    forward_ids = {tier.id for tier in forward.tiers}
-    rollback_ids = {tier.id for tier in rollback.tiers}
-    if not affected <= forward_ids or not affected <= rollback_ids:
-        raise ValueError("affected_tiers contains an unknown router tier")
-
-    def _endpoint_hosts(serve):
-        hosts = {
-            "127.0.0.1",
-            "host.docker.internal",
-            str(serve["name"]).casefold(),
-            str(serve["container"]).casefold(),
-        }
-        up = serve.get("up") or []
-        try:
-            up_index = up.index("up")
-        except ValueError:
-            pass
-        else:
-            hosts.update(
-                token.casefold()
-                for token in up[up_index + 1:]
-                if token and not token.startswith("-")
-            )
-        return hosts
-
-    def _owns_endpoint(tier, serve):
-        parsed = urlsplit(tier.base_url)
-        return (
-            parsed.scheme == "http"
-            and parsed.hostname is not None
-            and parsed.hostname.casefold() in _endpoint_hosts(serve)
-            and parsed.port == serve["port"]
-        )
-
-    def _matches(tier, serve):
-        return (
-            _owns_endpoint(tier, serve)
-            and tier.model == serve["served_name"]
-            and tier.model_identity
-        )
-
-    forward_owned = {
-        tier.id for tier in forward.tiers if _owns_endpoint(tier, target)
-    }
-    rollback_owned = {
-        tier.id for tier in rollback.tiers if _owns_endpoint(tier, old)
-    }
-    if affected != forward_owned or affected != rollback_owned:
-        raise ValueError(
-            "affected_tiers must exactly cover every tier owned by the managed endpoint"
-        )
-
+    if not affected:
+        raise ValueError("promotion affected_tiers must not be empty")
+    if target["port"] != old["port"]:
+        raise ValueError("promotion target and rollback must use the same fixed endpoint port")
+    if target["name"] == old["name"]:
+        raise ValueError("promotion target and rollback must be distinct serves")
+    promoted = load_router_config(plan["router_config"])
+    rolled_back = load_router_config(plan["rollback_router_config"])
+    if dict(promoted.model_routes) != dict(rolled_back.model_routes):
+        raise ValueError("promotion router configs must declare identical direct aliases")
+    promoted_ids = {tier.id for tier in promoted.tiers}
+    rollback_ids = {tier.id for tier in rolled_back.tiers}
+    if promoted_ids != rollback_ids:
+        raise ValueError("promotion router configs must declare identical tier ids")
     for tier_id in affected:
-        if not _matches(forward.tier(tier_id), target):
+        promoted_tier = promoted.tier(tier_id)
+        rollback_tier = rolled_back.tier(tier_id)
+        if not promoted_tier.model_identity or not rollback_tier.model_identity:
             raise ValueError(
-                "affected tier does not map to the target serve with identity readiness"
+                "promotion affected tiers must enable exact model_identity in both configs"
             )
-        if not _matches(rollback.tier(tier_id), old):
+        if promoted_tier.model != target["served_name"]:
             raise ValueError(
-                "affected tier does not map to the rollback serve with identity readiness"
+                "promotion router config tier %r model does not match target %r"
+                % (tier_id, target["served_name"])
             )
-    for tier_id in forward_ids | rollback_ids:
-        if tier_id in affected:
-            continue
-        if tier_id not in forward_ids or tier_id not in rollback_ids:
-            raise ValueError("unaffected router tiers differ between promotion states")
-        if forward.tier(tier_id) != rollback.tier(tier_id):
-            raise ValueError("unaffected router tier configuration changed")
+        if rollback_tier.model != old["served_name"]:
+            raise ValueError(
+                "rollback router config tier %r model does not match rollback %r"
+                % (tier_id, old["served_name"])
+            )
+    for tier_id in promoted_ids - affected:
+        if promoted.tier(tier_id) != rolled_back.tier(tier_id):
+            raise ValueError(
+                "promotion router configs differ on unaffected tier %r" % tier_id
+            )
     return True
+
+
+_DIRECT_CONFIG_VALIDATOR = (
+    "import os,sys,tempfile; "
+    "from anvil_serving.router.config import load,load_server_config; "
+    "f=tempfile.NamedTemporaryFile(mode='wb',suffix='.toml',delete=False); "
+    "f.write(sys.stdin.buffer.read()); f.close(); "
+    "load(f.name); load_server_config(f.name); os.unlink(f.name)"
+)
+
+
+def _install_router_config(
+    config_file, *, container=DEFAULT_ROUTER_CONTAINER,
+    cfg_volume=DEFAULT_ROUTER_CFG_VOLUME, _run=subprocess.run,
+):
+    """Validate and atomically install one direct config, then restart.
+
+    Returns 0 on success, 1 when the prior config was certainly retained or
+    restored, and 4 when the deployed router state is uncertain.
+    """
+    try:
+        with open(config_file, "r", encoding="utf-8") as handle:
+            config_text = handle.read().replace("\r\n", "\n").replace("\r", "\n")
+    except OSError as exc:
+        print("  router config unreadable: %s" % exc)
+        return 1
+
+    validate = [
+        "docker", "exec", "-i", container, "python", "-c",
+        _DIRECT_CONFIG_VALIDATOR,
+    ]
+    print("  validate direct router config: %s" % config_file)
+    try:
+        result = _run(
+            validate, input=config_text, capture_output=True, text=True,
+            encoding="utf-8",
+        )
+    except FileNotFoundError:
+        print("  router config install failed: docker not available")
+        return 1
+    if result.returncode != 0:
+        print("  router config rejected by deployed image: %s" % (
+            result.stderr or result.stdout or "validation failed"
+        ).strip())
+        return 1
+
+    image_result = _run(
+        ["docker", "inspect", "-f", "{{.Config.Image}}", container],
+        capture_output=True, text=True,
+    )
+    image = (image_result.stdout or "").strip()
+    if image_result.returncode != 0 or not image:
+        print("  router config install failed: cannot resolve deployed router image")
+        return 1
+    mount = cfg_volume + ":" + _ROUTER_CFG_SIDE_MOUNT
+    config_path = _ROUTER_CFG_PATH
+    backup_path = config_path + ".bak"
+    new_path = config_path + ".new"
+    backup_script = (
+        "if [ -f {cfg} ]; then cp {cfg} {bak}; "
+        "else rm -f {bak}; fi"
+    ).format(cfg=config_path, bak=backup_path)
+    backup = _run(
+        ["docker", "run", "--rm", "--user", "0", "-v", mount,
+         "--entrypoint", "sh", image, "-c", backup_script],
+        capture_output=True, text=True,
+    )
+    if backup.returncode != 0:
+        print("  router config backup failed: %s" % (
+            backup.stderr or backup.stdout or "unknown error"
+        ).strip())
+        return 1
+    write_script = "cat > {new} && mv {new} {cfg}".format(
+        new=new_path, cfg=config_path
+    )
+    write = _run(
+        ["docker", "run", "--rm", "-i", "--user", "0", "-v", mount,
+         "--entrypoint", "sh", image, "-c", write_script],
+        input=config_text, capture_output=True, text=True, encoding="utf-8",
+    )
+    if write.returncode != 0:
+        print("  router config write failed: %s" % (
+            write.stderr or write.stdout or "unknown error"
+        ).strip())
+        return 1
+
+    restart = _run(
+        ["docker", "restart", container], capture_output=True, text=True
+    )
+    if restart.returncode == 0:
+        return 0
+
+    print("  router restart failed; restoring the previous direct config")
+    restore_script = (
+        "if [ -f {bak} ]; then mv {bak} {cfg}; "
+        "else rm -f {cfg}; fi"
+    ).format(bak=backup_path, cfg=config_path)
+    restored = _run(
+        ["docker", "run", "--rm", "--user", "0", "-v", mount,
+         "--entrypoint", "sh", image, "-c", restore_script],
+        capture_output=True, text=True,
+    )
+    recovered = _run(
+        ["docker", "restart", container], capture_output=True, text=True
+    )
+    return 1 if restored.returncode == 0 and recovered.returncode == 0 else 4
 
 
 def _router_base_url(plan):
@@ -821,6 +902,19 @@ def _gateway_status(url, *, _open=urllib.request.urlopen):
         return None
 
 
+def _await_gateway(url, timeout, poll_interval, *, _open=urllib.request.urlopen,
+                   _sleep=time.sleep):
+    """Wait for the restarted router to expose its health endpoint."""
+    deadline = time.monotonic() + timeout
+    while True:
+        status = _gateway_status(url, _open=_open)
+        if status == 200:
+            return status
+        if time.monotonic() >= deadline:
+            return status
+        _sleep(min(poll_interval, max(0, deadline - time.monotonic())))
+
+
 def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                           dry_run=False, require_candidate=True, resume=False,
                           _run=subprocess.run,
@@ -828,30 +922,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     target = _exact_serve(serves, plan["rollback"] if rollback else plan["target"])
     displaced = _exact_serve(serves, plan["target"] if rollback else plan["rollback"])
     candidate = _exact_serve(serves, plan["candidate"]) if plan.get("candidate") else None
-    config = plan["rollback_router_config"] if rollback else plan["router_config"]
-    profile = plan["rollback_router_profile"] if rollback else plan["router_profile"]
     label = "rollback" if rollback else "promotion"
-
-    for path in (config, profile):
-        if not os.path.isfile(path):
-            print("  %s refused: required router artifact is missing: %s" % (label, path))
-            return 2
-    # Validate BOTH deployable states with the deployed image before the first
-    # container is stopped. A forward failure is only safely reversible when
-    # its rollback config/profile are already known-loadable (and vice versa).
-    if not dry_run:
-        pairs = (
-            (plan["router_config"], plan["router_profile"]),
-            (plan["rollback_router_config"], plan["rollback_router_profile"]),
-        )
-        for pair_config, pair_profile in pairs:
-            validate = [
-                "router", "promote", "--config", pair_config, "--profile", pair_profile,
-                "--validate-only",
-            ]
-            if _promotion_cli(validate, _run=_run) != 0:
-                print("  %s refused: router artifacts failed deployed-loader validation" % label)
-                return 2
     if candidate is not None and not rollback and not dry_run and require_candidate:
         if docker_state(candidate["container"], _run=_run) != "running" or _health(
             candidate["port"], candidate["health"], _open=_open
@@ -863,8 +934,12 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     if candidate is not None and not rollback:
         stop_names.insert(0, candidate["name"])
     gates = plan["rollback_gate" if rollback else "gate"]
-    print("  %s plan: stop %s; start %s; %d preflight gate(s); promote router" % (
-        label, ", ".join(stop_names), target["name"], len(gates)))
+    selected_config = plan[
+        "rollback_router_config" if rollback else "router_config"
+    ]
+    print("  %s plan: stop %s; start %s; %d preflight gate(s); install %s" % (
+        label, ", ".join(stop_names), target["name"], len(gates),
+        os.path.basename(selected_config)))
     if dry_run:
         for tier_id in plan["affected_tiers"]:
             print("  gate: quiesce router tier %s" % tier_id)
@@ -878,8 +953,8 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                   "--visible-answer-tokens %s --reasoning-headroom-tokens %s" % (
                       gate["name"], target["name"], gate["checks"], gate["thinking_mode"],
                       gate["visible_answer_tokens"], gate["reasoning_headroom_tokens"]))
-        print("  gate: router promote --config %s --profile %s" % (config, profile))
-        print("  verify: router gateway is reachable after reload")
+        print("  apply: atomically install %s and restart the router" % selected_config)
+        print("  verify: router gateway is reachable after the serve swap")
         print("  verify: post-restart health and model identity for %s" % (
             ", ".join(plan["affected_tiers"])))
         return 0
@@ -945,75 +1020,18 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
             print("  %s failed: preflight gate %s rejected %s" % (
                 label, gate["name"], target["name"]))
             return 1
-    promote = [
-        "router", "promote", "--config", config, "--profile", profile,
-    ]
-    expected_artifacts = plan.get("_expected_artifact_digests")
-    if expected_artifacts is not None:
-        config_key = "rollback_router_config" if rollback else "router_config"
-        profile_key = "rollback_router_profile" if rollback else "router_profile"
-        desired_router = {
-            "config": expected_artifacts[config_key],
-            "profile": expected_artifacts[profile_key],
-        }
-        try:
-            current_artifacts = _promotion_artifact_digests(plan)
-        except (OSError, TypeError, ValueError) as exc:
-            print("  %s refused: cannot recheck router artifacts: %s" % (label, exc))
-            return 1
-        if current_artifacts != expected_artifacts:
-            print(
-                "  %s refused: router config/profile files changed during the transaction"
-                % label
-            )
-            return 1
-    else:
-        desired_router = {
-            "config": _artifact_digest(config, "config"),
-            "profile": _artifact_digest(profile, "profile"),
-        }
-    expected_router = plan.get("_expected_router_digests")
-    if expected_router is not None:
-        try:
-            current_router = _deployed_router_digests(plan, _run=_run)
-        except RuntimeError as exc:
-            print("  %s refused: final router compare-and-swap check failed: %s" % (
-                label, exc,
-            ))
-            return 4
-        if current_router != expected_router:
-            print(
-                "  %s refused: router config/profile changed during the transaction" % label
-            )
-            return 4
-    promote_rc = _promotion_cli(promote, _run=_run)
-    if expected_router is not None:
-        try:
-            current_router = _deployed_router_digests(plan, _run=_run)
-        except RuntimeError as exc:
-            print("  %s failed: cannot resolve router state after promote: %s" % (
-                label, exc,
-            ))
-            return 4
-        if current_router == desired_router:
-            # Advance the CAS token so any later automatic recovery expects
-            # the state that was actually installed, not the stale source.
-            plan["_expected_router_digests"] = dict(desired_router)
-        elif current_router != expected_router:
-            print(
-                "  %s failed: router entered an unknown config/profile state; "
-                "automatic recovery is blocked" % label
-            )
-            return 4
-        if promote_rc != 0:
-            return 1
-        if current_router != desired_router:
-            print("  %s failed: router promote returned success without installing artifacts" % label)
-            return 1
-    elif promote_rc != 0:
-        return 1
+    config_rc = _install_router_config(selected_config, _run=_run)
+    if config_rc != 0:
+        print("  %s failed: direct router config was not installed" % label)
+        return config_rc
     gateway_url = str(plan.get("router_health_url", "http://127.0.0.1:8000/healthz"))
-    status = _gateway_status(gateway_url, _open=_open)
+    status = _await_gateway(
+        gateway_url,
+        min(60, startup_timeout),
+        plan["poll_interval"],
+        _open=_open,
+        _sleep=_sleep,
+    )
     if status != 200:
         print("  %s failed: router health gate returned HTTP %s" % (label, status))
         return 1
@@ -1045,8 +1063,6 @@ def _cmd_promote_unlocked(serves, promotions, name, manifest_path, *, rollback=F
         if plan.get("candidate"):
             _exact_serve(serves, plan["candidate"])
         _validate_promotion_topology(serves, plan)
-        _validate_promotion_configs(plan)
-        _validate_promotion_profiles(plan)
     except ValueError as exc:
         print("promotion refused: %s" % exc)
         return 1
@@ -1455,144 +1471,6 @@ def _running_container_matches_recipe(serve, recipe, deployment, *, _run=subproc
     return True
 
 
-def _validate_promotion_profiles(plan):
-    """Prove profile policy is identical outside the declared affected tiers."""
-    def entries(path):
-        with open(path, "r", encoding="utf-8") as handle:
-            document = json.load(handle)
-        rows = document.get("entries", [])
-        if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
-            raise ValueError("router profile entries must be an array of objects")
-        return {
-            (row.get("tier_id"), row.get("work_class")): row
-            for row in rows
-        }
-
-    forward = entries(plan["router_profile"])
-    rollback = entries(plan["rollback_router_profile"])
-    affected = set(plan["affected_tiers"])
-    forward_unaffected = {key: value for key, value in forward.items() if key[0] not in affected}
-    rollback_unaffected = {key: value for key, value in rollback.items() if key[0] not in affected}
-    if forward_unaffected != rollback_unaffected:
-        raise ValueError("unaffected router profile entries differ between promotion states")
-
-
-def _validate_promotion_configs(plan):
-    """Prove router config changes are limited to declared tier records."""
-    def document(path):
-        with open(path, "rb") as handle:
-            value = tomllib.load(handle)
-        router = value.get("router")
-        if not isinstance(router, dict):
-            raise ValueError("router config must contain a [router] table")
-        tiers = router.get("tiers")
-        if not isinstance(tiers, list) or not all(isinstance(row, dict) for row in tiers):
-            raise ValueError("router tiers must be an array of tables")
-        by_id = {}
-        for row in tiers:
-            tier_id = row.get("id")
-            if not isinstance(tier_id, str) or not tier_id or tier_id in by_id:
-                raise ValueError("router tiers must have unique non-empty ids")
-            by_id[tier_id] = row
-        comparable = copy.deepcopy(value)
-        comparable_router = comparable["router"]
-        comparable_router.pop("tiers", None)
-        # mapping_version is deployment metadata; the actual routes, globals,
-        # presets, purpose models, and server settings must remain identical.
-        comparable_router.pop("mapping_version", None)
-        return comparable, by_id
-
-    forward_document, forward_tiers = document(plan["router_config"])
-    rollback_document, rollback_tiers = document(plan["rollback_router_config"])
-    if forward_document != rollback_document:
-        raise ValueError(
-            "router configs differ outside declared affected tier records"
-        )
-    if set(forward_tiers) != set(rollback_tiers):
-        raise ValueError("router config tier sets differ between promotion states")
-    affected = set(plan["affected_tiers"])
-    if not affected or not affected <= set(forward_tiers):
-        raise ValueError("affected_tiers must name existing router tiers")
-    for tier_id in set(forward_tiers) - affected:
-        if forward_tiers[tier_id] != rollback_tiers[tier_id]:
-            raise ValueError(
-                "unaffected router tier %r differs between promotion states" % tier_id
-            )
-
-
-def _artifact_digest(path, kind):
-    with open(path, "rb") as handle:
-        if kind == "config":
-            document = tomllib.load(handle)
-        else:
-            document = json.load(handle)
-    payload = json.dumps(document, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
-
-
-def _promotion_artifact_digests(plan):
-    return {
-        "router_config": _artifact_digest(plan["router_config"], "config"),
-        "router_profile": _artifact_digest(plan["router_profile"], "profile"),
-        "rollback_router_config": _artifact_digest(
-            plan["rollback_router_config"], "config"
-        ),
-        "rollback_router_profile": _artifact_digest(
-            plan["rollback_router_profile"], "profile"
-        ),
-    }
-
-
-def _deployed_router_digests(plan, *, _run=subprocess.run):
-    """Read canonical config/profile digests from the running router container."""
-    script = (
-        "import hashlib,json,tomllib;"
-        "c=tomllib.load(open('/etc/anvil/config.toml','rb'));"
-        "p=json.load(open('/etc/anvil/profile.json','r',encoding='utf-8'));"
-        "h=lambda x:hashlib.sha256(json.dumps(x,sort_keys=True,separators=(',',':')).encode()).hexdigest();"
-        "print(json.dumps({'config':h(c),'profile':h(p)},sort_keys=True))"
-    )
-    container = str(plan.get("router_container", "anvil-router"))
-    try:
-        result = _run(
-            ["docker", "exec", container, "python", "-c", script],
-            capture_output=True, text=True,
-        )
-    except OSError as exc:
-        raise RuntimeError("cannot inspect deployed router artifacts: %s" % exc) from exc
-    if result.returncode != 0:
-        raise RuntimeError(
-            "cannot inspect deployed router artifacts: %s" % (
-                (result.stderr or result.stdout or "docker exec failed").strip()
-            )
-        )
-    try:
-        value = json.loads(result.stdout)
-        if set(value) != {"config", "profile"}:
-            raise ValueError("unexpected keys")
-        return value
-    except (json.JSONDecodeError, TypeError, ValueError) as exc:
-        raise RuntimeError("deployed router returned invalid artifact digests") from exc
-
-
-def _router_switch_state(plan, rollback, *, _run=subprocess.run):
-    current = _deployed_router_digests(plan, _run=_run)
-    forward = {
-        "config": _artifact_digest(plan["router_config"], "config"),
-        "profile": _artifact_digest(plan["router_profile"], "profile"),
-    }
-    reverse = {
-        "config": _artifact_digest(plan["rollback_router_config"], "config"),
-        "profile": _artifact_digest(plan["rollback_router_profile"], "profile"),
-    }
-    target, source = (reverse, forward) if rollback else (forward, reverse)
-    if current == target:
-        return "target"
-    if current == source:
-        return "source"
-    return "drift"
-
-
 @contextmanager
 def _switch_role_lock(role):
     """Hold one non-blocking, cross-platform lock for a deployment role."""
@@ -1650,31 +1528,6 @@ def _write_switch_journal(path, document):
         except FileNotFoundError:
             pass
         raise
-
-
-def _snapshot_promotion_artifacts(plan, operation_dir):
-    """Copy router artifacts into one operation-owned immutable input set."""
-    os.makedirs(operation_dir, exist_ok=True)
-    names = {
-        "router_config": "router-forward.toml",
-        "router_profile": "profile-forward.json",
-        "rollback_router_config": "router-rollback.toml",
-        "rollback_router_profile": "profile-rollback.json",
-    }
-    sources = {}
-    for field, name in names.items():
-        source = os.path.abspath(plan[field])
-        target = os.path.join(operation_dir, name)
-        sources[field] = source
-        with open(source, "rb") as source_handle:
-            payload = source_handle.read()
-        with open(target, "xb") as target_handle:
-            target_handle.write(payload)
-            target_handle.flush()
-            os.fsync(target_handle.fileno())
-        os.chmod(target, 0o400)
-        plan[field] = target
-    return sources
 
 
 def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
@@ -1773,8 +1626,6 @@ def resolve_recipe_activation(serves, promotions, registry, role, selector, *,
             )
         )
     _validate_promotion_topology(serves, plan)
-    _validate_promotion_configs(plan)
-    _validate_promotion_profiles(plan)
     deployment = _compose_service_for_recipe(
         selected_serve, recipe, activation, _run=_run,
     )
@@ -1828,51 +1679,20 @@ def cmd_switch(serves, promotions, registry, role, selector, manifest_path, *,
                     file=sys.stderr,
                 )
                 return 2
-            if not dry_run:
-                sources = _snapshot_promotion_artifacts(plan, operation["evidence_dir"])
-                operation["source_router_artifacts"] = sources
-                operation["router_artifact_snapshots"] = {
-                    field: plan[field] for field in sources
-                }
             _validate_promotion_topology(serves, plan)
-            _validate_promotion_configs(plan)
-            _validate_promotion_profiles(plan)
-            try:
-                router_state = _router_switch_state(plan, rollback, _run=_run)
-            except (OSError, RuntimeError, ValueError) as exc:
-                if not dry_run:
-                    print("switch refused: %s" % exc, file=sys.stderr)
-                    return 2
-                router_state = "deferred"
-                print("  deferred apply check: %s" % exc)
-            if not dry_run and router_state in {"source", "target"}:
-                plan["_expected_router_digests"] = _deployed_router_digests(plan, _run=_run)
-                plan["_expected_artifact_digests"] = _promotion_artifact_digests(plan)
-                operation["source_router_digests"] = dict(plan["_expected_router_digests"])
-                operation["router_artifact_digests"] = dict(
-                    plan["_expected_artifact_digests"]
-                )
+            if not dry_run:
                 operation["manifest_sha256"] = serve_recipes.registry_digest(manifest_path)
-            if router_state == "drift":
-                print(
-                    "switch refused: deployed router config/profile matches neither the "
-                    "expected source nor target state",
-                    file=sys.stderr,
-                )
-                return 2
             target_name = plan["rollback" if rollback else "target"]
             target = _exact_serve(serves, target_name)
-            if router_state == "target":
-                state = docker_state(target["container"], _run=_run)
-                if state == "running" and _health(
-                    target["port"], target["health"], _open=_open
-                ) == 200 and _serve_identity_ready(target, _open=_open) \
-                        and _running_container_matches_recipe(
-                            target, recipe, deployment, _run=_run
-                        ):
-                    print("  already active: router, container health, and exact model identity match")
-                    return 0
-                print("  target router state is active, but the serve needs guarded recovery")
+            state = docker_state(target["container"], _run=_run)
+            if state == "running" and _health(
+                target["port"], target["health"], _open=_open
+            ) == 200 and _serve_identity_ready(target, _open=_open) \
+                    and _running_container_matches_recipe(
+                        target, recipe, deployment, _run=_run
+                    ):
+                print("  already active: direct tier, container health, and exact model identity match")
+                return 0
             if not dry_run:
                 operation["status"] = "running"
                 _write_switch_journal(journal_path, operation)

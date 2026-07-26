@@ -666,26 +666,6 @@ def test_controller_new_tools_reject_token_values_and_string_booleans():
         assert body["error"]["code"] == "bad_argument"
         assert TOKEN not in raw.decode("utf-8")
 
-        token_like = "TOKEN_123"
-        status, _, body, raw = _request(
-            host,
-            port,
-            "POST",
-            "/tools/call",
-            body={
-                "name": "route_decision",
-                "arguments": {
-                    "prompt": "hello",
-                    "api_key_env": token_like,
-                },
-            },
-        )
-        assert status == 200
-        assert body["ok"] is False
-        assert body["error"]["code"] == "unsafe_api_key_env"
-        assert token_like not in raw.decode("utf-8")
-
-
 def test_controller_bad_tool_call_is_structured_and_audited():
     audits = []
     with running_controller(audit_logger=audits.append) as (host, port):

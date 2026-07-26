@@ -203,7 +203,7 @@ def test_check_mode_is_read_only():
     assert {path: _digest(path) for path in paths} == before
 
 
-def test_generated_manifest_index_and_tombstones_match_checked_in_cli_reference():
+def test_generated_manifest_index_matches_checked_in_cli_reference():
     assert audit.generated_docs_match(ROOT)
     manifest = json.loads((ROOT / "docs" / "CLI-COMMAND-MANIFEST.json").read_text())
     index = audit.render_manifest_index(manifest)
@@ -211,12 +211,6 @@ def test_generated_manifest_index_and_tombstones_match_checked_in_cli_reference(
     assert len(rows) == sum(bool(record["visible"]) for record in manifest["commands"])
     assert len(rows) == len(set(rows))
     assert "`--follow`" in index
-
-    tombstones = audit.render_tombstones(manifest)
-    assert "`serve` | `router run`" in tombstones
-    assert "`voice start` | `voice audio up`" in tombstones
-    assert "`controller serve --allow-unauthenticated-loopback`" in tombstones
-
 
 def test_repository_scope_inventories_match():
     tracked = {

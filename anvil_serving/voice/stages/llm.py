@@ -21,11 +21,8 @@ Wire contract (non-negotiable):
 * The bearer token, if configured, comes from an ENV VAR NAME
   (``api_key_env``), never a literal -- resolved at call time via
   ``os.environ``, mirroring ``voice/config.py``'s secret-hygiene contract.
-* ``model`` defaults to the ``"chat-fast"`` anvil intent preset (see
-  ``anvil_serving/router/intent.py`` + ``classify.py``): a voice turn is
-  latency-sensitive, so it is routed fast-tier-first under the quality gate,
-  the same as every other anvil-fronted harness request -- no special-case
-  glue needed on the router side.
+* ``model`` defaults to the ``"llm.voice"`` direct alias. The reference
+  topology maps that alias to the low-latency voice LLM on the RTX 5090.
 
 Stdlib-only: ``json``, ``os``, ``re``, ``urllib.request``/``urllib.error``.
 """
@@ -48,7 +45,7 @@ from ..messages import EndOfResponse, GenerateRequest, LLMChunk, LLMToolCall
 from .base import BaseStage
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/v1"
-DEFAULT_MODEL = "chat-fast"  # anvil intent preset: low-latency, fast-tier-first
+DEFAULT_MODEL = "llm.voice"
 DEFAULT_HISTORY_MAX_TURNS = 8
 DEFAULT_HISTORY_MAX_MESSAGE_CHARS = 1200
 DEFAULT_TOOL_RESULT_TIMEOUT = 60.0
@@ -133,12 +130,8 @@ class LLMStageConfig:
             "reasoning_effort": "low",
         }
     )
-    # Rides as a harmless top-level extension field; both router dialects
-    # pass an unknown top-level key straight through into
-    # ``InternalRequest.raw`` verbatim, so classify.py's Tier-0 heuristic can
-    # read it as a structural low-latency signal -- defense in depth
-    # alongside naming the "chat-fast" preset in ``model`` (see
-    # anvil_serving/router/classify.py's ``is_voice`` check).
+    # Harmless top-level extension field retained for upstream observability.
+    # Tier selection is determined only by the configured ``model`` alias.
     modality: Optional[str] = "voice"
 
 

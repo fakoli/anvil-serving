@@ -26,7 +26,6 @@ from anvil_serving.router.backends.sse import (
 )
 from anvil_serving.router.config import Tier
 from anvil_serving.router.internal import InternalRequest, Message
-from anvil_serving.router.verify import ResponseView, ToolCallJSONValid
 
 
 def _tier(dialect: str, privacy: str = "cloud", extra_body=None) -> Tier:
@@ -197,7 +196,7 @@ def test_anthropic_streaming_deltas_tools_and_usage():
     assert s.usage == {"input_tokens": 7, "output_tokens": 9}
 
 
-def test_anthropic_streaming_preserves_malformed_tool_arguments_for_verification():
+def test_anthropic_streaming_preserves_tool_arguments_without_gateway_rewrite():
     assembler = AnthropicStreamAssembler()
     assembler.feed("content_block_start", json.dumps({
         "type": "content_block_start",
@@ -217,9 +216,6 @@ def test_anthropic_streaming_preserves_malformed_tool_arguments_for_verification
 
     (tool_call,) = assembler.result().tool_calls
     assert tool_call["arguments"] == "{not json"
-    verdict = ToolCallJSONValid().verify(ResponseView(tool_calls=[tool_call]))
-    assert verdict.passed is False
-    assert "not valid JSON" in verdict.reason
 
 
 # --------------------------------------------------------------------------- #

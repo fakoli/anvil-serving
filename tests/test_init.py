@@ -1,4 +1,4 @@
-"""Tests for `anvil-serving init` (alias `onboard`) — generate a consistent
+"""Tests for `anvil-serving init` — generate a consistent
 docker-compose.yml + serves.toml + router.toml + operator-topology.toml bring-up.
 `nvidia-smi` is injected via `_run`, so these run with no GPU, no docker, and
 no network.
@@ -10,7 +10,6 @@ import pytest
 
 from anvil_serving import host, init, deploy, serve_recipes, serves
 from anvil_serving.router import config as router_config
-from anvil_serving.router import modes as router_modes
 from anvil_serving.topology import load_topology
 
 
@@ -172,18 +171,12 @@ def test_init_router_toml_loads_without_missing_model_warning(tmp_path, capsys):
     assert "WARNING" not in err  # no T001 missing-`model` warning on load
 
 
-def test_init_router_toml_has_all_presets():
-    pass  # covered by the RouterConfig.load success + preset-lookup test below
-
-
-def test_init_router_toml_every_preset_resolves(tmp_path):
+def test_init_router_toml_declares_the_requested_direct_alias(tmp_path):
     out_dir = tmp_path / "onboard"
     result = init.run(model="/w/model", gpu="0", out_dir=str(out_dir), served_name="local",
                       tier_id="local-tier", _run=_run_missing)
     cfg = router_config.load(result["router"])
-    for preset in ("planning", "quick-edit", "review", "chat", "long-context"):
-        cands = cfg.candidates(preset)
-        assert cands and cands[0].id == "local-tier"
+    assert cfg.route_tier("llm.primary").id == "local-tier"
 
 
 # ---- GPU pinning: UUID present / nvidia-smi absent (T007 wiring) ---------------
@@ -256,7 +249,7 @@ def test_init_cli_help_exits_zero():
     assert exc.value.code == 0
 
 
-def test_cli_dispatches_init_and_refuses_removed_onboard(tmp_path, monkeypatch, capsys):
+def test_cli_dispatches_init_and_rejects_unknown_onboard(tmp_path, monkeypatch, capsys):
     from anvil_serving import cli
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
     out1 = tmp_path / "a"
@@ -264,7 +257,7 @@ def test_cli_dispatches_init_and_refuses_removed_onboard(tmp_path, monkeypatch, 
                      "--out-dir", str(out1)]) == 0
     assert os.path.isfile(out1 / "router.toml")
     assert cli.main(["onboard", "--single-model", "--model", "/w/model"]) == 2
-    assert "was removed; use `init`" in capsys.readouterr().err
+    assert "unknown command: onboard" in capsys.readouterr().err
 
 
 # ---- init --home: full operational config-set scaffold ---------------------------
@@ -277,7 +270,6 @@ _REAL_HOST_VALUES = (
 )
 _EXPECTED_HOME_FILES = {
     "router.toml", "example.toml", "example-docker.toml",
-    "example-flexibility.toml", "example-with-cloud.toml", "modes.toml",
     "host.toml", "serve-recipes.toml",
     "serves.toml", "serves.voice.toml", "serves.comfyui.toml",
     "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.voice-proxy.yml",
@@ -307,23 +299,16 @@ def test_scaffold_home_group_tags_resolve(tmp_path):
     assert {s["name"] for s in voice_members} == {"stt", "tts", "realtime-proxy"}
 
 
-def test_scaffold_home_router_configs_modes_and_recipes_parse(tmp_path):
+def test_scaffold_home_router_configs_and_recipes_parse(tmp_path):
     init.scaffold_home(out_dir=str(tmp_path))
 
     for name in (
         "router.toml",
         "example.toml",
         "example-docker.toml",
-        "example-flexibility.toml",
-        "example-with-cloud.toml",
     ):
         cfg = router_config.load(str(tmp_path / name))
         assert cfg.tiers, name
-
-    modes = router_modes.load_modes_manifest(str(tmp_path / "modes.toml"))
-    assert modes.active_mode == "agentic"
-    assert modes.paths["agentic"] == str(tmp_path / "example.toml")
-    assert modes.paths["flexibility"] == str(tmp_path / "example-flexibility.toml")
 
     registry = serve_recipes.load_registry(str(tmp_path / "serve-recipes.toml"))
     assert registry["schema"] == serve_recipes.REGISTRY_SCHEMA

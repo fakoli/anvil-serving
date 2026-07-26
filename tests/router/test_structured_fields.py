@@ -33,7 +33,6 @@ from anvil_serving.router.dialects.anthropic import AnthropicDialect, _anthropic
 from anvil_serving.router.dialects.openai import OpenAIDialect, _openai_finish_reason
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.internal import InternalRequest, Message, StructuredResult
-from anvil_serving.router.verify import ResponseView, NotTruncated, ToolCallJSONValid
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -605,53 +604,6 @@ class TestOpenAIDialectRender:
         out = self._render("text", structured=None)
         assert out["choices"][0]["finish_reason"] == "stop"
         assert "tool_calls" not in out["choices"][0]["message"]
-
-
-# ---------------------------------------------------------------------------
-# Verifiers are live with real structured fields (#52)
-# ---------------------------------------------------------------------------
-
-class TestVerifiersLive:
-    """Prove NotTruncated and ToolCallJSONValid fire on real ResponseView data."""
-
-    def test_not_truncated_fires_on_max_tokens(self):
-        view = ResponseView(text="x", finish_reason="max_tokens")
-        r = NotTruncated().verify(view)
-        assert not r.passed
-        assert "truncat" in r.reason.lower()
-
-    def test_not_truncated_passes_on_end_turn(self):
-        view = ResponseView(text="x", finish_reason="end_turn")
-        r = NotTruncated().verify(view)
-        assert r.passed
-
-    def test_not_truncated_passes_when_finish_reason_none(self):
-        # No finish_reason set → defaults to pass (can't assert truncation)
-        view = ResponseView(text="x", finish_reason=None)
-        r = NotTruncated().verify(view)
-        assert r.passed
-
-    def test_tool_call_json_valid_fires_on_bad_json(self):
-        view = ResponseView(
-            text="",
-            tool_calls=[{"name": "fn", "arguments": '{"key": truncated_json'}],
-        )
-        r = ToolCallJSONValid().verify(view)
-        assert not r.passed
-
-    def test_tool_call_json_valid_passes_on_good_json(self):
-        view = ResponseView(
-            text="",
-            tool_calls=[{"name": "fn", "arguments": '{"key": "val"}'}],
-        )
-        r = ToolCallJSONValid().verify(view)
-        assert r.passed
-
-    def test_tool_call_json_valid_passes_when_no_calls(self):
-        # No tool_calls → nothing to validate → pass (not a tool-use response)
-        view = ResponseView(text="hello", tool_calls=None)
-        r = ToolCallJSONValid().verify(view)
-        assert r.passed
 
 
 # ---------------------------------------------------------------------------

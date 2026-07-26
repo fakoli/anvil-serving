@@ -52,7 +52,7 @@ python -m anvil_serving.router
 
 If port `8000` is already in use, pass `--port <free-port>` and use that port in the URLs below.
 
-In another terminal, list the intent presets advertised as models:
+In another terminal, list the explicit smoke-test alias:
 
 ```bash
 curl -s http://127.0.0.1:8000/v1/models
@@ -63,12 +63,12 @@ Send an OpenAI-compatible chat request:
 ```bash
 curl -s http://127.0.0.1:8000/v1/chat/completions \
   -H 'content-type: application/json' \
-  -d '{"model":"chat","messages":[{"role":"user","content":"hello from anvil-serving"}]}'
+  -d '{"model":"echo","messages":[{"role":"user","content":"hello from anvil-serving"}]}'
 ```
 
 Expected result: a JSON response whose content echoes the user message. This proves the front door,
-model discovery, request parsing, and response rendering. It does not prove local model quality or
-the tier routing policy.
+model discovery, request parsing, and response rendering. It does not prove
+local model quality or a configured serving topology.
 
 ## Track B: Route Real Local Tiers
 
@@ -124,13 +124,13 @@ Point a harness at the router:
 
 ```bash
 export ANTHROPIC_BASE_URL="http://127.0.0.1:8000"
-export ANTHROPIC_MODEL="planning"
+export ANTHROPIC_MODEL="llm.primary"
 
 export OPENAI_API_BASE="http://127.0.0.1:8000/v1"
 ```
 
-Use preset tokens such as `planning`, `quick-edit`, `review`, `chat`, `chat-fast`, and `long-context` as the
-model id.
+Use the configured direct aliases—`llm.primary` for the primary LLM and
+`llm.voice` for the low-latency voice LLM—as model ids.
 
 ## Auth Before Exposure
 
@@ -162,7 +162,7 @@ to need on a first run:
 ## Next Steps
 
 - Read [Architecture](ARCHITECTURE.md) for the concise system overview, then
-  [Quality-gated router](QUALITY-GATED-ROUTER.md) for the full design rationale.
+  [Thin capability gateway](THIN-CAPABILITY-GATEWAY.md) for the current design rationale.
 - Read the [Configuration reference](CONFIGURATION.md) to adapt `configs/example.toml` to your
   serves, and the [CLI reference](CLI.md) for the full command surface.
 - Read [Device topologies](DEVICE-TOPOLOGIES.md) before spreading gateway, voice, router, or serve roles across more devices.

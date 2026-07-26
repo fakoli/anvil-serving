@@ -742,12 +742,11 @@ def test_models_cache_prune_only_confirms_execute_and_propagates_authorization(
     assert seen[-1] == (["--execute", "--dry-run"], False)
 
 
-def test_models_cache_prune_removed_yes_points_to_confirm(capsys):
+def test_models_cache_prune_rejects_unknown_yes_option(capsys):
     assert cli.main(["models", "cache", "prune", "--yes"]) == 2
     err = capsys.readouterr().err
     assert "--yes" in err
-    assert "--confirm" in err
-    assert "was removed" in err
+    assert "unrecognized arguments" in err
 
 
 def test_cache_prune_direct_execute_requires_confirmation_before_scan(capsys):
@@ -837,7 +836,7 @@ def test_models_score_dispatches_canonically_and_root_score_refuses(capsys):
     assert direct["candidates"]
     assert "Per-candidate role scores" in canonical["data"]
     assert cli.main(["score", "--no-local"]) == 2
-    assert "was removed" in capsys.readouterr().err
+    assert "unknown command: score" in capsys.readouterr().err
 
 
 def test_pull_dispatches_through_top_level_cli(monkeypatch, capsys):
@@ -984,7 +983,7 @@ def test_recipe_list_tables_recorded_recipes(request, capsys):
     out = capsys.readouterr().out
     assert rc == 0
     # header + the three shipped rows.
-    assert "status" in out and "throughput" in out and "intent" in out
+    assert "status" in out and "throughput" in out and "fit" in out
     assert "activates" in out and "heavy" in out
     assert "openai/gpt-oss-120b" in out
     assert "183.2 tok/s" in out
@@ -1001,8 +1000,8 @@ def test_recipe_show_prints_reconstructed_command_and_stats(request, capsys):
     assert "docker run -d --gpus device=GPU-d0f446cf" in out
     assert "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e openai/gpt-oss-120b" in out
     assert "-v vllm-hfcache:/root/.cache/huggingface" in out
-    # intent + download surfaced.
-    assert "flexibility" in out
+    # workload fit + download surfaced.
+    assert "benchmark-quality" in out or "quality" in out
     assert "anvil-serving models pull openai/gpt-oss-120b" in out
     # Historical GPT-OSS-120B remains reproducible but is no longer a managed
     # Heavy activation path after the Laguna promotion.

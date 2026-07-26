@@ -414,7 +414,7 @@ def test_shipped_fakoli_manifest_purpose_model_serves():
 
 def test_shipped_fakoli_manifest_ocr_serve():
     # gpu-reservations:T011 — PaddleOCR-VL-1.6 is a declared `resident`
-    # ADR-0017 reservation behind the router's "ocr" preset (ocr-local, :30007).
+    # ADR-0017 reservation behind the "vision.ocr" alias (ocr-local, :30007).
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
     ocr = by_name["ocr"]
@@ -446,7 +446,7 @@ def test_shipped_fakoli_manifest_ocr_serve():
 
 def test_shipped_fakoli_manifest_vision_serve():
     # gpu-reservations:T013 — Qwen3-VL-4B-Instruct is the first `evictable`
-    # ADR-0017 reservation on dark-fast, behind the router's "vision" preset
+    # ADR-0017 reservation on dark-fast, behind the "vision.general" alias
     # (vision-local, :30008). Evictable means: admitted only when the ledger
     # has headroom, and stopped (drain-first, via the declared router_tier)
     # when an `on-demand` acquisition needs the VRAM (T005 eviction flow).
@@ -1060,29 +1060,26 @@ def test_cmd_up_recreate_rescues_dead_container():
 # ---- guarded promotion ------------------------------------------------------
 
 def _promotion_manifest(tmp_path):
-    for name, model in (("new.toml", "new-heavy"), ("old.toml", "old-heavy")):
-        (tmp_path / name).write_text(
-            """
-[router]
-mapping_version = "test"
-[[router.tiers]]
-id = "heavy-local"
-base_url = "http://127.0.0.1:30002/v1"
-model = "%s"
-dialect = "openai"
-context_limit = 131072
-privacy = "local"
-tool_support = true
-auth_env = "ANVIL_HEAVY_KEY"
-health_path = "/health"
-model_identity = true
-[router.presets]
-chat = ["heavy-local"]
-""" % model,
-            encoding="utf-8",
-        )
-    for name in ("new.json", "old.json"):
-        (tmp_path / name).write_text("{}", encoding="utf-8")
+    for filename, model in (
+        ("router-promoted.toml", "new-heavy"),
+        ("router-rollback.toml", "old-heavy"),
+    ):
+        (tmp_path / filename).write_text(textwrap.dedent(f"""
+            [router]
+            [[router.tiers]]
+            id = "heavy-local"
+            base_url = "http://127.0.0.1:30002/v1"
+            model = "{model}"
+            dialect = "openai"
+            context_limit = 4096
+            privacy = "local"
+            tool_support = true
+            auth_env = "ANVIL_HEAVY_LOCAL_KEY"
+            health_path = "/health"
+            model_identity = true
+            [router.model_routes]
+            llm.primary = "heavy-local"
+        """), encoding="utf-8")
     return _manifest(tmp_path, """
         [[serve]]
         name = "candidate"
@@ -1112,11 +1109,9 @@ chat = ["heavy-local"]
         candidate = "candidate"
         target = "heavy"
         rollback = "old-heavy"
-        router_config = "{dir}/new.toml"
-        router_profile = "{dir}/new.json"
-        rollback_router_config = "{dir}/old.toml"
-        rollback_router_profile = "{dir}/old.json"
         affected_tiers = ["heavy-local"]
+        router_config = "{dir}/router-promoted.toml"
+        rollback_router_config = "{dir}/router-rollback.toml"
         needle_ctx = 131072
         tool_batch = 20
 
@@ -1145,25 +1140,18 @@ chat = ["heavy-local"]
     """)
 
 
-def test_load_promotions_resolves_complete_router_state(tmp_path):
+def test_load_promotions_resolves_direct_router_configs(tmp_path):
     path = _promotion_manifest(tmp_path)
     (plan,) = serves.load_promotions(path)
     assert plan["name"] == "heavy-v2"
     assert plan["target"] == "heavy"
     assert plan["rollback"] == "old-heavy"
-    assert plan["router_config"] == str(tmp_path / "new.toml")
-    assert plan["rollback_router_profile"] == str(tmp_path / "old.json")
+    assert plan["affected_tiers"] == ["heavy-local"]
+    assert plan["router_config"] == str(tmp_path / "router-promoted.toml")
+    assert plan["rollback_router_config"] == str(tmp_path / "router-rollback.toml")
     assert [gate["name"] for gate in plan["gate"]] == ["functional", "quality"]
     assert plan["gate"][1]["reasoning_headroom_tokens"] == 4096
     assert plan["rollback_gate"][0]["thinking_mode"] == "unsupported"
-
-
-def test_load_promotions_resolves_plain_relative_paths_from_manifest(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    text = (tmp_path / "serves.toml").read_text(encoding="utf-8")
-    (tmp_path / "serves.toml").write_text(text.replace("{dir}/new.toml", "new.toml"), encoding="utf-8")
-    (plan,) = serves.load_promotions(path)
-    assert plan["router_config"] == str(tmp_path / "new.toml")
 
 
 def test_load_promotions_rejects_nonpositive_poll_interval(tmp_path):
@@ -1176,6 +1164,43 @@ def test_load_promotions_rejects_nonpositive_poll_interval(tmp_path):
     import pytest
     with pytest.raises(ValueError, match="poll_interval must be a finite positive"):
         serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_removed_profile_fields(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(
+        manifest.read_text(encoding="utf-8").replace(
+            'router_config = "{dir}/router-promoted.toml"',
+            'router_config = "{dir}/router-promoted.toml"\n'
+            'router_profile = "{dir}/legacy-profile.json"',
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="removed profile field"):
+        serves.load_promotions(path)
+
+
+def test_install_router_config_validates_writes_atomically_and_restarts(tmp_path):
+    config = tmp_path / "router.toml"
+    config.write_text("[router]\n", encoding="utf-8")
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs.get("input")))
+        if argv[:4] == ["docker", "inspect", "-f", "{{.Config.Image}}"]:
+            return proc(0, "anvil-serving:test\n")
+        return proc()
+
+    assert serves._install_router_config(str(config), _run=run) == 0
+    assert calls[0][0][:3] == ["docker", "exec", "-i"]
+    assert any(
+        call[0][:3] == ["docker", "run", "--rm"]
+        and "config.toml.new" in call[0][-1]
+        for call in calls
+    )
+    assert calls[-1][0] == ["docker", "restart", "anvil-router"]
 
 
 def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):
@@ -1194,63 +1219,7 @@ def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):
     assert "gate quality" in out
     assert "--thinking-mode enabled" in out
     assert "--reasoning-headroom-tokens 4096" in out
-    assert "router promote" in out
-
-
-def test_promotion_topology_rejects_same_port_and_model_on_wrong_host(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    new_path = tmp_path / "new.toml"
-    new_path.write_text(
-        new_path.read_text(encoding="utf-8").replace("127.0.0.1", "10.0.0.9"),
-        encoding="utf-8",
-    )
-    assert serves.cmd_promote(
-        serves.load_manifest(path), serves.load_promotions(path),
-        "heavy-v2", path, dry_run=True,
-    ) == 1
-
-
-def test_promotion_topology_rejects_ipv6_loopback_alias(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    new_path = tmp_path / "new.toml"
-    new_path.write_text(
-        new_path.read_text(encoding="utf-8").replace(
-            "http://127.0.0.1:30002/v1", "http://[::1]:30002/v1"
-        ),
-        encoding="utf-8",
-    )
-    assert serves.cmd_promote(
-        serves.load_manifest(path), serves.load_promotions(path),
-        "heavy-v2", path, dry_run=True,
-    ) == 1
-
-
-def test_promotion_topology_requires_complete_endpoint_alias_coverage(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    for filename, model in (("new.toml", "new-heavy"), ("old.toml", "old-heavy")):
-        config = tmp_path / filename
-        text = config.read_text(encoding="utf-8")
-        alias = """
-[[router.tiers]]
-id = "heavy-alias"
-base_url = "http://127.0.0.1:30002/v1"
-model = "%s"
-dialect = "openai"
-context_limit = 131072
-privacy = "local"
-tool_support = true
-auth_env = "ANVIL_HEAVY_KEY"
-health_path = "/health"
-model_identity = true
-""" % model
-        config.write_text(
-            text.replace("[router.presets]", alias + "\n[router.presets]"),
-            encoding="utf-8",
-        )
-    assert serves.cmd_promote(
-        serves.load_manifest(path), serves.load_promotions(path),
-        "heavy-v2", path, dry_run=True,
-    ) == 1
+    assert "atomically install" in out
 
 
 def test_cmd_promote_failure_runs_complete_rollback(tmp_path, monkeypatch):
@@ -1293,8 +1262,6 @@ def test_ambiguous_quiesce_failure_compensates_current_tier(
     managed = serves.load_manifest(path)
     (plan,) = serves.load_promotions(path)
     actions = []
-
-    monkeypatch.setattr(serves, "_promotion_cli", lambda *a, **k: 0)
 
     def transition(_plan, action, tier_id, **kwargs):
         actions.append((action, tier_id))
@@ -1371,6 +1338,7 @@ def test_resume_reuses_only_running_healthy_exact_identity_target(
     identities = iter([first_identity, True])
 
     monkeypatch.setattr(serves, "_promotion_cli", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "_install_router_config", lambda *a, **k: 0)
     monkeypatch.setattr(serves, "_promotion_transition_cli", lambda *a, **k: 0)
     monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: 0)
     monkeypatch.setattr(serves, "docker_state", lambda *a, **k: "running")
@@ -1402,7 +1370,9 @@ def test_cmd_promote_refuses_unhealthy_candidate_without_mutating(tmp_path):
     assert not any(call[:2] == ["docker", "stop"] for call in run.calls)
 
 
-def test_safe_promotion_orders_quiesce_drain_before_heavy_mutation(tmp_path):
+def test_safe_promotion_orders_quiesce_drain_config_restart_before_readiness(
+    tmp_path, monkeypatch
+):
     path = _promotion_manifest(tmp_path)
     managed = serves.load_manifest(path)
     # An unrelated resident Fast serve is present but outside the managed pair.
@@ -1413,6 +1383,11 @@ def test_safe_promotion_orders_quiesce_drain_before_heavy_mutation(tmp_path):
     })
     plans = serves.load_promotions(path)
     run = _inspect_returning("running")
+    applied = []
+    monkeypatch.setattr(
+        serves, "_install_router_config",
+        lambda config, **_kwargs: applied.append(config) or 0,
+    )
 
     class Response:
         status = 200
@@ -1448,6 +1423,7 @@ def test_safe_promotion_orders_quiesce_drain_before_heavy_mutation(tmp_path):
     first_stop = next(i for i, call in enumerate(calls) if call[:2] == ["docker", "stop"])
     post_restart = next(i for i, call in enumerate(calls) if "transition-status" in call)
     assert quiesce < drain < first_stop < post_restart
+    assert applied == [str(tmp_path / "router-promoted.toml")]
     assert not any("fast-c" in call for call in calls)
 
 

@@ -608,7 +608,6 @@ def test_default_audio_transport_records_the_bounded_count_for_an_oversized_resp
 
 BASE_TOML = """
 [router]
-mapping_version = "audio-test"
 
 [[router.tiers]]
 id = "chat"
@@ -620,8 +619,8 @@ privacy = "local"
 tool_support = true
 auth_env = "ANVIL_CHAT_KEY"
 
-[router.presets]
-chat = ["chat"]
+[router.model_routes]
+llm.primary = "chat"
 """
 
 

@@ -1,6 +1,6 @@
 ---
 name: anvil-serving-voice-ops
-description: Operate topology-owned anvil-serving voice audio and Realtime proxy lifecycle, Mini-to-Dark loopback forwarding, profiles, sidecars, and bounded voice benchmarks. Use for voice status, logs, start/stop/restart, OpenClaw Talk topology checks, and voice evidence that must remain separate from router promotion evidence.
+description: Operate topology-owned anvil-serving voice audio and Realtime proxy lifecycle, Mini-to-Dark loopback forwarding, profiles, sidecars, and bounded voice benchmarks. Use for voice status, logs, start/stop/restart, OpenClaw Talk topology checks, and voice evidence that must remain separate from LLM serve qualification evidence.
 ---
 
 # Anvil Serving Voice Ops
@@ -37,9 +37,8 @@ forwarding bridge, and collecting bounded voice benchmarks.
    to Dark. `mini-audio` is an explicit optional same-host/local-audio mode
    only. A non-gateway checkout cannot validate Mini-local proxy paths by
    calling its own `127.0.0.1`.
-6. Treat voice benchmark output as voice-pipeline evidence. Voice results are
-   not router work-class promotion evidence and must not satisfy a
-   `router_promote` gate.
+6. Treat voice benchmark output as voice-pipeline evidence. Voice results do
+   not qualify an LLM serve or change a direct gateway alias.
 7. Do not introduce one-off lifecycle, proxy, or port-forwarding scripts as the
    operational path. If repeatable voice operation needs a new control, it
    belongs in `anvil-serving voice` and, when agent-operated, MCP/controller.
@@ -58,12 +57,12 @@ in process argv. The compose path includes an auth exposure comment in the
 rendered service. Use either path only on private hosts where process and
 Docker metadata are protected.
 
-Never use `anvil-serving voice benchmark` as a shortcut for router quality
-promotion. Voice benchmarks measure the voice pipeline: turn latency, TTFA,
-audio/STT/TTS behavior, realtime transport, and user-perceived loop quality.
-They can support a voice-pipeline status report, but router work-class
-promotion still requires router preflight, benchmark, calibration, independent
-review, and human approval.
+Never use `anvil-serving voice benchmark` as a shortcut for LLM serve
+qualification. Voice benchmarks measure the voice pipeline: turn latency,
+TTFA, audio/STT/TTS behavior, realtime transport, and user-perceived loop
+quality. They can support a voice-pipeline status report, but an LLM serve
+still requires its own preflight, benchmark evidence, independent review, and
+human approval before an operator changes a direct alias.
 
 Use `workflow_packet_validate` before handing a voice packet to the broader
 workbench. Voice artifacts must remain explicitly marked as non-promotion
@@ -113,7 +112,8 @@ evidence.
   `--candidate-overlay <toml>` selects a candidate LLM configuration. Do not
   combine `--candidate-overlay` with direct candidate flags. A voice benchmark
   does not replace `anvil-serving eval preflight`, capacity benchmarking, or
-  repeated `anvil-serving eval benchmark quality` evidence for router trust.
+  repeated `anvil-serving eval benchmark quality` evidence for LLM serve
+  qualification.
 
 ## Result Packet
 
@@ -123,7 +123,7 @@ workbench. Use `artifacts` entries with `kind: "voice-benchmark"` or
 `promotion_quality_evidence: false`. Keep `advisory_priors` empty unless
 external voice-specific priors are explicitly identified as advisory-only. Keep
 `promoted=false` and `human_gate_required=true` for any workflow that asks for
-router promotion, public binds, cloud enablement, or long-running service
+a direct-alias change, public binds, cloud enablement, or long-running service
 starts.
 
 If the existing `voice` and `voice sidecar` verbs cannot cover the request,

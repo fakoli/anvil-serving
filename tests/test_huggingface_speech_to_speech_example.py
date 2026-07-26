@@ -22,7 +22,7 @@ def test_example_uses_chat_completions_backend_and_anvil_router():
     text = _example_text()
     assert "--llm_backend chat-completions" in text
     assert '--responses_api_base_url "http://127.0.0.1:8000/v1"' in text
-    assert "--model_name chat" in text
+    assert "--model_name llm.voice" in text
     assert 'base_url = "http://127.0.0.1:8000/v1"' in text
     assert "anvil-serving voice sidecar command" in text
     assert "anvil-serving voice sidecar validate" in text
@@ -47,7 +47,7 @@ def test_example_documents_openclaw_gateway_boundary():
 def test_example_documents_16gb_validation_checklist():
     text = _example_text()
     assert "16 GB shared memory" in text
-    assert "LLM: `--model_name chat` through anvil-serving" in text
+    assert "LLM: `--model_name llm.voice` through anvil-serving" in text
     assert "Fully local STT plus TTS plus a small GGUF LLM" in text
     for phrase in (
         "Idle memory",

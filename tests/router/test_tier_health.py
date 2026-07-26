@@ -33,14 +33,6 @@ HEALTH = TIER_HEALTH_ENDPOINT
 # --------------------------------------------------------------------------- #
 # Fixtures / helpers
 # --------------------------------------------------------------------------- #
-class _Profile:
-    def decision(self, tier_id, work_class, *, is_cloud=False):
-        return "allow"
-
-    def score(self, tier_id, work_class):
-        return 1.0
-
-
 class _KeyedAvailability:
     """Tracked readiness keyed by serve id — the state routing already keeps.
 
@@ -78,9 +70,7 @@ def _config(
 ) -> RouterConfig:
     return RouterConfig(
         tiers=tuple(tiers),
-        presets={"chat": tuple(t.id for t in tiers)},
-        mapping_version="tier-health-test",
-        verify_local_min=False,
+        model_routes={f"llm.{t.id}": t.id for t in tiers},
         purpose_models=tuple(purpose_models),
         audio_routes=tuple(audio_routes),
     )
@@ -88,7 +78,7 @@ def _config(
 
 def _routing(config: RouterConfig, availability) -> RoutingBackend:
     backends = {t.id: StaticBackend(["ok"]) for t in config.tiers}
-    return RoutingBackend(config, backends, _Profile(), availability=availability)
+    return RoutingBackend(config, backends, availability=availability)
 
 
 @contextmanager

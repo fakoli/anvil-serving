@@ -41,23 +41,7 @@ def _action_group_paths() -> tuple[tuple[str, ...], ...]:
         if path[-1].visible
         and path[-1].children
         and path[-1].handler is None
-        and path[-1].tombstone is None
     )
-
-
-def _tombstone_cases() -> tuple[tuple[tuple[str, ...], str], ...]:
-    cases: list[tuple[tuple[str, ...], str]] = []
-    for path in _paths():
-        command = tuple(node.name for node in path)
-        node = path[-1]
-        if node.tombstone is not None:
-            cases.append((command, node.tombstone.replacement))
-        for option in node.options:
-            if option.tombstone is None:
-                continue
-            flag = next((item for item in option.flags if item.startswith("--")), option.flags[0])
-            cases.append(((*command, flag), option.tombstone.replacement))
-    return tuple(cases)
 
 
 def _unbounded_json_cases() -> tuple[tuple[tuple[str, ...], str], ...]:
@@ -75,34 +59,6 @@ def _unbounded_json_cases() -> tuple[tuple[tuple[str, ...], str], ...]:
             flag = next((item for item in option.flags if item.startswith("--")), option.flags[0])
             cases.append(((*command, flag), option.output_policy))
     return tuple(cases)
-
-
-@pytest.mark.parametrize(("argv", "replacement"), _tombstone_cases())
-def test_every_tombstone_refuses_human_and_json_before_resolution(
-    monkeypatch, capsys, argv, replacement
-):
-    monkeypatch.setattr(
-        HandlerRef,
-        "resolve",
-        lambda self: pytest.fail(f"resolved tombstone handler: {self.name}"),
-    )
-    monkeypatch.setattr(
-        cli,
-        "_resolve_dispatch_plan",
-        lambda *_args, **_kwargs: pytest.fail("resolved topology for tombstone"),
-    )
-
-    assert cli.main(list(argv)) == 2
-    human = capsys.readouterr()
-    assert human.out == ""
-    assert replacement in human.err
-
-    assert cli.main([*argv, "--json"]) == 2
-    machine = capsys.readouterr()
-    assert machine.err == ""
-    payload = json.loads(machine.out)
-    assert payload["error"]["class"] == "usage"
-    assert payload["error"]["details"]["replacement"] == replacement
 
 
 @pytest.mark.parametrize(("argv", "classification"), _unbounded_json_cases())
@@ -432,7 +388,5 @@ def test_json_token_reveal_requires_confirmation_before_handler(monkeypatch, cap
 
 
 def test_voice_profile_validation_requires_profile(capsys):
-    with pytest.raises(SystemExit) as exc:
-        cli.main(["voice", "profiles", "validate"])
-    assert exc.value.code == 2
+    assert cli.main(["voice", "profiles", "validate"]) == 2
     assert "--profile" in capsys.readouterr().err

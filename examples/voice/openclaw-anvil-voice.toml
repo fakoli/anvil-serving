@@ -32,7 +32,7 @@ realtime_port = 8765
 
 [voice.llm]
 base_url = "http://100.87.34.66:8000/v1"
-model = "chat-fast"
+model = "llm.voice"
 stream = true
 system_prompt = "You are Anvil Voice inside OpenClaw. Keep spoken answers concise, direct, and useful."
 temperature = 0.2
@@ -43,9 +43,6 @@ history_max_message_chars = 1200
 tool_result_max_chars = 12000
 api_key_env = "ANVIL_ROUTER_TOKEN"
 expected_endpoint_host = "100.87.34.66"
-expected_route_provider = "fast-local"
-expected_route_model = "qwen36-35b-a3b-nvfp4"
-expected_route_tier = "local"
 
 [voice.stt]
 base_url = "http://100.87.34.66:30110/v1"
@@ -165,24 +162,15 @@ base_url = "http://100.87.34.66:39000/v1"
 model = "qwen3-32b-nvfp4"
 api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
 expected_endpoint_host = "100.87.34.66"
-expected_route_provider = "direct-vllm"
-expected_route_model = "qwen3-32b-nvfp4"
-expected_route_tier = "candidate"
 
 [voice.profiles.candidate-gemma4-12b.llm]
 base_url = "http://100.87.34.66:39001/v1"
 model = "gemma4-12b-it"
 api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
 expected_endpoint_host = "100.87.34.66"
-expected_route_provider = "direct-vllm"
-expected_route_model = "gemma4-12b-it"
-expected_route_tier = "candidate"
 
 [voice.profiles.candidate-gemma4-e4b.llm]
 base_url = "http://100.87.34.66:39002/v1"
 model = "gemma4-e4b-it"
 api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
 expected_endpoint_host = "100.87.34.66"
-expected_route_provider = "direct-vllm"
-expected_route_model = "gemma4-e4b-it"
-expected_route_tier = "candidate"
