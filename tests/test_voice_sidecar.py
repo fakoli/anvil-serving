@@ -156,7 +156,7 @@ def test_compose_rejects_container_backend_loopback():
 def test_cli_refuses_removed_voice_sidecar_root(capsys):
     rc = cli.main(["voice-sidecar", "validate", "--config", str(EXAMPLE)])
     assert rc == 2
-    assert "was removed; use `voice sidecar`" in capsys.readouterr().err
+    assert "unknown command: voice-sidecar" in capsys.readouterr().err
 
 
 def test_cli_dispatches_nested_voice_sidecar_validate(capsys):
@@ -255,14 +255,14 @@ def test_voice_ops_skill_uses_existing_verbs_and_scopes_evidence():
         assert command in text
     assert "--topology <topology>" in text
     assert "voice-pipeline evidence" in text
-    assert "not router work-class promotion evidence" in text
+    assert "LLM serve qualification" in text
     assert "promotion_quality_evidence: false" in text
     assert "promoted=false" in text
     assert "127.0.0.1" in text
-    assert "router_promote" in text
+    assert "router_promote" not in text
 
     docs = OPERATOR_DOC.read_text(encoding="utf-8")
     assert "`skills/anvil-serving-voice-ops/SKILL.md`" in docs
-    assert "Voice benchmark output is voice-pipeline evidence" in docs
-    assert "not router work-class promotion evidence" in docs
-    assert "promotion_quality_evidence: false" in docs
+    assert "Voice benchmark output is" in docs
+    assert "not LLM serve qualification evidence" in docs
+    assert "`promotion_quality_evidence` remains `false`" in docs

@@ -320,7 +320,7 @@ services:
 
   # ── OCR serve (gpu-reservations:T011) ──
   # PaddleOCR-VL-1.6 (0.9B, bf16, arch paddleocr_vl) on the multi-tenant RTX 5090:
-  # the document-parsing VLM behind the router's "ocr" intent preset (tier
+  # the document-parsing VLM behind the gateway's "vision.ocr" direct alias (tier
   # ocr-local -> :30007). Serves OpenAI chat completions with image content —
   # send the task prompt ("OCR:", "Table Recognition:", ...) plus the page image
   # (vLLM recipe: docs.vllm.ai/projects/recipes -> PaddlePaddle/PaddleOCR-VL;
@@ -393,8 +393,8 @@ services:
 
   # ── Vision serve (gpu-reservations:T013) ──
   # Qwen3-VL-4B-Instruct (4.4B dense, bf16, arch qwen3_vl — vLLM-native) on the
-  # multi-tenant RTX 5090: the general image-understanding VLM behind the router's
-  # "vision" intent preset (tier vision-local -> :30008). Serves OpenAI chat
+  # multi-tenant RTX 5090: the general image-understanding VLM behind the gateway's
+  # "vision.general" direct alias (tier vision-local -> :30008). Serves OpenAI chat
   # completions with image content — send the image plus a prompt ("Describe this
   # screenshot", "What does the error dialog say?", ...). Distinct from the `ocr`
   # serve: PaddleOCR-VL extracts document text verbatim; Qwen3-VL understands and
@@ -477,7 +477,7 @@ services:
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
   # host.docker.internal:<port>. Pinned to the locally built release image anvil-serving:0.13.2
   # and a config VOLUME (anvil-router-cfg). Build that image with the repository Dockerfile; do
-  # not use `build:` here, so `up` and `router promote --image` validate the exact runtime tag.
+  # not use `build:` here, so `up` runs the exact configured runtime tag.
   # Bump this tag + router_manage.DEFAULT_IMAGE together on each router release.
   # ROUTER_IMAGE is a per-invocation CANDIDATE override for pre-release router verification
   # (e.g. `ROUTER_IMAGE=anvil-serving:0.13.2rc1 anvil-serving router up`); a bare `up` always
@@ -491,17 +491,17 @@ services:
     environment:
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
     volumes:
-      # Config + promoted profile live in the anvil-router-cfg volume (/etc/anvil), read-only
-      # into the container, edited out-of-band via `anvil-serving router promote` (ADR-0012).
+      # The direct-alias config lives in the anvil-router-cfg volume (/etc/anvil), read-only
+      # inside the container. Provision it before starting the router.
       # SEED IT on a fresh host before the first `up`: an EMPTY volume has no config.toml so the
       # router crash-loops; on an UPGRADE the persisted volume may still hold OLD tier ports, so
-      # re-promote the current config (`router promote --config`) after changing the topology.
+      # replace config.toml and restart the router after changing the topology.
       - "anvil-router-cfg:/etc/anvil:ro"
 
 volumes:
   # Model weights (HF cache). External so `down -v` can never delete the pulled weights.
   vllm-hfcache:
     external: true
-  # Router config + profile. External so it survives recreates and is edited independently.
+  # Router direct-alias config. External so it survives recreates and is edited independently.
   anvil-router-cfg:
     external: true

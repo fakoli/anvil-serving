@@ -13,14 +13,6 @@ from anvil_serving.router.internal import InternalRequest, Message, NoAvailableT
 from anvil_serving.router.serve import RoutingBackend
 
 
-class _Profile:
-    def decision(self, tier_id, work_class, *, is_cloud=False):
-        return "allow"
-
-    def score(self, tier_id, work_class):
-        return 1.0
-
-
 class _TextBackend:
     def __init__(self, text):
         self.text = text
@@ -60,26 +52,23 @@ def _routing(heavy_backend, fast_backend):
     fast = _tier("fast-local", 30003)
     config = RouterConfig(
         tiers=(heavy, fast),
-        presets={
-            "chat": (heavy.id, fast.id),
-            "heavy-only": (heavy.id,),
+        model_routes={
+            "llm.primary": heavy.id,
+            "llm.voice": fast.id,
         },
-        mapping_version="transition-test",
-        verify_local_min=False,
     )
     return RoutingBackend(
         config,
         {heavy.id: heavy_backend, fast.id: fast_backend},
-        _Profile(),
         availability=AlwaysAvailable(),
     )
 
 
-def _request(model="chat"):
+def _request(model="llm.primary"):
     return InternalRequest(model=model, messages=[Message("user", "reply")])
 
 
-def test_heavy_drains_while_late_eligible_request_uses_resident_fast():
+def test_heavy_drains_while_another_direct_route_uses_resident_fast():
     heavy = _BlockingBackend()
     fast = _TextBackend("FAST")
     routing = _routing(heavy, fast)
@@ -90,18 +79,17 @@ def test_heavy_drains_while_late_eligible_request_uses_resident_fast():
 
     snapshot = routing.quiesce_tier("heavy-local")
     assert snapshot["active_requests"] == 1
-    assert "".join(routing.generate(_request())) == "FAST"
+    assert "".join(routing.generate(_request("llm.voice"))) == "FAST"
     assert fast.calls == 1
-    assert routing._circuit_breaker.failure_count("heavy-local") == 0
 
     heavy.release.set()
     worker.join(1)
     assert result == ["HEAVY"]
     assert routing.drain_tier("heavy-local", 1)["drained"] is True
-    record = routing._decision_log.records[-1]
-    assert [attempt.outcome for attempt in record.attempts] == [
-        "skipped-quiesced", "served",
-    ]
+    assert any(
+        record.served_tier == "fast-local"
+        for record in routing._decision_log.records
+    )
 
 
 def test_heavy_only_request_fails_closed_while_quiesced():
@@ -109,9 +97,8 @@ def test_heavy_only_request_fails_closed_while_quiesced():
     routing.quiesce_tier("heavy-local")
 
     with pytest.raises(NoAvailableTierError) as exc:
-        routing.generate(_request("heavy-only"))
+        routing.generate(_request("llm.primary"))
     assert exc.value.kind == "unavailable"
-    assert routing._circuit_breaker.failure_count("heavy-local") == 0
 
 
 def test_direct_stream_close_releases_full_generation_lease():
@@ -129,14 +116,6 @@ def test_unadvanced_direct_stream_close_releases_admission_lease():
     assert routing._admission.snapshot("heavy-local").active_requests == 1
     stream.close()
     assert routing._admission.snapshot("heavy-local").active_requests == 0
-
-
-def test_route_decision_never_advertises_a_quiesced_tier():
-    routing = _routing(_TextBackend("HEAVY"), _TextBackend("FAST"))
-    routing.quiesce_tier("heavy-local")
-    with pytest.raises(NoAvailableTierError) as exc:
-        routing.decide(_request("heavy-only"))
-    assert exc.value.kind == "unavailable"
 
 
 def test_guarded_readmit_requires_identity_readiness_configuration():
@@ -173,12 +152,9 @@ def test_successful_readmit_keeps_the_identity_result_cached():
     routing = RoutingBackend(
         RouterConfig(
             tiers=(heavy,),
-            presets={"heavy-only": (heavy.id,)},
-            mapping_version="transition-test",
-            verify_local_min=False,
+            model_routes={"llm.primary": heavy.id},
         ),
         {heavy.id: _TextBackend("HEAVY")},
-        _Profile(),
         availability=ready,
     )
     routing.quiesce_tier(heavy.id)
@@ -197,12 +173,9 @@ def test_guarded_readmit_rejects_available_without_exact_identity_evidence():
     routing = RoutingBackend(
         RouterConfig(
             tiers=(heavy,),
-            presets={"heavy-only": (heavy.id,)},
-            mapping_version="transition-test",
-            verify_local_min=False,
+            model_routes={"llm.primary": heavy.id},
         ),
         {heavy.id: _TextBackend("HEAVY")},
-        _Profile(),
         availability=AlwaysAvailable(),
     )
     routing.quiesce_tier(heavy.id)
@@ -305,7 +278,7 @@ def test_eviction_drains_the_in_flight_admission_lease_before_container_stop(tmp
 
     result = []
     worker = threading.Thread(target=lambda: result.append(
-        "".join(routing.generate(_request("heavy-only")))))
+        "".join(routing.generate(_request("llm.primary")))))
     worker.start()
     assert victim_backend.entered.wait(1)
     assert routing._admission.snapshot("heavy-local").active_requests == 1
@@ -351,7 +324,7 @@ def test_eviction_drain_timeout_aborts_without_operating_containers(tmp_path):
     routing = _routing(victim_backend, _TextBackend("FAST"))
     loaded = serves_mod.load_manifest(_eviction_manifest(tmp_path))
 
-    stream = routing.generate(_request("heavy-only"))
+    stream = routing.generate(_request("llm.primary"))
     assert routing._admission.snapshot("heavy-local").active_requests == 1
 
     journal = []

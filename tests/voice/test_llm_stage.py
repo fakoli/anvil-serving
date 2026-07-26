@@ -90,7 +90,7 @@ def _tool_call_chunk(index: int, *, call_id: str | None = None, name: str | None
 # --------------------------------------------------------------------------- #
 def test_build_request_body_defaults_to_chat_fast_preset():
     body = build_request_body("hi", LLMStageConfig())
-    assert body["model"] == "chat-fast"
+    assert body["model"] == "llm.voice"
 
 
 def test_build_request_body_never_targets_responses_api():

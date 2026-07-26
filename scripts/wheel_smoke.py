@@ -22,7 +22,7 @@ from importlib import resources
 import anvil_serving
 
 package = resources.files("anvil_serving")
-required = (package / "py.typed", package / "router" / "tier0_keywords.json")
+required = (package / "py.typed",)
 missing = [str(path) for path in required if not path.is_file()]
 if missing:
     raise SystemExit("missing package data: " + ", ".join(missing))
@@ -173,7 +173,7 @@ def run_smoke(
             "installed_package": str(installed_package),
             "entrypoint": str(entrypoint),
             "canonical_command": "anvil-serving router run --help",
-            "package_data": ["anvil_serving/py.typed", "anvil_serving/router/tier0_keywords.json"],
+            "package_data": ["anvil_serving/py.typed"],
         }
 
 

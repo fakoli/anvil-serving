@@ -79,7 +79,6 @@ from anvil_serving.voice.stages.tts import TTSStageConfig, stream_speech  # noqa
 from anvil_serving.voice.serves._common import ServeNotConfigured  # noqa: E402
 from anvil_serving.voice.serves.stt import STTServe, STTServeConfig  # noqa: E402
 from anvil_serving.voice.serves.tts import TTSServe, TTSServeConfig  # noqa: E402
-from scripts.voice.local_loop_demo import route_decision_probe  # noqa: E402
 
 _FAKOLI_MINI_CONFIG = _REPO_ROOT / "examples" / "voice" / "fakoli-mini.toml"
 _FAKOLI_DARK_CONFIG = _REPO_ROOT / "examples" / "voice" / "fakoli-dark.toml"
@@ -374,57 +373,6 @@ def endpoint_models_probe(base_url: str, expected_model: str, *, timeout: float 
         result.update({"status": exc.code, "error": "HTTP %s" % exc.code})
         return result
     except Exception as exc:  # noqa: BLE001 - proof capture reports failures
-        result["error"] = "%s: %s" % (type(exc).__name__, exc)
-        return result
-
-
-def route_auth_negative_probe(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Verify token-protected manifests reject a no-Authorization route probe."""
-    llm = data["voice"]["llm"]
-    env_name = llm.get("api_key_env")
-    base_url = llm["base_url"].rstrip("/")
-    url = base_url + "/route"
-    result: Dict[str, Any] = {
-        "required": bool(env_name),
-        "auth_env": env_name,
-        "url": url,
-        "auth_enforced": False,
-    }
-    if not env_name:
-        result["ok"] = True
-        result["auth_enforced"] = True
-        return result
-
-    body = {
-        "model": llm["model"],
-        "messages": [{"role": "user", "content": "voice Mini validation auth-negative proof"}],
-        "modality": "voice",
-    }
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 - configured router URL only
-            result.update({
-                "ok": False,
-                "status": getattr(resp, "status", resp.getcode()),
-                "error": "route accepted an unauthenticated request",
-            })
-            return result
-    except urllib.error.HTTPError as exc:
-        result.update({
-            "ok": exc.code in (401, 403),
-            "status": exc.code,
-            "auth_enforced": exc.code in (401, 403),
-        })
-        if exc.code not in (401, 403):
-            result["error"] = "expected 401/403, got HTTP %s" % exc.code
-        return result
-    except Exception as exc:  # noqa: BLE001 - evidence capture should report, not crash
-        result["ok"] = False
         result["error"] = "%s: %s" % (type(exc).__name__, exc)
         return result
 
@@ -725,20 +673,15 @@ def build_verdict(result: Dict[str, Any]) -> Dict[str, Any]:
         failure_modes.append("stt_not_ready")
     if not result.get("tts", {}).get("ready"):
         failure_modes.append("tts_not_ready")
-    route_proof = result.get("route_proof") or {}
     if (
         not result.get("llm_routed_remote")
         or not result.get("llm_endpoint_is_fakoli_dark")
-        or not route_proof.get("ok")
     ):
         failure_modes.append("llm_not_routed_to_remote_fakoli_dark")
     if not result.get("llm_auth_env"):
         failure_modes.append("llm_auth_env_missing")
     elif not result.get("llm_auth_env_present"):
         failure_modes.append("llm_auth_token_unset")
-    route_auth_negative = result.get("route_auth_negative") or {}
-    if result.get("llm_auth_env") and route_auth_negative.get("auth_enforced") is not True:
-        failure_modes.append("llm_auth_not_enforced")
     if result.get("benchmark_sample_error"):
         failure_modes.append("benchmark_sample_error")
     sample = result.get("benchmark_sample") or {}
@@ -843,10 +786,6 @@ def run_validation(
     stt_result = asdict(stt_validation)
     tts_result = asdict(tts_validation)
     host_after_serves_ready = host_memory_snapshot()
-    route_proof = route_decision_probe(
-        data, prompt="voice Mini validation route proof", prompt_source="validation probe"
-    )
-    route_auth_negative = route_auth_negative_probe(data)
 
     benchmark_result: Optional[Dict[str, Any]] = None
     benchmark_error: Optional[str] = None
@@ -938,8 +877,6 @@ def run_validation(
         "llm_routed_remote": not is_loopback_url(llm["base_url"]),
         "llm_auth_env": llm_auth_env,
         "llm_auth_env_present": bool(llm_auth_env and os.environ.get(llm_auth_env)),
-        "route_proof": route_proof,
-        "route_auth_negative": route_auth_negative,
         "stt_local_endpoint": is_loopback_url(voice["stt"]["base_url"]),
         "tts_local_endpoint": is_loopback_url(voice["tts"]["base_url"]),
         "benchmark_sample": benchmark_sample,

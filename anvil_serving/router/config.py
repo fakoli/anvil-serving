@@ -20,12 +20,11 @@ import re
 import sys
 import tomllib
 import urllib.parse
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from functools import cached_property
 from types import MappingProxyType
 from typing import Any, Mapping, Optional
 
-from .prices import fetch_prices
 
 # Tier dialect + privacy enums as NAMED constants, defined once here so the bare
 # string literals don't scatter across the router (backends, serve, policy). The
@@ -35,8 +34,10 @@ DIALECT_ANTHROPIC = "anthropic"
 VALID_DIALECTS = {DIALECT_OPENAI, DIALECT_ANTHROPIC}
 
 PRIVACY_LOCAL = "local"
+# Internal relay implementation still distinguishes its historical remote mode,
+# but configuration accepts local tiers only.
 PRIVACY_CLOUD = "cloud"
-VALID_PRIVACY = {PRIVACY_LOCAL, PRIVACY_CLOUD}
+VALID_PRIVACY = {PRIVACY_LOCAL}
 
 # Purpose-model kinds (ADR-0017 §7 / gpu-reservations:T010): non-chat inference
 # surfaces the front door routes by MODEL NAME (never through the chat
@@ -72,6 +73,54 @@ _REQUIRED_TIER_KEYS = (
     "tool_support",
     "auth_env",
 )
+_TIER_KEYS = frozenset({
+    *_REQUIRED_TIER_KEYS,
+    "model",
+    "extra_body",
+    "extra_body_defaults",
+    "engine",
+    "quantization",
+    "params",
+    "timeout",
+    "max_concurrency",
+    "health_path",
+    "model_identity",
+})
+_ROUTER_KEYS = frozenset({
+    "tiers",
+    "model_routes",
+    "exhaustion_status",
+    "relay_timeout",
+    "availability_probe_interval",
+    "availability_probe_timeout",
+    "availability_probe_max_bytes",
+    "purpose_models",
+    "audio_routes",
+    "audio_max_input_bytes",
+    "audio_max_output_bytes",
+    "audio_max_text_chars",
+    "audio_max_concurrency",
+})
+
+
+def _reject_unknown_keys(
+    raw: Mapping[str, object], allowed: frozenset[str], label: str
+) -> None:
+    """Reject stale or misspelled schema fields instead of silently ignoring them."""
+    unknown = sorted(set(raw) - allowed)
+    if unknown:
+        raise ConfigError(
+            f"{label} contains unknown field(s): {', '.join(unknown)}"
+        )
+
+
+def normalize_model_alias(value: str) -> str:
+    """Return the wire-normalized spelling of a configured chat alias.
+
+    The vocabulary is closed: the normalized result must be a key in
+    ``RouterConfig.model_routes`` to be servable.
+    """
+    return str(value).strip().lower()
 
 
 class ConfigError(ValueError):
@@ -90,10 +139,6 @@ class Tier:
     tool_support: bool
     auth_env: str  # NAME of the env var holding the secret, never the secret
     model: Optional[str] = None  # concrete provider model id (e.g. "claude-opus-4-20250514")
-    # Cost fields: USD per million tokens.  None = unknown / unset (e.g. all local tiers).
-    # Set these on metered cloud tiers so cost_usd can be computed per-request.
-    cost_input_per_mtok: Optional[float] = None
-    cost_output_per_mtok: Optional[float] = None
     # Optional inline-table of extra JSON-serialisable keys merged verbatim into the
     # upstream request body (genericity:T003) -- e.g. a local vLLM/SGLang server's
     # `chat_template_kwargs: {enable_thinking: false}` to defend against the
@@ -101,8 +146,8 @@ class Tier:
     # keys the router itself sets (model/messages/stream/...); it is applied via
     # ``body.update(extra_body)`` in backends/cloud.py, so a key here CAN clobber a
     # router-set key if the operator explicitly configures it that way -- that is
-    # intentional passthrough, not a bug. Kept ``hash=False`` (a dict is unhashable)
-    # to match ``RouterConfig.presets`` below; Tier is never used as a dict/set key.
+    # intentional passthrough, not a bug. Kept ``hash=False`` because a dict is
+    # unhashable; Tier is never used as a dict/set key.
     extra_body: Optional[Mapping[str, Any]] = field(default=None, hash=False)
     # Like ``extra_body`` but applied as a DEFAULT the request can override (via
     # ``body.setdefault``, not ``update``): e.g. a tier's ``reasoning_effort`` becomes a
@@ -200,54 +245,18 @@ class AudioRoute:
 
 @dataclass(frozen=True)
 class RouterConfig:
-    """Validated router topology: tiers + preset->candidate mapping.
+    """Validated direct-serving topology.
 
-    ``metered_cloud`` lists the work-classes (R002 taxonomy keys) that are
-    permitted to use a ``privacy == "cloud"`` tier.  **Default empty** — an
-    absent or empty list means a cloud tier is NEVER a routing candidate,
-    regardless of what preset pools include it (ADR-0001 / advise-and-defer:T002).
-    The gate is enforced by :func:`~anvil_serving.router.policy.route`.
-
-    ``exhaustion_status`` is the HTTP status returned when ALL quality-gated
-    tiers are exhausted (no available tier).  Default 503 is the **keyless
-    handoff signal** (ADR-0001 §Mechanism, advise-and-defer:T004): OpenClaw's
-    transport failover classifies 503 as "overloaded" and re-runs the request
-    on the native subscription provider — pending live validation in T005.
-    Operators may override to match a different gateway's transport-failover
-    trigger via ``[router].exhaustion_status``.
+    ``model_routes`` is the complete chat model vocabulary.  Every normalized
+    caller alias maps to exactly one configured local tier; there are no
+    presets, inferred intent classes, cloud escalation, or fallback pools.
     """
 
     tiers: tuple[Tier, ...]
-    presets: Mapping[str, tuple[str, ...]] = field(hash=False)
-    mapping_version: str
-    metered_cloud: tuple[str, ...] = ()
+    model_routes: Mapping[str, str] = field(hash=False)
     exhaustion_status: int = 503
-    # ADR-0001 / advise-and-defer:T006 — off by default (no network in default mode).
-    # When True, tiers with unset cost fields have them filled from the LiteLLM pricing
-    # JSON after loading; static config values always win (never overwritten).
-    cost_sync: bool = False
-    # genericity:T005 — transport timeout (seconds) used to build LOCAL-tier
-    # (privacy="local") backends. Kept short by default: a local vLLM/SGLang serve
-    # that has hung or gone cold should fail fast so the router escalates to the
-    # next tier promptly, rather than sitting on the CloudBackend/RelayBackend
-    # default of 120s (tuned for a slower cloud provider). Threaded through
-    # serve.build_backends -> build_backend_for_tier. Does not affect cloud tiers.
+    # Transport timeout (seconds) used for local relay backends.
     relay_timeout: float = 20.0
-    # genericity:T004 — when True (default), a privacy="local" tier under an
-    # "allow" profile verdict is NOT streamed as a raw zero-verifier passthrough;
-    # it runs through a minimal commit-window (NonEmptyContent/NotTruncated) first,
-    # so an empty/truncated local 200 escalates (or exhausts to
-    # ``exhaustion_status``) instead of being served silently. A cloud/remote tier
-    # under "allow" is never affected by this flag.
-    verify_local_min: bool = True
-    # Optional path to a measured quality profile (the ``profile.json`` written by
-    # ``python -m anvil_serving.router.profile_bootstrap`` / ``eval bootstrap``).
-    # When set, ``serve`` loads it at startup instead of the hand-authored seed
-    # profile, so the router routes on YOUR measured verdicts. Absent (default)
-    # keeps today's behaviour: the built-in seed profile. A configured-but-
-    # unreadable path is a startup ConfigError (fail fast, never silently fall
-    # back to seeds the operator asked to replace).
-    profile_path: Optional[str] = None
     # Runtime readiness probe controls for local tiers that declare
     # ``health_path``. Results are cached for the interval; each probe is
     # individually bounded by the timeout. Both are additive config fields.
@@ -270,19 +279,10 @@ class RouterConfig:
     audio_max_output_bytes: int = 4 * 1024 * 1024
     audio_max_text_chars: int = 16 * 1024
     audio_max_concurrency: int = 4
-    # Issue #180 / ADR-0026 — compatibility-preserving wire transparency.
-    # Appended to preserve positional construction of older optional fields.
-    # Default False keeps response.model equal to the caller's routing token;
-    # True reports the tier id that actually served across every chat dialect.
-    transparent_response_model: bool = False
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
-        """Lazy id -> Tier index. ``tier()`` runs several times per routed
-        request (policy filters, verdict lookups, fallback attempts), so the
-        linear scan over ``tiers`` is replaced with one dict build on first
-        use. ``cached_property`` writes straight into ``__dict__``, which a
-        frozen dataclass permits (no ``__slots__``)."""
+        """Lazy id -> Tier index for direct route resolution."""
         return MappingProxyType({t.id: t for t in self.tiers})
 
     def tier(self, tier_id: str) -> Tier:
@@ -292,13 +292,10 @@ class RouterConfig:
             raise ConfigError(f"unknown tier id: {tier_id!r}")
         return t
 
-    def candidates(self, preset: str) -> tuple[Tier, ...]:
-        """Resolve a preset's ordered candidate tiers (raises if unknown)."""
-        try:
-            ids = self.presets[preset]
-        except KeyError:
-            raise ConfigError(f"unknown preset: {preset!r}") from None
-        return tuple(self.tier(tid) for tid in ids)
+    def route_tier(self, model: str) -> Optional[Tier]:
+        """Resolve a caller model alias to its one configured local tier."""
+        tier_id = self.model_routes.get(normalize_model_alias(model))
+        return self._tiers_by_id.get(tier_id) if tier_id is not None else None
 
 
 @dataclass(frozen=True)
@@ -361,6 +358,7 @@ def load_server_config(path: str) -> ServerConfig:
 def _parse_tier(raw: object) -> Tier:
     if not isinstance(raw, dict):
         raise ConfigError(f"tier entry must be a table, got {type(raw).__name__}")
+    _reject_unknown_keys(raw, _TIER_KEYS, "tier entry")
 
     missing = [k for k in _REQUIRED_TIER_KEYS if k not in raw]
     if missing:
@@ -428,8 +426,8 @@ def _parse_tier(raw: object) -> Tier:
         )
 
     # A local tier without an explicit served-model-name is a footgun: the
-    # request's routing token (a preset like "quick-edit") is forwarded upstream
-    # as the model id, and vLLM/SGLang reject an unknown model with HTTP 404.
+    # caller alias is forwarded upstream as the model id, and vLLM/SGLang reject
+    # an unknown model with HTTP 404.
     # Warn (non-fatal) at load so a misconfigured local tier is caught here, not
     # as a confusing per-request 404. (genericity:R001)
     if privacy == PRIVACY_LOCAL and tier_model is None:
@@ -441,28 +439,6 @@ def _parse_tier(raw: object) -> Tier:
             file=sys.stderr,
             flush=True,
         )
-
-    # Optional: cost per million tokens (USD) for metered cloud tiers.
-    # Absent or None -> None (unknown, e.g. all local tiers).
-    # A non-numeric or negative value is a config error.
-    def _parse_cost_field(raw_val: object, field_name: str) -> Optional[float]:
-        if raw_val is None:
-            return None
-        # bool is a subclass of int/float in Python; reject explicitly.
-        if isinstance(raw_val, bool) or not isinstance(raw_val, (int, float)):
-            raise ConfigError(
-                f"tier {tid!r}: {field_name} must be a non-negative number or absent, "
-                f"got {raw_val!r}"
-            )
-        v = float(raw_val)
-        if v < 0:
-            raise ConfigError(
-                f"tier {tid!r}: {field_name} must be >= 0, got {v!r}"
-            )
-        return v
-
-    cost_input = _parse_cost_field(raw.get("cost_input_per_mtok"), "cost_input_per_mtok")
-    cost_output = _parse_cost_field(raw.get("cost_output_per_mtok"), "cost_output_per_mtok")
 
     # Optional: extra keys merged verbatim into the upstream request body
     # (genericity:T003), e.g. a local server's thinking-disable knob. Absent ->
@@ -599,8 +575,6 @@ def _parse_tier(raw: object) -> Tier:
         tool_support=tool_support,
         auth_env=auth_env,
         model=tier_model or None,
-        cost_input_per_mtok=cost_input,
-        cost_output_per_mtok=cost_output,
         extra_body=extra_body,
         extra_body_defaults=extra_body_defaults,
         engine=engine,
@@ -867,6 +841,7 @@ def load(path: str) -> RouterConfig:
     router = data.get("router")
     if not isinstance(router, dict):
         raise ConfigError(f"no [router] block in {path}")
+    _reject_unknown_keys(router, _ROUTER_KEYS, "[router]")
 
     raw_tiers = router.get("tiers", [])
     if not isinstance(raw_tiers, list):
@@ -884,48 +859,61 @@ def load(path: str) -> RouterConfig:
     if not tiers:
         raise ConfigError(f"[router].tiers is empty in {path}")
 
-    raw_presets = router.get("presets", {})
-    if not isinstance(raw_presets, dict):
-        raise ConfigError(f"[router].presets must be a table in {path}")
-
-    presets: dict[str, tuple[str, ...]] = {}
-    for name, cands in raw_presets.items():
-        if not isinstance(cands, list) or not all(isinstance(c, str) for c in cands):
-            raise ConfigError(
-                f"preset {name!r} must be a list of tier-id strings, got {cands!r}"
-            )
-        if not cands:
-            raise ConfigError(f"preset {name!r} has no candidate tiers")
-        if len(set(cands)) != len(cands):
-            raise ConfigError(f"preset {name!r} has duplicate tier ids: {cands}")
-        for cid in cands:
-            if cid not in seen_ids:
-                raise ConfigError(
-                    f"preset {name!r} references unknown tier id: {cid!r}"
-                )
-        presets[name] = tuple(cands)
-
-    mapping_version = router.get("mapping_version")
-    if not isinstance(mapping_version, str) or not mapping_version:
-        raise ConfigError(f"[router].mapping_version must be a non-empty string in {path}")
-
-    # ``metered_cloud``: optional list of work-class strings.  Absent → empty →
-    # cloud is NEVER a candidate (ADR-0001 / advise-and-defer:T002).
-    raw_metered = router.get("metered_cloud", [])
-    if not isinstance(raw_metered, list) or not all(
-        isinstance(w, str) for w in raw_metered
-    ):
+    # ``model_routes`` is the complete chat vocabulary.  Each alias selects
+    # exactly one local tier; there is no inferred/preset fallback path.
+    raw_model_routes = router.get("model_routes")
+    if not isinstance(raw_model_routes, dict):
         raise ConfigError(
-            f"[router].metered_cloud must be a list of strings in {path}"
+            f"[router].model_routes must be a non-empty table in {path}"
         )
-    metered_cloud: tuple[str, ...] = tuple(raw_metered)
+    if not raw_model_routes:
+        raise ConfigError(f"[router].model_routes must declare at least one alias in {path}")
 
-    # ``exhaustion_status``: HTTP status code returned when ALL quality-gated
-    # tiers are exhausted (ADR-0001 §Mechanism, advise-and-defer:T004).
-    # Default 503 is the keyless handoff signal — OpenClaw's transport failover
-    # classifies it as "overloaded" and re-runs the request on the native
-    # subscription provider.  Configurable so operators can match a different
-    # gateway's transport-failover trigger if 503 does not map to it.
+    model_routes: dict[str, str] = {}
+    seen_model_aliases: set[str] = set()
+    tiers_by_id = {tier.id: tier for tier in tiers}
+
+    def _route_items(table: Mapping[str, object], prefix: str = ""):
+        for raw_alias, target in table.items():
+            alias = f"{prefix}.{raw_alias}" if prefix else raw_alias
+            if isinstance(target, dict):
+                yield from _route_items(target, alias)
+            else:
+                yield alias, target
+
+    # TOML parses an unquoted ``llm.primary = "tier"`` as nested tables.
+    # Flatten it so both that natural spelling and a quoted literal key express
+    # the same configured caller alias.
+    for alias, tier_id in _route_items(raw_model_routes):
+        if not isinstance(alias, str) or not normalize_model_alias(alias):
+            raise ConfigError(
+                f"model route alias must be a non-empty string, got {alias!r}"
+            )
+        normalized_alias = normalize_model_alias(alias)
+        if normalized_alias in seen_model_aliases:
+            raise ConfigError(
+                f"duplicate model route alias (case-insensitive): {alias!r}"
+            )
+        if not isinstance(tier_id, str) or tier_id not in seen_ids:
+            raise ConfigError(
+                f"model route {alias!r} references unknown tier id: {tier_id!r}"
+            )
+        if tiers_by_id[tier_id].privacy != "local":
+            raise ConfigError(
+                f"model route {alias!r} must target a privacy='local' tier"
+            )
+        seen_model_aliases.add(normalized_alias)
+        model_routes[normalized_alias] = tier_id
+
+    unaddressable = sorted(seen_ids - set(model_routes.values()))
+    if unaddressable:
+        raise ConfigError(
+            "every chat tier must be named by [router].model_routes; "
+            f"unaddressable tiers: {unaddressable}"
+        )
+
+    # HTTP status returned when the selected direct tier is unavailable.
+    # Default 503 lets an upstream client apply its own transport retry policy.
     raw_exhaustion_status = router.get("exhaustion_status", 503)
     if (
         isinstance(raw_exhaustion_status, bool)
@@ -938,31 +926,9 @@ def load(path: str) -> RouterConfig:
         )
     exhaustion_status: int = raw_exhaustion_status
 
-    # ``cost_sync`` (ADR-0001 / advise-and-defer:T006): opt-in, off by default.
-    # When True, tiers with unset cost fields are filled from the LiteLLM pricing
-    # JSON after loading; a network fetch only happens if the local cache is stale.
-    # Static config values always win (explicit costs are never overwritten).
-    raw_cost_sync = router.get("cost_sync", False)
-    if not isinstance(raw_cost_sync, bool):
-        raise ConfigError(
-            f"[router].cost_sync must be a boolean (true/false) in {path}"
-        )
-    cost_sync: bool = raw_cost_sync
-
-    if cost_sync:
-        filled: list[Tier] = []
-        for t in tiers:
-            model_key = t.model or t.id
-            inp, out = fetch_prices(model_key)
-            cost_in = t.cost_input_per_mtok if t.cost_input_per_mtok is not None else inp
-            cost_out = t.cost_output_per_mtok if t.cost_output_per_mtok is not None else out
-            filled.append(replace(t, cost_input_per_mtok=cost_in, cost_output_per_mtok=cost_out))
-        tiers = filled
-
-    # ``relay_timeout`` (genericity:T005): transport timeout in seconds used to
-    # build LOCAL-tier backends. Default kept short (20s) so a hung/cold local
-    # serve fails fast to the next tier rather than sitting on the 120s cloud-
-    # tuned default. bool is a subclass of int -- reject it explicitly.
+    # Transport timeout in seconds used to build local relay backends. The
+    # default stays short (20s) so a hung or cold serve fails promptly. bool is
+    # a subclass of int, so reject it explicitly.
     raw_relay_timeout = router.get("relay_timeout", 20.0)
     if (
         isinstance(raw_relay_timeout, bool)
@@ -975,39 +941,6 @@ def load(path: str) -> RouterConfig:
             f"(default 20.0) in {path}"
         )
     relay_timeout: float = float(raw_relay_timeout)
-
-    # ``verify_local_min`` (genericity:T004): gate for the minimal commit-window
-    # safety net on a privacy=local tier under an "allow" verdict. Default True.
-    raw_verify_local_min = router.get("verify_local_min", True)
-    if not isinstance(raw_verify_local_min, bool):
-        raise ConfigError(
-            f"[router].verify_local_min must be a boolean (true/false) in {path}"
-        )
-    verify_local_min: bool = raw_verify_local_min
-
-    raw_transparent_response_model = router.get("transparent_response_model", False)
-    if not isinstance(raw_transparent_response_model, bool):
-        raise ConfigError(
-            f"[router].transparent_response_model must be a boolean "
-            f"(true/false) in {path}"
-        )
-    transparent_response_model: bool = raw_transparent_response_model
-
-    # ``profile_path``: optional path to a measured ``profile.json`` (written by
-    # profile_bootstrap). Only the SHAPE is validated here; readability/content
-    # are checked where it is consumed (serve.build_server), which fail-fasts
-    # with a ConfigError on a configured-but-unloadable profile.
-    raw_profile_path = router.get("profile_path")
-    if raw_profile_path is not None and (
-        not isinstance(raw_profile_path, str) or not raw_profile_path
-    ):
-        raise ConfigError(
-            f"[router].profile_path must be a non-empty path string or absent "
-            f"in {path}"
-        )
-    profile_path: Optional[str] = (
-        os.path.expanduser(raw_profile_path) if raw_profile_path else None
-    )
 
     def _positive_seconds(key: str, default: float) -> float:
         raw_value = router.get(key, default)
@@ -1140,15 +1073,9 @@ def load(path: str) -> RouterConfig:
 
     return RouterConfig(
         tiers=tuple(tiers),
-        presets=MappingProxyType(presets),
-        mapping_version=mapping_version,
-        metered_cloud=metered_cloud,
+        model_routes=MappingProxyType(model_routes),
         exhaustion_status=exhaustion_status,
-        cost_sync=cost_sync,
         relay_timeout=relay_timeout,
-        verify_local_min=verify_local_min,
-        transparent_response_model=transparent_response_model,
-        profile_path=profile_path,
         availability_probe_interval=availability_probe_interval,
         availability_probe_timeout=availability_probe_timeout,
         availability_probe_max_bytes=raw_probe_max_bytes,

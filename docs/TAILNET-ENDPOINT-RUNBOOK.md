@@ -1,7 +1,7 @@
 # Single tailnet DNS endpoint (gpu-reservations:T014 / F008)
 
 **One front door, one name, one token.** The anvil-serving router publishes every
-serving surface — chat, embeddings, rerank, and the routed OCR/vision presets — from a
+serving surface — chat, embeddings, rerank, and direct OCR/vision aliases — from a
 **single HTTP front door** bound to the host's Tailscale interface and reached through the
 host's **MagicDNS name**. There is no separate router, embeddings, or OCR endpoint to
 resolve, no per-surface hostname, and no second port. This runbook records that decision,
@@ -33,15 +33,14 @@ bind address and one bearer token (ADR-0004):
 | Method | Path | Surface |
 |---|---|---|
 | GET | `/healthz` | Liveness (token-free — container healthchecks) |
-| GET | `/v1/models` | Preset discovery (the routing "models" a harness picks) |
-| POST | `/v1/chat/completions` | OpenAI chat + all chat-routed presets (`ocr`, `vision`, …) |
+| GET | `/v1/models` | Direct-alias and purpose-model discovery |
+| POST | `/v1/chat/completions` | OpenAI chat through a configured direct alias |
 | POST | `/v1/messages` | Anthropic Messages |
 | POST | `/v1/embeddings` | Embeddings purpose model (routed by model name) |
 | POST | `/v1/rerank` | Rerank purpose model (routed by model name) |
-| POST | `/v1/route` | Routing-decision brain (no serving) |
 | GET | `/v1/decisions` | Recent routing decisions |
 
-Because chat, embeddings, rerank, and the OCR/vision presets are *already* one server,
+Because chat, embeddings, rerank, and the OCR/vision aliases are *already* one server,
 exposing them on the tailnet needs **nothing new** — just bind the existing front door to
 the tailnet interface. Standing up a second endpoint (a dedicated embeddings host, an OCR
 proxy, a separate DNS name) would duplicate auth, TLS, and discovery for zero benefit and
@@ -55,7 +54,7 @@ surface — see the verification below.
 
 ## The MagicDNS form
 
-On the live box (`fakoli-dark`, RTX 5090) the router publishes on the Tailscale IPv4
+On the live multi-GPU box (`fakoli-dark`) the router publishes on the Tailscale IPv4
 `100.87.34.66:8000`. The MagicDNS name that resolves to that IP is read from Tailscale
 itself — never hardcoded:
 
@@ -149,7 +148,7 @@ $ curl -s -o /dev/null -w "%{http_code}" \
 ```json
 {"status": "ok", "dialects": ["anthropic", "openai"],
  "routes": ["/v1/chat/completions", "/v1/decisions", "/v1/embeddings",
-            "/v1/messages", "/v1/rerank", "/v1/route"]}
+            "/v1/messages", "/v1/rerank"]}
 ```
 
 ### 2. Embeddings — `POST /v1/embeddings`
@@ -166,21 +165,21 @@ $ curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" 
 Routed **by model name**: an unknown embedding model is a clean 404 that names the served
 model — it never falls through to chat routing.
 
-### 3. Routed OCR preset — `POST /v1/chat/completions` (`model: "ocr"`)
+### 3. Direct OCR alias — `POST /v1/chat/completions` (`model: "vision.ocr"`)
 
-An OCR request is a chat completion naming the `ocr` preset with an `image_url` content
+An OCR request is a chat completion naming the `vision.ocr` alias with an `image_url` content
 part; the router sends it to the resident PaddleOCR-VL serve — no separate OCR endpoint.
 
 ```
-$ python ocr_probe.py assets/explainer-quality-gate.png   # model="ocr" + data: image_url
-# HTTP 200  model=ocr  finish_reason=stop
+$ python ocr_probe.py assets/explainer-quality-gate.png   # model="vision.ocr" + data: image_url
+# HTTP 200  model=vision.ocr  finish_reason=stop
 # usage={prompt_tokens:1215, completion_tokens:15, total_tokens:1230}
 # extracted: "measured score 98% / GATE / QUALITY ..."
 ```
 
 All three acceptance surfaces (`/v1/models`, `/v1/embeddings`, a routed OCR request)
 resolve and authenticate through the **one** MagicDNS name. The hermetic half of this
-proof — one server + one token serving discovery, embeddings, and the OCR preset — lives in
+proof — one server + one token serving discovery, embeddings, and the OCR alias — lives in
 `tests/router/test_front_door.py::test_t014_single_endpoint_serves_every_surface_under_one_token`.
 
 ---

@@ -4,7 +4,9 @@ External inference benchmarks are performance priors for Anvil Serving. They hel
 
 > External sources report that model X on RTX PRO 6000 with vLLM/NVFP4 at 32K context usually lands around Y tok/s. Our local serve fingerprint lands at Z tok/s, with these flags and these methodology differences.
 
-They are not routing-quality truth. Anvil's local work-class evals and quality profiles still decide whether a model is `allow`, `allow-with-verify`, or `deny` for a workload.
+They are not local qualification truth. Preflight and repeated local quality
+evaluation against the exact served model, engine, and hardware determine
+whether an operator should use that serve behind a direct alias.
 
 ## Choose a workflow
 

@@ -39,10 +39,10 @@ def _local_tier(**overrides) -> Tier:
     return Tier(**base)
 
 
-def _cloud_tier(**overrides) -> Tier:
+def _anthropic_tier(**overrides) -> Tier:
     base = dict(
-        id="cloud", base_url="https://api.anthropic.com", dialect="anthropic",
-        context_limit=200000, privacy="cloud", tool_support=True,
+        id="anthropic-local", base_url="http://127.0.0.1:30002/v1", dialect="anthropic",
+        context_limit=200000, privacy="local", tool_support=True,
         auth_env="ANVIL_TEST_CLOUD_KEY", model="claude-opus-4-20250514",
     )
     base.update(overrides)
@@ -52,8 +52,7 @@ def _cloud_tier(**overrides) -> Tier:
 def _config(*tiers: Tier, **overrides) -> RouterConfig:
     kwargs: Dict[str, object] = dict(
         tiers=tuple(tiers),
-        presets={"chat": tuple(t.id for t in tiers)},
-        mapping_version="test.0",
+        model_routes={t.id: t.id for t in tiers},
     )
     kwargs.update(overrides)
     return RouterConfig(**kwargs)
@@ -84,11 +83,9 @@ def test_relay_timeout_plumbed_through_build_backends_to_local_backend():
     assert backends["fast-local"]._timeout == pytest.approx(5.0)
 
 
-def test_relay_timeout_plumbed_does_not_affect_cloud_backend():
-    """A cloud tier keeps the 120s cloud-tuned default even when relay_timeout
-    is set short — relay_timeout only governs LOCAL tiers."""
+def test_relay_timeout_applies_to_every_direct_local_backend():
     config = _config(
-        _local_tier(), _cloud_tier(),
+        _local_tier(), _anthropic_tier(),
         relay_timeout=5.0,
     )
     backends, skipped = build_backends(
@@ -96,7 +93,7 @@ def test_relay_timeout_plumbed_does_not_affect_cloud_backend():
     )
     assert not skipped
     assert backends["fast-local"]._timeout == pytest.approx(5.0)
-    assert backends["cloud"]._timeout == pytest.approx(120.0)
+    assert backends["anthropic-local"]._timeout == pytest.approx(5.0)
 
 
 def test_relay_timeout_default_is_20s_end_to_end():
@@ -132,17 +129,15 @@ def test_per_tier_timeout_overrides_relay_timeout_on_local_tier():
     assert backends["fast-default"]._timeout == pytest.approx(5.0)
 
 
-def test_per_tier_timeout_overrides_cloud_default():
-    """flexibility:T007 — a CLOUD tier's explicit `timeout` overrides the 120s
-    cloud default; a cloud tier without one keeps that 120s default (unchanged)."""
-    overridden = _cloud_tier(id="cloud-fast", timeout=30.0)
-    default = _cloud_tier(id="cloud-default")  # timeout=None -> 120s default
+def test_per_tier_timeout_overrides_direct_default():
+    overridden = _anthropic_tier(id="anthropic-fast", timeout=30.0)
+    default = _anthropic_tier(id="anthropic-default")
     config = _config(overridden, default, relay_timeout=5.0)
     env = {"ANVIL_TEST_CLOUD_KEY": "sk-test-DEADBEEF"}
     backends, skipped = build_backends(config, env=env)
     assert not skipped
-    assert backends["cloud-fast"]._timeout == pytest.approx(30.0)
-    assert backends["cloud-default"]._timeout == pytest.approx(120.0)
+    assert backends["anthropic-fast"]._timeout == pytest.approx(30.0)
+    assert backends["anthropic-default"]._timeout == pytest.approx(5.0)
 
 
 # --------------------------------------------------------------------------- #
@@ -166,7 +161,7 @@ def test_extra_body_merged_into_anthropic_body():
     fake, captured = _post_fake(
         json.dumps({"content": [{"type": "text", "text": "ok"}]}).encode("utf-8")
     )
-    tier = _cloud_tier(extra_body={"top_k": 40})
+    tier = _anthropic_tier(extra_body={"top_k": 40})
     cloud = build_backend_for_tier(
         tier, env={"ANVIL_TEST_CLOUD_KEY": "sk-test-DEADBEEF"}, transport=fake
     )
@@ -216,7 +211,7 @@ def _models_fake(model_ids):
 
 def test_auto_derive_model_single_candidate_forwards_that_id():
     """model=None + a stub upstream advertising exactly one model -> the backend
-    forwards THAT id (not the preset routing token) in the upstream body."""
+    forwards THAT id (not the caller alias) in the upstream body."""
     discovery_fake, discovery_captured = _models_fake(["qwen3-32b-awq"])
     post_fake, post_captured = _post_fake(
         json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
@@ -293,16 +288,6 @@ def test_auto_derive_model_malformed_response_is_non_fatal():
         _local_tier(model=None), env={}, model_discovery_transport=_garbage,
     )
     assert relay._tier.model is None
-
-
-def test_discover_single_model_cloud_tier_is_a_no_op():
-    """discover_single_model() never probes a cloud tier, even if model=None."""
-    def _boom(url, *, headers, timeout):
-        raise AssertionError("must not probe a cloud tier")
-
-    tier = _cloud_tier(model=None)
-    out = discover_single_model(tier, transport=_boom)
-    assert out is tier
 
 
 def test_discover_single_model_pure_function_returns_new_tier():

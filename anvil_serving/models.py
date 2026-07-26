@@ -436,11 +436,9 @@ def _fmt_throughput(measured):
     return "-"
 
 
-def _fmt_intent(intent):
-    intent = intent or {}
-    if intent.get("mode"):
-        return intent["mode"]
-    suited = intent.get("suited") or []
+def _fmt_fit(fit):
+    fit = fit or {}
+    suited = fit.get("suited") or []
     return ", ".join(suited) if suited else "-"
 
 
@@ -453,10 +451,10 @@ def _fmt_activation_roles(recipe):
 
 def _print_recipe_table(registry):
     recipes = registry.get("recipe") or []
-    headers = ["status", "model", "activates", "throughput", "intent"]
+    headers = ["status", "model", "activates", "throughput", "fit"]
     rows = [[r.get("status", ""), r.get("model", ""),
              _fmt_activation_roles(r), _fmt_throughput(r.get("measured")),
-             _fmt_intent(r.get("intent"))]
+             _fmt_fit(r.get("fit"))]
             for r in recipes]
     widths = [len(h) for h in headers]
     for row in rows:
@@ -482,13 +480,13 @@ def _print_recipe_show(recipe):
         print("measured:")
         for k, v in measured.items():
             print("  %s = %s" % (k, v))
-    intent = recipe.get("intent") or {}
-    if intent:
+    fit = recipe.get("fit") or {}
+    if fit:
         print()
-        print("intent:")
-        for k in ("mode", "suited", "not_suited", "rationale"):
-            if k in intent:
-                v = intent[k]
+        print("fit:")
+        for k in ("suited", "not_suited", "rationale"):
+            if k in fit:
+                v = fit[k]
                 if isinstance(v, list):
                     v = ", ".join(str(x) for x in v)
                 print("  %s: %s" % (k, v))
@@ -604,7 +602,7 @@ def _build_recipe_parser():
         "list",
         help="table the recorded serve recipes",
         description=_help_description(
-            "List the recipes in one registry with status, throughput, and intent.",
+            "List the recipes in one registry with status, throughput, and workload fit.",
             "anvil-serving models recipes list",
             "anvil-serving models recipes list --registry REGISTRY",
         ),

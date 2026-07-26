@@ -82,8 +82,8 @@ def test_stt_stub_is_deterministic_and_ignores_non_vad_audio():
 def test_llm_stage_config_can_be_injected_via_pipeline():
     pipeline = VoicePipeline(
         vad_config=VADConfig(frame_ms=50, silence_ms=200),
-        llm_config=LLMStageConfig(model="chat-fast", base_url="http://127.0.0.1:9/v1"),
+        llm_config=LLMStageConfig(model="llm.voice", base_url="http://127.0.0.1:9/v1"),
         llm_stream_fn=_fake_stream,
     )
-    assert pipeline.llm.config.model == "chat-fast"
+    assert pipeline.llm.config.model == "llm.voice"
     pipeline.shutdown_gracefully(join_timeout=0.5)

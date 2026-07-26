@@ -139,12 +139,11 @@ def test_run_checks_missing_explicit_config_is_required_fail():
 def test_run_checks_probes_each_tier_from_a_real_config(tmp_path):
     cfg_path = tmp_path / "router.toml"
     cfg_path.write_text(
-        '[router]\nmapping_version = "1"\n'
+        '[router]\n[router.model_routes]\n"llm.primary" = "fast-local"\n'
         '[[router.tiers]]\n'
         'id = "fast-local"\nbase_url = "http://127.0.0.1:30001/v1"\nmodel = "m"\n'
         'dialect = "openai"\ncontext_limit = 1000\nprivacy = "local"\ntool_support = true\n'
-        'auth_env = "ANVIL_FAST_LOCAL_KEY"\n'
-        '[router.presets]\nchat = ["fast-local"]\n',
+        'auth_env = "ANVIL_FAST_LOCAL_KEY"\n',
         encoding="utf-8",
     )
     class Resp:

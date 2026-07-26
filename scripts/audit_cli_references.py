@@ -31,8 +31,6 @@ FIXTURE_REL = Path("tests/fixtures/cli_reference_audit")
 
 INDEX_START = "<!-- BEGIN GENERATED CLI MANIFEST INDEX -->"
 INDEX_END = "<!-- END GENERATED CLI MANIFEST INDEX -->"
-MIGRATION_START = "<!-- BEGIN GENERATED CLI TOMBSTONES -->"
-MIGRATION_END = "<!-- END GENERATED CLI TOMBSTONES -->"
 
 TEXT_SUFFIXES = frozenset({".md", ".py", ".toml", ".json", ".yml", ".yaml", ".sh", ".ps1"})
 SKILL_ROOT_LABELS = (".agents/skills", ".claude/skills", "skills", "examples/*/skills")
@@ -349,8 +347,6 @@ def _legacy_allowed(relative: Path, category: str, heading: str, h2_heading: str
     value = relative.as_posix()
     if value == "CHANGELOG.md":
         return bool(h2_heading) and _UNRELEASED_HEADING_RE.match(h2_heading) is None
-    if value in {"docs/CLI-CONSOLIDATION-INVENTORY.md", "docs/CLI-LEGACY-DISPOSITIONS.md"}:
-        return True
     if value.startswith("docs/adr/"):
         return True
     if value == "docs/CLI.md" and heading == "migration from legacy commands":
@@ -538,7 +534,6 @@ def render_manifest_index(manifest: dict[str, object]) -> str:
             ", ".join(f"`{flag}`" for flag in option["flags"])
             for option in record["options"]
             if tuple(option["flags"]) not in global_options
-            and not option.get("tombstone")
         ]
         lines.append(
             "| `{}` | {} | `{}` / `{}` | {} |".format(
@@ -549,30 +544,6 @@ def render_manifest_index(manifest: dict[str, object]) -> str:
                 "<br>".join(options) if options else "-",
             )
         )
-    return "\n".join(lines)
-
-
-def render_tombstones(manifest: dict[str, object]) -> str:
-    rows: list[tuple[str, str]] = []
-    seen: set[tuple[str, str]] = set()
-    for record in manifest["commands"]:
-        tombstone = record.get("tombstone")
-        if tombstone:
-            row = (str(record["path"]), str(tombstone["replacement"]))
-            if row not in seen:
-                rows.append(row)
-                seen.add(row)
-        for option in record["options"]:
-            option_tombstone = option.get("tombstone")
-            if not option_tombstone:
-                continue
-            removed = f"{record['path']} {' / '.join(option['flags'])}"
-            row = (removed, str(option_tombstone["replacement"]))
-            if row not in seen:
-                rows.append(row)
-                seen.add(row)
-    lines = ["| Removed path | Replacement |", "|---|---|"]
-    lines.extend(f"| `{_markdown(old)}` | `{_markdown(new)}` |" for old, new in rows)
     return "\n".join(lines)
 
 
@@ -596,10 +567,7 @@ def _replace_block(text: str, start: str, end: str, body: str) -> str:
 def generated_docs_match(root: Path) -> bool:
     manifest = _manifest(root)
     text = _read_text(root / CLI_DOC_REL)
-    return (
-        _block(text, INDEX_START, INDEX_END) == render_manifest_index(manifest)
-        and _block(text, MIGRATION_START, MIGRATION_END) == render_tombstones(manifest)
-    )
+    return _block(text, INDEX_START, INDEX_END) == render_manifest_index(manifest)
 
 
 def update_generated_docs(root: Path) -> None:
@@ -607,7 +575,6 @@ def update_generated_docs(root: Path) -> None:
     path = root / CLI_DOC_REL
     text = _read_text(path)
     text = _replace_block(text, INDEX_START, INDEX_END, render_manifest_index(manifest))
-    text = _replace_block(text, MIGRATION_START, MIGRATION_END, render_tombstones(manifest))
     _atomic_write_text(path, text)
 
 
