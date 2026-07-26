@@ -6,26 +6,20 @@
 # scripts had. DO NOT manage these serves with raw `docker`/`docker compose` — go through
 # `anvil-serving serves` so the management experience stays consistent.
 #
-#   heavy  -> service `heavy`  (GPT-OSS Puzzle 88B, :30002, RTX PRO 6000 96GB / GPU 1)
+#   heavy  -> service `heavy`  (Laguna S 2.1 NVFP4, :30002, RTX PRO 6000 96GB / GPU 1)
 #   fast   -> service `fast`   (Gemma 4 E4B IT, vLLM, :30003, RTX 5090 / GPU 0)
 #   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
-# 2026-07-12 Heavy promotion: ThinkingCap Qwen3.6-27B FP8 replaces GPT-OSS-120B
-# after the repeated protocol-v2 quality gate. The old GPT-OSS recipe remains as the
-# opt-in `heavy-gptoss-rollback` managed service and in the recipe registry.
-# 2026-07-16 Heavy promotion: official Gemma 4 12B IT QAT W4A16 replaces ThinkingCap
-# after the July 15 chat-template bakeoff. ThinkingCap remains the immediate opt-in
-# `heavy-thinkingcap-rollback` service; GPT-OSS remains a second-line rollback recipe.
-# 2026-07-18 Heavy promotion: the pinned GPT-OSS Puzzle 88B checkpoint replaces Gemma 4
-# after full-checkpoint RTX PRO qualification. Gemma 4 remains the immediate opt-in
-# `heavy-gemma4-rollback` service. The fork-local vLLM image restores the checkpoint's
-# omitted Harmony `<|call|>` EOS token through `--override-generation-config`.
+# 2026-07-26 Heavy promotion: Laguna S 2.1 NVFP4 replaces GPT-OSS Puzzle after a
+# thinking-disabled functional gate, repeated chat/context/tool/session/intelligence
+# quality run, and 32K/128K/240K context probes. GPT-OSS Puzzle is the one retained
+# Heavy rollback. Older Heavy rollback definitions moved out of this live surface.
 # 2026-07-13 Fast swap (gpu-reservations:T006): Gemma 4 E4B IT replaces Qwen3.6-35B-A3B-NVFP4
 # as the resident fast serve so the multi-tenant 5090 (always-on voice STT/TTS sidecars,
 # ADR-0017) keeps declared VRAM headroom. The 35B recipe remains as the opt-in
-# `fast-qwen36-rollback` managed service. These replaced the
-# agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live in git history. The
-# convention also shifted: weights now resolve as HF REPO-IDS from the
+# older Fast recipe remains in the recipe registry, not this live Compose surface.
+# These replaced the agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live
+# in git history. The convention also shifted: weights now resolve as HF REPO-IDS from the
 # `vllm-hfcache` docker volume (the `anvil-serving models pull` path) — NOT `/models/<dir>`
 # bind paths from `fakoli-models`. A named volume is native ext4 inside WSL2 (~15s loads); a
 # C:/ bind rides 9P and turns a cold load into 20-90 min (CLAUDE.md gotcha #15).
@@ -39,13 +33,68 @@
 #   FAST_GPU_UUID   default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
 # Find yours with `nvidia-smi --query-gpu=index,uuid --format=csv` (or `anvil-serving doctor`).
 services:
-  # Heavy tier: GPT-OSS Puzzle 88B on the exact Anvil vLLM fork commit.
-  # The pinned checkpoint omits Harmony's <|call|> token (200012) from its
-  # generation_config EOS list. The fork honors the full generation-config
-  # override below so valid tool calls terminate before malformed continuation.
+  # Heavy tier: Poolside Laguna S 2.1 NVFP4 on the locally qualified vLLM nightly.
+  # Thinking is disabled by default because the enabled path intermittently exhausted
+  # its reasoning budget without producing a visible answer during qualification.
+  # Callers may still opt in per request with chat_template_kwargs.enable_thinking=true.
   heavy:
+    image: ${HEAVY_LAGUNA_VLLM_IMAGE:-vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1}
+    container_name: vllm-laguna-s-heavy
+    restart: unless-stopped
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:30002:30002"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      MAX_JOBS: "4"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    entrypoint: ["vllm"]
+    command: >
+      serve poolside/Laguna-S-2.1-NVFP4
+      --revision ${HEAVY_LAGUNA_REVISION:-07614121b31898586430f189d27a25a0be310843}
+      --tokenizer-revision ${HEAVY_LAGUNA_TOKENIZER_REVISION:-07614121b31898586430f189d27a25a0be310843}
+      --served-model-name laguna-s-2.1-nvfp4
+      --language-model-only
+      --tensor-parallel-size 1
+      --enable-auto-tool-choice
+      --tool-call-parser poolside_v1
+      --reasoning-parser poolside_v1
+      --default-chat-template-kwargs '{"enable_thinking":false}'
+      --generation-config vllm
+      --override-generation-config '{"temperature":0.7,"top_p":0.95,"top_k":20}'
+      --enable-prefix-caching
+      --enable-chunked-prefill
+      --max-num-batched-tokens 8192
+      --gpu-memory-utilization 0.90
+      --max-num-seqs 1
+      --max-model-len 262144
+      --host 0.0.0.0 --port 30002
+      ${HEAVY_LAGUNA_EXTRA_ARGS:-}
+
+  # The one ready Heavy rollback: the previously qualified GPT-OSS Puzzle 88B.
+  # It deliberately shares :30002 and the PRO 6000, so the guarded promotion
+  # transaction stops Laguna before starting this service.
+  heavy-gptoss-puzzle-rollback:
+    profiles: ["rollback"]
     image: ${HEAVY_PUZZLE_VLLM_IMAGE:-anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82}
-    container_name: vllm-gptoss-puzzle-heavy
+    container_name: vllm-gptoss-puzzle-heavy-rollback
     restart: unless-stopped
     ipc: host
     shm_size: "16gb"
@@ -88,148 +137,6 @@ services:
       --max-model-len 131072
       --host 0.0.0.0 --port 30002
       ${HEAVY_PUZZLE_EXTRA_ARGS:-}
-
-  # Immediate Heavy rollback: official Gemma 4 12B IT QAT W4A16 on vLLM 0.25.1
-  # (RTX PRO 6000 / GPU 1, :30002). The model and tokenizer revisions are pinned
-  # separately so the July 15 chat template cannot drift independently of weights.
-  heavy-gemma4-rollback:
-    profiles: ["rollback"]
-    image: ${HEAVY_GEMMA4_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
-    container_name: vllm-gemma4-12b-heavy-rollback
-    restart: unless-stopped
-    ipc: host
-    shm_size: "16gb"
-    ports:
-      # Loopback-only: unauthenticated vLLM endpoint must not be LAN-exposed (gotcha #1 / SECURITY.md).
-      - "127.0.0.1:30002:30002"
-    volumes:
-      # Weights resolved as an HF repo-id from the native-ext4 vllm-hfcache volume (never a C:/ 9P bind).
-      - "vllm-hfcache:/root/.cache/huggingface"
-    environment:
-      CUDA_DEVICE_ORDER: PCI_BUS_ID
-      # Pin the PRO 6000 by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
-      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}   # RTX PRO 6000 96GB
-      # vLLM 0.25.1 restores opt-in pinned host memory on WSL2. Keep V2 off for
-      # production Gemma 4 until its thinking_token_budget support lands.
-      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
-      VLLM_USE_V2_MODEL_RUNNER: "0"
-      # MAKE-OR-BREAK on sm_120: the `f` suffix; plain 12.0 -> `cvt.e2m1x2.f32 not supported`.
-      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
-      # Weights are already in vllm-hfcache, but vLLM still does an HF-hub metadata check at
-      # startup; a token authenticates it (avoids the anonymous rate-limit warning). By-reference,
-      # empty if unset (set HF_TOKEN in your shell/.env before `anvil-serving serves up`).
-      HF_TOKEN: ${HF_TOKEN:-}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]   # RTX PRO 6000 96GB
-              capabilities: [gpu]
-    # Pin entrypoint because upstream image defaults have changed across releases.
-    entrypoint: ["vllm"]
-    command: >
-      serve google/gemma-4-12B-it-qat-w4a16-ct
-      --revision ${HEAVY_GEMMA4_REVISION:-5d8bb23cdbff01e89d2a1a47f3b3d29b877bca76}
-      --tokenizer google/gemma-4-12B-it
-      --tokenizer-revision ${HEAVY_GEMMA4_TOKENIZER_REVISION:-12ace6d648d72bd41519e140f1185f34d38c7e3d}
-      --served-model-name gemma4-12b-it-w4a16-ct
-      --reasoning-parser gemma4
-      --enable-auto-tool-choice
-      --tool-call-parser gemma4
-      --limit-mm-per-prompt '{"image":0,"audio":0}'
-      --kv-cache-dtype fp8
-      --max-model-len ${HEAVY_GEMMA4_MAX_MODEL_LEN:-262144}
-      --max-num-seqs ${HEAVY_GEMMA4_MAX_NUM_SEQS:-5}
-      --gpu-memory-utilization 0.92
-      --host 0.0.0.0 --port 30002
-      ${HEAVY_GEMMA4_EXTRA_ARGS:-}
-
-  # Second-line Heavy rollback. It deliberately shares :30002 and the PRO 6000,
-  # so stop `heavy` before starting it. MTP is intentionally disabled: vLLM's
-  # speculative-config validation currently conflicts with this pinned checkpoint's
-  # compressed-tensors main model and FP8 MTP head.
-  heavy-thinkingcap-rollback:
-    profiles: ["rollback"]
-    image: ${HEAVY_THINKINGCAP_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
-    container_name: vllm-thinkingcap-heavy-rollback
-    restart: unless-stopped
-    ipc: host
-    shm_size: "16gb"
-    ports:
-      - "127.0.0.1:30002:30002"
-    volumes:
-      - "vllm-hfcache:/root/.cache/huggingface"
-    environment:
-      CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
-      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
-      VLLM_USE_V2_MODEL_RUNNER: "0"
-      VLLM_USE_DEEP_GEMM: "0"
-      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
-      HF_TOKEN: ${HF_TOKEN:-}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
-              capabilities: [gpu]
-    entrypoint: ["vllm"]
-    command: >
-      serve bottlecapai/ThinkingCap-Qwen3.6-27B-FP8
-      --revision ${HEAVY_THINKINGCAP_REVISION:-e48255afd77b403446332be0f595868337b36591}
-      --served-model-name thinkingcap-qwen36-27b-fp8
-      --trust-remote-code
-      --language-model-only
-      --reasoning-parser qwen3
-      --enable-auto-tool-choice
-      --tool-call-parser qwen3_coder
-      --no-enable-prefix-caching
-      --kv-cache-dtype fp8
-      --max-model-len ${HEAVY_THINKINGCAP_MAX_MODEL_LEN:-262144}
-      --max-num-seqs ${HEAVY_THINKINGCAP_MAX_NUM_SEQS:-5}
-      --gpu-memory-utilization 0.92
-      --host 0.0.0.0 --port 30002
-      ${HEAVY_THINKINGCAP_EXTRA_ARGS:-}
-
-  # Third-line rollback for Heavy. It deliberately shares :30002 and the PRO 6000,
-  # so stop `heavy` before starting it. It is never a router dependency.
-  heavy-gptoss-rollback:
-    profiles: ["rollback"]
-    image: ${HEAVY_GPTOSS_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
-    container_name: vllm-gptoss120
-    restart: unless-stopped
-    ipc: host
-    ports:
-      - "127.0.0.1:30002:30002"
-    volumes:
-      - "vllm-hfcache:/root/.cache/huggingface"
-    environment:
-      CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
-      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
-      VLLM_USE_V2_MODEL_RUNNER: "0"
-      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
-      HF_TOKEN: ${HF_TOKEN:-}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
-              capabilities: [gpu]
-    entrypoint: ["vllm"]
-    command: >
-      serve openai/gpt-oss-120b
-      --revision ${HEAVY_GPTOSS_REVISION:-b5c939de8f754692c1647ca79fbf85e8c1e70f8a}
-      --served-model-name gpt-oss-120b
-      --kv-cache-dtype fp8
-      --tool-call-parser openai
-      --enable-auto-tool-choice
-      --gpu-memory-utilization 0.88
-      --max-model-len 131072
-      --host 0.0.0.0 --port 30002
 
   # Fast tier: Gemma 4 E4B IT FP8-Dynamic on vLLM (RTX 5090 / GPU 0, :30003) —
   # gpu-reservations:T006 promoted the E4B serve; the T011 operator rebalance moved it to
@@ -300,57 +207,6 @@ services:
       --tool-call-parser gemma4
       --max-model-len 32768
       --gpu-memory-utilization 0.4396
-      --host 0.0.0.0 --port 30003
-
-  # Opt-in rollback for Fast (gpu-reservations:T006, mirroring heavy-gptoss-rollback): the
-  # pre-swap Qwen3.6-35B-A3B-NVFP4 recipe. It deliberately shares :30003 and the 5090, so
-  # `serves down fast` before starting it. It is never a router dependency.
-  # NOT in the ADR-0017 ledger: its legacy 0.85 utilization (~27.7 GiB of 32.6) predates the
-  # always-on voice sidecars (~4.3 GiB) and cannot coexist with them — for a rollback with the
-  # sidecars up, set FAST_QWEN36_GPU_UTIL=0.78 or lower, or stop the sidecars first
-  # (`anvil-serving voice audio down`). See serves.toml for the full rollback runbook.
-  fast-qwen36-rollback:
-    profiles: ["rollback"]
-    image: vllm/vllm-openai:nightly
-    container_name: vllm-qwen36
-    restart: unless-stopped
-    ipc: host
-    ports:
-      - "127.0.0.1:30003:30003"
-    volumes:
-      - "vllm-hfcache:/root/.cache/huggingface"
-    environment:
-      CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
-      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
-      VLLM_USE_V2_MODEL_RUNNER: "0"
-      # Make-or-break on sm_120 for the NVFP4 kernels; plain 12.0 can select unsupported codegen.
-      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
-      # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
-      HF_TOKEN: ${HF_TOKEN:-}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
-              capabilities: [gpu]
-    entrypoint: ["vllm"]
-    # nvidia/*-NVFP4 is modelopt-packed -> --quantization modelopt_fp4 (gotcha #10). Qwen NVFP4
-    # needs the qwen3 reasoning/tool parsers + trust-remote-code. The pre-swap 35B-A3B recipe
-    # keeps 32K ctx / max-num-seqs 2 inside the 5090's 32GB envelope.
-    command: >
-      serve nvidia/Qwen3.6-35B-A3B-NVFP4
-      --served-model-name qwen36-35b-a3b-nvfp4
-      --quantization modelopt_fp4
-      --kv-cache-dtype fp8
-      --reasoning-parser qwen3
-      --enable-auto-tool-choice
-      --tool-call-parser qwen3_coder
-      --trust-remote-code
-      --max-model-len 32768
-      --max-num-seqs 2
-      --gpu-memory-utilization ${FAST_QWEN36_GPU_UTIL:-0.85}
       --host 0.0.0.0 --port 30003
 
   # ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
@@ -630,9 +486,6 @@ services:
     image: ${ROUTER_IMAGE:-anvil-serving:0.13.2}
     container_name: anvil-router
     restart: unless-stopped
-    depends_on:
-      - heavy
-      - fast
     ports:
       - "${ROUTER_PUBLISH:-127.0.0.1}:8000:8000"
     environment:

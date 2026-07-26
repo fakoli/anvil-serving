@@ -36,24 +36,49 @@ Unless a model section says otherwise, the July 2026 Heavy experiments used FP8
 KV cache, text-only mode, prefix caching disabled for independent-prompt
 comparisons, and a maximum of five admitted sequences.
 
+## Laguna S 2.1 NVFP4
+
+| Setting | Tested value |
+|---|---|
+| Checkpoint | [`poolside/Laguna-S-2.1-NVFP4`](https://huggingface.co/poolside/Laguna-S-2.1-NVFP4), revision `07614121b31898586430f189d27a25a0be310843` |
+| Managed service / endpoint | `heavy` / `http://127.0.0.1:30002/v1` |
+| Served name | `laguna-s-2.1-nvfp4` |
+| Engine path | vLLM `0.23.1rc1.dev1327+gf25953cc5`; pinned nightly image; NVFP4; FP8 KV |
+| Context / admission | 262,144 served; 240K quality retrieval and 120K promotion retrieval passed |
+| Router reasoning control | `chat_template_kwargs.enable_thinking=false` |
+
+**Why choose it.** The thinking-disabled production shape passed repeated
+protocol-v3 context, tool, session, unified-diff, and timeout-triage gates at a
+required 100% pass rate. It also passed the promotion gate with 10/10 tools and
+was verified through the managed router after promotion.
+
+**Gotchas.** The upstream template enables thinking by default. A local
+thinking-enabled smoke intermittently consumed its entire 4,352-token completion
+allowance without producing a visible answer, even though the immediate rerun
+passed. Keep disabled thinking in both the router defaults and qualification
+commands. Do not generalize the short-output capacity result into a controlled
+decode rate.
+
+Evidence: [Laguna S Heavy qualification](../findings/2026-07-26-laguna-s-heavy-qualification.md).
+
 ## GPT-OSS Puzzle 88B
 
 | Setting | Tested value |
 |---|---|
 | Checkpoint | [`nvidia/gpt-oss-puzzle-88B`](https://huggingface.co/nvidia/gpt-oss-puzzle-88B), revision `9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2` |
-| Managed service / endpoint | `heavy` / `http://127.0.0.1:30002/v1` |
+| Managed service / endpoint | `heavy-gptoss-puzzle-rollback` / `http://127.0.0.1:30002/v1` when selected |
 | Served name | `gpt-oss-puzzle-88b` |
 | Engine path | local Anvil vLLM commits `3fbe020f` + `485463b3`; native Puzzle architecture and Harmony template; OpenAI tool parser; Marlin MXFP4 MoE; FP8 KV |
 | Context / admission | 131,072 served; 130,696-prompt-token near-limit retrieval retained from the exact model-support image; 99,100-prompt-token promotion rerun; 8 sequences; 8,192 batched tokens |
 | Router reasoning control | OpenAI `reasoning_effort=high` default; low used for bounded promotion gates |
 | Complete reproduction guide | [Build, pull, serve, gate, route, and roll back](gpt-oss-puzzle-88b-recipe.md) |
 
-**Why choose it.** This is the branch-backed Heavy target the local serving
-stack was built to exercise. The production shape passes chat, structured JSON,
+**Why retain it.** This is the branch-backed Heavy rollback the local serving
+stack was built to exercise. The qualified shape passes chat, structured JSON,
 long-context retrieval, automatic tools, Responses API, streaming, and tool-result
-continuation on the RTX PRO 6000. The transition does not establish a quality or
-throughput advantage over Gemma 4; use its compatibility evidence to justify the
-default and retain Gemma for an immediate proven rollback.
+continuation on the RTX PRO 6000. Its earlier transition did not establish a
+quality or throughput advantage over Gemma 4; it is now retained as Laguna S's
+single declared rollback.
 
 **Gotchas.** The pinned checkpoint omits Harmony token `200012` (`<|call|>`) from
 its EOS list. Keep the server-level full generation-config override
@@ -83,8 +108,8 @@ than reconstructing the engine build or command from this summary. Evidence:
 result and improved quality-context TTFT from 7.83/57.60/124.70 seconds to
 6.96/44.61/97.33 seconds at 32K/128K/240K. Its guarded promotion also passed
 disabled-thinking smoke/JSON, a 240K needle, 20/20 tools, enabled-thinking
-reasoning evidence, router reload, and exact model identity, making it the
-immediate validated rollback for Puzzle.
+reasoning evidence, router reload, and exact model identity, making it a
+historically validated strict-quality alternative.
 
 **Gotchas.** Pin the model and tokenizer revisions independently; using only a
 model revision does not pin the July 15 chat template. Do not reintroduce the old

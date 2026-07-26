@@ -14,33 +14,35 @@ context limit, request shape, and evaluation protocol. Follow a model name to th
 record. The chronological [result archive](../BENCHMARKS.md) also covers RTX 5090,
 voice, and earlier rounds.
 
-**Last evidence refresh: 2026-07-18.** No result on this page automatically
+**Last evidence refresh: 2026-07-26.** No result on this page automatically
 changes a router profile or production deployment; promotion remains human-gated.
 
 ## Current decision snapshot
 
 | Need | Best measured fit | Why | Important limit |
 |---|---|---|---|
-| Current Heavy serving, tools, and 128K context | [GPT-OSS Puzzle 88B](gpt-oss-puzzle-88b-recipe.md) | Exact fork image passed the full functional gate, 20/20 tools, 127,916-prompt-token quality context, and authenticated routing | Strict built-in quality failed one unified-diff attempt; no controlled Gemma A/B |
-| Immediate strict-quality rollback | [Gemma 4 12B IT QAT W4A16](models.md#gemma-4-12b-it-qat-w4a16) | Passed repeated protocol-v3 quality, 240K context, 20/20 tools, and guarded promotion | FP8 KV and several-minute cold compile; exact pinned July 15 tokenizer required |
-| Historical tuned Qwen quality | [ThinkingCap Qwen3.6-27B FP8](models.md#thinkingcap-qwen36-27b-fp8) | 9/10 stable MMLU-Pro items at 4K reasoning headroom in the July 12 slice | Now the immediate rollback; MTP disabled in rollback recipe |
+| Current Heavy serving, tools, and 240K context | [Laguna S 2.1 NVFP4](models.md#laguna-s-21-nvfp4) | Thinking-disabled repeated quality passed every check, 240K retrieval, and the promotion gate passed 10/10 tools | Thinking-enabled preflight intermittently exhausted its full completion budget |
+| Immediate managed rollback | [GPT-OSS Puzzle 88B](gpt-oss-puzzle-88b-recipe.md) | Exact fork image previously passed the full functional gate, 20/20 tools, and authenticated routing | Strict built-in quality failed one unified-diff attempt |
+| Historical strict-quality rollback | [Gemma 4 12B IT QAT W4A16](models.md#gemma-4-12b-it-qat-w4a16) | Passed repeated protocol-v3 quality, 240K context, 20/20 tools, and guarded promotion | FP8 KV and several-minute cold compile; exact pinned July 15 tokenizer required |
+| Historical tuned Qwen quality | [ThinkingCap Qwen3.6-27B FP8](models.md#thinkingcap-qwen36-27b-fp8) | 9/10 stable MMLU-Pro items at 4K reasoning headroom in the July 12 slice | Historical candidate; MTP disabled in its validated recipe |
 | Heavy quality with a tight 1K reasoning budget | [Nemotron 3 Super 120B NVFP4](models.md#nemotron-3-super-120b-nvfp4) | 8/10 stable MMLU-Pro and 5/5 stable ARC at 1K; strong latency/quality balance | Served and tested at 131K, not its advertised 1M maximum |
 | Qwen throughput and large validated context | [Qwen3.6-27B community NVFP4 + MTP](models.md#qwen36-27b-community-nvfp4-mtp) | Fastest short-request Qwen variant tested here; 262K needle and five sessions passed | Needed 8K reasoning headroom for its best quality result |
 | Controlled long-generation throughput | [GPT-OSS-120B](models.md#gpt-oss-120b) | Established 183.2 tok/s control | No valid comparison-grade protocol-v3 quality result yet |
 | Low short-request latency | [Mistral Small 4 119B NVFP4](models.md#mistral-small-4-119b-nvfp4) | 0.30 s TTFT at concurrency 1 and 1.85 s at concurrency 5 | Only 5/10 stable MMLU-Pro items at its tuned 2K point |
 
-The current routed **Heavy tier** is **GPT-OSS Puzzle 88B** at
-`http://127.0.0.1:30002/v1`, served as `gpt-oss-puzzle-88b` with a 131,072-token
-window. Gemma 4 12B is the immediate managed rollback. Use the
-[complete Puzzle recipe](gpt-oss-puzzle-88b-recipe.md) and the
-[July 18 promotion record](../findings/2026-07-18-gpt-oss-puzzle-heavy-promotion.md);
-the recipe requires the exact Anvil vLLM fork commit and Harmony EOS override.
+The current routed **Heavy tier** is **Laguna S 2.1 NVFP4** at
+`http://127.0.0.1:30002/v1`, served as `laguna-s-2.1-nvfp4` with a 262,144-token
+window and thinking disabled. GPT-OSS Puzzle 88B is the immediate managed
+rollback. Use the [Laguna qualification and promotion record](../findings/2026-07-26-laguna-s-heavy-qualification.md);
+the rollback still requires the exact Anvil vLLM fork commit and Harmony EOS
+override documented in the [Puzzle recipe](gpt-oss-puzzle-88b-recipe.md).
 
 ### Current protocol-v3 promotion comparison
 
 | Candidate | Repeated built-in quality | 32K quality TTFT | 128K quality TTFT | 240K quality TTFT | Decision |
 |---|---|---:|---:|---:|---|
-| GPT-OSS Puzzle 88B | fail unified diff 2/3; tools/session/timeout passed 3/3 | **2.44 s** | **25.91 s** | — | Current compatibility Heavy; strict-quality caveat |
+| Laguna S 2.1 NVFP4, thinking disabled | **pass** | **2.26 s** | **21.15 s** | **50.64 s** | **Current Heavy**; thinking-disabled contract |
+| GPT-OSS Puzzle 88B | fail unified diff 2/3; tools/session/timeout passed 3/3 | 2.44 s | 25.91 s | — | Immediate managed rollback; strict-quality caveat |
 | ThinkingCap Qwen3.6-27B FP8 | pass | 7.83 s | 57.60 s | 124.70 s | Rollback control |
 | Gemma 4 12B W4A16 | **pass** | 6.96 s | 44.61 s | **97.33 s** | **Immediate Heavy rollback** |
 | Gemma 4 26B BF16 | fail timeout triage 0/3 | — | — | — | Rejected despite capacity speed |
@@ -128,8 +130,9 @@ minimum evidence needed to publish them.
 
 | Candidate | Advertised context | Served limit | Long-context validation | Long-context TTFT | What is actually established |
 |---|---:|---:|---|---:|---|
-| GPT-OSS Puzzle 88B | 131,072 | 131,072 | 130,696-prompt-token near-limit retrieval; 127,916-prompt-token quality target passed | 25.91 s at the 128K quality target | Current Heavy compatibility path; exact engine/model revisions pinned |
-| Gemma 4 12B IT QAT W4A16 | 262,144 | 262,144 | 240K promotion needle passed | 97.33 s at 240K in quality run | Immediate rollback; exact model/tokenizer revisions pinned |
+| Laguna S 2.1 NVFP4, thinking disabled | 262,144 | 262,144 | 243,641-prompt-token quality retrieval passed | 50.64 s at the 240K quality target | Current Heavy; exact model and engine revisions pinned |
+| GPT-OSS Puzzle 88B | 131,072 | 131,072 | 130,696-prompt-token near-limit retrieval; 127,916-prompt-token quality target passed | 25.91 s at the 128K quality target | Immediate managed rollback; exact engine/model revisions pinned |
+| Gemma 4 12B IT QAT W4A16 | 262,144 | 262,144 | 240K promotion needle passed | 97.33 s at 240K in quality run | Historical strict-quality rollback; exact model/tokenizer revisions pinned |
 | Qwen3.6-27B community NVFP4 + MTP | 262,144 | 262,144 | 262K needle passed | 26.5 s at 131K | Native window validated; five full windows are not reserved |
 | Qwen3.6-27B official FP8 | 262,144 | 262,144 | 131K preflight passed | 32.9 s at 131K | 131K functional; 262K not retained in this round |
 | ThinkingCap Qwen3.6-27B FP8 | 262,144 | 262,144 | 131K preflight passed | 32.3 s at 131K | 131K functional; 262K not retained in this round |

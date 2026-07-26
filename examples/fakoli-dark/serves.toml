@@ -4,9 +4,9 @@
 # "which model containers exist, on which ports". Manage the serves ONLY through
 # `anvil-serving serves` (which delegates to docker-compose.yml), never raw `docker`.
 #
-# 2026-07-16 reconcile: heavy = official Gemma 4 12B IT QAT W4A16 with the
-# July 15 tokenizer chat template (:30002, PRO 6000). ThinkingCap is the immediate
-# opt-in rollback; GPT-OSS remains the second-line rollback.
+# 2026-07-26 reconcile: heavy = Poolside Laguna S 2.1 NVFP4 with thinking
+# disabled by default (:30002, PRO 6000). The previously qualified GPT-OSS
+# Puzzle 88B is the one retained ready rollback.
 # 2026-07-13 fast swap (gpu-reservations:T006): fast = Gemma 4 E4B IT (:30003, RTX 5090) with a
 # declared ADR-0017 resident reservation; the previous Qwen3.6-35B-A3B-NVFP4 recipe stays as the
 # opt-in `fast-qwen36-rollback` serve. These back the router tiers in the live
@@ -55,41 +55,23 @@ vram_mib = 32607
 reserve_mib = 4608
 
 [[serve]]
-name = "heavy"                 # heavy quality tier — GPT-OSS Puzzle 88B
-container = "vllm-gptoss-puzzle-heavy"
+name = "heavy"                 # heavy quality tier — Laguna S 2.1 NVFP4
+container = "vllm-laguna-s-heavy"
 port = 30002
-model = "gpt-oss-puzzle-88b"   # served-model-name (used by `anvil-serving eval`)
+model = "laguna-s-2.1-nvfp4"   # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
 groups = ["heavy-only", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
 
 [[serve]]
-name = "heavy-gemma4-rollback" # immediate rollback; stop `heavy` first because both own :30002
-container = "vllm-gemma4-12b-heavy-rollback"
+name = "heavy-gptoss-puzzle-rollback" # ready rollback; stop `heavy` first because both own :30002
+container = "vllm-gptoss-puzzle-heavy-rollback"
 port = 30002
-model = "gemma4-12b-it-w4a16-ct"
+model = "gpt-oss-puzzle-88b"
 engine = "vllm"
 health = "/health"
-up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-gemma4-rollback"
-
-[[serve]]
-name = "heavy-thinkingcap-rollback" # second-line rollback; stop `heavy` first because both own :30002
-container = "vllm-thinkingcap-heavy-rollback"
-port = 30002
-model = "thinkingcap-qwen36-27b-fp8"
-engine = "vllm"
-health = "/health"
-up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-thinkingcap-rollback"
-
-[[serve]]
-name = "heavy-gptoss-rollback" # third-line rollback; stop `heavy` first because both own :30002
-container = "vllm-gptoss120"
-port = 30002
-model = "gpt-oss-120b"
-engine = "vllm"
-health = "/health"
-up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-gptoss-rollback"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-gptoss-puzzle-rollback"
 
 # Fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090 (gpu-reservations:T006 swap; T011
 # operator rebalance). bf16 weights alone are 15.18 GiB and cannot fit the rebalanced
@@ -112,25 +94,6 @@ vram_mib = 14336
 residency = "resident"
 groups = ["fast-only", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"
-
-# Opt-in FAST rollback (pre-T006 Qwen3.6-35B-A3B-NVFP4); stop `fast` first because both own
-# :30003. Deliberately OUTSIDE the ADR-0017 ledger: its legacy 0.85-util footprint (~27.7 GiB)
-# cannot coexist with the always-on voice sidecars, so a declared reservation would always be
-# denied. Rollback runbook:
-#   1. anvil-serving serves --manifest {this} down fast --confirm
-#   2. either `anvil-serving voice audio down --confirm` (frees the sidecars' ~4.3 GiB) or
-#      export FAST_QWEN36_GPU_UTIL=0.78 to shrink the recipe under the remaining headroom
-#   3. anvil-serving serves --manifest {this} up fast-qwen36-rollback --confirm
-#   4. revert the router's fast-local tier model to "qwen36-35b-a3b-nvfp4"
-#      (anvil-router.live.toml history) via the router promotion path.
-[[serve]]
-name = "fast-qwen36-rollback"
-container = "vllm-qwen36"
-port = 30003
-model = "qwen36-35b-a3b-nvfp4"
-engine = "vllm"
-health = "/health"
-up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d fast-qwen36-rollback"
 
 # ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
 # Always-on text-embedding + reranker serves on the multi-tenant 5090, riding the same
@@ -239,35 +202,35 @@ up = "docker compose -f {dir}/docker-compose.yml up -d vision"
 # and complete model+router rollback. This single-GPU plan validates the newly
 # started target in-transaction; a separately resident candidate cannot coexist.
 [[promotion]]
-name = "gpt-oss-puzzle-88b-heavy"
+name = "laguna-s-2.1-heavy"
 target = "heavy"
-rollback = "heavy-gemma4-rollback"
+rollback = "heavy-gptoss-puzzle-rollback"
 router_config = "{dir}/anvil-router.live.toml"
-router_profile = "{dir}/../../docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/promotion-profile.json"
-rollback_router_config = "{dir}/anvil-router.gemma4-rollback.toml"
-rollback_router_profile = "{dir}/../../docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/gemma4-rollback-profile.json"
+router_profile = "{dir}/../../docs/findings/2026-07-26-laguna-s-qualification-evidence/promotion-profile.json"
+rollback_router_config = "{dir}/anvil-router.gptoss-puzzle-rollback.toml"
+rollback_router_profile = "{dir}/../../docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/promotion-profile.json"
 affected_tiers = ["heavy-local"]
 drain_timeout = 120
 needle_ctx = 120000
-tool_batch = 20
+tool_batch = 10
 startup_timeout = 900
 rollback_startup_timeout = 600
 poll_interval = 5
 router_health_url = "http://100.87.34.66:8000/healthz"
 
 [[promotion.gate]]
-name = "puzzle-functional-reasoning"
+name = "laguna-functional-thinking-disabled"
 checks = "smoke,json,needle,tools"
-thinking_mode = "default"
-visible_answer_tokens = 512
-reasoning_headroom_tokens = 4096
-reasoning_evidence = "required"
-json_out = "{dir}/../../docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence/promotion-functional-preflight.json"
+thinking_mode = "disabled"
+visible_answer_tokens = 256
+reasoning_headroom_tokens = 0
+reasoning_evidence = "forbidden"
+json_out = "{dir}/../../docs/findings/2026-07-26-laguna-s-qualification-evidence/promotion-functional-preflight.json"
 
 [[promotion.rollback_gate]]
-name = "gemma4-functional"
+name = "gpt-oss-puzzle-functional"
 checks = "smoke,json,needle,tools"
-thinking_mode = "enabled"
+thinking_mode = "default"
 visible_answer_tokens = 512
 reasoning_headroom_tokens = 4096
 reasoning_evidence = "required"
