@@ -213,6 +213,70 @@ def test_reconstruct_docker_run_model_is_positional_after_image():
     assert " serve " not in cmd
 
 
+def test_reconstruct_docker_run_supports_entrypoint_and_model_flag():
+    recipe = {
+        "model": "nvidia/Qwen3.5-122B-A10B-NVFP4",
+        "serve": {
+            "image": "nvcr.io/nvidia/vllm:26.06-py3",
+            "entrypoint": ["python3", "-m", "vllm.entrypoints.openai.api_server"],
+            "model_flag": "--model",
+            "flags": ["--max-model-len 131072"],
+        },
+    }
+
+    argv = sr.docker_run_argv(recipe)
+    image_i = argv.index("nvcr.io/nvidia/vllm:26.06-py3")
+    assert argv[image_i - 2:image_i] == ["--entrypoint", "python3"]
+    assert argv[image_i + 1:image_i + 5] == [
+        "-m", "vllm.entrypoints.openai.api_server", "--model",
+        "nvidia/Qwen3.5-122B-A10B-NVFP4",
+    ]
+
+
+def test_docker_run_argv_supports_recipe_ipc_shared_memory_and_ulimits():
+    recipe = {
+        "model": "m/x",
+        "serve": {
+            "image": "img",
+            "ipc": "host",
+            "shm_size": "16gb",
+            "ulimits": ["memlock=-1", "stack=67108864"],
+        },
+    }
+
+    argv = sr.docker_run_argv(recipe)
+    assert argv[argv.index("--ipc"):argv.index("--ipc") + 2] == ["--ipc", "host"]
+    assert argv[argv.index("--shm-size"):argv.index("--shm-size") + 2] == ["--shm-size", "16gb"]
+    assert argv.count("--ulimit") == 2
+    assert "memlock=-1" in argv
+    assert "stack=67108864" in argv
+
+
+def test_recipe_entrypoint_and_model_flag_reject_unsafe_or_incomplete_values():
+    recipe = {"model": "m/x", "serve": {"image": "img", "entrypoint": []}}
+    with pytest.raises(sr.RecipeError, match="entrypoint"):
+        sr.validate_recipe(recipe, require_loadable=True)
+
+    recipe = {"model": "m/x", "serve": {"image": "img", "model_flag": "--model"}}
+    with pytest.raises(sr.RecipeError, match="model_flag"):
+        sr.validate_recipe(recipe, require_loadable=True)
+
+    recipe = {"model": "m/x", "serve": {"image": "img", "ipc": "container:other"}}
+    with pytest.raises(sr.RecipeError, match="ipc"):
+        sr.validate_recipe(recipe, require_loadable=True)
+
+    recipe = {"model": "m/x", "serve": {"image": "img", "shm_size": "0gb"}}
+    with pytest.raises(sr.RecipeError, match="shm_size"):
+        sr.validate_recipe(recipe, require_loadable=True)
+
+    recipe = {
+        "model": "m/x",
+        "serve": {"image": "img", "entrypoint": ["python3"], "model_flag": "--model value"},
+    }
+    with pytest.raises(sr.RecipeError, match="model_flag"):
+        sr.validate_recipe(recipe, require_loadable=True)
+
+
 def test_reconstruct_docker_run_includes_env_volume_and_flags():
     cmd = sr.reconstruct_docker_run(_RECIPE)
     assert "-e FLASHINFER_CUDA_ARCH_LIST=12.0f" in cmd
@@ -314,6 +378,34 @@ def test_capture_from_container_gpu_uuid_falls_back_to_cuda_visible_devices():
     assert cap["hardware"]["gpu_uuid"] == "GPU-abc123"  # first of CUDA_VISIBLE_DEVICES
 
 
+def test_capture_from_container_preserves_nvidia_entrypoint_and_model_flag():
+    inspect = [{
+        "Config": {
+            "Image": "nvcr.io/nvidia/vllm:26.06-py3",
+            "Entrypoint": ["python3", "-m", "vllm.entrypoints.openai.api_server"],
+            "Env": [],
+        },
+        "Args": [
+            "--model", "nvidia/Qwen3.5-122B-A10B-NVFP4",
+            "--max-model-len", "131072",
+        ],
+        "HostConfig": {},
+    }]
+    run, _ = _fake_docker(inspect)
+
+    cap = sr.capture_from_container("nvidia-vllm", _run=run)
+
+    assert cap["serve"]["entrypoint"] == [
+        "python3", "-m", "vllm.entrypoints.openai.api_server",
+    ]
+    assert cap["serve"]["model_flag"] == "--model"
+    assert cap["serve"]["flags"] == ["--max-model-len 131072"]
+
+    recipe = {"model": "nvidia/Qwen3.5-122B-A10B-NVFP4", **cap}
+    cmd = sr.reconstruct_docker_run(recipe)
+    assert "--entrypoint python3 nvcr.io/nvidia/vllm:26.06-py3 -m vllm.entrypoints.openai.api_server --model nvidia/Qwen3.5-122B-A10B-NVFP4" in cmd
+
+
 def test_capture_from_container_round_trips_into_a_reconstructable_recipe():
     run, _ = _fake_docker(_FAKE_INSPECT)
     cap = sr.capture_from_container("s", _run=run)
@@ -365,7 +457,7 @@ def test_shipped_registry_reconstructs_gpt_oss(request):
     assert recipe["measured"]["throughput_single_tok_s"] == pytest.approx(183.2)
     cmd = sr.reconstruct_docker_run(recipe)
     assert cmd.startswith("docker run -d --gpus device=GPU-d0f446cf")
-    assert "vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089 openai/gpt-oss-120b" in cmd
+    assert "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e openai/gpt-oss-120b" in cmd
 
 
 def test_shipped_stable_vllm_recipes_pin_0251_and_enable_wsl2_memory(request):
@@ -391,7 +483,7 @@ def test_shipped_stable_vllm_recipes_pin_0251_and_enable_wsl2_memory(request):
     assert managed["heavy-gemma4-rollback"] == "google/gemma-4-12B-it-qat-w4a16-ct"
 
 
-def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_target(request):
+def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_rollback(request):
     root = request.config.rootpath
     registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
     recipe = sr.find_recipe(registry, "nvidia/gpt-oss-puzzle-88B")
@@ -406,7 +498,7 @@ def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_target(request):
     }
     serve = recipe["serve"]
     assert serve["image"] == ("anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82")
-    assert serve["managed_serve"] == "heavy"
+    assert serve["managed_serve"] == "heavy-gptoss-puzzle-rollback"
     assert serve["served_model_name"] == "gpt-oss-puzzle-88b"
     assert serve["port"] == 30002
     assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in serve["flags"]
@@ -420,3 +512,26 @@ def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_target(request):
     assert serve["image"] in cmd
     assert "nvidia/gpt-oss-puzzle-88B" in cmd
     assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in cmd
+
+
+def test_shipped_laguna_recipe_is_verified_heavy_target(request):
+    root = request.config.rootpath
+    registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
+    recipe = sr.find_recipe(registry, "poolside/Laguna-S-2.1-NVFP4")
+
+    assert recipe is not None
+    assert recipe["status"] == "verified"
+    serve = recipe["serve"]
+    assert serve["managed_serve"] == "heavy"
+    assert serve["served_model_name"] == "laguna-s-2.1-nvfp4"
+    assert serve["port"] == 30002
+    assert "--revision 07614121b31898586430f189d27a25a0be310843" in serve["flags"]
+    assert (
+        "--default-chat-template-kwargs '{\"enable_thinking\":false}'"
+        in serve["flags"]
+    )
+    assert recipe["activation"]["heavy"] == {
+        "plan": "laguna-s-2.1-heavy",
+        "direction": "promote",
+        "compose_service": "heavy",
+    }

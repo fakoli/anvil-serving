@@ -146,6 +146,21 @@ Start with the fields above, then use `models recipes show` on a similar shipped
 recipe for engine-specific GPU, environment, volume, context, and quantization fields.
 The full registry schema is represented by `configs/serve-recipes.toml`.
 
+Most vLLM images accept the model as a positional argument through their image
+entrypoint. For an image with a different API-server entrypoint, set `entrypoint`
+to its argv and set `model_flag` to the single option that introduces the model id:
+
+```toml
+[recipe.serve]
+image = "nvcr.io/nvidia/vllm:26.06-py3"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+```
+
+`entrypoint[0]` becomes Docker's `--entrypoint`; the remaining entries are passed
+after the image. Without these optional fields, recipe loading keeps the existing
+positional-model behavior.
+
 ```bash
 anvil-serving models recipes create --recipe-file ./candidate-recipe.toml --registry ./serve-recipes.local.toml --dry-run
 anvil-serving models recipes create --recipe-file ./candidate-recipe.toml --registry ./serve-recipes.local.toml --confirm
