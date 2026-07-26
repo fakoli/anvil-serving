@@ -28,11 +28,9 @@
 
 # LIVE router config for the containerized deploy on fakoli-dark (ADR-0004).
 # Based on configs/example-docker.toml, updated to the 2026-07-13 two-tier
-# deployment: gemma4-e4b-it for fast local work (gpu-reservations:T006 swap; rollback tier
-# model is qwen36-35b-a3b-nvfp4, see serves.toml `fast-qwen36-rollback`) and
-# GPT-OSS Puzzle 88B for heavy local work. The Heavy checkpoint and the exact
-# Anvil vLLM fork image are pinned in docker-compose.yml; Gemma 4 remains the
-# immediate managed rollback.
+# deployment: gemma4-e4b-it for fast local work and Laguna S 2.1 NVFP4 for
+# heavy local work. Laguna's exact checkpoint and vLLM nightly are pinned in
+# docker-compose.yml; GPT-OSS Puzzle 88B is the one ready Heavy rollback.
 # The router runs in a container on the `fakoli-dark_default` network and reaches the
 # serves via `host.docker.internal` (see the tier `base_url`s below); only the router
 # is published (authed via the token).
@@ -40,7 +38,7 @@
 auth_env = "ANVIL_ROUTER_TOKEN"
 
 [router]
-mapping_version = "2026-07-18.gpt-oss-puzzle-88b-heavy"
+mapping_version = "2026-07-26.laguna-s-2.1-heavy"
 # verify_local_min at its default (true): an empty local 200 becomes a 503 so the gateway
 # fails over to native. (v0.7.0 note: tool-call-only replies — empty content + populated
 # tool_calls — correctly PASS this gate; regression-pinned in #94. Tools now actually reach
@@ -85,22 +83,22 @@ interaction_benchmark_stream_max_tokens = 128
 [[router.tiers]]
 id            = "heavy-local"
 base_url      = "http://host.docker.internal:30002/v1"
-model         = "gpt-oss-puzzle-88b"
+model         = "laguna-s-2.1-nvfp4"
 dialect       = "openai"
-context_limit = 131072
+context_limit = 262144
 privacy       = "local"
 tool_support  = true
 auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
 health_path   = "/health"
 model_identity = true
-extra_body_defaults = { reasoning_effort = "high" }
+extra_body_defaults = { chat_template_kwargs = { enable_thinking = false } }
 
 [router.tiers.params]
-generation_probe_max_tokens = 4352
-interaction_benchmark_max_tokens = 4352
-interaction_benchmark_stream_max_tokens = 4352
-interaction_benchmark_max_tokens_by_intent = { planning = 4352 }
-interaction_benchmark_stream_max_tokens_by_intent = { planning = 4352 }
+generation_probe_max_tokens = 256
+interaction_benchmark_max_tokens = 256
+interaction_benchmark_stream_max_tokens = 256
+interaction_benchmark_max_tokens_by_intent = { planning = 256 }
+interaction_benchmark_stream_max_tokens_by_intent = { planning = 256 }
 
 # OCR tier (gpu-reservations:T011): PaddleOCR-VL-1.6 on the 5090 (serves.toml `ocr`,
 # :30007), reached only through the "ocr" intent preset below. A document-parsing VLM,
