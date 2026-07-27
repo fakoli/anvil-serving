@@ -25,7 +25,7 @@ whether an operator should use that serve behind a direct alias.
 | Render notebook scores and verdicts | `eval benchmark external notebook render` |
 
 Add `--help` after any command path for its complete operands, filters, and defaults. External
-rows are advisory priors; only local quality evidence can support a routing decision.
+rows are advisory priors; only local quality evidence can support a deployment decision.
 
 ## Supported Sources
 
@@ -45,7 +45,7 @@ The `rtx6kpro` v1 adapter is intentionally narrower. It imports individual raw J
 - `benchmarks/inference-throughput/*.json`
 - `models/glm5.1/benchmarks/**/decode-matrix.json`
 
-It does not crawl the whole GitHub repository or wiki, and it does not ingest Markdown, CSV, quality benchmarks, hardware/network/power benchmarks, or prose as routing truth. Non-JSON imports still store the raw snapshot and mark parsing `failed` with a message pointing users to the machine-readable JSON artifacts.
+It does not crawl the whole GitHub repository or wiki, and it does not ingest Markdown, CSV, quality benchmarks, hardware/network/power benchmarks, or prose as deployment truth. Non-JSON imports still store the raw snapshot and mark parsing `failed` with a message pointing users to the machine-readable JSON artifacts.
 
 The `llmrequirements` adapter reproduces the site's Q4 fit and parameter-bucket
 speed estimates from its JSON database. These are editorial recipe priors, not
@@ -254,8 +254,8 @@ anvil-serving eval benchmark external notebook render \
   --db .anvil/benchmarks.sqlite
 ```
 
-Notebook verdicts summarize retained evidence; they do not promote a model or change router
-configuration.
+Notebook verdicts summarize retained evidence; they do not promote a model or
+change the active direct alias or serve configuration.
 
 ## Agent MCP Advisory Workflow
 
@@ -276,7 +276,7 @@ CLI `init`, `import`, `fetch`, or `compare` commands when you intentionally want
 those persistent writes. Workflow packets may include MCP results in
 `advisory_priors`, but `workflow_packet_validate` rejects priors that lack
 `advisory_only: true` and `promotion_quality_evidence: false`, and still
-requires a human-approved `router_promote` result before any packet can claim
+requires a human-approved `serves_promote` result before any packet can claim
 `promoted: true`.
 
 ## Local Benchmark JSON

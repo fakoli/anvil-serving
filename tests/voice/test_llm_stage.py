@@ -3,8 +3,8 @@ LLM stage.
 
 Dependency-light and hermetic: no real sockets are opened. ``stream_chat_completion``
 is exercised through an injectable fake ``transport`` (mirroring
-``CloudBackend``'s ``stream_transport`` seam in
-``anvil_serving/router/backends/cloud.py``/``tests/router/test_streaming_relay.py``)
+``RelayBackend``'s ``stream_transport`` seam in
+``anvil_serving/router/backends/relay.py``/``tests/router/test_streaming_relay.py``)
 that returns a canned in-memory SSE response, never a live ``urllib`` connection.
 No GPU, no torch, no network.
 """

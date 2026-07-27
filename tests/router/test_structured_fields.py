@@ -2,8 +2,8 @@
 #52 (inert verifiers).
 
 Coverage:
-  - CloudBackend._extract_structured: Anthropic + OpenAI wire shapes
-  - CloudBackend.get_last_structured: populated after generate() drain
+  - RelayBackend._extract_structured: Anthropic + OpenAI wire shapes
+  - RelayBackend.get_last_structured: populated after generate() drain
   - Dialect stop-reason mappers (_anthropic_stop_reason / _openai_finish_reason)
   - AnthropicDialect.stream() with get_structured → tool_use blocks + stop_reason
   - AnthropicDialect.render() with structured → tool_use blocks + stop_reason
@@ -26,8 +26,8 @@ from contextlib import contextmanager
 from typing import Dict, Iterator, List, Optional
 
 
-from anvil_serving.router.backends import StaticBackend
-from anvil_serving.router.backends.cloud import CloudBackend
+from tests.router.helpers import StaticBackend
+from anvil_serving.router.backends.relay import RelayBackend
 from anvil_serving.router.config import Tier
 from anvil_serving.router.dialects.anthropic import AnthropicDialect, _anthropic_stop_reason
 from anvil_serving.router.dialects.openai import OpenAIDialect, _openai_finish_reason
@@ -58,7 +58,7 @@ def _anthropic_tier() -> Tier:
         base_url="https://api.anthropic.com",
         dialect="anthropic",
         context_limit=200000,
-        privacy="cloud",
+        privacy="local",
         tool_support=True,
         auth_env=ANTHROPIC_ENV,
     )
@@ -70,7 +70,7 @@ def _openai_tier() -> Tier:
         base_url="https://api.openai.com/v1",
         dialect="openai",
         context_limit=128000,
-        privacy="cloud",
+        privacy="local",
         tool_support=True,
         auth_env=OPENAI_ENV,
     )
@@ -85,15 +85,15 @@ class _CaptureTransport:
 
 
 # ---------------------------------------------------------------------------
-# CloudBackend._extract_structured: Anthropic wire shape
+# RelayBackend._extract_structured: Anthropic wire shape
 # ---------------------------------------------------------------------------
 
-class TestCloudBackendExtractStructuredAnthropic:
+class TestRelayBackendExtractStructuredAnthropic:
     """Extract finish_reason and tool_calls from Anthropic-format response bodies."""
 
-    def _make_backend(self, monkeypatch, reply: bytes) -> CloudBackend:
+    def _make_backend(self, monkeypatch, reply: bytes) -> RelayBackend:
         monkeypatch.setenv(ANTHROPIC_ENV, FAKE_KEY)
-        return CloudBackend(_anthropic_tier(), transport=_CaptureTransport(reply))
+        return RelayBackend(_anthropic_tier(), transport=_CaptureTransport(reply))
 
     def test_text_response_end_turn(self, monkeypatch):
         reply = json.dumps({
@@ -167,15 +167,15 @@ class TestCloudBackendExtractStructuredAnthropic:
 
 
 # ---------------------------------------------------------------------------
-# CloudBackend._extract_structured: OpenAI wire shape
+# RelayBackend._extract_structured: OpenAI wire shape
 # ---------------------------------------------------------------------------
 
-class TestCloudBackendExtractStructuredOpenAI:
+class TestRelayBackendExtractStructuredOpenAI:
     """Extract finish_reason and tool_calls from OpenAI-format response bodies."""
 
-    def _make_backend(self, monkeypatch, reply: bytes) -> CloudBackend:
+    def _make_backend(self, monkeypatch, reply: bytes) -> RelayBackend:
         monkeypatch.setenv(OPENAI_ENV, FAKE_KEY)
-        return CloudBackend(_openai_tier(), transport=_CaptureTransport(reply))
+        return RelayBackend(_openai_tier(), transport=_CaptureTransport(reply))
 
     def test_stop_response(self, monkeypatch):
         reply = json.dumps({
@@ -226,7 +226,7 @@ class TestCloudBackendExtractStructuredOpenAI:
 
 
 # ---------------------------------------------------------------------------
-# CloudBackend thread safety: last_result is per-thread
+# RelayBackend thread safety: last_result is per-thread
 # ---------------------------------------------------------------------------
 
 def test_cloud_backend_thread_local_isolation(monkeypatch):
@@ -245,7 +245,7 @@ def test_cloud_backend_thread_local_isolation(monkeypatch):
     barrier = threading.Barrier(2)
 
     def _run(label: str, reply: bytes) -> None:
-        backend = CloudBackend(_anthropic_tier(), transport=_CaptureTransport(reply))
+        backend = RelayBackend(_anthropic_tier(), transport=_CaptureTransport(reply))
         list(backend.generate(_mk_request("anthropic")))
         barrier.wait()  # both threads hit this after generate() to ensure overlap
         results[label] = backend.get_last_structured()

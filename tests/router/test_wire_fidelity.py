@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 
-from anvil_serving.router.backends.cloud import CloudBackend
+from anvil_serving.router.backends.relay import RelayBackend
 from anvil_serving.router.config import Tier
 from anvil_serving.router.dialects.anthropic import AnthropicDialect
 from anvil_serving.router.dialects.openai import OpenAIDialect
@@ -27,7 +27,7 @@ from anvil_serving.router.dialects.translate import (
 )
 
 
-def _tier(dialect: str, privacy: str = "cloud") -> Tier:
+def _tier(dialect: str, privacy: str = "local") -> Tier:
     return Tier(
         id=f"{dialect}-tier",
         base_url="https://api.example.test",
@@ -40,8 +40,8 @@ def _tier(dialect: str, privacy: str = "cloud") -> Tier:
     )
 
 
-def _backend(dialect: str) -> CloudBackend:
-    return CloudBackend(_tier(dialect), env={"EXAMPLE_KEY": "k"})
+def _backend(dialect: str) -> RelayBackend:
+    return RelayBackend(_tier(dialect), env={"EXAMPLE_KEY": "k"})
 
 
 ANTHROPIC_TOOLS = [{

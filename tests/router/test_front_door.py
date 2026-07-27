@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from anvil_serving.router.backends import StaticBackend
+from tests.router.helpers import StaticBackend
 from anvil_serving.router.config import load
 from anvil_serving.router.decision_log import (
     AttemptRecord,

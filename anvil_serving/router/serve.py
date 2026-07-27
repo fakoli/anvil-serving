@@ -20,7 +20,7 @@ from .admission import AdmissionLease, TierAdmission
 from .audio import AudioGateway
 from .availability import AlwaysAvailable, AvailabilityResult, HttpHealthAvailability
 from .backends import RelayBackend
-from .backends.cloud import DiscoveryTransport, Transport, discover_single_model
+from .backends.relay import DiscoveryTransport, Transport, discover_single_model
 from .config import (
     ConfigError,
     PRIVACY_LOCAL,
