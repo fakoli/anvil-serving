@@ -30,7 +30,7 @@ classifiers = [
 dependencies = []   # stdlib-only by design; optional extras pull in nothing required
 
 [project.optional-dependencies]
-dev = ["pytest", "Markdown>=3.6", "pymdown-extensions>=10.0"]
+dev = ["pytest", "coverage>=7.6", "Markdown>=3.6", "pymdown-extensions>=10.0"]
 # `voice` extra: ONLY for optionally running the voice-pipeline orchestrator +
 # realtime server locally (anvil_serving/voice/). The STT/TTS engines
 # themselves run OUT-OF-PROCESS as separate serves speaking the OpenAI audio
@@ -80,6 +80,14 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = ["anvil_serving"]
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.ruff]
 target-version = "py311"

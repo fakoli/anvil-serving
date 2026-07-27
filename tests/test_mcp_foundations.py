@@ -108,6 +108,22 @@ def test_explicit_ordered_families_compose_the_public_catalog():
     )
 
 
+def test_operation_contracts_resolve_against_the_composed_public_catalog():
+    result = mcp.call_tool("operation_contracts")
+
+    assert result["ok"]
+    declared_tools = {
+        operation["tool"]
+        for operation in result["data"]["operations"]
+        if operation["mode"] == "tool"
+    }
+    assert declared_tools <= set(mcp.TOOLS)
+
+    with pytest.raises(mcp.ToolError) as refused:
+        mcp.tool_operation_contracts({"unexpected": True})
+    assert refused.value.code == "bad_argument"
+
+
 def test_family_catalog_rejects_duplicate_names():
     def handler(_args):
         return {}

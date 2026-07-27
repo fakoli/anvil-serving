@@ -68,6 +68,43 @@ parsers own detailed argument help, while the family documentation owns
 workflows, examples, configuration precedence, and behavioral guidance. The
 v4 manifest intentionally omits prose copies of that documentation.
 
+## Evaluation and control-plane composition
+
+The benchmark and control-plane public modules are stable compatibility
+facades. Responsibilities live in directed internal packages so callers keep
+their supported imports while persistence, security, protocol, and tool-family
+code remain independently reviewable.
+
+```mermaid
+flowchart LR
+    B["benchmark.py facade"] --> BP["benchmarking package"]
+    BP --> BA["artifacts and specs"]
+    BP --> BR["requests, evaluation, and runner"]
+
+    C["controller.py facade"] --> CP["control_plane/controller"]
+    CP --> CS["security and store"]
+    CP --> CH["catalog, HTTP, server, and CLI"]
+    CH --> M["public mcp.py facade"]
+
+    M --> MF["control_plane/mcp foundations"]
+    M --> MT["explicit ordered tool families"]
+    MT --> MF
+    MF --> D["direct dictionary dispatch"]
+```
+
+`anvil_serving/benchmark.py`, `anvil_serving/controller.py`, and
+`anvil_serving/mcp.py` preserve their documented imports, command entrypoints,
+and compatibility trampolines. Internal modules do not scan the filesystem,
+load entry points, or dynamically discover handlers. The MCP catalog is built
+once from an explicit family tuple, rejects duplicate family and tool names,
+and dispatches through one dictionary lookup.
+
+Benchmark artifact validation is owned by `benchmarking/artifacts.py`. MCP
+adapts its domain errors to the MCP error contract rather than carrying a
+second path-validation implementation. Controller internals consume the public
+MCP catalog/call surface, while MCP foundations and tool families do not import
+controller internals.
+
 ## Deliberate non-components
 
 The gateway has no workload classifier, intent presets, quality profile,
