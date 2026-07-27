@@ -10,7 +10,7 @@ Focused `--help` is the complete flag reference for every command below.
 
 | Goal | Start here | Then |
 | --- | --- | --- |
-| Configure a new installation | `init --out-dir PATH` | Replace host placeholders, then run `doctor`. |
+| Configure a new installation | `init` | Replace placeholders in the config home, then run `doctor`. |
 | Check whether this machine is ready | `doctor --no-config` | Add `--config PATH` when the router config exists. |
 | Inspect a topology-owned host | `host status` | Use `host doctor` for a recommendation or `host memory` for WSL details. |
 | Change the WSL memory cap safely | `host doctor` | Preview `host wsl-config`, apply it, then restart Docker Desktop. |
@@ -92,14 +92,15 @@ the generated files.
 
 ```bash
 anvil-serving doctor --no-config
-anvil-serving doctor --config ./router.toml --json
+anvil-serving doctor --config ~/.anvil-serving/router.toml --json
 ```
 
 Python, Docker, and Compose are required checks. NVIDIA runtime, GPU discovery,
 and unavailable tier health are advisory because the router and model serves
-may live on different hosts. With neither selector, `./router.toml` is checked
-only when it exists. An explicit missing or invalid `--config` fails instead of
-being skipped.
+may live on different hosts. With neither selector, the config-home
+`router.toml` is checked first, followed by legacy `./router.toml` when
+present. An explicit missing or invalid `--config` fails instead of being
+skipped.
 
 `host doctor` is the topology-aware host-capacity view:
 

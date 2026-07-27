@@ -379,6 +379,33 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Direct capability-gateway TOML; defaults to the operator config home.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router bind host.",
+          "value_name": "ADDRESS"
+        },
+        {
+          "flags": [
+            "--port"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router bind port.",
+          "value_name": "PORT"
         }
       ],
       "output_policy": "foreground",

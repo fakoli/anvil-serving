@@ -716,12 +716,23 @@ def test_cmd_up_prefers_config_home_dotenv_over_home_fallback(tmp_path, monkeypa
 
 # ---- default manifest / missing manifest (genericity:T012) ---------------------
 
-def test_default_manifest_searches_cwd_then_config_home():
+def test_default_manifest_searches_config_home_then_cwd():
     assert serves.DEFAULT_MANIFEST == "./serves.toml"
     candidates = serves.default_manifest_candidates()
-    assert candidates[0] == "./serves.toml"
-    assert candidates[1].endswith(os.path.join(".anvil-serving", "serves.toml"))
+    assert candidates[0].endswith(os.path.join(".anvil-serving", "serves.toml"))
+    assert candidates[1] == "./serves.toml"
     assert serves.EXAMPLE_MANIFEST.endswith(os.path.join("examples", "fakoli-dark", "serves.toml"))
+
+
+def test_resolve_manifest_path_prefers_config_home(tmp_path, monkeypatch):
+    home = tmp_path / "operator-home"
+    home.mkdir()
+    manifest = home / "serves.toml"
+    manifest.write_text("[[serve]]\nname='x'\ncontainer='x'\nport=1\nmodel='x'\nengine='vllm'\n", encoding="utf-8")
+    (tmp_path / "serves.toml").write_text("ignored", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    assert serves.resolve_manifest_path() == str(manifest)
 
 
 def test_resolve_manifest_path_uses_config_home_when_cwd_missing(tmp_path, monkeypatch):
@@ -732,6 +743,20 @@ def test_resolve_manifest_path_uses_config_home_when_cwd_missing(tmp_path, monke
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
     assert serves.resolve_manifest_path() == str(manifest)
+
+
+def test_recipe_registry_prefers_config_home_before_checkout_configs(tmp_path, monkeypatch):
+    home = tmp_path / "operator-home"
+    home.mkdir()
+    home_registry = home / "serve-recipes.toml"
+    home_registry.write_text("schema = 'x'\n", encoding="utf-8")
+    checkout_registry = tmp_path / "configs" / "serve-recipes.toml"
+    checkout_registry.parent.mkdir()
+    checkout_registry.write_text("schema = 'x'\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+
+    assert serves.resolve_recipe_registry_path() == str(home_registry)
 
 
 def test_missing_manifest_errors_pointing_to_init(tmp_path, capsys, monkeypatch):

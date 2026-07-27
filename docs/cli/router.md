@@ -48,15 +48,17 @@ owning documentation link.
 ## Run the router
 
 ```bash
+anvil-serving router run
 anvil-serving router run --config configs/example.toml
 anvil-serving router run --config configs/example.toml --host 127.0.0.1 --port 8000
 ```
 
-`--config` is required and selects one exact direct-alias topology. The router
-remains a stdlib-only foreground service; use the lifecycle commands when the
-deployment is managed by the operator substrate. The default bind is
-`127.0.0.1`; do not expose a non-loopback bind without an operator-provided
-authentication layer.
+Without `--config`, the router uses `$ANVIL_SERVING_HOME/router.toml` (default
+`~/.anvil-serving/router.toml`) before the legacy `./router.toml`. An explicit
+path selects one exact direct-alias topology. The router remains a stdlib-only
+foreground service; use the lifecycle commands when the deployment is managed
+by the operator substrate. The default bind is `127.0.0.1`; do not expose a
+non-loopback bind without an operator-provided authentication layer.
 
 ## Inspect the deployment
 

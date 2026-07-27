@@ -1415,8 +1415,7 @@ def build_parser():
     def add_config(sp):
         sp.add_argument(
             "--config",
-            help="voice manifest TOML; defaults to ~/.anvil-serving/voice.toml "
-                 "when present, else the shipped example",
+            help="voice manifest TOML; defaults to config home, else the shipped example",
         )
 
     def add_profile(sp):
