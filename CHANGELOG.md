@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Breaking changes
+
+- **The command manifest is now schema v4.** Command declarations moved from
+  the monolithic `build_command_tree()` function into decorated modules under
+  `anvil_serving.commands`. The manifest no longer duplicates documentation in
+  `examples`, `configuration_notes`, or `behavior_notes`; leaf parsers own
+  detailed argument help and the CLI reference owns workflows and guidance.
+
+### Changed
+
+- **Command registration is modular and deterministic.** Eight explicit
+  command-family factories now assemble the same 133-path operational surface
+  without filesystem discovery or eager handler imports. Shared lifecycle
+  options are declared once, and the legacy `anvil_serving.command_tree`
+  module is reduced to compatibility imports.
+
 ## [0.13.3] - 2026-07-26
 
 ### Breaking changes

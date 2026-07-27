@@ -10,7 +10,7 @@ import pytest
 from anvil_serving import cli
 from anvil_serving import guard
 from anvil_serving import router_manage
-from anvil_serving.command_tree import COMMAND_TREE, CommandNode, HandlerRef
+from anvil_serving.commands import COMMAND_TREE, CommandNode, HandlerRef
 from anvil_serving.targets import ExecutionPlan
 
 
@@ -38,9 +38,7 @@ def _action_group_paths() -> tuple[tuple[str, ...], ...]:
     return tuple(
         tuple(node.name for node in path)
         for path in _paths()
-        if path[-1].visible
-        and path[-1].children
-        and path[-1].handler is None
+        if path[-1].visible and path[-1].children and path[-1].handler is None
     )
 
 
@@ -190,10 +188,20 @@ def test_router_transition_receives_consumed_dispatch_confirmation(monkeypatch, 
 
     monkeypatch.setattr(router_manage, "transition_request", transition_request)
 
-    assert cli.main([
-        "router", "quiesce", "--tier", "heavy-local",
-        "--router-url", "http://127.0.0.1:18000", "--confirm",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "router",
+                "quiesce",
+                "--tier",
+                "heavy-local",
+                "--router-url",
+                "http://127.0.0.1:18000",
+                "--confirm",
+            ]
+        )
+        == 0
+    )
     assert seen["action"] == "quiesce"
     assert seen["confirm"] is True
     assert seen["dry_run"] is False
@@ -203,9 +211,7 @@ def test_router_transition_receives_consumed_dispatch_confirmation(monkeypatch, 
     }
 
 
-def test_confirmation_after_separator_is_a_leaf_argument_not_authorization(
-    monkeypatch, capsys
-):
+def test_confirmation_after_separator_is_a_leaf_argument_not_authorization(monkeypatch, capsys):
     monkeypatch.setattr(cli.sys, "stdin", io.StringIO())
     monkeypatch.setattr(
         HandlerRef,

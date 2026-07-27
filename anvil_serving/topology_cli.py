@@ -6,7 +6,7 @@ from dataclasses import asdict
 import json
 import sys
 
-from .command_tree import COMMAND_TREE, CommandNode
+from .commands import COMMAND_TREE, CommandNode
 from .targets import CommandSpec, resolve_execution_plan
 from .topology import load_topology, load_topology_result
 
