@@ -967,7 +967,8 @@ def _redact_log_text(value: str) -> str:
 
 def _router_manage_cli_argv(action: str, *, container: str = "", compose: str = "",
                             service: str = "", env_file: str = "", dry_run: bool = False,
-                            no_verify: bool = False) -> list[str]:
+                            no_verify: bool = False, recreate: bool = False,
+                            confirm: bool = False) -> list[str]:
     argv = [sys.executable, "-m", "anvil_serving.cli", "router", action]
     if container:
         argv += ["--container", container]
@@ -981,6 +982,10 @@ def _router_manage_cli_argv(action: str, *, container: str = "", compose: str = 
         argv.append("--dry-run")
     if no_verify:
         argv.append("--no-verify")
+    if recreate:
+        argv.append("--recreate")
+    if confirm:
+        argv.append("--confirm")
     return argv
 
 
@@ -1029,36 +1034,61 @@ def tool_router_manage(args: dict) -> dict:
         raise ToolError("bad_action", "action must be one of: up, down, restart, reload", {"action": action})
     container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
     compose_arg = _str_arg(args, "compose", "")
-    compose = router_manage.resolve_compose_path(compose_arg or None)
     service = _str_arg(args, "service", router_manage.DEFAULT_SERVICE)
-    env_file = _str_arg(args, "env_file", "")
+    env_file_arg = _str_arg(args, "env_file", "")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     no_verify = _arg_bool(args.get("no_verify"), False, name="no_verify")
+    recreate = _arg_bool(args.get("recreate"), False, name="recreate")
+    if recreate and action != "up":
+        raise ToolError("bad_argument", "'recreate' is only valid with action='up'")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
     preview = dry_run or not confirm
+    lifecycle = router_manage.lifecycle_plan(
+        action,
+        compose=compose_arg or None,
+        service=service,
+        env_file=env_file_arg or None,
+        container=container,
+        recreate=recreate,
+    )
     argv = _router_manage_cli_argv(
         action,
-        container=container,
-        compose=compose if action in {"up", "down"} else "",
-        service=service if action in {"up", "down"} else "",
-        env_file=env_file if action == "up" else "",
+        container=container if action in {"restart", "reload"} else "",
+        compose=lifecycle["compose"] or "",
+        service=lifecycle["service"] or "",
+        env_file=lifecycle["env_file"] or "",
         dry_run=preview,
         no_verify=no_verify if action in {"restart", "reload"} else False,
+        recreate=recreate,
+        confirm=confirm,
     )
     target = {
         "action": action,
         "container": container,
-        "compose": compose if action in {"up", "down"} else None,
-        "service": service if action in {"up", "down"} else None,
-        "env_file": env_file or None,
+        "compose": lifecycle["compose"],
+        "service": lifecycle["service"],
+        "env_file": lifecycle["env_file"],
+        "recreate": recreate,
         "timeout_seconds": timeout_seconds,
         "no_verify": no_verify if action in {"restart", "reload"} else False,
     }
     if preview:
-        return _ok({"applied": False, "dry_run": True, "target": target, "command": argv})
+        return _ok({
+            "applied": False,
+            "dry_run": True,
+            "target": target,
+            "command": argv,
+            "lifecycle_command": lifecycle["command"],
+        })
     result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
-    return _ok({"applied": True, "dry_run": False, "target": target, **result})
+    return _ok({
+        "applied": True,
+        "dry_run": False,
+        "target": target,
+        "lifecycle_command": lifecycle["command"],
+        **result,
+    })
 
 
 def tool_router_transition(args: dict) -> dict:
@@ -2924,6 +2954,7 @@ TOOLS: Dict[str, dict] = {
             "compose": {"type": "string"},
             "service": {"type": "string"},
             "env_file": {"type": "string"},
+            "recreate": {"type": "boolean"},
             "no_verify": {"type": "boolean"},
             "dry_run": {"type": "boolean"},
             "confirm": {"type": "boolean"},
