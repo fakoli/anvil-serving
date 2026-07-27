@@ -1,0 +1,31 @@
+"""Explicit MCP tool-family composition."""
+
+from __future__ import annotations
+
+from ..catalog import build_family_catalog
+from .benchmarks import FAMILY as BENCHMARKS
+from .external_benchmarks import FAMILY as EXTERNAL_BENCHMARKS
+from .host import FAMILY as HOST
+from .models import FAMILY as MODELS
+from .openclaw import FAMILY as OPENCLAW
+from .operations import FAMILY as OPERATIONS
+from .router import FAMILY as ROUTER
+from .serves import FAMILY as SERVES
+from .voice import FAMILY as VOICE
+from .workflow import FAMILY as WORKFLOW
+
+
+TOOL_FAMILIES = (
+    OPERATIONS,
+    ROUTER,
+    SERVES,
+    VOICE,
+    HOST,
+    MODELS,
+    OPENCLAW,
+    BENCHMARKS,
+    WORKFLOW,
+    EXTERNAL_BENCHMARKS,
+)
+
+TOOLS = build_family_catalog(TOOL_FAMILIES)
