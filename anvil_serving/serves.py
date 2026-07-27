@@ -20,9 +20,10 @@ Three companion verbs handle the messier day-to-day around experiments:
     [service...]`) — independent of serves.toml; with `--compose`, `names` are compose
     SERVICE names.
 
-It reads a manifest (default search: `./serves.toml`, then
-`~/.anvil-serving/serves.toml`; `deploy`/`init` write the current-directory file
-and the shipped reference is `examples/fakoli-dark/serves.toml`) that declares
+It reads a manifest (default search: `~/.anvil-serving/serves.toml`, then
+`./serves.toml`; bare `init` writes the machine-wide file, while
+`init --single-model` retains the CWD convention; the
+shipped reference is `examples/fakoli-dark/serves.toml`) that declares
 each serve's container name, port, health path, declared `model` (served-model-name),
 and an optional `up` command. Bringing a serve up is drift-safe: when `up` is a
 `docker compose up -d`, that command IS the (re)start and is run UNCONDITIONALLY — even
@@ -89,7 +90,6 @@ REPO = os.path.dirname(HERE)
 # example. EXAMPLE_MANIFEST keeps a name for the shipped reference topology
 # (tests, docs) now that DEFAULT_MANIFEST no longer points at it.
 DEFAULT_MANIFEST = "./serves.toml"
-CONFIG_HOME_MANIFEST = "~/.anvil-serving/serves.toml"
 EXAMPLE_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
 DEFAULT_RECIPE_REGISTRY = os.path.join("configs", "serve-recipes.toml")
 
@@ -146,7 +146,7 @@ _ENGINE_MARKERS = {
 
 def default_manifest_candidates():
     """Manifest search path for operator commands when --manifest is omitted."""
-    return [DEFAULT_MANIFEST, config_path("serves.toml")]
+    return [config_path("serves.toml"), DEFAULT_MANIFEST]
 
 
 def resolve_manifest_path(path=None):
@@ -163,9 +163,9 @@ def resolve_recipe_registry_path(path=None):
     if path:
         return path
     candidates = (
+        config_path("serve-recipes.toml"),
         "./serve-recipes.toml",
         DEFAULT_RECIPE_REGISTRY,
-        config_path("serve-recipes.toml"),
         os.path.join(REPO, "configs", "serve-recipes.toml"),
         os.path.join(HERE, "_scaffold_templates", "serve-recipes.toml"),
     )
@@ -2575,7 +2575,7 @@ def _build_action_parser(action):
         p.add_argument("names", nargs="*",
                        help="serve names/containers to act on (default: all in the manifest).")
     p.add_argument("--manifest",
-                   help="path to the serves manifest TOML (default: ./serves.toml if present, then ~/.anvil-serving/serves.toml).")
+                   help="path to the serves manifest TOML (default: config home, then ./serves.toml).")
     if action in _GROUP_ACTIONS:
         p.add_argument("--group", action="append", metavar="NAME", dest="groups",
                        help="act on every serve tagged NAME across the manifest set "
@@ -2755,7 +2755,7 @@ def main(argv=None):
         )
         print(
             "manifest not found: %s (run `anvil-serving init` to generate one, "
-            "place one at ~/.anvil-serving/serves.toml, or pass --manifest to "
+            "place one in $ANVIL_SERVING_HOME, or pass --manifest to "
             "point at an existing serves.toml)" % search_hint,
             file=sys.stderr,
         )
