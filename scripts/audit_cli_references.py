@@ -80,8 +80,7 @@ CANONICAL_PATTERNS = {
 }
 
 _LEGACY_RE = {
-    name: re.compile(_PREFIX + pattern, re.IGNORECASE)
-    for name, pattern in LEGACY_PATTERNS.items()
+    name: re.compile(_PREFIX + pattern, re.IGNORECASE) for name, pattern in LEGACY_PATTERNS.items()
 }
 _CANONICAL_RE = {
     name: re.compile(_PREFIX + pattern, re.IGNORECASE)
@@ -189,9 +188,7 @@ def _skill_files(base: Path) -> set[Path]:
     examples = base / "examples"
     if examples.exists():
         paths.update(
-            path
-            for path in examples.rglob("SKILL.md")
-            if "skills" in path.relative_to(base).parts
+            path for path in examples.rglob("SKILL.md") if "skills" in path.relative_to(base).parts
         )
     return {path for path in paths if path.is_file()}
 
@@ -213,11 +210,7 @@ def _tracked_paths(root: Path) -> set[str]:
         raise ValueError("production reference audit requires a readable Git index")
     if len(payload) > MAX_GIT_INDEX_BYTES:
         raise ValueError("Git index exceeds the production reference audit size limit")
-    return {
-        value.decode("utf-8").replace("\\", "/")
-        for value in payload.split(b"\0")
-        if value
-    }
+    return {value.decode("utf-8").replace("\\", "/") for value in payload.split(b"\0") if value}
 
 
 def _tracked_candidates(root: Path) -> set[Path]:
@@ -231,13 +224,10 @@ def _tracked_candidates(root: Path) -> set[Path]:
 
 
 def _in_docs_scope(relative: Path) -> bool:
-    return (
-        (len(relative.parts) == 1 and relative.suffix.lower() == ".md")
-        or (
-            bool(relative.parts)
-            and relative.parts[0] == "docs"
-            and relative.suffix.lower() in TEXT_SUFFIXES
-        )
+    return (len(relative.parts) == 1 and relative.suffix.lower() == ".md") or (
+        bool(relative.parts)
+        and relative.parts[0] == "docs"
+        and relative.suffix.lower() in TEXT_SUFFIXES
     )
 
 
@@ -285,7 +275,9 @@ def discover_files(root: Path, scope: str) -> tuple[Path, tuple[Path, ...]]:
     paths: set[Path]
     if fixture_scope:
         if scope == "full":
-            paths = _root_product_files(scan_root) | _docs_files(scan_root) | _skill_files(scan_root)
+            paths = (
+                _root_product_files(scan_root) | _docs_files(scan_root) | _skill_files(scan_root)
+            )
             for relative_root in (
                 Path("examples"),
                 Path("tests"),
@@ -357,7 +349,9 @@ def _legacy_allowed(relative: Path, category: str, heading: str, h2_heading: str
         return True
     if category == "tests":
         return True
-    if value in {"anvil_serving/cli.py", "anvil_serving/command_tree.py"}:
+    if value in {"anvil_serving/cli.py", "anvil_serving/command_tree.py"} or value.startswith(
+        "anvil_serving/commands/"
+    ):
         return True
     return False
 
@@ -386,23 +380,55 @@ def scan(root: Path, scope: str) -> ScanResult:
             for name, pattern in _LEGACY_RE.items():
                 if pattern.search(line):
                     hits.append(
-                        Hit("legacy", name, relative.as_posix(), line_number, category, allowed, line.strip())
+                        Hit(
+                            "legacy",
+                            name,
+                            relative.as_posix(),
+                            line_number,
+                            category,
+                            allowed,
+                            line.strip(),
+                        )
                     )
             for name, pattern in _BARE_LEGACY_RE.items():
                 if pattern.search(line):
                     hits.append(
-                        Hit("legacy", name, relative.as_posix(), line_number, category, allowed, line.strip())
+                        Hit(
+                            "legacy",
+                            name,
+                            relative.as_posix(),
+                            line_number,
+                            category,
+                            allowed,
+                            line.strip(),
+                        )
                     )
             if category == "skills":
                 for name, pattern in _SKILL_BARE_RE.items():
                     if pattern.search(line):
                         hits.append(
-                            Hit("legacy", name, relative.as_posix(), line_number, category, allowed, line.strip())
+                            Hit(
+                                "legacy",
+                                name,
+                                relative.as_posix(),
+                                line_number,
+                                category,
+                                allowed,
+                                line.strip(),
+                            )
                         )
             for name, pattern in _CANONICAL_RE.items():
                 if pattern.search(line):
                     hits.append(
-                        Hit("canonical", name, relative.as_posix(), line_number, category, True, line.strip())
+                        Hit(
+                            "canonical",
+                            name,
+                            relative.as_posix(),
+                            line_number,
+                            category,
+                            True,
+                            line.strip(),
+                        )
                     )
     ordered_hits = tuple(sorted(hits, key=lambda hit: (hit.path, hit.line, hit.kind, hit.name)))
     return ScanResult(
@@ -515,10 +541,7 @@ def _markdown(value: object) -> str:
 
 def render_manifest_index(manifest: dict[str, object]) -> str:
     commands = [record for record in manifest["commands"] if record["visible"]]
-    option_sets = [
-        {tuple(option["flags"]) for option in record["options"]}
-        for record in commands
-    ]
+    option_sets = [{tuple(option["flags"]) for option in record["options"]} for record in commands]
     global_options = set.intersection(*option_sets) if option_sets else set()
     lines = [
         "| Command path | Purpose | Class / output | Declared command options |",
@@ -591,7 +614,10 @@ def inventory_matches(root: Path, scope: str, record: dict[str, object]) -> bool
     value = _load_json(path)
     if scope == "fixtures":
         return value == {"schema_version": SCHEMA_VERSION, "record": record}
-    return value.get("schema_version") == SCHEMA_VERSION and value.get("scopes", {}).get(scope) == record
+    return (
+        value.get("schema_version") == SCHEMA_VERSION
+        and value.get("scopes", {}).get(scope) == record
+    )
 
 
 def update_inventories(root: Path) -> None:
@@ -606,11 +632,17 @@ def update_inventories(root: Path) -> None:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=ROOT, help="Repository root (default: checkout root).")
+    parser.add_argument(
+        "--root", type=Path, default=ROOT, help="Repository root (default: checkout root)."
+    )
     parser.add_argument("--scope", choices=("fixtures", "docs", "skills", "full"), default="full")
     action = parser.add_mutually_exclusive_group(required=True)
-    action.add_argument("--check", action="store_true", help="Read-only validation against checked-in state.")
-    action.add_argument("--update", action="store_true", help="Regenerate docs tables and all inventories.")
+    action.add_argument(
+        "--check", action="store_true", help="Read-only validation against checked-in state."
+    )
+    action.add_argument(
+        "--update", action="store_true", help="Regenerate docs tables and all inventories."
+    )
     parser.add_argument("--json", action="store_true", help="Emit a structured JSON report.")
     return parser
 
@@ -623,7 +655,9 @@ def main(argv: list[str] | None = None) -> int:
         record = inventory_record(result)
         if args.update:
             if result.violations:
-                raise ValueError("refusing to update while active legacy-reference violations exist")
+                raise ValueError(
+                    "refusing to update while active legacy-reference violations exist"
+                )
             update_generated_docs(root)
             update_inventories(root)
             result = scan(root, args.scope)

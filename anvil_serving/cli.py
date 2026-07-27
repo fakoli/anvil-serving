@@ -1,11 +1,11 @@
 """Tree-driven command dispatcher for ``anvil-serving``."""
+
 from __future__ import annotations
 
 import contextlib
 import difflib
 import io
 import os
-import re
 import shutil
 import sys
 import textwrap
@@ -16,7 +16,7 @@ from collections.abc import Mapping, Sequence
 
 from . import __version__
 from . import guard
-from .command_tree import COMMAND_TREE, CommandNode, CommandOption
+from .commands import COMMAND_TREE, CommandNode, CommandOption
 from .operator_output import (
     EXIT_CODES,
     OutputOptions,
@@ -108,16 +108,21 @@ class _ResolutionOptions:
 
     @property
     def requested(self) -> bool:
-        return any(
-            value is not None
-            for value in (
-                self.topology,
-                self.topology_overlay,
-                self.command_host,
-                self.command_runtime,
-                self.target,
+        return (
+            any(
+                value is not None
+                for value in (
+                    self.topology,
+                    self.topology_overlay,
+                    self.command_host,
+                    self.command_runtime,
+                    self.target,
+                )
             )
-        ) or self.transport != "auto" or self.allow_ssh_fallback or self.experimental_model_workload
+            or self.transport != "auto"
+            or self.allow_ssh_fallback
+            or self.experimental_model_workload
+        )
 
 
 class _ResolutionOptionError(ValueError):
@@ -137,7 +142,10 @@ def _check_python_version(version_info=None):
     vi = version_info if version_info is not None else sys.version_info
     if (vi[0], vi[1]) < MIN_PYTHON:
         return "anvil-serving needs Python >=%d.%d; you have %d.%d" % (
-            MIN_PYTHON[0], MIN_PYTHON[1], vi[0], vi[1]
+            MIN_PYTHON[0],
+            MIN_PYTHON[1],
+            vi[0],
+            vi[1],
         )
     return None
 
@@ -168,9 +176,7 @@ def _help_width() -> int:
     )
 
 
-def _print_help_table(
-    rows: Sequence[tuple[str, str]], *, minimum_label_width: int = 15
-) -> None:
+def _print_help_table(rows: Sequence[tuple[str, str]], *, minimum_label_width: int = 15) -> None:
     """Render aligned help rows while wrapping descriptions for the terminal."""
     if not rows:
         return
@@ -229,14 +235,15 @@ def _print_help() -> None:
         ("-V, --version", "Print the installed version and exit."),
     ]
     global_rows.extend(
-        (", ".join(option.flags), option.summary)
-        for option in COMMAND_TREE.global_options
+        (", ".join(option.flags), option.summary) for option in COMMAND_TREE.global_options
     )
     _print_help_table(global_rows, minimum_label_width=20)
     print()
     root_nodes = _visible(COMMAND_TREE.nodes)
     groups = list(_GROUP_ORDER)
-    groups.extend(sorted({node.group for node in root_nodes if node.group and node.group not in groups}))
+    groups.extend(
+        sorted({node.group for node in root_nodes if node.group and node.group not in groups})
+    )
     for group in groups:
         members = [node for node in root_nodes if node.group == group]
         if not members:
@@ -291,8 +298,7 @@ def _print_focused_help(path: Sequence[CommandNode]) -> None:
             minimum_label_width=15,
         )
     supports_resolution = node.execution_policy == "resource-owner" or any(
-        descendant.execution_policy == "resource-owner"
-        for descendant in _walk_nodes(node.children)
+        descendant.execution_policy == "resource-owner" for descendant in _walk_nodes(node.children)
     )
     global_options = _global_options_for_path(path)
     if supports_resolution and node.execution_policy != "resource-owner":
@@ -322,11 +328,7 @@ def _handler_argv(path: Sequence[CommandNode]) -> tuple[str, ...]:
 
 def _hidden_leaf_help_flags(path: Sequence[CommandNode]) -> frozenset[str]:
     """Options owned by the dispatcher rather than the leaf handler."""
-    return frozenset({
-        flag
-        for option in COMMAND_TREE.global_options
-        for flag in option.flags
-    })
+    return frozenset({flag for option in COMMAND_TREE.global_options for flag in option.flags})
 
 
 def _global_options_for_path(path: Sequence[CommandNode]) -> tuple[CommandOption, ...]:
@@ -364,242 +366,6 @@ def _global_options_for_path(path: Sequence[CommandNode]) -> tuple[CommandOption
     )
 
 
-def _strip_optional_usage_flag(line: str, flag: str) -> str:
-    """Remove one dispatcher-owned optional from an argparse usage line."""
-    optional_group = re.compile(r"\[([^\[\]]*)\]")
-
-    def strip_alternative(match: re.Match[str]) -> str:
-        alternatives = re.split(r"\s+\|\s+", match.group(1))
-        retained = [
-            alternative
-            for alternative in alternatives
-            if not re.match(
-                r"^" + re.escape(flag) + r"(?:\s|$)", alternative.strip()
-            )
-        ]
-        if len(retained) == len(alternatives):
-            return match.group(0)
-        if not retained:
-            return ""
-        return "[" + " | ".join(retained) + "]"
-
-    return re.sub(r"\s+", " ", optional_group.sub(strip_alternative, line)).rstrip()
-
-
-def _normalized_leaf_sections(
-    rendered: str,
-    *,
-    hidden_flags: frozenset[str],
-    hidden_arguments: frozenset[str] = frozenset(),
-) -> tuple[list[str], list[str]]:
-    """Split argparse help into canonical usage and local argument sections."""
-    lines = rendered.splitlines()
-    if not lines or not lines[0].casefold().startswith("usage:"):
-        return [], lines
-
-    usage = [lines[0].split(":", 1)[1].strip()]
-    index = 1
-    while index < len(lines) and lines[index].strip():
-        usage.append(lines[index].strip())
-        index += 1
-    for flag in sorted(hidden_flags, key=len, reverse=True):
-        usage = [_strip_optional_usage_flag(line, flag).strip() for line in usage]
-    for argument in sorted(hidden_arguments, key=len, reverse=True):
-        usage = [
-            re.sub(r"\s*\[" + re.escape(argument) + r"\]", "", line).strip()
-            for line in usage
-        ]
-    usage = [line for line in usage if line]
-    if usage:
-        usage[-1] = usage[-1] + " [global options]"
-
-    body = lines[index:]
-    while body and not body[0].strip():
-        body.pop(0)
-
-    section_names = {
-        "options:",
-        "optional arguments:",
-        "positional arguments:",
-    }
-    section_start = next(
-        (
-            offset
-            for offset, line in enumerate(body)
-            if line.strip().casefold() in section_names
-        ),
-        len(body),
-    )
-    body = body[section_start:]
-    examples_start = next(
-        (
-            offset
-            for offset, line in enumerate(body)
-            if line.strip().casefold() == "examples:"
-        ),
-        len(body),
-    )
-    body = body[:examples_start]
-
-    filtered: list[str] = []
-    skipping = False
-    for line in body:
-        stripped = line.lstrip()
-        indent = len(line) - len(stripped)
-        option_line = indent <= 2 and stripped.startswith("-")
-        argument_line = indent <= 2 and any(
-            stripped.startswith(argument) for argument in hidden_arguments
-        )
-        if option_line:
-            skipping = any(
-                re.match(r"^" + re.escape(flag) + r"(?:[ ,]|$)", stripped)
-                for flag in hidden_flags
-            )
-        elif argument_line:
-            skipping = True
-        elif skipping and (not stripped or indent <= 2):
-            skipping = False
-        if not skipping:
-            normalized = {
-                "positional arguments:": "Arguments:",
-                "optional arguments:": "Options:",
-                "options:": "Options:",
-            }.get(stripped.casefold())
-            filtered.append(normalized if normalized is not None else line)
-    compacted: list[str] = []
-    for offset, line in enumerate(filtered):
-        if line == "Arguments:":
-            following = next(
-                (item for item in filtered[offset + 1 :] if item.strip()),
-                None,
-            )
-            if following is None or following in {"Arguments:", "Options:"}:
-                continue
-        compacted.append(line)
-    filtered = compacted
-    while filtered and not filtered[0].strip():
-        filtered.pop(0)
-    while filtered and not filtered[-1].strip():
-        filtered.pop()
-    return usage, filtered
-
-
-def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> None:
-    """Render a reviewed leaf with stable navigation and human-first sections."""
-    node = path[-1]
-    command = _command_name(path)
-    help_width = _help_width()
-    usage, local_sections = _normalized_leaf_sections(
-        rendered,
-        hidden_flags=_hidden_leaf_help_flags(path),
-    )
-
-    print("anvil-serving %s" % command)
-    print(
-        textwrap.fill(
-            node.summary,
-            width=help_width,
-            break_long_words=False,
-            break_on_hyphens=False,
-        )
-    )
-    if usage:
-        print("\nUsage:")
-        for line in usage:
-            print(
-                textwrap.fill(
-                    line,
-                    width=help_width,
-                    initial_indent="  ",
-                    subsequent_indent="    ",
-                    break_long_words=False,
-                    break_on_hyphens=False,
-                )
-            )
-    print("\nExamples:")
-    for example in node.examples:
-        print(
-            textwrap.fill(
-                example.invocation,
-                width=help_width,
-                initial_indent="  ",
-                subsequent_indent="    ",
-                break_long_words=False,
-                break_on_hyphens=False,
-            )
-        )
-        print(
-            textwrap.fill(
-                example.summary,
-                width=help_width,
-                initial_indent="    ",
-                subsequent_indent="    ",
-                break_long_words=False,
-                break_on_hyphens=False,
-            )
-        )
-    if node.configuration_notes:
-        print("\nConfiguration:")
-        for note in node.configuration_notes:
-            print(
-                textwrap.fill(
-                    note,
-                    width=help_width,
-                    initial_indent="  ",
-                    subsequent_indent="  ",
-                    break_long_words=False,
-                    break_on_hyphens=False,
-                )
-            )
-    if node.behavior_notes:
-        print("\nBehavior:")
-        for note in node.behavior_notes:
-            print(
-                textwrap.fill(
-                    note,
-                    width=help_width,
-                    initial_indent="  ",
-                    subsequent_indent="  ",
-                    break_long_words=False,
-                    break_on_hyphens=False,
-                )
-            )
-    if local_sections:
-        print()
-        for line in local_sections:
-            stripped = line.strip()
-            if not stripped or len(line) <= help_width:
-                print(line)
-                continue
-            indent = line[: len(line) - len(line.lstrip())]
-            print(
-                textwrap.fill(
-                    stripped,
-                    width=help_width,
-                    initial_indent=indent,
-                    subsequent_indent=indent + "  ",
-                    break_long_words=False,
-                    break_on_hyphens=False,
-                )
-            )
-
-    global_options = _global_options_for_path(path)
-    dispatcher_options = tuple(
-        option
-        for option in node.options
-        if "--confirm" in option.flags
-    )
-    print("\nGlobal options:")
-    rendered_global_options = []
-    for option in (*global_options, *dispatcher_options):
-        label = ", ".join(option.flags)
-        if option.value_name:
-            label += " " + option.value_name
-        rendered_global_options.append((label, option.summary))
-    _print_help_table(rendered_global_options, minimum_label_width=20)
-    print("\nDocs: %s" % node.docs_anchor)
-
-
 def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
     """Render the real leaf parser help under the canonical command path."""
     node = path[-1]
@@ -625,15 +391,12 @@ def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
     old_command = " ".join((base_prog, *prefix))
     canonical = "anvil-serving " + _command_name(path)
     rendered = rendered.replace(old_command, canonical)
-    if node.examples:
-        _print_reviewed_leaf_help(path, rendered)
-        return True
+    if node.summary not in rendered:
+        print(canonical)
+        print(node.summary)
+        print()
     print(rendered, end="" if rendered.endswith("\n") else "\n")
-    dispatcher_options = [
-        option
-        for option in node.options
-        if "--confirm" in option.flags
-    ]
+    dispatcher_options = [option for option in node.options if "--confirm" in option.flags]
     global_options = _global_options_for_path(path)
     print("\nDispatcher options:")
     rendered_dispatcher_options = []
@@ -647,7 +410,9 @@ def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
     return True
 
 
-def _unknown_command(token: str, path: Sequence[CommandNode], siblings: Sequence[CommandNode]) -> int:
+def _unknown_command(
+    token: str, path: Sequence[CommandNode], siblings: Sequence[CommandNode]
+) -> int:
     attempted = " ".join([*(node.name for node in path), token])
     print("unknown command: %s" % attempted, file=sys.stderr)
     names = [node.name for node in siblings]
@@ -658,10 +423,14 @@ def _unknown_command(token: str, path: Sequence[CommandNode], siblings: Sequence
         print("Did you mean '%s'?" % match.name, file=sys.stderr)
     help_path = " ".join(node.name for node in path)
     help_command = "anvil-serving%s --help" % ((" " + help_path) if help_path else "")
-    print("Run '%s' to see available %s." % (
-        help_command,
-        "actions" if path else "commands",
-    ), file=sys.stderr)
+    print(
+        "Run '%s' to see available %s."
+        % (
+            help_command,
+            "actions" if path else "commands",
+        ),
+        file=sys.stderr,
+    )
     return 2
 
 
@@ -698,9 +467,7 @@ def _extract_resolution_options(
             index += 1
             continue
         if token.startswith("--experimental-model-workload="):
-            raise _ResolutionOptionError(
-                "--experimental-model-workload does not accept a value"
-            )
+            raise _ResolutionOptionError("--experimental-model-workload does not accept a value")
         if token == "--allow-ssh-fallback":
             values["allow_ssh_fallback"] = True
             index += 1
@@ -750,9 +517,7 @@ def _resolve_dispatch_plan(
     if not options.requested:
         return None
     if options.topology is None:
-        raise _ResolutionOptionError(
-            "target-resolution options require --topology PATH"
-        )
+        raise _ResolutionOptionError("target-resolution options require --topology PATH")
     command = _command_spec(path)
     if command.execution_policy != "resource-owner":
         raise _ResolutionOptionError(
@@ -837,7 +602,11 @@ def _active_option_policies(path: Sequence[CommandNode], rest: Sequence[str]) ->
     ):
         if option.output_policy is None:
             continue
-        if any(token == flag or token.startswith(f"{flag}=") for token in policy_args for flag in option.flags):
+        if any(
+            token == flag or token.startswith(f"{flag}=")
+            for token in policy_args
+            for flag in option.flags
+        ):
             policies.append(option.output_policy)
     return tuple(policies)
 
@@ -902,9 +671,7 @@ def _remote_arguments(
             or not isinstance(field_schema, Mapping)
             or (remote.allowed_arguments and field not in remote.allowed_arguments)
         ):
-            raise UsageError(
-                f"{flag} is not supported for remote {node.name}; use focused help"
-            )
+            raise UsageError(f"{flag} is not supported for remote {node.name}; use focused help")
 
         if field in arguments:
             raise UsageError(f"{flag} is fixed by the canonical command path")
@@ -1049,9 +816,7 @@ def _dispatch_remote_tool(
     operation = Operation(plan.command.name, arguments, tool_name=remote.tool)
     ssh_operation = Operation(plan.command.name, {})
     idempotency_key = (
-        "cli-" + uuid.uuid4().hex
-        if confirmed and node.mutation_class == "mutate"
-        else None
+        "cli-" + uuid.uuid4().hex if confirmed and node.mutation_class == "mutate" else None
     )
     try:
         result = execute_plan(
@@ -1126,13 +891,23 @@ def _remote_transport_timeout(
 def _ssh_recovery_transport(plan: ExecutionPlan) -> SSHRecoveryTransport:
     adapter = {
         "harness-restart-openclaw": (
-            "anvil-serving", "harness", "restart", "openclaw", "--confirm",
+            "anvil-serving",
+            "harness",
+            "restart",
+            "openclaw",
+            "--confirm",
         ),
         "host-restart-docker": (
-            "anvil-serving", "host", "restart-docker", "--confirm",
+            "anvil-serving",
+            "host",
+            "restart-docker",
+            "--confirm",
         ),
         "host-reset-wsl": (
-            "anvil-serving", "host", "reset-wsl", "--confirm",
+            "anvil-serving",
+            "host",
+            "reset-wsl",
+            "--confirm",
         ),
     }.get(plan.command.name)
     if adapter is None:
@@ -1146,9 +921,7 @@ def _ssh_recovery_transport(plan: ExecutionPlan) -> SSHRecoveryTransport:
     fingerprint = (
         plan.transport_host_key_fingerprint if selected else plan.recovery_host_key_fingerprint
     )
-    known_hosts = (
-        plan.transport_known_hosts_path if selected else plan.recovery_known_hosts_path
-    )
+    known_hosts = plan.transport_known_hosts_path if selected else plan.recovery_known_hosts_path
     identity_file = (os.environ.get("ANVIL_SSH_IDENTITY_FILE") or "").strip()
     if not endpoint or not fingerprint or not known_hosts:
         raise TransportError(
@@ -1200,8 +973,10 @@ def _policy_positionals(node: CommandNode, policy_args: Sequence[str]) -> tuple[
 
 def _requires_confirmation(node: CommandNode, policy_args: Sequence[str]) -> bool:
     has_conditional_gate = any(option.requires_confirmation for option in node.options)
-    mutation_gate = node.mutation_class == "mutate" and not has_conditional_gate and any(
-        "--confirm" in option.flags for option in node.options
+    mutation_gate = (
+        node.mutation_class == "mutate"
+        and not has_conditional_gate
+        and any("--confirm" in option.flags for option in node.options)
     )
     option_gate = any(
         option.requires_confirmation
@@ -1285,9 +1060,7 @@ def _dispatch(
     if help_requested and node.handler is not None and not node.children:
         if _print_leaf_help(path):
             return 0
-    if help_requested or (
-        node.children and not rest and node.handler is None
-    ):
+    if help_requested or (node.children and not rest and node.handler is None):
         _print_focused_help(path)
         return 0
     if node.children and node.handler is None:
@@ -1362,10 +1135,7 @@ def _dispatch(
         )
         if controller_probe:
             assert plan is not None
-            if any(
-                token == "--url" or token.startswith("--url=")
-                for token in rest
-            ):
+            if any(token == "--url" or token.startswith("--url=") for token in rest):
                 raise UsageError(
                     "controller status --url cannot be combined with topology resolution"
                 )
@@ -1456,9 +1226,12 @@ def _main(
         return 0
     if argv[0] == "--command-manifest":
         if len(argv) != 1:
-            print("anvil-serving: --command-manifest does not accept command arguments", file=sys.stderr)
+            print(
+                "anvil-serving: --command-manifest does not accept command arguments",
+                file=sys.stderr,
+            )
             return 2
-        from .command_tree import render_manifest
+        from .commands import render_manifest
 
         sys.stdout.write(render_manifest().decode("utf-8"))
         return 0

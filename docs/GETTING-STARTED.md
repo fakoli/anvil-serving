@@ -68,7 +68,8 @@ with zero hand-assembly:
 anvil-serving init                   # scaffold into ~/.anvil-serving (or --out-dir DIR)
 cp ~/.anvil-serving/.env.example ~/.anvil-serving/.env   # then fill host values + secrets
 anvil-serving serves groups          # voice / fast-only / heavy-only / embedding / llm-stack / comfy
-anvil-serving serves up --group voice
+anvil-serving serves up --group voice --dry-run
+anvil-serving serves up --group voice --confirm
 ```
 
 Host-specific values (GPU UUIDs, tailnet address) land as clearly-marked placeholders you edit

@@ -15,7 +15,7 @@ from anvil_serving import host
 from anvil_serving import benchmark, multiplexer, preflight
 from anvil_serving import router_manage
 from anvil_serving import serves
-from anvil_serving.command_tree import COMMAND_TREE, CommandNode, CommandOption, HandlerRef
+from anvil_serving.commands import COMMAND_TREE, CommandNode, CommandOption, HandlerRef
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -125,9 +125,7 @@ def test_root_help_examples_execute_on_canonical_paths(capsys):
         ("eval", "benchmark", "external", "notebook"),
     ),
 )
-def test_root_and_eval_parent_help_respect_narrow_windows_console(
-    path, monkeypatch, capsys
-):
+def test_root_and_eval_parent_help_respect_narrow_windows_console(path, monkeypatch, capsys):
     monkeypatch.setenv("COLUMNS", "60")
 
     assert cli.main([*path, "--help"]) == 0
@@ -147,7 +145,7 @@ def test_top_level_version_reports_installed_version(flag, capsys):
 def test_command_manifest_is_terminal_and_machine_readable(capsys):
     assert cli.main(["--command-manifest"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["schema_version"] == 3
+    assert payload["schema_version"] == 4
     assert any(record["path"] == "topology resolve" for record in payload["commands"])
 
     assert cli.main(["--command-manifest", "router", "status"]) == 2
@@ -709,17 +707,23 @@ def test_remote_transport_timeout_covers_declared_workload_deadline():
     assert cli._remote_transport_timeout({}) == 60.0
     assert cli._remote_transport_timeout({"timeout_seconds": 300}) == 305.0
     assert cli._remote_transport_timeout({"timeout_seconds": 7200}) == 7205.0
-    assert cli._remote_transport_timeout(
-        {"timeout_seconds": 30, "checks": "smoke,json"},
-        tool_name="preflight_probe",
-    ) == 65.0
-    assert cli._remote_transport_timeout(
-        {"timeout_seconds": 30}, tool_name="preflight_probe"
-    ) == 125.0
-    assert cli._remote_transport_timeout(
-        {"timeout_seconds": 3600, "checks": "smoke", "dry_run": True},
-        tool_name="preflight_probe",
-    ) == 60.0
+    assert (
+        cli._remote_transport_timeout(
+            {"timeout_seconds": 30, "checks": "smoke,json"},
+            tool_name="preflight_probe",
+        )
+        == 65.0
+    )
+    assert (
+        cli._remote_transport_timeout({"timeout_seconds": 30}, tool_name="preflight_probe") == 125.0
+    )
+    assert (
+        cli._remote_transport_timeout(
+            {"timeout_seconds": 3600, "checks": "smoke", "dry_run": True},
+            tool_name="preflight_probe",
+        )
+        == 60.0
+    )
     with pytest.raises(cli.TransportError, match="remote workload deadline exceeds"):
         cli._remote_transport_timeout(
             {"timeout_seconds": 3600, "checks": "smoke,json,needle,tools"},
@@ -1302,9 +1306,7 @@ def test_cli_reference_routes_recipes_and_eval_by_workflow():
     assert "| Catalog, artifacts, and recipes | `models` |" in landing
     assert "[Models & recipes: Recipes](cli/models.md#recipes)" in landing
 
-    eval_reference = (_REPO_ROOT / "docs" / "cli" / "eval.md").read_text(
-        encoding="utf-8"
-    )
+    eval_reference = (_REPO_ROOT / "docs" / "cli" / "eval.md").read_text(encoding="utf-8")
     for command in (
         "eval preflight",
         "eval benchmark capacity",

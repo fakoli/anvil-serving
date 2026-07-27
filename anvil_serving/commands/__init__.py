@@ -1,24 +1,16 @@
-"""Compatibility imports for the modular command registry.
+"""Canonical modular command registry."""
 
-New code should import :mod:`anvil_serving.commands`. This module remains as a
-small transition surface for integrations that imported the v2 command-tree
-types directly.
-"""
-
-from .commands import (
-    COMMAND_TREE,
-    FAMILIES,
+from .family import CommandFamily, command_family
+from .registry import COMMAND_TREE, FAMILIES, build_command_tree
+from .spec import (
     MANIFEST_PATH,
     MANIFEST_SCHEMA_VERSION,
-    CommandFamily,
     CommandNode,
     CommandOption,
     CommandTree,
     CommandTreeError,
     HandlerRef,
     RemoteOperation,
-    build_command_tree,
-    command_family,
     manifest_data,
     manifest_matches,
     render_manifest,

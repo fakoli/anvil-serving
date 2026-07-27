@@ -37,6 +37,9 @@ or tests. Use private/tailnet addresses for cross-host traffic.
 ```text
 anvil_serving/
   cli.py                  CLI dispatch
+  commands/               modular command families and deterministic registry
+    registry.py           explicit decorated family assembly
+    spec.py               command, option, policy, and manifest contracts
   serves.py               Compose-backed model lifecycle and GPU reservations
   models.py               model cache/source/recipe management
   preflight.py            endpoint functional qualification

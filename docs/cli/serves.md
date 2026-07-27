@@ -22,17 +22,18 @@ manifest-owned; a recipe is a reusable model-and-engine configuration managed un
 | `serves logs` | Read bounded serve logs. |
 | `serves multiplex` | Run the single-resident model multiplexer. |
 
-Every leaf now uses the same focused-help layout: exact usage, reviewed copyable
-examples, configuration precedence, behavior and safety notes, local arguments,
-global options, and the direct reference link. For example:
+Every leaf uses its real parser for exact usage, local arguments, choices, and
+defaults. The registry adds its canonical summary, global options, safety
+policy, and direct reference link. For example:
 
 ```bash
 anvil-serving serves up --help
 anvil-serving serves switch --help
 ```
 
-The command tree owns those examples and notes, so the machine-readable manifest,
-terminal help, and reference audit cannot drift independently.
+This page owns the longer workflows and behavioral guidance. Keeping that prose
+out of the runtime registry avoids a second documentation copy while the
+generated command index and reference audit still enforce the public paths.
 
 ## Select manifests and groups
 
