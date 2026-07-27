@@ -413,9 +413,9 @@ DEFAULT_REGISTRY = os.path.join("configs", "serve-recipes.toml")
 
 def _default_registry():
     """Resolve the read registry using the documented configuration precedence."""
-    project_registry = os.path.abspath(DEFAULT_REGISTRY)
     home_registry = paths.config_path("serve-recipes.toml")
-    for candidate in (project_registry, home_registry):
+    legacy_registry = os.path.abspath(DEFAULT_REGISTRY)
+    for candidate in (home_registry, legacy_registry):
         if os.path.isfile(candidate):
             return candidate
     packaged = resources.files("anvil_serving._scaffold_templates").joinpath(
@@ -609,7 +609,7 @@ def _build_recipe_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p_list.add_argument("--registry", default=None,
-                        help="registry TOML (default precedence: project, config home, packaged)")
+                        help="registry TOML (default precedence: config home, configs/, packaged)")
     p_show = sub.add_parser(
         "show",
         help="reproducible docker run + measured stats for a model",
@@ -622,7 +622,7 @@ def _build_recipe_parser():
     p_show.add_argument("model", metavar="MODEL",
                         help="model id (exact or basename, e.g. gpt-oss-120b)")
     p_show.add_argument("--registry", default=None,
-                        help="registry TOML (default precedence: project, config home, packaged)")
+                        help="registry TOML (default precedence: config home, configs/, packaged)")
     for action, summary in (
         ("create", "add exactly one recipe from a TOML file"),
         ("update", "replace a selected recipe from a TOML file"),
@@ -695,7 +695,7 @@ def _build_recipe_parser():
     p_load.add_argument("--container", required=True, metavar="NAME",
                         help="new Docker container name for this loaded recipe")
     p_load.add_argument("--registry", default=None,
-                        help="registry TOML (default precedence: project, config home, packaged)")
+                        help="registry TOML (default precedence: config home, configs/, packaged)")
     p_load.add_argument("--dry-run", action="store_true",
                         help="print the exact docker command without starting it")
     p_load.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)

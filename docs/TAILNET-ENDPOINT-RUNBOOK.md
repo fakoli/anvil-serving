@@ -278,6 +278,6 @@ The router and model-serve lifecycle is managed **only** through the anvil-servi
   the tier/purpose-model keys.
 - [ComfyUI migration runbook](COMFYUI-MIGRATION-RUNBOOK.md) — the ComfyUI tenant and its
   `127.0.0.1:8188` UI.
-- [ADR-0004](adr/) — front-door token auth.
+- [ADR-0004](adr/0004-router-as-a-service-containerized-and-authed.md) — front-door token auth.
 - [ADR-0017](adr/0017-gpu-residency-reservations.md) — GPU residency reservations and the
   purpose-model surfaces (embeddings/rerank/OCR).

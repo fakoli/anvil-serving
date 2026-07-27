@@ -1044,6 +1044,12 @@ def test_recipe_default_registry_prefers_operator_config_home(
     tmp_path, monkeypatch, capsys
 ):
     monkeypatch.chdir(tmp_path)
+    checkout_configs = tmp_path / "configs"
+    checkout_configs.mkdir()
+    (checkout_configs / "serve-recipes.toml").write_text(
+        'schema="x"\n[[recipe]]\nmodel="checkout/model"\nstatus="verified"\n',
+        encoding="utf-8",
+    )
     home = tmp_path / "anvil-home"
     home.mkdir()
     (home / "serve-recipes.toml").write_text(
@@ -1054,6 +1060,7 @@ def test_recipe_default_registry_prefers_operator_config_home(
     assert models.main(["recipe", "list"]) == 0
     out = capsys.readouterr().out
     assert "operator/model" in out
+    assert "checkout/model" not in out
     assert "openai/gpt-oss-120b" not in out
 
 

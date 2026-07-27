@@ -36,6 +36,8 @@ from .front_door import make_server
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult, estimate_tokens
 from .purpose import PurposeRouter
 from .tier_health import build_tier_health
+from ..paths import config_path as operator_config_path
+from ..paths import first_existing
 
 
 class _AdmissionIterator:
@@ -479,15 +481,36 @@ def serve(
         httpd.server_close()
 
 
+def default_config_candidates() -> list[str]:
+    """Machine-wide router config, then the legacy current-directory file."""
+    return [operator_config_path("router.toml"), "./router.toml"]
+
+
+def resolve_config_path(path: str | None = None) -> str:
+    """Resolve an explicit router config or the first configured default."""
+    if path:
+        return os.path.expanduser(path)
+    resolved = first_existing(default_config_candidates())
+    if resolved:
+        return resolved
+    raise ConfigError(
+        "no router config found in $ANVIL_SERVING_HOME/router.toml, ./router.toml, or "
+        "~/.anvil-serving/router.toml; run `anvil-serving init` or pass --config PATH"
+    )
+
+
 def main(argv: Optional[List[str]] = None) -> int:
-    """Run ``anvil-serving router run`` with one explicit config."""
+    """Run ``anvil-serving router run`` with an explicit or discovered config."""
     ap = argparse.ArgumentParser(prog="anvil-serving router run")
-    ap.add_argument("--config", required=True, metavar="PATH", help="direct-router TOML config")
+    ap.add_argument(
+        "--config", metavar="PATH",
+        help="direct-router TOML config (default: config home, then ./router.toml)",
+    )
     ap.add_argument("--host", default="127.0.0.1", help="bind host (default 127.0.0.1; never localhost)")
     ap.add_argument("--port", type=int, default=8000, help="bind port (default 8000)")
     args = ap.parse_args(argv)
     try:
-        serve(os.path.expanduser(args.config), host=args.host, port=args.port)
+        serve(resolve_config_path(args.config), host=args.host, port=args.port)
     except ConfigError as exc:
         print(f"anvil-serving router run: {exc}", file=sys.stderr)
         return 2

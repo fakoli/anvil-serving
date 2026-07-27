@@ -4,6 +4,30 @@ The router configuration is TOML. It defines local serving endpoints and an
 explicit, closed capability vocabulary. Configuration stores environment-variable
 names for credentials, never credential literals.
 
+## Configuration locations
+
+`anvil-serving init` creates a complete, editable starting set in the operator
+config home: `$ANVIL_SERVING_HOME`, or `~/.anvil-serving/` when that variable
+is unset. It copies the packaged templates mirrored from `configs/` and the
+reference manifests into that directory. When an optional path is omitted, the
+runtime checks that config home first, then any legacy CWD or checkout default
+the command supports. Explicit `--config`, `--manifest`, and `--registry`
+paths always take precedence.
+
+The operator files include `router.toml`, `serves.toml`,
+`serve-recipes.toml`, `voice.toml`, `host.toml`, Compose files, and
+`.env.example`. Each existing file is backed up beside the target as a numbered
+`.anvil.bak.N` file before `init` replaces it.
+
+## Machine policy (`host.toml`)
+
+`host.toml` holds optional, machine-level lifecycle policy such as the
+default-off WSL cache-reclaim settings. It is always resolved from the operator
+config home (`$ANVIL_SERVING_HOME/host.toml`, default
+`~/.anvil-serving/host.toml`). A missing file or `[cache_reclaim]` table is a
+valid disabled policy. Once configured, its fields are validated strictly before
+a lifecycle command can start a model operation.
+
 ## Minimal direct gateway
 
 ```toml

@@ -129,6 +129,18 @@ def test_run_checks_missing_default_config_skips_quietly():
     assert not any(not c.ok and c.required for c in checks)  # no FAIL from the missing default
 
 
+def test_default_config_prefers_config_home_before_cwd(tmp_path, monkeypatch):
+    home = tmp_path / "operator-home"
+    home.mkdir()
+    home_config = home / "router.toml"
+    home_config.write_text("[router]\n", encoding="utf-8")
+    (tmp_path / "router.toml").write_text("[router]\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+
+    assert doctor.resolve_default_config_path() == str(home_config)
+
+
 def test_run_checks_missing_explicit_config_is_required_fail():
     checks = doctor.run_checks(config_path="./does-not-exist.toml", config_explicit=True,
                                _run=_ok_run, _gpu_run=lambda *a, **k: CSV)
