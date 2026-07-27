@@ -11,10 +11,16 @@ import hashlib
 import io
 import json
 import random
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
 from anvil_serving import benchmark as bm
+from anvil_serving.benchmarking import artifacts as benchmark_artifacts
+from anvil_serving.benchmarking import requests as benchmark_requests
+from anvil_serving.benchmarking import runner as benchmark_runner
 
 
 # ---- BUG 1: context clamp keeps prompts under a small serve's max_model_len -------
@@ -29,6 +35,11 @@ def test_ctx_cap_none_when_no_limit_known():
     # 0 / None max_model_len -> no clamp -> legacy behavior preserved.
     assert bm.ctx_cap(0, 64) is None
     assert bm.ctx_cap(None, 64) is None
+
+
+def test_ctx_cap_rejects_a_window_without_prompt_headroom():
+    with pytest.raises(ValueError, match="must exceed"):
+        bm.ctx_cap(1024, max_tokens=512, margin=512)
 
 
 def test_clamp_ctx_is_noop_without_cap():
@@ -54,12 +65,20 @@ def test_sampled_and_fixed_ctx_never_exceed_max_model_len_minus_headroom():
     assert bm.clamp_ctx(262144, cap) <= headroom_limit
 
 
-def test_make_prompt_truncates_to_keep_real_tokens_under_cap():
-    cap = bm.ctx_cap(16384, 64, bm.DEFAULT_CTX_MARGIN)
-    # an oversized request that would otherwise blow past the window
-    prompt = bm.make_prompt("shared prefix", ctx_tokens=131072, uniq=0, max_prompt_tokens=cap)
-    assert bm.est_tokens(prompt) <= cap
-    assert cap is not None and bm.est_tokens(prompt) < 16384
+@pytest.mark.parametrize(
+    ("sample", "expected"),
+    [
+        (0.0, 16000),
+        (0.218, 16000),
+        (0.2180001, 32768),
+        (0.602, 32768),
+        (0.6020001, 65536),
+        (0.9950001, 262144),
+        (1.0, 262144),
+    ],
+)
+def test_context_sampler_uses_declared_cumulative_buckets(sample, expected):
+    assert benchmark_runner.sample_ctx(sample) == expected
 
 
 def test_make_prompt_unclamped_still_sizes_to_target():
@@ -96,8 +115,8 @@ def test_make_prompt_tiny_target_never_returns_whole_prefix():
     # A target smaller than the tail line must not flip the truncation slice index
     # negative (s[:-k] keeps everything BUT k chars — i.e. ~the whole 68k prefix).
     shared = (bm.FILLER % (0, 0)) * 1000
-    prompt = bm.make_prompt(shared, 5, 0)
-    assert len(prompt) < 100
+    with pytest.raises(ValueError, match="too small"):
+        bm.make_prompt(shared, 5, 0)
 
 
 def test_make_prompt_calibrated_chars_per_token_resizes():
@@ -117,6 +136,12 @@ def test_default_16384_serve_does_not_overflow_window():
         ctx = bm.clamp_ctx(ctx, cap)
         prompt = bm.make_prompt(shared, ctx, 0, max_prompt_tokens=cap)
         assert bm.est_tokens(prompt) <= cap < 16384
+
+
+def test_shared_prefix_matches_its_declared_estimated_size():
+    shared = benchmark_requests.make_shared_prefix(8000)
+    assert bm.est_tokens(shared) == 8000
+    assert len(shared) == 8000 * benchmark_requests.CHARS_PER_TOKEN
 
 
 # ---- BUG 2: --no-thinking injects enable_thinking:false into the request body ------
@@ -216,6 +241,75 @@ def test_detect_max_model_len_returns_none_on_error(monkeypatch):
     assert bm.detect_max_model_len("http://x/v1", "coder") is None
 
 
+def test_detected_context_without_headroom_is_a_clean_cli_error(monkeypatch, capsys):
+    monkeypatch.setattr(bm, "detect_max_model_len", lambda *args: 1000)
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:30002/v1",
+            "--model", "model",
+            "--requests", "1",
+        ])
+    assert exc.value.code == 2
+    assert "must exceed" in capsys.readouterr().err
+
+
+def test_stream_chat_prefers_usage_tokens_over_sse_chunk_count(monkeypatch):
+    payload = (
+        b'data: {"choices":[{"delta":{"content":"hello"}}]}\n\n'
+        b'data: {"choices":[{"delta":{"content":" world"}}]}\n\n'
+        b'data: {"choices":[],"usage":{"completion_tokens":7}}\n\n'
+        b"data: [DONE]\n\n"
+    )
+
+    class _Stream:
+        def __enter__(self):
+            return iter(payload.splitlines(keepends=True))
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(bm.urllib.request, "urlopen", lambda *args, **kwargs: _Stream())
+    result = bm.stream_chat("http://127.0.0.1:30002/v1", "model", "prompt", None, 16)
+    assert result["out_toks"] == 7
+    assert result["content_chunks"] == 2
+    assert result["output_token_source"] == "usage"
+
+
+def test_stream_result_without_visible_content_is_not_a_completion():
+    with pytest.raises(ValueError, match="without visible content"):
+        benchmark_requests.validate_stream_result({"ttft": None, "e2e": 0.1})
+
+
+def test_nearest_rank_percentile_matches_documented_method():
+    assert benchmark_runner.percentile([1, 2, 3, 4], 50) == 2
+    with pytest.raises(ValueError, match="0 through 100"):
+        benchmark_runner.percentile([1], 101)
+
+
+def test_mixed_token_sources_suppress_exact_output_throughput():
+    metrics = benchmark_runner.result_metrics([
+        {"ttft": 0.1, "e2e": 0.2, "out_toks": 7, "output_token_source": "usage"},
+        {
+            "ttft": 0.1,
+            "e2e": 0.2,
+            "out_toks": 2,
+            "content_chunks": 2,
+            "output_token_source": "content_chunks",
+        },
+    ])
+    assert metrics["output_tokens"] is None
+    assert metrics["content_chunks"] == 2
+
+
+def test_atomic_json_rejects_non_finite_numbers_without_replacing_target(tmp_path):
+    target = tmp_path / "artifact.json"
+    target.write_text('{"previous": true}\n', encoding="utf-8")
+    with pytest.raises(ValueError):
+        benchmark_artifacts.atomic_write_json(target, {"metric": float("nan")})
+    assert target.read_text(encoding="utf-8") == '{"previous": true}\n'
+
+
 def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp_path):
     monkeypatch.setattr(bm, "stream_chat",
                         lambda *a, **k: dict(
@@ -229,6 +323,8 @@ def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp
     rc = bm.main([
         "--base-url", "http://127.0.0.1:30002/v1",
         "--model", "local-heavy",
+        "--engine", "vllm",
+        "--gpu", "dark-heavy",
         "--requests", "2",
         "--concurrency", "2",
         "--max-model-len", "131072",
@@ -238,13 +334,19 @@ def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp
     assert rc in (0, None)
     summary = json.loads(out.read_text(encoding="utf-8"))
     assert summary["schema"] == "anvil-serving.benchmark/v1"
+    assert summary["measurement_protocol"] == "capacity-v2"
     assert summary["model"] == "local-heavy"
+    assert summary["engine"] == "vllm"
+    assert summary["gpu"] == "dark-heavy"
     assert summary["requests"] == 2
     assert summary["completed"] == 2
+    assert summary["context_seed"] == 0
+    assert sum(summary["context_distribution"].values()) == 2
     assert summary["metrics"]["ttft_p50_ms"] == 100.0
     assert summary["metrics"]["e2e_p50_ms"] == 200.0
     assert summary["metrics"]["throughput_tok_s"] > 0
     assert summary["metrics"]["output_tokens"] == 16
+    assert summary["metrics"]["output_token_sources"] == {"unknown": 2}
     assert summary["metrics"]["prefix_cache_hit_avg"] == 0.4
 
 
@@ -1014,11 +1116,14 @@ def _one_eval(**over):
     {"evals": [{"id": "x", "prompt": "p", "checks": _OK_CHECKS}]},  # missing suite name
     {"suite": "s", "evals": []},                              # empty evals
     {"suite": "s", "evals": [{"prompt": "p", "checks": _OK_CHECKS}]},  # missing id
+    {"suite": "s", "evals": [{"id": [], "prompt": "p", "checks": _OK_CHECKS}]},
     {"suite": "s", "evals": _one_eval()["evals"] * 2},        # duplicate eval ids
     _one_eval(prompt=None),                                   # no prompt/messages
     _one_eval(prompt=""),                                     # empty prompt
     _one_eval(prompt=None, messages=[]),                      # empty messages, no prompt
     _one_eval(messages=["hi"]),                               # messages entries not objects
+    _one_eval(messages=[{}]),                                 # missing role/content
+    _one_eval(messages=[{"role": "user", "content": ""}]),    # empty content
     _one_eval(max_tokens="64"),                               # max_tokens wrong type
     _one_eval(max_tokens=0),                                  # max_tokens not positive
     _one_eval(max_tokens=True),                               # bool is not an int here
@@ -1498,6 +1603,43 @@ def test_gpt_oss_accepts_published_reasoning_effort(monkeypatch, capsys):
     assert json.loads(capsys.readouterr().out)["workload"] == "capacity"
 
 
+@pytest.mark.parametrize(
+    ("workload", "extra"),
+    [
+        ("quality", ["--seed", "42"]),
+        ("capacity", ["--eval-repetitions", "19"]),
+    ],
+)
+def test_canonical_workloads_reject_irrelevant_flags(workload, extra):
+    common = [
+        workload,
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "model",
+        "--dry-run",
+    ]
+    if workload == "quality":
+        common += ["--candidate-id", "model", "--config-id", "config", "--suite", "voice",
+                   "--voice-latency-ms", "1"]
+    with pytest.raises(SystemExit) as exc:
+        bm.main(common + extra)
+    assert exc.value.code == 2
+
+
+def test_quality_rejects_unbounded_context_completion_cap():
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:39015/v1",
+            "--model", "model",
+            "--candidate-id", "model",
+            "--config-id", "config",
+            "--suite", "context",
+            "--max-tokens", "65537",
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+
+
 def test_bakeoff_voice_suite_records_supplied_metrics(tmp_path):
     out = tmp_path / "voice.json"
     rc = bm.main([
@@ -1525,3 +1667,33 @@ def test_bakeoff_voice_suite_records_supplied_metrics(tmp_path):
     assert evidence["score_inputs"]["voice_latency_ms"] == 1234.0
     # schema-presence guard: the external-suites key exists even without --suite-file
     assert evidence["suites"] == {}
+
+
+def test_quality_rejects_non_finite_voice_metrics_before_writing(tmp_path, capsys):
+    out = tmp_path / "voice.json"
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:39014/v1",
+            "--model", "devstral-small-2-24b",
+            "--candidate-id", "devstral-small2",
+            "--config-id", "vllm-fp8-32k",
+            "--suite", "voice",
+            "--voice-latency-ms", "nan",
+            "--output", str(out),
+        ])
+    assert exc.value.code == 2
+    assert "finite, non-negative" in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_direct_script_help_remains_supported():
+    script = Path(bm.__file__)
+    result = subprocess.run(
+        [sys.executable, str(script), "capacity", "--help"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "Measure bounded endpoint latency" in result.stdout
