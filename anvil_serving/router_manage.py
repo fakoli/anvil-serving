@@ -96,8 +96,15 @@ def default_compose_candidates():
 
 def resolve_compose_path(path=None):
     if path:
-        return path
-    return next((candidate for candidate in default_compose_candidates() if os.path.isfile(os.path.expanduser(candidate))), DEFAULT_COMPOSE)
+        return os.path.abspath(os.path.expanduser(path))
+    return next(
+        (
+            os.path.abspath(os.path.expanduser(candidate))
+            for candidate in default_compose_candidates()
+            if os.path.isfile(os.path.expanduser(candidate))
+        ),
+        os.path.abspath(os.path.expanduser(DEFAULT_COMPOSE)),
+    )
 
 
 def _run_argv(argv, _run, *, dry_run=False):
@@ -121,11 +128,27 @@ def _default_env_file():
     return None
 
 
-def cmd_up(compose, service, env_file=None, dry_run=False, _run=subprocess.run):
+def resolve_env_file(path=None):
+    selected = path if path is not None else _default_env_file()
+    return None if selected is None else os.path.abspath(os.path.expanduser(selected))
+
+
+def _compose_up_argv(compose, service, env_file=None, recreate=False):
     argv = ["docker", "compose"]
     if env_file:
         argv += ["--env-file", os.path.abspath(os.path.expanduser(env_file))]
-    return _run_argv(argv + ["-f", compose, "up", "-d", "--no-deps", service], _run, dry_run=dry_run)
+    argv += ["-f", compose, "up", "-d", "--no-deps"]
+    if recreate:
+        argv.append("--force-recreate")
+    return argv + [service]
+
+
+def cmd_up(compose, service, env_file=None, dry_run=False, _run=subprocess.run, recreate=False):
+    return _run_argv(
+        _compose_up_argv(compose, service, env_file=env_file, recreate=recreate),
+        _run,
+        dry_run=dry_run,
+    )
 
 
 def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
@@ -139,6 +162,42 @@ def cmd_restart(container, dry_run=False, verify=True, _run=subprocess.run, _sle
 def cmd_reload(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None):
     print("router reload restarts the container because configuration is startup-read")
     return cmd_restart(container, dry_run=dry_run, verify=verify, _run=_run, _sleep=_sleep)
+
+
+def lifecycle_plan(action, *, compose=None, service=DEFAULT_SERVICE, env_file=None,
+                   container=DEFAULT_CONTAINER, recreate=False):
+    """Resolve one router lifecycle operation without invoking Docker."""
+    if action not in {"up", "down", "restart", "reload"}:
+        raise ValueError("unsupported lifecycle action")
+    if recreate and action != "up":
+        raise ValueError("recreate is only supported for router up")
+
+    plan = {
+        "action": action,
+        "compose": None,
+        "env_file": None,
+        "service": None,
+        "container": container,
+        "recreate": bool(recreate),
+    }
+    if action in {"up", "down"}:
+        selected_compose = resolve_compose_path(compose)
+        plan["compose"] = selected_compose
+        plan["service"] = service
+        if action == "up":
+            selected_env_file = resolve_env_file(env_file)
+            plan["env_file"] = selected_env_file
+            plan["command"] = _compose_up_argv(
+                selected_compose,
+                service,
+                env_file=selected_env_file,
+                recreate=recreate,
+            )
+        else:
+            plan["command"] = ["docker", "compose", "-f", selected_compose, "stop", service]
+    else:
+        plan["command"] = ["docker", "restart", container]
+    return plan
 
 
 def cmd_logs(container, tail="200", since=None, follow=False, _run=subprocess.run):
@@ -211,6 +270,7 @@ def _build_parser():
         item.add_argument("--dry-run", action="store_true")
         if name == "up":
             item.add_argument("--env-file")
+            item.add_argument("--recreate", action="store_true")
     for name in ("restart", "reload"):
         item = actions.add_parser(name)
         item.add_argument("--container", default=DEFAULT_CONTAINER)
@@ -241,9 +301,33 @@ def main(argv=None):
         args = _build_parser().parse_args(argv)
     except SystemExit as exc:
         return int(exc.code or 2)
-    if args.action == "up": return cmd_up(resolve_compose_path(args.compose), args.service, _default_env_file() if args.env_file is None else args.env_file, args.dry_run)
-    if args.action == "down": return cmd_down(resolve_compose_path(args.compose), args.service, args.dry_run)
-    if args.action in {"restart", "reload"}: return (cmd_restart if args.action == "restart" else cmd_reload)(args.container, args.dry_run, not args.no_verify)
+    if args.action in {"up", "down", "restart", "reload"}:
+        plan = lifecycle_plan(
+            args.action,
+            compose=getattr(args, "compose", None),
+            service=getattr(args, "service", DEFAULT_SERVICE),
+            env_file=getattr(args, "env_file", None),
+            container=getattr(args, "container", DEFAULT_CONTAINER),
+            recreate=getattr(args, "recreate", False),
+        )
+        if args.dry_run:
+            print(json.dumps({"applied": False, "dry_run": True, **plan}, sort_keys=True))
+            return 0
+        if args.action == "up":
+            rc = cmd_up(
+                plan["compose"],
+                plan["service"],
+                plan["env_file"],
+                recreate=plan["recreate"],
+            )
+        elif args.action == "down":
+            rc = cmd_down(plan["compose"], plan["service"])
+        else:
+            rc = (cmd_restart if args.action == "restart" else cmd_reload)(
+                plan["container"], verify=not args.no_verify
+            )
+        print(json.dumps({"applied": rc == 0, "dry_run": False, **plan}, sort_keys=True))
+        return rc
     if args.action == "status": return cmd_status(args.container)
     if args.action in {"transition-status", "quiesce", "drain", "readmit"}:
         action = "status" if args.action == "transition-status" else args.action
