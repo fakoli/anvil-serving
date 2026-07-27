@@ -9,6 +9,7 @@ from typing import Any
 
 from ...operator_output import redact
 from .errors import ToolError
+from .security import ENV_NAME_RE, PROBE_API_KEY_ENVS
 from .security import RAW_COMMAND_KEYS, RAW_SECRET_KEYS
 
 
@@ -26,6 +27,31 @@ RAW_SECRET_AWARE_TOOLS = frozenset(
         "preflight_probe",
     }
 )
+
+
+def probe_api_key_env(args: Mapping[str, Any]) -> str:
+    """Validate the credential-reference contract shared by bounded probes."""
+
+    if "api_key" in args:
+        raise ToolError(
+            "raw_secret_not_allowed",
+            "raw api_key is not accepted; set api_key_env to the credential env var name",
+        )
+    api_key_env = str_arg(args, "api_key_env", "")
+    if not api_key_env:
+        return ""
+    if not ENV_NAME_RE.fullmatch(api_key_env):
+        raise ToolError(
+            "bad_api_key_env",
+            "api_key_env must name an ENV VAR matching ^[A-Z][A-Z0-9_]*$",
+        )
+    if api_key_env not in PROBE_API_KEY_ENVS:
+        raise ToolError(
+            "unsafe_api_key_env",
+            "api_key_env must be ANVIL_ROUTER_TOKEN for MCP probe tools",
+            {"allowed_api_key_envs": sorted(PROBE_API_KEY_ENVS)},
+        )
+    return api_key_env
 
 
 def arg_bool(value: Any, default: bool = False, *, name: str = "argument") -> bool:
