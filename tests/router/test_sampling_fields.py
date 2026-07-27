@@ -20,7 +20,7 @@ pin:
 """
 from __future__ import annotations
 
-from anvil_serving.router.backends.cloud import CloudBackend
+from anvil_serving.router.backends.relay import RelayBackend
 from anvil_serving.router.config import Tier
 from anvil_serving.router.dialects.anthropic import AnthropicDialect
 from anvil_serving.router.dialects.openai import OpenAIDialect
@@ -33,7 +33,7 @@ def _tier(dialect: str, **overrides) -> Tier:
         base_url="https://api.example.test",
         dialect=dialect,
         context_limit=200_000,
-        privacy="cloud",
+        privacy="local",
         tool_support=True,
         auth_env="EXAMPLE_KEY",
         model="concrete-model",
@@ -42,8 +42,8 @@ def _tier(dialect: str, **overrides) -> Tier:
     return Tier(**base)
 
 
-def _backend(dialect: str, **tier_overrides) -> CloudBackend:
-    return CloudBackend(_tier(dialect, **tier_overrides), env={"EXAMPLE_KEY": "k"})
+def _backend(dialect: str, **tier_overrides) -> RelayBackend:
+    return RelayBackend(_tier(dialect, **tier_overrides), env={"EXAMPLE_KEY": "k"})
 
 
 # --------------------------------------------------------------------------- #

@@ -34,9 +34,6 @@ DIALECT_ANTHROPIC = "anthropic"
 VALID_DIALECTS = {DIALECT_OPENAI, DIALECT_ANTHROPIC}
 
 PRIVACY_LOCAL = "local"
-# Internal relay implementation still distinguishes its historical remote mode,
-# but configuration accepts local tiers only.
-PRIVACY_CLOUD = "cloud"
 VALID_PRIVACY = {PRIVACY_LOCAL}
 
 # Purpose-model kinds (ADR-0017 §7 / gpu-reservations:T010): non-chat inference
@@ -144,7 +141,7 @@ class Tier:
     # `chat_template_kwargs: {enable_thinking: false}` to defend against the
     # thinking-budget-starvation gotcha (CLAUDE.md gotcha #6/#9). Never overrides the
     # keys the router itself sets (model/messages/stream/...); it is applied via
-    # ``body.update(extra_body)`` in backends/cloud.py, so a key here CAN clobber a
+    # ``body.update(extra_body)`` in backends/relay.py, so a key here CAN clobber a
     # router-set key if the operator explicitly configures it that way -- that is
     # intentional passthrough, not a bug. Kept ``hash=False`` because a dict is
     # unhashable; Tier is never used as a dict/set key.

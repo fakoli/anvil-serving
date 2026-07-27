@@ -22,7 +22,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pytest
 
-from anvil_serving.router.backends import StaticBackend
+from tests.router.helpers import StaticBackend
 from anvil_serving.router.config import ConfigError, PurposeModel, load
 from anvil_serving.router.decision_log import DecisionLog
 from anvil_serving.router.front_door import make_server
@@ -293,9 +293,9 @@ def test_dispatch_kind_mismatch_is_unknown_model():
 
 
 def test_dispatch_upstream_failure_is_sanitized_502_and_logged():
-    from anvil_serving.router.backends.cloud import CloudBackendError
+    from anvil_serving.router.backends.relay import RelayBackendError
 
-    transport = FakeTransport(error=CloudBackendError("cloud provider returned HTTP 500"))
+    transport = FakeTransport(error=RelayBackendError("model upstream returned HTTP 500"))
     log = DecisionLog()
     router = PurposeRouter([EMBED_PM], transport=transport, decision_log=log)
 

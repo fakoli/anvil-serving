@@ -10,7 +10,7 @@ generation time. This module is the read side of the real streaming path:
   events in, get text deltas out as they arrive, and read the assembled
   :class:`~anvil_serving.router.internal.StructuredResult` (finish_reason,
   tool_calls, usage) once the stream ends. The assembled shapes mirror the
-  buffered path's ``CloudBackend._extract_structured`` exactly (OpenAI
+  buffered path's ``RelayBackend._extract_structured`` exactly (OpenAI
   ``arguments`` stays a JSON string; Anthropic ``arguments`` is a parsed dict),
   so the verify chain and the dialect renderers see identical data either way.
 

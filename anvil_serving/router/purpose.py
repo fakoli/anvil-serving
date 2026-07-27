@@ -35,7 +35,7 @@ import os
 import sys
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
-from .backends.cloud import CloudBackendError, Transport, _urlopen_transport
+from .backends.relay import RelayBackendError, Transport, _urlopen_transport
 from .config import PURPOSE_EMBEDDING, PURPOSE_RERANK, PurposeModel
 from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, decision_line
 
@@ -166,8 +166,8 @@ class PurposeRouter:
             )
             payload = json.loads(raw.decode("utf-8"))
             if not isinstance(payload, dict):
-                raise CloudBackendError("upstream response is not a JSON object")
-        except CloudBackendError as e:
+                raise RelayBackendError("upstream response is not a JSON object")
+        except RelayBackendError as e:
             # Transport errors are already sanitized (no URL/credential leak).
             self._record(kind, pm.id, outcome="error",
                          reason=f"backend error: {type(e).__name__}")

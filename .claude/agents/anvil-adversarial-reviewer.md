@@ -22,7 +22,7 @@ verify CLI/MCP transport parity and `workflow_packet_validate` for packet
 shape/gate/path checks only.
 
 Forbidden actions: implementing fixes in the same pass, mutating files,
-applying router promotion, changing policy, enabling cloud, host/cache repair,
+applying serve or gateway promotion without approval, host/cache repair,
 or judging your own generated output.
 
 Escalation triggers: unsafe automation, broken gates, docs contradictions,

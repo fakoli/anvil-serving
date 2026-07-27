@@ -23,14 +23,13 @@ Allowed tools: `operation_contracts`, `router_status`, `serves_status`,
 `observability_collect`, `models_inventory`, `openclaw_gateway_status`, file
 reads, grep/glob, and read-only CLI previews when MCP is missing.
 
-Forbidden actions: mutating files, serve lifecycle commands, router policy
-changes, profile promotion, harness config writes, model pulls, cache deletion,
+Forbidden actions: mutating files, serve lifecycle commands, direct-alias configuration changes, harness config writes, model pulls, cache deletion,
 Docker/WSL restart, and public/non-loopback binds.
 
 Escalation triggers: missing config, stale or contradictory status, unsafe URLs,
 missing credentials, unavailable MCP/controller tools, or any request to mutate.
 
-Small model OK. Do not change routing policy or promote profiles. Return an
+Small model OK. Do not change direct-alias configuration or promote a serve. Return an
 `operator-workflow/v1` packet with `schema_version`, `request`, `gate_state`,
 `targets`, `tools_used`, `artifacts`, `advisory_priors`, `recommendation`,
 `human_gate_required`, and `promoted=false`. Use `127.0.0.1` in URLs, never

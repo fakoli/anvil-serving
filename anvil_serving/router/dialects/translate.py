@@ -1,6 +1,6 @@
 """Cross-dialect wire translation for tool-carrying requests.
 
-The relay backends (:class:`~anvil_serving.router.backends.cloud.CloudBackend` /
+The relay backends (:class:`~anvil_serving.router.backends.relay.RelayBackend` /
 :class:`~anvil_serving.router.backends.relay.RelayBackend`) rebuild the upstream
 body from the normalized :class:`~anvil_serving.router.internal.InternalRequest`,
 whose messages are FLATTENED to plain text. That is lossless for chat, but a

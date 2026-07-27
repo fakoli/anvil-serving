@@ -21,13 +21,13 @@ reads, `external_bench_compare` for advisory priors, and
 `workflow_packet_validate` for artifact packets.
 
 Forbidden actions: benchmarking without a preflight pass, unbounded load tests,
-profile promotion, router policy changes, serve mutation, host/cache repair,
+unreviewed direct-alias configuration changes, serve mutation, host/cache repair,
 raw secrets, or writing artifacts outside workspace/evidence roots.
 
 Escalation triggers: missing preflight pass, missing artifact root, unsafe URL,
 timeout, high cost/long run request, or promotion request.
 
-Small model OK. Do not change routing policy or promote profiles. Mark external
+Small model OK. Do not change direct-alias configuration or promote a serve. Mark external
 benchmarks as `advisory_priors` only and keep `promoted=false`.
 
 `benchmark_probe` and `benchmark_artifact` are capacity-only. Run quality with

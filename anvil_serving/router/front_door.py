@@ -45,7 +45,6 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Iterable, Optional
 
-from .backends import EchoBackend
 from .audio import (
     AudioGateway,
     AudioGatewayError,
@@ -981,8 +980,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
     return FrontDoorHandler
 
 
-def make_server(host: str = "127.0.0.1", port: int = 8000,
-                backend: Optional[Backend] = None,
+def make_server(host: str, port: int,
+                backend: Backend,
                 timeout: Optional[float] = 120,
                 model_routes: Iterable[str] = (),
                 exhaustion_status: int = 503,
@@ -993,7 +992,7 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     """Build (but do not start) the front-door server.
 
     Pass ``port=0`` to bind an ephemeral port (read it back from
-    ``server.server_address[1]``). ``backend`` defaults to :class:`EchoBackend`.
+    ``server.server_address[1]``).
     ``timeout`` is the per-connection idle read timeout in seconds (finite by
     default so abandoned keep-alive sockets can't leak threads/FDs); pass
     ``None`` to disable. ``model_routes`` are the complete configured aliases
@@ -1020,8 +1019,6 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     """
     if audio is not None and auth_token is None:
         raise ValueError("an AudioGateway requires a resolved front-door auth token")
-    if backend is None:
-        backend = EchoBackend()
     httpd = ThreadingHTTPServer(
         (host, port),
         _make_handler(
@@ -1031,30 +1028,3 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd
-
-
-def serve(host: str = "127.0.0.1", port: int = 8000,
-          backend: Optional[Backend] = None,
-          timeout: Optional[float] = 120,
-          auth_token: Optional[str] = None,
-          model_routes: Iterable[str] = ("echo",)) -> None:
-    """Build and run the front door until interrupted."""
-    httpd = make_server(
-        host, port, backend, timeout, model_routes=model_routes,
-        auth_token=auth_token,
-    )
-    actual_host, actual_port = httpd.server_address[:2]
-    print(f"anvil-serving front door on http://{actual_host}:{actual_port}  "
-          f"(routes: {', '.join(sorted(_ROUTES))})")
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-
-
-if __name__ == "__main__":
-    # Default echo backend so the verification curl works out of the box.
-    serve("127.0.0.1", 8000, EchoBackend())
