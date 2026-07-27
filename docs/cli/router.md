@@ -87,8 +87,8 @@ captured logs.
 ## Lifecycle
 
 ```bash
-anvil-serving router up --dry-run
-anvil-serving router up --confirm
+anvil-serving router up --compose deployment/docker-compose.yml --service router --env-file deployment/router.env --dry-run
+anvil-serving router up --compose deployment/docker-compose.yml --service router --recreate --confirm
 anvil-serving router reload --confirm
 ```
 
@@ -96,6 +96,17 @@ Lifecycle mutations are guarded. Preview them first when `--dry-run` is availabl
 then repeat with `--confirm`. Compose operations resolve `--compose` first, then the operator-home
 Compose file, then the packaged deployment example. Container lifecycle operations
 default to `anvil-router`.
+
+`router up --dry-run` reports the resolved Compose file, environment file, service,
+container, and exact Docker Compose command; it does not invoke Docker. Confirmed
+`router up` reports the same selected target after it completes. An explicit
+`--compose` path always wins over the operator-home default; the command never
+changes or removes that operator-home file.
+
+`--recreate` is available only for `router up`. It maps to Docker Compose
+`--force-recreate` while retaining `--no-deps`, so the operation recreates only the
+selected router service and does not start or recreate model services, alter router
+configuration volumes, or modify the host outside Docker's requested router action.
 
 ## Tier transitions
 

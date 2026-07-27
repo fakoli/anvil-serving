@@ -572,12 +572,12 @@
     },
     {
       "behavior_notes": [
-        "Preview prints the exact lifecycle command without invoking Docker.",
-        "Apply changes Compose service state after confirmation."
+        "Preview and apply report the resolved lifecycle target and exact command without changing unrelated services.",
+        "Apply keeps --no-deps and changes only the selected router Compose service after confirmation."
       ],
       "configuration_notes": [
         "--compose overrides the operator-home Compose file and packaged example.",
-        "--service defaults to router; router up also detects a conventional environment file."
+        "--service defaults to router; router up also detects a conventional environment file, and --recreate maps to Compose --force-recreate."
       ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
@@ -727,6 +727,42 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--compose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router Docker Compose file.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--service"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router Compose service.",
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--env-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router Compose environment file.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--recreate"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Force-recreate only the router service.",
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -737,6 +773,7 @@
           "compose",
           "service",
           "env_file",
+          "recreate",
           "dry_run"
         ],
         "confirmed_arguments": {},
@@ -757,8 +794,8 @@
     },
     {
       "behavior_notes": [
-        "Preview prints the exact lifecycle command without invoking Docker.",
-        "Apply changes Compose service state after confirmation."
+        "Preview and apply report the resolved lifecycle target and exact command without changing unrelated services.",
+        "Apply keeps --no-deps and changes only the selected router Compose service after confirmation."
       ],
       "configuration_notes": [
         "--compose overrides the operator-home Compose file and packaged example.",
@@ -912,6 +949,24 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--compose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router Docker Compose file.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--service"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router Compose service.",
+          "value_name": "NAME"
         }
       ],
       "output_policy": "bounded",
@@ -941,7 +996,7 @@
     },
     {
       "behavior_notes": [
-        "Preview prints the exact lifecycle command without invoking Docker.",
+        "Preview and apply report the resolved lifecycle target and exact command without changing unrelated services.",
         "Apply verifies the restarted container stays running unless --no-verify is set."
       ],
       "configuration_notes": [
@@ -1096,6 +1151,24 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployed router container.",
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--no-verify"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Skip post-restart container verification.",
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -1125,7 +1198,7 @@
     },
     {
       "behavior_notes": [
-        "Preview prints the exact lifecycle command without invoking Docker.",
+        "Preview and apply report the resolved lifecycle target and exact command without changing unrelated services.",
         "Apply verifies the restarted container stays running unless --no-verify is set."
       ],
       "configuration_notes": [
@@ -1279,6 +1352,24 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployed router container.",
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--no-verify"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Skip post-restart container verification.",
           "value_name": null
         }
       ],
