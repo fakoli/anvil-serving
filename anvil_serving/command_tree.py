@@ -377,6 +377,12 @@ def build_command_tree() -> CommandTree:
     """Build the complete canonical v2 tree without importing command handlers."""
     action_options = (_option("--dry-run", summary="Preview without mutating state."),)
     confirm_options = action_options + (_option("--confirm", summary="Confirm the guarded mutation."),)
+    router_compose_option = _option("--compose", summary="Router Docker Compose file.", value_name="PATH")
+    router_service_option = _option("--service", summary="Router Compose service.", value_name="NAME")
+    router_env_file_option = _option("--env-file", summary="Router Compose environment file.", value_name="PATH")
+    router_container_option = _option("--container", summary="Deployed router container.", value_name="NAME")
+    router_recreate_option = _option("--recreate", summary="Force-recreate only the router service.")
+    router_no_verify_option = _option("--no-verify", summary="Skip post-restart container verification.")
     manifest_option = _option("--manifest", summary="Serve manifest TOML.", value_name="PATH")
     recipe_registry_option = _option("--registry", summary="Serve-recipe registry TOML.", value_name="PATH")
     recipe_file_option = _option("--recipe-file", summary="TOML file containing one recipe.", value_name="PATH")
@@ -416,12 +422,18 @@ def build_command_tree() -> CommandTree:
                     "anvil_serving.router_manage",
                     role="router",
                     mutation="mutate",
-                    options=confirm_options,
+                    options=confirm_options + (
+                        (router_compose_option, router_service_option, router_env_file_option, router_recreate_option)
+                        if action == "up"
+                        else (router_compose_option, router_service_option)
+                        if action == "down"
+                        else (router_container_option, router_no_verify_option)
+                    ),
                     remote_operation=_remote(
                         "router_manage",
                         fixed=(("action", action),),
                         allowed=(
-                            ("compose", "service", "env_file", "dry_run")
+                            ("compose", "service", "env_file", "recreate", "dry_run")
                             if action == "up"
                             else ("compose", "service", "dry_run")
                             if action == "down"
@@ -434,11 +446,11 @@ def build_command_tree() -> CommandTree:
                     ),
                     configuration_notes=(
                         ("--compose overrides the operator-home Compose file and packaged example." if action in {"up", "down"} else "--container defaults to the deployed anvil-router container."),
-                        ("--service defaults to router; router up also detects a conventional environment file." if action == "up" else "--service defaults to the router Compose service." if action == "down" else "Global target options select the resource owner when the router is remote."),
+                        ("--service defaults to router; router up also detects a conventional environment file, and --recreate maps to Compose --force-recreate." if action == "up" else "--service defaults to the router Compose service." if action == "down" else "Global target options select the resource owner when the router is remote."),
                     ),
                     behavior_notes=(
-                        "Preview prints the exact lifecycle command without invoking Docker.",
-                        ("Apply changes Compose service state after confirmation." if action in {"up", "down"} else "Apply verifies the restarted container stays running unless --no-verify is set."),
+                        "Preview and apply report the resolved lifecycle target and exact command without changing unrelated services.",
+                        ("Apply keeps --no-deps and changes only the selected router Compose service after confirmation." if action in {"up", "down"} else "Apply verifies the restarted container stays running unless --no-verify is set."),
                     ),
                 )
                 for action, summary in (

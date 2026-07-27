@@ -89,10 +89,10 @@ required operands, choices, and defaults.
 | `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | `--out-dir`<br>`--single-model`<br>`--model`<br>`--catalog-dir`<br>`--gpu`<br>`--served-name`<br>`--tier-id`<br>`--port`<br>`--context`<br>`--engine`<br>`--disable-thinking`<br>`--bind`<br>`--expose-lan` |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
 | `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
-| `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate` |
+| `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service` |
+| `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
+| `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
 | `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | `--container`<br>`--host`<br>`--port`<br>`--no-tailscale` |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
