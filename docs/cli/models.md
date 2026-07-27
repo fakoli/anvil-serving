@@ -107,9 +107,9 @@ running container. The shipped registry is useful for discovery. Mutations requi
 explicit operator-owned registry path, which keeps packaged defaults immutable and
 reviewable.
 
-Read-registry precedence is `--registry`, `./configs/serve-recipes.toml`,
-`$ANVIL_SERVING_HOME/serve-recipes.toml` (or `~/.anvil-serving/serve-recipes.toml`),
-then the packaged registry. A selector may be either a recipe's exact model identifier
+Read-registry precedence is `--registry`, `$ANVIL_SERVING_HOME/serve-recipes.toml`
+(or `~/.anvil-serving/serve-recipes.toml`), `./configs/serve-recipes.toml`, then
+the packaged registry. A selector may be either a recipe's exact model identifier
 or its unique basename.
 
 ### Discover recipes

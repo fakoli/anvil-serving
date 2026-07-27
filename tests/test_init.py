@@ -375,7 +375,7 @@ def test_scaffold_home_is_idempotent_no_backup_on_first_run(tmp_path):
 
 
 def test_init_cli_no_flags_defaults_to_home_scaffold(tmp_path):
-    # DEFAULT (no flags): scaffold the full operational config home.
+    # An explicit target always wins over the default config home.
     rc = init.main(["--out-dir", str(tmp_path)])
     assert rc == 0
     written = {p.name for p in tmp_path.iterdir()}
@@ -383,13 +383,26 @@ def test_init_cli_no_flags_defaults_to_home_scaffold(tmp_path):
     assert os.path.isfile(tmp_path / "router.toml")
 
 
-def test_init_cli_home_alias_still_writes_set_with_deprecation_note(tmp_path, capsys):
-    # `--home` is a deprecated alias for the new default; still works, warns.
-    rc = init.main(["--home", "--out-dir", str(tmp_path)])
+def test_init_cli_no_flags_scaffolds_config_home(tmp_path, monkeypatch):
+    home = tmp_path / "operator-home"
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    rc = init.main([])
     assert rc == 0
-    assert os.path.isfile(tmp_path / "serves.toml")
-    assert os.path.isfile(tmp_path / "edge.toml")
-    assert "deprecated" in capsys.readouterr().err
+    assert (home / "serves.toml").is_file()
+    assert (home / "router.toml").is_file()
+    assert (home / "serve-recipes.toml").is_file()
+
+
+def test_init_cli_config_home_backs_up_existing_operator_file(tmp_path, monkeypatch):
+    home = tmp_path / "operator-home"
+    home.mkdir()
+    (home / "serves.toml").write_text("# operator hand edits\n", encoding="utf-8")
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+
+    assert init.main([]) == 0
+
+    backup = home / "serves.toml.anvil.bak.1"
+    assert backup.read_text(encoding="utf-8") == "# operator hand edits\n"
 
 
 def test_init_home_missing_templates_fails_loud(tmp_path, monkeypatch):

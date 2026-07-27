@@ -640,6 +640,23 @@ def test_cache_reclaim_policy_missing_is_disabled_and_honors_config_home(
     }
 
 
+def test_cache_reclaim_policy_uses_config_home(monkeypatch, tmp_path):
+    home = tmp_path / "operator-home"
+    home.mkdir()
+    policy_path = home / "host.toml"
+    policy_path.write_text(
+        "schema_version = 1\n[cache_reclaim]\nenabled = true\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    monkeypatch.setattr(host.sys, "platform", "win32")
+
+    policy = host.load_cache_reclaim_policy()
+
+    assert policy["source_path"] == str(policy_path)
+    assert policy["configured"] is True
+
+
 def test_cache_reclaim_policy_missing_section_is_disabled(tmp_path):
     path = tmp_path / "host.toml"
     path.write_text("schema_version = 1\n", encoding="utf-8")

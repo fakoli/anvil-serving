@@ -55,7 +55,7 @@ anvil-serving init
 anvil-serving serves groups
 anvil-serving serves up SERVE_NAME --dry-run
 anvil-serving serves up SERVE_NAME --confirm
-anvil-serving router run --config configs/example.toml
+anvil-serving router run
 ```
 
 `init` writes the packaged operational manifests to `~/.anvil-serving`; use
