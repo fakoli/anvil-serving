@@ -497,7 +497,7 @@ def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_rollback(request):
     }
     serve = recipe["serve"]
     assert serve["image"] == ("anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82")
-    assert serve["managed_serve"] == "heavy-gptoss-puzzle-rollback"
+    assert serve["managed_serve"] == "primary-gptoss-puzzle-rollback"
     assert serve["served_model_name"] == "gpt-oss-puzzle-88b"
     assert serve["port"] == 30002
     assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in serve["flags"]
@@ -513,7 +513,7 @@ def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_rollback(request):
     assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in cmd
 
 
-def test_shipped_laguna_recipe_is_verified_heavy_target(request):
+def test_shipped_laguna_recipe_is_verified_primary_target(request):
     root = request.config.rootpath
     registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
     recipe = sr.find_recipe(registry, "poolside/Laguna-S-2.1-NVFP4")
@@ -521,7 +521,7 @@ def test_shipped_laguna_recipe_is_verified_heavy_target(request):
     assert recipe is not None
     assert recipe["status"] == "verified"
     serve = recipe["serve"]
-    assert serve["managed_serve"] == "heavy"
+    assert serve["managed_serve"] == "primary"
     assert serve["served_model_name"] == "laguna-s-2.1-nvfp4"
     assert serve["port"] == 30002
     assert "--revision 07614121b31898586430f189d27a25a0be310843" in serve["flags"]
@@ -529,8 +529,8 @@ def test_shipped_laguna_recipe_is_verified_heavy_target(request):
         "--default-chat-template-kwargs '{\"enable_thinking\":false}'"
         in serve["flags"]
     )
-    assert recipe["activation"]["heavy"] == {
-        "plan": "laguna-s-2.1-heavy",
+    assert recipe["activation"]["primary"] == {
+        "plan": "laguna-s-2.1-primary",
         "direction": "promote",
-        "compose_service": "heavy",
+        "compose_service": "primary",
     }

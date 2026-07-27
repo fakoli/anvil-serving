@@ -89,8 +89,8 @@ token**.
 
 **What to check.** Each alias's `contextWindow` in
 `~/.openclaw/openclaw.json` must equal its one configured tier's context
-window. In the reference config, `llm.primary` uses `heavy-local`'s `131072`
-window and `llm.voice` uses `fast-local`'s `32768` window.
+window. In the reference config, `llm.primary` uses `primary-local`'s `131072`
+window and `llm.voice` uses `auxiliary-local`'s `32768` window.
 
 **Fix.** Let the product render the exact per-alias values:
 `anvil-serving harness sync openclaw --config configs/example.toml`.
@@ -237,7 +237,7 @@ The install is stdlib-only — no required runtime dependencies.
   sync live in [Operator playbooks](OPERATOR-PLAYBOOKS.md).
 ## A promotion stopped before container mutation
 
-Run `anvil-serving router transition-status --tier heavy-local --router-url
+Run `anvil-serving router transition-status --tier primary-local --router-url
 http://127.0.0.1:8000`. A drain timeout means an admitted generation is still active; the workflow
 does not stop any serve. If timeout recovery could revalidate the old health and exact model name,
 it safely readmits the tier. Otherwise the tier stays fail-closed: correct the endpoint, confirm its

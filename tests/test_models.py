@@ -1087,7 +1087,7 @@ def test_models_cli_docs_cover_each_operator_workflow():
         encoding="utf-8"
     )
     for heading in (
-        "## Switch Heavy to another model",
+        "## Switch Primary to another model",
         "## Catalog sync",
         "## Artifact pull",
         "### Discover recipes",
@@ -1098,7 +1098,7 @@ def test_models_cli_docs_cover_each_operator_workflow():
     ):
         assert heading in text
     assert 'flags = ["--served-model-name org/model"]' in text
-    assert "Choose a row that activates `heavy`" in text
+    assert "Choose a row that activates `primary`" in text
 
 
 def test_models_sync_action_still_accepted(monkeypatch, tmp_path):

@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Breaking changes
 
+- **Generated hardware and live serving roles are now Primary/Auxiliary only.**
+  `init` emits `PRIMARY_GPU_UUID`, `AUXILIARY_GPU_UUID`,
+  `primary-local`, `auxiliary-local`, `primary`, and `auxiliary`; the removed
+  Heavy/Fast CLI and environment spellings are not accepted as aliases.
+
 - **The command manifest is now schema v4.** Command declarations moved from
   the monolithic `build_command_tree()` function into decorated modules under
   `anvil_serving.commands`. The manifest no longer duplicates documentation in
@@ -30,6 +35,16 @@ All notable changes to this project are documented here. The format is based on
   prompt headroom and non-finite JSON metrics are rejected, request failures are
   retained as bounded error classes, monotonic clocks measure durations, and
   percentile summaries use the documented nearest-rank method.
+- **`init` discovers host identity without accumulating redundant backups.**
+  It assigns the largest GPU to Primary, the smallest GPU to Auxiliary
+  (runtime index breaks equal-capacity ties), discovers the Tailscale IPv4
+  address, and rewrites only files whose generated content changed.
+
+- **Bare `serves status` is bounded to the supported serving path.** Grouped
+  manifest entries are polled by default; untagged candidates and experiments
+  require an explicit name or group selection and are excluded from the
+  default reservation probe.
+
 - **Command registration is modular and deterministic.** Eight explicit
   command-family factories now assemble the same 133-path operational surface
   without filesystem discovery or eager handler imports. Shared lifecycle

@@ -201,7 +201,7 @@ def test_deploy_append_serve_entry_no_duplicate_on_rerun(tmp_path, capsys):
 
 
 def test_deploy_render_tier_stub_model_and_port_match_serve():
-    stub = deploy.render_tier_stub("heavy-local", "qwen35-awq-local", 30000)
+    stub = deploy.render_tier_stub("primary-local", "qwen35-awq-local", 30000)
     assert 'model         = "qwen35-awq-local"' in stub
     assert 'base_url      = "http://127.0.0.1:30000/v1"' in stub
     assert 'privacy       = "local"' in stub
@@ -213,12 +213,12 @@ def test_deploy_cli_emits_manifest_and_tier_stub(tmp_path, monkeypatch, capsys):
     manifest_path = tmp_path / "serves.toml"
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
     deploy.main(["--model", "/w/model", "--out", str(out_path), "--port", "30000",
-                "--served-name", "qwen35-awq-local", "--tier-id", "heavy-local",
+                "--served-name", "qwen35-awq-local", "--tier-id", "primary-local",
                 "--manifest-out", str(manifest_path)])
     parsed = deploy._serves.load_manifest(str(manifest_path))
     assert len(parsed) == 1
     assert parsed[0] == {
-        "name": "heavy-local", "container": "sglang", "port": 30000,
+        "name": "primary-local", "container": "sglang", "port": 30000,
         "model": "qwen35-awq-local", "served_name": "qwen35-awq-local",
         "engine": "sglang", "health": "/health",
         "_manifest_dir": str(tmp_path),
@@ -390,7 +390,7 @@ def test_deploy_reserved_vllm_compose_derives_gpu_memory_utilization(tmp_path, m
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
     rc = deploy.main([
         "--model", "/w/model", "--out", str(out_path), "--engine", "vllm",
-        "--served-name", "fast-local", "--port", "30001",
+        "--served-name", "auxiliary-local", "--port", "30001",
         "--manifest-out", str(manifest),
         "--gpu-role", "dark-fast", "--vram-mib", "24000", "--residency", "on-demand",
     ])
@@ -426,7 +426,7 @@ def test_deploy_reserved_serve_entry_carries_reservation_fields(tmp_path, monkey
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
     deploy.main([
         "--model", "/w/model", "--out", str(out_path), "--engine", "vllm",
-        "--served-name", "fast-local", "--port", "30001",
+        "--served-name", "auxiliary-local", "--port", "30001",
         "--manifest-out", str(manifest),
         "--gpu-role", "dark-fast", "--vram-mib", "24000", "--residency", "on-demand",
     ])
@@ -450,7 +450,7 @@ def test_deploy_without_reservation_renders_unchanged(tmp_path, monkeypatch):
     plain_out = tmp_path / "plain.yml"
     manifest = _roles_manifest(tmp_path)
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
-    common = ["--model", "/w/model", "--engine", "vllm", "--served-name", "fast-local",
+    common = ["--model", "/w/model", "--engine", "vllm", "--served-name", "auxiliary-local",
               "--port", "30001", "--manifest-out", str(manifest)]
     deploy.main(common + ["--out", str(plain_out)])
     deploy.main(common + ["--out", str(reserved_out), "--tier-id", "fast-reserved",
@@ -460,9 +460,9 @@ def test_deploy_without_reservation_renders_unchanged(tmp_path, monkeypatch):
     plain = plain_out.read_text(encoding="utf-8")
     assert "--gpu-memory-utilization\n      0.9\n" in plain
     parsed = {s["name"]: s for s in deploy._serves.load_manifest(str(manifest))}
-    assert "gpu_role" not in parsed["fast-local"]
-    assert "vram_mib" not in parsed["fast-local"]
-    assert "residency" not in parsed["fast-local"]
+    assert "gpu_role" not in parsed["auxiliary-local"]
+    assert "vram_mib" not in parsed["auxiliary-local"]
+    assert "residency" not in parsed["auxiliary-local"]
     # ... while the reserved render derived 27000/30000 = 0.9.
     assert "--gpu-memory-utilization\n      0.9\n" in reserved_out.read_text(encoding="utf-8")
     assert parsed["fast-reserved"]["gpu_role"] == "dark-fast"

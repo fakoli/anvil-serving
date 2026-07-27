@@ -709,7 +709,7 @@ def test_llm_stage_trims_large_tool_outputs_without_changing_small_json():
 def test_configure_realtime_session_ignores_client_model_override():
     stage = LLMStage(
         in_queue=None,
-        config=LLMStageConfig(model="fast-local", system_prompt="Manifest prompt."),
+        config=LLMStageConfig(model="auxiliary-local", system_prompt="Manifest prompt."),
         stream_fn=lambda text, config: iter(()),
     )
 
@@ -720,7 +720,7 @@ def test_configure_realtime_session_ignores_client_model_override():
         "tool_choice": "auto",
     })
 
-    assert stage.config.model == "fast-local"
+    assert stage.config.model == "auxiliary-local"
     assert stage.config.system_prompt == "Manifest prompt.\n\nSession prompt."
     assert stage.config.tool_choice == "auto"
 

@@ -35,7 +35,12 @@ def test_openclaw_sync_apply_writes_direct_alias_provider(tmp_path):
     data = result["data"]
     assert data["applied"] is True
     assert data["preview"]["direct_aliases"] is True
-    assert data["preview"]["model_ids"] == ["llm.primary", "llm.voice"]
+    assert data["preview"]["model_ids"] == [
+        "llm.primary",
+        "llm.voice",
+        "vision.ocr",
+        "vision.general",
+    ]
     assert "plugin_id" not in data["preview"]
     assert "route_endpoint" not in data["target"]
     assert out.is_file()

@@ -14,8 +14,8 @@ classified or redirected.
 
 ```toml
 [router.model_routes]
-llm.primary = "heavy-local"
-llm.voice = "fast-local"
+llm.primary = "primary-local"
+llm.voice = "auxiliary-local"
 vision.ocr = "ocr-local"
 vision.general = "vision-local"
 ```

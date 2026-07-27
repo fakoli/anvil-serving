@@ -16,6 +16,11 @@ REORDERED_CSV = (
     "1, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
 )
 
+CAPACITY_CSV = (
+    "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090, 32607\n"
+    "1, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell, 97887\n"
+)
+
 ROLES = (
     {"id": "fast", "uuid": "GPU-04D3B6E7-5691-3E86-1D34-C37999440CF1"},
     {"id": "heavy", "uuid": "GPU-D0F446CF-1771-414C-E116-A39138798A8C"},
@@ -62,6 +67,31 @@ def test_list_gpus_empty_on_any_error():
     def boom(*a, **k):
         raise RuntimeError("boom")
     assert gpus.list_gpus(_run=boom) == []
+
+
+def test_list_gpus_with_memory_parses_capacity_for_role_selection():
+    rows = gpus.list_gpus_with_memory(_run=lambda *a, **k: CAPACITY_CSV)
+
+    assert rows == [
+        {
+            "index": 0,
+            "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+            "name": "NVIDIA GeForce RTX 5090",
+            "memory_total_mib": 32607,
+        },
+        {
+            "index": 1,
+            "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+            "name": "NVIDIA RTX PRO 6000 Blackwell",
+            "memory_total_mib": 97887,
+        },
+    ]
+
+
+def test_list_gpus_with_memory_ignores_malformed_rows():
+    output = "bad row\n0, GPU-valid, GPU Name, not-a-number\n"
+
+    assert gpus.list_gpus_with_memory(_run=lambda *a, **k: output) == []
 
 
 # ---- gpu_uuid ------------------------------------------------------------------

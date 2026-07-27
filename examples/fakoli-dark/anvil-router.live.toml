@@ -10,27 +10,27 @@ availability_probe_timeout = 1
 
 # RTX PRO 6000: the sole primary LLM capability.
 [[router.tiers]]
-id = "heavy-local"
+id = "primary-local"
 base_url = "http://host.docker.internal:30002/v1"
 model = "laguna-s-2.1-nvfp4"
 dialect = "openai"
 context_limit = 262144
 privacy = "local"
 tool_support = true
-auth_env = "ANVIL_HEAVY_LOCAL_KEY"
+auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
 health_path = "/health"
 model_identity = true
 
 # RTX 5090: low-latency voice LLM and specialized vision capabilities.
 [[router.tiers]]
-id = "fast-local"
+id = "auxiliary-local"
 base_url = "http://host.docker.internal:30003/v1"
 model = "gemma4-e4b-it"
 dialect = "openai"
 context_limit = 32768
 privacy = "local"
 tool_support = true
-auth_env = "ANVIL_FAST_LOCAL_KEY"
+auth_env = "ANVIL_AUXILIARY_LOCAL_KEY"
 health_path = "/health"
 
 [[router.tiers]]
@@ -57,8 +57,8 @@ health_path = "/health"
 model_identity = true
 
 [router.model_routes]
-llm.primary = "heavy-local"
-llm.voice = "fast-local"
+llm.primary = "primary-local"
+llm.voice = "auxiliary-local"
 vision.ocr = "ocr-local"
 vision.general = "vision-local"
 

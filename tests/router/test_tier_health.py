@@ -112,7 +112,7 @@ def _get(host, port, path, *, token: Optional[str] = TOKEN):
 # --------------------------------------------------------------------------- #
 def test_missing_token_is_401_and_healthz_stays_open():
     """The snapshot needs the router bearer; only GET /healthz stays open."""
-    routing = _routing(_config(_tier("heavy-local", 30000)), AlwaysAvailable())
+    routing = _routing(_config(_tier("primary-local", 30000)), AlwaysAvailable())
     with _server(routing) as (host, port):
         status_noauth, _ = _get(host, port, HEALTH, token=None)
         status_badauth, _ = _get(host, port, HEALTH, token="wrong")
@@ -129,8 +129,8 @@ def test_missing_token_is_401_and_healthz_stays_open():
 # --------------------------------------------------------------------------- #
 def test_snapshot_has_a_row_per_configured_serve_with_roles():
     """One row per configured serve — llm tiers + purpose + audio — not only routed ones."""
-    heavy = _tier("heavy-local", 30000)
-    fast = _tier("fast-local", 30001)
+    heavy = _tier("primary-local", 30000)
+    fast = _tier("auxiliary-local", 30001)
     embed = PurposeModel(
         id="embed-serve", kind="embedding", model="bge-m3",
         base_url="http://127.0.0.1:30005/v1",
@@ -161,11 +161,11 @@ def test_snapshot_has_a_row_per_configured_serve_with_roles():
     # Every configured serve appears exactly once, in a stable order.
     by_id = {row["id"]: row for row in rows}
     assert set(by_id) == {
-        "heavy-local", "fast-local", "embed-serve", "rerank-serve",
+        "primary-local", "auxiliary-local", "embed-serve", "rerank-serve",
         "dark-stt", "dark-tts",
     }
-    assert by_id["heavy-local"]["role"] == "llm"
-    assert by_id["fast-local"]["role"] == "llm"
+    assert by_id["primary-local"]["role"] == "llm"
+    assert by_id["auxiliary-local"]["role"] == "llm"
     assert by_id["embed-serve"]["role"] == "embeddings"
     assert by_id["rerank-serve"]["role"] == "rerank"
     assert by_id["dark-stt"]["role"] == "stt"
@@ -181,28 +181,28 @@ def test_snapshot_has_a_row_per_configured_serve_with_roles():
 # --------------------------------------------------------------------------- #
 def test_tracked_unavailable_tier_reports_down_even_when_idle():
     """A tier the router tracks as unavailable is ``down`` though never routed to."""
-    heavy = _tier("heavy-local", 30000)
-    fast = _tier("fast-local", 30001)
+    heavy = _tier("primary-local", 30000)
+    fast = _tier("auxiliary-local", 30001)
     availability = _KeyedAvailability({
-        "heavy-local": AvailabilityResult(
+        "primary-local": AvailabilityResult(
             False, "unavailable", "health_transport_URLError"
         ),
-        "fast-local": AvailabilityResult(True, "ready", "health_passed"),
+        "auxiliary-local": AvailabilityResult(True, "ready", "health_passed"),
     })
     routing = _routing(_config(heavy, fast), availability)
     with _server(routing) as (host, port):
         status, raw = _get(host, port, HEALTH)
     assert status == 200
     by_id = {row["id"]: row for row in json.loads(raw)["tiers"]}
-    assert by_id["heavy-local"]["status"] == "down"
-    assert by_id["heavy-local"]["reason"] == "health_transport_URLError"
+    assert by_id["primary-local"]["status"] == "down"
+    assert by_id["primary-local"]["reason"] == "health_transport_URLError"
 
 
 def test_idle_but_healthy_tier_reports_up_not_unknown():
     """A configured-but-idle healthy tier is ``up`` — never ``unknown``."""
-    fast = _tier("fast-local", 30001)
+    fast = _tier("auxiliary-local", 30001)
     availability = _KeyedAvailability({
-        "fast-local": AvailabilityResult(True, "ready", "health_passed"),
+        "auxiliary-local": AvailabilityResult(True, "ready", "health_passed"),
     })
     routing = _routing(_config(fast), availability)
     with _server(routing) as (host, port):
@@ -216,9 +216,9 @@ def test_idle_but_healthy_tier_reports_up_not_unknown():
 def test_real_http_probe_stamps_latency_and_last_check_for_an_up_tier():
     """The freshness fields are real: an HTTP-probed healthy tier is up + timestamped."""
     tier = Tier(
-        id="fast-local",
+        id="auxiliary-local",
         base_url="http://127.0.0.1:30001/v1",
-        model="fast-local",
+        model="auxiliary-local",
         dialect="openai",
         context_limit=131072,
         privacy="local",
@@ -261,9 +261,9 @@ def test_no_serve_host_url_or_token_ever_appears_in_the_body():
     marker_host = "10.9.8.7"
     marker_port = "31337"
     secret = "SUPERSECRETUPSTREAMTOKEN"
-    tier = _tier("heavy-local", 30000, host=marker_host)  # base_url carries the host
+    tier = _tier("primary-local", 30000, host=marker_host)  # base_url carries the host
     availability = _KeyedAvailability({
-        "heavy-local": AvailabilityResult(
+        "primary-local": AvailabilityResult(
             False,
             "unavailable",
             # A hostile/buggy availability impl leaking an endpoint + secret.
@@ -288,9 +288,9 @@ def test_no_serve_host_url_or_token_ever_appears_in_the_body():
 
 def test_identity_mismatch_reason_is_categorized_degraded():
     """A serving-but-wrong-model tier reads degraded; the safe category survives."""
-    tier = _tier("heavy-local", 30000)
+    tier = _tier("primary-local", 30000)
     availability = _KeyedAvailability({
-        "heavy-local": AvailabilityResult(False, "unavailable", "identity_mismatch"),
+        "primary-local": AvailabilityResult(False, "unavailable", "identity_mismatch"),
     })
     routing = _routing(_config(tier), availability)
     with _server(routing) as (host, port):
@@ -305,7 +305,7 @@ def test_identity_mismatch_reason_is_categorized_degraded():
 # Additive: /health and /v1/decisions are unchanged
 # --------------------------------------------------------------------------- #
 def test_health_alias_advertises_the_new_route_and_decisions_still_work():
-    routing = _routing(_config(_tier("heavy-local", 30000)), AlwaysAvailable())
+    routing = _routing(_config(_tier("primary-local", 30000)), AlwaysAvailable())
     with _server(routing) as (host, port):
         h_status, h_raw = _get(host, port, "/health")
         d_status, d_raw = _get(host, port, "/v1/decisions?limit=1")
@@ -335,7 +335,7 @@ def test_plain_backend_without_routing_returns_empty_tiers():
 # --------------------------------------------------------------------------- #
 def test_build_tier_health_orders_tiers_then_purpose_then_audio():
     config = _config(
-        _tier("heavy-local", 30000),
+        _tier("primary-local", 30000),
         purpose_models=(PurposeModel(
             id="embed", kind="embedding", model="m", base_url="http://127.0.0.1:30005/v1"
         ),),
@@ -344,7 +344,7 @@ def test_build_tier_health_orders_tiers_then_purpose_then_audio():
         ),),
     )
     rows = build_tier_health(config, AlwaysAvailable())["tiers"]
-    assert [r["id"] for r in rows] == ["heavy-local", "embed", "stt"]
+    assert [r["id"] for r in rows] == ["primary-local", "embed", "stt"]
     assert [r["role"] for r in rows] == ["llm", "embeddings", "stt"]
     # AlwaysAvailable performs no probe -> no freshness metadata is fabricated.
     for row in rows:

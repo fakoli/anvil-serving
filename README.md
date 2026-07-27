@@ -28,8 +28,8 @@ capabilities.
 
 ```toml
 [router.model_routes]
-llm.primary = "heavy-local"
-llm.voice = "fast-local"
+llm.primary = "primary-local"
+llm.voice = "auxiliary-local"
 vision.ocr = "ocr-local"
 vision.general = "vision-local"
 ```
@@ -58,11 +58,16 @@ anvil-serving serves up SERVE_NAME --confirm
 anvil-serving router run
 ```
 
-`init` writes the packaged operational manifests to `~/.anvil-serving`; use
-`--out-dir` to choose another location or `--single-model` for a focused
-one-model scaffold. `serves up` is the canonical bring-up path for models and
-other manifest-owned resources. Preview the resolved operation before
-confirming it.
+`init` writes the packaged operational manifests to `~/.anvil-serving`. It
+detects NVIDIA GPU UUIDs with `nvidia-smi`, assigns the highest-VRAM card to
+Primary and the lowest-VRAM card to Auxiliary, and resolves the host's Tailscale IPv4
+address. Equal-VRAM cards are assigned deterministically by runtime index.
+Use explicit host-value flags to override discovery, `--no-detect-host` to keep
+placeholders, `--out-dir` to choose another location, or `--single-model` for a
+focused one-model scaffold. `serves up` is the canonical bring-up path for
+models and other manifest-owned resources. Rerunning `init` leaves
+content-identical files untouched; only changed files receive numbered backups
+before replacement. Preview the resolved operation before confirming it.
 
 With the selected serves running, call the gateway:
 

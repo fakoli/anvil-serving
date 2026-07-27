@@ -153,7 +153,7 @@ def test_manifest_pipeline_kwargs_preserve_stage_runtime_knobs():
             },
             "llm": {
                 "base_url": "http://127.0.0.1:8000/v1",
-                "model": "fast-local",
+                "model": "auxiliary-local",
                 "stream": True,
                 "timeout": 33.0,
             },

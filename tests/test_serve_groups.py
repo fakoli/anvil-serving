@@ -41,7 +41,7 @@ def _set(tmp_path):
         name = "fast"
         container = "c-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         gpu_role = "g"
         vram_mib = 6000
@@ -77,7 +77,7 @@ def _set(tmp_path):
         name = "heavy"
         container = "c-heavy"
         port = 30002
-        model = "heavy-local"
+        model = "primary-local"
         engine = "vllm"
         groups = ["heavy-only", "stack"]
         up = "docker compose up -d heavy"
@@ -144,7 +144,7 @@ def test_load_manifest_set_ledger_not_double_counted(tmp_path):
         name = "fast"
         container = "c-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         gpu_role = "g"
         vram_mib = 6000
@@ -333,8 +333,8 @@ EXAMPLE_DIR = os.path.dirname(serves.EXAMPLE_MANIFEST)
 def test_shipped_example_manifests_authored_groups():
     s = serves.load_manifest_set(serves.EXAMPLE_MANIFEST)
     by_name = {x["name"]: set(x.get("groups") or []) for x in s}
-    assert by_name["heavy"] == {"heavy-only", "llm-stack"}
-    assert by_name["fast"] == {"fast-only", "llm-stack"}
+    assert by_name["primary"] == {"primary-only", "llm-stack"}
+    assert by_name["auxiliary"] == {"auxiliary-only", "llm-stack"}
     assert by_name["embeddings"] == {"embedding", "llm-stack"}
     assert by_name["reranker"] == {"embedding", "llm-stack"}
     assert by_name["ocr"] == {"ocr", "llm-stack"}
@@ -355,7 +355,14 @@ def test_shipped_example_experiment_serves_untagged():
 def test_shipped_example_group_catalog():
     s = serves.load_manifest_set(serves.EXAMPLE_MANIFEST)
     catalog = {row["group"]: row["serves"] for row in serves.groups_summary(s)["groups"]}
-    assert catalog["llm-stack"] == ["fast", "embeddings", "reranker", "ocr", "vision", "heavy"]
+    assert catalog["llm-stack"] == [
+        "auxiliary",
+        "embeddings",
+        "reranker",
+        "ocr",
+        "vision",
+        "primary",
+    ]
     assert catalog["ocr"] == ["ocr"]
     assert catalog["voice"] == ["stt", "tts", "realtime-proxy"]
     assert catalog["comfy"] == ["comfyui"]

@@ -122,17 +122,17 @@ BASE_TOML = """
 [router]
 
 [[router.tiers]]
-id            = "fast-local"
+id            = "auxiliary-local"
 base_url      = "http://127.0.0.1:30001/v1"
 model         = "fast"
 dialect       = "openai"
 context_limit = 32768
 privacy       = "local"
 tool_support  = true
-auth_env      = "ANVIL_FAST_LOCAL_KEY"
+auth_env      = "ANVIL_AUXILIARY_LOCAL_KEY"
 
 [router.model_routes]
-llm.primary = "fast-local"
+llm.primary = "auxiliary-local"
 """
 
 PURPOSE_TOML = BASE_TOML + """
@@ -215,7 +215,7 @@ base_url = "http://127.0.0.1:30007/v1"
 def test_config_rejects_purpose_id_colliding_with_tier_id(tmp_path):
     toml = BASE_TOML + """
 [[router.purpose_models]]
-id       = "fast-local"
+id       = "auxiliary-local"
 kind     = "embedding"
 model    = "m"
 base_url = "http://127.0.0.1:30005/v1"

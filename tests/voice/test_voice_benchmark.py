@@ -502,7 +502,7 @@ def test_build_evidence_record_has_stable_json_schema_fields():
         ),
         llm_config=LLMStageConfig(
             base_url="http://127.0.0.1:8000/v1",
-            model="fast-local",
+            model="auxiliary-local",
         ),
         tts_config=TTSStageConfig(
             base_url="http://127.0.0.1:30011/v1",
@@ -522,7 +522,7 @@ def test_build_evidence_record_has_stable_json_schema_fields():
         "candidate": "baseline",
         "llm": {
             "base_url": "http://127.0.0.1:8000/v1",
-            "model": "fast-local",
+            "model": "auxiliary-local",
         },
         "stt": {
             "base_url": "http://127.0.0.1:30010/v1",

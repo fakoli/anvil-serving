@@ -45,8 +45,8 @@ anvil-serving --help
 
 | Tier | URL | Purpose |
 |------|-----|---------|
-| `fast-local` | `http://127.0.0.1:30001/v1` | Low-latency local work. |
-| `heavy-local` | `http://127.0.0.1:30000/v1` | Higher-capacity local work. |
+| `auxiliary-local` | `http://127.0.0.1:30001/v1` | Low-latency local work. |
+| `primary-local` | `http://127.0.0.1:30000/v1` | Higher-capacity local work. |
 
 **Where do these serves come from?** anvil-serving manages local model serves as Docker Compose
 services: declare them in a manifest, then run `anvil-serving serves up` (see
@@ -67,18 +67,27 @@ with zero hand-assembly:
 ```bash
 anvil-serving init                   # scaffold into ~/.anvil-serving (or --out-dir DIR)
 cp ~/.anvil-serving/.env.example ~/.anvil-serving/.env   # then fill host values + secrets
-anvil-serving serves groups          # voice / fast-only / heavy-only / embedding / llm-stack / comfy
+anvil-serving serves groups          # voice / auxiliary-only / primary-only / embedding / llm-stack / comfy
 anvil-serving serves up --group voice --dry-run
 anvil-serving serves up --group voice --confirm
 anvil-serving router run             # uses ~/.anvil-serving/router.toml
 ```
 
-Host-specific values (GPU UUIDs, tailnet address) land as clearly-marked placeholders you edit
-before bring-up; secrets are never written (only `.env.example`). Existing operator files are
-backed up (`.anvil.bak.N`), never clobbered. Explicit `--config` and `--manifest` paths always win.
-Set `ANVIL_SERVING_HOME` to use an alternate machine-level config directory. For a single-model
-quick bring-up into the CWD instead, use `anvil-serving init --single-model`. See
-[`init`](cli/host.md#init) for the full set.
+`init` detects stable NVIDIA GPU UUIDs and total memory, assigns the
+highest-VRAM card to Primary and the lowest-VRAM card to Auxiliary, and resolves this
+node's Tailscale IPv4 address. Equal capacities are resolved by runtime index.
+The generated workload mapping puts the primary LLM on Primary and the smaller
+LLM, STT, TTS, OCR, embeddings, reranker, vision, and ComfyUI on Auxiliary.
+Values it cannot detect remain clearly marked
+placeholders. Secrets are never written (only `.env.example`). Existing
+operator files are backed up (`.anvil.bak.N`) only when their generated content
+differs; identical files are left in place without another backup. Use
+`--primary-gpu-uuid`, `--auxiliary-gpu-uuid`, or `--tailnet-ip` to override discovery,
+or `--no-detect-host` to keep all host placeholders. Explicit `--config` and
+`--manifest` paths always win. Set `ANVIL_SERVING_HOME` to use an alternate
+machine-level config directory. For a single-model quick bring-up into the CWD
+instead, use `anvil-serving init --single-model`. See [`init`](cli/host.md#init)
+for the full set.
 
 Before starting the router, stand up those serves and validate each endpoint:
 

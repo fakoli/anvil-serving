@@ -10,7 +10,7 @@
 # 2026-07-13 fast swap (gpu-reservations:T006): fast = Gemma 4 E4B IT (:30003, RTX 5090) with a
 # declared ADR-0017 resident reservation; the previous Qwen3.6-35B-A3B-NVFP4 recipe stays as the
 # opt-in `fast-qwen36-rollback` serve. These back the router tiers in the live
-# config (heavy-local -> :30002, fast-local -> :30003). `{dir}` resolves to this file's dir.
+# config (primary-local -> :30002, auxiliary-local -> :30003). `{dir}` resolves to this file's dir.
 #
 # BOTH serves are Docker-Compose-defined (docker-compose.yml holds a service per tier) — see
 # docs/adr/0002-serves-are-compose-defined.md. Each `up` targets its own compose service by
@@ -19,7 +19,7 @@
 # <name>` to force a fresh container.
 
 # ADR-0017 GPU residency reservations — declared capacity of the multi-tenant RTX 5090
-# ("dark-fast"). `serves up` admits a reserving serve against vram_mib - reserve_mib before any
+# ("dark-auxiliary"). `serves up` admits a reserving serve against vram_mib - reserve_mib before any
 # container command runs; `serves status` prints the derived ledger.
 #   capacity 32607 MiB = nvidia-smi memory.total for GPU-04d3b6e7… (RTX 5090 32 GB).
 #   reserve 4608 MiB   = Windows display/system + umbrella for the always-on voice STT/TTS
@@ -47,31 +47,31 @@
 #                        all five residents stay healthy inside the 32607 MiB device. Revisit
 #                        at the next drift check.
 #                        (T015 evidence: docs/findings/2026-07-13-t015-resident-set-evidence/)
-# The dark-heavy PRO 6000 is single-tenant (heavy tier only) and stays outside the ledger for
+# The dark-primary PRO 6000 is single-tenant (heavy tier only) and stays outside the ledger for
 # now — adoption is incremental (ADR-0017 consequences).
 [[gpu_roles]]
-id = "dark-fast"
+id = "dark-auxiliary"
 vram_mib = 32607
 reserve_mib = 4608
 
 [[serve]]
-name = "heavy"                 # heavy quality tier — Laguna S 2.1 NVFP4
-container = "vllm-laguna-s-heavy"
+name = "primary"                 # heavy quality tier — Laguna S 2.1 NVFP4
+container = "vllm-laguna-s-primary"
 port = 30002
 model = "laguna-s-2.1-nvfp4"   # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
-groups = ["heavy-only", "llm-stack"]  # serve groups (serves up/down/status --group)
-up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
+groups = ["primary-only", "llm-stack"]  # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.yml up -d primary"
 
 [[serve]]
-name = "heavy-gptoss-puzzle-rollback" # ready rollback; stop `heavy` first because both own :30002
-container = "vllm-gptoss-puzzle-heavy-rollback"
+name = "primary-gptoss-puzzle-rollback" # ready rollback; stop `heavy` first because both own :30002
+container = "vllm-gptoss-puzzle-primary-rollback"
 port = 30002
 model = "gpt-oss-puzzle-88b"
 engine = "vllm"
 health = "/health"
-up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-gptoss-puzzle-rollback"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d primary-gptoss-puzzle-rollback"
 
 # Fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090 (gpu-reservations:T006 swap; T011
 # operator rebalance). bf16 weights alone are 15.18 GiB and cannot fit the rebalanced
@@ -83,17 +83,17 @@ up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-
 # --gpu-memory-utilization 0.4396 = 14336 / 32607 capacity (see the deviation note there:
 # the T003 derive formula over-allocates when reserve_mib > 0) — change them together.
 [[serve]]
-name = "fast"                  # fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090
-container = "vllm-gemma4-e4b-fast"
+name = "auxiliary"                  # fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090
+container = "vllm-gemma4-e4b-auxiliary"
 port = 30003
 model = "gemma4-e4b-it"        # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 14336
 residency = "resident"
-groups = ["fast-only", "llm-stack"]  # serve groups (serves up/down/status --group)
-up = "docker compose -f {dir}/docker-compose.yml up -d fast"
+groups = ["auxiliary-only", "llm-stack"]  # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.yml up -d auxiliary"
 
 # ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
 # Always-on text-embedding + reranker serves on the multi-tenant 5090, riding the same
@@ -115,7 +115,7 @@ port = 30005
 model = "qwen3-embedding-0.6b" # served-model-name (what /v1/embeddings callers send)
 engine = "embedding"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 3200
 residency = "resident"
 groups = ["embedding", "llm-stack"]  # serve groups (serves up/down/status --group)
@@ -128,7 +128,7 @@ port = 30006
 model = "qwen3-reranker-0.6b"  # served-model-name (what /rerank callers send)
 engine = "reranker"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 3456
 residency = "resident"
 groups = ["embedding", "llm-stack"]  # serve groups (serves up/down/status --group)
@@ -147,7 +147,7 @@ up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
 # CAPACITY (2026-07-13, gpu-reservations:T011 operator rebalance): with fast at
 # 14336 MiB (FP8-Dynamic) and reserve at 4608 MiB, the FULL resident set — fast
 # 14336 + embeddings 3200 + reranker 3456 + ocr 5120 = 26112 MiB — fits the
-# 27999 MiB dark-fast budget with 1887 MiB of ledger headroom, so `serves up
+# 27999 MiB dark-auxiliary budget with 1887 MiB of ledger headroom, so `serves up
 # ocr` admits alongside the T009 trio. (The earlier T015 conflict — fast at
 # 18432 left only 351 MiB free — was resolved by that rebalance; see the
 # [[gpu_roles]] note.)
@@ -158,7 +158,7 @@ port = 30007
 model = "paddleocr-vl-1.6"     # served-model-name (the ocr-local router tier's `model`)
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 5120
 residency = "resident"
 groups = ["ocr", "llm-stack"]  # serve groups (serves up/down/status --group)
@@ -183,7 +183,7 @@ up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
 # leaves 1887 MiB free < 12288. That is by design for an evictable serve: `serves up
 # vision` is correctly denied with the ledger until the operator frees residents
 # (e.g. `serves down ocr reranker embeddings` -> 13663 MiB free admits it). Which
-# residents dark-fast hosts is the gpu-reservations:T015 resident-set decision.
+# residents dark-auxiliary hosts is the gpu-reservations:T015 resident-set decision.
 [[serve]]
 name = "vision"                # Qwen3-VL-4B-Instruct (vLLM, RTX 5090)
 container = "vllm-qwen3-vl-vision"
@@ -191,7 +191,7 @@ port = 30008
 model = "qwen3-vl-4b-instruct" # served-model-name (the vision-local router tier's `model`)
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 12288
 residency = "evictable"
 router_tier = "vision-local"
@@ -202,12 +202,12 @@ up = "docker compose -f {dir}/docker-compose.yml up -d vision"
 # and complete model+router rollback. This single-GPU plan validates the newly
 # started target in-transaction; a separately resident candidate cannot coexist.
 [[promotion]]
-name = "laguna-s-2.1-heavy"
-target = "heavy"
-rollback = "heavy-gptoss-puzzle-rollback"
+name = "laguna-s-2.1-primary"
+target = "primary"
+rollback = "primary-gptoss-puzzle-rollback"
 router_config = "{dir}/anvil-router.live.toml"
 rollback_router_config = "{dir}/anvil-router.gptoss-puzzle-rollback.toml"
-affected_tiers = ["heavy-local"]
+affected_tiers = ["primary-local"]
 drain_timeout = 120
 needle_ctx = 120000
 tool_batch = 10
@@ -383,7 +383,7 @@ up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-qwen3-30b
 
 # Heavy-tier CANDIDATE (evaluation, NOT promoted): Qwen3.5-122B-A10B-NVFP4 on the RTX PRO 6000
 # (:39017). Shares the PRO 6000 with the production GPT-OSS heavy tier, so stop `heavy` before
-# `serves up heavy-qwen35-122b`. Not wired into the router until explicitly promoted to heavy-local.
+# `serves up heavy-qwen35-122b`. Not wired into the router until explicitly promoted to primary-local.
 [[serve]]
 name = "heavy-qwen35-122b"
 container = "vllm-heavy-qwen35-122b"
@@ -395,7 +395,7 @@ up = "docker compose -f {dir}/docker-compose.experiment.yml up -d heavy-qwen35-1
 
 # Single-PRO-6000 MXFP4/Marlin comparison candidate. This is the previously proven
 # flexibility-mode checkpoint expanded to 131K for a local throughput + deterministic
-# session-eval A/B. It shares the Heavy GPU and is never started with `heavy` or another
+# session-eval A/B. It shares the Primary GPU and is never started with `heavy` or another
 # PRO-6000 candidate resident.
 [[serve]]
 name = "heavy-qwen35-122b-mxfp4"
