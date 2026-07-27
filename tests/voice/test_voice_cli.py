@@ -241,19 +241,26 @@ def test_old_voice_lifecycle_paths_are_actionable_tombstones(
     assert "use `%s` instead" % replacement in captured.err
 
 
-def test_audio_requires_topology_before_serve_construction(
-    manifest_path, monkeypatch, capsys
+def test_audio_missing_default_topology_fails_before_serve_construction(
+    manifest_path, tmp_path, monkeypatch, capsys
 ):
+    config_home = tmp_path / "operator-home"
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
     monkeypatch.setattr(
         voice_cli,
         "_audio_serves",
-        lambda *args, **kwargs: pytest.fail("missing topology reached serve construction"),
+        lambda *args, **kwargs: pytest.fail(
+            "missing default topology reached serve construction"
+        ),
     )
 
     rc = voice_cli.main(["audio", "up", "--config", manifest_path, "--dry-run"])
 
     assert rc == 2
-    assert "--topology is required" in capsys.readouterr().err
+    error = capsys.readouterr().err
+    assert "invalid topology" in error
+    assert "operator-home" in error
+    assert "operator-topology.toml" in error
 
 
 def test_audio_up_uses_dark_owned_host_relative_endpoints(

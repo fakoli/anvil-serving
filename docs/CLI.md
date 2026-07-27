@@ -56,7 +56,7 @@ separator.
 
 | Option | Purpose |
 | --- | --- |
-| `--topology PATH` | Use a deployment topology document for target resolution. |
+| `--topology PATH` | Use a deployment topology document for target resolution (default after target resolution is requested: `$ANVIL_SERVING_HOME/operator-topology.toml`). |
 | `--topology-overlay PATH` | Apply a deployment overlay to the topology. |
 | `--command-host host:ID` | Declare the host issuing the command. |
 | `--command-runtime runtime:ID` | Declare the runtime issuing the command. |
@@ -79,6 +79,9 @@ separator.
   time without changing the result envelope.
 - Resource-owner commands resolve through the declared topology. SSH is a recovery
   transport, not an implicit first choice.
+- Omitting `--topology` does not enable target resolution by itself. Once a target,
+  command host/runtime, transport, or another resolution option opts into it, the
+  dispatcher uses the operator config-home topology.
 - Examples use `127.0.0.1`, because loopback is host-relative.
 
 ## Complete command index

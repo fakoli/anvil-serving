@@ -55,6 +55,7 @@ from anvil_serving.benchmarking.artifacts import (
     BenchmarkArtifactError,
     resolve_benchmark_artifact_path,
 )
+from anvil_serving.paths import default_topology_path, resolve_topology_path
 from anvil_serving.targets import TargetResolutionError
 from anvil_serving.topology import TopologyValidationError, load_topology
 
@@ -153,14 +154,7 @@ def _resolve_audio_operation(args):
     data, err = _load(args.config, getattr(args, "profile", None))
     if err:
         return None, None, err, 2
-    topology_path = getattr(args, "topology", None)
-    if not topology_path:
-        return (
-            None,
-            None,
-            "--topology is required so STT/TTS lifecycle resolves its model owner",
-            2,
-        )
+    topology_path = resolve_topology_path(getattr(args, "topology", None))
     try:
         topology = load_topology(topology_path)
         targets = voice_config.resolve_audio_targets(
@@ -651,9 +645,8 @@ def _resolve_proxy_operation(args, action: str):
     resolved, err = _load_resolved_config(args)
     if err:
         return None, None, None, err, 2
-    topology_path = getattr(args, "topology", None)
-    if not topology_path:
-        return None, None, None, "--topology is required to resolve the proxy owner", 2
+    topology_path = resolve_topology_path(getattr(args, "topology", None))
+    args.topology = topology_path
     try:
         topology = load_topology(topology_path, getattr(args, "topology_overlay", None))
         targets = voice_config.resolve_proxy_targets(
@@ -1437,7 +1430,14 @@ def build_parser():
     def add_audio_resolution(sp):
         add_config(sp)
         add_profile(sp)
-        sp.add_argument("--topology", help="topology document used to resolve STT/TTS owners")
+        sp.add_argument(
+            "--topology",
+            default=default_topology_path(),
+            help=(
+                "topology document used to resolve STT/TTS owners "
+                "(default: $ANVIL_SERVING_HOME/operator-topology.toml)"
+            ),
+        )
         sp.add_argument("--topology-overlay", help="deployment overlay identity recorded in context")
         sp.add_argument("--command-host", help="declared command host")
         sp.add_argument("--command-runtime", help="declared command runtime")
@@ -1508,7 +1508,14 @@ def build_parser():
     def add_proxy_resolution(sp):
         add_config(sp)
         add_profile(sp)
-        sp.add_argument("--topology", help="topology document used to resolve the proxy owner")
+        sp.add_argument(
+            "--topology",
+            default=default_topology_path(),
+            help=(
+                "topology document used to resolve the proxy owner "
+                "(default: $ANVIL_SERVING_HOME/operator-topology.toml)"
+            ),
+        )
         sp.add_argument("--topology-overlay", help="deployment overlay applied to the topology")
         sp.add_argument("--command-host", help="declared command host")
         sp.add_argument("--command-runtime", help="declared command runtime")

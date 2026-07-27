@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 
 from ..arguments import (
@@ -20,6 +19,7 @@ from ..errors import ok as _ok
 from ..runtime import (
     capture as _capture,
 )
+from ....paths import resolve_topology_path
 
 
 def _voice_cli_argv(
@@ -128,14 +128,10 @@ def tool_voice_manage(args: dict) -> dict:
     config_arg = _str_arg(args, "config", "")
     config = voice_config.resolve_config_path(config_arg or None)
     profile = _str_arg(args, "profile", "")
-    topology_path = (
-        _str_arg(args, "topology", "") or os.environ.get("ANVIL_VOICE_TOPOLOGY", "").strip()
+    topology_path = resolve_topology_path(
+        _str_arg(args, "topology", "") or None,
+        env_var="ANVIL_VOICE_TOPOLOGY",
     )
-    if not topology_path:
-        raise ToolError(
-            "missing_topology",
-            "set ANVIL_VOICE_TOPOLOGY on the Dark controller or pass topology",
-        )
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
@@ -258,14 +254,10 @@ def tool_voice_proxy_manage(args: dict) -> dict:
         )
     config = voice_config.resolve_config_path(_str_arg(args, "config", "") or None)
     profile = _str_arg(args, "profile", "")
-    topology_path = (
-        _str_arg(args, "topology", "") or os.environ.get("ANVIL_VOICE_TOPOLOGY", "").strip()
+    topology_path = resolve_topology_path(
+        _str_arg(args, "topology", "") or None,
+        env_var="ANVIL_VOICE_TOPOLOGY",
     )
-    if not topology_path:
-        raise ToolError(
-            "missing_topology",
-            "set ANVIL_VOICE_TOPOLOGY on the Mini controller or pass topology",
-        )
     try:
         data = voice_config.load_manifest(config, profile=profile or None)
         topology = load_topology(topology_path)
