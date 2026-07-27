@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.13.3] - 2026-07-26
+
 ### Breaking changes
 
 - **The router is now a thin, direct capability gateway.** The intent
@@ -190,6 +192,11 @@ All notable changes to this project are documented here. The format is based on
   selected router config, treats optional router-global presets as explicitly out of scope, and
   validates only Anvil-bound overrides in mixed decision logs. Explicit captures now fail closed on
   empty, malformed, inconsistent, or non-string route evidence instead of producing false passes.
+
+- **Router lifecycle controls now match their canonical CLI and MCP contracts.** Action-specific
+  help exposes Compose, service, environment, container, verification, and guarded recreate
+  options; previews and results name their exact selected target; MCP preserves confirmation; and
+  router-only recreation keeps Compose `--no-deps` intact.
 
 ## [0.13.2] - 2026-07-14
 
@@ -1092,7 +1099,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.13.2...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.13.3...HEAD
+[0.13.3]: https://github.com/fakoli/anvil-serving/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/fakoli/anvil-serving/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/fakoli/anvil-serving/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/fakoli/anvil-serving/compare/v0.12.0...v0.13.0
