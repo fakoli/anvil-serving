@@ -157,6 +157,28 @@ def test_compare_flags_material_workload_differences(tmp_path: Path) -> None:
     assert result["differences"] == {"concurrency": [1, 5]}
 
 
+def test_compare_rejects_different_capacity_measurement_protocols(tmp_path: Path) -> None:
+    base = {
+        "schema": "anvil-serving.benchmark/v1",
+        "model": "one",
+        "concurrency": 1,
+        "context_tokens": 8192,
+        "max_tokens": 64,
+        "metrics": {},
+    }
+    legacy = _write(tmp_path / "legacy.json", base)
+    current = _write(
+        tmp_path / "current.json",
+        {**base, "measurement_protocol": "capacity-v2"},
+    )
+    result = benchmark_evidence.compare_artifacts([legacy, current])
+    assert result["comparable"] is False
+    assert result["differences"]["measurement_protocol"] == [
+        None,
+        "capacity-v2",
+    ]
+
+
 def test_cli_evidence_list_emits_structured_json(tmp_path: Path, capsys) -> None:
     _write(tmp_path / "run.json", {
         "schema": "anvil-serving.benchmark/v1",

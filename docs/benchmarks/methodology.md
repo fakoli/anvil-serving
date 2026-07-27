@@ -11,7 +11,7 @@ classes, execution pipeline, and minimum publication record.
 | **Functional gate** | Endpoint health, short generation, structured JSON, long-context needle, and tool-call fan-out | General intelligence or sustained throughput |
 | **Short capacity** | TTFT, end-to-end latency, completion rate, and aggregate output tok/s for a fixed prompt set and concurrency | Controlled decode speed when answers are short |
 | **Controlled decode** | Output tokens per decode interval on a sufficiently long, fixed generation workload | Prefill speed, reasoning quality, or tool reliability |
-| **Protocol-v2 quality** | Visible-answer correctness under an explicit reasoning-headroom budget, with truncation and repeated-attempt accounting | Broad leaderboard quality beyond the small retained slices |
+| **Protocol-v3 quality** | Visible-answer correctness under an explicit reasoning-headroom budget, with truncation, finish-reason, and repeated-attempt accounting | Broad leaderboard quality beyond the small retained slices |
 | **Long-context validation** | A needle or equivalent correctness check at a stated token length | The model-card maximum, multiple simultaneous maximum windows, or useful recall at every length |
 | **External prior** | Current official recipe, model-card claim, or dated community lead used to choose candidates | A local RTX PRO 6000 result |
 | **Historical invalid** | A retained run whose protocol flaw prevents the claimed comparison | Promotion evidence; it remains useful for diagnosing the harness |
@@ -46,6 +46,16 @@ derived rate for very short outputs, where timer and scheduling overhead dominat
 **Aggregate output throughput.** Total output tokens across all requests divided
 by wall time. This is useful for batch capacity at a stated concurrency, but it
 is not interchangeable with per-request controlled decode.
+The local harness uses `usage.completion_tokens` when the endpoint returns it.
+Under capacity measurement protocol `capacity-v2`, usage is required for exact
+token throughput. When usage is absent, exact throughput is null and streamed
+content chunks are retained only as a diagnostic rate. Comparison tooling treats
+different capacity measurement protocols as a workload mismatch.
+
+**Percentiles.** Capacity summaries use the nearest-rank method over successful
+samples. Sort the values, compute `ceil(percentile * sample_count / 100)`, and
+select that one-based rank. Failed requests are reported separately rather than
+inserted as synthetic latency values.
 
 **Concurrency.** The number of active requests driven by the harness. Report it
 separately from the engine's admission cap (`max_num_seqs`). Prefix caching or
@@ -57,7 +67,7 @@ largest length that passed a retained correctness check. **Advertised context**
 is only a model-card claim. Never substitute one for another.
 
 **Reasoning headroom.** The allowance added to a separate visible-answer
-allocation. Protocol v2 sends their sum as the endpoint's single completion cap;
+allocation. Protocol v3 sends their sum as the endpoint's single completion cap;
 it cannot hard-partition hidden and visible channels. A 4,096-token headroom plus
 the standard 256-token visible allocation therefore sends `max_tokens=4352`.
 A wrong visible answer and a truncated/no-visible-answer attempt are different
@@ -66,6 +76,12 @@ failure modes and must be counted separately.
 **Stable quality.** An item is stable only when every retained repeat is correct.
 Publish both stable items and total correct attempts, such as `8/10 stable,
 23/30 attempts`.
+
+**Sampled context plan.** Capacity sampling uses measured cumulative context
+buckets and a recorded pseudorandom seed. The full plan is resolved before
+workers are submitted, so thread scheduling cannot change which context lengths
+the run attempts. Prefix-cache bursts share a byte-identical bounded prefix and
+retain a unique request suffix.
 
 ## Evaluation pipeline
 
