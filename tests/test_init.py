@@ -664,6 +664,14 @@ def test_copy_env_command_uses_powershell_on_windows():
     )
 
 
+def test_copy_env_command_uses_posix_paths_on_posix():
+    command = init._copy_env_command("/operator home", platform_name="posix")
+
+    assert command == (
+        "cp -- '/operator home/.env.example' '/operator home/.env'"
+    )
+
+
 def test_init_cli_no_flags_defaults_to_home_scaffold(tmp_path):
     # An explicit target always wins over the default config home.
     rc = init.main(["--no-detect-host", "--out-dir", str(tmp_path)])

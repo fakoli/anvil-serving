@@ -33,7 +33,9 @@ import argparse
 import importlib.resources as _resources
 import ipaddress
 import json
+import ntpath
 import os
+import posixpath
 import shlex
 import subprocess
 import sys
@@ -329,10 +331,11 @@ def _personalize_home_text(text, discovery):
 
 
 def _copy_env_command(out_dir, platform_name=None):
-    source = os.path.join(out_dir, ".env.example")
-    destination = os.path.join(out_dir, ".env")
     platform_name = os.name if platform_name is None else platform_name
     if platform_name == "nt":
+        source = ntpath.join(out_dir, ".env.example")
+        destination = ntpath.join(out_dir, ".env")
+
         def quote(value):
             return "'" + value.replace("'", "''") + "'"
 
@@ -340,6 +343,8 @@ def _copy_env_command(out_dir, platform_name=None):
             quote(source),
             quote(destination),
         )
+    source = posixpath.join(out_dir, ".env.example")
+    destination = posixpath.join(out_dir, ".env")
     return "cp -- %s %s" % (shlex.quote(source), shlex.quote(destination))
 
 
