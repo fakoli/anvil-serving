@@ -20,7 +20,7 @@ from anvil_serving.router.availability import (
     AvailabilityResult,
     HttpHealthAvailability,
 )
-from anvil_serving.router.backends import StaticBackend
+from tests.router.helpers import StaticBackend
 from anvil_serving.router.config import AudioRoute, PurposeModel, RouterConfig, Tier
 from anvil_serving.router.front_door import TIER_HEALTH_ENDPOINT, make_server
 from anvil_serving.router.serve import RoutingBackend

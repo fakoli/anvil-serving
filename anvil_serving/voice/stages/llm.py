@@ -259,8 +259,8 @@ def build_request_body(
 #: ``(url, *, data: bytes, headers: dict, timeout: float) -> a file-like
 #: response`` (supports ``for line in resp`` and ``.close()``, matching a live
 #: ``urllib`` response -- see ``anvil_serving/router/backends/sse.py``'s
-#: ``iter_sse_events``). Mirrors ``CloudBackend``'s ``stream_transport`` DI
-#: seam (``anvil_serving/router/backends/cloud.py``) so tests can inject a
+#: ``iter_sse_events``). Mirrors ``RelayBackend``'s ``stream_transport`` DI
+#: seam (``anvil_serving/router/backends/relay.py``) so tests can inject a
 #: canned in-memory response instead of opening a real socket.
 Transport = Callable[..., Any]
 

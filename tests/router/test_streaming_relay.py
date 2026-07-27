@@ -1,4 +1,4 @@
-"""True upstream streaming in CloudBackend/RelayBackend.
+"""True upstream streaming in RelayBackend/RelayBackend.
 
 Hermetic: a fake stream_transport returns canned SSE bytes; no sockets. Pins:
 
@@ -17,8 +17,7 @@ import json
 
 import pytest
 
-from anvil_serving.router.backends.cloud import CloudBackend, CloudBackendError
-from anvil_serving.router.backends.relay import RelayBackend
+from anvil_serving.router.backends.relay import RelayBackend, RelayBackendError
 from anvil_serving.router.backends.sse import (
     AnthropicStreamAssembler,
     OpenAIStreamAssembler,
@@ -28,7 +27,7 @@ from anvil_serving.router.config import Tier
 from anvil_serving.router.internal import InternalRequest, Message
 
 
-def _tier(dialect: str, privacy: str = "cloud", extra_body=None) -> Tier:
+def _tier(dialect: str, privacy: str = "local", extra_body=None) -> Tier:
     return Tier(
         id=f"{dialect}-tier", base_url="https://api.example.test",
         dialect=dialect, context_limit=200_000, privacy=privacy,
@@ -115,7 +114,7 @@ def test_openai_streaming_deltas_and_structured():
         {"choices": [], "usage": {"prompt_tokens": 12, "completion_tokens": 2}},
     )
     transport = FakeStreamTransport(payload)
-    backend = CloudBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
+    backend = RelayBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
                            stream_transport=transport)
     deltas = list(backend.generate(_request()))
     assert deltas == ["Hel", "lo"]  # REAL model chunks, not word-split fakes
@@ -141,7 +140,7 @@ def test_openai_streaming_tool_calls_accumulate():
             {"index": 0, "function": {"arguments": "\"Oakland\"}"}}]}}]},
         {"choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]},
     )
-    backend = CloudBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
+    backend = RelayBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
                            stream_transport=FakeStreamTransport(payload))
     assert list(backend.generate(_request())) == []
     s = backend.get_last_structured()
@@ -186,7 +185,7 @@ def test_anthropic_streaming_deltas_tools_and_usage():
         model="chat", messages=[Message("user", "hi")], max_tokens=64,
         stream=True, dialect="anthropic",
     )
-    backend = CloudBackend(_tier("anthropic"), env={"EXAMPLE_KEY": "k"},
+    backend = RelayBackend(_tier("anthropic"), env={"EXAMPLE_KEY": "k"},
                            stream_transport=FakeStreamTransport(payload))
     assert list(backend.generate(request)) == ["Hi"]
     s = backend.get_last_structured()
@@ -227,7 +226,7 @@ def test_non_sse_response_falls_back_to_buffered_parse():
                      "finish_reason": "stop"}],
         "usage": {"prompt_tokens": 3, "completion_tokens": 2},
     }).encode()
-    backend = CloudBackend(
+    backend = RelayBackend(
         _tier("openai"), env={"EXAMPLE_KEY": "k"},
         stream_transport=FakeStreamTransport(body, ctype="application/json"))
     assert "".join(backend.generate(_request())) == "one two"
@@ -248,7 +247,7 @@ def test_custom_buffered_transport_never_streams():
                          "finish_reason": "stop"}],
         }).encode()
 
-    backend = CloudBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
+    backend = RelayBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
                            transport=buffered)
     assert "".join(backend.generate(_request(stream=True))) == "buffered"
     assert calls[0]["stream"] is False  # buffered path body unchanged
@@ -258,7 +257,7 @@ def test_extra_body_stream_override_wins():
     tier = _tier("openai", extra_body={"stream": False})
     transport = FakeStreamTransport(_openai_sse(
         {"choices": [{"index": 0, "delta": {"content": "x"}}]}))
-    backend = CloudBackend(tier, env={"EXAMPLE_KEY": "k"},
+    backend = RelayBackend(tier, env={"EXAMPLE_KEY": "k"},
                            stream_transport=transport)
     list(backend.generate(_request()))
     body = transport.bodies[0]
@@ -271,10 +270,10 @@ def test_streaming_response_cap_enforced():
         {"choices": [{"index": 0, "delta": {"content": "x" * 64}}]},
         {"choices": [{"index": 0, "delta": {"content": "y" * 64}}]},
     )
-    backend = CloudBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
+    backend = RelayBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
                            stream_transport=FakeStreamTransport(payload),
                            max_response_bytes=100)
-    with pytest.raises(CloudBackendError):
+    with pytest.raises(RelayBackendError):
         list(backend.generate(_request()))
 
 

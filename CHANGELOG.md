@@ -23,6 +23,14 @@ All notable changes to this project are documented here. The format is based on
   STT/TTS, embeddings, reranking, and optional ComfyUI workloads. This change
   does not promote a model or claim new live hardware qualification.
 
+### Removed
+
+- **Residual legacy and duplicate surfaces.** Removed the unreachable cloud
+  backend and echo-module entry point, consolidated the local HTTP relay,
+  moved deterministic backends into test support, deleted superseded one-off
+  launch scripts and machine snapshots, and removed obsolete route-analysis
+  and combined-probe agent roles.
+
 ### Added
 
 - **Direct model aliases.** `[router].model_routes` maps normalized chat model

@@ -39,38 +39,7 @@ Confirm the CLI is available:
 anvil-serving --help
 ```
 
-## Track A: No-GPU Smoke Test
-
-The module entry point starts the router front door with a deterministic echo backend. It exercises
-the protocol surface without loading a model and without touching cloud credentials.
-
-In one terminal:
-
-```bash
-python -m anvil_serving.router
-```
-
-If port `8000` is already in use, pass `--port <free-port>` and use that port in the URLs below.
-
-In another terminal, list the explicit smoke-test alias:
-
-```bash
-curl -s http://127.0.0.1:8000/v1/models
-```
-
-Send an OpenAI-compatible chat request:
-
-```bash
-curl -s http://127.0.0.1:8000/v1/chat/completions \
-  -H 'content-type: application/json' \
-  -d '{"model":"echo","messages":[{"role":"user","content":"hello from anvil-serving"}]}'
-```
-
-Expected result: a JSON response whose content echoes the user message. This proves the front door,
-model discovery, request parsing, and response rendering. It does not prove
-local model quality or a configured serving topology.
-
-## Track B: Route Real Local Tiers
+## Start Real Local Tiers
 
 `configs/example.toml` is local-only. It expects compatible OpenAI-style model serves at:
 

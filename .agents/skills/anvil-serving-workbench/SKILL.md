@@ -45,9 +45,8 @@ narration.
 
 ## MCP Tool Map
 
-- Router: `router_status`, `router_logs`, `router_manage`,
-  `router_transition`, `decision_summary`, `route_decision`, and
-  `router_promote`.
+- Gateway: `router_status`, `router_logs`, `router_manage`,
+  `router_transition`, and `decision_summary`.
 - Serves and residency: `serves_status`, `reservation_status`,
   `serves_manage`, `serves_logs`, and `serves_promote`.
 - Voice: `voice_manage` and `voice_proxy_manage`.
@@ -69,18 +68,9 @@ exists.
 
 ## Gates
 
-Stop for a human gate before profile promotion, router policy changes, metered
-cloud enablement, destructive cache pruning, host repair, Docker/WSL restart,
-public or non-loopback bind, or any operation that would persist a new routing
-trust decision.
-
-`router_promote` may validate with `validate_only=true`, `dry_run=false`, and
-`confirm=true`, or preview with the default `dry_run=true`. Validation executes
-an already-local selected container image with network and resource isolation,
-so keep its timeout and output bounds explicit.
-Live apply requires all three fields:
-`confirm=true`, `dry_run=false`, and `human_approved=true`. Skill packets must
-keep `promoted=false` unless that human-approved promotion result is present.
+Stop for a human gate before changing the active direct alias, applying a serve
+promotion, destructive cache pruning, host repair, Docker/WSL restart, public
+or non-loopback bind, or any operation that would persist a new serving target.
 
 `serves_promote` has the same three-part live gate: `confirm=true`,
 `dry_run=false`, and `human_approved=true`. `host_manage` and mutating
@@ -137,16 +127,16 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   visible output, reasoning-channel evidence, finish reasons, separate visible
   and reasoning budgets, provenance, and per-attempt failure classification.
   Do not rank or promote from an older one-shot score that lacks that evidence.
-- Promotion evidence: assemble status, decision summary, route probes,
-  preflight, benchmark artifacts, calibration, profile/config diffs, and
-  reviewer recommendation with `promoted=false`.
+- Promotion evidence: assemble status, gateway probes, preflight, benchmark
+  artifacts, serve/direct-alias config diffs, and reviewer recommendation with
+  `promoted=false`.
 - OpenClaw COLO smoke/eval: when validating the Mini-to-Dark path or gathering
   release/blog evidence, use `examples/openclaw/colo_smoke.py --live`; add
   `--run-generations --run-interaction-benchmark` for repeatable intent stats.
   Preserve the artifact's `interaction_benchmarks` and recipe fields. Treat
   generation caps, exact/stream benchmark caps, benchmark reasoning effort, and
-  per-intent overrides as router tier `params` owned by the model recipe, not
-  as skill or plugin constants.
+  endpoint overrides as serve/model-recipe settings, not skill or plugin
+  constants.
 - Host/cache work: use `host_summary`, `gpu_inventory`, and `cache_prune_plan`
   for read-only checks and plans. Use `host_manage` only for an exact reviewed
   repair after its human gate. Report Docker/WSL restart, WSL config edits, and
@@ -194,7 +184,7 @@ as time-sensitive.
 
 ## Sub-Agents
 
-Use small/local models for inventory scout, route analyst, preflight runner,
+Use small/local models for inventory scout, serve-config reviewer, preflight runner,
 benchmark runner, and evidence reporter roles. Use a stronger independent model
 for quality critic or adversarial review. Keep role outputs bounded: facts,
 tool calls, artifacts, recommendations, and blockers.

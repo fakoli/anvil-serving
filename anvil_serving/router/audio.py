@@ -33,7 +33,7 @@ import wave
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
 
-from .backends.cloud import CloudBackendError, Transport
+from .backends.relay import RelayBackendError, Transport
 from .config import AUDIO_STT, AUDIO_TTS, AudioRoute
 from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, decision_line
 
@@ -122,7 +122,7 @@ def _deadline_transport(
             connection.sock.settimeout(remaining())
         response = connection.getresponse()
         if not 200 <= response.status < 300:
-            raise CloudBackendError("audio upstream returned an unsuccessful HTTP status")
+            raise RelayBackendError("audio upstream returned an unsuccessful HTTP status")
         content_type = response.getheader("Content-Type", "").split(";", 1)[0].lower()
         chunks: list[bytes] = []
         size = 0
@@ -150,7 +150,7 @@ def _deadline_transport(
     except (OSError, http.client.HTTPException) as exc:
         if time.monotonic() >= deadline or isinstance(exc, socket.timeout):
             raise _AudioDeadlineExceeded() from None
-        raise CloudBackendError("audio upstream request failed") from None
+        raise RelayBackendError("audio upstream request failed") from None
     finally:
         if connection is not None:
             connection.close()
@@ -611,7 +611,7 @@ class AudioGateway:
                 "audio upstream exceeded the configured size limit",
                 response_bytes=exc.observed_bytes,
             ) from None
-        except CloudBackendError as exc:
+        except RelayBackendError as exc:
             raise AudioGatewayError(
                 502, "upstream_error", "configured audio serve failed; see router logs"
             ) from exc

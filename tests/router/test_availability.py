@@ -13,7 +13,7 @@ from anvil_serving.router.availability import (
     AvailabilityResult,
     HttpHealthAvailability,
 )
-from anvil_serving.router.backends import StaticBackend
+from tests.router.helpers import StaticBackend
 from anvil_serving.router.config import RouterConfig, Tier, load
 from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
 from anvil_serving.router.serve import RoutingBackend
