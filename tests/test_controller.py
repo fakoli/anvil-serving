@@ -9,6 +9,8 @@ import io
 import json
 import os
 import socket
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -955,16 +957,56 @@ def test_jsonrpc_falsey_non_object_params_are_rejected_and_not_called():
     assert calls == []
 
 
-def test_deep_json_parse_failure_stays_a_structured_client_error(monkeypatch):
-    monkeypatch.setattr(
-        controller,
-        "_strict_json_loads",
-        lambda _value: (_ for _ in ()).throw(RecursionError("too deep")),
-    )
-    with running_controller() as (host, port):
+def test_deep_json_parse_failure_stays_a_structured_client_error():
+    def fail_deep_json(_value):
+        raise RecursionError("too deep")
+
+    with running_controller(json_loads_func=fail_deep_json) as (host, port):
         status, _, body, _ = _request(host, port, "POST", "/tools/call", body={})
     assert status == 400
     assert body["error"]["code"] == "invalid_json"
+
+
+def test_controller_facade_reexports_supported_surface():
+    expected = {
+        "BindAssessment",
+        "BindSafetyError",
+        "ControllerError",
+        "OperationStore",
+        "main",
+        "make_handler",
+        "make_server",
+        "resolve_auth_token",
+        "serve",
+        "status",
+        "validate_bind_safety",
+    }
+
+    assert expected <= set(controller.__all__)
+    assert controller.OperationStore.__module__.endswith(".controller.store")
+    assert controller.make_handler.__module__.endswith(".controller.http")
+    assert controller.make_server.__module__.endswith(".controller.server")
+    assert controller.status.__module__.endswith(".controller.cli")
+
+
+@pytest.mark.parametrize(
+    "imports",
+    [
+        ("anvil_serving.controller", "anvil_serving.mcp"),
+        ("anvil_serving.mcp", "anvil_serving.controller"),
+    ],
+)
+def test_controller_and_mcp_import_without_cycles_in_either_order(imports):
+    code = "; ".join(f"import {module}" for module in imports)
+
+    completed = subprocess.run(
+        [sys.executable, "-c", code],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
 
 
 def test_controller_cli_dispatch(monkeypatch):
@@ -1251,11 +1293,13 @@ def test_idempotency_fingerprint_rejects_execution_context_changes(tmp_path):
     assert len(calls) == 1
 
 
-def test_idempotency_expiry_tombstones_prevent_replay_and_free_capacity(tmp_path, monkeypatch):
+def test_idempotency_expiry_tombstones_prevent_replay_and_free_capacity(tmp_path):
     now = [100.0]
-    monkeypatch.setattr(controller.time, "time", lambda: now[0])
     store = controller.OperationStore(
-        str(tmp_path / "operations.sqlite3"), retention_seconds=10, max_records=1
+        str(tmp_path / "operations.sqlite3"),
+        retention_seconds=10,
+        max_records=1,
+        clock=lambda: now[0],
     )
     first_fp = controller._operation_fingerprint("fake", {"confirm": True}, CONTEXT)
     assert store.claim("crashed", first_fp, "request-1")[0] == "claimed"
@@ -1289,13 +1333,15 @@ def test_idempotency_expiry_tombstones_prevent_replay_and_free_capacity(tmp_path
         assert response["error"]["code"] == "idempotency_key_expired"
 
 
-def test_idempotency_long_running_operation_completes_before_stale_compaction(
-    tmp_path, monkeypatch
-):
+def test_idempotency_long_running_operation_completes_before_stale_compaction(tmp_path):
     now = [100.0]
-    monkeypatch.setattr(controller.time, "time", lambda: now[0])
     db_path = str(tmp_path / "operations.sqlite3")
-    store = controller.OperationStore(db_path, retention_seconds=10, max_records=2)
+    store = controller.OperationStore(
+        db_path,
+        retention_seconds=10,
+        max_records=2,
+        clock=lambda: now[0],
+    )
     fingerprint = controller._operation_fingerprint("fake", {"confirm": True}, CONTEXT)
 
     assert store.claim("long-running", fingerprint, "request-1")[0] == "claimed"
@@ -1310,7 +1356,12 @@ def test_idempotency_long_running_operation_completes_before_stale_compaction(
 
     assert store.claim("crashed", fingerprint, "request-2")[0] == "claimed"
     now[0] = 122.0
-    restarted = controller.OperationStore(db_path, retention_seconds=10, max_records=2)
+    restarted = controller.OperationStore(
+        db_path,
+        retention_seconds=10,
+        max_records=2,
+        clock=lambda: now[0],
+    )
     assert restarted.lookup("long-running")["status"] == "expired"
     assert restarted.lookup("crashed")["status"] == "expired"
     assert restarted.claim("crashed", fingerprint, "request-3")[0] == "expired"
@@ -1345,11 +1396,13 @@ def test_persisted_sanitizer_handles_tuples_and_token_bearing_dict_keys():
     assert secret not in json.dumps(safe)
 
 
-def test_idempotency_tombstone_generations_rotate_saturated_false_positives(tmp_path, monkeypatch):
+def test_idempotency_tombstone_generations_rotate_saturated_false_positives(tmp_path):
     now = [100.0]
-    monkeypatch.setattr(controller.time, "time", lambda: now[0])
     store = controller.OperationStore(
-        str(tmp_path / "operations.sqlite3"), retention_seconds=10, max_records=1
+        str(tmp_path / "operations.sqlite3"),
+        retention_seconds=10,
+        max_records=1,
+        clock=lambda: now[0],
     )
     fingerprint = controller._operation_fingerprint("fake", {"confirm": True}, CONTEXT)
 
