@@ -1,0 +1,862 @@
+"""Bounded authenticated HTTP, JSON-RPC, and REST controller protocol."""
+
+from __future__ import annotations
+
+import hmac
+import os
+import socket
+import sys
+import time
+from http.server import BaseHTTPRequestHandler
+from typing import Any, Callable, Optional, Sequence
+
+from ... import mcp
+from .catalog import (
+    CallToolFunc,
+    ListToolsFunc,
+    _mcp_tool_name,
+    _validated_tool_catalog,
+)
+from .errors import ControllerError
+from .security import (
+    _REQUEST_ID_HEADER,
+    _extract_request_token,
+    _json_dumps,
+    _redact_secret,
+    _safe_request_id,
+    _sanitize_persisted_value,
+    _strict_json_loads,
+)
+from .store import (
+    OperationStore,
+    _idempotency_context,
+    _idempotency_key,
+    _operation_fingerprint,
+    _operation_status_key,
+)
+
+
+DEFAULT_MAX_BODY_BYTES = 1024 * 1024
+DEFAULT_READ_TIMEOUT_SECONDS = 30.0
+
+_MAX_BODY_BYTES = int(
+    os.environ.get("ANVIL_CONTROLLER_MAX_BODY_BYTES", str(DEFAULT_MAX_BODY_BYTES))
+)
+_READ_TIMEOUT_SECONDS = float(
+    os.environ.get("ANVIL_CONTROLLER_READ_TIMEOUT_SECONDS", str(DEFAULT_READ_TIMEOUT_SECONDS))
+)
+
+AuditLogger = Callable[[dict[str, Any]], None]
+JsonLoadsFunc = Callable[[str], Any]
+
+
+def _default_audit_logger(record: dict[str, Any]) -> None:
+    sys.stderr.write(_json_dumps(record) + "\n")
+    sys.stderr.flush()
+
+
+def _content_type_is_json(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    media_type = value.split(";", 1)[0].strip().lower()
+    return media_type == "application/json" or media_type.endswith("+json")
+
+
+def _error_body(
+    code: str,
+    message: str,
+    *,
+    request_id: str,
+    details: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "request_id": request_id,
+        "error": {"code": code, "message": message, "details": details or {}},
+    }
+
+
+def _response_with_request_id(
+    envelope: dict, request_id: str, auth_token: Optional[str] = None
+) -> dict:
+    if "request_id" in envelope:
+        return _sanitize_persisted_value(dict(envelope), auth_token)
+    response = dict(envelope)
+    response["request_id"] = request_id
+    return _sanitize_persisted_value(response, auth_token)
+
+
+def _tool_result(envelope: dict) -> dict:
+    return {
+        "content": [{"type": "text", "text": _json_dumps(envelope)}],
+        "structuredContent": envelope,
+        "isError": not envelope.get("ok", False),
+    }
+
+
+def make_handler(
+    *,
+    list_tools_func: ListToolsFunc = mcp.list_tools,
+    call_tool_func: CallToolFunc = mcp.call_tool,
+    auth_token: Optional[str] = None,
+    audit_logger: Optional[AuditLogger] = None,
+    max_body_bytes: int = _MAX_BODY_BYTES,
+    read_timeout_seconds: float = _READ_TIMEOUT_SECONDS,
+    operation_store: Optional[OperationStore] = None,
+    allowed_operations: Optional[Sequence[str]] = None,
+    json_loads_func: JsonLoadsFunc = _strict_json_loads,
+):
+    """Build a request handler class for controller tests or ``make_server``."""
+
+    audit = audit_logger or _default_audit_logger
+    allowlist_enabled = allowed_operations is not None
+    declared_tools, declared_name_by_normalized = _validated_tool_catalog(
+        list_tools_func, allowed_operations
+    )
+    store = operation_store or OperationStore()
+
+    class ControllerHandler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+        server_version = "anvil-controller"
+        sys_version = ""
+
+        def setup(self) -> None:
+            super().setup()
+            if read_timeout_seconds > 0:
+                self.connection.settimeout(read_timeout_seconds)
+
+        def log_message(self, format: str, *args: Any) -> None:
+            return
+
+        def _remote_addr(self) -> str:
+            try:
+                return str(self.client_address[0])
+            except Exception:
+                return ""
+
+        def _authenticated(self) -> bool:
+            if auth_token is None:
+                return True
+            supplied = _extract_request_token(self.headers)
+            if supplied is None:
+                return False
+            return hmac.compare_digest(supplied.encode("utf-8"), auth_token.encode("utf-8"))
+
+        def _send_json(
+            self,
+            status: int,
+            obj: dict[str, Any],
+            *,
+            request_id: str,
+            extra_headers: Optional[dict[str, str]] = None,
+        ) -> None:
+            payload = _json_dumps(_redact_secret(obj, auth_token)).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header(_REQUEST_ID_HEADER, request_id)
+            self.send_header("Cache-Control", "no-store")
+            if self.close_connection:
+                self.send_header("Connection", "close")
+            if extra_headers:
+                for name, value in extra_headers.items():
+                    self.send_header(name, value)
+            self.end_headers()
+            if self.command != "HEAD":
+                try:
+                    self.wfile.write(payload)
+                except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+                    self.close_connection = True
+
+        def _send_no_content(self, *, request_id: str) -> None:
+            self.send_response(204)
+            self.send_header("Content-Length", "0")
+            self.send_header(_REQUEST_ID_HEADER, request_id)
+            self.send_header("Cache-Control", "no-store")
+            if self.close_connection:
+                self.send_header("Connection", "close")
+            self.end_headers()
+
+        def _send_error_json(
+            self,
+            status: int,
+            code: str,
+            message: str,
+            *,
+            request_id: str,
+            details: Optional[dict[str, Any]] = None,
+            extra_headers: Optional[dict[str, str]] = None,
+        ) -> None:
+            self._send_json(
+                status,
+                _error_body(code, message, request_id=request_id, details=details),
+                request_id=request_id,
+                extra_headers=extra_headers,
+            )
+
+        def _audit(
+            self,
+            *,
+            request_id: str,
+            operation: str,
+            status: int,
+            started: float,
+            ok: bool,
+            tool: Optional[str] = None,
+            dry_run: Optional[bool] = None,
+            confirm: Optional[bool] = None,
+            error_code: Optional[str] = None,
+        ) -> None:
+            record: dict[str, Any] = {
+                "request_id": request_id,
+                "operation": operation,
+                "tool": tool,
+                "dry_run": dry_run,
+                "confirm": confirm,
+                "status": status,
+                "ok": ok,
+                "elapsed_ms": round((time.perf_counter() - started) * 1000.0, 3),
+                "remote_addr": self._remote_addr(),
+            }
+            if error_code is not None:
+                record["error_code"] = error_code
+            try:
+                audit(record)
+            except Exception:
+                pass
+
+        def _read_json_body(self, *, request_id: str) -> dict[str, Any]:
+            if self.headers.get_all("Transfer-Encoding"):
+                self.close_connection = True
+                raise ControllerError(
+                    "chunked_not_supported",
+                    "chunked request bodies are not supported",
+                    status=411,
+                )
+            raw_length = self.headers.get("Content-Length")
+            if raw_length is None:
+                return {}
+            if len(self.headers.get_all("Content-Length") or []) != 1:
+                self.close_connection = True
+                raise ControllerError(
+                    "bad_content_length",
+                    "exactly one Content-Length header is required",
+                    status=400,
+                )
+            if not _content_type_is_json(self.headers.get("Content-Type")):
+                self.close_connection = True
+                raise ControllerError(
+                    "unsupported_media_type",
+                    "POST request bodies must use Content-Type: application/json",
+                    status=415,
+                )
+            if not raw_length.isdigit():
+                self.close_connection = True
+                raise ControllerError(
+                    "bad_content_length",
+                    "Content-Length must be a non-negative integer",
+                    status=400,
+                )
+            length = int(raw_length)
+            if length > max_body_bytes:
+                self.close_connection = True
+                raise ControllerError(
+                    "payload_too_large",
+                    "request body is too large",
+                    status=413,
+                    details={"max_body_bytes": max_body_bytes},
+                )
+            if length == 0:
+                return {}
+            chunks: list[bytes] = []
+            remaining = length
+            deadline = (
+                time.perf_counter() + read_timeout_seconds if read_timeout_seconds > 0 else None
+            )
+            try:
+                while remaining > 0:
+                    if deadline is not None:
+                        seconds_left = deadline - time.perf_counter()
+                        if seconds_left <= 0:
+                            self.close_connection = True
+                            raise ControllerError(
+                                "request_timeout",
+                                "request body read timed out",
+                                status=408,
+                                details={"read_timeout_seconds": read_timeout_seconds},
+                            )
+                        self.connection.settimeout(seconds_left)
+                    reader = self.rfile.read1 if hasattr(self.rfile, "read1") else self.rfile.read
+                    chunk = reader(min(remaining, 65536))
+                    if not chunk:
+                        self.close_connection = True
+                        raise ControllerError(
+                            "incomplete_body",
+                            "request body ended before Content-Length bytes were received",
+                            status=400,
+                            details={
+                                "expected_body_bytes": length,
+                                "received_body_bytes": length - remaining,
+                            },
+                        )
+                    chunks.append(chunk)
+                    remaining -= len(chunk)
+            except socket.timeout as exc:
+                self.close_connection = True
+                raise ControllerError(
+                    "request_timeout",
+                    "request body read timed out",
+                    status=408,
+                    details={"read_timeout_seconds": read_timeout_seconds},
+                ) from exc
+            finally:
+                if read_timeout_seconds > 0:
+                    self.connection.settimeout(read_timeout_seconds)
+            raw = b"".join(chunks)
+            try:
+                obj = json_loads_func(raw.decode("utf-8"))
+            except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+                raise ControllerError(
+                    "invalid_json",
+                    "request body must be valid UTF-8 JSON",
+                    status=400,
+                    details={"error": str(exc)},
+                ) from exc
+            if not isinstance(obj, dict):
+                raise ControllerError(
+                    "bad_request",
+                    "request body must be a JSON object",
+                    status=400,
+                )
+            return obj
+
+        def _dispatch_tool(
+            self,
+            tool_name: str,
+            arguments: dict[str, Any],
+            *,
+            request_id: str,
+            idempotency_key: Optional[str],
+            idempotency_context: Any = None,
+        ) -> tuple[dict[str, Any], int]:
+            if (
+                arguments.get("confirm") is True
+                and arguments.get("dry_run") is not True
+                and idempotency_key is None
+            ):
+                raise ControllerError(
+                    "idempotency_key_required",
+                    "confirmed mutation operations require an idempotency key",
+                    status=409,
+                )
+            if idempotency_key is None:
+                return _response_with_request_id(
+                    call_tool_func(tool_name, arguments), request_id, auth_token
+                ), 200
+
+            context = _idempotency_context(idempotency_context)
+            disposition, record = store.claim(
+                idempotency_key,
+                _operation_fingerprint(tool_name, arguments, context),
+                request_id,
+            )
+            if disposition == "conflict":
+                raise ControllerError(
+                    "idempotency_key_conflict",
+                    "idempotency key was already used for a different operation",
+                    status=409,
+                    details={"key": idempotency_key},
+                )
+            if disposition == "full":
+                raise ControllerError(
+                    "idempotency_store_full",
+                    "operation status store is at capacity",
+                    status=503,
+                )
+            if disposition == "expired":
+                raise ControllerError(
+                    "idempotency_key_expired",
+                    "idempotency key is expired and cannot be reused",
+                    status=409,
+                    details={"key": idempotency_key},
+                )
+            if disposition == "existing":
+                assert record is not None
+                if record["status"] == "running":
+                    return (
+                        _error_body(
+                            "operation_running",
+                            "operation with this idempotency key is still running",
+                            request_id=request_id,
+                            details={"key": idempotency_key},
+                        ),
+                        202,
+                    )
+                response = record.get("response")
+                if isinstance(response, dict):
+                    return response, 200
+                raise ControllerError(
+                    "idempotency_record_unavailable",
+                    "operation record is not available for replay",
+                    status=503,
+                )
+
+            with store.executing(idempotency_key):
+                try:
+                    envelope = _response_with_request_id(
+                        call_tool_func(tool_name, arguments), request_id, auth_token
+                    )
+                    if not isinstance(envelope, dict):
+                        raise TypeError("MCP tool result must be an object")
+                except Exception:
+                    failure = _error_body(
+                        "internal_error",
+                        "internal error",
+                        request_id=request_id,
+                    )
+                    store.complete(idempotency_key, "failed", failure, auth_token)
+                    raise
+                store.complete(
+                    idempotency_key,
+                    "succeeded" if envelope.get("ok") else "failed",
+                    envelope,
+                    auth_token,
+                )
+            return envelope, 200
+
+        def _jsonrpc_response(
+            self,
+            body: dict[str, Any],
+            *,
+            request_id: str,
+            idempotency_key: Optional[str],
+        ) -> Optional[dict[str, Any]]:
+            if "id" not in body:
+                return None
+            req_id = body.get("id")
+            if req_id is None:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32600, "message": "id must not be null"},
+                }
+            method = body.get("method")
+            if method == "initialize":
+                result = {
+                    "protocolVersion": mcp.PROTOCOL_VERSION,
+                    "serverInfo": mcp.SERVER_INFO,
+                    "capabilities": {"tools": {}},
+                }
+            elif method == "tools/list":
+                result = {"tools": declared_tools}
+            elif method == "tools/call":
+                params = body.get("params", {})
+                if params is None:
+                    params = {}
+                if not isinstance(params, dict):
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {
+                            "code": -32602,
+                            "message": "params must be an object",
+                        },
+                    }
+                raw_tool_name = params.get("name")
+                normalized_name = (
+                    _mcp_tool_name(raw_tool_name) if isinstance(raw_tool_name, str) else None
+                )
+                tool_name = (
+                    declared_name_by_normalized.get(normalized_name)
+                    if normalized_name is not None
+                    else None
+                )
+                if tool_name is None:
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {
+                            "code": -32602,
+                            "message": "unknown tool %r" % normalized_name,
+                            "data": {"code": "unknown_tool"},
+                        },
+                    }
+                arguments = params.get("arguments", {})
+                if arguments is None:
+                    arguments = {}
+                if not isinstance(arguments, dict):
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {
+                            "code": -32602,
+                            "message": "tool arguments must be an object",
+                            "data": {"code": "bad_arguments"},
+                        },
+                    }
+                try:
+                    envelope, _ = self._dispatch_tool(
+                        tool_name,
+                        arguments,
+                        request_id=request_id,
+                        idempotency_key=idempotency_key,
+                        idempotency_context=params.get("context"),
+                    )
+                except ControllerError as exc:
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {
+                            "code": -32009,
+                            "message": exc.message,
+                            "data": {"code": exc.code, "details": exc.details},
+                        },
+                    }
+                result = _tool_result(envelope)
+            elif method == "notifications/initialized":
+                return None
+            else:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {"code": -32601, "message": "method not found"},
+                }
+            return {"jsonrpc": "2.0", "id": req_id, "result": result}
+
+        def _auth_or_401(self, *, request_id: str) -> bool:
+            if self._authenticated():
+                return True
+            self.close_connection = True
+            self._send_error_json(
+                401,
+                "authentication_error",
+                "invalid or missing API key",
+                request_id=request_id,
+            )
+            return False
+
+        def do_GET(self) -> None:
+            request_id = _safe_request_id(self.headers.get(_REQUEST_ID_HEADER))
+            started = time.perf_counter()
+            route = self.path.split("?", 1)[0].rstrip("/") or "/"
+            operation = route.lstrip("/") or "root"
+            status = 500
+            ok = False
+            error_code: Optional[str] = None
+            try:
+                if not self._auth_or_401(request_id=request_id):
+                    status = 401
+                    error_code = "authentication_error"
+                    return
+                if route in ("/health", "/healthz"):
+                    status = 200
+                    ok = True
+                    self._send_json(
+                        status,
+                        {
+                            "status": "ok",
+                            "service": "anvil-serving-controller",
+                            "request_id": request_id,
+                        },
+                        request_id=request_id,
+                    )
+                    return
+                if route == "/tools/list":
+                    status = 200
+                    ok = True
+                    self._send_json(
+                        status,
+                        {"tools": declared_tools, "request_id": request_id},
+                        request_id=request_id,
+                    )
+                    return
+                if route.startswith("/operations/"):
+                    key = _operation_status_key(route[len("/operations/") :])
+                    record = store.lookup(key)
+                    status = 200
+                    ok = True
+                    self._send_json(
+                        status,
+                        (
+                            record
+                            if record is not None
+                            else {"key": key, "status": "unknown", "request_id": request_id}
+                        ),
+                        request_id=request_id,
+                    )
+                    return
+                if route == "/tools/call":
+                    status = 405
+                    error_code = "method_not_allowed"
+                    self._send_error_json(
+                        status,
+                        error_code,
+                        "this route only accepts POST requests",
+                        request_id=request_id,
+                        extra_headers={"Allow": "POST"},
+                    )
+                    return
+                status = 404
+                error_code = "not_found"
+                self._send_error_json(
+                    status,
+                    error_code,
+                    "unknown controller route",
+                    request_id=request_id,
+                    details={"path": route},
+                )
+            except ControllerError as exc:
+                status = exc.status
+                error_code = exc.code
+                self._send_error_json(
+                    status,
+                    exc.code,
+                    exc.message,
+                    request_id=request_id,
+                    details=exc.details,
+                )
+            except Exception:
+                status = 500
+                error_code = "internal_error"
+                self._send_error_json(
+                    status,
+                    error_code,
+                    "internal error",
+                    request_id=request_id,
+                )
+            finally:
+                self._audit(
+                    request_id=request_id,
+                    operation=operation,
+                    status=status,
+                    started=started,
+                    ok=ok,
+                    error_code=error_code,
+                )
+
+        def do_POST(self) -> None:
+            request_id = _safe_request_id(self.headers.get(_REQUEST_ID_HEADER))
+            started = time.perf_counter()
+            route = self.path.split("?", 1)[0].rstrip("/") or "/"
+            operation = route.lstrip("/") or "root"
+            status = 500
+            ok = False
+            tool: Optional[str] = None
+            dry_run: Optional[bool] = None
+            confirm: Optional[bool] = None
+            error_code: Optional[str] = None
+            try:
+                if not self._auth_or_401(request_id=request_id):
+                    status = 401
+                    error_code = "authentication_error"
+                    return
+                if route == "/tools/list":
+                    self._read_json_body(request_id=request_id)
+                    status = 200
+                    ok = True
+                    self._send_json(
+                        status,
+                        {"tools": declared_tools, "request_id": request_id},
+                        request_id=request_id,
+                    )
+                    return
+                if route in ("/", "/mcp"):
+                    body = self._read_json_body(request_id=request_id)
+                    if "id" in body and body.get("method") == "tools/call":
+                        params = body.get("params", {})
+                        if params is None:
+                            params = {}
+                        if isinstance(params, dict):
+                            raw_arguments = params.get("arguments", {})
+                            if raw_arguments is None:
+                                raw_arguments = {}
+                            if isinstance(raw_arguments, dict):
+                                tool = (
+                                    params.get("name")
+                                    if isinstance(params.get("name"), str)
+                                    else None
+                                )
+                                if isinstance(raw_arguments.get("dry_run"), bool):
+                                    dry_run = raw_arguments["dry_run"]
+                                if isinstance(raw_arguments.get("confirm"), bool):
+                                    confirm = raw_arguments["confirm"]
+                    idempotency_key = (
+                        _idempotency_key(self.headers)
+                        if body.get("method") == "tools/call"
+                        else None
+                    )
+                    response = self._jsonrpc_response(
+                        body,
+                        request_id=request_id,
+                        idempotency_key=idempotency_key,
+                    )
+                    status = 200
+                    ok = response is None
+                    if response is not None:
+                        if "error" in response:
+                            ok = False
+                            error = response.get("error")
+                            data = error.get("data") if isinstance(error, dict) else None
+                            if isinstance(data, dict) and isinstance(data.get("code"), str):
+                                error_code = data["code"]
+                            elif isinstance(error, dict) and isinstance(error.get("message"), str):
+                                error_code = error["message"]
+                        else:
+                            ok = True
+                            result = response.get("result")
+                            structured = (
+                                result.get("structuredContent")
+                                if isinstance(result, dict)
+                                else None
+                            )
+                            if isinstance(structured, dict) and structured.get("ok") is False:
+                                ok = False
+                                err = structured.get("error")
+                                if isinstance(err, dict) and isinstance(err.get("code"), str):
+                                    error_code = err["code"]
+                    if response is not None:
+                        self._send_json(status, response, request_id=request_id)
+                    else:
+                        status = 204
+                        self._send_no_content(request_id=request_id)
+                    return
+
+                if route != "/tools/call":
+                    status = 405 if route in ("/health", "/healthz") else 404
+                    error_code = (
+                        "method_not_allowed" if route in ("/health", "/healthz") else "not_found"
+                    )
+                    self._send_error_json(
+                        status,
+                        error_code,
+                        (
+                            "this route only accepts GET requests"
+                            if route in ("/health", "/healthz")
+                            else "unknown controller route"
+                        ),
+                        request_id=request_id,
+                        details={} if route in ("/health", "/healthz") else {"path": route},
+                        extra_headers={"Allow": "GET"}
+                        if route in ("/health", "/healthz")
+                        else None,
+                    )
+                    return
+
+                body = self._read_json_body(request_id=request_id)
+                raw_name = body.get("name")
+                if not isinstance(raw_name, str) or not raw_name:
+                    raise ControllerError(
+                        "bad_request",
+                        "tools/call requires a non-empty string 'name'",
+                        status=400,
+                    )
+                raw_arguments = body.get("arguments", {})
+                if raw_arguments is None:
+                    raw_arguments = {}
+                if not isinstance(raw_arguments, dict):
+                    raise ControllerError(
+                        "bad_request",
+                        "tools/call 'arguments' must be a JSON object",
+                        status=400,
+                    )
+
+                normalized_name = _mcp_tool_name(raw_name)
+                tool = declared_name_by_normalized.get(normalized_name)
+                if tool is None and allowlist_enabled:
+                    raise ControllerError(
+                        "unknown_tool",
+                        "unknown tool %r" % normalized_name,
+                        status=400,
+                    )
+                if tool is None:
+                    tool = normalized_name
+                if isinstance(raw_arguments.get("dry_run"), bool):
+                    dry_run = raw_arguments["dry_run"]
+                if isinstance(raw_arguments.get("confirm"), bool):
+                    confirm = raw_arguments["confirm"]
+
+                envelope, status = self._dispatch_tool(
+                    tool,
+                    raw_arguments,
+                    request_id=request_id,
+                    idempotency_key=_idempotency_key(self.headers),
+                    idempotency_context=body.get("context"),
+                )
+                ok = bool(envelope.get("ok"))
+                if not ok:
+                    err = envelope.get("error") if isinstance(envelope, dict) else None
+                    if isinstance(err, dict) and isinstance(err.get("code"), str):
+                        error_code = err["code"]
+                self._send_json(
+                    status,
+                    envelope,
+                    request_id=request_id,
+                )
+            except ControllerError as exc:
+                status = exc.status
+                error_code = exc.code
+                self._send_error_json(
+                    status,
+                    exc.code,
+                    exc.message,
+                    request_id=request_id,
+                    details=exc.details,
+                )
+            except Exception:
+                status = 500
+                error_code = "internal_error"
+                self._send_error_json(
+                    status,
+                    error_code,
+                    "internal error",
+                    request_id=request_id,
+                )
+            finally:
+                self._audit(
+                    request_id=request_id,
+                    operation=operation,
+                    status=status,
+                    started=started,
+                    ok=ok,
+                    tool=tool,
+                    dry_run=dry_run,
+                    confirm=confirm,
+                    error_code=error_code,
+                )
+
+        def _method_not_allowed(self) -> None:
+            request_id = _safe_request_id(self.headers.get(_REQUEST_ID_HEADER))
+            started = time.perf_counter()
+            route = self.path.split("?", 1)[0].rstrip("/") or "/"
+            operation = route.lstrip("/") or "root"
+            status = 405
+            error_code = "method_not_allowed"
+            try:
+                if not self._auth_or_401(request_id=request_id):
+                    status = 401
+                    error_code = "authentication_error"
+                    return
+                self._send_error_json(
+                    status,
+                    error_code,
+                    "method not allowed",
+                    request_id=request_id,
+                    extra_headers={"Allow": "GET, POST"},
+                )
+            finally:
+                self._audit(
+                    request_id=request_id,
+                    operation=operation,
+                    status=status,
+                    started=started,
+                    ok=False,
+                    error_code=error_code,
+                )
+
+        do_HEAD = _method_not_allowed
+        do_PUT = _method_not_allowed
+        do_PATCH = _method_not_allowed
+        do_DELETE = _method_not_allowed
+        do_OPTIONS = _method_not_allowed
+
+    return ControllerHandler
