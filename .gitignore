@@ -39,5 +39,9 @@ docs/findings/captures/
 # MkDocs build output
 site/
 
+# Local coverage data and optional HTML reports
+.coverage
+htmlcov/
+
 # Unsloth/torch.compile scratch dir emitted when running local model experiments
 unsloth_compiled_cache/

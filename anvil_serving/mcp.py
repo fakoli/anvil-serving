@@ -84,8 +84,8 @@ from .control_plane.mcp.tools.openclaw import (
     tool_openclaw_sync,
 )
 from .control_plane.mcp.tools.operations import (
-    operation_declarations,
-    tool_operation_contracts,
+    _tool_operation_contracts,
+    operation_declarations as _operation_declarations,
 )
 from .control_plane.mcp.tools.router import (
     tool_decision_summary,
@@ -173,6 +173,18 @@ def call_tool(name: str, arguments: Optional[dict] = None) -> dict:
         fail=_fail,
         redact_text=_redact_text,
     )
+
+
+def operation_declarations() -> list[dict]:
+    """Return command-tree operation contracts against the composed catalog."""
+
+    return _operation_declarations(TOOLS)
+
+
+def tool_operation_contracts(args: dict) -> dict:
+    """Preserve the public operation-contract handler surface."""
+
+    return _tool_operation_contracts(args, TOOLS)
 
 
 def handle_request(request: dict) -> Optional[dict]:
