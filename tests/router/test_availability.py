@@ -40,7 +40,7 @@ def _routing(availability) -> RoutingBackend:
     config = load(_CONFIG)
     return RoutingBackend(
         config,
-        {"heavy-local": StaticBackend(["heavy"]), "fast-local": StaticBackend(["fast"])},
+        {"primary-local": StaticBackend(["heavy"]), "auxiliary-local": StaticBackend(["fast"])},
         availability=availability,
     )
 
@@ -54,7 +54,7 @@ def test_unready_direct_route_never_calls_its_upstream():
     assert error.value.kind == "unavailable"
     record = routing._decision_log.records[-1]
     assert record.served_tier is None
-    assert record.attempts[0].tier_id == "heavy-local"
+    assert record.attempts[0].tier_id == "primary-local"
     assert record.attempts[0].reason == "unavailable"
 
 
@@ -63,8 +63,8 @@ def test_ready_alias_relays_to_its_single_configured_tier():
 
     assert list(routing.generate(_request("llm.voice"))) == ["fast"]
     record = routing._decision_log.records[-1]
-    assert record.served_tier == "fast-local"
-    assert record.requested_tier == "fast-local"
+    assert record.served_tier == "auxiliary-local"
+    assert record.requested_tier == "auxiliary-local"
 
 
 def test_unknown_alias_is_not_probed_or_substituted():
@@ -97,7 +97,7 @@ class _Response:
 
 def _probe_tier(*, model_identity=False):
     return Tier(
-        id="heavy-local",
+        id="primary-local",
         base_url="http://127.0.0.1:30002/v1",
         model="served-heavy",
         dialect="openai",
@@ -287,7 +287,7 @@ def test_config_rejects_unsafe_health_path(tmp_path, health_path):
         [router]
 
         [[router.tiers]]
-        id = "heavy-local"
+        id = "primary-local"
         base_url = "http://127.0.0.1:30002/v1"
         model = "served-heavy"
         dialect = "openai"
@@ -298,7 +298,7 @@ def test_config_rejects_unsafe_health_path(tmp_path, health_path):
         health_path = "{health_path}"
 
         [router.model_routes]
-        llm.primary = "heavy-local"
+        llm.primary = "primary-local"
     """), encoding="utf-8")
 
     with pytest.raises(ValueError, match="health_path"):
