@@ -9,37 +9,91 @@ Runtime dependencies stay stdlib-only. Commands are argv lists, never shell
 strings. Mutating tools require explicit ``confirm: true`` and keep dry-run
 paths available.
 """
+# Re-exported compatibility names and subprocess are intentionally module globals.
+# ruff: noqa: F401
 from __future__ import annotations
 
-import contextlib
 import argparse
 import json
-import math
 import os
 import re
-import socket
 import sqlite3
 import subprocess
 import sys
-import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Mapping
-from typing import Any, Callable, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from . import __version__
-from .commands import COMMAND_TREE, CommandNode
+from .commands import COMMAND_TREE
+from .control_plane.mcp.arguments import (
+    MAX_CONTEXT_STRING as _MAX_CONTEXT_STRING,
+    arg_bool as _arg_bool,
+    bounded_float_arg as _bounded_float_arg,
+    bounded_int_arg as _bounded_int_arg,
+    bounded_integer_schema as _bounded_integer_schema,
+    bounded_tool_schema as _bounded_tool_schema,
+    int_arg as _int_arg,
+    schema as _schema,
+    str_arg as _str_arg,
+    str_list_arg as _str_list_arg,
+    target_context as _build_target_context,
+    validate_tool_arguments as _validate_arguments,
+)
+from .control_plane.mcp.catalog import (
+    build_catalog as _build_catalog,
+    call_tool as _call_catalog_tool,
+    list_tools as _list_catalog_tools,
+    operation_declarations as _catalog_operation_declarations,
+)
+from .control_plane.mcp.controller_client import (
+    NoRedirectHandler as _NoRedirectHandler,
+    controller_auth_headers,
+    http_error_details as _http_error_details,
+    remote_controller_request,
+    resolve_controller_token,
+    urlopen_no_proxy_no_redirect as _urlopen_no_proxy_no_redirect,
+)
+from .control_plane.mcp.errors import ToolError
+from .control_plane.mcp.errors import fail as _failure_envelope
+from .control_plane.mcp.errors import ok as _ok
+from .control_plane.mcp.protocol import (
+    handle_proxy_request as _handle_proxy_protocol_request,
+    handle_request as _handle_protocol_request,
+    jsonrpc_error as _jsonrpc_error,
+    tool_result as _tool_result,
+)
+from .control_plane.mcp.runtime import (
+    capture as _capture,
+    command_preview as _command_preview,
+    read_spooled_text as _read_spooled_text,
+    run_argv as _run_argv,
+    run_argv_spooled as _run_argv_spooled,
+)
+from .control_plane.mcp.security import (
+    ENV_NAME_RE as _ENV_NAME_RE,
+    PROBE_API_KEY_ENVS as _PROBE_API_KEY_ENVS,
+    redact_error_details as _redact_error_details,
+    redact_log_text as _redact_log_text,
+    redact_secret as _redact_secret,
+    redact_text as _redact_text,
+    resolve_benchmark_artifact_path as _resolve_benchmark_artifact_path,
+    safe_controller_url as _safe_controller_url,
+    safe_probe_url as _safe_probe_url,
+)
+from .control_plane.mcp.stdio import (
+    build_main_parser as _build_main_parser,
+    main as _stdio_main,
+    parse_main_args as _parse_main_args,
+    serve_stdio as _serve_stdio_loop,
+)
 from .operator_output import CONTEXT_FIELDS, context_from_plan, redact
 
 
 SERVER_INFO = {"name": "anvil-serving", "version": __version__}
 PROTOCOL_VERSION = "2024-11-05"
-_ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
-_PROXY_METHODS = {"tools/list", "tools/call"}
-_PROBE_API_KEY_ENVS = {"ANVIL_ROUTER_TOKEN"}
-_WORKSPACE_ROOT_ENVS = ("ANVIL_WORKSPACE_ROOT",)
-_BENCHMARK_EVIDENCE_DIR_ENVS = ("ANVIL_BENCHMARK_EVIDENCE_DIR", "ANVIL_EVIDENCE_DIR")
 _WORKFLOW_SCHEMA_VERSION = "operator-workflow/v1"
 _WORKFLOW_GATE_STATES = {"not_required", "confirm_required", "human_required", "blocked"}
 _WORKFLOW_SOURCE_CLASSES = {"mcp", "controller", "cli", "manual", "fixture"}
@@ -53,370 +107,16 @@ _WORKFLOW_DOTTED_DOMAIN_SEGMENTS = frozenset({
     "benchmark", "pipeline", "realtime", "sidecar", "stt", "tts", "voice",
 })
 _WORKFLOW_VERSION_SEGMENT_RE = re.compile(r"^v[0-9]+$", re.I)
-_MAX_ERROR_BODY_BYTES = 4096
-_MAX_ARGUMENT_BYTES = 1024 * 1024
-_MAX_CONTEXT_BYTES = 16 * 1024
-_MAX_CONTEXT_STRING = 1024
-_MAX_CAPTURE_CHARS = 1024 * 1024
-_MAX_SCHEMA_STRING = 262144
-_MAX_SCHEMA_ITEMS = 1000
-_RAW_COMMAND_KEYS = frozenset({"argv", "command", "command_payload", "payload", "shell", "stdin"})
-_RAW_SECRET_KEYS = frozenset({"api_key", "authorization", "credential", "password", "private_key", "secret", "token"})
-_RAW_SECRET_AWARE_TOOLS = frozenset({
-    "benchmark_artifact",
-    "benchmark_probe",
-    "decision_summary",
-    "openclaw_sync",
-    "preflight_probe",
-})
-_SECRET_ENV_RE = re.compile(r"(?:^|_)(?:API_KEY|AUTHORIZATION|CREDENTIAL|PASSWORD|PRIVATE_KEY|SECRET|TOKEN)(?:$|_)")
-_LOG_SECRET_PATTERNS = (
-    re.compile(r"(?i)\b((?:authorization|x-api-key)\s*[:=]\s*(?:bearer\s+)?)([^\s]+)"),
-    re.compile(r'(?i)("(?:authorization|x-api-key)"\s*:\s*"(?:bearer\s+)?)([^"]+)'),
-    re.compile(r"(?i)('(?:authorization|x-api-key)'\s*:\s*'(?:bearer\s+)?)([^']+)"),
-    re.compile(r"(?i)\b(bearer\s+)([A-Za-z0-9._~+/\-]{8,})"),
-    re.compile(r"(?i)\b([A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|KEY)[A-Z0-9_]*\s*[=:]\s*)([^\s]+)"),
-    re.compile(r'(?i)("[A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|KEY)[A-Z0-9_]*"\s*:\s*")([^"]+)'),
-    re.compile(r"(?i)('[A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|KEY)[A-Z0-9_]*'\s*:\s*')([^']+)"),
-    re.compile(r"\b(sk-(?:proj-)?[A-Za-z0-9_-]{8,})\b"),
-)
-
-
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
-
-
-def _urlopen_no_proxy_no_redirect(req, timeout=30):
-    opener = urllib.request.build_opener(
-        urllib.request.ProxyHandler({}),
-        _NoRedirectHandler(),
-    )
-    return opener.open(req, timeout=timeout)
-
-
-class ToolError(Exception):
-    """User-facing tool failure rendered into the structured tool envelope."""
-
-    def __init__(self, code: str, message: str, details: Optional[dict] = None):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.details = details or {}
-
-
-def _ok(data: dict) -> dict:
-    return {"ok": True, "data": data}
 
 
 def _fail(code: str, message: str, details: Optional[dict] = None) -> dict:
-    return {
-        "ok": False,
-        "error": {
-            "code": code,
-            "message": _redact_text(message),
-            "details": _redact_error_details(details or {}),
-        },
-    }
-
-
-def _environment_secrets() -> tuple[str, ...]:
-    return tuple(
-        value
-        for name, value in os.environ.items()
-        if value and _SECRET_ENV_RE.search(name.upper())
+    return _failure_envelope(
+        code,
+        message,
+        details,
+        redact_text=_redact_text,
+        redact_details=_redact_error_details,
     )
-
-
-def _redact_text(value: str) -> str:
-    return redact(value, secrets=_environment_secrets())
-
-
-def _redact_error_details(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        safe = {}
-        for key, item in value.items():
-            normalized = str(key).lower().replace("-", "_")
-            safe[str(key)] = (
-                "<redacted>"
-                if normalized in _RAW_SECRET_KEYS or normalized in {"env", "environment", "environ"}
-                else _redact_error_details(item)
-            )
-        return safe
-    if isinstance(value, (list, tuple)):
-        return [_redact_error_details(item) for item in value]
-    if isinstance(value, str):
-        return _redact_text(value)
-    return value
-
-
-def _capture(fn: Callable[[], int]) -> tuple[int, str, str]:
-    with (
-        tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as out,
-        tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as err,
-    ):
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            rc = fn()
-        out.seek(0)
-        err.seek(0)
-        return rc, out.read(_MAX_CAPTURE_CHARS), err.read(_MAX_CAPTURE_CHARS)
-
-
-def _redact_secret(value: Any, token: str) -> Any:
-    if not token:
-        return value
-    if isinstance(value, str):
-        return value.replace(token, "<redacted>")
-    if isinstance(value, list):
-        return [_redact_secret(item, token) for item in value]
-    if isinstance(value, dict):
-        return {_redact_secret(key, token): _redact_secret(item, token) for key, item in value.items()}
-    return value
-
-
-def _http_error_details(exc: urllib.error.HTTPError, token: str = "") -> tuple[dict[str, Any], str]:
-    details: dict[str, Any] = {"status": exc.code}
-    if 300 <= exc.code < 400:
-        location = exc.headers.get("Location") if exc.headers else None
-        if location:
-            details["location"] = location
-        return _redact_secret(details, token), ""
-
-    raw = ""
-    try:
-        body = exc.read(_MAX_ERROR_BODY_BYTES + 1)
-    except Exception as body_exc:
-        details["body_error"] = str(body_exc)
-    else:
-        if body:
-            truncated = len(body) > _MAX_ERROR_BODY_BYTES
-            raw = body[:_MAX_ERROR_BODY_BYTES].decode("utf-8", "replace")
-            details["body"] = raw
-            if truncated:
-                details["body_truncated"] = True
-    return _redact_secret(details, token), raw
-
-
-def _jsonrpc_error(req_id: Any, code: int, message: str, data: Optional[dict] = None) -> dict:
-    error: dict[str, Any] = {"code": code, "message": message}
-    if data:
-        error["data"] = data
-    return {"jsonrpc": "2.0", "id": req_id, "error": error}
-
-
-def resolve_controller_token(auth_env: str, environ: Optional[dict[str, str]] = None) -> str:
-    """Resolve a controller auth token from an env-var name, never a raw value."""
-
-    if not auth_env or not _ENV_NAME_RE.fullmatch(auth_env):
-        raise ToolError(
-            "bad_auth_env",
-            "auth-env must name an ENV VAR matching ^[A-Z][A-Z0-9_]*$",
-            {"auth_env": auth_env},
-        )
-    env = os.environ if environ is None else environ
-    token = (env.get(auth_env) or "").strip()
-    if not token:
-        raise ToolError("missing_auth_env", "auth env var is unset or empty", {"auth_env": auth_env})
-    return token
-
-
-def controller_auth_headers(token: str) -> dict[str, str]:
-    """Headers accepted by the controller/front-door token gate."""
-
-    return {
-        "Authorization": "Bearer " + token,
-        "x-api-key": token,
-    }
-
-
-def remote_controller_request(
-    controller_url: str,
-    request: dict,
-    token: str,
-    *,
-    timeout: int = 30,
-    opener: Optional[Callable[..., Any]] = None,
-) -> dict:
-    """POST one JSON-RPC request to a remote controller endpoint."""
-
-    if not token:
-        raise ToolError("missing_controller_token", "controller token is required")
-    controller_url = _safe_controller_url(controller_url)
-    if opener is None:
-        opener = _urlopen_no_proxy_no_redirect
-    body = json.dumps(request, separators=(",", ":")).encode("utf-8")
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        **controller_auth_headers(token),
-    }
-    req = urllib.request.Request(controller_url, data=body, headers=headers, method="POST")
-    try:
-        with opener(req, timeout=timeout) as resp:
-            raw = resp.read().decode("utf-8")
-    except urllib.error.HTTPError as exc:
-        details, _ = _http_error_details(exc, token)
-        message = "controller returned HTTP %s" % exc.code
-        raise ToolError("controller_http_error", message, details)
-    except Exception as exc:
-        raise ToolError(
-            "controller_request_failed",
-            _redact_secret(str(exc), token),
-            {"controller_url": controller_url},
-        )
-    try:
-        parsed = json.loads(raw or "{}")
-    except ValueError as exc:
-        raise ToolError("bad_controller_response", str(exc), {"controller_url": controller_url})
-    if not isinstance(parsed, dict):
-        raise ToolError("bad_controller_response", "controller response must be a JSON object")
-    return _redact_secret(parsed, token)
-
-
-def _arg_bool(value: Any, default: bool = False, *, name: str = "argument") -> bool:
-    if value is None:
-        return default
-    if isinstance(value, bool):
-        return value
-    raise ToolError("bad_argument", "%r must be a boolean" % name)
-
-
-def _str_arg(args: dict, name: str, default: Optional[str] = None, required: bool = False) -> str:
-    value = args.get(name, default)
-    if required and (value is None or value == ""):
-        raise ToolError("missing_argument", "missing required argument %r" % name)
-    if value is None:
-        return ""
-    if not isinstance(value, str):
-        raise ToolError("bad_argument", "%r must be a string" % name)
-    return value
-
-
-def _int_arg(args: dict, name: str, default: int) -> int:
-    value = args.get(name, default)
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise ToolError("bad_argument", "%r must be an integer" % name)
-    return value
-
-
-def _str_list_arg(args: dict, name: str) -> list[str]:
-    value = args.get(name, [])
-    if value is None:
-        return []
-    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-        raise ToolError("bad_argument", "%r must be an array of strings" % name)
-    return list(value)
-
-
-def _bounded_int_arg(args: dict, name: str, default: int, *, min_value: int, max_value: int) -> int:
-    value = _int_arg(args, name, default)
-    if value < min_value or value > max_value:
-        raise ToolError(
-            "bad_argument",
-            "%r must be between %d and %d" % (name, min_value, max_value),
-            {"value": value},
-        )
-    return value
-
-
-def _bounded_float_arg(
-    args: dict,
-    name: str,
-    default: float,
-    *,
-    min_value: float,
-    max_value: float,
-) -> float:
-    value = args.get(name, default)
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ToolError("bad_argument", "%r must be a number" % name)
-    result = float(value)
-    if not math.isfinite(result) or result < min_value or result > max_value:
-        raise ToolError(
-            "bad_argument",
-            "%r must be between %s and %s" % (name, min_value, max_value),
-            {"value": value},
-        )
-    return result
-
-
-def _is_tailscale_v4(addr: str) -> bool:
-    # ipaddress treats 100.64.0.0/10 as special rather than private on some
-    # Python versions. Keep the controller/probe tailnet allowance explicit.
-    try:
-        import ipaddress
-        ip = ipaddress.ip_address(addr)
-        if ip.version == 4:
-            return ip in ipaddress.ip_network("100.64.0.0/10")
-    except ValueError:
-        return False
-    return False
-
-
-def _is_safe_probe_ip(addr: str) -> bool:
-    import ipaddress
-
-    ip = ipaddress.ip_address(addr)
-    if ip.is_unspecified or ip.is_link_local or ip.is_multicast or ip.is_reserved:
-        return False
-    if ip.version == 4:
-        rfc1918 = (
-            ipaddress.ip_network("10.0.0.0/8"),
-            ipaddress.ip_network("172.16.0.0/12"),
-            ipaddress.ip_network("192.168.0.0/16"),
-        )
-        return bool(ip.is_loopback or _is_tailscale_v4(addr) or any(ip in network for network in rfc1918))
-    return bool(ip.is_loopback or ip in ipaddress.ip_network("fc00::/7"))
-
-
-def _safe_probe_url(base_url: str) -> str:
-    parsed = urllib.parse.urlparse(base_url)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise ToolError("bad_base_url", "base_url must be an http(s) URL with a host")
-    if parsed.username is not None or parsed.password is not None:
-        raise ToolError("bad_base_url", "base_url must not contain credentials; use api_key_env")
-    if parsed.query or parsed.fragment:
-        raise ToolError("bad_base_url", "base_url must not contain query strings or fragments")
-    try:
-        parsed.port
-    except ValueError as exc:
-        raise ToolError("bad_base_url", "base_url has an invalid port", {"error": str(exc)}) from None
-    if parsed.hostname.strip().lower() == "localhost":
-        raise ToolError("bad_base_url", "use 127.0.0.1 or a private/tailnet host, not localhost")
-    host = parsed.hostname
-    try:
-        if not _is_safe_probe_ip(host):
-            raise ToolError(
-                "unsafe_base_url",
-                "probe base_url must resolve to loopback, private, or tailnet addresses",
-                {"host": host},
-            )
-    except ValueError:
-        try:
-            infos = socket.getaddrinfo(host, parsed.port, type=socket.SOCK_STREAM)
-        except OSError as exc:
-            raise ToolError("bad_base_url", "could not resolve base_url host", {"host": host, "error": str(exc)})
-        addrs = []
-        for info in infos:
-            try:
-                addrs.append(info[4][0])
-            except (IndexError, TypeError):
-                pass
-        if not addrs or any(not _is_safe_probe_ip(addr) for addr in addrs):
-            raise ToolError(
-                "unsafe_base_url",
-                "probe base_url must resolve only to loopback, private, or tailnet addresses",
-                {"host": host, "addresses": addrs},
-            )
-    return base_url
-
-
-def _safe_controller_url(controller_url: str) -> str:
-    return _safe_probe_url(controller_url)
-
-
-def _command_preview(argv: list[str]) -> dict:
-    return {"would_run": True, "command": argv}
 
 
 def _probe_api_key_env(args: dict) -> str:
@@ -437,151 +137,6 @@ def _probe_api_key_env(args: dict) -> str:
             {"allowed_api_key_envs": sorted(_PROBE_API_KEY_ENVS)},
         )
     return api_key_env
-
-
-def _run_argv(argv: list[str], *, confirm: bool, timeout: Optional[int] = None) -> dict:
-    if not confirm:
-        return _command_preview(argv)
-    try:
-        proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
-    except FileNotFoundError as exc:
-        raise ToolError("command_not_found", str(exc), {"command": argv})
-    except subprocess.TimeoutExpired as exc:
-        raise ToolError("timeout", "command timed out", {"command": argv, "timeout": exc.timeout})
-    result = {
-        "command": argv,
-        "returncode": proc.returncode,
-        "stdout": proc.stdout or "",
-        "stderr": proc.stderr or "",
-    }
-    if proc.returncode != 0:
-        raise ToolError("command_failed", "command exited with status %s" % proc.returncode, result)
-    return result
-
-
-def _real_path(path: str, *, base: Optional[str] = None) -> str:
-    expanded = os.path.expanduser(path)
-    if not os.path.isabs(expanded):
-        expanded = os.path.join(base or os.getcwd(), expanded)
-    return os.path.realpath(os.path.abspath(expanded))
-
-
-def _path_is_within(path: str, root: str) -> bool:
-    try:
-        return os.path.commonpath([os.path.normcase(path), os.path.normcase(root)]) == os.path.normcase(root)
-    except ValueError:
-        return False
-
-
-def _is_filesystem_root(path: str) -> bool:
-    norm = os.path.normpath(path)
-    return os.path.dirname(norm) == norm
-
-
-def _has_workspace_marker(path: str) -> bool:
-    pyproject = os.path.join(path, "pyproject.toml")
-    if os.path.isfile(pyproject):
-        try:
-            with open(pyproject, "r", encoding="utf-8") as f:
-                text = f.read(4096)
-        except OSError:
-            return False
-        if "anvil-serving" in text:
-            return True
-    readme = os.path.join(path, "README.md")
-    if os.path.isfile(readme):
-        try:
-            with open(readme, "r", encoding="utf-8") as f:
-                text = f.read(4096)
-        except OSError:
-            return False
-        if "# anvil-serving" in text or "local-model serving" in text:
-            return True
-    return False
-
-
-def _discover_workspace_root(start: Optional[str] = None) -> str:
-    for env_name in _WORKSPACE_ROOT_ENVS:
-        raw = (os.environ.get(env_name) or "").strip()
-        if raw:
-            root = _real_path(raw)
-            if _is_filesystem_root(root) or not os.path.isdir(root) or not _has_workspace_marker(root):
-                raise ToolError(
-                    "bad_workspace_root",
-                    "%s must point to an anvil-serving workspace, not a broad filesystem root" % env_name,
-                    {"env": env_name, "workspace": root},
-                )
-            return root
-
-    current = _real_path(start or os.getcwd())
-    while True:
-        if _has_workspace_marker(current):
-            return current
-        parent = os.path.dirname(current)
-        if parent == current:
-            return ""
-        current = parent
-
-
-def _configured_benchmark_evidence_roots() -> list[str]:
-    roots = []
-    for env_name in _BENCHMARK_EVIDENCE_DIR_ENVS:
-        raw = os.environ.get(env_name, "")
-        for item in raw.split(os.pathsep):
-            item = item.strip()
-            if item:
-                root = _real_path(item)
-                if _is_filesystem_root(root):
-                    raise ToolError(
-                        "bad_evidence_dir",
-                        "%s must not point at a broad filesystem root" % env_name,
-                        {"env": env_name, "evidence_dir": root},
-                    )
-                roots.append(root)
-    return roots
-
-
-def _resolve_benchmark_artifact_path(path: str) -> tuple[str, list[str]]:
-    if not path:
-        raise ToolError("missing_argument", "missing required argument 'artifact_path'")
-    if path == "-":
-        raise ToolError("bad_artifact_path", "artifact_path must be a file path, not '-'")
-    if "\x00" in path:
-        raise ToolError("bad_artifact_path", "artifact_path must not contain NUL bytes")
-
-    workspace = _discover_workspace_root()
-    roots = [workspace] if workspace else []
-    roots.extend(root for root in _configured_benchmark_evidence_roots() if root not in roots)
-    if not roots:
-        raise ToolError(
-            "missing_artifact_root",
-            "artifact_path requires an anvil-serving workspace or configured evidence directory",
-            {"workspace_envs": list(_WORKSPACE_ROOT_ENVS), "evidence_dir_envs": list(_BENCHMARK_EVIDENCE_DIR_ENVS)},
-        )
-
-    if os.path.isabs(os.path.expanduser(path)):
-        artifact_path = _real_path(path)
-    elif workspace:
-        artifact_path = _real_path(path, base=workspace)
-    elif len(roots) == 1:
-        artifact_path = _real_path(path, base=roots[0])
-    else:
-        raise ToolError("bad_artifact_path", "relative artifact_path requires a workspace when multiple evidence roots are configured")
-    if not any(_path_is_within(artifact_path, root) for root in roots):
-        raise ToolError(
-            "unsafe_artifact_path",
-            "artifact_path must be inside the workspace or configured evidence directory",
-            {
-                "artifact_path": artifact_path,
-                "workspace": workspace or None,
-                "evidence_dirs": roots[1:] if workspace else roots,
-                "workspace_envs": list(_WORKSPACE_ROOT_ENVS),
-                "evidence_dir_envs": list(_BENCHMARK_EVIDENCE_DIR_ENVS),
-            },
-        )
-    if os.path.isdir(artifact_path):
-        raise ToolError("bad_artifact_path", "artifact_path points at a directory", {"artifact_path": artifact_path})
-    return artifact_path, roots
 
 
 def _benchmark_key_metrics(summary: dict[str, Any]) -> dict[str, Any]:
@@ -953,16 +508,6 @@ def validate_workflow_packet(packet: Any) -> dict[str, Any]:
             )
 
     return {"valid": not errors, "errors": errors, "normalized_packet": normalized}
-
-
-def _redact_log_text(value: str) -> str:
-    out = value
-    for pattern in _LOG_SECRET_PATTERNS:
-        if pattern.groups >= 2:
-            out = pattern.sub(lambda m: m.group(1) + "<redacted>", out)
-        else:
-            out = pattern.sub("<redacted>", out)
-    return out
 
 
 def _router_manage_cli_argv(action: str, *, container: str = "", compose: str = "",
@@ -1421,43 +966,6 @@ def _serves_manage_plan(action: str, manifest_serves: list[dict], names: list[st
                 },
             ])
     return targets, plan
-
-
-def _read_spooled_text(handle, max_bytes: int, redactor: Optional[Callable[[str], str]] = None) -> tuple[str, bool]:
-    handle.seek(0)
-    read_limit = max_bytes + (4096 if redactor else 1)
-    raw = handle.read(read_limit + 1)
-    text = raw[:read_limit].decode("utf-8", "replace")
-    if redactor is not None:
-        text = redactor(text)
-    encoded = text.encode("utf-8")
-    truncated = len(raw) > read_limit or len(encoded) > max_bytes
-    return encoded[:max_bytes].decode("utf-8", "replace"), truncated
-
-
-def _run_argv_spooled(argv: list[str], *, timeout: Optional[int], max_output_bytes: int,
-                      redactor: Optional[Callable[[str], str]] = None) -> dict:
-    with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
-        try:
-            proc = subprocess.run(argv, stdout=stdout_file, stderr=stderr_file, timeout=timeout)
-        except FileNotFoundError as exc:
-            raise ToolError("command_not_found", str(exc), {"command": argv})
-        except subprocess.TimeoutExpired as exc:
-            raise ToolError("timeout", "command timed out", {"command": argv, "timeout": exc.timeout})
-
-        stdout, stdout_truncated = _read_spooled_text(stdout_file, max_output_bytes, redactor)
-        stderr, stderr_truncated = _read_spooled_text(stderr_file, max_output_bytes, redactor)
-        result = {
-            "command": argv,
-            "returncode": proc.returncode,
-            "stdout": stdout,
-            "stderr": stderr,
-            "stdout_truncated": stdout_truncated,
-            "stderr_truncated": stderr_truncated,
-        }
-        if proc.returncode != 0:
-            raise ToolError("command_failed", "command exited with status %s" % proc.returncode, result)
-        return result
 
 
 def tool_serves_manage(args: dict) -> dict:
@@ -2666,94 +2174,10 @@ def tool_workflow_packet_validate(args: dict) -> dict:
     return _ok(validate_workflow_packet(packet))
 
 
-def _schema(properties: dict, required: Optional[list[str]] = None) -> dict:
-    return _bounded_tool_schema({
-        "type": "object",
-        "additionalProperties": False,
-        "properties": properties,
-        "required": required or [],
-    })
-
-
-def _bounded_integer_schema(minimum: int, maximum: int, default: int) -> dict:
-    return {"type": "integer", "minimum": minimum, "maximum": maximum, "default": default}
-
-
-def _bounded_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
-    """Return a recursively bounded copy of the supported JSON-schema subset."""
-
-    bounded = dict(schema)
-    schema_type = bounded.get("type")
-    schema_types = schema_type if isinstance(schema_type, list) else [schema_type]
-    if "string" in schema_types:
-        bounded.setdefault("maxLength", _MAX_SCHEMA_STRING)
-    if "array" in schema_types:
-        bounded.setdefault("maxItems", _MAX_SCHEMA_ITEMS)
-        items = bounded.get("items")
-        if isinstance(items, Mapping):
-            bounded["items"] = _bounded_schema(items)
-    if "object" in schema_types:
-        properties = bounded.get("properties")
-        if isinstance(properties, Mapping):
-            bounded["properties"] = {
-                str(name): _bounded_schema(value)
-                for name, value in properties.items()
-                if isinstance(value, Mapping)
-            }
-    return bounded
-
-
-def _bounded_tool_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
-    bounded = _bounded_schema(schema)
-    bounded["maxProperties"] = len(bounded.get("properties", {}))
-    return bounded
-
-
-def _operation_records(
-    nodes: tuple[CommandNode, ...], parent: tuple[str, ...] = ()
-) -> Iterable[dict[str, Any]]:
-    for node in nodes:
-        path = parent + (node.name,)
-        if node.visible and node.remote_operation is not None:
-            remote = node.remote_operation
-            yield {
-                "name": "-".join(path),
-                "path": " ".join(path),
-                "mode": remote.mode,
-                "tool": remote.tool,
-                "fixed_arguments": dict(remote.fixed_arguments),
-                "confirmed_arguments": dict(remote.confirmed_arguments),
-                "allowed_arguments": list(remote.allowed_arguments),
-                "positional_arguments": list(remote.positional_arguments),
-                "resource_role": node.resource_role,
-                "transports": list(node.transports),
-                "execution_runtime_roles": list(node.execution_runtime_roles),
-                "mutation_class": node.mutation_class,
-                "recovery_capable": node.recovery_capable,
-                "gpu_role_required": node.gpu_role_required,
-                "execution_policy": node.execution_policy,
-                "output_policy": node.output_policy,
-            }
-        yield from _operation_records(node.children, path)
-
-
 def operation_declarations() -> list[dict[str, Any]]:
     """Return every command-tree operation declared for controller transport."""
 
-    declarations = list(_operation_records(COMMAND_TREE.nodes))
-    missing_tools = sorted(
-        {
-            declaration["tool"]
-            for declaration in declarations
-            if declaration["mode"] == "tool" and declaration["tool"] not in TOOLS
-        }
-    )
-    if missing_tools:
-        raise RuntimeError(
-            "remote command declarations reference missing MCP tools: %s"
-            % ", ".join(missing_tools)
-        )
-    return declarations
+    return _catalog_operation_declarations(COMMAND_TREE.nodes, TOOLS)
 
 
 TARGET_CONTEXT_SCHEMA = _bounded_tool_schema({
@@ -2769,152 +2193,22 @@ TARGET_CONTEXT_SCHEMA = _bounded_tool_schema({
 })
 
 
-def _serialized_size(value: Any, *, code: str, message: str) -> int:
-    try:
-        return len(json.dumps(value, ensure_ascii=True, separators=(",", ":")).encode("utf-8"))
-    except (TypeError, ValueError) as exc:
-        raise ToolError(code, message, {"error": redact(str(exc))}) from exc
-
-
-def _private_input_kind(value: Any) -> str | None:
-    if isinstance(value, Mapping):
-        for key, item in value.items():
-            normalized = str(key).lower().replace("-", "_")
-            if normalized in _RAW_COMMAND_KEYS:
-                return "command"
-            if normalized in _RAW_SECRET_KEYS or normalized in {"env", "environment", "environ"}:
-                return "secret"
-            found = _private_input_kind(item)
-            if found:
-                return found
-    elif isinstance(value, (list, tuple)):
-        for item in value:
-            found = _private_input_kind(item)
-            if found:
-                return found
-    return None
-
-
-def _validate_schema_value(value: Any, schema: Mapping[str, Any], field: str) -> None:
-    schema_type = schema.get("type")
-    if isinstance(schema_type, list):
-        allowed_types = schema_type
-    else:
-        allowed_types = [schema_type]
-    valid = False
-    for allowed in allowed_types:
-        if allowed == "null" and value is None:
-            valid = True
-        elif allowed == "boolean" and isinstance(value, bool):
-            valid = True
-        elif allowed == "integer" and isinstance(value, int) and not isinstance(value, bool):
-            valid = True
-        elif allowed == "number" and isinstance(value, (int, float)) and not isinstance(value, bool):
-            valid = True
-        elif allowed == "string" and isinstance(value, str):
-            valid = True
-        elif allowed == "array" and isinstance(value, list):
-            valid = True
-        elif allowed == "object" and isinstance(value, Mapping):
-            valid = True
-    if not valid:
-        expected = ", ".join(str(item) for item in allowed_types)
-        raise ToolError("bad_argument", f"{field!r} must have type {expected}")
-    if isinstance(value, str):
-        if len(value) > int(schema.get("maxLength", _MAX_SCHEMA_STRING)):
-            raise ToolError("bad_argument", f"{field!r} exceeds its length limit")
-        if "enum" in schema and value not in schema["enum"]:
-            code = "bad_action" if field == "action" else "bad_argument"
-            raise ToolError(code, f"{field!r} must be one of {schema['enum']!r}")
-    if isinstance(value, int) and not isinstance(value, bool):
-        if "minimum" in schema and value < schema["minimum"]:
-            raise ToolError("bad_argument", f"{field!r} must be at least {schema['minimum']}")
-        if "maximum" in schema and value > schema["maximum"]:
-            raise ToolError("bad_argument", f"{field!r} must be at most {schema['maximum']}")
-    if isinstance(value, list):
-        if len(value) > int(schema.get("maxItems", _MAX_SCHEMA_ITEMS)):
-            raise ToolError("bad_argument", f"{field!r} contains too many items")
-        item_schema = schema.get("items")
-        if isinstance(item_schema, Mapping):
-            for index, item in enumerate(value):
-                _validate_schema_value(item, item_schema, f"{field}[{index}]")
-    if isinstance(value, float) and not math.isfinite(value):
-        raise ToolError("bad_argument", f"{field!r} must be a finite number")
-
-
 def _validate_tool_arguments(name: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
-    private_kind = None
-    for field, value in arguments.items():
-        normalized = str(field).lower().replace("-", "_")
-        if normalized in _RAW_COMMAND_KEYS:
-            private_kind = "command"
-            break
-        if normalized in _RAW_SECRET_KEYS or normalized in {"env", "environment", "environ"}:
-            if name in _RAW_SECRET_AWARE_TOOLS:
-                private_kind = "secret"
-                break
-            continue
-        if field not in {"packet", "records"}:
-            private_kind = _private_input_kind(value)
-            if private_kind:
-                break
-    if private_kind == "command":
-        raise ToolError(
-            "raw_command_not_allowed",
-            "raw command payloads are not accepted; use a declared MCP operation",
-        )
-    if private_kind == "secret":
-        raise ToolError(
-            "raw_secret_not_allowed",
-            "raw secrets are not accepted; pass an approved credential environment variable name",
-        )
-    if _serialized_size(
-        arguments,
-        code="bad_arguments",
-        message="tool arguments must contain JSON values",
-    ) > _MAX_ARGUMENT_BYTES:
-        raise ToolError("arguments_too_large", "tool arguments exceed the configured size limit")
-    schema = TOOLS[name]["inputSchema"]
-    properties = schema.get("properties", {})
-    unknown = sorted(set(arguments) - set(properties))
-    guarded_unknown = {"confirm", "dry_run", "execute", "yes"}
-    if unknown and not (name == "cache_prune_plan" and set(unknown) <= guarded_unknown):
-        raise ToolError("bad_argument", "unknown tool argument", {"fields": unknown})
-    missing = [field for field in schema.get("required", []) if field not in arguments]
-    if missing:
-        raise ToolError("missing_argument", "missing required tool argument", {"fields": missing})
-    for field, value in arguments.items():
-        if field in properties and not (name == "workflow_packet_validate" and field == "packet"):
-            _validate_schema_value(value, properties[field], field)
-    return dict(arguments)
+    return _validate_arguments(name, arguments, TOOLS)
 
 
 def validate_tool_arguments(name: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
     """Validate one typed tool call without dispatching it."""
-    if name not in TOOLS:
-        raise ToolError("unknown_tool", "unknown tool %r" % name)
-    if not isinstance(arguments, Mapping):
-        raise ToolError("bad_arguments", "tool arguments must be an object")
     return _validate_tool_arguments(name, arguments)
 
 
 def _target_context(value: Any) -> dict[str, Any]:
-    if value is None:
-        return {}
-    if not isinstance(value, Mapping):
-        raise ToolError("bad_context", "target context must be an object")
-    unknown = sorted(set(value) - set(CONTEXT_FIELDS))
-    if unknown:
-        raise ToolError("bad_context", "target context contains unknown fields", {"fields": unknown})
-    if _serialized_size(
+    return _build_target_context(
         value,
-        code="bad_context",
-        message="target context must contain JSON values",
-    ) > _MAX_CONTEXT_BYTES:
-        raise ToolError("context_too_large", "target context exceeds the configured size limit")
-    for field, item in value.items():
-        _validate_schema_value(item, TARGET_CONTEXT_SCHEMA["properties"][field], field)
-    return context_from_plan(value)
+        context_fields=CONTEXT_FIELDS,
+        context_schema=TARGET_CONTEXT_SCHEMA,
+        context_builder=context_from_plan,
+    )
 
 
 def tool_operation_contracts(args: dict) -> dict:
@@ -2923,7 +2217,7 @@ def tool_operation_contracts(args: dict) -> dict:
     return _ok({"operations": operation_declarations()})
 
 
-TOOLS: Dict[str, dict] = {
+TOOLS: Dict[str, dict] = _build_catalog({
     "operation_contracts": {
         "description": "List command-tree operations declared for bounded controller transport.",
         "inputSchema": _schema({}),
@@ -3290,181 +2584,48 @@ TOOLS: Dict[str, dict] = {
         }, required=["local"]),
         "handler": tool_external_bench_compare,
     },
-}
+})
 
 
 def list_tools() -> list[dict]:
-    return [{
-        "name": name,
-        "description": spec["description"],
-        "inputSchema": spec["inputSchema"],
-        "_meta": {
-            "anvil/targetContextSchema": TARGET_CONTEXT_SCHEMA,
-            "anvil/operationContractTool": "operation_contracts",
-        },
-    } for name, spec in TOOLS.items()]
+    return _list_catalog_tools(TOOLS, TARGET_CONTEXT_SCHEMA)
 
 
 def call_tool(name: str, arguments: Optional[dict] = None) -> dict:
-    if name not in TOOLS:
-        return _fail("unknown_tool", "unknown tool %r" % name)
-    if arguments is None:
-        arguments = {}
-    if not isinstance(arguments, dict):
-        return _fail("bad_arguments", "tool arguments must be an object")
-    try:
-        validated = validate_tool_arguments(name, arguments)
-        return TOOLS[name]["handler"](validated)
-    except ToolError as exc:
-        return _fail(exc.code, exc.message, exc.details)
-    except Exception as exc:
-        return _fail("internal_error", _redact_text(str(exc)))
-
-
-def _tool_result(envelope: dict, *, context: Optional[dict[str, Any]] = None) -> dict:
-    result = {
-        "content": [{"type": "text", "text": json.dumps(envelope, sort_keys=True)}],
-        "structuredContent": envelope,
-        "isError": not envelope.get("ok", False),
-    }
-    if context:
-        result["_meta"] = {"anvil/context": context}
-    return result
+    return _call_catalog_tool(
+        TOOLS,
+        name,
+        arguments,
+        validate_arguments=validate_tool_arguments,
+        fail=_fail,
+        redact_text=_redact_text,
+    )
 
 
 def handle_request(request: dict) -> Optional[dict]:
-    method = request.get("method")
-    if method == "notifications/initialized":
-        return None
-    if "id" not in request:
-        return None
-    req_id = request.get("id")
-    if req_id is None:
-        return _jsonrpc_error(None, -32600, "id must not be null")
-    try:
-        if method == "initialize":
-            result = {
-                "protocolVersion": PROTOCOL_VERSION,
-                "serverInfo": SERVER_INFO,
-                "capabilities": {"tools": {}},
-            }
-        elif method == "tools/list":
-            result = {"tools": list_tools()}
-        elif method == "tools/call":
-            params = request.get("params", {})
-            if params is None:
-                params = {}
-            if not isinstance(params, dict):
-                raise ToolError("bad_params", "params must be an object")
-            if params.get("name") not in TOOLS:
-                raise ToolError("unknown_tool", "unknown tool %r" % params.get("name"))
-            arguments = params.get("arguments", {})
-            if arguments is None:
-                arguments = {}
-            if not isinstance(arguments, dict):
-                raise ToolError("bad_arguments", "tool arguments must be an object")
-            context = _target_context(params.get("context"))
-            result = _tool_result(call_tool(params.get("name"), arguments), context=context)
-        else:
-            return {
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "error": {"code": -32601, "message": "method not found"},
-            }
-        if req_id is None:
-            return None
-        return {"jsonrpc": "2.0", "id": req_id, "result": result}
-    except ToolError as exc:
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "error": {"code": -32602, "message": exc.message, "data": {"code": exc.code, **exc.details}},
-        }
+    return _handle_protocol_request(
+        request,
+        tools=TOOLS,
+        protocol_version=PROTOCOL_VERSION,
+        server_info=SERVER_INFO,
+        list_tools=list_tools,
+        call_tool=call_tool,
+        target_context=_target_context,
+    )
 
 
 def handle_proxy_request(request: dict, controller_url: str, token: str) -> Optional[dict]:
-    if request.get("method") not in _PROXY_METHODS:
-        return handle_request(request)
-    if "id" not in request:
-        return None
-    req_id = request.get("id")
-    if req_id is None:
-        return _jsonrpc_error(None, -32600, "id must not be null")
-    context: dict[str, Any] = {}
-    if request.get("method") == "tools/call":
-        params = request.get("params", {})
-        if params is None:
-            params = {}
-        if not isinstance(params, dict):
-            return _jsonrpc_error(req_id, -32602, "params must be an object")
-        name = params.get("name")
-        if name not in TOOLS:
-            return _jsonrpc_error(
-                req_id,
-                -32602,
-                "unknown tool %r" % name,
-                {"code": "unknown_tool"},
-            )
-        arguments = params.get("arguments", {})
-        if arguments is None:
-            arguments = {}
-        if not isinstance(arguments, dict):
-            return _jsonrpc_error(
-                req_id,
-                -32602,
-                "tool arguments must be an object",
-                {"code": "bad_arguments"},
-            )
-        try:
-            _validate_tool_arguments(name, arguments)
-            context = _target_context(params.get("context"))
-        except ToolError as exc:
-            return _jsonrpc_error(
-                req_id,
-                -32602,
-                exc.message,
-                {"code": exc.code, **redact(exc.details)},
-            )
-    try:
-        response = remote_controller_request(controller_url, request, token)
-    except ToolError as exc:
-        if req_id is None:
-            return None
-        return _jsonrpc_error(
-            req_id,
-            -32000,
-            exc.message,
-            {"code": exc.code, **exc.details},
-        )
-    if req_id is None:
-        return None
-    if request.get("method") == "tools/list":
-        result = response.get("result")
-        remote_tools = result.get("tools") if isinstance(result, dict) else None
-        local_tools = {tool["name"]: tool for tool in list_tools()}
-        if (
-            not isinstance(remote_tools, list)
-            or any(
-                not isinstance(tool, dict)
-                or not isinstance(tool.get("name"), str)
-                or local_tools.get(tool["name"]) != tool
-                for tool in remote_tools
-            )
-        ):
-            return _jsonrpc_error(
-                req_id,
-                -32000,
-                "controller MCP operation contracts are not a valid local subset",
-                {"code": "operation_contract_mismatch"},
-            )
-    elif context:
-        result = response.get("result")
-        if isinstance(result, dict):
-            metadata = result.get("_meta")
-            if not isinstance(metadata, dict):
-                metadata = {}
-            result["_meta"] = {**metadata, "anvil/context": context}
-    return response
+    return _handle_proxy_protocol_request(
+        request,
+        controller_url,
+        token,
+        tools=TOOLS,
+        local_request=handle_request,
+        list_tools=list_tools,
+        validate_arguments=_validate_tool_arguments,
+        target_context=_target_context,
+        remote_request=remote_controller_request,
+    )
 
 
 def serve_stdio(
@@ -3474,77 +2635,25 @@ def serve_stdio(
     controller_url: str = "",
     controller_token: str = "",
 ) -> int:
-    for line in stdin:
-        if not line.strip():
-            continue
-        try:
-            request = json.loads(line)
-        except ValueError as exc:
-            response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": str(exc)}}
-        else:
-            if not isinstance(request, dict):
-                response = _jsonrpc_error(None, -32600, "request must be a JSON object")
-            elif controller_url:
-                response = handle_proxy_request(request, controller_url, controller_token)
-            else:
-                response = handle_request(request)
-        if response is not None:
-            stdout.write(json.dumps(response, separators=(",", ":")) + "\n")
-            stdout.flush()
-    return 0
-
-
-def _build_main_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="anvil-serving mcp serve",
-        description=(
-            "Run the stdio MCP control plane locally, list available tools, "
-            "or proxy MCP tool calls to a token-authenticated controller."
-        ),
+    return _serve_stdio_loop(
+        stdin,
+        stdout,
+        controller_url=controller_url,
+        controller_token=controller_token,
+        handle_local_request=handle_request,
+        handle_remote_request=handle_proxy_request,
     )
-    parser.add_argument(
-        "action",
-        nargs="?",
-        choices=["list-tools"],
-        help="compatibility alias for --list-tools",
-    )
-    parser.add_argument("--list-tools", action="store_true", help="print the MCP tool catalog as JSON and exit")
-    parser.add_argument("--controller-url", metavar="URL", help="remote controller URL for split-host proxy mode")
-    parser.add_argument("--auth-env", metavar="ENV", help="environment variable containing the controller token")
-    return parser
-
-
-def _parse_main_args(argv: list[str]) -> tuple[str, str, bool]:
-    parser = _build_main_parser()
-    args = parser.parse_args(argv)
-    list_tools_requested = bool(args.list_tools or args.action == "list-tools")
-    if list_tools_requested and (args.controller_url or args.auth_env):
-        parser.error("--list-tools cannot be combined with proxy mode")
-    if bool(args.controller_url) != bool(args.auth_env):
-        parser.error("--controller-url and --auth-env must be provided together")
-    return args.controller_url or "", args.auth_env or "", list_tools_requested
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    try:
-        controller_url, auth_env, list_tools_requested = _parse_main_args(argv)
-    except SystemExit as exc:
-        if exc.code == 0:
-            raise
-        return int(exc.code or 2)
-    if list_tools_requested:
-        print(json.dumps({"tools": list_tools()}, indent=2, sort_keys=True))
-        return 0
-    if controller_url:
-        try:
-            controller_url = _safe_controller_url(controller_url)
-            token = resolve_controller_token(auth_env)
-        except ToolError as exc:
-            print(exc.message, file=sys.stderr)
-            return 2
-        return serve_stdio(controller_url=controller_url, controller_token=token)
-    return serve_stdio()
+    return _stdio_main(
+        argv,
+        list_tools=list_tools,
+        safe_controller_url=_safe_controller_url,
+        resolve_controller_token=resolve_controller_token,
+        serve=serve_stdio,
+    )
 
 
 if __name__ == "__main__":
