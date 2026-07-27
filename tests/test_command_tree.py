@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from anvil_serving import mcp
+from anvil_serving import cli, mcp
 from anvil_serving.command_tree import (
     COMMAND_TREE,
     CommandExample,
@@ -242,6 +242,36 @@ def test_remote_command_arguments_exist_in_the_mcp_tool_schemas():
             f"{record['path']} declares arguments absent from {remote['tool']}: "
             f"{sorted(missing)}"
         )
+
+
+@pytest.mark.parametrize(
+    "argv",
+    (
+        ["router", "up", "--compose", "deployment.yml", "--service", "router", "--env-file", "router.env", "--recreate", "--dry-run"],
+        ["router", "down", "--compose", "deployment.yml", "--service", "router", "--dry-run"],
+        ["router", "restart", "--container", "anvil-router", "--no-verify", "--dry-run"],
+        ["router", "reload", "--container", "anvil-router", "--no-verify", "--dry-run"],
+    ),
+)
+def test_canonical_router_lifecycle_options_parse_without_mutation(argv):
+    assert cli.main(argv) == 0
+
+
+@pytest.mark.parametrize(
+    ("action", "present", "absent"),
+    (
+        ("up", {"--compose", "--service", "--env-file", "--recreate"}, {"--container", "--no-verify"}),
+        ("down", {"--compose", "--service"}, {"--env-file", "--recreate", "--container", "--no-verify"}),
+        ("restart", {"--container", "--no-verify"}, {"--compose", "--service", "--env-file", "--recreate"}),
+        ("reload", {"--container", "--no-verify"}, {"--compose", "--service", "--env-file", "--recreate"}),
+    ),
+)
+def test_router_lifecycle_help_lists_action_specific_options(capsys, action, present, absent):
+    assert cli.main(["router", action, "--help"]) == 0
+    rendered = capsys.readouterr().out
+
+    assert present <= set(rendered.split())
+    assert not (absent & set(rendered.split()))
 
 
 def test_repo_workbench_surfaces_catalog_current_mcp_tools_and_cli_gaps():
