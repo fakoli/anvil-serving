@@ -54,7 +54,9 @@ anvil_serving/
     discovery.py          configured alias advertisement
     dialects/             Anthropic/OpenAI translation
   voice/                  owned STT/TTS, bridge, Realtime operations
-  controller.py, mcp.py   private and stdio control-plane surfaces
+  controller.py, mcp.py   private controller and public MCP composition facades
+  control_plane/mcp/      shared MCP protocol, catalog, runtime, and security
+    tools/                explicit ordered tool-family implementations
 ```
 
 ## Routing contract

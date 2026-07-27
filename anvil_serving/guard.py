@@ -5,7 +5,7 @@ Born from the WSL starvation incident (see host.py's module docstring): the
 guard pattern proved itself in four places independently — host.py (confirm +
 numbered backups + refusal floors), cache_prune.py (plan/gate/apply with a
 single deletion chokepoint), router_manage.py (crash-loop verify + rollback on
-promote), and mcp.py (the dry_run/confirm/human_approved triple gate). This
+promote), and the MCP tool families (the dry_run/confirm/human_approved triple gate). This
 module consolidates the reusable primitives so new mutation paths adopt the
 pattern by import instead of re-derivation.
 
