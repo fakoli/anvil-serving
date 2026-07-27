@@ -109,7 +109,7 @@
         "models-cache-prune": 7,
         "models-recipes": 29,
         "models-score": 4,
-        "router-run": 36,
+        "router-run": 35,
         "serves-multiplex": 4,
         "serves-render": 8,
         "voice-audio": 37,
@@ -119,12 +119,12 @@
       "files_by_category": {
         "docs": 67,
         "examples": 35,
-        "implementation": 188,
+        "implementation": 200,
         "skills": 5,
         "tests": 139,
         "tooling": 28
       },
-      "files_scanned": 462,
+      "files_scanned": 474,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

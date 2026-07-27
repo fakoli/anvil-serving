@@ -11,7 +11,9 @@ import sys
 import pytest
 
 from anvil_serving import mcp
+from anvil_serving.benchmarking import artifacts as benchmark_artifacts
 from anvil_serving.control_plane.mcp import catalog
+from anvil_serving.control_plane.mcp.tools import TOOL_FAMILIES
 
 
 PUBLIC_CATALOG_SHA256 = (
@@ -80,6 +82,66 @@ def test_direct_handler_map_is_stable_and_uses_dictionary_lookup():
     assert all(callable(mcp.TOOLS[name]["handler"]) for name in TOOL_NAMES)
 
 
+def test_explicit_ordered_families_compose_the_public_catalog():
+    assert [family.name for family in TOOL_FAMILIES] == [
+        "operations",
+        "router",
+        "serves",
+        "voice",
+        "host",
+        "models",
+        "openclaw",
+        "benchmarks",
+        "workflow",
+        "external_benchmarks",
+    ]
+    assert [
+        tool_name
+        for family in TOOL_FAMILIES
+        for tool_name in family.tools
+    ] == TOOL_NAMES
+    assert all(
+        specification["handler"].__module__.startswith(
+            "anvil_serving.control_plane.mcp.tools."
+        )
+        for specification in mcp.TOOLS.values()
+    )
+
+
+def test_family_catalog_rejects_duplicate_names():
+    def handler(_args):
+        return {}
+
+    specification = {
+        "description": "Duplicate.",
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "maxProperties": 0,
+            "properties": {},
+            "required": [],
+        },
+        "handler": handler,
+    }
+    with pytest.raises(RuntimeError, match="duplicate MCP tool name"):
+        catalog.build_family_catalog(
+            (
+                catalog.ToolFamily("first", {"duplicate": specification}),
+                catalog.ToolFamily("second", {"duplicate": specification}),
+            )
+        )
+
+
+def test_family_catalog_rejects_duplicate_family_names():
+    with pytest.raises(RuntimeError, match="duplicate MCP tool family"):
+        catalog.build_family_catalog(
+            (
+                catalog.ToolFamily("duplicate", {}),
+                catalog.ToolFamily("duplicate", {}),
+            )
+        )
+
+
 def test_static_catalog_validation_fails_closed_at_construction():
     with pytest.raises(RuntimeError, match="unbounded object schema"):
         catalog.build_catalog(
@@ -119,6 +181,23 @@ def test_facade_preserves_public_surface_and_private_artifact_shim():
     assert all(hasattr(mcp, name) for name in expected)
     assert mcp.ToolError.__module__.endswith(".control_plane.mcp.errors")
     assert mcp._run_argv.__module__.endswith(".control_plane.mcp.runtime")
+
+
+def test_public_artifact_policy_uses_domain_errors_and_mcp_translates_them():
+    with pytest.raises(
+        benchmark_artifacts.BenchmarkArtifactError,
+        match="artifact_path must be a file path",
+    ) as domain_error:
+        benchmark_artifacts.resolve_benchmark_artifact_path("-")
+    with pytest.raises(
+        mcp.ToolError,
+        match="artifact_path must be a file path",
+    ) as mcp_error:
+        mcp._resolve_benchmark_artifact_path("-")
+
+    assert domain_error.value.code == "bad_artifact_path"
+    assert mcp_error.value.code == domain_error.value.code
+    assert mcp_error.value.details == domain_error.value.details
 
 
 @pytest.mark.parametrize(
