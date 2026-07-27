@@ -51,7 +51,10 @@ import urllib.request
 from typing import Any, Callable, Dict, Optional
 
 from anvil_serving import serves as generic_serves
-from anvil_serving.mcp import ToolError, _resolve_benchmark_artifact_path
+from anvil_serving.benchmarking.artifacts import (
+    BenchmarkArtifactError,
+    resolve_benchmark_artifact_path,
+)
 from anvil_serving.targets import TargetResolutionError
 from anvil_serving.topology import TopologyValidationError, load_topology
 
@@ -460,8 +463,8 @@ def _resolve_evidence_output_path(path: Optional[str]) -> Optional[str]:
     if not path:
         return None
     try:
-        target, _roots = _resolve_benchmark_artifact_path(path)
-    except ToolError as exc:
+        target, _roots = resolve_benchmark_artifact_path(path)
+    except BenchmarkArtifactError as exc:
         raise voice_config.ConfigError(exc.message)
     return target
 

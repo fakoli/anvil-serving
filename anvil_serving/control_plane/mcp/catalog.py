@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from ...commands import CommandNode
 from .errors import ToolError
+
+
+@dataclass(frozen=True)
+class ToolFamily:
+    """One explicitly ordered, statically declared MCP tool family."""
+
+    name: str
+    tools: Mapping[str, Mapping[str, Any]]
 
 
 def build_catalog(specifications: Mapping[str, Mapping[str, Any]]) -> dict[str, dict]:
@@ -41,6 +50,24 @@ def build_catalog(specifications: Mapping[str, Mapping[str, Any]]) -> dict[str, 
             raise RuntimeError("MCP tool %r has no callable handler" % name)
         catalog[name] = dict(raw_spec)
     return catalog
+
+
+def build_family_catalog(families: Iterable[ToolFamily]) -> dict[str, dict]:
+    """Build one deterministic catalog and fail closed on duplicate tool names."""
+
+    specifications: dict[str, Mapping[str, Any]] = {}
+    family_names: set[str] = set()
+    for family in families:
+        if not isinstance(family.name, str) or not family.name:
+            raise RuntimeError("MCP tool family names must be non-empty strings")
+        if family.name in family_names:
+            raise RuntimeError("duplicate MCP tool family %r" % family.name)
+        family_names.add(family.name)
+        for tool_name, specification in family.tools.items():
+            if tool_name in specifications:
+                raise RuntimeError("duplicate MCP tool name %r" % tool_name)
+            specifications[tool_name] = specification
+    return build_catalog(specifications)
 
 
 def operation_records(
