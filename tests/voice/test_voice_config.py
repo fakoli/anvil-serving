@@ -482,6 +482,38 @@ model = "tts"
     assert data["_manifest_dir"] == str(config_home)
 
 
+def test_machine_wide_voice_config_is_used(tmp_path, monkeypatch):
+    home = tmp_path / "anvil-home"
+    home.mkdir()
+    home_manifest = home / "voice.toml"
+    home_manifest.write_text(
+        """
+[voice]
+name = "home-voice"
+realtime_host = "127.0.0.1"
+realtime_port = 8765
+
+[voice.llm]
+base_url = "http://127.0.0.1:8000/v1"
+model = "chat"
+
+[voice.stt]
+base_url = "http://127.0.0.1:30010/v1"
+model = "stt"
+
+[voice.tts]
+base_url = "http://127.0.0.1:30011/v1"
+model = "tts"
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+
+    data = voice_config.load_manifest(None)
+
+    assert data["voice"]["name"] == "home-voice"
+    assert data["_manifest_dir"] == str(home)
 def test_valid_manifest_passes():
     voice_config.validate_manifest(_valid_manifest())  # should not raise
 

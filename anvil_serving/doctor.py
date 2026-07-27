@@ -9,8 +9,9 @@ per-check PASS/WARN/FAIL report:
   - NVIDIA container runtime registered with docker (advisory — you may be
     running the router only, with serves elsewhere)
   - GPU visibility via `nvidia-smi` (advisory, same reason)
-  - each tier's `/health` in a router config (default `./router.toml`, the
-    file `anvil-serving init` writes; skipped quietly if absent and not
+  - each tier's `/health` in a router config (default
+    `~/.anvil-serving/router.toml`, the file `anvil-serving init` writes;
+    skipped quietly if absent and not
     explicitly requested — advisory either way, a tier can be legitimately
     stopped between sessions)
 
@@ -26,8 +27,19 @@ import sys
 import urllib.request
 
 from . import gpus as _gpus
+from .paths import config_path, first_existing
 
-DEFAULT_CONFIG = "./router.toml"
+DEFAULT_CONFIG = "./router.toml"  # legacy current-directory fallback
+
+
+def default_config_candidates():
+    """Search machine-wide configuration before the legacy CWD file."""
+    return [config_path("router.toml"), DEFAULT_CONFIG]
+
+
+def resolve_default_config_path():
+    """Return the first available default router config, if any."""
+    return first_existing(default_config_candidates())
 
 
 class Check:
@@ -183,13 +195,13 @@ def main(argv):
                     "configured tier health. Non-zero exit on a failed required check.")
     ap.add_argument("--config", default=None,
                     help="router config to probe tier /health from "
-                         "(default: %s if present)" % DEFAULT_CONFIG)
+                         "(default: config home, then ./router.toml if present)")
     ap.add_argument("--no-config", action="store_true",
                     help="skip the tier /health checks entirely")
     a = ap.parse_args(argv)
 
     explicit = a.config is not None
-    config_path = None if a.no_config else (a.config or DEFAULT_CONFIG)
+    config_path = None if a.no_config else (a.config or resolve_default_config_path())
 
     checks = run_checks(config_path=config_path, config_explicit=explicit)
     ok = True
