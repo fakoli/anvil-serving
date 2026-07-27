@@ -19,6 +19,15 @@ def commands() -> CommandNode:
                 mutation="process",
                 argv_prefix=(),
                 output_policy="foreground",
+                options=(
+                    _option(
+                        "--config",
+                        summary="Direct capability-gateway TOML; defaults to the operator config home.",
+                        value_name="PATH",
+                    ),
+                    _option("--host", summary="Router bind host.", value_name="ADDRESS"),
+                    _option("--port", summary="Router bind port.", value_name="PORT"),
+                ),
             ),
             _resource_node(
                 "up",

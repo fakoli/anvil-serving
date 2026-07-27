@@ -55,7 +55,7 @@ only opaque route id, byte counts (including rejected bounded upstream responses
 latency, and correlation ids; audio bytes/base64, transcript text, and synthesis input are
 excluded. The gateway has a separate bounded concurrency pool for parsed upstream operations and
 input/output caps. It has no provider or chat fallback: a configured raw serve failure is a typed
-error from that route. See [configuration](CONFIGURATION.md#routeraudio_routes) and
+error from that route. See [configuration](CONFIGURATION.md#purpose-models-and-audio) and
 [ADR-0024](adr/0024-normalized-audio-gateway.md).
 
 When a future Workbench HTTP voice surface adopts this gateway, it must use the router base URL
@@ -89,8 +89,9 @@ The old module-level paths (`voice up`, `down`, `start`, `stop`, `run`, and
 not import or invoke an operational handler.
 
 Manifest-backed commands take `--config <voice.toml>`. If omitted,
-`~/.anvil-serving/voice.toml` is used when present; otherwise the shipped
-example manifest is used. `up`, `down`, `run`, and `benchmark` also accept
+`$ANVIL_SERVING_HOME/voice.toml` (default `~/.anvil-serving/voice.toml`) is
+used when present; otherwise the shipped example manifest is used. `up`,
+`down`, `run`, and `benchmark` also accept
 `--profile <name>` to apply `[voice.profiles.<name>]` before validation.
 Relative managed `manifest_path` values inside the voice manifest resolve
 against the voice manifest's own directory, so a host-level

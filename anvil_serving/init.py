@@ -1,7 +1,8 @@
 """Scaffold a local anvil-serving configuration.
 
-`init` with NO flags scaffolds the FULL operational config set into the config
-home (~/.anvil-serving) via `scaffold_home()` — every router/config template,
+`init` with NO flags scaffolds the FULL operational config set into the
+operator config home (`~/.anvil-serving`, or `ANVIL_SERVING_HOME`) via
+`scaffold_home()` — every router/config template,
 manifest, compose file, topology, `.env.example`, and the tailnet-edge config —
 so a fresh machine runs `anvil-serving serves up --group NAME` with zero
 hand-assembly. Those files ship
@@ -180,21 +181,13 @@ def _home_plan():
     return plan
 
 
-def scaffold_home(out_dir=None):
-    """Scaffold the complete canonical config set into `out_dir`.
+def _scaffold_config(out_dir):
+    """Scaffold the complete canonical config set into an explicit directory.
 
-    `out_dir` defaults to the operator config home (`~/.anvil-serving`, honoring
-    ANVIL_SERVING_HOME) — the default search dir for `serves up` etc. — so a
-    fresh machine is operational with no path juggling; pass an explicit dir to
-    override (e.g. a temp dir for verification).
-
-    Every file is backed up (guard.backup_file → numbered `.anvil.bak.N`) before
-    it is overwritten, exactly like `init --single-model`: an existing operator file
-    is NEVER clobbered silently, and a backup that cannot be written aborts the
-    whole scaffold rather than proceeding without a revert path. Returns a dict
-    describing what was written for the CLI to report and tests to assert on.
+    Keeping the write path explicit prevents destination selection from leaking
+    into the safety-critical backup behavior.
     """
-    target = os.path.abspath(os.path.expanduser(out_dir)) if out_dir else config_home()
+    target = os.path.abspath(os.path.expanduser(out_dir))
     plan = _home_plan()  # validate + read everything before touching the target
 
     os.makedirs(target, exist_ok=True)
@@ -215,6 +208,23 @@ def scaffold_home(out_dir=None):
         written.append(dest)
 
     return {"out_dir": target, "written": written, "backed_up": backed_up}
+
+
+def scaffold_home(out_dir=None):
+    """Scaffold the complete canonical config set into the machine-wide home.
+
+    `out_dir` defaults to the operator config home (`~/.anvil-serving`, honoring
+    ANVIL_SERVING_HOME) — the default search dir for `serves up` etc. — so a
+    fresh machine is operational with no path juggling; pass an explicit dir to
+    override (e.g. a temp dir for verification).
+
+    Every file is backed up (guard.backup_file → numbered `.anvil.bak.N`) before
+    it is overwritten, exactly like `init --single-model`: an existing operator file
+    is NEVER clobbered silently, and a backup that cannot be written aborts the
+    whole scaffold rather than proceeding without a revert path. Returns a dict
+    describing what was written for the CLI to report and tests to assert on.
+    """
+    return _scaffold_config(out_dir or config_home())
 
 
 def _read_catalog(catalog_dir):
@@ -442,9 +452,9 @@ def main(argv):
     ap = argparse.ArgumentParser(
         prog="anvil-serving init",
         description="Scaffold the FULL operational config set into the config home "
-                    "(~/.anvil-serving) so `serves up --group NAME` works with zero "
+                    "so `serves up --group NAME` works with zero "
                     "hand-assembly. Use --single-model for a one-model quick bring-up "
-                    "into the CWD instead (alias: onboard).")
+                    "into the CWD instead.")
     ap.add_argument("--model", default=None,
                     help="local model dir mounted into the container "
                          "(default: pick the biggest loadable entry from --catalog-dir)")
@@ -469,20 +479,17 @@ def main(argv):
                          "serves.toml + router.toml + operator-topology.toml) into the "
                          "CWD instead of the full operational config home. The --model/"
                          "--catalog-dir/--gpu/--port/etc. flags apply to this mode.")
-    # `--home` is now the DEFAULT (no-flag) behavior. Kept as a hidden, deprecated
-    # alias for one release so existing `init --home` invocations still work.
+    # Retained as a hidden compatibility alias for the default home scaffold.
     ap.add_argument("--home", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--out-dir", default=None,
                     help="where to write the files (default: the config home "
-                         "~/.anvil-serving; with --single-model, the CWD)")
+                         "with --single-model, the CWD)")
     a = ap.parse_args(argv)
 
     if not a.single_model:
-        # Default behavior: scaffold the full operational config home.
         if a.home:
-            print("[anvil-serving] note: `--home` is now the default and is deprecated; "
-                  "run `init` with no flag (use `--single-model` for the old CWD "
-                  "single-model bring-up).", file=sys.stderr)
+            print("[anvil-serving] note: `--home` is now the default; run `init` with no flag "
+                  "(use `--single-model` for the CWD single-model bring-up).", file=sys.stderr)
         return _main_home(a)
 
     bind = a.bind or (_deploy.LAN_BIND if a.expose_lan else _deploy.LOOPBACK_BIND)
@@ -521,7 +528,7 @@ def main(argv):
 
 
 def _main_home(a):
-    """Scaffold every canonical config into the config home (the `init` default)."""
+    """Scaffold every canonical config into the operator config home."""
     try:
         result = scaffold_home(out_dir=a.out_dir)
     except InitError as e:
@@ -550,8 +557,12 @@ def _main_home(a):
     print("  3. anvil-serving serves up --group voice   # (or llm-stack / comfy / ...)")
     print("  4. anvil-serving serves status")
     router_path = os.path.join(result["out_dir"], "router.toml")
-    print("  5. anvil-serving router run --config %s"
-          "   # front door on 127.0.0.1:8000" % router_path)
+    if a.out_dir:
+        print("  5. anvil-serving router run --config %s"
+              "   # front door on 127.0.0.1:8000" % router_path)
+    else:
+        print("  5. anvil-serving router run"
+              "   # uses the config-home router.toml; front door on 127.0.0.1:8000")
     edge_path = os.path.join(result["out_dir"], "edge.toml")
     print("  6. Optional tailnet edge (ADR-0019): anvil-serving edge render "
           "--config %s" % edge_path)
