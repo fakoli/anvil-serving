@@ -10,7 +10,7 @@ Focused `--help` is the complete flag reference for every command below.
 
 | Goal | Start here | Then |
 | --- | --- | --- |
-| Configure a new installation | `init` | Replace placeholders in the config home, then run `doctor`. |
+| Configure a new installation | `init` | Review detected host values and remaining placeholders, then run `doctor`. |
 | Check whether this machine is ready | `doctor --no-config` | Add `--config PATH` when the router config exists. |
 | Inspect a topology-owned host | `host status` | Use `host doctor` for a recommendation or `host memory` for WSL details. |
 | Change the WSL memory cap safely | `host doctor` | Preview `host wsl-config`, apply it, then restart Docker Desktop. |
@@ -74,7 +74,25 @@ manifests and Compose files, operator topology, disabled machine `host.toml`,
 `.env.example`, voice settings,
 and tailnet-edge settings. Templates are validated before the first write.
 Existing operator files receive numbered `.anvil.bak.N` backups before they are
-replaced.
+replaced. Files that already match the generated content are left untouched,
+without a backup or rewrite; repeated runs therefore do not accumulate copies
+of unchanged files such as `.env.example`.
+
+Bare `init` queries `nvidia-smi` and `tailscale ip -4`. The highest-VRAM GPU is
+assigned to Primary, the smallest distinct GPU is assigned to Auxiliary, and the
+detected tailnet IPv4 address replaces the reference placeholder. Equal-VRAM
+cards are assigned by runtime index, with the lower index becoming Primary.
+The primary LLM maps to Primary; the smaller LLM, STT, TTS, OCR, embeddings,
+reranker, vision, and ComfyUI map to Auxiliary. Missing tools, unavailable
+values, or a single-GPU host leave unresolved placeholders visible; one card
+is never silently assigned to both roles.
+
+Override any detected value or disable host probing:
+
+```bash
+anvil-serving init --primary-gpu-uuid GPU-... --auxiliary-gpu-uuid GPU-... --tailnet-ip 100.64.0.10
+anvil-serving init --no-detect-host
+```
 
 For a one-model configuration:
 

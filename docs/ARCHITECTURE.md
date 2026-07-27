@@ -9,8 +9,8 @@ flowchart LR
     C["client or harness"] --> A["authenticated front door"]
     A --> D["dialect translation"]
     D --> R{"explicit model alias"}
-    R -->|"llm.primary"| H["RTX PRO 6000 / heavy-local"]
-    R -->|"llm.voice"| F["RTX 5090 / fast-local"]
+    R -->|"llm.primary"| H["RTX PRO 6000 / primary-local"]
+    R -->|"llm.voice"| F["RTX 5090 / auxiliary-local"]
     R -->|"unknown"| X["404"]
     H --> S["SSE / normalized response"]
     F --> S

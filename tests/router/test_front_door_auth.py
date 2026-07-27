@@ -93,7 +93,7 @@ class _TransitionBackend(StaticBackend):
 
     def transition_status(self, tier_id=None):
         return {"tiers": [{
-            "tier_id": tier_id or "heavy-local",
+            "tier_id": tier_id or "primary-local",
             "state": self.state,
             "reason": "promotion" if self.state == "quiesced" else "admitting",
             "active_requests": 0,
@@ -266,7 +266,7 @@ def test_transition_boundary_requires_configured_auth_and_valid_token():
     with running_server(backend, auth_token=TOKEN) as (host, port):
         status_missing, _, _ = _get(host, port, "/v1/admin/transition")
         status_valid, _, raw = _get(
-            host, port, "/v1/admin/transition?tier_id=heavy-local",
+            host, port, "/v1/admin/transition?tier_id=primary-local",
             headers={"Authorization": f"Bearer {TOKEN}"},
         )
     assert status_off == 404
@@ -301,24 +301,24 @@ def test_transition_mutations_preview_then_apply_and_drain():
     with running_server(backend, auth_token=TOKEN) as (host, port):
         preview_status, _, preview_raw = _post(
             host, port, "/v1/admin/transition",
-            {"action": "quiesce", "tier_id": "heavy-local"}, headers,
+            {"action": "quiesce", "tier_id": "primary-local"}, headers,
         )
         assert backend.state == "admitting"
         applied_status, _, applied_raw = _post(
             host, port, "/v1/admin/transition",
             {
-                "action": "quiesce", "tier_id": "heavy-local",
+                "action": "quiesce", "tier_id": "primary-local",
                 "confirm": True, "dry_run": False,
             }, headers,
         )
         drain_status, _, drain_raw = _post(
             host, port, "/v1/admin/transition",
-            {"action": "drain", "tier_id": "heavy-local", "timeout": 1}, headers,
+            {"action": "drain", "tier_id": "primary-local", "timeout": 1}, headers,
         )
         readmit_status, _, _ = _post(
             host, port, "/v1/admin/transition",
             {
-                "action": "readmit", "tier_id": "heavy-local",
+                "action": "readmit", "tier_id": "primary-local",
                 "confirm": True, "dry_run": False,
             }, headers,
         )

@@ -199,8 +199,8 @@ def test_serves_reached_by_router_via_service_name_not_loopback():
     # its tiers must address the serves by compose SERVICE NAME (the router now runs
     # in its own container, so 127.0.0.1 would mean "inside the router container").
     text = DOCKER_CONFIG_PATH.read_text(encoding="utf-8")
-    assert "http://sglang:30000/v1" in text
-    assert "http://fast:30001/v1" in text
+    assert "http://primary:30000/v1" in text
+    assert "http://auxiliary:30001/v1" in text
     assert "127.0.0.1:30000" not in text
     assert "127.0.0.1:30001" not in text
 

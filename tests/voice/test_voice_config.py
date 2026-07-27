@@ -328,7 +328,7 @@ def test_resolve_manifest_data_returns_profile_identity():
         "dark-audio": {
             "llm": {
                 "base_url": "http://100.87.34.66:8000/v1",
-                "model": "fast-local",
+                "model": "auxiliary-local",
             },
             "stt": {
                 "base_url": "http://100.87.34.66:30110/v1",
@@ -346,7 +346,7 @@ def test_resolve_manifest_data_returns_profile_identity():
     assert resolved.profile == "dark-audio"
     assert resolved.candidate is None
     assert resolved.llm_base_url == "http://100.87.34.66:8000/v1"
-    assert resolved.llm_model == "fast-local"
+    assert resolved.llm_model == "auxiliary-local"
     assert resolved.stt_model == "tdt_ctc-110m"
     assert resolved.tts_model == "kokoro"
     assert resolved.identity()["tts_base_url"] == "http://100.87.34.66:30111/v1"
@@ -356,7 +356,7 @@ def test_candidate_overlay_merges_after_profile_without_mutating_source():
     data = _valid_manifest()
     data["voice"]["profiles"] = {
         "mini-audio": {
-            "llm": {"model": "fast-local"},
+            "llm": {"model": "auxiliary-local"},
             "stt": {"model": "mini-stt"},
         },
     }

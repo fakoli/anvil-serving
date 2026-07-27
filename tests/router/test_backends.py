@@ -31,9 +31,9 @@ from anvil_serving.router.serve import build_backend_for_tier, build_backends
 # --------------------------------------------------------------------------- #
 def _local_tier(**overrides) -> Tier:
     base = dict(
-        id="fast-local", base_url="http://127.0.0.1:30001/v1", dialect="openai",
+        id="auxiliary-local", base_url="http://127.0.0.1:30001/v1", dialect="openai",
         context_limit=32768, privacy="local", tool_support=True,
-        auth_env="ANVIL_FAST_LOCAL_KEY", model="served-model",
+        auth_env="ANVIL_AUXILIARY_LOCAL_KEY", model="served-model",
     )
     base.update(overrides)
     return Tier(**base)
@@ -80,7 +80,7 @@ def test_relay_timeout_plumbed_through_build_backends_to_local_backend():
     config = _config(_local_tier(), relay_timeout=5.0)
     backends, skipped = build_backends(config, env={})
     assert not skipped
-    assert backends["fast-local"]._timeout == pytest.approx(5.0)
+    assert backends["auxiliary-local"]._timeout == pytest.approx(5.0)
 
 
 def test_relay_timeout_applies_to_every_direct_local_backend():
@@ -92,7 +92,7 @@ def test_relay_timeout_applies_to_every_direct_local_backend():
         config, env={"ANVIL_TEST_CLOUD_KEY": "sk-test-DEADBEEF"}
     )
     assert not skipped
-    assert backends["fast-local"]._timeout == pytest.approx(5.0)
+    assert backends["auxiliary-local"]._timeout == pytest.approx(5.0)
     assert backends["anthropic-local"]._timeout == pytest.approx(5.0)
 
 
@@ -102,7 +102,7 @@ def test_relay_timeout_default_is_20s_end_to_end():
     default, which only applies to a direct un-configured call)."""
     config = _config(_local_tier())  # relay_timeout not overridden -> 20.0
     backends, _skipped = build_backends(config, env={})
-    assert backends["fast-local"]._timeout == pytest.approx(20.0)
+    assert backends["auxiliary-local"]._timeout == pytest.approx(20.0)
 
 
 def test_build_backend_for_tier_direct_call_keeps_120s_default():
@@ -241,7 +241,7 @@ def test_auto_derive_model_multiple_candidates_raises_config_error():
         build_backend_for_tier(
             _local_tier(model=None), env={}, model_discovery_transport=discovery_fake
         )
-    assert "fast-local" in str(excinfo.value)
+    assert "auxiliary-local" in str(excinfo.value)
 
 
 def test_auto_derive_model_explicit_model_skips_the_probe():

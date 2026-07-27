@@ -115,11 +115,11 @@ configuration volumes, or modify the host outside Docker's requested router acti
 A safe tier transition is explicit:
 
 ```bash
-anvil-serving router quiesce --tier heavy-local --dry-run
-anvil-serving router quiesce --tier heavy-local --confirm
-anvil-serving router transition-status --tier heavy-local
-anvil-serving router drain --tier heavy-local --timeout 120
-anvil-serving router readmit --tier heavy-local --confirm
+anvil-serving router quiesce --tier primary-local --dry-run
+anvil-serving router quiesce --tier primary-local --confirm
+anvil-serving router transition-status --tier primary-local
+anvil-serving router drain --tier primary-local --timeout 120
+anvil-serving router readmit --tier primary-local --confirm
 ```
 
 Use `transition-status` between steps. The commands preserve the distinction between

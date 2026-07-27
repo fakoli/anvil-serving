@@ -48,8 +48,8 @@ def _tier(tier_id, port):
 
 
 def _routing(heavy_backend, fast_backend):
-    heavy = _tier("heavy-local", 30002)
-    fast = _tier("fast-local", 30003)
+    heavy = _tier("primary-local", 30002)
+    fast = _tier("auxiliary-local", 30003)
     config = RouterConfig(
         tiers=(heavy, fast),
         model_routes={
@@ -77,7 +77,7 @@ def test_heavy_drains_while_another_direct_route_uses_resident_fast():
     worker.start()
     assert heavy.entered.wait(1)
 
-    snapshot = routing.quiesce_tier("heavy-local")
+    snapshot = routing.quiesce_tier("primary-local")
     assert snapshot["active_requests"] == 1
     assert "".join(routing.generate(_request("llm.voice"))) == "FAST"
     assert fast.calls == 1
@@ -85,16 +85,16 @@ def test_heavy_drains_while_another_direct_route_uses_resident_fast():
     heavy.release.set()
     worker.join(1)
     assert result == ["HEAVY"]
-    assert routing.drain_tier("heavy-local", 1)["drained"] is True
+    assert routing.drain_tier("primary-local", 1)["drained"] is True
     assert any(
-        record.served_tier == "fast-local"
+        record.served_tier == "auxiliary-local"
         for record in routing._decision_log.records
     )
 
 
 def test_heavy_only_request_fails_closed_while_quiesced():
     routing = _routing(_TextBackend("HEAVY"), _TextBackend("FAST"))
-    routing.quiesce_tier("heavy-local")
+    routing.quiesce_tier("primary-local")
 
     with pytest.raises(NoAvailableTierError) as exc:
         routing.generate(_request("llm.primary"))
@@ -104,33 +104,33 @@ def test_heavy_only_request_fails_closed_while_quiesced():
 def test_direct_stream_close_releases_full_generation_lease():
     routing = _routing(_TextBackend("HEAVY"), _TextBackend("FAST"))
     stream = routing.generate(_request())
-    assert routing._admission.snapshot("heavy-local").active_requests == 1
+    assert routing._admission.snapshot("primary-local").active_requests == 1
     assert next(stream) == "HEAVY"
     stream.close()
-    assert routing._admission.snapshot("heavy-local").active_requests == 0
+    assert routing._admission.snapshot("primary-local").active_requests == 0
 
 
 def test_unadvanced_direct_stream_close_releases_admission_lease():
     routing = _routing(_TextBackend("HEAVY"), _TextBackend("FAST"))
     stream = routing.generate(_request())
-    assert routing._admission.snapshot("heavy-local").active_requests == 1
+    assert routing._admission.snapshot("primary-local").active_requests == 1
     stream.close()
-    assert routing._admission.snapshot("heavy-local").active_requests == 0
+    assert routing._admission.snapshot("primary-local").active_requests == 0
 
 
 def test_guarded_readmit_requires_identity_readiness_configuration():
     routing = _routing(_TextBackend("HEAVY"), _TextBackend("FAST"))
-    routing.quiesce_tier("heavy-local")
-    result = routing.readmit_tier("heavy-local")
+    routing.quiesce_tier("primary-local")
+    result = routing.readmit_tier("primary-local")
     assert result["readmitted"] is False
     assert result["reason"] == "identity_not_configured"
-    assert routing._admission.snapshot("heavy-local").quiesced is True
+    assert routing._admission.snapshot("primary-local").quiesced is True
 
 
 def test_successful_readmit_keeps_the_identity_result_cached():
     heavy = Tier(
         **{
-            **_tier("heavy-local", 30002).__dict__,
+            **_tier("primary-local", 30002).__dict__,
             "health_path": "/health",
             "model_identity": True,
         }
@@ -165,7 +165,7 @@ def test_successful_readmit_keeps_the_identity_result_cached():
 def test_guarded_readmit_rejects_available_without_exact_identity_evidence():
     heavy = Tier(
         **{
-            **_tier("heavy-local", 30002).__dict__,
+            **_tier("primary-local", 30002).__dict__,
             "health_path": "/health",
             "model_identity": True,
         }
@@ -206,7 +206,7 @@ def _eviction_manifest(tmp_path):
         name = "fast"
         container = "vllm-fast"
         port = 30003
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         gpu_role = "dark-fast"
         vram_mib = 20480
@@ -217,12 +217,12 @@ def _eviction_manifest(tmp_path):
         name = "exp"
         container = "vllm-exp"
         port = 30002
-        model = "heavy-local"
+        model = "primary-local"
         engine = "vllm"
         gpu_role = "dark-fast"
         vram_mib = 16384
         residency = "evictable"
-        router_tier = "heavy-local"
+        router_tier = "primary-local"
         up = "docker compose -f {dir}/compose.yml up -d exp"
     """), encoding="utf-8")
     return str(path)
@@ -281,7 +281,7 @@ def test_eviction_drains_the_in_flight_admission_lease_before_container_stop(tmp
         "".join(routing.generate(_request("llm.primary")))))
     worker.start()
     assert victim_backend.entered.wait(1)
-    assert routing._admission.snapshot("heavy-local").active_requests == 1
+    assert routing._admission.snapshot("primary-local").active_requests == 1
 
     journal = []
     drain_started = threading.Event()
@@ -306,12 +306,12 @@ def test_eviction_drains_the_in_flight_admission_lease_before_container_stop(tmp
     # Drain genuinely waited on the victim's AdmissionLease (the generation
     # was only released after the drain began), and the stop came after it:
     assert journal[:3] == [
-        ("quiesce", "heavy-local"),
-        ("drained", "heavy-local", True),
+        ("quiesce", "primary-local"),
+        ("drained", "primary-local", True),
         ("stop", "vllm-exp"),
     ]
     assert states["vllm-exp"] == "exited"
-    snapshot = routing._admission.snapshot("heavy-local")
+    snapshot = routing._admission.snapshot("primary-local")
     assert snapshot.active_requests == 0
     # The evicted tier stays quiesced: readmission is the guarded transition.
     assert snapshot.quiesced is True
@@ -325,7 +325,7 @@ def test_eviction_drain_timeout_aborts_without_operating_containers(tmp_path):
     loaded = serves_mod.load_manifest(_eviction_manifest(tmp_path))
 
     stream = routing.generate(_request("llm.primary"))
-    assert routing._admission.snapshot("heavy-local").active_requests == 1
+    assert routing._admission.snapshot("primary-local").active_requests == 1
 
     journal = []
     states = {"vllm-exp": "running"}
@@ -337,11 +337,11 @@ def test_eviction_drain_timeout_aborts_without_operating_containers(tmp_path):
     assert rc == 2
     assert states["vllm-exp"] == "running"  # bounded abort: NO container op
     assert journal == [
-        ("quiesce", "heavy-local"),
-        ("drained", "heavy-local", False),
+        ("quiesce", "primary-local"),
+        ("drained", "primary-local", False),
         # Guarded readmit cannot prove identity readiness here, so the
         # compensation leaves admission fail-closed — quiesced, not half-open.
-        ("readmit", "heavy-local", False),
+        ("readmit", "primary-local", False),
     ]
-    assert routing._admission.snapshot("heavy-local").quiesced is True
+    assert routing._admission.snapshot("primary-local").quiesced is True
     stream.close()

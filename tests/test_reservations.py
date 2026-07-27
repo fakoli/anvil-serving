@@ -70,7 +70,7 @@ LEDGER_MANIFEST = """
     name = "fast"
     container = "vllm-fast"
     port = 30003
-    model = "fast-local"
+    model = "auxiliary-local"
     engine = "vllm"
     gpu_role = "dark-fast"
     vram_mib = 20480
@@ -126,7 +126,7 @@ def test_load_manifest_without_gpu_roles_attaches_nothing(tmp_path):
         name = "fast"
         container = "vllm-fast"
         port = 30003
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
     """))
     assert reservations.GPU_ROLES_KEY not in loaded[0]
@@ -155,7 +155,7 @@ def test_load_manifest_rejects_invalid_gpu_roles_rows(tmp_path, row, match):
         name = "fast"
         container = "vllm-fast"
         port = 30003
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
     """ % "\n".join("        " + line for line in row.splitlines()).lstrip())
     with pytest.raises(ValueError, match=match):
@@ -176,7 +176,7 @@ def test_load_manifest_rejects_duplicate_gpu_role_ids(tmp_path):
         name = "fast"
         container = "vllm-fast"
         port = 30003
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
     """)
     with pytest.raises(ValueError, match="duplicate gpu_roles id"):
@@ -281,7 +281,7 @@ def test_reservation_on_role_without_declared_capacity_is_unenforced(tmp_path):
         name = "fast"
         container = "vllm-fast"
         port = 30003
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         gpu_role = "dark-fast"
         vram_mib = 999999
@@ -302,7 +302,7 @@ def test_manifest_without_reservation_fields_runs_no_extra_docker_probe(tmp_path
         name = "fast"
         container = "vllm-fast"
         port = 30003
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         up = "docker compose -f {dir}/compose.yml up -d fast"
     """))
@@ -429,7 +429,7 @@ EVICTION_MANIFEST = """
     name = "fast"
     container = "vllm-fast"
     port = 30003
-    model = "fast-local"
+    model = "auxiliary-local"
     engine = "vllm"
     gpu_role = "dark-fast"
     vram_mib = 20480
@@ -642,7 +642,7 @@ def test_plan_eviction_picks_the_fewest_victims_largest_first(tmp_path):
         name = "fast"
         container = "vllm-fast"
         port = 30003
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         gpu_role = "dark-fast"
         vram_mib = 20480

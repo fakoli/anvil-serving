@@ -61,7 +61,12 @@ def test_router_run_uses_discovered_config_home(tmp_path, monkeypatch):
 def test_local_direct_backends_build_without_cloud_credentials():
     backends, skipped = build_backends(load(_CONFIG), env={})
 
-    assert set(backends) == {"heavy-local", "fast-local"}
+    assert set(backends) == {
+        "primary-local",
+        "auxiliary-local",
+        "ocr-local",
+        "vision-local",
+    }
     assert skipped == []
 
 

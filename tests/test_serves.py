@@ -60,7 +60,7 @@ def test_load_manifest_parses_up_into_argv_list(tmp_path):
         name = "fast"
         container = "vllm-gptoss"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         up = "bash {dir}/serve.sh"
     """)
@@ -177,7 +177,7 @@ def test_load_manifest_normalizes_on_demand_residency_spelling(tmp_path):
         name = "fast"
         container = "vllm-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         residency = "On_Demand"
     """)
@@ -192,7 +192,7 @@ def test_load_manifest_rejects_invalid_residency_with_clear_error(tmp_path, resi
         name = "fast"
         container = "vllm-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         residency = {residency}
     """)
@@ -209,7 +209,7 @@ def test_load_manifest_rejects_non_positive_integer_vram_mib(tmp_path, vram):
         name = "fast"
         container = "vllm-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         vram_mib = {vram}
     """)
@@ -224,7 +224,7 @@ def test_load_manifest_rejects_empty_or_non_string_gpu_role(tmp_path, gpu_role):
         name = "fast"
         container = "vllm-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         gpu_role = {gpu_role}
     """)
@@ -239,7 +239,7 @@ def test_load_manifest_without_reservation_fields_parses_unchanged(tmp_path):
         name = "fast"
         container = "vllm-gptoss"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         up = "bash {dir}/serve.sh"
     """)
@@ -249,8 +249,8 @@ def test_load_manifest_without_reservation_fields_parses_unchanged(tmp_path):
         "name": "fast",
         "container": "vllm-gptoss",
         "port": 30001,
-        "model": "fast-local",
-        "served_name": "fast-local",
+        "model": "auxiliary-local",
+        "served_name": "auxiliary-local",
         "engine": "vllm",
         "_manifest_dir": mdir,
         "health": "/health",
@@ -266,7 +266,7 @@ def test_load_manifest_parses_groups_field(tmp_path):
         name = "fast"
         container = "vllm-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         groups = ["fast-only", "llm-stack"]
         up = "docker compose up -d fast"
@@ -282,7 +282,7 @@ def test_load_manifest_groups_absent_adds_no_key(tmp_path):
         name = "fast"
         container = "vllm-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
     """)
     (s,) = serves.load_manifest(path)
@@ -295,7 +295,7 @@ def test_load_manifest_groups_dedupes_preserving_order(tmp_path):
         name = "fast"
         container = "vllm-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         groups = ["llm-stack", "fast-only", "llm-stack"]
     """)
@@ -310,7 +310,7 @@ def test_load_manifest_rejects_invalid_groups(tmp_path, groups):
         name = "fast"
         container = "vllm-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         groups = {groups}
     """)
@@ -325,7 +325,7 @@ def test_load_manifest_rejects_reserved_group_all(tmp_path, reserved):
         name = "fast"
         container = "vllm-fast"
         port = 30001
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
         groups = {reserved}
     """)
@@ -377,7 +377,7 @@ def test_load_manifest_normalizes_llamacpp_alias_and_served_name(tmp_path):
 def test_shipped_fakoli_manifest_is_valid():
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     names = {s["name"] for s in serves_list}
-    assert {"heavy", "fast", "fast-devstral-small2-llamacpp"} <= names
+    assert {"primary", "auxiliary", "fast-devstral-small2-llamacpp"} <= names
     by_name = {s["name"]: s for s in serves_list}
     assert by_name["fast-qwen36-35b-a3b"]["engine"] == "vllm"
     assert by_name["fast-glm47-flash-sglang"]["engine"] == "sglang"
@@ -387,14 +387,14 @@ def test_shipped_fakoli_manifest_is_valid():
 def test_shipped_fakoli_manifest_purpose_model_serves():
     # gpu-reservations:T009 — the embeddings/reranker serves are resident
     # ADR-0017 reservations on the multi-tenant 5090 with truthful engine
-    # labels, and the resident set fits the declared dark-fast budget.
+    # labels, and the resident set fits the declared dark-auxiliary budget.
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
     emb, rr = by_name["embeddings"], by_name["reranker"]
     assert emb["engine"] == "embedding"
     assert rr["engine"] == "reranker"
     for s in (emb, rr):
-        assert s["gpu_role"] == "dark-fast"
+        assert s["gpu_role"] == "dark-auxiliary"
         assert s["residency"] == "resident"
         assert s["health"] == "/health"
     # HONEST-MEASURED budgets (see the manifest comments): weights + the fixed
@@ -403,12 +403,12 @@ def test_shipped_fakoli_manifest_purpose_model_serves():
     assert rr["vram_mib"] == 3456
     assert emb["port"] == 30005 and emb["model"] == "qwen3-embedding-0.6b"
     assert rr["port"] == 30006 and rr["model"] == "qwen3-reranker-0.6b"
-    # The T009 resident trio (fast + embeddings + reranker) must fit the role
+    # The T009 resident trio (auxiliary + embeddings + reranker) must fit the role
     # budget — the manifest-level guarantee that `serves up` admits all three
     # together.
     by = {s["name"]: s for s in serves_list}
-    budget = reservations.budgets_of(serves_list)["dark-fast"].budget_mib
-    trio = sum(by[n]["vram_mib"] for n in ("fast", "embeddings", "reranker"))
+    budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
+    trio = sum(by[n]["vram_mib"] for n in ("auxiliary", "embeddings", "reranker"))
     assert trio <= budget, (trio, budget)
 
 
@@ -419,7 +419,7 @@ def test_shipped_fakoli_manifest_ocr_serve():
     by_name = {s["name"]: s for s in serves_list}
     ocr = by_name["ocr"]
     assert ocr["engine"] == "vllm"
-    assert ocr["gpu_role"] == "dark-fast"
+    assert ocr["gpu_role"] == "dark-auxiliary"
     assert ocr["residency"] == "resident"
     assert ocr["health"] == "/health"
     # HONEST-MEASURED budget (see the manifest/compose comments): 1.82 GiB
@@ -428,17 +428,18 @@ def test_shipped_fakoli_manifest_ocr_serve():
     assert ocr["vram_mib"] == 5120
     assert ocr["port"] == 30007 and ocr["model"] == "paddleocr-vl-1.6"
     # The FULL declared RESIDENT set (fast + embeddings + reranker + ocr) FITS
-    # the dark-fast budget after the 2026-07-13 T011 operator rebalance (fast
+    # the dark-auxiliary budget after the 2026-07-13 T011 operator rebalance (fast
     # 18432 -> 14336 via the pre-quantized FP8-Dynamic checkpoint, reserve
     # 7168 -> 4608), resolving the previously pinned T015 oversubscription
     # (full - budget == 4769). This pin keeps the next rebalance deliberate:
     # the resident set must keep fitting. (T013: the sum is residency-filtered —
     # `evictable` serves like `vision` are OUTSIDE the always-on guarantee and
     # pinned separately in test_shipped_fakoli_manifest_vision_serve.)
-    budget = reservations.budgets_of(serves_list)["dark-fast"].budget_mib
+    budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
     resident = sum(
         s["vram_mib"] for s in serves_list
-        if s.get("gpu_role") == "dark-fast" and s.get("residency") == "resident"
+        if s.get("gpu_role") == "dark-auxiliary"
+        and s.get("residency") == "resident"
     )
     assert resident == 26112 and budget == 27999, (resident, budget)
     assert budget - resident == 1887, (resident, budget)
@@ -446,7 +447,7 @@ def test_shipped_fakoli_manifest_ocr_serve():
 
 def test_shipped_fakoli_manifest_vision_serve():
     # gpu-reservations:T013 — Qwen3-VL-4B-Instruct is the first `evictable`
-    # ADR-0017 reservation on dark-fast, behind the "vision.general" alias
+    # ADR-0017 reservation on dark-auxiliary, behind the "vision.general" alias
     # (vision-local, :30008). Evictable means: admitted only when the ledger
     # has headroom, and stopped (drain-first, via the declared router_tier)
     # when an `on-demand` acquisition needs the VRAM (T005 eviction flow).
@@ -454,7 +455,7 @@ def test_shipped_fakoli_manifest_vision_serve():
     by_name = {s["name"]: s for s in serves_list}
     vision = by_name["vision"]
     assert vision["engine"] == "vllm"
-    assert vision["gpu_role"] == "dark-fast"
+    assert vision["gpu_role"] == "dark-auxiliary"
     assert vision["residency"] == "evictable"
     assert vision["health"] == "/health"
     # The ADR-0018 drain hook: eviction quiesces + drains this router tier
@@ -469,10 +470,11 @@ def test_shipped_fakoli_manifest_vision_serve():
     # keeps the trade-off visible: if the resident set shrinks enough that
     # vision becomes co-residable, or vision's budget changes, re-decide
     # (gpu-reservations:T015) instead of silently drifting.
-    budget = reservations.budgets_of(serves_list)["dark-fast"].budget_mib
+    budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
     resident = sum(
         s["vram_mib"] for s in serves_list
-        if s.get("gpu_role") == "dark-fast" and s.get("residency") == "resident"
+        if s.get("gpu_role") == "dark-auxiliary"
+        and s.get("residency") == "resident"
     )
     assert resident + vision["vram_mib"] > budget, (resident, vision["vram_mib"], budget)
 
@@ -504,7 +506,7 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
     by_name = {s["name"]: s for s in serves_list}
     comfyui = by_name["comfyui"]
     assert comfyui["engine"] == "image"
-    assert comfyui["gpu_role"] == "dark-fast"
+    assert comfyui["gpu_role"] == "dark-auxiliary"
     assert comfyui["residency"] == "on-demand"
     assert comfyui["health"] == "/system_stats"
     assert comfyui["port"] == 8188
@@ -523,7 +525,7 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
 
 
 def test_shipped_comfyui_manifest_mirrors_main_manifest():
-    # The comfyui manifest re-declares the dark-fast ledger (capacity row +
+    # The comfyui manifest re-declares the dark-auxiliary ledger (capacity row +
     # reservation mirrors) because ADR-0017 ledgers are derived per manifest.
     # This pin turns the KEEP IN SYNC comment into a checked invariant: a
     # rebalance of serves.toml that forgets the mirrors fails here instead of
@@ -532,16 +534,17 @@ def test_shipped_comfyui_manifest_mirrors_main_manifest():
     main = {s["name"]: s for s in main_list}
     comfy_list = serves.load_manifest(COMFYUI_MANIFEST)
     comfy = {s["name"]: s for s in comfy_list}
-    main_budget = reservations.budgets_of(main_list)["dark-fast"]
-    comfy_budget = reservations.budgets_of(comfy_list)["dark-fast"]
+    main_budget = reservations.budgets_of(main_list)["dark-auxiliary"]
+    comfy_budget = reservations.budgets_of(comfy_list)["dark-auxiliary"]
     assert (comfy_budget.vram_mib, comfy_budget.reserve_mib) == (
         main_budget.vram_mib, main_budget.reserve_mib)
     mirrors = [n for n in comfy if n != "comfyui"]
-    # Every serves.toml dark-fast reservation must be mirrored — a missing
+    # Every serves.toml dark-auxiliary reservation must be mirrored — a missing
     # mirror makes comfyui admission blind to that serve's committed VRAM.
     main_reserved = {
         n for n, s in main.items()
-        if s.get("gpu_role") == "dark-fast" and isinstance(s.get("vram_mib"), int)
+        if s.get("gpu_role") == "dark-auxiliary"
+        and isinstance(s.get("vram_mib"), int)
     }
     assert set(mirrors) == main_reserved, (sorted(mirrors), sorted(main_reserved))
     for name in mirrors:
@@ -1092,18 +1095,18 @@ def _promotion_manifest(tmp_path):
         (tmp_path / filename).write_text(textwrap.dedent(f"""
             [router]
             [[router.tiers]]
-            id = "heavy-local"
+            id = "primary-local"
             base_url = "http://127.0.0.1:30002/v1"
             model = "{model}"
             dialect = "openai"
             context_limit = 4096
             privacy = "local"
             tool_support = true
-            auth_env = "ANVIL_HEAVY_LOCAL_KEY"
+            auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
             health_path = "/health"
             model_identity = true
             [router.model_routes]
-            llm.primary = "heavy-local"
+            llm.primary = "primary-local"
         """), encoding="utf-8")
     return _manifest(tmp_path, """
         [[serve]]
@@ -1134,7 +1137,7 @@ def _promotion_manifest(tmp_path):
         candidate = "candidate"
         target = "heavy"
         rollback = "old-heavy"
-        affected_tiers = ["heavy-local"]
+        affected_tiers = ["primary-local"]
         router_config = "{dir}/router-promoted.toml"
         rollback_router_config = "{dir}/router-rollback.toml"
         needle_ctx = 131072
@@ -1171,7 +1174,7 @@ def test_load_promotions_resolves_direct_router_configs(tmp_path):
     assert plan["name"] == "heavy-v2"
     assert plan["target"] == "heavy"
     assert plan["rollback"] == "old-heavy"
-    assert plan["affected_tiers"] == ["heavy-local"]
+    assert plan["affected_tiers"] == ["primary-local"]
     assert plan["router_config"] == str(tmp_path / "router-promoted.toml")
     assert plan["rollback_router_config"] == str(tmp_path / "router-rollback.toml")
     assert [gate["name"] for gate in plan["gate"]] == ["functional", "quality"]
@@ -1298,8 +1301,8 @@ def test_ambiguous_quiesce_failure_compensates_current_tier(
     )
     assert rc == expected
     assert actions == [
-        ("quiesce", "heavy-local"),
-        ("readmit", "heavy-local"),
+        ("quiesce", "primary-local"),
+        ("readmit", "primary-local"),
     ]
 
 
@@ -1466,11 +1469,12 @@ STATUS_LEDGER_MANIFEST = """
     name = "fast"
     container = "vllm-fast"
     port = 30003
-    model = "fast-local"
+    model = "auxiliary-local"
     engine = "vllm"
     gpu_role = "dark-fast"
     vram_mib = 20480
     residency = "on-demand"
+    groups = ["production"]
 
     [[serve]]
     name = "stt"
@@ -1481,6 +1485,7 @@ STATUS_LEDGER_MANIFEST = """
     gpu_role = "dark-fast"
     vram_mib = 4096
     residency = "resident"
+    groups = ["production"]
 
     [[serve]]
     name = "plain"
@@ -1488,6 +1493,7 @@ STATUS_LEDGER_MANIFEST = """
     port = 30030
     model = "plain-local"
     engine = "vllm"
+    groups = ["production"]
 """
 
 
@@ -1543,7 +1549,7 @@ def test_cmd_status_without_gpu_roles_prints_no_reservation_section(tmp_path, ca
         name = "fast"
         container = "vllm-fast"
         port = 30003
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
     """))
     run = _status_states_run({"vllm-fast": "running"})
@@ -1589,14 +1595,102 @@ def test_status_summary_without_gpu_roles_has_empty_ledger_and_no_extra_probes(t
         name = "fast"
         container = "vllm-fast"
         port = 30003
-        model = "fast-local"
+        model = "auxiliary-local"
         engine = "vllm"
+        groups = ["production"]
     """))
     run = _status_states_run({"vllm-fast": "running"})
     data = serves.status_summary(loaded, _run=run, _open=_open_down)
     assert data["reservations"] == {"gpu_roles": []}
     inspects = [c for c in run.calls if c[:2] == ["docker", "inspect"]]
     assert len(inspects) == 1
+
+
+def test_status_summary_skips_untagged_candidate_until_named(tmp_path):
+    loaded = serves.load_manifest(_manifest(tmp_path, """
+        [[serve]]
+        name = "primary"
+        container = "vllm-primary"
+        port = 30002
+        model = "primary-local"
+        engine = "vllm"
+        groups = ["llm-stack"]
+
+        [[serve]]
+        name = "candidate"
+        container = "vllm-candidate"
+        port = 39002
+        model = "candidate-local"
+        engine = "vllm"
+    """))
+    run = _status_states_run({
+        "vllm-primary": "running",
+        "vllm-candidate": "exited",
+    })
+
+    default = serves.status_summary(loaded, _run=run, _open=_open_down)
+    assert default["selected"] == ["primary"]
+    inspected = [call[-1] for call in run.calls if call[:2] == ["docker", "inspect"]]
+    assert inspected == ["vllm-primary"]
+
+    explicit = serves.status_summary(
+        loaded, ["candidate"], _run=run, _open=_open_down
+    )
+    assert explicit["selected"] == ["candidate"]
+    inspected = [call[-1] for call in run.calls if call[:2] == ["docker", "inspect"]]
+    assert inspected[-1] == "vllm-candidate"
+
+
+def test_main_status_positional_name_opts_candidate_in(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path, """
+        [[serve]]
+        name = "primary"
+        container = "vllm-primary"
+        port = 30002
+        model = "primary-local"
+        groups = ["llm-stack"]
+
+        [[serve]]
+        name = "candidate"
+        container = "vllm-candidate"
+        port = 39002
+        model = "candidate-local"
+    """)
+    received = {}
+
+    def status(loaded, names=None, **kwargs):
+        received["names"] = names
+        received["ledger"] = [serve["name"] for serve in kwargs["ledger_serves"]]
+        return 0
+
+    monkeypatch.setattr(serves, "cmd_status", status)
+
+    assert serves.main(["status", "candidate", "--manifest", manifest]) == 0
+    assert received == {
+        "names": ["candidate"],
+        "ledger": ["primary", "candidate"],
+    }
+
+
+def test_main_status_rejects_unknown_opt_in_before_polling(
+    tmp_path, monkeypatch, capsys
+):
+    manifest = _manifest(tmp_path, """
+        [[serve]]
+        name = "primary"
+        container = "vllm-primary"
+        port = 30002
+        model = "primary-local"
+        groups = ["llm-stack"]
+    """)
+    monkeypatch.setattr(
+        serves,
+        "cmd_status",
+        lambda *_args, **_kwargs: pytest.fail("unknown serve reached polling"),
+    )
+
+    assert serves.main(["status", "missing", "--manifest", manifest]) == 2
+    assert "unknown serve(s): missing" in capsys.readouterr().err
 
 
 # ---- lifecycle-aware automatic WSL cache reclaim ---------------------------
@@ -1619,7 +1713,7 @@ def _lifecycle_manifest(tmp_path):
         name = "heavy"
         container = "vllm-heavy"
         port = 30002
-        model = "heavy-local"
+        model = "primary-local"
         engine = "vllm"
         health = "/health"
         up = "docker compose -f {dir}/compose.yml up -d heavy"

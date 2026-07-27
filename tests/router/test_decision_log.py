@@ -9,9 +9,9 @@ from anvil_serving.router.decision_log import AttemptRecord, DecisionLog, Decisi
 def _record(*, reason="served", served=True):
     return DecisionRecord(
         kind="chat",
-        requested_tier="heavy-local",
-        attempts=(AttemptRecord("heavy-local", served, reason, 3, 2 if served else 0, "served" if served else "skipped"),),
-        served_tier="heavy-local" if served else None,
+        requested_tier="primary-local",
+        attempts=(AttemptRecord("primary-local", served, reason, 3, 2 if served else 0, "served" if served else "skipped"),),
+        served_tier="primary-local" if served else None,
         total_prompt_tokens=3,
         total_completion_tokens=2 if served else 0,
         route="llm.primary",
@@ -38,7 +38,7 @@ def test_summary_keeps_only_metadata_and_redacts_secret_shaped_values():
     attempt = summary["records"][0]["attempts"][0]
     assert attempt["reason"] == "<redacted>"
     assert "this-is-a-token" not in repr(summary)
-    assert summary["totals"]["served_tiers"] == {"heavy-local": 1}
+    assert summary["totals"]["served_tiers"] == {"primary-local": 1}
 
 
 def test_direct_failure_record_is_reported_as_unserved():
@@ -61,11 +61,11 @@ def test_concurrent_appends_do_not_lose_or_corrupt_records():
                 route = f"llm.thread-{thread_index}-{record_index}"
                 log.record(DecisionRecord(
                     kind="chat",
-                    requested_tier="heavy-local",
+                    requested_tier="primary-local",
                     attempts=(AttemptRecord(
-                        "heavy-local", True, "served", 1, 1, "served"
+                        "primary-local", True, "served", 1, 1, "served"
                     ),),
-                    served_tier="heavy-local",
+                    served_tier="primary-local",
                     total_prompt_tokens=1,
                     total_completion_tokens=1,
                     route=route,

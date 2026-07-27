@@ -5,10 +5,10 @@
 The `models` family manages four related resources: the local model catalog,
 downloaded artifacts, reusable serve recipes, and cache storage. Use recipes to move
 from a known working engine configuration to a candidate container; use
-[`serves switch`](serves.md#switch-heavy-by-recipe) when the candidate is ready to
+[`serves switch`](serves.md#switch-primary-by-recipe) when the candidate is ready to
 replace a deployed role.
 
-## Switch Heavy to another model
+## Switch Primary to another model
 
 You switch the `heavy` role to a recorded recipe; you do not edit the active
 Compose service by hand.
@@ -16,8 +16,8 @@ Compose service by hand.
 ```bash
 anvil-serving models recipes list
 anvil-serving models recipes show MODEL
-anvil-serving serves switch heavy MODEL --dry-run
-anvil-serving serves switch heavy MODEL --confirm
+anvil-serving serves switch primary MODEL --dry-run
+anvil-serving serves switch primary MODEL --confirm
 ```
 
 `list` shows which recipes activate `heavy`. `show` resolves the exact model id or
@@ -37,7 +37,7 @@ swap.
 | See models already on this host | `models sync --dry-run` | Apply with `--confirm`, then inspect `model-library/INDEX.md`. |
 | Download a Hugging Face model | `models pull REPO --dry-run` | Apply with `--confirm`. |
 | Find a known working serve configuration | `models recipes list` | Inspect it with `models recipes show MODEL`. |
-| Replace the deployed Heavy recipe | `models recipes list` | Choose a row that activates `heavy`, inspect it, then preview `serves switch heavy MODEL --dry-run`. |
+| Replace the deployed Primary recipe | `models recipes list` | Choose a row that activates `primary`, inspect it, then preview `serves switch primary MODEL --dry-run`. |
 | Add or revise an operator recipe | `models recipes create|update ... --dry-run` | Apply with `--confirm`; retain the numbered backup. |
 | Start a candidate without changing routing | `models recipes load MODEL --container NAME --dry-run` | Apply, run `eval preflight`, then review a `serves switch`. |
 | Reclaim cache space | `models cache prune --dry-run` | Add `--execute --confirm` only after reviewing the protected mixture. |
@@ -187,7 +187,7 @@ anvil-serving models recipes load MODEL --container my-candidate --registry ./se
 
 `load` starts a new, explicitly named Docker container bound to loopback. It does not
 change router policy or promote the candidate. Validate it with
-[`eval preflight`](eval.md#preflight), then use [`serves switch`](serves.md#switch-heavy-by-recipe)
+[`eval preflight`](eval.md#preflight), then use [`serves switch`](serves.md#switch-primary-by-recipe)
 only after human review. The preview's cleanup command is conditional: use it only for a
 container successfully created by that load, never for a name that existed beforehand.
 

@@ -13,16 +13,16 @@
 # ALWAYS name `comfyui` on up/down. The other [[serve]] rows below are LEDGER MIRRORS,
 # not lifecycle targets (see below).
 #
-# ── ADR-0017 ledger: same dark-fast budget as serves.toml — KEEP IN SYNC ──
+# ── ADR-0017 ledger: same dark-auxiliary budget as serves.toml — KEEP IN SYNC ──
 # The reservation ledger is derived per manifest, so this manifest re-declares the
-# dark-fast capacity row AND mirrors the serves.toml reservations that live on the same
+# dark-auxiliary capacity row AND mirrors the serves.toml reservations that live on the same
 # physical card. Without the mirrors this manifest's ledger would see an empty card and
 # admit ComfyUI while the 5090 is actually full — the mirrors make `serves up comfyui`
 # admission HONEST: committed VRAM is derived from the mirrors' live docker container
 # state, exactly like in serves.toml. tests/test_serves.py asserts these rows stay in
 # sync with serves.toml (capacity, containers, vram_mib, residency).
 [[gpu_roles]]
-id = "dark-fast"
+id = "dark-auxiliary"
 vram_mib = 32607
 reserve_mib = 4608
 
@@ -48,7 +48,7 @@ port = 8188
 model = "comfyui-v0.27.1"      # UI/API tenant, not a served-model-name; label = pinned app version
 engine = "image"
 health = "/system_stats"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 12288
 residency = "on-demand"
 groups = ["comfy"]             # serve groups (serves up/down/status --group)
@@ -62,13 +62,13 @@ up = "docker compose -f {dir}/docker-compose.comfyui.yml up -d comfyui"
 # lifecycle for these serves belongs to serves.toml (that stop would be real: the
 # container names are the production ones).
 [[serve]]
-name = "fast"                  # mirror — lifecycle in serves.toml
-container = "vllm-gemma4-e4b-fast"
+name = "auxiliary"                  # mirror — lifecycle in serves.toml
+container = "vllm-gemma4-e4b-auxiliary"
 port = 30003
 model = "gemma4-e4b-it"
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 14336
 residency = "resident"
 
@@ -79,7 +79,7 @@ port = 30005
 model = "qwen3-embedding-0.6b"
 engine = "embedding"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 3200
 residency = "resident"
 
@@ -90,7 +90,7 @@ port = 30006
 model = "qwen3-reranker-0.6b"
 engine = "reranker"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 3456
 residency = "resident"
 
@@ -101,7 +101,7 @@ port = 30007
 model = "paddleocr-vl-1.6"
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 5120
 residency = "resident"
 
@@ -117,7 +117,7 @@ port = 30008
 model = "qwen3-vl-4b-instruct"
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 vram_mib = 12288
 residency = "evictable"
 router_tier = "vision-local"

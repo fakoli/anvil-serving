@@ -1792,6 +1792,22 @@ def _select(serves, names):
     return [s for s in serves if s["name"] in want or s["container"] in want]
 
 
+def _serving_path_scope(serves, selected=()):
+    """Return authored serving-path entries plus explicitly selected opt-ins.
+
+    A non-empty ``groups`` list is the manifest's declaration that a serve is
+    part of an operator-supported serving path. Untagged experiment and
+    candidate rows stay available by explicit name, but bare status must not
+    poll them. Explicitly selected rows are appended in manifest order without
+    duplicating a serving-path entry.
+    """
+    selected_containers = {s["container"] for s in selected}
+    return [
+        s for s in serves
+        if s.get("groups") or s["container"] in selected_containers
+    ]
+
+
 def docker_state(container, _run=subprocess.run):
     """Container state, distinguishing genuine absence from a docker error.
 
@@ -1855,7 +1871,8 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
     Mirrors :func:`cmd_status` without printing. The shape is intentionally
     simple and stable so agent tools do not scrape the human table.
     """
-    selected = _select(serves, names or [])
+    selected = _select(serves, names) if names else _serving_path_scope(serves)
+    status_scope = _serving_path_scope(serves, selected)
     rows = []
     states = {}
     for s in selected:
@@ -1877,21 +1894,34 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
         "serves": rows,
         "selected": [r["name"] for r in rows],
         "gpu_memory_lines": _gpu_lines(_run=_run),
-        # The ledger spans the WHOLE manifest, not just `names`: committed
-        # VRAM on a role comes from every declared serve, so a filtered view
-        # of it would misreport `free`.
-        "reservations": reservation_summary(serves, _run=_run, _states=states),
+        # Only serving-path rows and explicit opt-ins participate. Polling
+        # every experiment merely because it exists in the registry makes a
+        # default status both noisy and operationally misleading.
+        "reservations": reservation_summary(
+            status_scope, _run=_run, _states=states
+        ),
     }
 
 
-def cmd_status(serves, names=None, _run=subprocess.run, _open=urllib.request.urlopen):
+def cmd_status(
+    serves,
+    names=None,
+    _run=subprocess.run,
+    _open=urllib.request.urlopen,
+    ledger_serves=None,
+):
     # `names` (from positional selectors and/or --group) filters WHICH rows are
     # printed; the reservation ledger below still spans the WHOLE `serves` list,
     # because committed VRAM on a role comes from every declared serve — a
-    # filtered ledger would misreport `free`. `names=None` prints every serve
-    # (unchanged behavior). docker_state is memoized so a filtered view probes
-    # only the rows it prints plus the reservation-declaring serves.
-    selected = _select(serves, names) if names else list(serves)
+    # filtered ledger would misreport `free`. `names=None` retains the library
+    # API's all-serves behavior; the CLI passes its explicit serving-path scope.
+    # docker_state is memoized so a filtered view probes only the rows it prints
+    # plus the reservation-declaring serves.
+    selected = (
+        list(serves)
+        if names is None
+        else (_select(serves, names) if names else [])
+    )
     selected_containers = {s["container"] for s in selected}
     states = {}
 
@@ -1917,9 +1947,12 @@ def cmd_status(serves, names=None, _run=subprocess.run, _open=urllib.request.url
     # committed/free plus each declared reservation. Reuses the states probed
     # above (every manifest serve was just inspected), so this section adds no
     # docker calls; manifests without [[gpu_roles]] print nothing extra.
-    budgets = reservations.budgets_of(serves)
+    ledger_source = serves if ledger_serves is None else ledger_serves
+    budgets = reservations.budgets_of(ledger_source)
     if budgets:
-        ledger = reservations.build_ledger(serves, state_of, budgets=budgets)
+        ledger = reservations.build_ledger(
+            ledger_source, state_of, budgets=budgets
+        )
         print("\nGPU reservations (ADR-0017, derived from docker state):")
         for _, role_ledger in sorted(ledger.items()):
             print("  " + role_ledger.describe())
@@ -2547,9 +2580,9 @@ def _build_action_parser(action):
         description=_ACTION_DESCRIPTIONS[action],
         epilog=(
             "Examples:\n"
-            "  anvil-serving serves switch heavy\n"
-            "  anvil-serving serves switch heavy MODEL --dry-run\n"
-            "  anvil-serving serves switch heavy MODEL --confirm\n\n"
+            "  anvil-serving serves switch primary\n"
+            "  anvil-serving serves switch primary MODEL --dry-run\n"
+            "  anvil-serving serves switch primary MODEL --confirm\n\n"
             "Preview resolves the effective Compose service and reports any deferred "
             "live-state refusal. Apply requires exact source router artifacts, takes an "
             "exclusive role lock plus the common promotion lock, journals evidence, "
@@ -2788,7 +2821,31 @@ def main(argv=None):
             return 1
 
     if a.action == "status":
-        return cmd_status(serves, names=group_names)
+        status_names = (
+            group_names
+            if group_names is not None
+            else (a.names or [s["name"] for s in _serving_path_scope(serves)])
+        )
+        selected = _select(serves, status_names) if status_names else []
+        unknown_names = [
+            name
+            for name in a.names
+            if not any(
+                serve["name"] == name or serve["container"] == name
+                for serve in selected
+            )
+        ]
+        if unknown_names:
+            print(
+                "unknown serve(s): %s" % ", ".join(unknown_names),
+                file=sys.stderr,
+            )
+            return 2
+        return cmd_status(
+            serves,
+            names=status_names,
+            ledger_serves=_serving_path_scope(serves, selected),
+        )
     if a.action == "logs":
         return cmd_logs(serves, a.names, tail=a.tail, since=a.since, follow=a.follow)
     if a.action == "down":

@@ -18,8 +18,8 @@ private-network examples, and controller authentication is named by the
 
 `anvil-router.live.toml` is a captured router recipe, not proof of a currently
 qualified deployment. Its additive `[router.model_routes]` capability aliases map
-`llm.primary` to the RTX PRO 6000-backed `heavy-local` tier and `llm.voice` to the
-RTX 5090-backed `fast-local` tier. Embeddings, reranking, and normalized STT/TTS
+`llm.primary` to the RTX PRO 6000-backed `primary-local` tier and `llm.voice` to the
+RTX 5090-backed `auxiliary-local` tier. Embeddings, reranking, and normalized STT/TTS
 remain their existing deterministic purpose/audio surfaces; on-demand ComfyUI is a
 lifecycle capability, not a chat route. The recipe does not alter serve reservations
 or establish a benchmark, readiness, or promotion result.

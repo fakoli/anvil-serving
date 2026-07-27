@@ -6,8 +6,8 @@
 # scripts had. DO NOT manage these serves with raw `docker`/`docker compose` — go through
 # `anvil-serving serves` so the management experience stays consistent.
 #
-#   heavy  -> service `heavy`  (Laguna S 2.1 NVFP4, :30002, RTX PRO 6000 96GB / GPU 1)
-#   fast   -> service `fast`   (Gemma 4 E4B IT, vLLM, :30003, RTX 5090 / GPU 0)
+#   heavy  -> service `primary`  (Laguna S 2.1 NVFP4, :30002, RTX PRO 6000 96GB / GPU 1)
+#   fast   -> service `auxiliary`   (Gemma 4 E4B IT, vLLM, :30003, RTX 5090 / GPU 0)
 #   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
 # 2026-07-26 Heavy promotion: Laguna S 2.1 NVFP4 replaces GPT-OSS Puzzle after a
@@ -24,22 +24,22 @@
 # bind paths from `fakoli-models`. A named volume is native ext4 inside WSL2 (~15s loads); a
 # C:/ bind rides 9P and turns a cold load into 20-90 min (CLAUDE.md gotcha #15).
 #
-# `router` is the only service published beyond loopback (ADR-0004). `heavy`/`fast` stay
+# `router` is the only service published beyond loopback (ADR-0004). `primary`/`auxiliary` stay
 # loopback-only and are reached by the router over host.docker.internal:<port> (the router's
 # config volume; see the anvil-router-cfg volume, edited via `anvil-serving`).
 #
 # GPU UUIDs (env-overridable; default to THIS box so the file runs unchanged):
-#   HEAVY_GPU_UUID  default GPU-d0f446cf-1771-414c-e116-a39138798a8c (RTX PRO 6000 96GB)
-#   FAST_GPU_UUID   default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
+#   PRIMARY_GPU_UUID  default GPU-d0f446cf-1771-414c-e116-a39138798a8c (RTX PRO 6000 96GB)
+#   AUXILIARY_GPU_UUID   default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
 # Find yours with `nvidia-smi --query-gpu=index,uuid --format=csv` (or `anvil-serving doctor`).
 services:
-  # Heavy tier: Poolside Laguna S 2.1 NVFP4 on the locally qualified vLLM nightly.
+  # Primary tier: Poolside Laguna S 2.1 NVFP4 on the locally qualified vLLM nightly.
   # Thinking is disabled by default because the enabled path intermittently exhausted
   # its reasoning budget without producing a visible answer during qualification.
   # Callers may still opt in per request with chat_template_kwargs.enable_thinking=true.
-  heavy:
-    image: ${HEAVY_LAGUNA_VLLM_IMAGE:-vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1}
-    container_name: vllm-laguna-s-heavy
+  primary:
+    image: ${PRIMARY_LAGUNA_VLLM_IMAGE:-vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1}
+    container_name: vllm-laguna-s-primary
     restart: unless-stopped
     ipc: host
     shm_size: "16gb"
@@ -49,7 +49,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -60,7 +60,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     ulimits:
       memlock: -1
@@ -68,8 +68,8 @@ services:
     entrypoint: ["vllm"]
     command: >
       serve poolside/Laguna-S-2.1-NVFP4
-      --revision ${HEAVY_LAGUNA_REVISION:-07614121b31898586430f189d27a25a0be310843}
-      --tokenizer-revision ${HEAVY_LAGUNA_TOKENIZER_REVISION:-07614121b31898586430f189d27a25a0be310843}
+      --revision ${PRIMARY_LAGUNA_REVISION:-07614121b31898586430f189d27a25a0be310843}
+      --tokenizer-revision ${PRIMARY_LAGUNA_TOKENIZER_REVISION:-07614121b31898586430f189d27a25a0be310843}
       --served-model-name laguna-s-2.1-nvfp4
       --language-model-only
       --tensor-parallel-size 1
@@ -86,15 +86,15 @@ services:
       --max-num-seqs 1
       --max-model-len 262144
       --host 0.0.0.0 --port 30002
-      ${HEAVY_LAGUNA_EXTRA_ARGS:-}
+      ${PRIMARY_LAGUNA_EXTRA_ARGS:-}
 
   # The one ready Heavy rollback: the previously qualified GPT-OSS Puzzle 88B.
   # It deliberately shares :30002 and the PRO 6000, so the guarded promotion
   # transaction stops Laguna before starting this service.
-  heavy-gptoss-puzzle-rollback:
+  primary-gptoss-puzzle-rollback:
     profiles: ["rollback"]
-    image: ${HEAVY_PUZZLE_VLLM_IMAGE:-anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82}
-    container_name: vllm-gptoss-puzzle-heavy-rollback
+    image: ${PRIMARY_PUZZLE_VLLM_IMAGE:-anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82}
+    container_name: vllm-gptoss-puzzle-primary-rollback
     restart: unless-stopped
     ipc: host
     shm_size: "16gb"
@@ -104,7 +104,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -114,12 +114,12 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
       serve nvidia/gpt-oss-puzzle-88B
-      --revision ${HEAVY_PUZZLE_REVISION:-9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2}
+      --revision ${PRIMARY_PUZZLE_REVISION:-9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2}
       --served-model-name gpt-oss-puzzle-88b
       --trust-remote-code
       --tensor-parallel-size 1
@@ -136,9 +136,9 @@ services:
       --max-cudagraph-capture-size 8
       --max-model-len 131072
       --host 0.0.0.0 --port 30002
-      ${HEAVY_PUZZLE_EXTRA_ARGS:-}
+      ${PRIMARY_PUZZLE_EXTRA_ARGS:-}
 
-  # Fast tier: Gemma 4 E4B IT FP8-Dynamic on vLLM (RTX 5090 / GPU 0, :30003) —
+  # Auxiliary tier: Gemma 4 E4B IT FP8-Dynamic on vLLM (RTX 5090 / GPU 0, :30003) —
   # gpu-reservations:T006 promoted the E4B serve; the T011 operator rebalance moved it to
   # the PRE-QUANTIZED leon-se/gemma-4-E4B-it-FP8-Dynamic checkpoint (compressed-tensors,
   # vision/audio towers + lm_head kept bf16) on the standard pinned vLLM image — the same
@@ -154,7 +154,7 @@ services:
   # that keeps the towers in its `ignore` list sidesteps both. Per gotcha #18 the
   # compressed-tensors checkpoint auto-detects — OMIT --quantization.
   #
-  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 14336 /
+  # ADR-0017 reservation: serves.toml declares gpu_role "dark-auxiliary" / vram_mib 14336 /
   # residency "resident" for this serve. --gpu-memory-utilization below is
   # 14336 / 32607 CAPACITY = 0.4396, deliberately NOT the T003
   # reservations.derive_gpu_memory_utilization value (vram / (capacity - reserve)):
@@ -169,11 +169,11 @@ services:
   #
   # GPU pin: UUID (gotcha #13) — the standard image parses UUID pins fine; the old INDEX
   # pin was a gemma4-unified-image workaround (gotcha #21) and left with that image.
-  fast:
+  auxiliary:
     # Same pinned vLLM 0.25.1 image as Heavy. This release contains the WSL2
     # pinned-memory opt-in and the Gemma 4 fixes used by the July 16 lab matrix.
-    image: ${FAST_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
-    container_name: vllm-gemma4-e4b-fast
+    image: ${AUXILIARY_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
+    container_name: vllm-gemma4-e4b-auxiliary
     restart: unless-stopped
     ipc: host
     ports:
@@ -182,7 +182,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -193,7 +193,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # Revision is PINNED to the vllm-hfcache snapshot pulled by `models pull` (56e30bf…);
@@ -212,12 +212,12 @@ services:
   # ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
   # Always-on text-embedding + reranker serves sharing the multi-tenant RTX 5090 with the
   # fast tier and the voice sidecars. Both are 0.6B bf16 checkpoints on the SAME pinned vLLM
-  # image as `heavy` (a standard image, so the UUID pin applies — gotcha #13; the index-pin
+  # image as `primary` (a standard image, so the UUID pin applies — gotcha #13; the index-pin
   # exception is gemma4-unified-specific, gotcha #21).
   #
-  # ADR-0017 reservations: serves.toml declares gpu_role "dark-fast" / residency "resident"
+  # ADR-0017 reservations: serves.toml declares gpu_role "dark-auxiliary" / residency "resident"
   # with vram_mib 3200 (embeddings) and 3456 (reranker). --gpu-memory-utilization below is
-  # vram_mib / 32607 CAPACITY (fraction of TOTAL device memory — see the `fast` deviation
+  # vram_mib / 32607 CAPACITY (fraction of TOTAL device memory — see the `auxiliary` deviation
   # note above): 0.0981 = 3200/32607 and 0.1060 = 3456/32607. Keep vram_mib and the
   # fraction in lockstep.
   #
@@ -246,7 +246,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -257,7 +257,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # --runner pooling --convert embed: this vLLM (0.23) replaced the old `--task embed`
@@ -288,7 +288,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -298,7 +298,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # The upstream vLLM recipe for the original Qwen3-Reranker checkpoints: override the
@@ -326,10 +326,10 @@ services:
   # (vLLM recipe: docs.vllm.ai/projects/recipes -> PaddlePaddle/PaddleOCR-VL;
   # native vLLM support since v0.11.1 — the pinned 0.25.1 image has it).
   #
-  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 5120 /
+  # ADR-0017 reservation: serves.toml declares gpu_role "dark-auxiliary" / vram_mib 5120 /
   # residency "resident" for this serve. --gpu-memory-utilization below is
   # 5120 / 32607 CAPACITY = 0.1570 (fraction of TOTAL device memory — see the
-  # `fast` deviation note above). Keep vram_mib and the fraction in lockstep.
+  # `auxiliary` deviation note above). Keep vram_mib and the fraction in lockstep.
   # HONEST-MEASURED (2026-07-13, one-off T011 verification probe on the sibling
   # sm_120 card, this exact image+flags): "Model loading took 1.82 GiB"; the
   # fixed non-weights floor (WSL2 CUDA context + torch workspaces + the
@@ -359,7 +359,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -370,7 +370,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # Revision PINNED to the vllm-hfcache snapshot pulled by `models pull` (66317ac…);
@@ -400,7 +400,7 @@ services:
   # serve: PaddleOCR-VL extracts document text verbatim; Qwen3-VL understands and
   # grounds general scenes/UI.
   #
-  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 12288 /
+  # ADR-0017 reservation: serves.toml declares gpu_role "dark-auxiliary" / vram_mib 12288 /
   # residency "EVICTABLE" (the first evictable serve on this ledger: it yields to
   # on-demand acquisitions via the T005 eviction flow, draining router tier
   # vision-local first — serves.toml `router_tier`).
@@ -417,7 +417,7 @@ services:
   # fp8 KV = 18,192 tokens (1.11x concurrency for the 16384-token window; fp8 KV is
   # 72 KiB/token: 36 layers x 8 kv-heads x 128 head-dim). --gpu-memory-utilization
   # 0.3769 = 12288 / 32607 capacity stays as the declared ceiling for tooling
-  # consistency (see the `fast` deviation note above) but no longer drives sizing.
+  # consistency (see the `auxiliary` deviation note above) but no longer drives sizing.
   # HONEST-MEASURED footprint: bf16 weights 8.6 GiB ("Model loading took"), total
   # engine device delta 11,738 MiB (nvidia-smi before/after) — inside the 12288 MiB
   # reservation with ~550 MiB margin. --limit-mm-per-prompt 2 images / no video +
@@ -441,7 +441,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -452,7 +452,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # Revision PINNED to the vllm-hfcache snapshot pulled by `models pull` (ebb281e…);
