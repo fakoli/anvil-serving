@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving import mcp
+from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 def test_tools_expose_direct_serving_operations_without_legacy_router_controls():
@@ -62,7 +63,7 @@ def test_router_manage_confirmed_call_forwards_lifecycle_options(tmp_path, monke
     env_file = tmp_path / "router.env"
     calls = []
     monkeypatch.setattr(
-        mcp,
+        router_tools,
         "_run_argv",
         lambda argv, *, confirm, timeout: calls.append((argv, confirm, timeout)) or {"returncode": 0},
     )
@@ -95,7 +96,11 @@ def test_router_manage_confirmed_call_forwards_lifecycle_options(tmp_path, monke
 def test_router_manage_preview_reports_target_and_does_not_invoke_docker(tmp_path, monkeypatch):
     compose = tmp_path / "docker-compose.yml"
     env_file = tmp_path / "router.env"
-    monkeypatch.setattr(mcp, "_run_argv", lambda *_args, **_kwargs: pytest.fail("preview invoked Docker"))
+    monkeypatch.setattr(
+        router_tools,
+        "_run_argv",
+        lambda *_args, **_kwargs: pytest.fail("preview invoked Docker"),
+    )
 
     result = mcp.tool_router_manage({
         "action": "up",
