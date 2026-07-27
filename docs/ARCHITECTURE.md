@@ -41,6 +41,33 @@ its loopback audio proxies forward to Dark rather than hosting a model.
 gateway can only expose a configured capability. It neither proves model
 quality nor promotes a new recipe.
 
+## Operator command architecture
+
+The public CLI is assembled from explicit command families under
+`anvil_serving/commands/`. Each family module owns the paths, dispatch target,
+safety class, topology metadata, and controller-operation mapping for one
+cohesive area such as `serves`, `models`, or `voice`.
+
+The `@command_family` decorator attaches the root-help category to a
+module-local factory. `commands/registry.py` imports an explicit family list,
+validates it, and orders the public roots deterministically. It does not scan
+the filesystem or import operational handlers. Handlers remain lazy and are
+imported only when dispatch or explicit validation resolves them.
+
+```mermaid
+flowchart LR
+    F["command family modules"] --> R["deterministic registry"]
+    R --> C["CLI resolution and safety policy"]
+    R --> M["v4 command manifest"]
+    R --> T["topology and controller contracts"]
+    C --> H["lazy command handler"]
+```
+
+The registry contains only machine-relevant command facts. Leaf `argparse`
+parsers own detailed argument help, while the family documentation owns
+workflows, examples, configuration precedence, and behavioral guidance. The
+v4 manifest intentionally omits prose copies of that documentation.
+
 ## Deliberate non-components
 
 The gateway has no workload classifier, intent presets, quality profile,

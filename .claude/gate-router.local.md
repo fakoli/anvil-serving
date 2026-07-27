@@ -7,12 +7,9 @@ rules:
   - "anvil_serving/**" => python -m pytest tests/ -q
   - "tests/**" => python -m pytest tests/ -q
   - "pyproject.toml" => python -m pytest tests/ -q
-  - "anvil_serving/cli.py" => python scripts/audit_cli_ux.py --check
-  - "anvil_serving/command_tree.py" => python scripts/audit_cli_ux.py --check
-  - "docs/CLI-COMMAND-MANIFEST.json" => python scripts/audit_cli_ux.py --check
-  - "docs/CLI-UX-AUDIT.json" => python scripts/audit_cli_ux.py --check
   - "anvil_serving/cli.py" => python scripts/audit_cli_references.py --check --scope full
   - "anvil_serving/command_tree.py" => python scripts/audit_cli_references.py --check --scope full
+  - "anvil_serving/commands/**" => python scripts/audit_cli_references.py --check --scope full
   - ".agents/skills/**" => python scripts/audit_cli_references.py --check --scope full
   - ".claude/skills/**" => python scripts/audit_cli_references.py --check --scope full
   - "skills/**" => python scripts/audit_cli_references.py --check --scope full
