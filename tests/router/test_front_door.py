@@ -30,8 +30,8 @@ _TOKEN = "test-gateway-token"
 def running_server(*, auth=False):
     config = load(_CONFIG)
     routing = RoutingBackend(config, {
-        "heavy-local": StaticBackend(["heavy response"]),
-        "fast-local": StaticBackend(["fast response"]),
+        "primary-local": StaticBackend(["heavy response"]),
+        "auxiliary-local": StaticBackend(["fast response"]),
     })
     server = make_server(
         "127.0.0.1", 0, routing, model_routes=config.model_routes,
@@ -104,7 +104,12 @@ def test_discovery_advertises_only_configured_aliases():
         status, _, raw = _request(host, port, "GET", "/v1/models")
 
     assert status == 200
-    assert [item["id"] for item in json.loads(raw)["data"]] == ["llm.primary", "llm.voice"]
+    assert [item["id"] for item in json.loads(raw)["data"]] == [
+        "llm.primary",
+        "llm.voice",
+        "vision.ocr",
+        "vision.general",
+    ]
 
 
 def test_unknown_alias_returns_clean_404_without_tier_identity():
@@ -115,7 +120,7 @@ def test_unknown_alias_returns_clean_404_without_tier_identity():
 
     assert status == 404
     assert json.loads(raw)["error"]["type"] == "model_not_found"
-    assert "heavy-local" not in raw.decode()
+    assert "primary-local" not in raw.decode()
 
 
 def test_openai_streaming_relays_sse_for_exact_alias():
@@ -361,11 +366,11 @@ def test_decision_summary_endpoint_keeps_direct_metadata_only():
     backend._decision_log = DecisionLog()
     backend._decision_log.record(DecisionRecord(
         kind="chat",
-        requested_tier="heavy-local",
+        requested_tier="primary-local",
         attempts=(AttemptRecord(
-            "heavy-local", True, "served", 10, 4, "served"
+            "primary-local", True, "served", 10, 4, "served"
         ),),
-        served_tier="heavy-local",
+        served_tier="primary-local",
         total_prompt_tokens=10,
         total_completion_tokens=4,
         route="llm.primary",

@@ -373,7 +373,7 @@ class FakeProbeCommands:
 
     def __call__(self, argv, **kwargs):
         self.calls.append((list(argv), kwargs))
-        assert kwargs["env"]["FAST_GPU_UUID"] == ROLES[0]["uuid"]
+        assert kwargs["env"]["AUXILIARY_GPU_UUID"] == ROLES[0]["uuid"]
         assert kwargs["cwd"] == str(ROOT / "examples/fakoli-dark")
         if "config" in argv:
             return SimpleNamespace(returncode=0, stdout=json.dumps(self.rendered), stderr="")
@@ -461,7 +461,7 @@ def test_compose_probe_is_profile_gated_uuid_pinned_and_non_mutating():
     )[0]
     assert 'profiles: ["gpu-sharing-probe"]' in service
     assert "platform: linux/amd64" in service
-    assert "FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1" in service
+    assert "AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1" in service
     assert "read_only: true" in service
     assert "cap_drop:" in service and '["ALL"]' in service
     assert "ports:" not in service

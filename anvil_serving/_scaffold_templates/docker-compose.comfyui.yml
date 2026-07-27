@@ -10,7 +10,7 @@
 # Manage ONLY through the product surface (never raw `docker`):
 #   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml up comfyui
 #   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml down comfyui
-# `serves up` admits the declared ADR-0017 `on-demand` reservation against the dark-fast
+# `serves up` admits the declared ADR-0017 `on-demand` reservation against the dark-auxiliary
 # ledger BEFORE any container command runs; `serves down` stops the container, which IS
 # the reservation release (the ledger is derived from docker state).
 #
@@ -30,7 +30,7 @@
 # named volume `comfyui-user` (subpath mounts). Both are `external: true` so
 # `docker compose down -v` can never delete them; the runbook creates them.
 #
-# VRAM (ADR-0017): serves.comfyui.toml declares gpu_role "dark-fast" / vram_mib 12288 /
+# VRAM (ADR-0017): serves.comfyui.toml declares gpu_role "dark-auxiliary" / vram_mib 12288 /
 # residency "on-demand" — the same 12288 MiB slot as the `vision` serve it displaces
 # (vision is the ledger's evictable tenant; `serves up comfyui --evict` drains and stops
 # it via the T005/ADR-0018 flow when the slot is occupied). The budget is enforced
@@ -75,7 +75,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       # Pin the RTX 5090 by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
-      CUDA_VISIBLE_DEVICES: ${COMFYUI_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       # Bind 0.0.0.0 INSIDE the container namespace; the host publish line above is the
       # only exposure control (loopback by default).
       COMFYUI_ADDRESS: "0.0.0.0"
@@ -87,7 +87,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMFYUI_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
 
 volumes:

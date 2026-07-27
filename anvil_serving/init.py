@@ -31,14 +31,20 @@ GPU pinning falls back with a printed warning (never a silent mis-pin) when
 """
 import argparse
 import importlib.resources as _resources
+import ipaddress
 import json
+import ntpath
 import os
+import posixpath
+import shlex
+import subprocess
 import sys
 import tomllib
 
 from . import deploy as _deploy
 from . import edge as _edge
 from . import guard
+from . import gpus as _gpus
 from .paths import config_home
 from .topology import TopologyValidationError, parse_topology
 
@@ -75,10 +81,15 @@ _TEMPLATES_PACKAGE = "anvil_serving._scaffold_templates"
 # (real value in the reference instance, clearly-marked placeholder). Applied to
 # every scaffolded file so one machine's identity never rides onto a fresh host.
 _SANITIZE = (
-    ("GPU-d0f446cf-1771-414c-e116-a39138798a8c", "GPU-REPLACE-WITH-HEAVY-GPU-UUID"),
-    ("GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1", "GPU-REPLACE-WITH-FAST-GPU-UUID"),
+    ("GPU-d0f446cf-1771-414c-e116-a39138798a8c", "GPU-REPLACE-WITH-PRIMARY-GPU-UUID"),
+    ("GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1", "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID"),
     ("100.87.34.66", "REPLACE-WITH-YOUR-TAILNET-IP"),
 )
+
+_PRIMARY_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-PRIMARY-GPU-UUID"
+_AUXILIARY_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID"
+_TAILNET_IP_PLACEHOLDER = "REPLACE-WITH-YOUR-TAILNET-IP"
+_TAILNET_IPV4 = ipaddress.ip_network("100.64.0.0/10")
 
 # (destination filename in the scaffold, template filename in _scaffold_templates/,
 #  canonical source path under the repo root the mirror is synced from).
@@ -158,7 +169,186 @@ def render_edge_config():
     return "\n".join(lines) + "\n"
 
 
-def _home_plan():
+def _empty_host_discovery():
+    return {
+        "primary_gpu": None,
+        "auxiliary_gpu": None,
+        "tailnet_ip": None,
+        "tailnet_source": None,
+    }
+
+
+def _canonical_tailnet_ipv4(value):
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError as exc:
+        raise InitError(f"tailnet IP {value!r} is not a valid IP address") from exc
+    if address.version != 4 or address not in _TAILNET_IPV4:
+        raise InitError(
+            f"tailnet IP {value!r} must be an IPv4 address in 100.64.0.0/10"
+        )
+    return str(address)
+
+
+def _detect_tailnet_ipv4(_run=subprocess.check_output):
+    """Return this node's Tailscale IPv4 address, or ``None`` when unavailable."""
+    try:
+        output = _run(
+            ["tailscale", "ip", "-4"],
+            stderr=subprocess.DEVNULL,
+            encoding="utf-8",
+            timeout=10,
+        )
+    except Exception:
+        return None
+    for line in output.splitlines():
+        try:
+            return _canonical_tailnet_ipv4(line.strip())
+        except InitError:
+            continue
+    return None
+
+
+def discover_host(
+    *,
+    primary_gpu_uuid=None,
+    auxiliary_gpu_uuid=None,
+    tailnet_ip=None,
+    probe=True,
+    _gpu_run=subprocess.check_output,
+    _tailscale_run=subprocess.check_output,
+):
+    """Discover stable host values used by the full operator scaffold.
+
+    Explicit values win. Otherwise the largest observed card is Primary and
+    the smallest observed card is Auxiliary. Equal-VRAM cards are ordered by
+    their runtime index, so the lower index is Primary. A single-GPU host fills
+    Primary only rather than silently scheduling both concurrent roles onto
+    one device.
+    """
+    try:
+        explicit_primary = (
+            _gpus.canonical_gpu_uuid(primary_gpu_uuid) if primary_gpu_uuid else None
+        )
+        explicit_auxiliary = (
+            _gpus.canonical_gpu_uuid(auxiliary_gpu_uuid)
+            if auxiliary_gpu_uuid
+            else None
+        )
+    except _gpus.GpuRoleResolutionError as exc:
+        raise InitError(str(exc)) from exc
+    if explicit_primary and explicit_primary == explicit_auxiliary:
+        raise InitError(
+            "Primary and Auxiliary GPU UUID overrides must identify distinct GPUs"
+        )
+
+    observed = []
+    observed_uuids = set()
+    gpu_rows = _gpus.list_gpus_with_memory(_run=_gpu_run) if probe else ()
+    for row in gpu_rows:
+        try:
+            uuid = _gpus.canonical_gpu_uuid(row["uuid"])
+        except (KeyError, _gpus.GpuRoleResolutionError):
+            continue
+        if uuid in observed_uuids or row["memory_total_mib"] <= 0:
+            continue
+        observed_uuids.add(uuid)
+        observed.append({**row, "uuid": uuid})
+    observed.sort(
+        key=lambda row: (-row["memory_total_mib"], row["index"]),
+    )
+    observed_by_uuid = {row["uuid"]: row for row in observed}
+    selected = {uuid for uuid in (explicit_primary, explicit_auxiliary) if uuid}
+
+    def role_value(explicit, candidates):
+        if explicit:
+            row = observed_by_uuid.get(explicit)
+            return {
+                "uuid": explicit,
+                "name": row["name"] if row else None,
+                "memory_total_mib": row["memory_total_mib"] if row else None,
+                "source": "override",
+            }
+        for row in candidates:
+            if row["uuid"] in selected:
+                continue
+            selected.add(row["uuid"])
+            return {**row, "source": "detected"}
+        return None
+
+    primary_gpu = role_value(explicit_primary, observed)
+    auxiliary_gpu = role_value(explicit_auxiliary, reversed(observed))
+    if observed:
+        for label, explicit in (
+            ("Primary", explicit_primary),
+            ("Auxiliary", explicit_auxiliary),
+        ):
+            if explicit and explicit not in observed_by_uuid:
+                raise InitError(
+                    f"{label} GPU override {explicit!r} was not reported by nvidia-smi"
+                )
+    if (
+        primary_gpu
+        and auxiliary_gpu
+        and primary_gpu.get("memory_total_mib") is not None
+        and auxiliary_gpu.get("memory_total_mib") is not None
+        and primary_gpu["memory_total_mib"] < auxiliary_gpu["memory_total_mib"]
+    ):
+        raise InitError(
+            "Primary GPU must have at least as much VRAM as Auxiliary "
+            f"({primary_gpu['memory_total_mib']} < "
+            f"{auxiliary_gpu['memory_total_mib']} MiB)"
+        )
+    if tailnet_ip:
+        resolved_tailnet_ip = _canonical_tailnet_ipv4(tailnet_ip)
+        tailnet_source = "override"
+    elif probe:
+        resolved_tailnet_ip = _detect_tailnet_ipv4(_run=_tailscale_run)
+        tailnet_source = "detected" if resolved_tailnet_ip else None
+    else:
+        resolved_tailnet_ip = None
+        tailnet_source = None
+    return {
+        "primary_gpu": primary_gpu,
+        "auxiliary_gpu": auxiliary_gpu,
+        "tailnet_ip": resolved_tailnet_ip,
+        "tailnet_source": tailnet_source,
+    }
+
+
+def _personalize_home_text(text, discovery):
+    replacements = (
+        (_PRIMARY_GPU_PLACEHOLDER,
+         discovery["primary_gpu"]["uuid"] if discovery["primary_gpu"] else None),
+        (_AUXILIARY_GPU_PLACEHOLDER,
+         discovery["auxiliary_gpu"]["uuid"] if discovery["auxiliary_gpu"] else None),
+        (_TAILNET_IP_PLACEHOLDER, discovery["tailnet_ip"]),
+    )
+    for placeholder, value in replacements:
+        if value:
+            text = text.replace(placeholder, value)
+    return text
+
+
+def _copy_env_command(out_dir, platform_name=None):
+    platform_name = os.name if platform_name is None else platform_name
+    if platform_name == "nt":
+        source = ntpath.join(out_dir, ".env.example")
+        destination = ntpath.join(out_dir, ".env")
+
+        def quote(value):
+            return "'" + value.replace("'", "''") + "'"
+
+        return "Copy-Item -LiteralPath %s -Destination %s" % (
+            quote(source),
+            quote(destination),
+        )
+    source = posixpath.join(out_dir, ".env.example")
+    destination = posixpath.join(out_dir, ".env")
+    return "cp -- %s %s" % (shlex.quote(source), shlex.quote(destination))
+
+
+def _home_plan(discovery=None):
     """Build the ordered (dest_name, text) list for the home scaffold.
 
     Reads + sanitizes every packaged template, then appends the generated
@@ -175,25 +365,40 @@ def _home_plan():
             "are not available in this install (missing: %s). This indicates a broken "
             "anvil-serving install; reinstall the package."
             % ", ".join(sorted(missing)))
-    plan = [(dest_name, _sanitize(_read_template(tmpl)))
-            for dest_name, tmpl, _src in _SCAFFOLD_TEMPLATES]
-    plan.append(("edge.toml", render_edge_config()))
+    host = discovery or _empty_host_discovery()
+    plan = [
+        (dest_name, _personalize_home_text(_sanitize(_read_template(tmpl)), host))
+        for dest_name, tmpl, _src in _SCAFFOLD_TEMPLATES
+    ]
+    plan.append(("edge.toml", _personalize_home_text(render_edge_config(), host)))
     return plan
 
 
-def _scaffold_config(out_dir):
+def _scaffold_config(out_dir, discovery=None):
     """Scaffold the complete canonical config set into an explicit directory.
 
     Keeping the write path explicit prevents destination selection from leaking
     into the safety-critical backup behavior.
     """
     target = os.path.abspath(os.path.expanduser(out_dir))
-    plan = _home_plan()  # validate + read everything before touching the target
+    plan = _home_plan(discovery)  # validate + read everything before touching the target
 
     os.makedirs(target, exist_ok=True)
-    written, backed_up = [], []
+    written, backed_up, unchanged = [], [], []
     for dest_name, text in plan:
         dest = os.path.join(target, dest_name)
+        if os.path.exists(dest):
+            try:
+                with open(dest, encoding="utf-8") as existing:
+                    if existing.read() == text:
+                        unchanged.append(dest)
+                        continue
+            except OSError as exc:
+                raise InitError(
+                    "could not compare existing %s before rewriting it (%s); "
+                    "fix or remove the file and re-run"
+                    % (dest_name, exc)
+                ) from exc
         try:
             bak = guard.backup_file(dest)
         except OSError as e:
@@ -207,10 +412,24 @@ def _scaffold_config(out_dir):
             f.write(text)
         written.append(dest)
 
-    return {"out_dir": target, "written": written, "backed_up": backed_up}
+    return {
+        "out_dir": target,
+        "written": written,
+        "backed_up": backed_up,
+        "unchanged": unchanged,
+    }
 
 
-def scaffold_home(out_dir=None):
+def scaffold_home(
+    out_dir=None,
+    *,
+    detect_host=True,
+    primary_gpu_uuid=None,
+    auxiliary_gpu_uuid=None,
+    tailnet_ip=None,
+    _gpu_run=subprocess.check_output,
+    _tailscale_run=subprocess.check_output,
+):
     """Scaffold the complete canonical config set into the machine-wide home.
 
     `out_dir` defaults to the operator config home (`~/.anvil-serving`, honoring
@@ -224,7 +443,17 @@ def scaffold_home(out_dir=None):
     whole scaffold rather than proceeding without a revert path. Returns a dict
     describing what was written for the CLI to report and tests to assert on.
     """
-    return _scaffold_config(out_dir or config_home())
+    discovery = discover_host(
+        primary_gpu_uuid=primary_gpu_uuid,
+        auxiliary_gpu_uuid=auxiliary_gpu_uuid,
+        tailnet_ip=tailnet_ip,
+        probe=detect_host,
+        _gpu_run=_gpu_run,
+        _tailscale_run=_tailscale_run,
+    )
+    result = _scaffold_config(out_dir or config_home(), discovery)
+    result["discovery"] = discovery
+    return result
 
 
 def _read_catalog(catalog_dir):
@@ -484,6 +713,26 @@ def main(argv):
     ap.add_argument("--out-dir", default=None,
                     help="where to write the files (default: the config home "
                          "with --single-model, the CWD)")
+    ap.add_argument(
+        "--primary-gpu-uuid",
+        default=None,
+        help="Primary GPU UUID (default: highest-VRAM GPU reported by nvidia-smi)",
+    )
+    ap.add_argument(
+        "--auxiliary-gpu-uuid",
+        default=None,
+        help="Auxiliary GPU UUID (default: next distinct GPU reported by nvidia-smi)",
+    )
+    ap.add_argument(
+        "--tailnet-ip",
+        default=None,
+        help="this host's Tailscale IPv4 address (default: `tailscale ip -4`)",
+    )
+    ap.add_argument(
+        "--no-detect-host",
+        action="store_true",
+        help="leave GPU UUID and tailnet IP placeholders instead of probing this host",
+    )
     a = ap.parse_args(argv)
 
     if not a.single_model:
@@ -530,29 +779,59 @@ def main(argv):
 def _main_home(a):
     """Scaffold every canonical config into the operator config home."""
     try:
-        result = scaffold_home(out_dir=a.out_dir)
+        result = scaffold_home(
+            out_dir=a.out_dir,
+            detect_host=not a.no_detect_host,
+            primary_gpu_uuid=a.primary_gpu_uuid,
+            auxiliary_gpu_uuid=a.auxiliary_gpu_uuid,
+            tailnet_ip=a.tailnet_ip,
+        )
     except InitError as e:
         print(f"[anvil-serving] {e}", file=sys.stderr)
         return 2
 
-    print("scaffolded the complete config set into %s:" % result["out_dir"])
-    for path in result["written"]:
-        print("  " + os.path.basename(path))
+    if result["written"]:
+        print("scaffolded or updated the config set in %s:" % result["out_dir"])
+        for path in result["written"]:
+            print("  " + os.path.basename(path))
+    else:
+        print("configuration already up to date in %s." % result["out_dir"])
+    if result["unchanged"]:
+        print(
+            "%s unchanged file(s) left in place; no backup or rewrite needed."
+            % len(result["unchanged"])
+        )
     if result["backed_up"]:
         print()
         print("backed up existing operator files before overwrite:")
         for path, bak in result["backed_up"]:
             print("  %s -> %s" % (os.path.basename(path), os.path.basename(bak)))
+    discovery = result["discovery"]
     print()
-    print("Host-specific values are clearly-marked placeholders - edit before bring-up:")
-    print("  - GPU UUIDs: GPU-REPLACE-WITH-*-GPU-UUID in the compose files "
-          "(`nvidia-smi -L`), or set *_GPU_UUID in .env.")
-    print("  - Tailnet address: REPLACE-WITH-YOUR-TAILNET-IP (this host's tailnet IP).")
-    print("  - Secrets: copy .env.example -> .env and fill it in (never committed).")
+    print("Host discovery:")
+    for label, key in (
+        ("Primary GPU", "primary_gpu"),
+        ("Auxiliary GPU", "auxiliary_gpu"),
+    ):
+        gpu = discovery[key]
+        if gpu:
+            details = gpu["uuid"]
+            if gpu.get("name"):
+                details = "%s - %s" % (gpu["name"], details)
+            if gpu.get("memory_total_mib") is not None:
+                details += " (%s MiB)" % gpu["memory_total_mib"]
+            print("  %s: %s [%s]" % (label, details, gpu["source"]))
+        else:
+            print("  %s: not detected; placeholder preserved" % label)
+    if discovery["tailnet_ip"]:
+        print("  Tailnet IPv4: %s [%s]"
+              % (discovery["tailnet_ip"], discovery["tailnet_source"]))
+    else:
+        print("  Tailnet IPv4: not detected; placeholder preserved")
+    print("  Secrets: copy .env.example to .env and fill it in (never committed).")
     print()
     print("Next steps (zero hand-assembly):")
-    print("  1. cp %s/.env.example %s/.env   # then fill in host values"
-          % (result["out_dir"], result["out_dir"]))
+    print("  1. %s   # then fill in secrets" % _copy_env_command(result["out_dir"]))
     print("  2. anvil-serving serves groups          # see the resolvable groups")
     print("  3. anvil-serving serves up --group voice   # (or llm-stack / comfy / ...)")
     print("  4. anvil-serving serves status")

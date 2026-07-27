@@ -50,6 +50,11 @@ anvil-serving serves status --group all
 Groups provide the supported way to turn an optional workload such as OCR on or off
 without inventing a separate lifecycle script.
 
+Bare `serves status` polls only entries assigned to an authored group—the
+operator-supported serving path. Untagged candidates and experiments remain
+available by explicit name or `--group all`, but are not contacted merely
+because they exist in the manifest.
+
 ## Start and stop serves
 
 ```bash
@@ -85,15 +90,15 @@ serve under the same ownership contract; it does not silently claim arbitrary
 containers. An enabled machine cache policy gives `adopt` the same bounded health wait
 and single postcondition as manifest-owned `up`.
 
-## Switch Heavy by recipe
+## Switch Primary by recipe
 
 For the common model-selection path, choose the deployment role and recipe directly:
 
 ```bash
-anvil-serving serves switch heavy
-anvil-serving serves switch heavy Laguna-S-2.1-NVFP4 --dry-run
-anvil-serving serves switch heavy Laguna-S-2.1-NVFP4 --confirm
-anvil-serving serves switch heavy gpt-oss-puzzle-88B --confirm
+anvil-serving serves switch primary
+anvil-serving serves switch primary Laguna-S-2.1-NVFP4 --dry-run
+anvil-serving serves switch primary Laguna-S-2.1-NVFP4 --confirm
+anvil-serving serves switch primary gpt-oss-puzzle-88B --confirm
 ```
 
 With no `MODEL`, the command lists the resolved registry path and marks each declared

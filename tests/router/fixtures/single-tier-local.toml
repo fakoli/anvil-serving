@@ -2,13 +2,13 @@
 [router]
 
 [router.model_routes]
-"llm.primary" = "fast-local"
+"llm.primary" = "auxiliary-local"
 
 [[router.tiers]]
-id            = "fast-local"
+id            = "auxiliary-local"
 base_url      = "http://127.0.0.1:30001/v1"
 dialect       = "openai"
 context_limit = 32768
 privacy       = "local"
 tool_support  = true
-auth_env      = "ANVIL_FAST_LOCAL_KEY"
+auth_env      = "ANVIL_AUXILIARY_LOCAL_KEY"

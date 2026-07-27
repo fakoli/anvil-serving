@@ -65,7 +65,7 @@ gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
 gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
 vram_total_gb = 32
-vram_note = "Previous fast-local control capped context at 32768 and max-num-seqs at 4 to stay inside the 5090 budget."
+vram_note = "Previous auxiliary-local control capped context at 32768 and max-num-seqs at 4 to stay inside the 5090 budget."
 
 [recipe.serve]
 engine = "vllm"
@@ -93,7 +93,7 @@ flags = [
 
 [recipe.measured]
 voice_baseline = "Fast-tier bakeoff control: voice total 1130.21 ms, LLM stage 814.83 ms; loaded-endpoint TTFT 6203.94 ms, E2E 9041.91 ms, approx decode 67.65 tok/s."
-route_proof = "previous fast-local / qwen36-27b / voice-llm via fakoli-dark router"
+route_proof = "previous auxiliary-local / qwen36-27b / voice-llm via fakoli-dark router"
 
 [recipe.fit]
 suited = ["voice-llm", "voice", "agentic-conversation", "low-latency"]
@@ -195,7 +195,7 @@ served_model_name = "qwen3-32b-nvfp4"
 quantization = "modelopt_fp4"
 context_tokens = 32768
 port = 39000
-note = "Voice A/B managed serve uses the experiment compose service voice-qwen3-32b on an opt-in 39xxx port; it does not replace fast-local."
+note = "Voice A/B managed serve uses the experiment compose service voice-qwen3-32b on an opt-in 39xxx port; it does not replace auxiliary-local."
 env = [
   "CUDA_DEVICE_ORDER=PCI_BUS_ID",
   "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
@@ -900,7 +900,7 @@ caveats = "vendor-reported SOTA claims not verified and not used"
 
 [recipe.fit]
 suited = ["planning", "review", "long-context", "quality"]
-rationale = "Retain as agentic/long-context specialist. NOT promoted to heavy-local."
+rationale = "Retain as agentic/long-context specialist. NOT promoted to primary-local."
 
 [[recipe]]
 model = "dervig/m51Lab-MiniMax-M2.7-REAP-139B-A10B-NVFP4"
@@ -1109,7 +1109,7 @@ vram_total_gb = 96
 [recipe.serve]
 engine = "vllm"
 image = "anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82"
-managed_serve = "heavy-gptoss-puzzle-rollback"
+managed_serve = "primary-gptoss-puzzle-rollback"
 served_model_name = "gpt-oss-puzzle-88b"
 quantization = "gpt_oss_mxfp4 (auto-detected); Marlin compatibility baseline"
 port = 30002
@@ -1149,10 +1149,10 @@ rationale = "Ready Heavy rollback. The exact-commit image passed direct function
 
 [recipe.activation]
 
-[recipe.activation.heavy]
-plan = "laguna-s-2.1-heavy"
+[recipe.activation.primary]
+plan = "laguna-s-2.1-primary"
 direction = "rollback"
-compose_service = "heavy-gptoss-puzzle-rollback"
+compose_service = "primary-gptoss-puzzle-rollback"
 
 [[recipe]]
 model = "poolside/Laguna-S-2.1-NVFP4"
@@ -1176,7 +1176,7 @@ vram_total_gb = 96
 [recipe.serve]
 engine = "vllm"
 image = "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1"
-managed_serve = "heavy"
+managed_serve = "primary"
 served_model_name = "laguna-s-2.1-nvfp4"
 quantization = "compressed-tensors NVFP4; auto-detected from model config"
 context_tokens = 262144
@@ -1228,10 +1228,10 @@ rationale = "Current Heavy-tier candidate validated with thinking disabled on on
 
 [recipe.activation]
 
-[recipe.activation.heavy]
-plan = "laguna-s-2.1-heavy"
+[recipe.activation.primary]
+plan = "laguna-s-2.1-primary"
 direction = "promote"
-compose_service = "heavy"
+compose_service = "primary"
 
 [[recipe]]
 model = "morosystems/ThinkingCap-Qwen3.6-27B-NVFP4"

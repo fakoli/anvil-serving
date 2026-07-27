@@ -87,7 +87,7 @@ def test_check_tier_health_reachable():
     class Resp:
         def __enter__(self): return self
         def __exit__(self, *a): return False
-    c = doctor.check_tier_health("fast-local", "http://127.0.0.1:30001/v1",
+    c = doctor.check_tier_health("auxiliary-local", "http://127.0.0.1:30001/v1",
                                  _open=lambda url, timeout=3: Resp())
     assert c.ok and c.status == "PASS"
 
@@ -100,14 +100,14 @@ def test_check_tier_health_strips_trailing_v1_from_base_url():
     def _open(url, timeout=3):
         seen["url"] = url
         return Resp()
-    doctor.check_tier_health("fast-local", "http://127.0.0.1:30001/v1", _open=_open)
+    doctor.check_tier_health("auxiliary-local", "http://127.0.0.1:30001/v1", _open=_open)
     assert seen["url"] == "http://127.0.0.1:30001/health"
 
 
 def test_check_tier_health_unreachable_is_warn_not_fail():
     def boom(url, timeout=3):
         raise ConnectionRefusedError("refused")
-    c = doctor.check_tier_health("fast-local", "http://127.0.0.1:30001/v1", _open=boom)
+    c = doctor.check_tier_health("auxiliary-local", "http://127.0.0.1:30001/v1", _open=boom)
     assert not c.ok and not c.required and c.status == "WARN"
 
 
@@ -151,11 +151,11 @@ def test_run_checks_missing_explicit_config_is_required_fail():
 def test_run_checks_probes_each_tier_from_a_real_config(tmp_path):
     cfg_path = tmp_path / "router.toml"
     cfg_path.write_text(
-        '[router]\n[router.model_routes]\n"llm.primary" = "fast-local"\n'
+        '[router]\n[router.model_routes]\n"llm.primary" = "auxiliary-local"\n'
         '[[router.tiers]]\n'
-        'id = "fast-local"\nbase_url = "http://127.0.0.1:30001/v1"\nmodel = "m"\n'
+        'id = "auxiliary-local"\nbase_url = "http://127.0.0.1:30001/v1"\nmodel = "m"\n'
         'dialect = "openai"\ncontext_limit = 1000\nprivacy = "local"\ntool_support = true\n'
-        'auth_env = "ANVIL_FAST_LOCAL_KEY"\n',
+        'auth_env = "ANVIL_AUXILIARY_LOCAL_KEY"\n',
         encoding="utf-8",
     )
     class Resp:
@@ -164,7 +164,7 @@ def test_run_checks_probes_each_tier_from_a_real_config(tmp_path):
     checks = doctor.run_checks(config_path=str(cfg_path), config_explicit=True,
                                _run=_ok_run, _gpu_run=lambda *a, **k: CSV,
                                _open=lambda url, timeout=3: Resp())
-    tier_checks = [c for c in checks if "fast-local" in c.name]
+    tier_checks = [c for c in checks if "auxiliary-local" in c.name]
     assert len(tier_checks) == 1 and tier_checks[0].ok
 
 

@@ -37,9 +37,17 @@ llm.primary = "primary"
 def test_example_declares_a_complete_local_direct_route_table():
     config = load(_EXAMPLE)
 
-    assert set(config.model_routes) == {"llm.primary", "llm.voice"}
+    assert set(config.model_routes) == {
+        "llm.primary",
+        "llm.voice",
+        "vision.ocr",
+        "vision.general",
+    }
     assert {config.route_tier(alias).id for alias in config.model_routes} == {
-        "heavy-local", "fast-local",
+        "primary-local",
+        "auxiliary-local",
+        "ocr-local",
+        "vision-local",
     }
     assert all(tier.privacy == PRIVACY_LOCAL for tier in config.tiers)
 

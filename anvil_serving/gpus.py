@@ -54,6 +54,52 @@ def list_gpus(_run=subprocess.check_output, timeout=DEFAULT_QUERY_TIMEOUT_SECOND
     return gpus
 
 
+def list_gpus_with_memory(
+    _run=subprocess.check_output, timeout=DEFAULT_QUERY_TIMEOUT_SECONDS
+):
+    """Return the local GPU inventory with total memory in MiB.
+
+    This is a separate query from :func:`list_gpus` so existing callers keep
+    their stable row shape. It is used when a caller must choose between
+    multiple observed GPUs by capacity rather than by volatile runtime index.
+    Invalid rows are ignored and command failures degrade to an empty list.
+    """
+    try:
+        out = _run(
+            [
+                "nvidia-smi",
+                "--query-gpu=index,uuid,name,memory.total",
+                "--format=csv,noheader,nounits",
+            ],
+            stderr=subprocess.DEVNULL,
+            encoding="utf-8",
+            timeout=timeout,
+        )
+    except Exception:
+        return []
+    rows = []
+    for line in out.splitlines():
+        parts = [part.strip() for part in line.rsplit(",", 1)]
+        if len(parts) != 2:
+            continue
+        identity = [part.strip() for part in parts[0].split(",", 2)]
+        if len(identity) != 3 or not identity[0].isdigit():
+            continue
+        try:
+            memory_total_mib = int(float(parts[1]))
+        except ValueError:
+            continue
+        rows.append(
+            {
+                "index": int(identity[0]),
+                "uuid": identity[1],
+                "name": identity[2],
+                "memory_total_mib": memory_total_mib,
+            }
+        )
+    return rows
+
+
 def main(argv=None):
     """Print the local NVIDIA GPU inventory for ``host gpus``."""
     parser = argparse.ArgumentParser(prog="anvil-serving host gpus")

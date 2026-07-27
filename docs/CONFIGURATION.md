@@ -17,7 +17,21 @@ paths always take precedence.
 The operator files include `router.toml`, `serves.toml`,
 `serve-recipes.toml`, `voice.toml`, `host.toml`, Compose files, and
 `.env.example`. Each existing file is backed up beside the target as a numbered
-`.anvil.bak.N` file before `init` replaces it.
+`.anvil.bak.N` file before `init` replaces it. Content-identical files are left
+untouched, so repeated runs do not create redundant backups, including for
+`.env.example`.
+
+By default, `init` asks `nvidia-smi` for stable GPU UUIDs and total memory, then
+assigns the largest card to Primary and the smallest distinct card to Auxiliary.
+If both cards have the same capacity, the lower runtime index is Primary. The
+Primary role hosts the primary LLM; Auxiliary hosts the smaller LLM, STT, TTS,
+OCR, embeddings, reranking, vision, and optional ComfyUI workloads. It asks
+`tailscale ip -4` for this node's tailnet address. Detected values replace the
+corresponding template placeholders; unavailable values remain visibly
+unconfigured. `--primary-gpu-uuid`, `--auxiliary-gpu-uuid`, and `--tailnet-ip`
+override individual values. `--no-detect-host` leaves all host placeholders in
+place. A one-GPU machine does not silently assign both concurrent roles to the
+same card.
 
 ## Machine policy (`host.toml`)
 
@@ -37,18 +51,18 @@ availability_probe_interval = 5
 availability_probe_timeout = 1
 
 [[router.tiers]]
-id = "heavy-local"
+id = "primary-local"
 base_url = "http://127.0.0.1:30000/v1"
 model = "served-model-name"
 dialect = "openai"
 context_limit = 131072
 privacy = "local"
 tool_support = true
-auth_env = "ANVIL_HEAVY_LOCAL_KEY"
+auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
 health_path = "/health"
 
 [router.model_routes]
-llm.primary = "heavy-local"
+llm.primary = "primary-local"
 ```
 
 `[router.model_routes]` is required. Its normalized aliases are the only chat
@@ -105,7 +119,7 @@ routes remain separate from chat and purpose-model routing.
 
 ## Reference files
 
-- `configs/example.toml`: direct local Heavy and
+- `configs/example.toml`: direct local Primary and
   voice aliases.
 - `configs/example-docker.toml`: the same
   topology for a Compose-network router.

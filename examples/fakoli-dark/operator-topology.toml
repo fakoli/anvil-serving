@@ -43,13 +43,13 @@ host = "fakoli-dark"
 role = "docker"
 
 [[gpu_roles]]
-id = "dark-fast"
+id = "dark-auxiliary"
 host = "fakoli-dark"
 runtime = "dark-docker"
 uuid = "GPU-00000000-0000-0000-0000-000000000001"
 
 [[gpu_roles]]
-id = "dark-heavy"
+id = "dark-primary"
 host = "fakoli-dark"
 runtime = "dark-docker"
 uuid = "GPU-00000000-0000-0000-0000-000000000002"
@@ -127,19 +127,19 @@ endpoint_kind = "data-plane"
 workload = "service"
 
 [[resources]]
-id = "fast-llm"
-role = "fast-llm-serve"
+id = "auxiliary-llm"
+role = "auxiliary-llm-serve"
 host = "fakoli-dark"
 runtime = "dark-docker"
-gpu_role = "dark-fast"
+gpu_role = "dark-auxiliary"
 workload = "llm"
 
 [[resources]]
-id = "heavy-llm"
-role = "heavy-llm-serve"
+id = "primary-llm"
+role = "primary-llm-serve"
 host = "fakoli-dark"
 runtime = "dark-docker"
-gpu_role = "dark-heavy"
+gpu_role = "dark-primary"
 workload = "llm"
 
 [[resources]]

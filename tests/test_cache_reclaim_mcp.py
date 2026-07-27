@@ -16,7 +16,7 @@ def _manifest(tmp_path):
         'name = "heavy"\n'
         'container = "vllm-heavy"\n'
         "port = 30002\n"
-        'model = "heavy-local"\n'
+        'model = "primary-local"\n'
         'engine = "vllm"\n'
         'up = "docker compose -f compose.yml up -d heavy"\n',
         encoding="utf-8",
