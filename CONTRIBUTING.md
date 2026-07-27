@@ -25,7 +25,7 @@ These are non-negotiable — a PR that breaks one will not pass review:
 
 1. **stdlib-only runtime.** The package ships with `dependencies = []` and must stay that way. Do
    not add a third-party runtime dependency. Test-only tooling belongs in the `dev` extra
-   (`pytest`); nothing it pulls in may leak into the importable package.
+   (`pytest` and `coverage`); nothing it pulls in may leak into the importable package.
 2. **Bind `127.0.0.1`, never `localhost`.** On Windows, `localhost` can trigger a ~21s IPv6
    lookup stall. Every host default, example, doc snippet, and test must use `127.0.0.1`.
 3. **Tests stay hermetic.** No real network, no real LLM endpoint, no GPU. Use fixtures and fakes;
@@ -51,9 +51,9 @@ these fit together at runtime.
 | CLI | `cli.py` | Verb dispatch; each verb lazily imports its module. |
 | Router data plane | `router/front_door.py`, `router/dialects/`, `router/serve.py`, `router/availability.py`, `router/admission.py` | Authenticated direct-alias gateway, wire dialects, streaming relay, readiness, and admission control. |
 | Router support | `router/config.py`, `router/decision_log.py`, `router/discovery.py` | Direct topology loading, metadata-only audit records, and `/v1/models` alias advertisement. |
-| Evaluation | `profile.py`, `eval.py`, `score.py`, `preflight.py`, `benchmark.py` | Usage measurement plus repeatable endpoint qualification and benchmark evidence. |
+| Evaluation | `profile.py`, `eval.py`, `score.py`, `preflight.py`, `benchmark.py`, `benchmarking/` | Usage measurement plus repeatable endpoint qualification and benchmark evidence; `benchmark.py` is the public compatibility facade. |
 | Local serving tools | `serves.py`, `models.py`, `deploy.py`, `init.py`, `preflight.py`, `benchmark.py`, `multiplexer.py`, `cache_prune.py`, `doctor.py`, `host.py` | Compose-defined serves, model catalog, tuned compose rendering, correctness/capacity gates, single-GPU swapping, environment checks. |
-| Control plane | `mcp.py`, `controller.py`, `harness.py`, `router_manage.py` | Guarded MCP tools, tailnet HTTP controller, harness config sync, deployed-router lifecycle. |
+| Control plane | `mcp.py`, `controller.py`, `control_plane/mcp/`, `control_plane/controller/`, `harness.py`, `router_manage.py` | Public compatibility facades over explicit MCP tool families and separately reviewable catalog/protocol/security/persistence/HTTP internals. |
 | Voice | `voice/`, `voice_sidecar.py` | Realtime voice pipeline and speech-to-speech sidecar rendering. |
 | External benchmarks | `external_benchmarks/` | Advisory benchmark priors: import, report, compare. |
 
@@ -82,7 +82,9 @@ Details are in [Thin capability gateway](docs/THIN-CAPABILITY-GATEWAY.md).
 
 **Add an MCP tool** (operator/agent-facing operation):
 
-1. Register it in the `TOOLS` registry in `anvil_serving/mcp.py` with a JSON schema.
+1. Add it to the cohesive family under `anvil_serving/control_plane/mcp/tools/` with a bounded
+   JSON schema. Families are composed in an explicit order by `tools/__init__.py`; do not add
+   filesystem scanning, import side effects, or dynamic discovery.
 2. Follow the safety gates the existing tools enforce: argv lists (never shell strings), mutating
    or expensive actions default to `dry_run=true` and require `confirm=true`, bounded numeric
    knobs, secret redaction on all output, and probe URLs restricted to loopback/private/tailnet
@@ -100,6 +102,14 @@ silently change direction and never delete an ADR — supersede it.
   data plane, plus `tests/external_benchmarks/`, `tests/voice/`, and shared `tests/fixtures/`.
 - Run everything: `python -m pytest tests/ -q`. Run a slice while iterating:
   `python -m pytest tests/router/ -q` or `python -m pytest tests/test_mcp.py -q`.
+- Measure the diagnostic branch-coverage baseline with
+  `python -m coverage erase`, `python -m coverage run --branch -m pytest tests/`, and
+  `python -m coverage report -m`. Coverage is development-only and has no arbitrary percentage
+  gate; inspect missing branches and add tests only when they protect a distinct behavior or
+  refusal/recovery/platform contract.
+- Reproduce the milestone-6 facade/package LOC, function, branch, and directed-import audit with
+  `python scripts/audit_modularization.py`. Its default before-ref is the pre-modularization
+  `c3af271` baseline and its default after-ref is the current worktree.
 - CI runs the suite on `{ubuntu, windows}` × `{3.11, 3.12, 3.13}`, plus `ruff check .`, the
   deterministic active-reference audit, strict docs, and a wheel-build/clean-install smoke test
   on both Windows and Ubuntu. These gates do not read home-directory Anvil state or contact live
