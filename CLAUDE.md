@@ -44,6 +44,14 @@ anvil_serving/
   models.py               model cache/source/recipe management
   preflight.py            endpoint functional qualification
   eval.py                 benchmark and evaluation commands
+  benchmark.py            public benchmark compatibility facade
+  benchmarking/           artifacts, specs, requests, evaluation, and runners
+  controller.py           public authenticated-controller compatibility facade
+  mcp.py                  public MCP compatibility and composition facade
+  control_plane/
+    controller/           persistence, security, HTTP, server, and CLI internals
+    mcp/                  validation, security, protocol, runtime, and catalog
+      tools/              explicit ordered tool-family implementations
   router/
     config.py             direct topology, aliases, purpose/audio routes
     serve.py              deterministic chat relay backend
@@ -54,10 +62,13 @@ anvil_serving/
     discovery.py          configured alias advertisement
     dialects/             Anthropic/OpenAI translation
   voice/                  owned STT/TTS, bridge, Realtime operations
-  controller.py, mcp.py   private controller and public MCP composition facades
-  control_plane/mcp/      shared MCP protocol, catalog, runtime, and security
-    tools/                explicit ordered tool-family implementations
 ```
+
+The three compatibility facades remain supported import and entrypoint
+surfaces. Their internal packages point toward shared foundations and domain
+modules; internal modules do not import a facade to discover implementations.
+MCP tool registration is an explicit ordered composition with direct
+dictionary dispatch, not filesystem scanning or plugin discovery.
 
 ## Routing contract
 
