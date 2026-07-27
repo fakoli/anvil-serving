@@ -353,6 +353,7 @@ def summarize_artifact(path: str | Path) -> dict[str, Any]:
             "method_sha256": method_sha256,
         },
         "workload": {
+            "measurement_protocol": _text(raw.get("measurement_protocol")),
             "prompt_set_id": _text(
                 raw.get("prompt_set_id"), raw.get("workload_id"), raw.get("suite_id")
             ),
@@ -565,6 +566,7 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
         "shared_prefix_burst": ("workload", "shared_prefix_burst"),
         "cache_policy": ("workload", "cache_policy"),
         "prompt_set_id": ("workload", "prompt_set_id"),
+        "measurement_protocol": ("workload", "measurement_protocol"),
         "gpu": ("provenance", "gpu"),
     }
     differences = {

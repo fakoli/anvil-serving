@@ -16,6 +16,20 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **Benchmark internals are now a cohesive package.** The public
+  `anvil_serving.benchmark` facade delegates artifact handling, suite validation,
+  request transport, evaluation, recipe emission, workload execution, and CLI
+  coordination to focused modules under `anvil_serving.benchmarking`.
+- **Capacity measurements are deterministic and token-aware.** Sampled context
+  plans use a recorded seed, the measured inverse-CDF includes its 16K bucket,
+  shared prefixes honor their declared token budget, burst requests retain a
+  unique suffix, and streamed throughput prefers authoritative
+  `usage.completion_tokens`. Capacity artifacts declare measurement protocol
+  `capacity-v2`; exact token throughput is suppressed when usage is unavailable.
+- **Benchmark evidence fails closed more consistently.** Context windows without
+  prompt headroom and non-finite JSON metrics are rejected, request failures are
+  retained as bounded error classes, monotonic clocks measure durations, and
+  percentile summaries use the documented nearest-rank method.
 - **Command registration is modular and deterministic.** Eight explicit
   command-family factories now assemble the same 133-path operational surface
   without filesystem discovery or eager handler imports. Shared lifecycle
