@@ -51,10 +51,20 @@ only for real local model serves.
 
 ```bash
 pip install -e .
+anvil-serving init
+anvil-serving serves groups
+anvil-serving serves up SERVE_NAME --dry-run
+anvil-serving serves up SERVE_NAME --confirm
 anvil-serving router run --config configs/example.toml
 ```
 
-With local tiers running, call the gateway:
+`init` writes the packaged operational manifests to `~/.anvil-serving`; use
+`--out-dir` to choose another location or `--single-model` for a focused
+one-model scaffold. `serves up` is the canonical bring-up path for models and
+other manifest-owned resources. Preview the resolved operation before
+confirming it.
+
+With the selected serves running, call the gateway:
 
 ```bash
 curl -s http://127.0.0.1:8000/v1/models

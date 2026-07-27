@@ -6,7 +6,9 @@ each command family has a focused reference with its commands, workflows, and
 safety rules.
 
 The cross-family grammar, safety, output, and portability rules are recorded in
-[ADR-0021](adr/0021-cli-interaction-contract.md).
+[ADR-0021](adr/0021-cli-interaction-contract.md). The modular registry and its
+compact manifest contract are recorded in
+[ADR-0029](adr/0029-modular-command-registry.md).
 
 ## Command families
 
@@ -41,6 +43,10 @@ anvil-serving models --help
 anvil-serving models recipes --help
 anvil-serving models recipes load --help
 ```
+
+Each leaf's real parser is authoritative for operands, choices, defaults, and
+argument descriptions. The registry adds the canonical path, summary, global
+options, safety policy, and documentation link without copying parser prose.
 
 ## Global options
 
@@ -79,21 +85,21 @@ separator.
 
 This generated index is the exhaustive public surface. The family
 pages above are organized for reading; this table is optimized for lookup and is
-checked against the canonical command tree in CI. Its option column records dispatcher
+checked against the canonical command registry in CI. Its option column records dispatcher
 policy; focused `--help` remains authoritative for each leaf's complete workload flags,
 required operands, choices, and defaults.
 
 <!-- BEGIN GENERATED CLI MANIFEST INDEX -->
 | Command path | Purpose | Class / output | Declared command options |
 |---|---|---|---|
-| `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | `--out-dir`<br>`--single-model`<br>`--model`<br>`--catalog-dir`<br>`--gpu`<br>`--served-name`<br>`--tier-id`<br>`--port`<br>`--context`<br>`--engine`<br>`--disable-thinking`<br>`--bind`<br>`--expose-lan` |
+| `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | - |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
-| `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
+| `router run` | Run the router in the foreground. | `process` / `foreground` | - |
 | `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate` |
 | `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service` |
 | `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
 | `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
-| `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | `--container`<br>`--host`<br>`--port`<br>`--no-tailscale` |
+| `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
 | `router quiesce` | Quiesce one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
@@ -103,122 +109,122 @@ required operands, choices, and defaults.
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
-| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--group`<br>`--compose`<br>`--recreate`<br>`--evict`<br>`--drain-timeout`<br>`--router-url` |
-| `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--group` |
-| `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest` |
-| `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest` |
+| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves switch` | Switch a deployment role to an activation-ready recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--registry`<br>`--recipe` |
-| `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--rollback`<br>`--resume` |
-| `serves status` | Show model serve status. | `read` / `bounded` | `--manifest`<br>`--group` |
-| `serves groups` | List serve groups across the manifest set and their members. | `read` / `bounded` | `--manifest` |
-| `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--since`<br>`--follow` |
+| `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `serves status` | Show model serve status. | `read` / `bounded` | - |
+| `serves groups` | List serve groups across the manifest set and their members. | `read` / `bounded` | - |
+| `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
-| `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--out`<br>`--hf-roots`<br>`--model-dirs` |
-| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--volume`<br>`--image`<br>`--revision`<br>`--include`<br>`--exclude`<br>`--token-env`<br>`--token-file`<br>`--no-token` |
+| `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
 | `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
-| `models recipes list` | List recorded serve recipes. | `read` / `bounded` | `--registry` |
-| `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | `--registry` |
-| `models recipes create` | Create one recipe in an operator registry. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--recipe-file` |
-| `models recipes update` | Update one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--recipe-file` |
-| `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry` |
-| `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--container` |
+| `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |
+| `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | - |
+| `models recipes create` | Create one recipe in an operator registry. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models recipes update` | Update one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
-| `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute`<br>`--mixture`<br>`--include-servable`<br>`--allow-empty-mixture`<br>`--self-check` |
+| `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
-| `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--logs-dir`<br>`--out-dir`<br>`--analysis-timeout` |
-| `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--manifest`<br>`--recipe`<br>`--registry`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--timeout-seconds`<br>`--thinking-mode`<br>`--reasoning-effort`<br>`--visible-answer-tokens`<br>`--reasoning-headroom-tokens`<br>`--checks`<br>`--needle-ctx`<br>`--tool-batch`<br>`--reasoning-evidence`<br>`--allowed-finish-reasons`<br>`--output` |
+| `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
-| `eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--manifest`<br>`--recipe`<br>`--registry`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--timeout-seconds`<br>`--thinking-mode`<br>`--reasoning-effort`<br>`--visible-answer-tokens`<br>`--reasoning-headroom-tokens`<br>`--requests`<br>`--concurrency`<br>`--ctx-tokens`<br>`--max-tokens`<br>`--max-model-len`<br>`--burst`<br>`--engine`<br>`--gpu`<br>`--output` |
-| `eval benchmark quality` | Run repeated quality suites and retain comparison evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--manifest`<br>`--recipe`<br>`--registry`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--timeout-seconds`<br>`--thinking-mode`<br>`--reasoning-effort`<br>`--visible-answer-tokens`<br>`--reasoning-headroom-tokens`<br>`--suite`<br>`--suite-file`<br>`--candidate-id`<br>`--config-id`<br>`--eval-repetitions`<br>`--eval-min-pass-rate`<br>`--engine`<br>`--gpu`<br>`--source-recipe`<br>`--control-status`<br>`--control-evidence`<br>`--output` |
+| `eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `eval benchmark quality` | Run repeated quality suites and retain comparison evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark evidence` | Inspect retained local benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark evidence list` | List retained local benchmark artifacts. | `read` / `bounded` | - |
 | `eval benchmark evidence show` | Show a normalized benchmark artifact summary. | `read` / `bounded` | - |
 | `eval benchmark evidence compare` | Compare artifacts and flag workload mismatches. | `read` / `bounded` | - |
 | `eval benchmark external` | Manage external benchmark evidence. | `read` / `bounded` | - |
-| `eval benchmark external init` | Initialize benchmark evidence storage. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db` |
-| `eval benchmark external sources` | List benchmark sources. | `read` / `bounded` | `--db` |
-| `eval benchmark external fetch` | Fetch and import benchmark evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db`<br>`--source`<br>`--url` |
-| `eval benchmark external import` | Import saved benchmark evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db`<br>`--source`<br>`--file` |
-| `eval benchmark external list` | List normalized benchmark evidence. | `read` / `bounded` | `--db`<br>`--gpu`<br>`--model`<br>`--source`<br>`--top` |
-| `eval benchmark external report` | Render a benchmark report. | `read` / `bounded` | `--db`<br>`--gpu`<br>`--model`<br>`--source`<br>`--format` |
-| `eval benchmark external export` | Export benchmark evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db`<br>`--out`<br>`--format` |
-| `eval benchmark external compare` | Compare local benchmark evidence. | `read` / `bounded` | `--db`<br>`--local`<br>`--gpu` |
+| `eval benchmark external init` | Initialize benchmark evidence storage. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `eval benchmark external sources` | List benchmark sources. | `read` / `bounded` | - |
+| `eval benchmark external fetch` | Fetch and import benchmark evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `eval benchmark external import` | Import saved benchmark evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `eval benchmark external list` | List normalized benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark external report` | Render a benchmark report. | `read` / `bounded` | - |
+| `eval benchmark external export` | Export benchmark evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `eval benchmark external compare` | Compare local benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark external notebook` | Record, list, or render model-bakeoff notebook runs. | `read` / `bounded` | - |
-| `eval benchmark external notebook add` | Record a bakeoff evidence run. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db`<br>`--evidence`<br>`--task`<br>`--hardware` |
-| `eval benchmark external notebook list` | List recorded bakeoff runs. | `read` / `bounded` | `--db`<br>`--task`<br>`--hardware`<br>`--format`<br>`--all` |
-| `eval benchmark external notebook render` | Render the bakeoff comparison. | `read` / `bounded` | `--db`<br>`--task`<br>`--hardware`<br>`--format`<br>`--baseline` |
+| `eval benchmark external notebook add` | Record a bakeoff evidence run. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `eval benchmark external notebook list` | List recorded bakeoff runs. | `read` / `bounded` | - |
+| `eval benchmark external notebook render` | Render the bakeoff comparison. | `read` / `bounded` | - |
 | `voice` | Manage audio and realtime proxy operations. | `read` / `bounded` | - |
 | `voice audio` | Manage Dark-owned STT/TTS lifecycle. | `read` / `bounded` | - |
-| `voice audio up` | Start audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--timeout-seconds` |
-| `voice audio down` | Stop audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--timeout-seconds` |
-| `voice audio status` | Show bounded audio serve status. | `read` / `bounded` | `--config`<br>`--profile`<br>`--ready-timeout` |
-| `voice audio logs` | Show bounded audio serve logs. | `read` / `bounded` | `--config`<br>`--profile`<br>`--tail` |
+| `voice audio up` | Start audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice audio down` | Stop audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice audio status` | Show bounded audio serve status. | `read` / `bounded` | - |
+| `voice audio logs` | Show bounded audio serve logs. | `read` / `bounded` | - |
 | `voice proxy` | Manage the realtime proxy process. | `read` / `bounded` | - |
-| `voice proxy run` | Run the realtime proxy. | `process` / `foreground` | `--config`<br>`--profile`<br>`--candidate`<br>`--candidate-overlay` |
-| `voice proxy up` | Start the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--pid-file`<br>`--log-file` |
-| `voice proxy down` | Stop the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--pid-file`<br>`--log-file` |
-| `voice proxy restart` | Restart the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--pid-file`<br>`--log-file` |
-| `voice proxy status` | Show realtime proxy status. | `read` / `bounded` | `--config`<br>`--profile`<br>`--pid-file`<br>`--log-file` |
-| `voice proxy logs` | Show bounded realtime proxy logs. | `read` / `bounded` | `--config`<br>`--profile`<br>`--pid-file`<br>`--log-file`<br>`--tail` |
-| `voice proxy bridge` | Run the Mini-to-Dark audio bridge. | `process` / `foreground` | `--config`<br>`--profile`<br>`--listen-host`<br>`--stt-listen-port`<br>`--stt-target-host`<br>`--stt-target-port`<br>`--tts-listen-port`<br>`--tts-target-host`<br>`--tts-target-port`<br>`--dry-run` |
-| `voice benchmark` | Benchmark an end-to-end voice session. | `read` / `bounded` | `--config`<br>`--profile`<br>`--candidate`<br>`--candidate-overlay`<br>`--candidate-base-url`<br>`--candidate-model`<br>`--candidate-api-key-env`<br>`--evidence-out` |
+| `voice proxy run` | Run the realtime proxy. | `process` / `foreground` | - |
+| `voice proxy up` | Start the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice proxy down` | Stop the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice proxy restart` | Restart the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice proxy status` | Show realtime proxy status. | `read` / `bounded` | - |
+| `voice proxy logs` | Show bounded realtime proxy logs. | `read` / `bounded` | - |
+| `voice proxy bridge` | Run the Mini-to-Dark audio bridge. | `process` / `foreground` | `--dry-run` |
+| `voice benchmark` | Benchmark an end-to-end voice session. | `read` / `bounded` | - |
 | `voice profiles` | Inspect voice profiles. | `read` / `bounded` | - |
-| `voice profiles list` | List voice profiles. | `read` / `bounded` | `--config` |
-| `voice profiles validate` | Validate the profile selected by --profile. | `read` / `bounded` | `--config`<br>`--profile` |
+| `voice profiles list` | List voice profiles. | `read` / `bounded` | - |
+| `voice profiles validate` | Validate the profile selected by --profile. | `read` / `bounded` | - |
 | `voice sidecar` | Manage the speech-to-speech sidecar. | `read` / `bounded` | - |
-| `voice sidecar validate` | Validate a sidecar manifest. | `read` / `bounded` | `--config` |
-| `voice sidecar command` | Render a sidecar command. | `read` / `bounded` | `--config`<br>`--with-auth` |
-| `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | `--config`<br>`--service-name`<br>`--with-auth` |
+| `voice sidecar validate` | Validate a sidecar manifest. | `read` / `bounded` | - |
+| `voice sidecar command` | Render a sidecar command. | `read` / `bounded` | - |
+| `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | - |
 | `harness` | Manage harness integration. | `read` / `bounded` | - |
 | `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
-| `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--out`<br>`--base-url`<br>`--api-key-env`<br>`--overwrite`<br>`--voice`<br>`--voice-realtime-url`<br>`--voice-model`<br>`--voice-api-key-env` |
+| `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness restart` | Restart the harness | `read` / `bounded` | - |
-| `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--gateway-host`<br>`--gateway-user`<br>`--timeout-seconds` |
+| `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness status` | Show harness status | `read` / `bounded` | - |
-| `harness status openclaw` | Show harness status for OpenClaw. | `read` / `bounded` | `--timeout-seconds`<br>`--max-output-bytes` |
+| `harness status openclaw` | Show harness status for OpenClaw. | `read` / `bounded` | - |
 | `mcp` | Expose bounded MCP management tools. | `read` / `bounded` | - |
-| `mcp serve` | Run the MCP management server. | `read` / `protocol` | `--controller-url`<br>`--auth-env` |
+| `mcp serve` | Run the MCP management server. | `read` / `protocol` | - |
 | `mcp tools` | List bounded MCP tools. | `read` / `bounded` | - |
 | `controller` | Manage the private controller service. | `read` / `bounded` | - |
-| `controller serve` | Run the private controller. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-token-env`<br>`--allow-public-bind`<br>`--allow-operation` |
-| `controller status` | Probe controller health. | `read` / `bounded` | `--url`<br>`--auth-token-env`<br>`--timeout`<br>`--max-response-bytes`<br>`--require-operation` |
+| `controller serve` | Run the private controller. | `process` / `foreground` | - |
+| `controller status` | Probe controller health. | `read` / `bounded` | - |
 | `host` | Inspect and repair declared host operations. | `read` / `bounded` | - |
 | `host status` | Show structured host status. | `read` / `bounded` | - |
 | `host gpus` | Show GPU inventory. | `read` / `bounded` | - |
 | `host gpu-sharing` | Inspect and probe CUDA GPU-sharing capabilities. | `read` / `bounded` | - |
-| `host gpu-sharing inspect` | Inspect Green Context and MPS capability without mutation. | `read` / `bounded` | `--timeout` |
-| `host gpu-sharing probe` | Run the guarded Docker CUDA prerequisite probe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose-file`<br>`--gpu-uuid`<br>`--timeout` |
+| `host gpu-sharing inspect` | Inspect Green Context and MPS capability without mutation. | `read` / `bounded` | - |
+| `host gpu-sharing probe` | Run the guarded Docker CUDA prerequisite probe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host doctor` | Diagnose host configuration. | `read` / `bounded` | - |
-| `host memory` | Show host RAM and WSL VM memory usage. | `read` / `bounded` | `--distro` |
-| `host wsl-config` | Render or update WSL configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--memory`<br>`--swap`<br>`--revert`<br>`--force` |
+| `host memory` | Show host RAM and WSL VM memory usage. | `read` / `bounded` | - |
+| `host wsl-config` | Render or update WSL configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host restart-docker` | Restart Docker Desktop. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host reset-wsl` | Reset WSL. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `host reclaim` | Drop the WSL VM page cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--force`<br>`--watch`<br>`--threshold-gb`<br>`--interval`<br>`--distro` |
-| `doctor` | Check dependencies and configured health. | `read` / `bounded` | `--config`<br>`--no-config` |
-| `upgrade` | Upgrade this CLI to the newest stable published release. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manager`<br>`--allow-editable` |
+| `host reclaim` | Drop the WSL VM page cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--watch` |
+| `doctor` | Check dependencies and configured health. | `read` / `bounded` | - |
+| `upgrade` | Upgrade this CLI to the newest stable published release. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `topology` | Inspect and resolve deployment topology. | `read` / `bounded` | - |
 | `topology show` | Show a validated topology summary. | `read` / `bounded` | - |
 | `topology validate` | Validate a topology offline. | `read` / `bounded` | - |
-| `topology resolve` | Resolve one canonical command against a topology. | `read` / `bounded` | `--command` |
+| `topology resolve` | Resolve one canonical command against a topology. | `read` / `bounded` | - |
 | `collectors` | Configure and inspect optional read-only collector adapters. | `read` / `bounded` | - |
-| `collectors configure` | Validate and optionally write adapter configuration. | `mutate` / `bounded` | `--config`<br>`--name`<br>`--adapter`<br>`--endpoint`<br>`--capability`<br>`--auth-env`<br>`--output`<br>`--confirm` |
-| `collectors validate` | Validate adapter configuration without network access. | `read` / `bounded` | `--config`<br>`--name`<br>`--adapter`<br>`--endpoint`<br>`--capability`<br>`--auth-env` |
-| `collectors capabilities` | Report configured adapter capabilities offline. | `read` / `bounded` | `--config`<br>`--name`<br>`--adapter`<br>`--endpoint`<br>`--capability`<br>`--auth-env` |
-| `collectors inspect` | Perform one bounded read-only adapter inspection. | `read` / `bounded` | `--config`<br>`--name`<br>`--adapter`<br>`--endpoint`<br>`--capability`<br>`--auth-env`<br>`--timeout` |
+| `collectors configure` | Validate and optionally write adapter configuration. | `mutate` / `bounded` | `--output`<br>`--confirm` |
+| `collectors validate` | Validate adapter configuration without network access. | `read` / `bounded` | - |
+| `collectors capabilities` | Report configured adapter capabilities offline. | `read` / `bounded` | - |
+| `collectors inspect` | Perform one bounded read-only adapter inspection. | `read` / `bounded` | - |
 | `dashboard` | Serve the read-only system observability dashboard. | `read` / `bounded` | - |
-| `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-env` |
+| `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | - |
 | `edge` | Own the Tailscale tailnet edge in front of the unchanged router. | `read` / `bounded` | - |
-| `edge render` | Render the tailscale serve invocations without applying. | `read` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map` |
-| `edge status` | Show serve mappings, flagging which this tool manages. | `read` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map` |
-| `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map`<br>`--dry-run`<br>`--confirm` |
-| `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map`<br>`--dry-run`<br>`--confirm` |
+| `edge render` | Render the tailscale serve invocations without applying. | `read` / `bounded` | - |
+| `edge status` | Show serve mappings, flagging which this tool manages. | `read` / `bounded` | - |
+| `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `workbench` | Manage the optional private Anvil Workbench hub stack. | `read` / `bounded` | - |
-| `workbench up` | Start the private Workbench hub, Postgres, and Neo4j projection. | `mutate` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name`<br>`--dry-run`<br>`--confirm` |
-| `workbench down` | Stop the Workbench hub stack while preserving its named data volumes. | `mutate` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name`<br>`--dry-run`<br>`--confirm` |
-| `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name` |
-| `workbench logs` | Read bounded Workbench hub stack logs. | `read` / `bounded` | `--compose`<br>`--env-file`<br>`--project-name`<br>`--tail`<br>`--follow` |
+| `workbench up` | Start the private Workbench hub, Postgres, and Neo4j projection. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `workbench down` | Stop the Workbench hub stack while preserving its named data volumes. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | - |
+| `workbench logs` | Read bounded Workbench hub stack logs. | `read` / `bounded` | - |
 <!-- END GENERATED CLI MANIFEST INDEX -->
 
 ## Related references

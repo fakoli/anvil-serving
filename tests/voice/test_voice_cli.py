@@ -1866,10 +1866,10 @@ def test_voice_sidecar_nested_help_dispatches(capsys):
     assert out.startswith(
         "anvil-serving voice sidecar validate\nValidate a sidecar manifest.\n"
     )
-    assert "\nUsage:" in out
-    assert "\nExamples:" in out
-    assert "\nConfiguration:" in out
-    assert "\nBehavior:" in out
+    assert "\nusage:" in out
+    assert "\nExamples:" not in out
+    assert "\nConfiguration:" not in out
+    assert "\nBehavior:" not in out
     assert "--config" in out
     assert "--topology" not in out
     assert "--json" in out

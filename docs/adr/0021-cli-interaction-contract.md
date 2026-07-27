@@ -1,5 +1,11 @@
 # ADR-0021 — CLI interaction contract
 
+> **2026-07-26 amendment:** ADR-0029 replaces the section 8
+> `CLI-UX-AUDIT.json` ratchet with a modular registry, parser-owned leaf help,
+> manifest contract tests, the CLI reference audit, and behavior tests. The
+> interaction, safety, output, transport, and cross-platform requirements in
+> this ADR remain active.
+
 - **Status:** **Accepted** (2026-07-14)
 - **Date:** 2026-07-14
 - **Relates to:** [ADR-0012](0012-serve-and-router-management-verbs.md) (supported

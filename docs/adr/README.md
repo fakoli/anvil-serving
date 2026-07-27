@@ -48,3 +48,4 @@ people and the chat logs.
 | [0026](0026-opt-in-transparent-response-model.md) | Opt-in transparent response model reports the served tier | Superseded by ADR-0028 |
 | [0027](0027-public-findings-are-durable-evidence.md) | Public findings are durable evidence | Accepted |
 | [0028](0028-serving-benchmarks-and-thin-capability-gateway.md) | Serving, benchmarks, and a thin capability gateway | Accepted |
+| [0029](0029-modular-command-registry.md) | Modular command registry with parser-owned leaf help | Accepted |

@@ -29,7 +29,7 @@ from collections.abc import Mapping
 from typing import Any, Callable, Dict, Iterable, Optional
 
 from . import __version__
-from .command_tree import COMMAND_TREE, CommandNode
+from .commands import COMMAND_TREE, CommandNode
 from .operator_output import CONTEXT_FIELDS, context_from_plan, redact
 
 
