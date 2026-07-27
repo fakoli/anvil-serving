@@ -77,7 +77,7 @@ not part of this router contract.
 | `anvil-serving voice proxy restart` | Performs a bounded stop/start of the persistent Realtime proxy. | Does not replace a foreground `proxy run` process. |
 | `anvil-serving voice proxy status` | Reports persistent process identity and readiness. | Does not infer health from a PID alone. |
 | `anvil-serving voice proxy logs` | Reads a bounded tail of persistent proxy logs. | Does not stream without a bound. |
-| `anvil-serving voice benchmark` | Runs one configured end-to-end voice turn and prints latency/quality metrics as JSON. | Does not promote routing policy or prove subjective audio quality by itself. |
+| `anvil-serving voice benchmark` | Runs one configured end-to-end voice turn and prints latency/quality metrics as JSON. | Does not change the active direct alias or prove subjective audio quality by itself. |
 | `anvil-serving voice profiles list` | Lists manifest profiles or validates the resolved manifest for one profile. | Does not mutate lifecycle or start the Realtime server. |
 | `anvil-serving voice proxy bridge` | On Mini, forwards loopback STT/TTS proxy ports to topology-owned Dark endpoints. | Does not bind publicly, manage models, add auth, or inspect audio traffic. |
 | `anvil-serving voice sidecar` | Validates or renders a Hugging Face speech-to-speech sidecar. | Does not run anvil-serving's native Realtime cascade. |
@@ -102,7 +102,7 @@ LLM candidate without copying manifests.
 `--candidate-model`, and `--candidate-api-key-env` for a Fast candidate that is
 already loaded on a direct OpenAI-compatible endpoint. Those flags create an
 in-memory LLM overlay for that benchmark run only; they do not write the voice
-manifest, router config, or production routing policy.
+manifest, gateway config, or active direct alias.
 
 Audio and proxy operations require `--topology <operator-topology.toml>`. The
 topology, not the machine where the command was typed, establishes the resource
@@ -767,8 +767,8 @@ audio path (`ttfa_ms 611.29`, `turn_latency_ms 789.06`, `stt_ms 106.28`,
 than a clear model-only bottleneck. Candidate rows were retained as topology
 negative controls because they failed before STT from a wrong-host loopback
 path. Gather comparable successful data with Dark-host or Mini-proxied audio
-before any production promotion, and keep promotion behind the normal human
-`router_promote` gate.
+before any production promotion, and keep promotion behind the normal
+human-approved `serves_promote` gate.
 
 For live Realtime Talk sessions, `voice proxy run` also emits redacted
 `voice_stage_timing` log lines for the core `stt`, `llm`, and `tts` stages.

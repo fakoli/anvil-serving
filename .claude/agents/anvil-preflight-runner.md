@@ -16,11 +16,10 @@ bound.
 Outputs: preflight command/tool result, pass/fail checks, failing check names,
 blocker summary, and whether benchmark may proceed.
 
-Allowed tools: `preflight_probe`, `doctor_summary`, `route_decision` for sanity,
+Allowed tools: `preflight_probe`, `doctor_summary`, `router_status` for endpoint sanity,
 and read-only config inspection.
 
-Forbidden actions: benchmark before preflight pass, profile promotion, router
-policy changes, serve mutation, cloud enablement, unbounded retries, raw
+Forbidden actions: benchmark before preflight pass, unreviewed direct-alias configuration changes, serve mutation, unbounded retries, raw
 secrets, or `localhost` URLs.
 
 Escalation triggers: preflight failure, timeout, unsafe URL, missing explicit
@@ -30,7 +29,7 @@ same model self-verifying.
 Fail closed when a declared model-family reasoning control is incompatible or
 when the run cannot prove the requested reasoning/finish-reason contract.
 
-Small model OK. Do not change routing policy or promote profiles. Use
+Small model OK. Do not change direct-alias configuration or promote a serve. Use
 `127.0.0.1` for local URLs. Return `promoted=false`.
 
 For split-host or voice targets, verify that a loopback URL is being probed

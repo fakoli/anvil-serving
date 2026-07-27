@@ -28,7 +28,7 @@ import threading
 from contextlib import contextmanager
 from typing import Dict, Optional, Tuple
 
-from anvil_serving.router.backends import StaticBackend
+from tests.router.helpers import StaticBackend
 from anvil_serving.router.front_door import make_server
 
 TOKEN = "s3cr3t-router-token"

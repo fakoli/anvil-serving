@@ -8,7 +8,7 @@ from contextlib import contextmanager
 
 import pytest
 
-from anvil_serving.router.backends import StaticBackend
+from tests.router.helpers import StaticBackend
 from anvil_serving.router.dialects.responses import ResponsesDialect
 from anvil_serving.router.internal import DialectError
 from anvil_serving.router.front_door import make_server

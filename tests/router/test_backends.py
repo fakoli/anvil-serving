@@ -5,7 +5,7 @@ real network.
 
   * T005 — [router].relay_timeout is threaded through build_backends ->
     build_backend_for_tier so a LOCAL tier's backend actually uses it as its
-    transport timeout (cloud tiers keep the 120s default).
+    transport timeout.
   * T003 — a tier's extra_body is merged verbatim into the upstream request
     body (both dialects); absent extra_body is a no-op (no regression).
   * T002 — a local tier with model=None auto-derives its served model id from
@@ -20,7 +20,7 @@ from typing import Dict
 
 import pytest
 
-from anvil_serving.router.backends.cloud import discover_single_model
+from anvil_serving.router.backends.relay import discover_single_model
 from anvil_serving.router.config import ConfigError, RouterConfig, Tier
 from anvil_serving.router.internal import InternalRequest, Message
 from anvil_serving.router.serve import build_backend_for_tier, build_backends

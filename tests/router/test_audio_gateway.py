@@ -27,8 +27,8 @@ from anvil_serving.router.audio import (
     _AudioResponse,
     _deadline_transport,
 )
-from anvil_serving.router.backends import StaticBackend
-from anvil_serving.router.backends.cloud import CloudBackendError
+from tests.router.helpers import StaticBackend
+from anvil_serving.router.backends.relay import RelayBackendError
 from anvil_serving.router.config import AudioRoute, ConfigError, load
 from anvil_serving.router.decision_log import DecisionLog
 from anvil_serving.router.front_door import make_server
@@ -293,7 +293,7 @@ def test_audio_routes_are_absent_without_configured_gateway_and_never_fall_throu
 
 
 def test_audio_error_is_typed_sanitized_and_has_no_provider_fallback():
-    transport = FakeAudioTransport(error=CloudBackendError("http://10.1.2.3:30010 failed"))
+    transport = FakeAudioTransport(error=RelayBackendError("http://10.1.2.3:30010 failed"))
     with audio_server(gateway(transport)) as (host, port):
         status, _, response = post(host, port, "/v1/audio/transcriptions", {
             "purpose": "stt", "audio_b64": base64.b64encode(b"x").decode(), "format": "wav", "is_final": True,
@@ -307,7 +307,7 @@ def test_audio_error_is_typed_sanitized_and_has_no_provider_fallback():
 def test_purpose_default_route_is_selected_once_and_never_falls_through_to_another_route():
     first = replace(STT, id="stt-primary", default=True)
     second = replace(STT, id="stt-secondary", model="other-stt")
-    transport = FakeAudioTransport(error=CloudBackendError("first route failed"))
+    transport = FakeAudioTransport(error=RelayBackendError("first route failed"))
     no_fallback = AudioGateway(
         (first, second, TTS),
         max_input_bytes=1024,
@@ -557,7 +557,7 @@ def test_default_audio_transport_enforces_a_total_deadline_and_never_follows_red
             _deadline_transport(
                 f"http://{host}:{port}/slow", data=b"{}", headers={}, timeout=0.02, max_bytes=16,
             )
-        with pytest.raises(CloudBackendError):
+        with pytest.raises(RelayBackendError):
             _deadline_transport(
                 f"http://{host}:{port}/redirect", data=b"{}", headers={}, timeout=1.0, max_bytes=16,
             )
