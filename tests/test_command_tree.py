@@ -271,7 +271,6 @@ def test_repo_workbench_surfaces_catalog_current_mcp_tools_and_cli_gaps():
             "models pull",
             "serves switch ROLE [MODEL]",
             "eval benchmark quality",
-            "validate_only=true",
             "confirm=true",
             "dry_run=false",
             "human_approved=true",
