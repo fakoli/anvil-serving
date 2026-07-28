@@ -36,11 +36,13 @@ pool is usable when it is not.
 """
 import argparse
 import copy
+import dataclasses
 import ipaddress
 import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -62,6 +64,8 @@ from anvil_serving.topology import TopologyValidationError, load_topology
 from . import benchmark as voice_benchmark
 from . import bridge as voice_bridge
 from . import config as voice_config
+from . import corpus as voice_corpus
+from . import stt_benchmark
 from .realtime.app import build_realtime_server_from_manifest
 from .realtime.ws import serve_forever_in_background
 from .realtime_service import ProxyProcessConfig, RealtimeProxyProcessService
@@ -70,6 +74,8 @@ from .serves import proxy as proxy_serve
 from .serves import stt as stt_serve
 from .serves import tts as tts_serve
 from .serves._common import ServeNotConfigured
+from .stages.stt import STTStageConfig
+from .stages.tts import TTSStageConfig, stream_speech
 
 try:
     import tomllib  # Python 3.11+
@@ -438,6 +444,75 @@ def _candidate_overlay_from_args(args) -> Optional[dict]:
     overlay = _load_candidate_overlay(getattr(args, "candidate_overlay", None))
     loaded_overlay = _loaded_candidate_overlay_from_args(args)
     return loaded_overlay if loaded_overlay is not None else overlay
+
+
+def _stt_candidate_overlay_from_args(args) -> tuple[Optional[dict], dict]:
+    path = getattr(args, "stt_candidate_overlay", None)
+    overlay = _load_candidate_overlay(path)
+    if overlay is None:
+        return None, {}
+    overlay = copy.deepcopy(overlay)
+    identity = overlay.pop("stt_benchmark", {})
+    if not isinstance(identity, dict):
+        raise voice_config.ConfigError("[stt_benchmark] must be a TOML table")
+    unknown_identity = sorted(set(identity) - {"identity"})
+    if unknown_identity:
+        raise voice_config.ConfigError(
+            "[stt_benchmark] contains unsupported keys: %s" % ", ".join(unknown_identity)
+        )
+    identity = identity.get("identity", {})
+    if not isinstance(identity, dict):
+        raise voice_config.ConfigError("[stt_benchmark.identity] must be a TOML table")
+    allowed_identity = {
+        "served_name",
+        "checkpoint",
+        "revision",
+        "runtime",
+        "runtime_version",
+        "image",
+        "image_digest",
+        "hardware",
+    }
+    unknown = sorted(set(identity) - allowed_identity)
+    if unknown:
+        raise voice_config.ConfigError(
+            "[stt_benchmark.identity] contains unsupported keys: %s" % ", ".join(unknown)
+        )
+    if any(not isinstance(value, str) or not value.strip() for value in identity.values()):
+        raise voice_config.ConfigError("[stt_benchmark.identity] values must be non-empty strings")
+    voice_overlay = overlay.get("voice", overlay)
+    if not isinstance(voice_overlay, dict) or set(voice_overlay) != {"stt"}:
+        raise voice_config.ConfigError(
+            "STT candidate overlay must contain only [voice.stt] plus optional "
+            "[stt_benchmark.identity]"
+        )
+    if not isinstance(voice_overlay["stt"], dict):
+        raise voice_config.ConfigError("[voice.stt] must be a TOML table")
+    return {"voice": {"stt": voice_overlay["stt"]}}, dict(identity)
+
+
+def _stage_config(table: dict, cls):
+    fields = {field.name for field in dataclasses.fields(cls)}
+    return cls(**{key: value for key, value in table.items() if key in fields})
+
+
+def _load_stt_benchmark_config(args):
+    try:
+        overlay, identity = _stt_candidate_overlay_from_args(args)
+        candidate = getattr(args, "candidate", None)
+        if not candidate and getattr(args, "stt_candidate_overlay", None):
+            candidate = os.path.splitext(
+                os.path.basename(args.stt_candidate_overlay)
+            )[0] or None
+        resolved = voice_config.resolve_manifest(
+            args.config,
+            profile=getattr(args, "profile", None),
+            candidate_overlay=overlay,
+            candidate=candidate,
+        )
+        return resolved, identity, None
+    except voice_config.ConfigError as exc:
+        return None, None, str(exc)
 
 
 def _load_benchmark_config(args):
@@ -1382,6 +1457,8 @@ def cmd_run(args):
 
 def cmd_benchmark(args):
     scope = getattr(args, "scope", "end-to-end")
+    if scope == "stt":
+        return _cmd_stt_benchmark(args)
     if scope == "audio" and any(
         getattr(args, name, None)
         for name in (
@@ -1449,6 +1526,111 @@ def cmd_benchmark(args):
             return 1
         print("voice benchmark: evidence written %s" % evidence_target)
     print(voice_benchmark.to_json(result))
+    return 0
+
+
+def _cmd_stt_benchmark(args):
+    if any(
+        getattr(args, name, None)
+        for name in (
+            "candidate_overlay",
+            "candidate_base_url",
+            "candidate_model",
+            "candidate_api_key_env",
+        )
+    ):
+        print(
+            "voice benchmark: --scope stt accepts --stt-candidate-overlay, "
+            "not LLM candidate options",
+            file=sys.stderr,
+        )
+        return 2
+    if not getattr(args, "corpus", None):
+        print("voice benchmark: --scope stt requires --corpus", file=sys.stderr)
+        return 2
+    if not getattr(args, "evidence_out", None):
+        print("voice benchmark: --scope stt requires --evidence-out", file=sys.stderr)
+        return 2
+    resolved, identity, err = _load_stt_benchmark_config(args)
+    if err:
+        print("voice benchmark: %s" % err, file=sys.stderr)
+        return 2
+    assert resolved is not None
+    stt_table = resolved.data["voice"]["stt"]
+    config = _stage_config(stt_table, STTStageConfig)
+    try:
+        evidence_target = _resolve_evidence_output_path(args.evidence_out)
+        evidence = stt_benchmark.run_stt_benchmark(
+            args.corpus,
+            config=config,
+            repetitions=args.repetitions,
+            concurrency=args.concurrency,
+            endpoint_identity=identity,
+            auto_language_probe_count=args.auto_language_probes,
+        )
+        assert evidence_target is not None
+        _write_benchmark_evidence(evidence_target, evidence)
+    except (voice_config.ConfigError, voice_corpus.CorpusError, stt_benchmark.STTBenchmarkError) as exc:
+        print("voice benchmark: %s" % exc, file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001 - preserve evidence-path/network context
+        print("voice benchmark: STT benchmark failed before evidence completion: %s" % exc, file=sys.stderr)
+        return 1
+    print("voice benchmark: evidence written %s" % evidence_target)
+    print(voice_benchmark.to_json(evidence))
+    if not evidence["complete"]:
+        print(
+            "voice benchmark: run incomplete; see failures in evidence",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
+def cmd_corpus(args):
+    if args.corpus_action == "validate":
+        try:
+            result = voice_corpus.validate_corpus(
+                args.manifest,
+                expected_cases=args.expected_cases,
+            )
+        except voice_corpus.CorpusError as exc:
+            print("voice corpus validate: %s" % exc, file=sys.stderr)
+            return 2
+        printable = dict(result)
+        printable.pop("cases", None)
+        print(voice_benchmark.to_json(printable))
+        return 0
+
+    data, err = _load(args.config, getattr(args, "profile", None))
+    if err:
+        print("voice corpus prepare: %s" % err, file=sys.stderr)
+        return 2
+    assert data is not None
+    tts_config = _stage_config(data["voice"]["tts"], TTSStageConfig)
+
+    def synthesize(text: str) -> bytes:
+        return b"".join(stream_speech(text, tts_config))
+
+    try:
+        ffmpeg = args.ffmpeg or shutil.which("ffmpeg")
+        if not ffmpeg:
+            raise voice_corpus.CorpusError(
+                "FFmpeg is required to normalize LibriSpeech FLAC to WAV; "
+                "install it or pass --ffmpeg PATH"
+            )
+        result = voice_corpus.prepare_corpus(
+            args.out,
+            synthesize=synthesize,
+            transcode_flac=voice_corpus.ffmpeg_transcoder(ffmpeg),
+            download_dir=args.download_dir,
+        )
+    except (voice_corpus.CorpusError, OSError, urllib.error.URLError) as exc:
+        print("voice corpus prepare: %s" % exc, file=sys.stderr)
+        return 1
+    printable = dict(result)
+    printable.pop("cases", None)
+    print(voice_benchmark.to_json(printable))
     return 0
 
 
@@ -1839,14 +2021,39 @@ def build_parser():
         help="maximum proxy log lines, from 1 through 5000",
     )
 
-    sp = sub.add_parser("benchmark", help="replay a recorded session end-to-end and report latency")
+    corpus_parser = sub.add_parser("corpus", help="prepare or validate an STT benchmark corpus")
+    corpus_sub = corpus_parser.add_subparsers(dest="corpus_action", required=True)
+    sp = corpus_sub.add_parser(
+        "prepare",
+        help="build the deterministic LibriSpeech and Kokoro English corpus",
+    )
+    add_config(sp)
+    add_profile(sp)
+    sp.add_argument("--out", required=True, help="new directory for the prepared corpus")
+    sp.add_argument(
+        "--download-dir",
+        help="archive cache outside the corpus output; defaults beside --out",
+    )
+    sp.add_argument(
+        "--ffmpeg",
+        help="FFmpeg executable used to normalize selected FLAC to 16-kHz mono WAV",
+    )
+    sp = corpus_sub.add_parser("validate", help="validate corpus JSONL, audio, and hashes")
+    sp.add_argument("--manifest", required=True, help="versioned corpus JSONL manifest")
+    sp.add_argument(
+        "--expected-cases",
+        type=int,
+        help="optional exact case count gate",
+    )
+
+    sp = sub.add_parser("benchmark", help="benchmark voice or a multi-sample STT corpus")
     add_config(sp)
     add_profile(sp)
     sp.add_argument(
         "--scope",
-        choices=("end-to-end", "audio"),
+        choices=("end-to-end", "audio", "stt"),
         default="end-to-end",
-        help="benchmark the full STT/LLM/TTS turn or an LLM-free TTS-to-STT audio loop",
+        help="benchmark the full turn, an audio loop, or a reusable STT corpus",
     )
     sp.add_argument(
         "--candidate",
@@ -1872,6 +2079,29 @@ def build_parser():
     sp.add_argument(
         "--evidence-out",
         help="write structured benchmark evidence JSON under the workspace or configured evidence root",
+    )
+    sp.add_argument("--corpus", help="STT corpus JSONL manifest for --scope stt")
+    sp.add_argument(
+        "--repetitions",
+        type=int,
+        default=3,
+        help="warm repetitions per corpus case for --scope stt (1 through 20)",
+    )
+    sp.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help="parallel STT requests for --scope stt (1 through 32)",
+    )
+    sp.add_argument(
+        "--stt-candidate-overlay",
+        help="STT-only TOML overlay applied after the selected profile",
+    )
+    sp.add_argument(
+        "--auto-language-probes",
+        type=int,
+        default=0,
+        help="additional human cases sent without language conditioning",
     )
 
     sp = sub.add_parser("profiles", help="list profiles or validate one resolved profile")
@@ -1940,6 +2170,7 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     handlers = {
         "benchmark": cmd_benchmark,
+        "corpus": cmd_corpus,
         "profiles": cmd_profiles,
     }
     if args.action in {"up", "down"}:
