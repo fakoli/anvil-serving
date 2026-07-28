@@ -162,6 +162,8 @@ required operands, choices, and defaults.
 | `eval benchmark external notebook list` | List recorded bakeoff runs. | `read` / `bounded` | - |
 | `eval benchmark external notebook render` | Render the bakeoff comparison. | `read` / `bounded` | - |
 | `voice` | Manage audio and realtime proxy operations. | `read` / `bounded` | - |
+| `voice up` | Start the co-located managed voice stack. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice down` | Stop the co-located managed voice stack. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `voice audio` | Manage Dark-owned STT/TTS lifecycle. | `read` / `bounded` | - |
 | `voice audio up` | Start audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `voice audio down` | Stop audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -233,6 +235,22 @@ required operands, choices, and defaults.
 | `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | - |
 | `workbench logs` | Read bounded Workbench hub stack logs. | `read` / `bounded` | - |
 <!-- END GENERATED CLI MANIFEST INDEX -->
+
+## Migration from legacy commands
+
+The co-located managed aggregate is now `anvil-serving voice up` and
+`anvil-serving voice down`. The remaining removed module-level voice paths
+retain actionable replacements:
+
+| Removed path | Replacement |
+| --- | --- |
+| `anvil-serving voice start` | `anvil-serving voice audio up` |
+| `anvil-serving voice stop` | `anvil-serving voice audio down` |
+| `anvil-serving voice run` | `anvil-serving voice proxy run` |
+| `anvil-serving voice bridge` | `anvil-serving voice proxy bridge` |
+
+Split-host deployments must operate the audio and proxy owners explicitly;
+the aggregate refuses to compose lifecycle operations across hosts.
 
 ## Related references
 

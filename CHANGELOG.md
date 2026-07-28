@@ -12,6 +12,23 @@ All notable changes to this project are documented here. The format is based on
   `F` rule families explicitly, so CI can track current Ruff releases without
   inheriting newly promoted default rules.
 
+### Added
+
+- Added `voice up` and `voice down` as guarded, co-located-only lifecycle
+  aggregates. They operate managed STT/TTS and the managed realtime proxy in
+  dependency order, return one combined result, and refuse split-host
+  configurations.
+
+### Fixed
+
+- Corrected the managed realtime-proxy reference manifest to reach STT/TTS
+  through an audio-owned Docker network and service DNS on Windows and Linux.
+- Made voice CLI unit coverage dry-run lifecycle plans instead of mutating
+  real Docker containers during the test suite.
+- Decoupled historical release-sweep evidence validation from the mutable
+  current CLI manifest while preserving the recorded revision, digest, and
+  internally consistent command counts.
+
 ## [0.15.0] - 2026-07-27
 
 Anvil Serving 0.15.0 is the selectable Omni voice and lifecycle-cleanup

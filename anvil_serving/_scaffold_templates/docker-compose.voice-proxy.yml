@@ -37,6 +37,8 @@ services:
       # Published ONLY to loopback on the host (never LAN) -- the in-container
       # 0.0.0.0 bind is reachable only through this 127.0.0.1 mapping.
       - "${VOICE_PROXY_PUBLISH:-127.0.0.1}:8765:8765"
+    networks:
+      - voice
     environment:
       # Optional bearer tokens for the DIRECT downstream endpoints, resolved by
       # env-var NAME in the voice manifest (never a literal in a file).
@@ -47,3 +49,8 @@ services:
       # The voice manifest (with a [voice.proxy] direct-endpoint table) lives on
       # the host and is mounted read-only into the container at /etc/anvil.
       - "${VOICE_CONFIG_DIR:-./voice}:/etc/anvil:ro"
+
+networks:
+  voice:
+    name: anvil-voice
+    external: true

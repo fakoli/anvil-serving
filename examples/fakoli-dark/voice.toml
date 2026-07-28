@@ -48,9 +48,9 @@ manifest_path = "serves.voice.toml"
 listen_host = "127.0.0.1"
 listen_port = 8765
 ready_url = "http://127.0.0.1:8765/usage"
-stt_url = "http://127.0.0.1:30010/v1"
-tts_url = "http://127.0.0.1:30011/v1"
-router_url = "http://127.0.0.1:8000/v1"
+stt_url = "http://stt:8080/v1"
+tts_url = "http://tts:8880/v1"
+router_url = "http://100.87.34.66:8000/v1"
 
 # A named profile makes the reference choice explicit without changing the
 # already-consistent default tables above.
