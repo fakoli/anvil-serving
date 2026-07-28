@@ -33,7 +33,7 @@ def tool_serves_status(args: dict) -> dict:
     if not isinstance(names, list) or not all(isinstance(n, str) for n in names):
         raise ToolError("bad_argument", "'names' must be an array of strings")
     try:
-        serves = serves_mod.load_manifest(manifest)
+        serves = serves_mod.load_manifest_set(manifest)
     except FileNotFoundError:
         raise ToolError("manifest_not_found", "serves manifest not found", {"manifest": manifest})
     except Exception as exc:
@@ -58,7 +58,7 @@ def _load_serves_for_tool(manifest: str):
     from .... import serves as serves_mod
 
     try:
-        return serves_mod.load_manifest(manifest)
+        return serves_mod.load_manifest_set(manifest)
     except FileNotFoundError:
         raise ToolError("manifest_not_found", "serves manifest not found", {"manifest": manifest})
     except Exception as exc:

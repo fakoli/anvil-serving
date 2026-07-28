@@ -18,16 +18,19 @@ auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
 health_path = "/health"
 
 [[router.tiers]]
-id = "auxiliary-local"
-base_url = "http://auxiliary:30001/v1"
-model = "gpt-oss-20b"
+id = "omni-local"
+base_url = "http://omni:30003/v1"
+model = "nemotron3-omni-30b-a3b-nvfp4"
 dialect = "openai"
-context_limit = 32768
+context_limit = 65536
 privacy = "local"
 tool_support = true
-auth_env = "ANVIL_AUXILIARY_LOCAL_KEY"
+auth_env = "ANVIL_OMNI_LOCAL_KEY"
 health_path = "/health"
+model_identity = true
 
 [router.model_routes]
 llm.primary = "primary-local"
-llm.voice = "auxiliary-local"
+llm.voice = "omni-local"
+vision.ocr = "omni-local"
+vision.general = "omni-local"

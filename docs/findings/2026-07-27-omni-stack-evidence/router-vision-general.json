@@ -1,0 +1,78 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:8000/v1",
+  "model": "vision.general",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 1024
+  },
+  "multimodal_input": {
+    "bytes": 14307,
+    "mime": "image/png",
+    "sha256": "c104d086a52a0b60981f6490074b476f20d2a45683900fa372c5edeaff0fab51"
+  },
+  "image_expect": [
+    "RTX 5090",
+    "503",
+    "Retry"
+  ],
+  "ocr_expect": [],
+  "checks": [
+    "image"
+  ],
+  "results": [
+    {
+      "name": "general image understanding",
+      "passed": true,
+      "detail": "4.6s all expected text present finish='stop' visible=1025 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "\nThe image shows the **Anvil Serving Dashboard**, which provides system status and request metrics. Key details include:\n\n### **GPU Status (Left Panel)**\n- **GPU**: RTX 5090 \n- **VRAM used**: 30057 MiB \n- **Serves running**: 7 \n- **Status**: **HEALTHY** (indicated by a green dot). \n\n### **Error Notification (Right Panel)**\n- **Error Code**: 503 \n- **Message**: *\"No available tier for preset 'planning' - all candidates busy\"* \n- **Action**: A blue **\"Retry\"** button is available. \n\n### **Requests per Tier (Bottom Chart)**\n- A bar chart titled **\"Requests per tier\"** shows three tiers: \n - **heavy** (blue bar): Highest request volume. \n - **fast** (orange bar): Moderate request volume. \n - **ocr** (green bar): Lowest request volume. \n\n### **Summary of Critical Information**\n- The system is **healthy** (GPU operational), but there is a **503 Service Unavailable error** due to all candidates being busy for the `'planning'` tier. \n- Request distribution is uneven, with the **heavy** tier handling the most requests.",
+      "finish_reason": "stop",
+      "content_chars": 1025,
+      "content_excerpt": "\nThe image shows the **Anvil Serving Dashboard**, which provides system status and request metrics. Key details include:\n\n### **GPU Status (Left Panel)**\n- **GPU**: RTX 5090 \n- **VRAM used**: 30057 Mi",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 562,
+        "completion_tokens": 622,
+        "total_tokens": 1184
+      },
+      "test": "image",
+      "seconds": 4.589,
+      "passed": true,
+      "validation_detail": "all expected text present",
+      "image": {
+        "bytes": 14307,
+        "mime": "image/png",
+        "sha256": "c104d086a52a0b60981f6490074b476f20d2a45683900fa372c5edeaff0fab51"
+      },
+      "expected": [
+        "RTX 5090",
+        "503",
+        "Retry"
+      ]
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "any",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

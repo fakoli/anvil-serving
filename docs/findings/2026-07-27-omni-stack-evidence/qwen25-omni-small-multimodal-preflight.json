@@ -1,0 +1,120 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:30013/v1",
+  "model": "qwen25-omni-3b",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 1024
+  },
+  "multimodal_input": {
+    "bytes": 14307,
+    "mime": "image/png",
+    "sha256": "c104d086a52a0b60981f6490074b476f20d2a45683900fa372c5edeaff0fab51"
+  },
+  "image_expect": [
+    "RTX 5090",
+    "Error 503",
+    "Retry"
+  ],
+  "ocr_expect": [
+    "Anvil Serving Dashboard",
+    "VRAM used: 30057 MiB",
+    "No available tier",
+    "planning"
+  ],
+  "checks": [
+    "image",
+    "ocr"
+  ],
+  "results": [
+    {
+      "name": "general image understanding",
+      "passed": true,
+      "detail": "2.1s all expected text present finish='stop' visible=966 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "verbatim image OCR",
+      "passed": true,
+      "detail": "0.5s all expected text present finish='stop' visible=195 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "The image is a screenshot of an Anvil Serving Dashboard. Here are the key elements and their descriptions:\n\n1. **GPU Information**:\n   - **GPU**: RTX 5090\n   - **VRAM used**: 30057 MiB\n   - **Serves running**: 7\n   - **Status**: Green circle with the word \"HEALTHY\"\n\n2. **Error 503**:\n   - **Message**: \"No available tier for preset 'planning' - all candidates busy\"\n   - **Action**: Blue button labeled \"Retry\"\n\n3. **Requests per tier**:\n   - **Bar chart**:\n     - **Heavy**: Blue bar\n     - **Fast**: Orange bar\n     - **OCR**: Green bar\n\nThe most important labels, values, and status are:\n- **GPU**: RTX 5090\n- **VRAM used**: 30057 MiB\n- **Serves running**: 7\n- **Status**: Healthy\n- **Error**: 503 (No available tier for preset 'planning' - all candidates busy)\n- **Action**: Retry\n\nThe image indicates that the GPU is healthy and is serving 7 requests, but there is an error with the \"planning\" preset as all candidates are busy. The user can retry the request.",
+      "finish_reason": "stop",
+      "content_chars": 966,
+      "content_excerpt": "The image is a screenshot of an Anvil Serving Dashboard. Here are the key elements and their descriptions:\n\n1. **GPU Information**:\n   - **GPU**: RTX 5090\n   - **VRAM used**: 30057 MiB\n   - **Serves r",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 681,
+        "total_tokens": 966,
+        "completion_tokens": 285,
+        "prompt_tokens_details": null
+      },
+      "test": "image",
+      "seconds": 2.129,
+      "passed": true,
+      "validation_detail": "all expected text present",
+      "image": {
+        "bytes": 14307,
+        "mime": "image/png",
+        "sha256": "c104d086a52a0b60981f6490074b476f20d2a45683900fa372c5edeaff0fab51"
+      },
+      "expected": [
+        "RTX 5090",
+        "Error 503",
+        "Retry"
+      ]
+    },
+    {
+      "content": "Anvil Serving Dashboard\nGPU: RTX 5090\nVRAM used: 30057 MiB\nServes running: 7\nHEALTHY\nError 503\nNo available tier for preset\n'planning' - all candidates busy\nRetry\nRequests per tier\nheavy\nfast\nocr",
+      "finish_reason": "stop",
+      "content_chars": 195,
+      "content_excerpt": "Anvil Serving Dashboard\nGPU: RTX 5090\nVRAM used: 30057 MiB\nServes running: 7\nHEALTHY\nError 503\nNo available tier for preset\n'planning' - all candidates busy\nRetry\nRequests per tier\nheavy\nfast\nocr",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 682,
+        "total_tokens": 754,
+        "completion_tokens": 72,
+        "prompt_tokens_details": null
+      },
+      "test": "ocr",
+      "seconds": 0.484,
+      "passed": true,
+      "validation_detail": "all expected text present",
+      "image": {
+        "bytes": 14307,
+        "mime": "image/png",
+        "sha256": "c104d086a52a0b60981f6490074b476f20d2a45683900fa372c5edeaff0fab51"
+      },
+      "expected": [
+        "Anvil Serving Dashboard",
+        "VRAM used: 30057 MiB",
+        "No available tier",
+        "planning"
+      ]
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "forbidden",
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

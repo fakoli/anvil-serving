@@ -165,10 +165,14 @@ def test_pull_execution_shells_out_with_constructed_argv():
     assert "huggingface-cli" not in argv
 
 
-def test_pull_nonzero_docker_exit_surfaces_clean_rc():
+def test_pull_nonzero_docker_exit_surfaces_clean_rc(capsys):
     rc = models.run_pull("openai/gpt-oss-120b", _run=lambda *a, **k: 17,
                          _environ={"HF_TOKEN": "hf_secret"})
     assert rc == 17  # docker failure passed through, not a traceback
+    err = capsys.readouterr().err
+    assert "Inspect the exact container error above" in err
+    assert "https://huggingface.co/openai/gpt-oss-120b" in err
+    assert "hf_secret" not in err
 
 
 def test_pull_space_preflight_counts_only_missing_bytes_and_headroom(monkeypatch):

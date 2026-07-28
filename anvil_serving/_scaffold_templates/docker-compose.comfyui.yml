@@ -30,10 +30,10 @@
 # named volume `comfyui-user` (subpath mounts). Both are `external: true` so
 # `docker compose down -v` can never delete them; the runbook creates them.
 #
-# VRAM (ADR-0017): serves.comfyui.toml declares gpu_role "dark-auxiliary" / vram_mib 12288 /
-# residency "on-demand" — the same 12288 MiB slot as the `vision` serve it displaces
-# (vision is the ledger's evictable tenant; `serves up comfyui --evict` drains and stops
-# it via the T005/ADR-0018 flow when the slot is occupied). The budget is enforced
+# VRAM (ADR-0017): serves.comfyui.toml declares gpu_role "dark-auxiliary" /
+# vram_mib 12288 / residency "on-demand". The exclusive Omni tier is
+# evictable; `serves up comfyui --evict` drains and stops it through the
+# T005/ADR-0018 flow. The tenant budget is enforced
 # engine-side with `--reserve-vram 19.84`: ComfyUI subtracts that many GB from the
 # card's 31.84 GB total before sizing model loads, so its working set stays inside the
 # admitted 12288 MiB (32607 - 12288 = 20319 MiB = 19.84 GB reserved for everything

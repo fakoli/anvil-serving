@@ -2429,7 +2429,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
            evict=False, drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
            _transition=None, wait_for_readiness=False,
            readiness_timeout=LIFECYCLE_READINESS_TIMEOUT_SECONDS,
-           readiness_poll=LIFECYCLE_READINESS_POLL_SECONDS,
+           readiness_poll=LIFECYCLE_READINESS_POLL_SECONDS, ledger_serves=None,
            _open=urllib.request.urlopen, _sleep=time.sleep):
     targets = _select(serves, names)
     if not targets:
@@ -2451,7 +2451,8 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
     # reservation with no ledger bookkeeping. Read-only, so it also gates
     # --dry-run (the preview should show the same refusal the real run hits).
     # Serves/manifests without reservation fields skip this entirely.
-    denial = reservations.deny_over_budget(serves, targets, state_of)
+    reservation_scope = ledger_serves if ledger_serves is not None else serves
+    denial = reservations.deny_over_budget(reservation_scope, targets, state_of)
     if denial and evict:
         # ADR-0017 §5 eviction (gpu-reservations:T005): an over-budget
         # `on-demand` acquisition may stop committed `evictable` reservations
@@ -2459,7 +2460,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
         # bounded AdmissionLease drain) before each victim's container stops.
         # `resident` serves are never candidates; an impossible plan is the
         # same loud, ledger-printing refusal as plain admission.
-        victims, lines = reservations.plan_eviction(serves, targets, state_of)
+        victims, lines = reservations.plan_eviction(reservation_scope, targets, state_of)
         if victims is None:
             for line in lines:
                 print("  " + line)
@@ -2470,7 +2471,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                     router_url or DEFAULT_ROUTER_URL, action, tier_id,
                     timeout=timeout, _run=_run))
             evict_rc = _evict_victims(
-                serves, victims, dry_run=dry_run, drain_timeout=drain_timeout,
+                reservation_scope, victims, dry_run=dry_run, drain_timeout=drain_timeout,
                 transition=transition, _run=_run)
             if evict_rc != 0:
                 return evict_rc
@@ -2482,12 +2483,12 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
             # Re-derive admission from live docker state: the victims are
             # stopped, so the request must now fit (fail loudly if not —
             # e.g. a victim's restart policy revived it).
-            denial = reservations.deny_over_budget(serves, targets, state_of)
+            denial = reservations.deny_over_budget(reservation_scope, targets, state_of)
     if denial:
         for line in denial:
             print("  " + line)
         if not evict:
-            victims, _ = reservations.plan_eviction(serves, targets, state_of)
+            victims, _ = reservations.plan_eviction(reservation_scope, targets, state_of)
             if victims:
                 print("  (re-run with --evict to stop evictable serve(s) %s "
                       "via a drained ADR-0018 transition)" % ", ".join(
@@ -2725,6 +2726,17 @@ def cmd_up_compose(compose_file, services, dry_run=False, _run=subprocess.run):
     return 0
 
 
+def _write_console_safe(stream, value):
+    """Write subprocess text without crashing on a narrow Windows console codec."""
+    if not value:
+        return
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    safe = str(value).encode(
+        encoding, errors="backslashreplace"
+    ).decode(encoding)
+    stream.write(safe)
+
+
 def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subprocess.run):
     """`docker logs` for ONE model serve's container (resolved from its manifest name), so
     diagnosing a serve doesn't mean reaching for raw docker. `--follow` streams to the terminal."""
@@ -2769,8 +2781,10 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
     except FileNotFoundError:
         print("cannot read logs: docker not available", file=sys.stderr)
         return 1
-    sys.stdout.write(r.stdout or "")
-    sys.stderr.write(r.stderr or "")  # serve startup errors go to stderr
+    _write_console_safe(sys.stdout, r.stdout)
+    # Serve startup errors normally arrive on stderr. Preserve them even when
+    # the active Windows console cannot represent a progress-bar glyph.
+    _write_console_safe(sys.stderr, r.stderr)
     return r.returncode
 
 
@@ -3202,10 +3216,10 @@ def main(argv=None):
         return 2
 
     manifest_path = resolve_manifest_path(a.manifest)
-    # A `--group` action (and `serves groups`) resolves across the whole manifest
-    # SET (every serves*.toml in the manifest's dir), de-duped by container, so a
-    # group can span serves.toml + serves.voice.toml + serves.comfyui.toml. Plain
-    # positional-name operations keep loading the SINGLE manifest, unchanged.
+    # A `--group` action (and `serves groups`) resolves targets across the whole
+    # manifest SET. Plain positional-name operations keep selection scoped to
+    # the named manifest, but admission/status still use the complete set so a
+    # separate voice or ComfyUI manifest cannot become invisible GPU occupancy.
     use_set = bool(a.groups) or a.action == "groups"
     try:
         serves = load_manifest_set(manifest_path) if use_set else load_manifest(manifest_path)
@@ -3224,6 +3238,11 @@ def main(argv=None):
         return 2
     except Exception as e:  # malformed manifest
         print("bad manifest %s: %s" % (manifest_path, e), file=sys.stderr)
+        return 2
+    try:
+        ledger_serves = serves if use_set else load_manifest_set(manifest_path)
+    except Exception as e:
+        print("bad manifest set for %s: %s" % (manifest_path, e), file=sys.stderr)
         return 2
 
     if a.action == "groups":
@@ -3273,7 +3292,7 @@ def main(argv=None):
         return cmd_status(
             serves,
             names=status_names,
-            ledger_serves=_serving_path_scope(serves, selected),
+            ledger_serves=_serving_path_scope(ledger_serves, selected),
         )
     if a.action == "logs":
         return cmd_logs(serves, a.names, tail=a.tail, since=a.since, follow=a.follow)
@@ -3292,7 +3311,8 @@ def main(argv=None):
         target_names = group_names if group_names is not None else a.names
         rc = cmd_up(serves, target_names, dry_run=a.dry_run, recreate=a.recreate,
                     evict=a.evict, drain_timeout=a.drain_timeout,
-                    router_url=a.router_url, wait_for_readiness=not a.dry_run)
+                    router_url=a.router_url, wait_for_readiness=not a.dry_run,
+                    ledger_serves=ledger_serves)
         return _finish_cache_reclaim(
             rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,
             readiness_targets=_select(serves, target_names),

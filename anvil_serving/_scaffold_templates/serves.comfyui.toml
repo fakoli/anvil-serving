@@ -24,15 +24,15 @@
 [[gpu_roles]]
 id = "dark-auxiliary"
 vram_mib = 32607
-reserve_mib = 4608
+reserve_mib = 3072
 
 # ── The tenant ──
 # ComfyUI v0.27.1 (pinned image obeliks/comfyui:0.27.1-cu128 — see the compose header
 # for the pin provenance). `on-demand` residency (ADR-0017 §1): started per image/video
 # task, released by `serves down comfyui` (stopping the container IS the release), and
 # the only residency class allowed to evict — `serves up comfyui --evict` drains and
-# stops the `vision` evictable slot via the T005/ADR-0018 transition when the ledger is
-# short. vram_mib 12288 is the vision-sized slot the F006 design gives the tenant;
+# stops the exclusive `omni` tier via the T005/ADR-0018 transition when the ledger is
+# short. vram_mib 12288 is the F006 design budget for the tenant;
 # docker-compose.comfyui.yml enforces it engine-side with `--reserve-vram 19.84`
 # (= (32607 - 12288) MiB in GB) — change them together.
 #
@@ -63,16 +63,29 @@ up = "docker compose --project-name anvil-comfyui -f {dir}/docker-compose.comfyu
 # lifecycle for these serves belongs to serves.toml (that stop would be real: the
 # container names are the production ones).
 [[serve]]
-name = "auxiliary"                  # mirror — lifecycle in serves.toml
-stack = "auxiliary"
-container = "vllm-gemma4-e4b-auxiliary"
+name = "omni"                       # mirror — lifecycle in serves.toml
+stack = "omni"
+container = "vllm-nemotron3-omni"
 port = 30003
-model = "gemma4-e4b-it"
+model = "nemotron3-omni-30b-a3b-nvfp4"
 engine = "vllm"
 health = "/health"
 gpu_role = "dark-auxiliary"
-vram_mib = 14336
-residency = "resident"
+vram_mib = 27999
+residency = "evictable"
+router_tier = "omni-local"
+
+[[serve]]
+name = "omni-small"                 # mirror — lifecycle in serves.toml
+stack = "omni"
+container = "vllm-qwen25-omni-3b"
+port = 30013
+model = "qwen25-omni-3b"
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-auxiliary"
+vram_mib = 24576
+residency = "evictable"
 
 [[serve]]
 name = "embeddings"            # mirror — lifecycle in serves.toml
@@ -98,32 +111,6 @@ gpu_role = "dark-auxiliary"
 vram_mib = 3456
 residency = "resident"
 
-[[serve]]
-name = "ocr"                   # mirror — lifecycle in serves.toml
-stack = "auxiliary"
-container = "vllm-paddleocr-vl"
-port = 30007
-model = "paddleocr-vl-1.6"
-engine = "vllm"
-health = "/health"
-gpu_role = "dark-auxiliary"
-vram_mib = 6144
-residency = "resident"
-
-# vision is the evictable slot ComfyUI displaces. Mirroring its router_tier lets
-# `serves up comfyui --evict` run the FULL T005 flow from this manifest: quiesce +
-# bounded drain of router tier vision-local (ADR-0018) before the container stops.
-# After ComfyUI's task, restore with serves.toml (`serves up vision`) and readmit the
-# tier (`router readmit --tier vision-local`).
-[[serve]]
-name = "vision"                # mirror — lifecycle in serves.toml
-stack = "auxiliary"
-container = "vllm-qwen3-vl-vision"
-port = 30008
-model = "qwen3-vl-4b-instruct"
-engine = "vllm"
-health = "/health"
-gpu_role = "dark-auxiliary"
-vram_mib = 12288
-residency = "evictable"
-router_tier = "vision-local"
+# The Omni mirror carries its router tier so `serves up comfyui --evict`
+# quiesces and drains `omni-local` before stopping the container. Restore with
+# `serves up omni` and `router readmit --tier omni-local`.

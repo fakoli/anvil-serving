@@ -31,7 +31,7 @@ def running_server(*, auth=False):
     config = load(_CONFIG)
     routing = RoutingBackend(config, {
         "primary-local": StaticBackend(["heavy response"]),
-        "auxiliary-local": StaticBackend(["fast response"]),
+        "omni-local": StaticBackend(["omni response"]),
     })
     server = make_server(
         "127.0.0.1", 0, routing, model_routes=config.model_routes,
@@ -146,7 +146,7 @@ def test_anthropic_non_streaming_preserves_native_envelope():
     payload = json.loads(raw)
     assert status == 200
     assert payload["type"] == "message"
-    assert payload["content"][0]["text"] == "fast response"
+    assert payload["content"][0]["text"] == "omni response"
 
 
 def test_one_token_gates_models_and_chat_but_not_health():

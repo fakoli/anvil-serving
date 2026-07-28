@@ -114,6 +114,8 @@ _SCAFFOLD_TEMPLATES = (
     ("serves.voice.toml", "serves.voice.toml", "examples/primary-node/serves.voice.toml"),
     ("serves.comfyui.toml", "serves.comfyui.toml", "examples/primary-node/serves.comfyui.toml"),
     ("docker-compose.yml", "docker-compose.yml", "examples/primary-node/docker-compose.yml"),
+    ("Dockerfile.omni-small", "Dockerfile.omni-small",
+     "examples/primary-node/Dockerfile.omni-small"),
     ("docker-compose.voice-audio.yml", "docker-compose.voice-audio.yml",
      "examples/primary-node/docker-compose.voice-audio.yml"),
     ("docker-compose.voice-proxy.yml", "docker-compose.voice-proxy.yml",

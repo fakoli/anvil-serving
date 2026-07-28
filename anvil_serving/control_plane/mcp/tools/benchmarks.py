@@ -15,6 +15,7 @@ from ..arguments import (
     probe_api_key_env as _probe_api_key_env,
     schema as _schema,
     str_arg as _str_arg,
+    str_list_arg as _str_list_arg,
 )
 from ..catalog import ToolFamily
 from ..errors import ToolError
@@ -42,13 +43,42 @@ def tool_preflight_probe(args: dict) -> dict:
     no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
     checks = _str_arg(args, "checks") or "smoke,json,needle,tools"
     selected_checks = [item.strip() for item in checks.split(",") if item.strip()]
-    unknown_checks = sorted(set(selected_checks) - {"smoke", "json", "needle", "tools"})
+    known_checks = {"smoke", "json", "needle", "tools", "image", "ocr"}
+    unknown_checks = sorted(set(selected_checks) - known_checks)
     if not selected_checks or unknown_checks:
         raise ToolError(
             "bad_argument",
-            "checks must select smoke,json,needle,tools",
+            "checks must select smoke,json,needle,tools,image,ocr",
             {"unknown": unknown_checks},
         )
+    image_path = _str_arg(args, "image_path")
+    image_expect = [item.strip() for item in _str_list_arg(args, "image_expect")]
+    ocr_expect = [item.strip() for item in _str_list_arg(args, "ocr_expect")]
+    if any(not item for item in image_expect + ocr_expect):
+        raise ToolError("bad_argument", "multimodal expectations must be non-empty strings")
+    if {"image", "ocr"} & set(selected_checks):
+        if not image_path:
+            raise ToolError("bad_argument", "multimodal checks require image_path")
+        resolved_image = os.path.abspath(os.path.expanduser(image_path))
+        allowed_roots = (
+            os.path.abspath(os.getcwd()),
+            os.path.abspath(os.path.expanduser("~/.anvil-serving")),
+        )
+        if not any(
+            os.path.commonpath((resolved_image, root)) == root
+            for root in allowed_roots
+        ):
+            raise ToolError(
+                "unsafe_image_path",
+                "image_path must be under the controller working directory or ~/.anvil-serving",
+            )
+        if os.path.islink(resolved_image) or not os.path.isfile(resolved_image):
+            raise ToolError("bad_argument", "image_path must be a regular non-symlink file")
+        image_path = resolved_image
+        if "image" in selected_checks and not image_expect:
+            raise ToolError("bad_argument", "image check requires image_expect")
+        if "ocr" in selected_checks and not ocr_expect:
+            raise ToolError("bad_argument", "ocr check requires ocr_expect")
     thinking_mode = _str_arg(args, "thinking_mode") or "default"
     if thinking_mode not in {"default", "enabled", "disabled", "unsupported"}:
         raise ToolError("bad_argument", "thinking_mode has an unsupported value")
@@ -124,6 +154,12 @@ def tool_preflight_probe(args: dict) -> dict:
         argv.append("--no-thinking")
     if reasoning_effort:
         argv += ["--reasoning-effort", reasoning_effort]
+    if image_path:
+        argv += ["--image-path", image_path]
+    for expectation in image_expect:
+        argv += ["--image-expect", expectation]
+    for expectation in ocr_expect:
+        argv += ["--ocr-expect", expectation]
     if dry_run:
         argv.append("--dry-run")
         result = _run_argv(argv, confirm=True, timeout=min(operation_timeout, 60))
@@ -288,6 +324,17 @@ FAMILY = ToolFamily(
                     "tool_batch": _bounded_integer_schema(1, 128, 20),
                     "no_thinking": {"type": "boolean"},
                     "checks": {"type": "string"},
+                    "image_path": {"type": "string"},
+                    "image_expect": {
+                        "type": "array",
+                        "items": {"type": "string", "maxLength": 256},
+                        "maxItems": 32,
+                    },
+                    "ocr_expect": {
+                        "type": "array",
+                        "items": {"type": "string", "maxLength": 256},
+                        "maxItems": 32,
+                    },
                     "thinking_mode": {
                         "type": "string",
                         "enum": ["default", "enabled", "disabled", "unsupported"],

@@ -88,7 +88,16 @@ def test_upstream_stable_vllm_compose_recipes_pin_0251_and_wsl2_memory():
     for path in (COMPOSE_PATH, EXPERIMENT_COMPOSE_PATH, FLEXIBILITY_COMPOSE_PATH):
         text = path.read_text(encoding="utf-8")
         assert "vllm/vllm-openai:latest" not in text, path
-        assert "sha256:907377dddef392f6" not in text, path
+        if path == COMPOSE_PATH:
+            blocks = _service_blocks(text)
+            assert "sha256:907377dddef392f6" in blocks["omni"]
+            assert all(
+                "sha256:907377dddef392f6" not in block
+                for name, block in blocks.items()
+                if name not in {"omni", "omni-small"}
+            )
+        else:
+            assert "sha256:907377dddef392f6" not in text, path
         for name, block in _service_blocks(text).items():
             if VLLM_STABLE_IMAGE in block:
                 assert re.search(
@@ -200,9 +209,9 @@ def test_serves_reached_by_router_via_service_name_not_loopback():
     # in its own container, so 127.0.0.1 would mean "inside the router container").
     text = DOCKER_CONFIG_PATH.read_text(encoding="utf-8")
     assert "http://primary:30000/v1" in text
-    assert "http://auxiliary:30001/v1" in text
+    assert "http://omni:30003/v1" in text
     assert "127.0.0.1:30000" not in text
-    assert "127.0.0.1:30001" not in text
+    assert "127.0.0.1:30003" not in text
 
 
 def test_example_docker_toml_sets_server_auth_env():

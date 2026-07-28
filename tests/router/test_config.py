@@ -45,9 +45,7 @@ def test_example_declares_a_complete_local_direct_route_table():
     }
     assert {config.route_tier(alias).id for alias in config.model_routes} == {
         "primary-local",
-        "auxiliary-local",
-        "ocr-local",
-        "vision-local",
+        "omni-local",
     }
     assert all(tier.privacy == PRIVACY_LOCAL for tier in config.tiers)
 

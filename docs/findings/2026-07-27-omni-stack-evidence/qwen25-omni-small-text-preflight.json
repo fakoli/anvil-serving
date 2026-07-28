@@ -1,0 +1,113 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:30013/v1",
+  "model": "qwen25-omni-3b",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 256
+  },
+  "multimodal_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "checks": [
+    "smoke",
+    "json",
+    "needle"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "0.1s got='```python\\nsum(xs)\\n```' finish='stop' visible=21 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=52 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "needle @ ~4096 ctx",
+      "passed": true,
+      "detail": "0.2s ctx~4096 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "content_chars": 21,
+      "content_excerpt": "```python\nsum(xs)\n```",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 35,
+        "total_tokens": 43,
+        "completion_tokens": 8,
+        "prompt_tokens_details": null
+      },
+      "test": "smoke",
+      "seconds": 0.09,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "```json\n{\n  \"language\": \"python\",\n  \"ok\": true\n}\n```",
+      "finish_reason": "stop",
+      "content_chars": 52,
+      "content_excerpt": "```json\n{\n  \"language\": \"python\",\n  \"ok\": true\n}\n```",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 57,
+        "completion_tokens": 20,
+        "prompt_tokens_details": null
+      },
+      "test": "json",
+      "seconds": 0.135,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 3433,
+        "total_tokens": 3447,
+        "completion_tokens": 14,
+        "prompt_tokens_details": null
+      },
+      "test": "needle",
+      "seconds": 0.228,
+      "passed": true,
+      "validation_detail": "needle present"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "any",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

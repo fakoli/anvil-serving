@@ -7,10 +7,10 @@
 # 2026-07-26 reconcile: heavy = Poolside Laguna S 2.1 NVFP4 with thinking
 # disabled by default (:30002, PRO 6000). The previously qualified GPT-OSS
 # Puzzle 88B is the one retained ready rollback.
-# 2026-07-13 fast swap (gpu-reservations:T006): fast = Gemma 4 E4B IT (:30003, RTX 5090) with a
-# declared ADR-0017 resident reservation; the previous Qwen3.6-35B-A3B-NVFP4 recipe stays as the
-# opt-in `fast-qwen36-rollback` serve. These back the router tiers in the live
-# config (primary-local -> :30002, auxiliary-local -> :30003). `{dir}` resolves to this file's dir.
+# 2026-07-27 Omni consolidation: Nemotron 3 Nano Omni owns the RTX 5090
+# exclusively and backs auxiliary text, general vision, and OCR through one
+# router tier on :30003. Embeddings and reranking remain a separate,
+# mutually-exclusive auxiliary stack. `{dir}` resolves to this file's dir.
 #
 # BOTH serves are Docker-Compose-defined (docker-compose.yml holds a service per tier) — see
 # docs/adr/0002-serves-are-compose-defined.md. Each `up` targets its own compose service by
@@ -18,41 +18,18 @@
 # drift-safe (natively recreates a service whose config changed). Use `serves up --recreate
 # <name>` to force a fresh container.
 
-# ADR-0017 GPU residency reservations — declared capacity of the multi-tenant RTX 5090
-# ("dark-auxiliary"). `serves up` admits a reserving serve against vram_mib - reserve_mib before any
-# container command runs; `serves status` prints the derived ledger.
-#   capacity 32607 MiB = nvidia-smi memory.total for GPU-04d3b6e7… (RTX 5090 32 GB).
-#   reserve 4608 MiB   = Windows display/system + umbrella for the always-on voice STT/TTS
-#                        sidecars (anvil-voice-stt/tts, serves.voice.toml). Those sidecars are
-#                        managed by `voice audio up/down` from a SEPARATE manifest, so this
-#                        ledger cannot see them as reservations — they are budgeted here as
-#                        reserve instead. 2026-07-13 (gpu-reservations:T011 rebalance): the
-#                        operator resolved the T015 resident-set conflict by shrinking fast
-#                        (18432 -> 14336, pre-quantized FP8 checkpoint) and this reserve
-#                        (7168 -> 4608) so the full resident set (fast 14336 + embeddings
-#                        3200 + reranker 3456 + ocr 6144 = 27136 MiB) fits the 27999 MiB
-#                        budget. (The operator's initial 10240 MiB fast target proved
-#                        physically unreachable: E4B's bf16 embeddings/per-layer-embeddings
-#                        survive every fp8 shape — measured 12.4 GiB FP8-Dynamic weights.)
-#                        HONESTY NOTE: observed non-ledger draw (display + voice) was
-#                        ~5.6 GiB on 2026-07-13 — above this reserve. gpu-reservations:T015
-#                        live re-measure (full resident set up): GPU0 memory.used 31843 MiB,
-#                        committed 26112 -> draw 5731 MiB; nvidia-smi memory.total 32607 MiB
-#                        matches this capacity EXACTLY; allocatable memory.free was 345 MiB.
-#                        So the ledger's free (1887 MiB) runs ~1.5 GiB optimistic against the
-#                        physical 345 MiB, and real headroom after the full resident set is
-#                        only ~0.3 GiB, tightening under fast-tier KV pressure (the earlier
-#                        ~0.8 GiB point estimate was optimistic). The declared budgets
-#                        themselves are accurate — vLLM fills each serve to its util cap, and
-#                        all five residents stay healthy inside the 32607 MiB device. Revisit
-#                        at the next drift check.
-#                        (T015 evidence: docs/findings/2026-07-13-t015-resident-set-evidence/)
+# ADR-0017 GPU reservations for the RTX 5090 ("dark-auxiliary").
+# `serves up` admits before running a container command and `serves status`
+# reports the derived ledger. Capacity is 32607 MiB; 3072 MiB remains reserved
+# for Windows display/driver overhead. STT/TTS now declare their own reservations
+# in serves.voice.toml, so admission can distinguish the exclusive 30B Omni from
+# the smaller Omni + voice stack instead of hiding voice inside this reserve.
 # The dark-primary PRO 6000 is single-tenant (heavy tier only) and stays outside the ledger for
 # now — adoption is incremental (ADR-0017 consequences).
 [[gpu_roles]]
 id = "dark-auxiliary"
 vram_mib = 32607
-reserve_mib = 4608
+reserve_mib = 3072
 
 [[serve]]
 name = "primary"                 # heavy quality tier — Laguna S 2.1 NVFP4
@@ -75,28 +52,42 @@ engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d primary-gptoss-puzzle-rollback"
 
-# Fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090 (gpu-reservations:T006 swap; T011
-# operator rebalance). bf16 weights alone are 15.18 GiB and cannot fit the rebalanced
-# budget; ONLINE fp8 in the gemma4-unified image is broken on this box (cutlass stable-ABI
-# rejects fp8 dtypes; Marlin crashes on the fp8-quantized vision tower), so the serve runs
-# the PRE-QUANTIZED leon-se/gemma-4-E4B-it-FP8-Dynamic checkpoint (compressed-tensors,
-# towers/lm_head kept bf16 — 12.4 GiB weights measured) on the standard pinned vLLM image
-# + KV for the 32K window inside 14336 MiB. docker-compose.yml enforces it with
-# --gpu-memory-utilization 0.4396 = 14336 / 32607 capacity (see the deviation note there:
-# the T003 derive formula over-allocates when reserve_mib > 0) — change them together.
+# One Omni tier replaces the former Gemma auxiliary LLM, PaddleOCR-VL OCR
+# serve, and Qwen3-VL vision serve. The exact image and checkpoint revisions
+# below passed text/JSON/4K-context/tools plus live image and OCR gates on
+# 2026-07-27. Its measured 27674 MiB draw makes the full 27999 MiB reservation
+# honest and deliberately exclusive.
 [[serve]]
-name = "auxiliary"                  # fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090
-stack = "auxiliary"
-container = "vllm-gemma4-e4b-auxiliary"
+name = "omni"
+stack = "omni"
+container = "vllm-nemotron3-omni"
 port = 30003
-model = "gemma4-e4b-it"        # served-model-name (used by `anvil-serving eval`)
+model = "nemotron3-omni-30b-a3b-nvfp4"
 engine = "vllm"
 health = "/health"
 gpu_role = "dark-auxiliary"
-vram_mib = 14336
-residency = "resident"
-groups = ["auxiliary-only", "llm-stack"]  # serve groups (serves up/down/status --group)
-up = "docker compose -f {dir}/docker-compose.yml up -d auxiliary"
+vram_mib = 27999
+residency = "evictable"
+router_tier = "omni-local"
+groups = ["omni-stack", "llm-stack"]
+up = "docker compose -f {dir}/docker-compose.yml up -d omni"
+
+# Small Omni candidate for the practical always-available stack. Qwen2.5-Omni
+# 3B accepts text, images, and audio and emits text through vLLM's Thinker path;
+# dedicated Parakeet and Kokoro remain the STT/TTS endpoints.
+[[serve]]
+name = "omni-small"
+stack = "omni"
+container = "vllm-qwen25-omni-3b"
+port = 30013
+model = "qwen25-omni-3b"
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-auxiliary"
+vram_mib = 24576
+residency = "evictable"
+groups = ["omni-small-stack", "omni-voice-stack"]
+up = "docker compose -f {dir}/docker-compose.yml --profile omni-small up -d omni-small"
 
 # ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
 # Always-on text-embedding + reranker serves on the multi-tenant 5090, riding the same
@@ -122,7 +113,7 @@ health = "/health"
 gpu_role = "dark-auxiliary"
 vram_mib = 3200
 residency = "resident"
-groups = ["embedding", "llm-stack"]  # serve groups (serves up/down/status --group)
+groups = ["embedding", "auxiliary-stack"]
 up = "docker compose -f {dir}/docker-compose.yml up -d embeddings"
 
 [[serve]]
@@ -136,74 +127,8 @@ health = "/health"
 gpu_role = "dark-auxiliary"
 vram_mib = 3456
 residency = "resident"
-groups = ["embedding", "llm-stack"]  # serve groups (serves up/down/status --group)
+groups = ["embedding", "auxiliary-stack"]
 up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
-
-# ── OCR serve (gpu-reservations:T011) ──
-# PaddleOCR-VL-1.6 behind the gateway's "vision.ocr" direct alias (ocr-local -> :30007).
-# Declared as an ADR-0017 `resident` reservation on the multi-tenant 5090; the
-# 5120 MiB budget is HONEST-MEASURED on the sibling sm_120 card with this exact
-# image+flags (see docker-compose.yml's ocr service note: 1.82 GiB weights +
-# ~2.65 GiB multimodal-profiling floor + 0.53 GiB KV = 30,720 tokens for the
-# 16384-token window; a 4096 MiB budget failed init with negative KV).
-# docker-compose.yml enforces it with --gpu-memory-utilization 0.1570 =
-# 5120 / 32607 capacity — change them together.
-#
-# CAPACITY (2026-07-13, gpu-reservations:T011 operator rebalance): with fast at
-# 14336 MiB (FP8-Dynamic) and reserve at 4608 MiB, the FULL resident set — fast
-# 14336 + embeddings 3200 + reranker 3456 + ocr 6144 = 27136 MiB — fits the
-# 27999 MiB dark-auxiliary budget with 1887 MiB of ledger headroom, so `serves up
-# ocr` admits alongside the T009 trio. (The earlier T015 conflict — fast at
-# 18432 left only 351 MiB free — was resolved by that rebalance; see the
-# [[gpu_roles]] note.)
-[[serve]]
-name = "ocr"                   # PaddleOCR-VL-1.6 (vLLM, RTX 5090)
-stack = "auxiliary"
-container = "vllm-paddleocr-vl"
-port = 30007
-model = "paddleocr-vl-1.6"     # served-model-name (the ocr-local router tier's `model`)
-engine = "vllm"
-health = "/health"
-gpu_role = "dark-auxiliary"
-vram_mib = 6144
-residency = "resident"
-groups = ["ocr", "llm-stack"]  # serve groups (serves up/down/status --group)
-up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
-
-# ── Vision serve (gpu-reservations:T013) ──
-# Qwen3-VL-4B-Instruct behind the gateway's "vision.general" direct alias (vision-local ->
-# :30008): general image understanding (describe/ground a screenshot or photo) —
-# distinct from `ocr`'s verbatim document extraction. Declared as the first ADR-0017
-# `EVICTABLE` reservation on the multi-tenant 5090: it runs opportunistically when the
-# ledger has headroom and YIELDS to `on-demand` acquisitions (e.g. a ComfyUI image-gen
-# task) via the T005 eviction flow — `serves up <on-demand> --evict` quiesces + drains
-# router tier `vision-local` (declared below) through the ADR-0018 transition before
-# the container is stopped; a later `serves up vision` restores it (then
-# `router readmit --tier vision-local` returns it to rotation).
-# docker-compose.yml enforces the budget with --gpu-memory-utilization 0.3769 =
-# 12288 / 32607 capacity — change them together (see the compose note for the
-# honest-measured breakdown).
-#
-# CAPACITY (2026-07-13): vision does NOT fit alongside the full resident set — fast
-# 14336 + embeddings 3200 + reranker 3456 + ocr 6144 = 27136 of the 27999 MiB budget
-# leaves 1887 MiB free < 12288. That is by design for an evictable serve: `serves up
-# vision` is correctly denied with the ledger until the operator frees residents
-# (e.g. `serves down ocr reranker embeddings` -> 13663 MiB free admits it). Which
-# residents dark-auxiliary hosts is the gpu-reservations:T015 resident-set decision.
-[[serve]]
-name = "vision"                # Qwen3-VL-4B-Instruct (vLLM, RTX 5090)
-stack = "auxiliary"
-container = "vllm-qwen3-vl-vision"
-port = 30008
-model = "qwen3-vl-4b-instruct" # served-model-name (the vision-local router tier's `model`)
-engine = "vllm"
-health = "/health"
-gpu_role = "dark-auxiliary"
-vram_mib = 12288
-residency = "evictable"
-router_tier = "vision-local"
-groups = ["llm-stack"]  # serve groups (serves up/down/status --group)
-up = "docker compose -f {dir}/docker-compose.yml up -d vision"
 
 # One guarded operation owns the model swap, functional gate, router update,
 # and complete model+router rollback. This single-GPU plan validates the newly
@@ -221,7 +146,7 @@ tool_batch = 10
 startup_timeout = 900
 rollback_startup_timeout = 600
 poll_interval = 5
-router_health_url = "http://100.87.34.66:8000/healthz"
+router_health_url = "http://127.0.0.1:8000/healthz"
 
 [[promotion.gate]]
 name = "laguna-functional-thinking-disabled"
@@ -425,15 +350,6 @@ model = "nemotron3-nano-30b-a3b-nvfp4"
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-nano-30b"
-
-[[serve]]
-name = "cand-nemotron3-omni-30b"
-container = "vllm-cand-nemotron3-omni-30b"
-port = 39021
-model = "nemotron3-omni-30b-a3b-nvfp4"
-engine = "vllm"
-health = "/health"
-up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-omni-30b"
 
 [[serve]]
 name = "cand-ornith-35b-fp8"
