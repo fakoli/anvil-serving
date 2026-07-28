@@ -1,0 +1,4 @@
+interface:
+  display_name: "Anvil Serving STT Benchmark"
+  short_description: "Run reproducible multi-sample STT qualifications"
+  default_prompt: "Use $anvil-serving-stt-benchmark to prepare, run, and publish a fail-closed STT model qualification."

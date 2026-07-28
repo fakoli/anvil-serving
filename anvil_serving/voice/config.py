@@ -757,6 +757,9 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
                 raise ConfigError(
                     "voice.stt.response_format must be json because the non-streaming STT client consumes JSON"
                 )
+        for key in ("language", "prompt"):
+            if key in table:
+                _string(table, key)
     if name == "tts":
         if "protocol" in table:
             protocol = _string(table, "protocol")

@@ -177,7 +177,10 @@ required operands, choices, and defaults.
 | `voice proxy status` | Show realtime proxy status. | `read` / `bounded` | - |
 | `voice proxy logs` | Show bounded realtime proxy logs. | `read` / `bounded` | - |
 | `voice proxy bridge` | Run the Mini-to-Dark audio bridge. | `process` / `foreground` | `--dry-run` |
-| `voice benchmark` | Benchmark an end-to-end voice session. | `read` / `bounded` | - |
+| `voice benchmark` | Benchmark a voice session or multi-sample STT corpus. | `read` / `bounded` | - |
+| `voice corpus` | Prepare or validate an STT benchmark corpus. | `read` / `bounded` | - |
+| `voice corpus prepare` | Build the deterministic English STT corpus. | `read` / `bounded` | - |
+| `voice corpus validate` | Validate STT corpus JSONL, audio, and hashes. | `read` / `bounded` | - |
 | `voice profiles` | Inspect voice profiles. | `read` / `bounded` | - |
 | `voice profiles list` | List voice profiles. | `read` / `bounded` | - |
 | `voice profiles validate` | Validate the profile selected by --profile. | `read` / `bounded` | - |

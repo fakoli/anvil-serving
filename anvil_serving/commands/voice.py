@@ -255,12 +255,35 @@ def commands() -> CommandNode:
             ),
             _node(
                 "benchmark",
-                "Benchmark an end-to-end voice session.",
+                "Benchmark a voice session or multi-sample STT corpus.",
                 handler=_handler(
                     "anvil_serving.voice.cli",
                     argv_prefix=("benchmark",),
                 ),
                 docs_anchor="docs/cli/voice.md#benchmark",
+            ),
+            _node(
+                "corpus",
+                "Prepare or validate an STT benchmark corpus.",
+                children=(
+                    _node(
+                        "prepare",
+                        "Build the deterministic English STT corpus.",
+                        handler=_handler(
+                            "anvil_serving.voice.cli",
+                            argv_prefix=("corpus", "prepare"),
+                        ),
+                    ),
+                    _node(
+                        "validate",
+                        "Validate STT corpus JSONL, audio, and hashes.",
+                        handler=_handler(
+                            "anvil_serving.voice.cli",
+                            argv_prefix=("corpus", "validate"),
+                        ),
+                    ),
+                ),
+                docs_anchor="docs/cli/voice.md#stt-corpus",
             ),
             _node(
                 "profiles",

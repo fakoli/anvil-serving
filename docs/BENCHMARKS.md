@@ -8,7 +8,7 @@
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-27**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-28**.
 
 ## Read these results correctly
 
@@ -431,21 +431,30 @@ not arbitrary Python regexes.
 
 ## OpenClaw interaction and voice evidence
 
-The focused Dark-host STT smoke benchmark used one clean 16 kHz utterance and
-therefore establishes latency and basic serving correctness, not broad ASR
-quality. Parakeet remained the default; Qwen3-ASR 0.6B was the only new
-candidate both accurate after provider-prefix post-processing and near the
-experimental warm-latency target. The tested Whisper Turbo vLLM recipes were
-rejected because they repeated a hallucinated phrase. Full methodology and all
-17 raw runs are in the [STT model benchmark](findings/2026-07-08-stt-model-benchmark.md).
+The current shared Dark-host STT qualification uses 24 deterministic
+LibriSpeech human recordings plus six separately reported synthetic agent
+phrases. Parakeet `tdt-0.6b-v3` remains the routed default. Qwen3-ASR 0.6B is
+now a qualified but unpromoted replacement candidate: its 3.621% primary WER
+was within the predeclared one-point margin of Parakeet's 3.343%, while its
+113.58 ms sequential p95 was 36.1% faster. Nemotron 3.5 ASR was stable but is
+not qualified because its 6.685% WER exceeded the margin.
 
-| STT candidate / tested configuration | Warm latency | Normalized WER | Outcome |
-|---|---:|---:|---|
-| Parakeet `tdt_ctc-110m`, existing Dark endpoint | 82.62, 89.30 ms | 0.0 | Former default (superseded by `tdt-0.6b-v3`, 2026-07-13; numbers measured against the old model); fastest passing configuration. |
-| Qwen3-ASR 0.6B, vLLM | 196.36, 278.98 ms | 0.0 after postprocess | Retain as the next candidate for a future managed evaluation on a larger corpus. |
-| Qwen3-ASR 1.7B, vLLM | 290.59, 223.96 ms | 0.0 | No demonstrated advantage over 0.6B on this sample. |
-| Whisper Large V3 Turbo FP8, vLLM | 730.69, 669.57 ms | 1.0 | Reject tested recipe; repeated hallucinated phrase. |
-| Whisper Large V3 Turbo BF16, vLLM | 642.42, 643.63 ms | 1.0 | Reject tested recipe; bounded decode was faster but still incorrect. |
+| STT candidate / exact tested configuration | Sequential primary p50 / p95 | Primary normalized WER | Concurrency-4 primary p95 | Outcome |
+|---|---:|---:|---:|---|
+| Parakeet `tdt-0.6b-v3`, current Dark endpoint | 72.35 / 177.87 ms | 3.343% | 240.43 ms | **Current default**; no route change in this qualification. |
+| Qwen3-ASR 0.6B, revision `5eb1441`, official Qwen base plus pinned vLLM parser patch | 67.40 / 113.58 ms | 3.621% | 137.36 ms | **Qualified replacement candidate**; human promotion gate still required. |
+| Nemotron 3.5 ASR Streaming 0.6B, revision `f3d3333`, Transformers 5.13.0 one-shot endpoint | 121.60 / 225.45 ms | 6.685% | 747.82 ms | **Not qualified**; WER regressed 3.343 absolute points. Native streaming/NIM remains untested. |
+
+The complete method, exact image IDs, auto-language probes, restoration proof,
+runtime fixes, and raw per-sample evidence are in the
+[Nemotron 3.5 ASR qualification](findings/2026-07-28-nemotron35-asr-qualification.md).
+
+The earlier July 8 single-sample smoke remains historical compatibility
+evidence, not the current quality comparison. It used former default
+`tdt_ctc-110m`, identified Qwen's provider-prefix quirk, and rejected two
+Whisper Turbo vLLM recipes for repeated hallucination. Full methodology and all
+17 raw runs are in the
+[historical STT model benchmark](findings/2026-07-08-stt-model-benchmark.md).
 
 | Scenario | Scope | Measured result | Interpretation |
 |---|---|---|---|
