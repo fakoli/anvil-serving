@@ -1,0 +1,11 @@
+ARG BASE_IMAGE=vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e
+FROM ${BASE_IMAGE}
+
+# The stock vLLM image intentionally omits its optional audio readers.
+# Pin the four packages required by vLLM's AudioMediaIO without replacing the
+# qualified vLLM build itself.
+RUN uv pip install --system --no-cache \
+    "av==18.0.0" \
+    "scipy==1.18.0" \
+    "soundfile==0.14.0" \
+    "soxr==1.1.0"

@@ -127,8 +127,8 @@ endpoint_kind = "data-plane"
 workload = "service"
 
 [[resources]]
-id = "auxiliary-llm"
-role = "auxiliary-llm-serve"
+id = "omni"
+role = "omni-serve"
 host = "fakoli-dark"
 runtime = "dark-docker"
 gpu_role = "dark-auxiliary"

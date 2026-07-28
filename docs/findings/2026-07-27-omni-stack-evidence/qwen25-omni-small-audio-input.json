@@ -1,0 +1,27 @@
+{
+  "schema_version": "direct-multimodal-probe/v1",
+  "date": "2026-07-27",
+  "promotion_quality_evidence": false,
+  "identity": {
+    "base_url": "http://127.0.0.1:30013/v1",
+    "model": "qwen25-omni-3b",
+    "checkpoint_revision": "f75b40e3da2003cdd6e1829b1f420ca70797c34e",
+    "container": "vllm-qwen25-omni-3b",
+    "image": "anvil-vllm:omni-small-audio-a65f93fb2"
+  },
+  "input": {
+    "type": "audio_url",
+    "source": "https://github.com/vllm-project/vllm/raw/main/examples/offline_inference/multimodal_asset/mary_had_lamb.mp3"
+  },
+  "result": {
+    "http_status": 200,
+    "expected_terms": [
+      "Mary",
+      "lamb"
+    ],
+    "response_text": "Hey first words, let us see. The first words spoken in the recording. There is a little lamb, its fleece was white as snow. The first word spoken in the recording. Mary had a little lamb. The first word is Mary. Mary.",
+    "expected_terms_present": true,
+    "pass": true
+  },
+  "caveat": "This direct probe establishes accepted audio input and basic semantic recognition only. The response was noisy and is not a transcription-quality result; dedicated Parakeet remains the STT endpoint."
+}

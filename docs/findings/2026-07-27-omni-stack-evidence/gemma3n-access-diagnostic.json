@@ -1,0 +1,23 @@
+{
+  "schema_version": "model-access-diagnostic/v1",
+  "date": "2026-07-27",
+  "model": "google/gemma-3n-E2B-it",
+  "revision": "5e092ebca197cdcd8d8b195040accf22693501bc",
+  "operation": {
+    "verb": "anvil-serving models pull",
+    "include": "config.json",
+    "full_checkpoint_requested": false,
+    "credential_source": "user-local dotenv file passed by path; value not logged"
+  },
+  "result": {
+    "exit_code": 1,
+    "space_gate": "passed",
+    "credential_forwarding": "present by environment reference",
+    "exact_error": "Error: Access denied. This repository requires approval.",
+    "classification": "repository authorization or license approval denied",
+    "missing_credential": false,
+    "container_or_engine_start_failure": false,
+    "model_loaded": false
+  },
+  "next_action": "Accept or obtain approval for the checkpoint license on the authenticated account, then repeat the same bounded config.json pull before attempting a full download or managed serve."
+}

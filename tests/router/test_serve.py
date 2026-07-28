@@ -23,13 +23,13 @@ def _routing(*, backends=None, admission=None):
     config = load(_CONFIG)
     return RoutingBackend(
         config,
-        backends or {"primary-local": StaticBackend(["heavy"]), "auxiliary-local": StaticBackend(["fast"])},
+        backends or {"primary-local": StaticBackend(["heavy"]), "omni-local": StaticBackend(["omni"])},
         admission=admission,
     )
 
 
 def test_alias_resolves_once_and_never_falls_back_to_another_tier():
-    routing = _routing(backends={"auxiliary-local": StaticBackend(["wrong-tier"])})
+    routing = _routing(backends={"omni-local": StaticBackend(["wrong-tier"])})
 
     with pytest.raises(NoAvailableTierError) as error:
         routing.generate(_request("llm.primary"))
@@ -51,7 +51,7 @@ def test_direct_route_enforces_context_before_relaying():
 
 
 def test_quiesced_target_is_unavailable_without_substitution():
-    admission = TierAdmission(("primary-local", "auxiliary-local"))
+    admission = TierAdmission(("primary-local", "omni-local"))
     admission.quiesce("primary-local", "test")
     routing = _routing(admission=admission)
 
@@ -70,7 +70,7 @@ def test_client_disconnect_records_metadata_without_content():
     class StreamingBackend:
         generate = staticmethod(stream)
 
-    routing = _routing(backends={"primary-local": StreamingBackend(), "auxiliary-local": StaticBackend(["fast"])})
+    routing = _routing(backends={"primary-local": StreamingBackend(), "omni-local": StaticBackend(["omni"])})
     iterator = routing.generate(_request())
     assert next(iterator) == "first"
     iterator.close()

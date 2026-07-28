@@ -292,6 +292,7 @@ _EXPECTED_HOME_FILES = {
     "serves.toml", "serves.voice.toml", "serves.comfyui.toml",
     "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.voice-proxy.yml",
     "docker-compose.comfyui.yml",
+    "Dockerfile.omni-small",
     "operator-topology.toml", ".env.example", "voice.toml", "edge.toml",
 }
 
@@ -312,7 +313,10 @@ def test_scaffold_home_group_tags_resolve(tmp_path):
     # The full operational group vocabulary must resolve from the scaffold alone.
     assert {
         "voice",
-        "auxiliary-only",
+        "omni-stack",
+        "omni-small-stack",
+        "omni-voice-stack",
+        "auxiliary-stack",
         "primary-only",
         "embedding",
         "llm-stack",
@@ -350,12 +354,12 @@ def test_scaffold_home_default_router_matches_production_serve_ports(tmp_path):
     _scaffold_home(out_dir=str(tmp_path))
     router = (tmp_path / "router.toml").read_text(encoding="utf-8")
 
-    for port in (30002, 30003, 30005, 30006, 30007, 30008, 30010, 30011):
+    for port in (30002, 30003, 30005, 30006, 30010, 30011):
         assert f"127.0.0.1:{port}" in router
     assert 'llm.primary = "primary-local"' in router
-    assert 'llm.voice = "auxiliary-local"' in router
-    assert 'vision.ocr = "ocr-local"' in router
-    assert 'vision.general = "vision-local"' in router
+    assert 'llm.voice = "omni-local"' in router
+    assert 'vision.ocr = "omni-local"' in router
+    assert 'vision.general = "omni-local"' in router
 
 
 def test_scaffold_home_writes_placeholders_not_real_host_values(tmp_path):
@@ -568,7 +572,7 @@ def test_scaffold_maps_primary_llm_and_auxiliary_workloads_to_gpu_roles(tmp_path
         return match.group(1)
 
     assert "PRIMARY_GPU_UUID" in service_block(compose, "primary")
-    for service in ("auxiliary", "embeddings", "reranker", "ocr", "vision"):
+    for service in ("omni", "omni-small", "embeddings", "reranker"):
         block = service_block(compose, service)
         assert "AUXILIARY_GPU_UUID" in block
         assert "PRIMARY_GPU_UUID" not in block
@@ -716,7 +720,7 @@ def test_init_cli_identical_rerun_reports_up_to_date_without_backups(
 
     output = capsys.readouterr().out
     assert "configuration already up to date" in output
-    assert "16 unchanged file(s)" in output
+    assert f"{len(_EXPECTED_HOME_FILES)} unchanged file(s)" in output
     assert "backed up existing operator files" not in output
     assert list(tmp_path.glob("*.anvil.bak.*")) == []
 

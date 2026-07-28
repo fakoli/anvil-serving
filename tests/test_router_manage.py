@@ -139,3 +139,98 @@ def test_router_parser_does_not_offer_profile_promotion():
     parser = router_manage._build_parser()
     actions = next(item for item in parser._actions if item.dest == "action")
     assert "promote" not in actions.choices
+
+
+def test_install_config_migrates_current_tiers_and_verifies_desired(tmp_path):
+    config = tmp_path / "router.toml"
+    config.write_text(
+        """
+[router]
+[[router.tiers]]
+id = "omni-local"
+base_url = "http://127.0.0.1:30003/v1"
+model = "omni"
+dialect = "openai"
+context_limit = 65536
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_OMNI_LOCAL_KEY"
+[router.model_routes]
+llm.voice = "omni-local"
+""",
+        encoding="utf-8",
+    )
+    calls = []
+
+    def transition(action, **kwargs):
+        calls.append((action, kwargs.get("tier_id")))
+        if action == "status" and calls.count(("status", None)) == 1:
+            return {"tiers": [{"tier_id": "fast-local", "ready": True}]}
+        if action == "status" and calls.count(("status", None)) == 2:
+            raise ValueError("router transition transport failed (RemoteDisconnected)")
+        if action == "status":
+            return {"tiers": [{"tier_id": "omni-local", "ready": True}]}
+        if action == "drain":
+            return {"result": {"drained": True}}
+        return {"result": {"applied": True}}
+
+    installed = []
+    result = router_manage.install_config(
+        str(config),
+        confirm=True,
+        dry_run=False,
+        _transition=transition,
+        _install=lambda path: installed.append(path) or 0,
+        _sleep=lambda _seconds: None,
+    )
+
+    assert result["applied"] is True
+    assert calls == [
+        ("status", None),
+        ("quiesce", "fast-local"),
+        ("drain", "fast-local"),
+        ("status", None),
+        ("status", None),
+    ]
+    assert installed == [str(config)]
+
+
+def test_install_config_compensates_when_drain_fails(tmp_path):
+    config = tmp_path / "router.toml"
+    config.write_text(
+        """
+[router]
+[[router.tiers]]
+id = "omni-local"
+base_url = "http://127.0.0.1:30003/v1"
+model = "omni"
+dialect = "openai"
+context_limit = 65536
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_OMNI_LOCAL_KEY"
+[router.model_routes]
+llm.voice = "omni-local"
+""",
+        encoding="utf-8",
+    )
+    calls = []
+
+    def transition(action, **kwargs):
+        calls.append((action, kwargs.get("tier_id")))
+        if action == "status":
+            return {"tiers": [{"tier_id": "fast-local", "ready": True}]}
+        if action == "drain":
+            return {"result": {"drained": False}}
+        return {"result": {"applied": True}}
+
+    with pytest.raises(ValueError, match="did not drain"):
+        router_manage.install_config(
+            str(config),
+            confirm=True,
+            dry_run=False,
+            _transition=transition,
+            _install=lambda _path: pytest.fail("install ran after failed drain"),
+        )
+
+    assert calls[-1] == ("readmit", "fast-local")

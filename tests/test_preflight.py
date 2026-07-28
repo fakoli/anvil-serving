@@ -2,6 +2,7 @@
 
 import json
 import sys
+from base64 import b64decode
 
 import pytest
 
@@ -231,3 +232,56 @@ def test_atomic_preflight_write_preserves_existing_target_on_replace_failure(
 
     assert out.read_text(encoding="utf-8") == "old evidence\n"
     assert list(tmp_path.glob(".preflight.json.*.tmp")) == []
+
+
+def test_load_image_data_is_bounded_and_records_identity(tmp_path):
+    image = tmp_path / "sample.png"
+    raw = b"\x89PNG\r\n\x1a\nbounded"
+    image.write_bytes(raw)
+
+    data_url, identity = pf.load_image_data(image)
+
+    assert data_url.startswith("data:image/png;base64,")
+    assert b64decode(data_url.split(",", 1)[1]) == raw
+    assert identity["bytes"] == len(raw)
+    assert len(identity["sha256"]) == 64
+
+
+def test_multimodal_check_requires_all_independent_expectations(monkeypatch):
+    def fake_chat(*args, **kwargs):
+        messages = args[2]
+        assert messages[0]["content"][0]["type"] == "image_url"
+        return {
+            "choices": [{
+                "finish_reason": "stop",
+                "message": {"content": "Anvil Serving Dashboard. GPU: RTX 5090."},
+            }]
+        }, 0.01
+
+    monkeypatch.setattr(pf, "chat", fake_chat)
+    evidence = []
+    ok, detail = pf.t_multimodal(
+        "http://127.0.0.1:30000/v1",
+        "candidate",
+        None,
+        "data:image/png;base64,AA==",
+        {"bytes": 1, "mime": "image/png", "sha256": "a" * 64},
+        ["Anvil Serving Dashboard", "Error 503"],
+        check="ocr",
+        evidence=evidence,
+    )
+
+    assert ok is False
+    assert "Error 503" in detail
+    assert evidence[0]["image"]["sha256"] == "a" * 64
+
+
+def test_preflight_multimodal_selection_requires_image_and_expectations(tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        pf.main([
+            "--base-url", "http://127.0.0.1:30000/v1",
+            "--model", "candidate",
+            "--checks", "image,ocr",
+            "--dry-run",
+        ])
+    assert exc.value.code == 2

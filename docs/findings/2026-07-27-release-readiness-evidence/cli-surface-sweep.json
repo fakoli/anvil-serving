@@ -3,15 +3,15 @@
   "date": "2026-07-27",
   "repository_revision": "58f7809588a603f2c7b41a7684c40fc02f77315c",
   "installed_version": "0.13.3",
-  "command_manifest_sha256": "24799e0d30fafde4cbf52b6c39e7c602d8b95a95e2a11dc05a831c105999284e",
-  "manifest_command_paths": 136,
-  "help_parse_passed": 136,
+  "command_manifest_sha256": "ae219787b7c062c73f9974f67895aee17c63c120ae191bca3285cf240e77c540",
+  "manifest_command_paths": 137,
+  "help_parse_passed": 137,
   "help_parse_failed": 0,
-  "handler_resolution_passed": 108,
+  "handler_resolution_passed": 109,
   "group_nodes_validated": 28,
   "operation_classes": {
     "read": 80,
-    "mutate": 50,
+    "mutate": 51,
     "process": 6
   },
   "live_or_applied_families": [

@@ -1,0 +1,85 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:8000/v1",
+  "model": "llm.voice",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 256
+  },
+  "multimodal_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "2.2s got='```python\\nsum(xs)\\n```' finish='stop' visible=22 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=32 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "\n```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "content_chars": 22,
+      "content_excerpt": "\n```python\nsum(xs)\n```",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 32,
+        "completion_tokens": 91,
+        "total_tokens": 123
+      },
+      "test": "smoke",
+      "seconds": 2.244,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "\n{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 32,
+      "content_excerpt": "\n{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 34,
+        "completion_tokens": 72,
+        "total_tokens": 106
+      },
+      "test": "json",
+      "seconds": 0.586,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "any",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

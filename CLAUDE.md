@@ -23,8 +23,9 @@ routing calibration loop.
 ## Reference topology
 
 - **Fakoli Dark / RTX PRO 6000:** primary LLM candidates and the router.
-- **Fakoli Dark / RTX 5090:** low-latency voice LLM, STT/TTS, embeddings,
-  reranking, and optional ComfyUI.
+- **Fakoli Dark / RTX 5090:** choose the exclusive 30B Omni stack, or the
+  smaller Omni stack co-resident with dedicated STT/TTS. Embeddings/reranking
+  and ComfyUI remain optional separate stacks admitted by the same ledger.
 - **Fakoli Mini:** OpenClaw Gateway and voice Realtime/proxy only. It is
   model-free in the reference topology. Mini loopback audio proxy ports forward
   to Dark; they do not host models.
@@ -75,9 +76,9 @@ dictionary dispatch, not filesystem scanning or plugin discovery.
 ```toml
 [router.model_routes]
 llm.primary = "primary-local"
-llm.voice = "auxiliary-local"
-vision.ocr = "ocr-local"
-vision.general = "vision-local"
+llm.voice = "omni-local"
+vision.ocr = "omni-local"
+vision.general = "omni-local"
 ```
 
 Aliases are lowercase after trimming; compatibility prefixes are not accepted.
