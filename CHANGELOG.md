@@ -6,11 +6,35 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-07-28
+
+Anvil Serving 0.16.0 is the multimodal primary and router observability
+release. It promotes the pinned NVIDIA Qwen3.5 122B NVFP4 checkpoint on the
+RTX PRO 6000, preserves explicit caller-controlled thinking, and adds
+authenticated read-only operational endpoints for model and router inspection.
+
+### Highlights
+
+- **Multimodal Qwen3.5 primary.** The reference Primary serve now uses
+  `nvidia/Qwen3.5-122B-A10B-NVFP4` at its pinned revision with a 262,144-token
+  context window, one image per prompt, thinking enabled by default, and an
+  explicit Laguna rollback configuration.
+- **Authenticated observability API.** The router exposes model capacity,
+  capabilities, fingerprints, router status, bounded decision-buffer
+  statistics, request traces, and Prometheus metrics without adding runtime
+  dependencies or inferred routing behavior.
+- **Managed voice lifecycle.** Guarded `voice up` and `voice down` aggregate
+  co-located STT, TTS, and realtime-proxy lifecycle operations while refusing
+  split-host configurations.
+
 ### Changed
 
 - Ruff linting now selects the repository's intended `E4`, `E7`, `E9`, and
   `F` rule families explicitly, so CI can track current Ruff releases without
   inheriting newly promoted default rules.
+- Replaced the Laguna S 2.1 Primary recipe and direct route with the pinned
+  NVIDIA Qwen3.5 122B NVFP4 recipe and published functional, multimodal,
+  long-context, thinking, and quality evidence.
 
 ### Added
 
@@ -18,6 +42,11 @@ All notable changes to this project are documented here. The format is based on
   aggregates. They operate managed STT/TTS and the managed realtime proxy in
   dependency order, return one combined result, and refuse split-host
   configurations.
+- Added authenticated `GET /v1/models/capacity`,
+  `/v1/models/capabilities`, `/v1/models/fingerprints`,
+  `/v1/router/status`, `/v1/stats`, `/v1/requests/{request_id}`, and
+  `/metrics` endpoints. Capacity responses combine declared model limits with
+  bounded live vLLM gauges when available.
 
 ### Fixed
 
@@ -1292,7 +1321,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/fakoli/anvil-serving/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/fakoli/anvil-serving/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/fakoli/anvil-serving/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/fakoli/anvil-serving/compare/v0.13.2...v0.13.3

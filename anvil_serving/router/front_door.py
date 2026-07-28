@@ -83,6 +83,14 @@ DECISION_SUMMARY_ENDPOINT = "/v1/decisions"
 #: Per-tier / per-serve live health snapshot (#292). Bearer-authed like every
 #: route except GET /healthz; additive — /health and /v1/decisions are unchanged.
 TIER_HEALTH_ENDPOINT = "/v1/health/tiers"
+MODEL_CAPACITY_ENDPOINT = "/v1/models/capacity"
+MODEL_CAPABILITIES_ENDPOINT = "/v1/models/capabilities"
+MODEL_FINGERPRINTS_ENDPOINT = "/v1/models/fingerprints"
+ROUTER_STATUS_ENDPOINT = "/v1/router/status"
+ROUTER_STATS_ENDPOINT = "/v1/stats"
+PROMETHEUS_ENDPOINT = "/metrics"
+REQUEST_TRACE_PREFIX = "/v1/requests/"
+REQUEST_TRACE_ROUTE = "/v1/requests/{request_id}"
 TRANSITION_ENDPOINT = "/v1/admin/transition"
 # Purpose-model surfaces (gpu-reservations:T010 / ADR-0017 §7). POST-only,
 # routed by MODEL NAME via an injected PurposeRouter — active only when the
@@ -200,6 +208,22 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self.send_header(_h_name, _h_val)
             self.end_headers()
             self.wfile.write(payload)
+
+        def _text(
+            self, status: int, payload: str, *, content_type: str,
+            extra_headers=None,
+        ) -> None:
+            encoded = payload.encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(encoded)))
+            if self.close_connection:
+                self.send_header("Connection", "close")
+            if extra_headers:
+                for _h_name, _h_val in extra_headers.items():
+                    self.send_header(_h_name, _h_val)
+            self.end_headers()
+            self.wfile.write(encoded)
 
         def _authenticated(self) -> bool:
             """True if this request carries a valid token, or auth is off.
@@ -605,6 +629,13 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         "routes": sorted(
                             list(_ROUTES)
                             + [DECISION_SUMMARY_ENDPOINT,
+                               MODEL_CAPABILITIES_ENDPOINT,
+                               MODEL_CAPACITY_ENDPOINT,
+                               MODEL_FINGERPRINTS_ENDPOINT,
+                               PROMETHEUS_ENDPOINT,
+                               REQUEST_TRACE_ROUTE,
+                               ROUTER_STATS_ENDPOINT,
+                               ROUTER_STATUS_ENDPOINT,
                                TIER_HEALTH_ENDPOINT]
                             + (list(_PURPOSE_PATHS) if purpose is not None else [])
                             + (list(audio.paths) if audio is not None else [])
@@ -620,6 +651,171 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         routing = getattr(self.server, "anvil_routing", None)
                         health_fn = getattr(routing, "tier_health", None)
                     self._json(200, health_fn() if callable(health_fn) else {"tiers": []})
+                elif route == MODEL_CAPACITY_ENDPOINT:
+                    capacity_fn = getattr(backend, "model_capacity", None)
+                    if capacity_fn is None:
+                        routing = getattr(self.server, "anvil_routing", None)
+                        capacity_fn = getattr(routing, "model_capacity", None)
+                    query = urllib.parse.parse_qs(
+                        urllib.parse.urlparse(self.path).query,
+                        keep_blank_values=True,
+                    )
+                    if not callable(capacity_fn):
+                        self._json(200, {"object": "list", "data": []})
+                        return
+                    try:
+                        capacity = capacity_fn(query)
+                    except KeyError:
+                        self._error(
+                            404, "model_not_found", "unknown configured model"
+                        )
+                        return
+                    except ValueError as exc:
+                        self._error(400, "invalid_request", str(exc))
+                        return
+                    self._json(
+                        200,
+                        capacity,
+                        extra_headers={"Cache-Control": "no-store"},
+                    )
+                elif route in (
+                    MODEL_CAPABILITIES_ENDPOINT,
+                    MODEL_FINGERPRINTS_ENDPOINT,
+                ):
+                    method_name = (
+                        "model_capabilities"
+                        if route == MODEL_CAPABILITIES_ENDPOINT
+                        else "model_fingerprints"
+                    )
+                    metadata_fn = getattr(backend, method_name, None)
+                    if metadata_fn is None:
+                        routing = getattr(self.server, "anvil_routing", None)
+                        metadata_fn = getattr(routing, method_name, None)
+                    query = urllib.parse.parse_qs(
+                        urllib.parse.urlparse(self.path).query,
+                        keep_blank_values=True,
+                    )
+                    if not callable(metadata_fn):
+                        self._json(200, {"object": "list", "data": []})
+                        return
+                    try:
+                        metadata = metadata_fn(query)
+                    except KeyError:
+                        self._error(
+                            404, "model_not_found", "unknown configured model"
+                        )
+                        return
+                    except ValueError as exc:
+                        self._error(400, "invalid_request", str(exc))
+                        return
+                    self._json(
+                        200,
+                        metadata,
+                        extra_headers={"Cache-Control": "no-store"},
+                    )
+                elif route == ROUTER_STATUS_ENDPOINT:
+                    if urllib.parse.urlparse(self.path).query:
+                        self._error(
+                            400,
+                            "invalid_request",
+                            "router status does not accept query parameters",
+                        )
+                        return
+                    status_fn = getattr(backend, "router_status", None)
+                    if status_fn is None:
+                        routing = getattr(self.server, "anvil_routing", None)
+                        status_fn = getattr(routing, "router_status", None)
+                    if not callable(status_fn):
+                        self._error(404, "not_found", f"no route {route}")
+                        return
+                    self._json(
+                        200,
+                        status_fn(),
+                        extra_headers={"Cache-Control": "no-store"},
+                    )
+                elif route == ROUTER_STATS_ENDPOINT:
+                    stats_fn = getattr(backend, "router_stats", None)
+                    if stats_fn is None:
+                        routing = getattr(self.server, "anvil_routing", None)
+                        stats_fn = getattr(routing, "router_stats", None)
+                    query = urllib.parse.parse_qs(
+                        urllib.parse.urlparse(self.path).query,
+                        keep_blank_values=True,
+                    )
+                    if not callable(stats_fn):
+                        self._error(404, "not_found", f"no route {route}")
+                        return
+                    try:
+                        stats = stats_fn(query)
+                    except KeyError:
+                        self._error(
+                            404, "model_not_found", "unknown configured model"
+                        )
+                        return
+                    except ValueError as exc:
+                        self._error(400, "invalid_request", str(exc))
+                        return
+                    self._json(
+                        200,
+                        stats,
+                        extra_headers={"Cache-Control": "no-store"},
+                    )
+                elif route.startswith(REQUEST_TRACE_PREFIX):
+                    request_id = urllib.parse.unquote(
+                        route[len(REQUEST_TRACE_PREFIX):]
+                    )
+                    trace_fn = getattr(backend, "request_trace", None)
+                    if trace_fn is None:
+                        routing = getattr(self.server, "anvil_routing", None)
+                        trace_fn = getattr(routing, "request_trace", None)
+                    if (
+                        not request_id
+                        or "/" in request_id
+                        or urllib.parse.urlparse(self.path).query
+                        or not callable(trace_fn)
+                    ):
+                        self._error(404, "not_found", "request record not found")
+                        return
+                    try:
+                        trace = trace_fn(request_id)
+                    except KeyError:
+                        self._error(404, "not_found", "request record not found")
+                        return
+                    self._json(
+                        200,
+                        trace,
+                        extra_headers={"Cache-Control": "no-store"},
+                    )
+                elif route == PROMETHEUS_ENDPOINT:
+                    metrics_fn = getattr(backend, "prometheus_metrics", None)
+                    if metrics_fn is None:
+                        routing = getattr(self.server, "anvil_routing", None)
+                        metrics_fn = getattr(routing, "prometheus_metrics", None)
+                    query = urllib.parse.parse_qs(
+                        urllib.parse.urlparse(self.path).query,
+                        keep_blank_values=True,
+                    )
+                    if not callable(metrics_fn):
+                        self._error(404, "not_found", f"no route {route}")
+                        return
+                    try:
+                        metrics = metrics_fn(query)
+                    except KeyError:
+                        self._error(
+                            404, "model_not_found", "unknown configured model"
+                        )
+                        return
+                    except ValueError as exc:
+                        self._error(400, "invalid_request", str(exc))
+                        return
+                    self._text(
+                        200,
+                        metrics,
+                        content_type=(
+                            "text/plain; version=0.0.4; charset=utf-8"
+                        ),
+                        extra_headers={"Cache-Control": "no-store"},
+                    )
                 elif route == "/v1/models":
                     self._json(200, models_payload(model_routes))
                 elif route == DECISION_SUMMARY_ENDPOINT:
