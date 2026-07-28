@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-07-27
+
+Anvil Serving 0.15.0 is the selectable Omni voice and lifecycle-cleanup
+release. It consolidates the RTX 5090 auxiliary text and vision path around a
+managed Nemotron 3 Nano Omni tier, adds a co-resident small-Omni voice option,
+and makes stopped-container cleanup the safe default.
+
+### Highlights
+
+- **One managed auxiliary Omni tier.** Auxiliary LLM, general-vision, and OCR
+  capabilities now share the pinned `omni-local` tier, with bounded image and
+  OCR preflights and published qualification evidence.
+- **Selectable Omni voice topology.** Operators can run the existing exclusive
+  30B Omni recipe or a co-resident Qwen2.5-Omni-3B, Parakeet STT, and Kokoro TTS
+  stack on the RTX 5090. The smaller model remains unpromoted.
+- **Cleaner lifecycle boundaries.** Admission derives from the complete
+  colocated manifest set, and `serves down` removes stopped containers by
+  default while preserving an explicit post-mortem mode.
+
 ### Changed
 
 - `serves down` now stops and removes selected containers by default so model
@@ -1250,7 +1269,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/fakoli/anvil-serving/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/fakoli/anvil-serving/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/fakoli/anvil-serving/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/fakoli/anvil-serving/compare/v0.13.1...v0.13.2
