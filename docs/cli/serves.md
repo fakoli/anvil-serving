@@ -6,6 +6,15 @@ The `serves` family owns local model-server definitions and lifecycle. A serve i
 manifest-owned; a recipe is a reusable model-and-engine configuration managed under
 [`models recipes`](models.md#recipes).
 
+Each manifest entry also belongs to a user-facing `stack`. Stacks are the
+lifecycle ownership boundary for separate workloads such as `serving`,
+`auxiliary`, `voice-audio`, `voice-proxy`, and `comfyui`. The CLI maps a stack
+to the stable Docker Compose project `anvil-<stack>`, injects that project when
+the `up` command omits it, and refuses to manage an existing container owned by
+another stack unless `serves up --recreate` is explicit. If an authored
+`--project-name` contradicts `stack`, manifest loading fails before Docker is
+called. Entries that omit `stack` retain the `serving` default.
+
 ## Commands
 
 | Command | Purpose |
@@ -18,6 +27,7 @@ manifest-owned; a recipe is a reusable model-and-engine configuration managed un
 | `serves switch` | Switch a deployment role to an activation-ready recipe. |
 | `serves promote` | Preflight and promote a staged recipe with rollback. |
 | `serves status` | Show bounded serve status. |
+| `serves probe` | Run one engine-aware functional request. |
 | `serves groups` | List serve groups and their members. |
 | `serves logs` | Read bounded serve logs. |
 | `serves multiplex` | Run the single-resident model multiplexer. |
@@ -69,6 +79,29 @@ Only manifest-owned resources are mutated. Destructive leaves require confirmati
 and `down` does not imply removal. `--confirm` is the only public consent spelling;
 the removed `serves rm --yes` and `serves adopt --yes` forms fail with migration
 guidance before reaching Docker.
+
+`serves up` returns only after the selected serve's declared health endpoint is
+ready. A failed or timed-out readiness check fails the command instead of
+reporting a successful start.
+
+## Functional probes
+
+Health proves that a process is accepting requests; it does not prove the
+serve's defining modality works. `serves probe` provides a bounded,
+manifest-aware request for the supported purpose engines:
+
+```bash
+anvil-serving serves probe embeddings
+anvil-serving serves probe reranker
+anvil-serving serves probe ocr --image ./screen.png --text "Read all visible text."
+anvil-serving serves probe comfyui --manifest ./serves.comfyui.toml
+```
+
+Embedding probes require a non-empty vector, reranker probes require one finite
+score per document, OCR/vision probes require non-empty recognized text, and
+the ComfyUI probe requires system metadata. Results are bounded JSON and omit
+image bytes. Chat LLMs retain the stronger `eval preflight` contract; audio
+serves use `voice benchmark`.
 
 On a Windows/WSL machine with the default-off `host.toml` cache policy enabled,
 confirmed manifest-owned `up` waits up to 600 seconds for every selected serve's

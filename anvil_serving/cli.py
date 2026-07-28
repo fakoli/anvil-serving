@@ -32,6 +32,7 @@ from .operator_output import (
     render_json,
     success_envelope,
 )
+from .paths import default_topology_path
 from .targets import CommandSpec, ExecutionPlan, TargetResolutionError, resolve_execution_plan
 from .topology import TopologyValidationError, load_topology
 from .transports import (
@@ -510,14 +511,21 @@ def _command_spec(path: Sequence[CommandNode]) -> CommandSpec:
     )
 
 
+def _effective_resolution_options(options: _ResolutionOptions) -> _ResolutionOptions:
+    """Default an opted-in target-resolution request without enabling bare commands."""
+    if not options.requested or options.topology is not None:
+        return options
+    return replace(options, topology=default_topology_path())
+
+
 def _resolve_dispatch_plan(
     path: Sequence[CommandNode], options: _ResolutionOptions
 ) -> ExecutionPlan | None:
     """Resolve a topology-aware invocation before importing its handler."""
+    options = _effective_resolution_options(options)
     if not options.requested:
         return None
-    if options.topology is None:
-        raise _ResolutionOptionError("target-resolution options require --topology PATH")
+    assert options.topology is not None
     command = _command_spec(path)
     if command.execution_policy != "resource-owner":
         raise _ResolutionOptionError(
@@ -1124,6 +1132,7 @@ def _dispatch(
                     print(rendered.stdout, end="")
             return 0
         resolution_options, rest = _extract_resolution_options(rest)
+        resolution_options = _effective_resolution_options(resolution_options)
         plan = _resolve_dispatch_plan(path, resolution_options)
         if plan is not None and execution_meta is not None:
             execution_meta["plan"] = plan

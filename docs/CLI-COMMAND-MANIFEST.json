@@ -16,7 +16,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -145,7 +145,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -277,7 +277,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -438,7 +438,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -642,7 +642,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -826,7 +826,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -1010,7 +1010,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -1193,7 +1193,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -1327,7 +1327,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -1471,7 +1471,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -1636,7 +1636,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -1821,7 +1821,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -1997,7 +1997,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -2182,7 +2182,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -2338,7 +2338,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -2487,7 +2487,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -2619,7 +2619,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -2753,7 +2753,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -2917,7 +2917,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -3081,7 +3081,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -3245,7 +3245,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -3409,7 +3409,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -3588,7 +3588,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -3757,7 +3757,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -3884,6 +3884,140 @@
     },
     {
       "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/serves.md#functional-probes",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": true,
+      "handler": "anvil_serving.serves:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "serves probe",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": "model-serve",
+      "summary": "Run an engine-aware functional serve probe.",
+      "transports": [
+        "local"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -3901,7 +4035,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -4035,7 +4169,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -4188,7 +4322,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -4319,7 +4453,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -4451,7 +4585,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -4603,7 +4737,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -4755,7 +4889,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -4886,7 +5020,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -5018,7 +5152,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -5152,7 +5286,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -5286,7 +5420,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -5438,7 +5572,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -5590,7 +5724,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -5742,7 +5876,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -5891,7 +6025,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -6023,7 +6157,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -6167,6 +6301,158 @@
     },
     {
       "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/models.md#cache-remove",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.models:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "models cache remove",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": "model-catalog",
+      "summary": "Remove one exact cached repository revision.",
+      "transports": [
+        "local"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -6181,7 +6467,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -6313,7 +6599,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -6465,7 +6751,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -6640,7 +6926,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -6772,7 +7058,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -6924,7 +7210,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -7073,7 +7359,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -7202,7 +7488,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -7331,7 +7617,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -7460,7 +7746,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -7589,7 +7875,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -7721,7 +8007,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -7873,7 +8159,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -8015,7 +8301,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -8167,7 +8453,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -8319,7 +8605,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -8461,7 +8747,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -8603,7 +8889,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -8755,7 +9041,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -8894,7 +9180,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -9026,7 +9312,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -9178,7 +9464,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -9312,7 +9598,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -9443,7 +9729,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -9572,7 +9858,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -9706,7 +9992,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -9875,7 +10161,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -10044,7 +10330,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -10195,7 +10481,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -10341,7 +10627,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -10475,7 +10761,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -10611,7 +10897,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -10782,7 +11068,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -10953,7 +11239,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -11124,7 +11410,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -11276,7 +11562,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -11429,7 +11715,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -11554,16 +11840,11 @@
       "visible": true
     },
     {
-      "coowned_resource_roles": [
-        "stt-proxy",
-        "tts-proxy"
-      ],
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#benchmark",
       "execution_host_os": [],
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native"
-      ],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
       "gpu_role_required": false,
       "handler": "anvil_serving.voice.cli:main",
       "mutation_class": "read",
@@ -11574,7 +11855,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -11682,11 +11963,9 @@
       "path": "voice benchmark",
       "recovery_capable": false,
       "remote_operation": null,
-      "resource_role": "realtime-proxy",
+      "resource_role": null,
       "summary": "Benchmark an end-to-end voice session.",
-      "transports": [
-        "local"
-      ],
+      "transports": [],
       "visible": true
     },
     {
@@ -11705,7 +11984,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -11834,7 +12113,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -11963,7 +12242,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -12092,7 +12371,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -12221,7 +12500,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -12350,7 +12629,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -12479,7 +12758,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -12608,7 +12887,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -12737,7 +13016,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -12869,7 +13148,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -13039,7 +13318,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -13171,7 +13450,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -13334,7 +13613,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -13466,7 +13745,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -13608,7 +13887,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -13740,7 +14019,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -13882,7 +14161,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -14021,7 +14300,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -14153,7 +14432,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -14287,7 +14566,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -14426,7 +14705,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -14557,7 +14836,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -14698,7 +14977,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -14837,7 +15116,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -14968,7 +15247,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -15101,7 +15380,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -15252,7 +15531,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -15395,7 +15674,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -15530,7 +15809,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -15702,7 +15981,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -15870,7 +16149,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -16038,7 +16317,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -16198,7 +16477,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -16337,7 +16616,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -16484,7 +16763,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -16613,7 +16892,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -16742,7 +17021,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -16871,7 +17150,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -17000,7 +17279,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -17129,7 +17408,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -17276,7 +17555,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -17405,7 +17684,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -17534,7 +17813,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -17663,7 +17942,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -17794,7 +18073,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -17925,7 +18204,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -18056,7 +18335,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -18189,7 +18468,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -18322,7 +18601,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -18473,7 +18752,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -18622,7 +18901,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -18754,7 +19033,177 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--source"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Workbench source checkout.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--image"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local image tag.",
+          "value_name": "TAG"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "workbench build",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": "host",
+      "summary": "Build the Workbench hub image from the local companion checkout.",
+      "transports": [
+        "local"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/WORKBENCH.md#lifecycle",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.workbench:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -18906,7 +19355,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -19058,7 +19507,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {
@@ -19192,7 +19641,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
+          "summary": "Topology document used for target resolution (default: operator config home).",
           "value_name": "PATH"
         },
         {

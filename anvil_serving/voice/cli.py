@@ -55,6 +55,7 @@ from anvil_serving.benchmarking.artifacts import (
     BenchmarkArtifactError,
     resolve_benchmark_artifact_path,
 )
+from anvil_serving.paths import default_topology_path, resolve_topology_path
 from anvil_serving.targets import TargetResolutionError
 from anvil_serving.topology import TopologyValidationError, load_topology
 
@@ -103,6 +104,24 @@ def _resolve_manifest_reference(path: str, manifest_dir: str | None) -> str:
     return path
 
 
+def _managed_ready_url(base_url: str, manifest_path: str, serve_name: str) -> str | None:
+    """Derive readiness from the selected managed serve, not `/v1/models`."""
+    try:
+        manifest_serves = generic_serves.load_manifest(manifest_path)
+    except FileNotFoundError:
+        # Preserve the lifecycle adapter's existing typed "not configured"
+        # behavior; derivation is an enhancement, not a second file gate.
+        return None
+    for serve in manifest_serves:
+        if serve["name"] != serve_name and serve["container"] != serve_name:
+            continue
+        parsed = urllib.parse.urlsplit(base_url)
+        return urllib.parse.urlunsplit(
+            (parsed.scheme, parsed.netloc, serve.get("health", "/health"), "", "")
+        )
+    return None
+
+
 def _audio_serves(
     data: dict,
     targets: voice_config.ResolvedAudioTargets | None = None,
@@ -126,9 +145,18 @@ def _audio_serves(
             config_kwargs["ready_url"] = table["ready_url"]
         manifest_path = table.get("manifest_path") or table.get("serves_manifest")
         if manifest_path:
-            config_kwargs["manifest_path"] = _resolve_manifest_reference(
+            resolved_manifest = _resolve_manifest_reference(
                 manifest_path, manifest_dir
             )
+            config_kwargs["manifest_path"] = resolved_manifest
+            if lifecycle == "managed" and not table.get("ready_url"):
+                ready_url = _managed_ready_url(
+                    config_kwargs["base_url"],
+                    resolved_manifest,
+                    table.get("serve_name") or kind,
+                )
+                if ready_url:
+                    config_kwargs["ready_url"] = ready_url
         config = config_cls(**config_kwargs)
         kwargs = {}
         if subprocess_deadline is not None:
@@ -153,14 +181,7 @@ def _resolve_audio_operation(args):
     data, err = _load(args.config, getattr(args, "profile", None))
     if err:
         return None, None, err, 2
-    topology_path = getattr(args, "topology", None)
-    if not topology_path:
-        return (
-            None,
-            None,
-            "--topology is required so STT/TTS lifecycle resolves its model owner",
-            2,
-        )
+    topology_path = resolve_topology_path(getattr(args, "topology", None))
     try:
         topology = load_topology(topology_path)
         targets = voice_config.resolve_audio_targets(
@@ -651,9 +672,8 @@ def _resolve_proxy_operation(args, action: str):
     resolved, err = _load_resolved_config(args)
     if err:
         return None, None, None, err, 2
-    topology_path = getattr(args, "topology", None)
-    if not topology_path:
-        return None, None, None, "--topology is required to resolve the proxy owner", 2
+    topology_path = resolve_topology_path(getattr(args, "topology", None))
+    args.topology = topology_path
     try:
         topology = load_topology(topology_path, getattr(args, "topology_overlay", None))
         targets = voice_config.resolve_proxy_targets(
@@ -1171,6 +1191,23 @@ def cmd_run(args):
 
 
 def cmd_benchmark(args):
+    scope = getattr(args, "scope", "end-to-end")
+    if scope == "audio" and any(
+        getattr(args, name, None)
+        for name in (
+            "candidate",
+            "candidate_overlay",
+            "candidate_base_url",
+            "candidate_model",
+            "candidate_api_key_env",
+        )
+    ):
+        print(
+            "voice benchmark: --scope audio does not call an LLM; candidate "
+            "options are not valid for this scope",
+            file=sys.stderr,
+        )
+        return 2
     resolved, err = _load_benchmark_config(args)
     if err:
         print("voice benchmark: %s" % err, file=sys.stderr)
@@ -1182,18 +1219,28 @@ def cmd_benchmark(args):
     except voice_config.ConfigError as exc:
         print("voice benchmark: %s" % exc, file=sys.stderr)
         return 2
-    print("voice benchmark: manifest OK -- %s -- %s" % (summary, voice_config.describe(resolved.data)))
+    print(
+        "voice benchmark: manifest OK -- scope=%s -- %s -- %s"
+        % (scope, summary, voice_config.describe(resolved.data))
+    )
     try:
-        result = voice_benchmark.run_benchmark_from_manifest(
-            resolved.data,
-            profile=resolved.profile,
-            candidate=resolved.candidate,
-        )
+        if scope == "audio":
+            result = voice_benchmark.run_audio_benchmark_from_manifest(
+                resolved.data,
+                profile=resolved.profile,
+            )
+        else:
+            result = voice_benchmark.run_benchmark_from_manifest(
+                resolved.data,
+                profile=resolved.profile,
+                candidate=resolved.candidate,
+            )
     except Exception as exc:  # noqa: BLE001 - the configured serves may simply not be up yet
         print(
-            "voice benchmark: could not reach the configured STT/LLM/TTS serves (%s); "
+            "voice benchmark: could not reach the configured %s serves (%s); "
             "bring them up with `anvil-serving voice audio up` first. Nothing was measured. "
-            "Active config: %s" % (exc, summary),
+            "Active config: %s"
+            % ("STT/TTS" if scope == "audio" else "STT/LLM/TTS", exc, summary),
             file=sys.stderr,
         )
         return 1
@@ -1437,7 +1484,14 @@ def build_parser():
     def add_audio_resolution(sp):
         add_config(sp)
         add_profile(sp)
-        sp.add_argument("--topology", help="topology document used to resolve STT/TTS owners")
+        sp.add_argument(
+            "--topology",
+            default=default_topology_path(),
+            help=(
+                "topology document used to resolve STT/TTS owners "
+                "(default: $ANVIL_SERVING_HOME/operator-topology.toml)"
+            ),
+        )
         sp.add_argument("--topology-overlay", help="deployment overlay identity recorded in context")
         sp.add_argument("--command-host", help="declared command host")
         sp.add_argument("--command-runtime", help="declared command runtime")
@@ -1508,7 +1562,14 @@ def build_parser():
     def add_proxy_resolution(sp):
         add_config(sp)
         add_profile(sp)
-        sp.add_argument("--topology", help="topology document used to resolve the proxy owner")
+        sp.add_argument(
+            "--topology",
+            default=default_topology_path(),
+            help=(
+                "topology document used to resolve the proxy owner "
+                "(default: $ANVIL_SERVING_HOME/operator-topology.toml)"
+            ),
+        )
         sp.add_argument("--topology-overlay", help="deployment overlay applied to the topology")
         sp.add_argument("--command-host", help="declared command host")
         sp.add_argument("--command-runtime", help="declared command runtime")
@@ -1574,6 +1635,12 @@ def build_parser():
     sp = sub.add_parser("benchmark", help="replay a recorded session end-to-end and report latency")
     add_config(sp)
     add_profile(sp)
+    sp.add_argument(
+        "--scope",
+        choices=("end-to-end", "audio"),
+        default="end-to-end",
+        help="benchmark the full STT/LLM/TTS turn or an LLM-free TTS-to-STT audio loop",
+    )
     sp.add_argument(
         "--candidate",
         help="candidate label recorded in benchmark evidence; defaults to overlay file stem",

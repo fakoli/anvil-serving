@@ -106,8 +106,10 @@ evidence.
   confirmation; use bounded `status`/`logs` for inspection. Treat unreachable
   STT/TTS/router endpoints as blockers. Never start audio lifecycle implicitly.
 - Bounded benchmark:
-  `anvil-serving voice benchmark --topology <topology> --config <manifest>` and
-  capture JSON as `voice-pipeline` evidence with `promoted=false`. Keep audio
+  `anvil-serving voice benchmark --config <manifest>` and capture JSON as
+  `voice-pipeline` evidence with `promoted=false`. The benchmark is an endpoint
+  client, not a Realtime-proxy lifecycle operation, so it has no proxy owner.
+  Use `--scope audio` for an LLM-free TTS-to-STT loop. Keep audio
   topology and LLM selection separate: `--profile` selects the audio path and
   `--candidate-overlay <toml>` selects a candidate LLM configuration. Do not
   combine `--candidate-overlay` with direct candidate flags. A voice benchmark

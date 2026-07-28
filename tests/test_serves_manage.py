@@ -121,7 +121,10 @@ def test_cmd_adopt_recreates_manifest_serve_under_compose(capsys):
     # ORDER matters: `docker rm -f` MUST precede `up` (the whole point of recreate — a
     # reordered/up-before-rm regression would leave the stale container or name-clash).
     i_rm = run.calls.index(["docker", "rm", "-f", "sglang"])
-    i_up = run.calls.index(["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"])
+    i_up = run.calls.index([
+        "docker", "compose", "--project-name", "anvil-serving",
+        "-f", "/x/docker-compose.yml", "up", "-d",
+    ])
     assert i_rm < i_up
     out = capsys.readouterr().out
     assert "adopting heavy" in out
@@ -301,9 +304,12 @@ def test_serves_logs_argv_targets_the_named_container():
         if argv[:2] == ["docker", "inspect"]:
             return proc(0, "running\n")
         seen["argv"] = argv
+        seen["kwargs"] = kw
         return proc(0)
     serves.cmd_logs(_TWO, ["fast"], _run=fake)
     assert seen["argv"][:2] == ["docker", "logs"] and seen["argv"][-1] == "vllm-fast"
+    assert seen["kwargs"]["encoding"] == "utf-8"
+    assert seen["kwargs"]["errors"] == "replace"
 
 
 def test_serves_logs_requires_a_name(capsys):

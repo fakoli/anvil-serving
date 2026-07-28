@@ -110,6 +110,14 @@ def commands() -> CommandNode:
                 remote_operation=_remote("serves_status", positionals=("names",)),
             ),
             _resource_node(
+                "probe",
+                "Run an engine-aware functional serve probe.",
+                "anvil_serving.serves",
+                role="model-serve",
+                gpu=True,
+                docs_anchor="docs/cli/serves.md#functional-probes",
+            ),
+            _resource_node(
                 "groups",
                 "List serve groups across the manifest set and their members.",
                 "anvil_serving.serves",

@@ -21,6 +21,18 @@ def test_openclaw_sync_schema_is_direct_alias_only():
     assert "native_provider" not in properties
 
 
+def test_voice_manage_schema_exposes_topology_dispatch_context():
+    properties = mcp.TOOLS["voice_manage"]["inputSchema"]["properties"]
+    assert {
+        "topology_overlay",
+        "command_host",
+        "command_runtime",
+        "target",
+        "transport",
+        "experimental_model_workload",
+    }.issubset(properties)
+
+
 def test_openclaw_sync_apply_writes_direct_alias_provider(tmp_path):
     config = Path(__file__).resolve().parents[1] / "configs" / "example.toml"
     out = tmp_path / "openclaw.json"
@@ -80,6 +92,7 @@ def test_router_manage_confirmed_call_forwards_lifecycle_options(tmp_path, monke
 
     assert result["ok"]
     assert result["data"]["applied"] is True
+    assert result["data"]["target"]["compose_project"] == "anvil-serving"
     argv, confirm, timeout = calls[0]
     assert confirm is True
     assert timeout == 300
@@ -88,7 +101,8 @@ def test_router_manage_confirmed_call_forwards_lifecycle_options(tmp_path, monke
     assert ["--service", "router"] == argv[argv.index("--service"):argv.index("--service") + 2]
     assert ["--env-file", str(env_file)] == argv[argv.index("--env-file"):argv.index("--env-file") + 2]
     assert result["data"]["lifecycle_command"] == [
-        "docker", "compose", "--env-file", str(env_file), "-f", str(compose), "up", "-d",
+        "docker", "compose", "--project-name", "anvil-serving",
+        "--env-file", str(env_file), "-f", str(compose), "up", "-d",
         "--no-deps", "--force-recreate", "router",
     ]
 
@@ -116,6 +130,7 @@ def test_router_manage_preview_reports_target_and_does_not_invoke_docker(tmp_pat
     assert data["target"] == {
         "action": "up",
         "compose": str(compose),
+        "compose_project": "anvil-serving",
         "container": "anvil-router",
         "env_file": str(env_file),
         "no_verify": False,

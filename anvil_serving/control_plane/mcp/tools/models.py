@@ -22,9 +22,11 @@ from ..runtime import (
 
 
 def tool_models_inventory(args: dict) -> dict:
-    from .... import models
+    from .... import models, paths
 
-    catalog_dir = _str_arg(args, "catalog_dir", "model-library")
+    catalog_dir = _str_arg(
+        args, "catalog_dir", os.path.join(paths.config_home(), "model-library")
+    )
     hf_roots = _str_arg(args, "hf_roots", "")
     model_dirs = _str_arg(args, "model_dirs", "")
     sync = _arg_bool(args.get("sync"), False, name="sync")

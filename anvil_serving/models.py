@@ -15,16 +15,21 @@ volume, then serve later with the repo-id as ``--model`` — bytes never touch 9
 """
 import os
 import argparse
+import fnmatch
 import glob
 from contextlib import contextmanager
 from importlib import resources
 import json
+import math
+import re
 import shlex
 import shutil
 import subprocess
 import tempfile
 import tomllib
 import sys
+import urllib.parse
+import urllib.request
 from . import config
 from . import guard
 from . import host as host_ops
@@ -44,6 +49,136 @@ HF_CACHE_MOUNTPOINT = "/root/.cache/huggingface"
 DEFAULT_CATALOG_DIR = "model-library"
 LIFECYCLE_READINESS_TIMEOUT_SECONDS = 600
 LIFECYCLE_READINESS_POLL_SECONDS = 2
+DEFAULT_PULL_HEADROOM_BYTES = 5 * 1024**3
+_REPO_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
+_REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
+
+_VOLUME_CACHE_HELPER = r"""
+import json
+import os
+from pathlib import Path
+import shutil
+import sys
+
+action, cache_text, repo_id, revision = sys.argv[1:5]
+cache = Path(cache_text)
+owner, repo = repo_id.split("/", 1)
+root = cache / "hub" / ("models--" + owner + "--" + repo)
+
+def tree_bytes(path):
+    total = 0
+    if not path.exists():
+        return 0
+    for base, _dirs, files in os.walk(path, followlinks=False):
+        for name in files:
+            item = Path(base) / name
+            try:
+                if not item.is_symlink():
+                    total += item.stat().st_size
+            except OSError:
+                pass
+    return total
+
+def snapshot_id():
+    direct = root / "snapshots" / revision
+    if revision and direct.is_dir():
+        return revision
+    ref = root / "refs" / (revision or "main")
+    if ref.is_file():
+        return ref.read_text(encoding="utf-8").strip()
+    return ""
+
+def referenced_blobs(excluded=""):
+    used = set()
+    snapshots = root / "snapshots"
+    if not snapshots.is_dir():
+        return used
+    for snapshot in snapshots.iterdir():
+        if not snapshot.is_dir() or snapshot.name == excluded:
+            continue
+        for base, _dirs, files in os.walk(snapshot):
+            for name in files:
+                item = Path(base) / name
+                if item.is_symlink():
+                    try:
+                        used.add(item.resolve(strict=True))
+                    except OSError:
+                        pass
+    return used
+
+snapshot = snapshot_id()
+snapshot_path = root / "snapshots" / snapshot if snapshot else None
+incomplete = list(root.rglob("*.incomplete")) if root.exists() else []
+broken = []
+if snapshot_path and snapshot_path.is_dir():
+    for base, _dirs, files in os.walk(snapshot_path):
+        for name in files:
+            item = Path(base) / name
+            if item.is_symlink() and not item.exists():
+                broken.append(str(item))
+
+before = tree_bytes(root)
+report = {
+    "repo_id": repo_id,
+    "revision": revision or "main",
+    "snapshot": snapshot or None,
+    "snapshot_exists": bool(snapshot_path and snapshot_path.is_dir()),
+    "repo_bytes": before,
+    "free_bytes": shutil.disk_usage(cache).free,
+    "incomplete_count": len(incomplete),
+    "broken_symlink_count": len(broken),
+}
+
+if action in {"plan-remove", "remove"} and report["snapshot_exists"]:
+    snapshots = [
+        item for item in (root / "snapshots").iterdir()
+        if item.is_dir()
+    ]
+    if len(snapshots) == 1:
+        reclaimable = before
+    else:
+        remaining = referenced_blobs(snapshot)
+        reclaimable = 0
+        blobs = root / "blobs"
+        if blobs.is_dir():
+            for blob in blobs.iterdir():
+                if blob.is_file() and blob not in remaining:
+                    reclaimable += blob.stat().st_size
+    report["reclaimable_bytes"] = reclaimable
+
+if action == "remove" and report["snapshot_exists"]:
+    shutil.rmtree(snapshot_path)
+    refs = root / "refs"
+    if refs.is_dir():
+        for ref in list(refs.rglob("*")):
+            if ref.is_file():
+                try:
+                    if ref.read_text(encoding="utf-8").strip() == snapshot:
+                        ref.unlink()
+                except (OSError, UnicodeError):
+                    pass
+    remaining_snapshots = [
+        item for item in (root / "snapshots").iterdir()
+        if item.is_dir()
+    ] if (root / "snapshots").is_dir() else []
+    if not remaining_snapshots:
+        shutil.rmtree(root)
+    else:
+        remaining = referenced_blobs()
+        blobs = root / "blobs"
+        if blobs.is_dir():
+            for blob in list(blobs.iterdir()):
+                if blob.is_file() and blob not in remaining:
+                    blob.unlink()
+    after = tree_bytes(root)
+    report.update({
+        "repo_bytes_after": after,
+        "reclaimed_bytes": max(0, before - after),
+        "snapshot_exists_after": bool(snapshot_path.exists()),
+    })
+
+print(json.dumps(report, sort_keys=True))
+"""
 
 
 class CatalogNotFound(FileNotFoundError):
@@ -149,6 +284,188 @@ def _dotenv_value(path, name):
     return None
 
 
+def _pull_token(token_env, token_file, environ):
+    if not token_env:
+        return None
+    token = environ.get(token_env)
+    if isinstance(token, str):
+        token = token.strip()
+    if not token and token_file:
+        token = _dotenv_value(token_file, token_env)
+    return token or None
+
+
+def _hf_repo_bytes(
+    repo_id,
+    revision=None,
+    *,
+    include=None,
+    exclude=None,
+    token=None,
+    _open=urllib.request.urlopen,
+):
+    """Return the exact selected-file size reported by the Hugging Face API."""
+    endpoint = "https://huggingface.co/api/models/%s" % urllib.parse.quote(
+        repo_id, safe="/"
+    )
+    if revision:
+        endpoint += "/revision/%s" % urllib.parse.quote(revision, safe="")
+    endpoint += "?blobs=true"
+    headers = {"Accept": "application/json", "User-Agent": "anvil-serving-model-pull"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    request = urllib.request.Request(endpoint, headers=headers)
+    try:
+        with _open(request, timeout=30) as response:
+            payload = json.loads(response.read(8 * 1024 * 1024))
+    except Exception as exc:
+        raise ValueError("could not resolve repository size from Hugging Face: %s" % exc) from exc
+    siblings = payload.get("siblings") if isinstance(payload, dict) else None
+    if not isinstance(siblings, list):
+        raise ValueError("Hugging Face metadata did not include a file inventory")
+    total = 0
+    matched = 0
+    for sibling in siblings:
+        if not isinstance(sibling, dict):
+            continue
+        filename = sibling.get("rfilename")
+        size = sibling.get("size")
+        if not isinstance(filename, str) or not isinstance(size, int) or size < 0:
+            continue
+        if include and not fnmatch.fnmatch(filename, include):
+            continue
+        if exclude and fnmatch.fnmatch(filename, exclude):
+            continue
+        total += size
+        matched += 1
+    if matched == 0:
+        raise ValueError("Hugging Face metadata did not provide sizes for selected files")
+    return total
+
+
+def _volume_cache_report(
+    action,
+    repo_id,
+    revision,
+    *,
+    volume=DEFAULT_PULL_VOLUME,
+    image=DEFAULT_PULL_IMAGE,
+    _run=subprocess.run,
+):
+    interpreter_shim = (
+        'if command -v python3 >/dev/null 2>&1; then exec python3 "$@"; '
+        'elif command -v python >/dev/null 2>&1; then exec python "$@"; '
+        'else echo "model cache image has no python interpreter" >&2; exit 127; fi'
+    )
+    argv = [
+        "docker", "run", "--rm",
+        "-v", "%s:%s" % (volume, HF_CACHE_MOUNTPOINT),
+        "--entrypoint", "sh",
+        image,
+        "-c", interpreter_shim,
+        "anvil-cache-inspector",
+        "-c", _VOLUME_CACHE_HELPER,
+        action,
+        HF_CACHE_MOUNTPOINT,
+        repo_id,
+        revision or "",
+    ]
+    try:
+        result = _run(argv, capture_output=True, text=True)
+    except OSError as exc:
+        raise ValueError("could not inspect named model cache volume: %s" % exc) from exc
+    if result.returncode != 0:
+        raise ValueError(
+            "named model cache inspection failed: %s"
+            % (result.stderr or result.stdout or "docker returned non-zero").strip()
+        )
+    try:
+        return json.loads((result.stdout or "").strip().splitlines()[-1])
+    except (IndexError, json.JSONDecodeError) as exc:
+        raise ValueError("named model cache inspection returned invalid JSON") from exc
+
+
+def preflight_pull(
+    repo_id,
+    revision=None,
+    *,
+    volume=DEFAULT_PULL_VOLUME,
+    image=DEFAULT_PULL_IMAGE,
+    include=None,
+    exclude=None,
+    token=None,
+    expected_bytes=None,
+    headroom_bytes=DEFAULT_PULL_HEADROOM_BYTES,
+    _run=subprocess.run,
+    _open=urllib.request.urlopen,
+):
+    """Fail closed before a download can exhaust the Docker data disk."""
+    total = (
+        int(expected_bytes)
+        if expected_bytes is not None
+        else _hf_repo_bytes(
+            repo_id,
+            revision,
+            include=include,
+            exclude=exclude,
+            token=token,
+            _open=_open,
+        )
+    )
+    if total <= 0:
+        raise ValueError("expected repository size must be positive")
+    report = _volume_cache_report(
+        "report", repo_id, revision, volume=volume, image=image, _run=_run
+    )
+    cached = int(report.get("repo_bytes") or 0)
+    free = int(report.get("free_bytes") or 0)
+    missing = max(0, total - cached)
+    required = missing + int(headroom_bytes)
+    result = {
+        **report,
+        "expected_bytes": total,
+        "cached_repo_bytes": cached,
+        "missing_bytes": missing,
+        "headroom_bytes": int(headroom_bytes),
+        "required_free_bytes": required,
+        "space_ok": free >= required,
+    }
+    if not result["space_ok"]:
+        raise ValueError(
+            "insufficient Docker-volume space: need %d bytes (%d missing + %d "
+            "headroom), have %d free"
+            % (required, missing, int(headroom_bytes), free)
+        )
+    return result
+
+
+def verify_pull(
+    repo_id,
+    revision=None,
+    *,
+    volume=DEFAULT_PULL_VOLUME,
+    image=DEFAULT_PULL_IMAGE,
+    _run=subprocess.run,
+):
+    """Independently verify the completed snapshot after `hf download` exits."""
+    report = _volume_cache_report(
+        "report", repo_id, revision, volume=volume, image=image, _run=_run
+    )
+    if not report.get("snapshot_exists"):
+        raise ValueError("download returned success but the requested snapshot is absent")
+    if report.get("incomplete_count"):
+        raise ValueError(
+            "download returned success but %s incomplete cache file(s) remain"
+            % report["incomplete_count"]
+        )
+    if report.get("broken_symlink_count"):
+        raise ValueError(
+            "download returned success but %s snapshot link(s) are broken"
+            % report["broken_symlink_count"]
+        )
+    return report
+
+
 def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
              revision=None, include=None, exclude=None,
              token_env=DEFAULT_PULL_TOKEN_ENV,
@@ -200,15 +517,11 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
 
     child_env = dict(environ)
     if token_env and not dry_run:
-        token = environ.get(token_env)
-        if isinstance(token, str):
-            token = token.strip()
-        if not token and token_file:
-            try:
-                token = _dotenv_value(token_file, token_env)
-            except ValueError as exc:
-                print(f"[anvil-serving] {exc}", file=sys.stderr)
-                return 2
+        try:
+            token = _pull_token(token_env, token_file, environ)
+        except ValueError as exc:
+            print(f"[anvil-serving] {exc}", file=sys.stderr)
+            return 2
         if not token:
             expanded = os.path.expanduser(token_file) if token_file else None
             source = f" or add it to {expanded!r}" if expanded else ""
@@ -244,10 +557,12 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
         else:
             print("token source: disabled (--no-token)")
         print("preconditions: Docker installed and running; named volume is writable")
-        print("ordered actions: resolve token source; start one download container; run hf download")
+        print("ordered actions: resolve token source; check repository size and volume "
+              "free space; run hf download with inherited progress; verify the exact snapshot")
         print("docker command:")
         print(printable)
-        print("deferred until apply: confirmation, token read, image resolution, and Docker execution")
+        print("deferred until apply: confirmation, token read, metadata/space probes, "
+              "image resolution, Docker execution, and snapshot verification")
         print("recovery: rerun the same command; hf download resumes completed and partial files")
         print("rollback: none automatic; downloaded volume bytes remain until explicitly removed")
         return 0
@@ -381,6 +696,17 @@ def pull_main(argv):
                          "(default: %(default)s)")
     ap.add_argument("--no-token", action="store_true",
                     help="pull explicitly without forwarding HF_TOKEN")
+    ap.add_argument(
+        "--expected-bytes",
+        type=int,
+        help="trusted repository byte size override when remote metadata is unavailable",
+    )
+    ap.add_argument(
+        "--headroom-gib",
+        type=float,
+        default=DEFAULT_PULL_HEADROOM_BYTES / 1024**3,
+        help="free space retained after the estimated download (default: %(default)s GiB)",
+    )
     ap.add_argument("--dry-run", action="store_true",
                     help="print the docker command that WOULD run, then exit")
     a = ap.parse_args(argv)
@@ -390,11 +716,68 @@ def pull_main(argv):
     except host_ops.HostConfigError as exc:
         print("[anvil-serving] %s" % exc, file=sys.stderr)
         return 2
+    if a.expected_bytes is not None and a.expected_bytes <= 0:
+        print("[anvil-serving] --expected-bytes must be positive", file=sys.stderr)
+        return 2
+    if not math.isfinite(a.headroom_gib) or a.headroom_gib < 0:
+        print("[anvil-serving] --headroom-gib must be a finite nonnegative number", file=sys.stderr)
+        return 2
+    if not a.dry_run:
+        try:
+            token = _pull_token(
+                None if a.no_token else a.token_env,
+                a.token_file,
+                os.environ,
+            )
+            preflight = preflight_pull(
+                a.repo_id,
+                a.revision,
+                volume=a.volume,
+                image=a.image,
+                include=a.include,
+                exclude=a.exclude,
+                token=token,
+                expected_bytes=a.expected_bytes,
+                headroom_bytes=round(a.headroom_gib * 1024**3),
+            )
+        except ValueError as exc:
+            print("[anvil-serving] model pull preflight refused: %s" % exc, file=sys.stderr)
+            return 4
+        print(
+            "[anvil-serving] space gate passed: expected=%d cached=%d missing=%d "
+            "free=%d retained-headroom=%d bytes"
+            % (
+                preflight["expected_bytes"],
+                preflight["cached_repo_bytes"],
+                preflight["missing_bytes"],
+                preflight["free_bytes"],
+                preflight["headroom_bytes"],
+            )
+        )
     before = None if a.dry_run else host_ops.capture_cache_before(policy)
     rc = run_pull(a.repo_id, volume=a.volume, image=a.image, revision=a.revision,
                   include=a.include, exclude=a.exclude,
                   token_env=None if a.no_token else a.token_env,
                   token_file=a.token_file, dry_run=a.dry_run)
+    if rc == 0 and not a.dry_run:
+        try:
+            verification = verify_pull(
+                a.repo_id,
+                a.revision,
+                volume=a.volume,
+                image=a.image,
+            )
+        except ValueError as exc:
+            print("[anvil-serving] model pull verification failed: %s" % exc, file=sys.stderr)
+            return 5
+        print(
+            "[anvil-serving] snapshot verified: %s@%s (%d cached bytes)"
+            % (
+                a.repo_id,
+                verification.get("snapshot") or a.revision or "main",
+                int(verification.get("repo_bytes") or 0),
+            )
+        )
     if a.dry_run:
         if rc == 0:
             host_ops.render_cache_reclaim_plan(policy, operation)
@@ -405,6 +788,88 @@ def pull_main(argv):
         )
         host_ops.render_cache_reclaim_result(result)
     return rc
+
+
+def cache_remove_main(argv):
+    """Human-gated exact snapshot deletion inside one named HF cache volume."""
+    ap = argparse.ArgumentParser(
+        prog="anvil-serving models cache remove",
+        description=(
+            "Plan or remove exactly one Hugging Face repository revision from a "
+            "named Docker cache volume. Unreferenced blobs are collected and the "
+            "post-delete snapshot absence is verified."
+        ),
+    )
+    ap.add_argument("repo_id", help="exact Hugging Face repository id (OWNER/REPO)")
+    ap.add_argument("--revision", required=True, help="exact cached commit or ref")
+    ap.add_argument("--volume", default=DEFAULT_PULL_VOLUME)
+    ap.add_argument("--image", default=DEFAULT_PULL_IMAGE)
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+    args = ap.parse_args(argv)
+    if not _REPO_ID_RE.fullmatch(args.repo_id):
+        print("repository must be an exact OWNER/REPO id", file=sys.stderr)
+        return 2
+    if (
+        not _REVISION_RE.fullmatch(args.revision)
+        or args.revision.startswith("/")
+        or ".." in args.revision.split("/")
+    ):
+        print("revision contains an unsafe or unsupported path", file=sys.stderr)
+        return 2
+    if any(separator in args.volume for separator in ("/", "\\", ":")):
+        print("--volume must be a named Docker volume", file=sys.stderr)
+        return 2
+    try:
+        plan = _volume_cache_report(
+            "plan-remove",
+            args.repo_id,
+            args.revision,
+            volume=args.volume,
+            image=args.image,
+        )
+    except ValueError as exc:
+        print("model cache removal plan failed: %s" % exc, file=sys.stderr)
+        return 1
+    print("MODEL CACHE REMOVE PLAN")
+    print("repository: %s" % args.repo_id)
+    print("revision: %s" % args.revision)
+    print("resolved snapshot: %s" % (plan.get("snapshot") or "(absent)"))
+    print("volume: %s" % args.volume)
+    print("cached bytes: %d" % int(plan.get("repo_bytes") or 0))
+    print("estimated reclaimable bytes: %d" % int(plan.get("reclaimable_bytes") or 0))
+    if not plan.get("snapshot_exists"):
+        print("snapshot is already absent; nothing to remove")
+        return 0
+    apply = not args.dry_run and (args.confirm or guard.confirmation_authorized())
+    if not apply:
+        print("DRY-RUN: no cache bytes removed")
+        print("apply requires the same command with --confirm")
+        return 0 if args.dry_run else 3
+    try:
+        result = _volume_cache_report(
+            "remove",
+            args.repo_id,
+            args.revision,
+            volume=args.volume,
+            image=args.image,
+        )
+    except ValueError as exc:
+        print("model cache removal failed: %s" % exc, file=sys.stderr)
+        return 1
+    if result.get("snapshot_exists_after"):
+        print("model cache removal failed: snapshot still exists", file=sys.stderr)
+        return 5
+    print(
+        "removed %s@%s; reclaimed %d bytes; %d repository bytes remain"
+        % (
+            args.repo_id,
+            args.revision,
+            int(result.get("reclaimed_bytes") or 0),
+            int(result.get("repo_bytes_after") or 0),
+        )
+    )
+    return 0
 
 
 # The serve-recipe registry ships at <repo>/configs/serve-recipes.toml.
@@ -841,25 +1306,39 @@ def _recipe_main(argv):
             return rc
         recipe_serve = recipe.get("serve", {})
         port = recipe_serve.get("port")
+        readiness = True
+        if port:
+            from . import serves
+            readiness = serves._await_healthy(
+                {"port": port, "health": recipe_serve.get("health", "/health")},
+                LIFECYCLE_READINESS_TIMEOUT_SECONDS,
+                LIFECYCLE_READINESS_POLL_SECONDS,
+            )
+        if not readiness:
+            print(
+                "recipe container started but did not become healthy within %ss"
+                % LIFECYCLE_READINESS_TIMEOUT_SECONDS,
+                file=sys.stderr,
+            )
+            print(
+                "inspect: docker logs --tail 200 %s" % shlex.quote(a.container),
+                file=sys.stderr,
+            )
+            print(
+                "recovery: anvil-serving serves rm %s --allow-literal --confirm --yes"
+                % shlex.quote(a.container),
+                file=sys.stderr,
+            )
+            return 1
         if cache_policy["enabled"]:
-            readiness = True
-            if host_ops.cache_reclaim_is_active(cache_policy) and before is not None:
-                if port:
-                    from . import serves
-                    readiness = serves._await_healthy(
-                        {"port": port, "health": recipe_serve.get("health", "/health")},
-                        LIFECYCLE_READINESS_TIMEOUT_SECONDS,
-                        LIFECYCLE_READINESS_POLL_SECONDS,
-                    )
-                else:
-                    readiness = False
             result = host_ops.automatic_cache_reclaim(
                 cache_policy, before, operation="models recipes load",
                 readiness=readiness,
             )
             host_ops.render_cache_reclaim_result(result)
         if port:
-            print("next: preflight before trusting this serve: anvil-serving eval preflight --base-url http://127.0.0.1:%s/v1 --model %s --confirm" % (port, recipe["model"]))
+            served_model = recipe_serve.get("served_model_name") or recipe["model"]
+            print("next: preflight before trusting this serve: anvil-serving eval preflight --base-url http://127.0.0.1:%s/v1 --model %s --confirm" % (port, served_model))
         return 0
     return 2
 
@@ -1167,9 +1646,12 @@ def main(argv):
                 argv[2:],
                 prog="anvil-serving models cache prune",
             )
+        if len(argv) > 1 and argv[1] == "remove":
+            return cache_remove_main(argv[2:])
         cache_ap = argparse.ArgumentParser(prog="anvil-serving models cache")
         cache_sub = cache_ap.add_subparsers(dest="cache_action", required=True)
         cache_sub.add_parser("prune", help="plan and gate Hugging Face cache cleanup")
+        cache_sub.add_parser("remove", help="remove one exact repository revision")
         cache_ap.parse_args(argv[1:])
         return 2
     if argv and argv[0] == "score":

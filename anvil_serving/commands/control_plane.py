@@ -161,6 +161,20 @@ def commands() -> tuple[CommandNode, ...]:
             "Manage the optional private Anvil Workbench hub stack.",
             children=(
                 _resource_node(
+                    "build",
+                    "Build the Workbench hub image from the local companion checkout.",
+                    "anvil_serving.workbench",
+                    role="host",
+                    options=CONFIRM_OPTIONS
+                    + (
+                        _option("--source", summary="Workbench source checkout.", value_name="PATH"),
+                        _option("--image", summary="Local image tag.", value_name="TAG"),
+                    ),
+                    mutation="mutate",
+                    argv_prefix=("build",),
+                    docs_anchor="docs/WORKBENCH.md#lifecycle",
+                ),
+                _resource_node(
                     "up",
                     "Start the private Workbench hub, Postgres, and Neo4j projection.",
                     "anvil_serving.workbench",
