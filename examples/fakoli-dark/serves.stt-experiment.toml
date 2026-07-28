@@ -1,0 +1,22 @@
+# Opt-in STT candidate serves. Run one at a time on the RTX 5090. Neither
+# declaration changes the live Parakeet endpoint or the router audio route.
+
+[[serve]]
+name = "nemotron35-asr"
+container = "anvil-stt-nemotron35"
+port = 39041
+model = "/models/nemotron-3.5-asr-streaming-0.6b"
+engine = "audio"
+health = "/v1/models"
+groups = ["stt-qualification"]
+up = "docker compose -f {dir}/docker-compose.stt-experiment.yml up -d --build nemotron35-asr"
+
+[[serve]]
+name = "qwen3-asr-0.6b"
+container = "anvil-stt-qwen3-asr-0.6b"
+port = 39042
+model = "qwen3-asr-0.6b"
+engine = "audio"
+health = "/health"
+groups = ["stt-qualification"]
+up = "docker compose -f {dir}/docker-compose.stt-experiment.yml up -d --build qwen3-asr-0.6b"

@@ -1,0 +1,13 @@
+[voice.stt]
+base_url = "http://127.0.0.1:30010/v1"
+model = "tdt-0.6b-v3"
+stream = false
+response_format = "json"
+
+[stt_benchmark.identity]
+served_name = "tdt-0.6b-v3"
+checkpoint = "nvidia/parakeet-tdt-0.6b-v3"
+runtime = "parakeet.cpp-server"
+image = "ghcr.io/mudler/parakeet.cpp-server:latest-cuda"
+image_digest = "sha256:7a08005a8a26dd8fe3709f1df3d8dc44be7afef93a27e0830916cc2f54d0304e"
+hardware = "Fakoli Dark RTX 5090"

@@ -25,3 +25,9 @@ The canonical voice operations procedure is
 voice-pipeline evidence; it is not LLM serve qualification evidence,
 `promotion_quality_evidence` remains `false`, and the result remains
 `promoted=false` until a human-approved serve or direct-alias change.
+
+Multi-sample STT corpus qualification uses
+`skills/anvil-serving-stt-benchmark/SKILL.md`. It owns deterministic corpus
+preparation, repeated/concurrent WER/CER and latency evidence, restoration
+checks, and the dated finding; lifecycle mechanics remain in the CLI and
+managed serve manifests.

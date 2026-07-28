@@ -1,0 +1,16 @@
+[voice.stt]
+base_url = "http://127.0.0.1:39042/v1"
+model = "qwen3-asr-0.6b"
+stream = false
+response_format = "json"
+timeout = 60.0
+
+[stt_benchmark.identity]
+served_name = "qwen3-asr-0.6b"
+checkpoint = "Qwen/Qwen3-ASR-0.6B"
+revision = "5eb144179a02acc5e5ba31e748d22b0cf3e303b0"
+runtime = "qwen-vllm"
+runtime_version = "0.14.0+official-qwen-parser"
+image = "anvil-qwen3-asr:official-vllm-0.14.0"
+image_digest = "sha256:8bc0588b53f601ed2a8b9da23a89fa3d90f27bef70ea73d2efde2ba8f93ccc1c"
+hardware = "Fakoli Dark RTX 5090"

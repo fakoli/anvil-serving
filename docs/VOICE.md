@@ -80,6 +80,8 @@ not part of this router contract.
 | `anvil-serving voice proxy status` | Reports persistent process identity and readiness. | Does not infer health from a PID alone. |
 | `anvil-serving voice proxy logs` | Reads a bounded tail of persistent proxy logs. | Does not stream without a bound. |
 | `anvil-serving voice benchmark` | Runs one configured end-to-end voice turn and prints latency/quality metrics as JSON. | Does not change the active direct alias or prove subjective audio quality by itself. |
+| `anvil-serving voice corpus prepare` | Builds a deterministic multi-sample English STT corpus in an evidence workspace. | Does not commit the public archives or change a serve. |
+| `anvil-serving voice corpus validate` | Validates corpus JSONL, WAV/FLAC metadata, paths, hashes, and case count. | Does not contact an STT endpoint. |
 | `anvil-serving voice profiles list` | Lists manifest profiles or validates the resolved manifest for one profile. | Does not mutate lifecycle or start the Realtime server. |
 | `anvil-serving voice proxy bridge` | On Mini, forwards loopback STT/TTS proxy ports to topology-owned Dark endpoints. | Does not bind publicly, manage models, add auth, or inspect audio traffic. |
 | `anvil-serving voice sidecar` | Validates or renders a Hugging Face speech-to-speech sidecar. | Does not run anvil-serving's native Realtime cascade. |
@@ -124,7 +126,7 @@ Voice has four separate operational concerns:
 2. **Realtime session serving:** `voice proxy run` owns a foreground WebSocket
    server; `voice proxy up/down/restart/status/logs` own the persistent Mini
    service. Neither surface owns model lifecycle.
-3. **Evidence capture:** `voice benchmark` and the hardware validation scripts
+3. **Evidence capture:** `voice benchmark`, `voice corpus`, and the hardware validation scripts
    measure whether the configured STT -> LLM -> TTS path is usable on the
    target host.
 4. **Private audio forwarding:** `voice proxy bridge` listens only on Mini
@@ -680,6 +682,30 @@ only tests that checkout's loopback and is a topology negative control.
 anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 anvil-serving voice benchmark --scope audio --config ~/.anvil-serving/voice.toml --profile dark-audio
 ```
+
+For multi-sample STT qualification, prepare/validate the versioned corpus and
+run the repeated and concurrency lanes separately:
+
+```bash
+anvil-serving voice corpus prepare \
+  --config ~/.anvil-serving/voice.audio-dark.toml \
+  --out .anvil/evidence/stt-corpus
+anvil-serving voice corpus validate \
+  --manifest .anvil/evidence/stt-corpus/manifest.jsonl \
+  --expected-cases 30
+anvil-serving voice benchmark --scope stt \
+  --config ~/.anvil-serving/voice.audio-dark.toml \
+  --corpus .anvil/evidence/stt-corpus/manifest.jsonl \
+  --repetitions 3 --concurrency 1 \
+  --stt-candidate-overlay examples/fakoli-dark/stt-experiments/overlays/nemotron35-asr.toml \
+  --evidence-out .anvil/evidence/nemotron35-stt.json
+```
+
+The primary aggregate contains the 24 LibriSpeech recordings; six
+Kokoro-generated agent phrases are reported separately. The command writes
+`stt-benchmark-evidence/v1` atomically and returns nonzero for incomplete runs.
+Use the canonical `anvil-serving-stt-benchmark` skill for lifecycle,
+restoration, decision, and publication gates.
 
 For candidate LLM A/B, keep audio topology in `--profile` and compose the LLM
 candidate with an overlay:

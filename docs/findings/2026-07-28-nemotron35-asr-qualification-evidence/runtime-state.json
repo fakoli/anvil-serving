@@ -1,0 +1,55 @@
+{
+  "schema_version": "stt-qualification-runtime-state/v1",
+  "host": "Fakoli Dark",
+  "candidate_gpu": {
+    "name": "NVIDIA GeForce RTX 5090",
+    "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+    "total_mib": 32607,
+    "observed_pre_candidate_mib_range": [28444, 29176],
+    "nemotron_loaded_total_mib": 31652,
+    "qwen3_asr_loaded_total_mib": 31693,
+    "measurement_scope": "whole GPU including protected Qwen2.5-Omni, audio serves, display, and host applications; not isolated model allocation"
+  },
+  "protected_gpu": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "total_mib": 97887,
+    "observed_used_mib": 90439,
+    "heavy_remained_running": true
+  },
+  "protected_services": [
+    {
+      "container": "anvil-voice-stt",
+      "image_id_before_and_after": "sha256:7a08005a8a26dd8fe3709f1df3d8dc44be7afef93a27e0830916cc2f54d0304e",
+      "model": "tdt-0.6b-v3",
+      "post_run_check": "transcription passed"
+    },
+    {
+      "container": "anvil-voice-tts",
+      "image_id_before_and_after": "sha256:81a6937f1ea24cd4a729de517385074cb4ee113ed9ba70bde0557ac912451712",
+      "model": "kokoro",
+      "post_run_check": "speech WAV passed"
+    },
+    {
+      "container": "vllm-qwen25-omni-3b",
+      "image_id_before_and_after": "sha256:89cd26b02d75404cf950516eefc524eff49cd5cb8d3f6e3818e374db395b0d21",
+      "model": "qwen25-omni-3b",
+      "paused": false,
+      "post_run_check": "identity and completion passed"
+    },
+    {
+      "container": "anvil-router",
+      "image_id_before_and_after": "sha256:8fe5c72c7f1af09f7eaa33b2813c581e1b0a27b37172f9162d662101e8819c74",
+      "post_run_check": "authenticated health, model list, and llm.primary completion passed"
+    },
+    {
+      "container": "vllm-laguna-s-primary",
+      "image_id_before_and_after": "sha256:212a1bd7b4267c604408d17dc0048ef152101bc67fbe6ba8567899fc1f227bcd",
+      "model": "laguna-s-2.1-nvfp4",
+      "post_run_check": "identity and completion passed"
+    }
+  ],
+  "candidate_containers_removed": true,
+  "router_audio_route_changed": false,
+  "default_stt_promoted": false
+}

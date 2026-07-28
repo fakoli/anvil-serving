@@ -39,7 +39,10 @@ forwarding bridge, and collecting bounded voice benchmarks.
    calling its own `127.0.0.1`.
 6. Treat voice benchmark output as voice-pipeline evidence. Voice results do
    not qualify an LLM serve or change a direct gateway alias.
-7. Do not introduce one-off lifecycle, proxy, or port-forwarding scripts as the
+7. Route multi-sample STT corpus qualification to
+   `skills/anvil-serving-stt-benchmark/SKILL.md`. Keep this skill for
+   single-turn audio/voice-pipeline evidence and topology lifecycle.
+8. Do not introduce one-off lifecycle, proxy, or port-forwarding scripts as the
    operational path. If repeatable voice operation needs a new control, it
    belongs in `anvil-serving voice` and, when agent-operated, MCP/controller.
 
@@ -116,6 +119,12 @@ evidence.
   does not replace `anvil-serving eval preflight`, capacity benchmarking, or
   repeated `anvil-serving eval benchmark quality` evidence for LLM serve
   qualification.
+- Multi-sample STT qualification:
+  use `anvil-serving voice corpus prepare|validate` and
+  `anvil-serving voice benchmark --scope stt` through the canonical
+  `anvil-serving-stt-benchmark` skill. Do not collapse its primary human set,
+  separate synthetic set, repeated schedule, concurrency lane, or restoration
+  checks into the bounded one-turn benchmark above.
 
 ## Result Packet
 
