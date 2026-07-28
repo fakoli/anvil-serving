@@ -185,6 +185,8 @@ llm.voice = "omni-local"
     )
 
     assert result["applied"] is True
+    assert result["unavailable_tiers"] == []
+    assert result["tier_status"] == [{"tier_id": "omni-local", "ready": True}]
     assert calls == [
         ("status", None),
         ("quiesce", "fast-local"),
@@ -193,6 +195,71 @@ llm.voice = "omni-local"
         ("status", None),
     ]
     assert installed == [str(config)]
+
+
+def test_install_config_accepts_exact_desired_tiers_when_a_serve_is_unavailable(tmp_path):
+    config = tmp_path / "router.toml"
+    config.write_text(
+        """
+[router]
+[[router.tiers]]
+id = "primary-local"
+base_url = "http://127.0.0.1:30002/v1"
+model = "primary"
+dialect = "openai"
+context_limit = 262144
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
+[[router.tiers]]
+id = "omni-local"
+base_url = "http://127.0.0.1:30003/v1"
+model = "omni"
+dialect = "openai"
+context_limit = 65536
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_OMNI_LOCAL_KEY"
+[router.model_routes]
+llm.primary = "primary-local"
+llm.voice = "omni-local"
+""",
+        encoding="utf-8",
+    )
+
+    statuses = iter([
+        {"tiers": [{"tier_id": "primary-local", "ready": True}]},
+        {"tiers": [
+            {"tier_id": "primary-local", "ready": True},
+            {
+                "tier_id": "omni-local",
+                "ready": False,
+                "readiness_state": "unavailable",
+                "readiness_reason": "health_transport_URLError",
+            },
+        ]},
+    ])
+
+    def transition(action, **_kwargs):
+        if action == "status":
+            return next(statuses)
+        if action == "drain":
+            return {"result": {"drained": True}}
+        return {"result": {"applied": True}}
+
+    result = router_manage.install_config(
+        str(config),
+        confirm=True,
+        dry_run=False,
+        _transition=transition,
+        _install=lambda _path: 0,
+        _sleep=lambda _seconds: None,
+    )
+
+    assert result["applied"] is True
+    assert result["unavailable_tiers"] == ["omni-local"]
+    assert result["tier_status"][0]["tier_id"] == "primary-local"
+    assert result["tier_status"][1]["readiness_reason"] == "health_transport_URLError"
 
 
 def test_install_config_compensates_when_drain_fails(tmp_path):
