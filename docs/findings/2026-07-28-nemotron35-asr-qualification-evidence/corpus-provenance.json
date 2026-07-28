@@ -1,0 +1,18 @@
+{
+  "archives": {
+    "test-clean": {
+      "filename": "test-clean.tar.gz",
+      "md5": "32fa31d27d2e1cad72775fee3f4849a9",
+      "url": "https://www.openslr.org/resources/12/test-clean.tar.gz"
+    },
+    "test-other": {
+      "filename": "test-other.tar.gz",
+      "md5": "fb5a50374b501bb3bac4815ee91d3135",
+      "url": "https://www.openslr.org/resources/12/test-other.tar.gz"
+    }
+  },
+  "audio_normalization": "selected LibriSpeech FLAC decoded to 16-kHz mono WAV",
+  "schema_version": "stt-corpus/v1",
+  "selection": "4 short, 4 medium, and 4 long utterances per LibriSpeech split; speaker-diverse deterministic ordering",
+  "synthetic_generator": "Kokoro through configured OpenAI-compatible TTS endpoint"
+}

@@ -112,6 +112,11 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   candidate benchmarks, keep Mini model-free and select Dark-host audio or a
   Mini-side proxy to Dark. Use `mini-audio` only when explicitly testing the
   optional same-host/local-audio mode.
+- STT qualification: route multi-sample corpus preparation, repeated WER/CER
+  and latency measurement, candidate overlays, concurrency lanes, restoration,
+  and findings to `skills/anvil-serving-stt-benchmark/SKILL.md`. The general
+  workbench and bounded voice benchmark do not replace its fail-closed evidence
+  contract.
 - Harness sync: preview OpenClaw provider, skill, and agent config with
   `openclaw_sync`; apply only to an explicit `out`/`gateway_host` target and
   preserve operator-owned keys.

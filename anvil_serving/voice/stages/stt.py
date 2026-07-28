@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import io
 import json
+import mimetypes
 import os
 import urllib.error
 import urllib.request
@@ -63,6 +64,10 @@ class STTStageConfig:
     # For non-streaming OpenAI-compatible servers that default to another
     # format, request the JSON shape this client consumes.
     response_format: Optional[str] = None
+    # Optional OpenAI-compatible conditioning fields. They are omitted unless
+    # explicitly configured so existing endpoints keep their current wire shape.
+    language: Optional[str] = None
+    prompt: Optional[str] = None
 
 
 class STTClientError(Exception):
@@ -127,7 +132,86 @@ def build_transcription_fields(config: STTStageConfig) -> Dict[str, str]:
         fields["stream"] = "true"
     if config.response_format:
         fields["response_format"] = config.response_format
+    if config.language:
+        fields["language"] = config.language
+    if config.prompt:
+        fields["prompt"] = config.prompt
     return fields
+
+
+def _authorization_headers(config: STTStageConfig) -> Dict[str, str]:
+    headers: Dict[str, str] = {}
+    if config.api_key_env:
+        token = (os.environ.get(config.api_key_env) or "").strip()
+        if token:
+            headers["Authorization"] = "Bearer %s" % token
+    return headers
+
+
+def transcribe_file(
+    path: os.PathLike[str] | str,
+    config: STTStageConfig,
+    *,
+    transport: Optional[Transport] = None,
+) -> Dict[str, Any]:
+    """Transcribe one WAV/FLAC file and return its validated JSON response.
+
+    The reusable STT benchmark intentionally uses the non-streaming OpenAI
+    contract. A malformed response is a hard error and an optional language
+    tag is preserved for the explicit automatic-language-detection probe.
+    """
+    filename = os.path.basename(os.fspath(path))
+    content_type = mimetypes.guess_type(filename)[0]
+    if content_type not in ("audio/wav", "audio/x-wav", "audio/flac", "audio/x-flac"):
+        content_type = "audio/flac" if filename.lower().endswith(".flac") else "audio/wav"
+    with open(path, "rb") as stream:
+        file_bytes = stream.read()
+    file_config = STTStageConfig(
+        base_url=config.base_url,
+        model=config.model,
+        api_key_env=config.api_key_env,
+        timeout=config.timeout,
+        stream=False,
+        response_format=config.response_format or "json",
+        language=config.language,
+        prompt=config.prompt,
+    )
+    body, boundary = _multipart_encode(
+        build_transcription_fields(file_config),
+        file_field="file",
+        filename=filename,
+        content_type=content_type,
+        file_bytes=file_bytes,
+    )
+    headers = {"Content-Type": "multipart/form-data; boundary=%s" % boundary}
+    headers.update(_authorization_headers(config))
+    url = config.base_url.rstrip("/") + "/audio/transcriptions"
+    response = (transport or _default_transport)(
+        url,
+        data=body,
+        headers=headers,
+        timeout=config.timeout,
+    )
+    try:
+        raw = response.read()
+        try:
+            payload = json.loads(raw)
+        except (TypeError, ValueError) as exc:
+            raise STTClientError("STT stage: response was not valid JSON: %s" % exc) from exc
+        if not isinstance(payload, Mapping) or not isinstance(payload.get("text"), str):
+            raise STTClientError(
+                "STT stage: response missing a string 'text' field: %r" % (payload,)
+            )
+        if "<asr_text>" in payload["text"]:
+            raise STTClientError(
+                "STT stage: response contained an unparsed provider ASR envelope"
+            )
+        return dict(payload)
+    finally:
+        try:
+            response.close()
+        except Exception:  # noqa: BLE001 - best-effort cleanup
+            pass
 
 
 class STTStreamAssembler:
@@ -185,10 +269,7 @@ def transcribe_stream(
     headers = {"Content-Type": "multipart/form-data; boundary=%s" % boundary}
     if config.stream:
         headers["Accept"] = "text/event-stream"
-    if config.api_key_env:
-        token = (os.environ.get(config.api_key_env) or "").strip()
-        if token:
-            headers["Authorization"] = "Bearer %s" % token
+    headers.update(_authorization_headers(config))
 
     resp = (transport or _default_transport)(url, data=body, headers=headers, timeout=config.timeout)
     try:
