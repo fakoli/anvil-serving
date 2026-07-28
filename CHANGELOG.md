@@ -8,6 +8,35 @@ All notable changes to this project are documented here. The format is based on
 
 ## [0.14.0] - 2026-07-27
 
+Anvil Serving 0.14.0 is the production-readiness and modularization release.
+Since 0.13.3, the supported operator path has been exercised end to end on the
+reference two-GPU host, repaired where live testing exposed gaps, and organized
+around explicit single-user lifecycle boundaries.
+
+### Highlights
+
+- **Production capability sweep completed.** Managed serving, router, recipe,
+  benchmark, voice, OCR, reranker, embeddings, ComfyUI, and Workbench workflows
+  were exercised through product commands. Agent-A1 and Laguna results, the
+  voice round trip, purpose-model checks, and final runtime state are published
+  in the dated release-readiness finding.
+- **One stack per operational purpose.** Serving, auxiliary capabilities,
+  voice audio, ComfyUI, and Workbench no longer share ambiguous Compose project
+  ownership. Each stack can be operated independently, while the router remains
+  owned by Anvil Serving.
+- **A reproducible local Workbench path.** Operators can build the Workbench
+  image locally, bring up its private stack, reuse the router authentication
+  contract, and verify the complete Workbench-to-router-to-model path without
+  publishing or pulling a project image from an external repository.
+- **Stronger benchmark evidence.** Capacity runs now have deterministic context
+  plans, authoritative token accounting, explicit `capacity-v2` measurement
+  identity, bounded failure retention, and fail-closed validation. The benchmark
+  implementation is split into focused modules behind its public facade.
+- **Smaller, explicit control-plane modules.** Command registration, controller
+  services, MCP foundations, and all MCP tool families are independently
+  reviewable packages. Public compatibility facades and deterministic direct
+  dispatch remain in place.
+
 ### Breaking changes
 
 - **Generated hardware and live serving roles are now Primary/Auxiliary only.**
