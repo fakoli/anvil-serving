@@ -1,0 +1,120 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39017/v1",
+  "model": "qwen35-122b-a10b-nvfp4",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 1024
+  },
+  "multimodal_input": {
+    "bytes": 14307,
+    "mime": "image/png",
+    "sha256": "c104d086a52a0b60981f6490074b476f20d2a45683900fa372c5edeaff0fab51"
+  },
+  "image_expect": [
+    "dashboard",
+    "GPU",
+    "chart"
+  ],
+  "ocr_expect": [
+    "Anvil Serving Dashboard",
+    "RTX 5090",
+    "Error 503",
+    "planning"
+  ],
+  "checks": [
+    "image",
+    "ocr"
+  ],
+  "results": [
+    {
+      "name": "general image understanding",
+      "passed": true,
+      "detail": "8.6s all expected text present finish='stop' visible=2914 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "verbatim image OCR",
+      "passed": true,
+      "detail": "1.0s all expected text present finish='stop' visible=195 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "This image displays the **Anvil Serving Dashboard**, a monitoring interface for GPU-based AI model serving infrastructure.\n\n---\n\n### \ud83d\udda5\ufe0f Hardware & System Status (Left Panel)\n\n- **GPU**: `RTX 5090`\n- **VRAM used**: `30057 MiB` (~29.35 GB)\n- **Serves running**: `7`\n- **Status**: \u2705 **HEALTHY** (indicated by green dot and text)\n\n> *Note: The RTX 5090 is not yet released as of 2024 \u2014 this may be a placeholder, future hardware, or fictional in context.*\n\n---\n\n### \u26a0\ufe0f Error Alert (Right Panel)\n\n- **Error Code**: `Error 503`\n- **Message**:  \n  > \u201cNo available tier for preset \u2018planning\u2019 - all candidates busy\u201d\n- **Action Button**: `Retry`\n\n> This indicates that the system cannot fulfill a request for the \u201cplanning\u201d preset because all available service tiers (likely GPU instances or worker nodes) are currently overloaded or unavailable.\n\n---\n\n### \ud83d\udcca Requests per Tier (Bar Chart)\n\nThree service tiers are shown with relative request volumes:\n\n1. **heavy** \u2014 Highest volume (blue bar)\n2. **fast** \u2014 Medium volume (orange bar)\n3. **ocr** \u2014 Lowest volume (green bar)\n\n> These likely represent different workload profiles or model configurations being served (e.g., heavy computation, fast inference, OCR-specific models).\n\n---\n\n### \ud83d\udd0d Summary of Key Labels, Values, and Status\n\n| Category             | Label / Value                          | Status / Meaning                     |\n|----------------------|----------------------------------------|--------------------------------------|\n| GPU                  | RTX 5090                               | Hardware identifier                  |\n| VRAM Usage           | 30057 MiB                              | High utilization (~90%+ if 32GB card)|\n| Active Services      | 7                                      | Number of running models/servers     |\n| System Health        | HEALTHY                                | Green indicator \u2014 no critical failure|\n| Error                | 503                                    | Service Unavailable                  |\n| Error Cause          | No tier for preset \u2018planning\u2019          | All candidates busy                  |\n| Request Distribution | heavy > fast > ocr                     | Workload imbalance                   |\n\n---\n\n### \ud83d\udca1 Interpretation\n\nThe dashboard shows a healthy but heavily loaded system. Despite overall health, it\u2019s unable to serve requests for the \u201cplanning\u201d preset due to resource exhaustion across all candidate tiers. The high VRAM usage and 7 concurrent services suggest the GPU is near capacity. The \u201cheavy\u201d tier dominating requests may be contributing to the bottleneck.\n\n**Recommendation**: Scale up resources, optimize \u201cplanning\u201d preset allocation, or rebalance load across tiers.\n\n--- \n\n\u2705 **Final Note**: While the system reports \u201cHEALTHY\u201d, the 503 error indicates a functional outage for specific workloads \u2014 so \u201chealthy\u201d here likely means \u201cno hardware failure,\u201d not \u201cfully operational.\u201d",
+      "finish_reason": "stop",
+      "content_chars": 2914,
+      "content_excerpt": "This image displays the **Anvil Serving Dashboard**, a monitoring interface for GPU-based AI model serving infrastructure.\n\n---\n\n### \ud83d\udda5\ufe0f Hardware & System Status (Left Panel)\n\n- **GPU**: `RTX 5090`\n- *",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 538,
+        "total_tokens": 1197,
+        "completion_tokens": 659,
+        "prompt_tokens_details": null
+      },
+      "test": "image",
+      "seconds": 8.572,
+      "passed": true,
+      "validation_detail": "all expected text present",
+      "image": {
+        "bytes": 14307,
+        "mime": "image/png",
+        "sha256": "c104d086a52a0b60981f6490074b476f20d2a45683900fa372c5edeaff0fab51"
+      },
+      "expected": [
+        "dashboard",
+        "GPU",
+        "chart"
+      ]
+    },
+    {
+      "content": "Anvil Serving Dashboard\nGPU: RTX 5090\nVRAM used: 30057 MiB\nServes running: 7\nHEALTHY\nError 503\nNo available tier for preset\n'planning' - all candidates busy\nRetry\nRequests per tier\nheavy\nfast\nocr",
+      "finish_reason": "stop",
+      "content_chars": 195,
+      "content_excerpt": "Anvil Serving Dashboard\nGPU: RTX 5090\nVRAM used: 30057 MiB\nServes running: 7\nHEALTHY\nError 503\nNo available tier for preset\n'planning' - all candidates busy\nRetry\nRequests per tier\nheavy\nfast\nocr",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 539,
+        "total_tokens": 610,
+        "completion_tokens": 71,
+        "prompt_tokens_details": null
+      },
+      "test": "ocr",
+      "seconds": 0.979,
+      "passed": true,
+      "validation_detail": "all expected text present",
+      "image": {
+        "bytes": 14307,
+        "mime": "image/png",
+        "sha256": "c104d086a52a0b60981f6490074b476f20d2a45683900fa372c5edeaff0fab51"
+      },
+      "expected": [
+        "Anvil Serving Dashboard",
+        "RTX 5090",
+        "Error 503",
+        "planning"
+      ]
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "forbidden",
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

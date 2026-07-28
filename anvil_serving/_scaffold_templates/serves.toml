@@ -4,9 +4,10 @@
 # "which model containers exist, on which ports". Manage the serves ONLY through
 # `anvil-serving serves` (which delegates to docker-compose.yml), never raw `docker`.
 #
-# 2026-07-26 reconcile: heavy = Poolside Laguna S 2.1 NVFP4 with thinking
-# disabled by default (:30002, PRO 6000). The previously qualified GPT-OSS
-# Puzzle 88B is the one retained ready rollback.
+# 2026-07-28 reconcile: Primary = NVIDIA Qwen3.5 122B A10B NVFP4 at
+# 262,144 tokens with one-image input and thinking enabled by default
+# (:30002, PRO 6000); callers may disable thinking per request.
+# Laguna S 2.1 is the immediate rollback; GPT-OSS Puzzle remains second-line.
 # 2026-07-27 Omni consolidation: Nemotron 3 Nano Omni owns the RTX 5090
 # exclusively and backs auxiliary text, general vision, and OCR through one
 # router tier on :30003. Embeddings and reranking remain a separate,
@@ -32,18 +33,28 @@ vram_mib = 32607
 reserve_mib = 3072
 
 [[serve]]
-name = "primary"                 # heavy quality tier — Laguna S 2.1 NVFP4
+name = "primary"                 # primary quality tier — Qwen3.5 122B A10B NVFP4
 stack = "serving"
-container = "vllm-laguna-s-primary"
+container = "vllm-qwen35-122b-primary"
 port = 30002
-model = "laguna-s-2.1-nvfp4"   # served-model-name (used by `anvil-serving eval`)
+model = "qwen35-122b-a10b-nvfp4" # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
 groups = ["primary-only", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d primary"
 
 [[serve]]
-name = "primary-gptoss-puzzle-rollback" # ready rollback; stop `heavy` first because both own :30002
+name = "primary-laguna-rollback" # immediate rollback; stop Primary first because both own :30002
+stack = "serving"
+container = "vllm-laguna-s-primary-rollback"
+port = 30002
+model = "laguna-s-2.1-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d primary-laguna-rollback"
+
+[[serve]]
+name = "primary-gptoss-puzzle-rollback" # second-line recovery; shares :30002
 stack = "serving"
 container = "vllm-gptoss-puzzle-primary-rollback"
 port = 30002
@@ -134,14 +145,14 @@ up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
 # and complete model+router rollback. This single-GPU plan validates the newly
 # started target in-transaction; a separately resident candidate cannot coexist.
 [[promotion]]
-name = "laguna-s-2.1-primary"
+name = "qwen35-122b-primary"
 target = "primary"
-rollback = "primary-gptoss-puzzle-rollback"
+rollback = "primary-laguna-rollback"
 router_config = "{dir}/anvil-router.live.toml"
-rollback_router_config = "{dir}/anvil-router.gptoss-puzzle-rollback.toml"
+rollback_router_config = "{dir}/anvil-router.laguna-rollback.toml"
 affected_tiers = ["primary-local"]
 drain_timeout = 120
-needle_ctx = 120000
+needle_ctx = 240000
 tool_batch = 10
 startup_timeout = 900
 rollback_startup_timeout = 600
@@ -149,21 +160,30 @@ poll_interval = 5
 router_health_url = "http://127.0.0.1:8000/healthz"
 
 [[promotion.gate]]
+name = "qwen35-functional-thinking-disabled"
+checks = "smoke,json,needle,tools"
+thinking_mode = "disabled"
+visible_answer_tokens = 256
+reasoning_headroom_tokens = 0
+reasoning_evidence = "forbidden"
+json_out = "{dir}/../../docs/findings/2026-07-28-qwen35-122b-primary-evidence/promotion-functional-preflight.json"
+
+[[promotion.gate]]
+name = "qwen35-default-thinking"
+checks = "smoke,json"
+thinking_mode = "default"
+visible_answer_tokens = 256
+reasoning_headroom_tokens = 8192
+reasoning_evidence = "required"
+json_out = "{dir}/../../docs/findings/2026-07-28-qwen35-122b-primary-evidence/promotion-default-thinking.json"
+
+[[promotion.rollback_gate]]
 name = "laguna-functional-thinking-disabled"
 checks = "smoke,json,needle,tools"
 thinking_mode = "disabled"
 visible_answer_tokens = 256
 reasoning_headroom_tokens = 0
 reasoning_evidence = "forbidden"
-json_out = "{dir}/../../docs/findings/2026-07-26-laguna-s-qualification-evidence/promotion-functional-preflight.json"
-
-[[promotion.rollback_gate]]
-name = "gpt-oss-puzzle-functional"
-checks = "smoke,json,needle,tools"
-thinking_mode = "default"
-visible_answer_tokens = 512
-reasoning_headroom_tokens = 4096
-reasoning_evidence = "required"
 
 # Voice latency A/B candidates. These are opt-in experiment serves, not production tiers:
 # they use separate ports, `restart: "no"` compose services, and do not replace `fast`.
@@ -314,8 +334,8 @@ health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-qwen3-30b-a3b"
 
 # Heavy-tier CANDIDATE (evaluation, NOT promoted): Qwen3.5-122B-A10B-NVFP4 on the RTX PRO 6000
-# (:39017). Shares the PRO 6000 with the production GPT-OSS heavy tier, so stop `heavy` before
-# `serves up heavy-qwen35-122b`. Not wired into the router until explicitly promoted to primary-local.
+# (:39017). Shares the PRO 6000 with Primary, so stop `primary` before
+# `serves up heavy-qwen35-122b`. Not wired into the router.
 [[serve]]
 name = "heavy-qwen35-122b"
 container = "vllm-heavy-qwen35-122b"
