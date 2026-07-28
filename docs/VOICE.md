@@ -68,7 +68,7 @@ not part of this router contract.
 | Command | What It Does | What It Does Not Do |
 |---|---|---|
 | `anvil-serving voice audio up` | Validates the voice manifest and starts manifest-owned managed/native STT/TTS lifecycle. | Does not start the Realtime WebSocket server or the LLM router. |
-| `anvil-serving voice audio down` | Stops manifest-owned managed/native STT/TTS lifecycle. | Does not stop the LLM router; a foreground `voice proxy run` process stops with Ctrl+C. |
+| `anvil-serving voice audio down` | Stops native STT/TTS processes and stops/removes managed STT/TTS containers. | Does not stop the LLM router; a foreground `voice proxy run` process stops with Ctrl+C. |
 | `anvil-serving voice audio status` | Reports bounded readiness and lifecycle state for both topology-owned audio serves. | Does not mutate either serve. |
 | `anvil-serving voice audio logs` | Reads a bounded tail from both topology-owned audio serves. | Does not follow logs indefinitely. |
 | `anvil-serving voice proxy run` | Starts the Realtime WebSocket server in the foreground after probing the LLM, STT, and TTS endpoints. | Does not silently continue when required endpoints are unreachable. |
@@ -240,8 +240,8 @@ without a shell.
 Declare `managed` STT/TTS serves in a **separate manifest** (for example
 `serves.voice.toml`, referenced from the voice manifest via `manifest_path`),
 not in the host's main `serves.toml`. Generic hygiene over the main manifest —
-`anvil-serving serves down`, the `serves_manage` MCP tool — walks every entry
-and `docker stop`s it. On a host where the manifest's LLM containers are not
+`anvil-serving serves down`, the `serves_manage` MCP tool — walks every entry,
+stops it, and removes its container by default. On a host where the manifest's LLM containers are not
 the currently-running ones that sweep is an invisible no-op, so nothing warns
 you that adding always-on audio serves to the same file puts them in its blast
 radius (observed on fakoli-dark, 2026-07-13: two clean sequential stops of the
