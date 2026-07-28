@@ -18,6 +18,8 @@ services:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       # Pin the RTX 5090 by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
       CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    networks:
+      - voice
     deploy:
       resources:
         reservations:
@@ -36,6 +38,8 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    networks:
+      - voice
     deploy:
       resources:
         reservations:
@@ -43,3 +47,7 @@ services:
             - driver: nvidia
               device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
               capabilities: [gpu]
+
+networks:
+  voice:
+    name: anvil-voice

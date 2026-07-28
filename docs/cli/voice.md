@@ -11,6 +11,7 @@ is model-free by default.
 
 | Goal | Start here | Then |
 | --- | --- | --- |
+| Operate one co-located managed stack | `voice up --dry-run` | Apply with `--confirm`; `voice down` stops it in reverse dependency order. |
 | Inspect audio readiness | `voice audio status` | Read a bounded tail with `voice audio logs`. |
 | Change STT/TTS lifecycle | `voice audio up --dry-run` | Apply with `--confirm`; `down` stops native processes and stops/removes managed containers. |
 | Run the realtime proxy interactively | `voice proxy run` | Interrupt the foreground process when finished. |
@@ -21,6 +22,13 @@ is model-free by default.
 | Prepare an optional sidecar | `voice sidecar validate` | Render a host command or Compose skeleton; neither command launches it. |
 
 ## Command map
+
+### Operate one co-located managed stack
+
+| Command | Purpose |
+| --- | --- |
+| `voice up` | Start managed STT, TTS, then the managed realtime proxy. |
+| `voice down` | Stop the managed realtime proxy, then managed STT/TTS. |
 
 ### Operate Dark-owned audio serves
 
@@ -58,6 +66,39 @@ is model-free by default.
 | `voice sidecar validate` | Validate sidecar URLs, models, image, and secret references. |
 | `voice sidecar command` | Render shell-safe host argv without executing it. |
 | `voice sidecar compose` | Render a loopback-bound Compose service without writing or running it. |
+
+## Co-located stack lifecycle
+
+`voice up` and `voice down` are deliberately narrow aggregates for one managed
+host. The STT, TTS, and realtime-proxy tables must all use `lifecycle =
+"managed"`, reference the same serves manifest, and belong to its `voice`
+group. STT/TTS use host-relative `127.0.0.1` URLs for host callers, while the
+managed proxy joins the audio-owned `anvil-voice` Docker network and uses the
+`stt` / `tts` service names. The command refuses native, external, incomplete,
+or split-host configurations before lifecycle I/O.
+
+Preview the complete dependency order before applying:
+
+```bash
+anvil-serving voice up --config ~/.anvil-serving/voice.toml --dry-run
+anvil-serving voice up --config ~/.anvil-serving/voice.toml --confirm
+anvil-serving voice down --config ~/.anvil-serving/voice.toml --dry-run
+anvil-serving voice down --config ~/.anvil-serving/voice.toml --confirm
+```
+
+Bring-up is STT/TTS first, then the proxy. A failed audio bring-up skips the
+proxy. Tear-down is the reverse; a failed proxy stop leaves audio running so a
+still-live proxy does not lose its dependencies. Both commands emit one
+combined result covering the audio and proxy phases.
+
+The aggregate is manifest-owned and does not require topology resolution. If
+topology options are supplied explicitly, the command verifies that STT, TTS,
+and the realtime proxy resolve to one Docker owner before importing the
+handler.
+
+The reference Mini/Dark topology is intentionally split and must keep using
+the explicit `voice audio ...` and `voice proxy ...` commands below. The
+aggregate does not compose separate controller operations across owners.
 
 ## Audio lifecycle
 

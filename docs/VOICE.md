@@ -67,6 +67,8 @@ not part of this router contract.
 
 | Command | What It Does | What It Does Not Do |
 |---|---|---|
+| `anvil-serving voice up` | Starts co-located managed STT/TTS, then the managed Realtime proxy. | Does not span hosts, native/external lifecycle, or separate controller owners. |
+| `anvil-serving voice down` | Stops the co-located managed Realtime proxy, then managed STT/TTS. | Does not tear down audio if the proxy stop fails. |
 | `anvil-serving voice audio up` | Validates the voice manifest and starts manifest-owned managed/native STT/TTS lifecycle. | Does not start the Realtime WebSocket server or the LLM router. |
 | `anvil-serving voice audio down` | Stops native STT/TTS processes and stops/removes managed STT/TTS containers. | Does not stop the LLM router; a foreground `voice proxy run` process stops with Ctrl+C. |
 | `anvil-serving voice audio status` | Reports bounded readiness and lifecycle state for both topology-owned audio serves. | Does not mutate either serve. |
@@ -84,9 +86,9 @@ not part of this router contract.
 
 ### Removed module-level paths
 
-The old module-level paths (`voice up`, `down`, `start`, `stop`, `run`, and
-`bridge`) are removed tombstones. They exit with replacement guidance and do
-not import or invoke an operational handler.
+The old module-level paths `voice start`, `voice stop`, `voice run`, and
+`voice bridge` remain removed tombstones. They exit with replacement guidance
+and do not import or invoke an operational handler.
 
 Manifest-backed commands take `--config <voice.toml>`. If omitted,
 `$ANVIL_SERVING_HOME/voice.toml` (default `~/.anvil-serving/voice.toml`) is
@@ -131,6 +133,14 @@ Voice has four separate operational concerns:
 Keeping those concerns separate avoids a common failure mode: a command that
 appears to start "voice" but only starts one part of the pipeline. `voice audio up`
 makes STT/TTS available; `voice proxy run` is the user-facing Realtime server.
+
+The one exception is the deliberately narrow `voice up` / `voice down`
+aggregate for a co-located Docker-managed stack. It requires matching
+host-relative STT/TTS endpoints, container service-DNS proxy endpoints on the
+audio-owned `anvil-voice` network, one shared serves manifest, and `voice`
+group membership for STT, TTS, and the managed proxy. Bring-up runs audio
+before the proxy; tear-down reverses the order. The aggregate refuses split
+ownership, so the normal Mini/Dark reference path remains explicit.
 
 ## Manifest Shape
 
@@ -422,6 +432,9 @@ anvil-serving voice proxy logs --topology "$TOPOLOGY" --config "$VOICE_CONFIG" -
 Use `voice proxy run` instead of `proxy up` when a foreground process is
 desired. `proxy down` and `proxy restart` require `--confirm`. Audio and proxy
 lifecycle are intentionally independent; neither command starts the other.
+For the separate co-located Dark manifest, `voice up --dry-run` and
+`voice down --dry-run` preview the managed whole-stack aggregate. They are not
+valid shortcuts for this Mini/Dark sequence.
 
 Start the voice side first. `dark-audio` has external lifecycle, so `voice audio up`
 will validate the manifest and report that audio is externally managed:

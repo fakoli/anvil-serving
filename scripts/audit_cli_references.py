@@ -51,7 +51,6 @@ LEGACY_PATTERNS = {
     "voice-sidecar": r"voice-sidecar\b",
     "onboard": r"onboard\b",
     "models-recipe": r"models\s+recipe\b",
-    "voice-up-down": r"voice\s+(?:up|down)\b",
     "voice-run-bridge": r"voice\s+(?:run|bridge)\b",
     "voice-start-stop": r"voice\s+(?:start|stop)\b",
     "mcp-list-tools": r"mcp\s+list-tools\b",
@@ -74,6 +73,7 @@ CANONICAL_PATTERNS = {
     "init": r"init\b",
     "models-recipes": r"models\s+recipes\b",
     "voice-audio": r"voice\s+audio\s+(?:up|down|status|logs)\b",
+    "voice-lifecycle": r"voice\s+(?:up|down)\b",
     "voice-proxy": r"voice\s+proxy\s+(?:run|up|down|restart|status|logs|bridge)\b",
     "mcp-serve": r"mcp\s+serve\b",
     "mcp-tools": r"mcp\s+tools\b",
@@ -92,7 +92,6 @@ _BARE_LEGACY_RE = {
     if name
     in {
         "models-recipe",
-        "voice-up-down",
         "voice-run-bridge",
         "voice-start-stop",
         "mcp-list-tools",
