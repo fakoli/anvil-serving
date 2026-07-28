@@ -155,7 +155,19 @@ def test_cmd_down_dry_run_does_not_stop(capsys):
     run = _inspect_returning("running")
     assert serves.cmd_down(serv, ["heavy"], dry_run=True, _run=run) == 0
     assert not any(c[:2] == ["docker", "stop"] for c in run.calls)  # nothing stopped
+    assert not any(c[:2] == ["docker", "rm"] for c in run.calls)    # nothing removed
     assert "stop sglang" in capsys.readouterr().out                 # printed the plan
+
+
+def test_cmd_down_keep_container_dry_run_omits_remove(capsys):
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running")
+    assert serves.cmd_down(
+        serv, ["heavy"], dry_run=True, keep_container=True, _run=run
+    ) == 0
+    out = capsys.readouterr().out
+    assert "stop sglang" in out
+    assert "rm -f sglang" not in out
 
 
 # ---- up --compose -----------------------------------------------------------
@@ -236,6 +248,36 @@ def test_main_compose_with_recreate_rejected(capsys):
     rc = serves.main(["up", "--compose", "/x/experiment.yml", "--recreate"])
     assert rc == 2
     assert "--recreate" in capsys.readouterr().err
+
+
+def test_main_down_forwards_keep_container(tmp_path, monkeypatch):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "heavy"
+        container = "sglang"
+        port = 30000
+        model = "primary-local"
+        engine = "sglang"
+    """)
+    seen = {}
+
+    def fake(serves_list, names, dry_run=False, keep_container=False):
+        seen.update(
+            names=names,
+            dry_run=dry_run,
+            keep_container=keep_container,
+        )
+        return 0
+
+    monkeypatch.setattr(serves, "cmd_down", fake)
+    assert serves.main(
+        ["down", "heavy", "--keep-container", "--manifest", path]
+    ) == 0
+    assert seen == {
+        "names": ["heavy"],
+        "dry_run": False,
+        "keep_container": True,
+    }
 
 
 def test_main_rm_dispatches(tmp_path, monkeypatch):

@@ -1237,7 +1237,7 @@ def test_serves_help_explains_each_action(capsys):
     out = capsys.readouterr().out
     for token in (
         "Show docker and health state",
-        "verify they stay stopped",
+        "Stop and remove manifest serve containers",
         "explicit confirmation",
         "externally-started serves",
         "streaming docker logs",

@@ -191,6 +191,8 @@ def test_tear_down_stops_a_running_container(manifest_with_tts):
         if argv[:2] == ["docker", "stop"]:
             stopped.append(argv)
             return SimpleNamespace(returncode=0, stdout="anvil-tts\n", stderr="")
+        if argv[:3] == ["docker", "rm", "-f"]:
+            return SimpleNamespace(returncode=0, stdout="anvil-tts\n", stderr="")
         return SimpleNamespace(returncode=1, stdout="", stderr="no matcher")
     fake_run.calls = []
     serve = TTSServe(
@@ -200,6 +202,7 @@ def test_tear_down_stops_a_running_container(manifest_with_tts):
     )
     rc = serve.tear_down()
     assert rc == 0
+    assert ["docker", "rm", "-f", "anvil-tts"] in fake_run.calls
     assert ["docker", "stop", "anvil-tts"] in fake_run.calls
 
 

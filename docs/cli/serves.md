@@ -21,7 +21,7 @@ called. Entries that omit `stack` retain the `serving` default.
 | --- | --- |
 | `serves render` | Render a model serve definition. |
 | `serves up` | Start manifest-owned serves. |
-| `serves down` | Stop manifest-owned serves. |
+| `serves down` | Stop and remove manifest-owned serve containers. |
 | `serves rm` | Remove a manifest-owned serve. |
 | `serves adopt` | Adopt an existing serve into manifest ownership. |
 | `serves switch` | Switch a deployment role to an activation-ready recipe. |
@@ -71,14 +71,17 @@ because they exist in the manifest.
 anvil-serving serves up --group ocr --dry-run
 anvil-serving serves up --group ocr --confirm
 anvil-serving serves down --group ocr --confirm
+anvil-serving serves down CANDIDATE --keep-container --confirm
 anvil-serving serves groups
 anvil-serving serves logs OCR_SERVE_NAME
 ```
 
-Only manifest-owned resources are mutated. Destructive leaves require confirmation,
-and `down` does not imply removal. `--confirm` is the only public consent spelling;
-the removed `serves rm --yes` and `serves adopt --yes` forms fail with migration
-guidance before reaching Docker.
+Only manifest-owned resources are mutated. Destructive leaves require confirmation.
+`down` stops gracefully and then removes each selected container by default, preventing
+stopped experiments and stale container configuration from accumulating in Docker.
+Use `--keep-container` when retaining the stopped container and its logs is intentional.
+`--confirm` is the only public consent spelling; the removed `serves rm --yes` and
+`serves adopt --yes` forms fail with migration guidance before reaching Docker.
 
 `serves up` returns only after the selected serve's declared health endpoint is
 ready. A failed or timed-out readiness check fails the command instead of

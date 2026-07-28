@@ -114,7 +114,7 @@ required operands, choices, and defaults.
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
 | `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `serves down` | Stop and remove manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--keep-container` |
 | `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves switch` | Switch a deployment role to an activation-ready recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--registry`<br>`--recipe` |

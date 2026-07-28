@@ -270,7 +270,7 @@ def test_leaf_positional_and_option_order_reaches_same_handler(monkeypatch, argv
     ("path", "flags"),
     [
         (["serves", "up"], {"--manifest", "--dry-run", "--compose", "--recreate"}),
-        (["serves", "down"], {"--manifest", "--dry-run"}),
+        (["serves", "down"], {"--manifest", "--dry-run", "--keep-container"}),
         (["serves", "rm"], {"--manifest", "--dry-run", "--confirm"}),
         (["serves", "adopt"], {"--manifest", "--dry-run", "--confirm"}),
     ],

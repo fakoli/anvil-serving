@@ -194,6 +194,8 @@ def test_tear_down_stops_a_running_container(manifest_with_stt):
         if argv[:2] == ["docker", "stop"]:
             stopped.append(argv)
             return SimpleNamespace(returncode=0, stdout="anvil-stt\n", stderr="")
+        if argv[:3] == ["docker", "rm", "-f"]:
+            return SimpleNamespace(returncode=0, stdout="anvil-stt\n", stderr="")
         return SimpleNamespace(returncode=1, stdout="", stderr="no matcher")
     fake_run.calls = []
     serve = STTServe(
@@ -203,6 +205,7 @@ def test_tear_down_stops_a_running_container(manifest_with_stt):
     )
     rc = serve.tear_down()
     assert rc == 0
+    assert ["docker", "rm", "-f", "anvil-stt"] in fake_run.calls
     assert ["docker", "stop", "anvil-stt"] in fake_run.calls
 
 

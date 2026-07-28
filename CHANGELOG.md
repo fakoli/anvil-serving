@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- `serves down` now stops and removes selected containers by default so model
+  experiments do not leave stale Docker configuration behind.
+  `--keep-container` preserves the previous stop-only behavior and container
+  logs when an operator needs post-mortem inspection or a cheap restart.
 - Collapsed the RTX 5090 auxiliary LLM, general-vision, and OCR containers into
   one pinned, managed Nemotron 3 Nano Omni tier. `llm.voice`,
   `vision.general`, and `vision.ocr` now select `omni-local`; embeddings and
