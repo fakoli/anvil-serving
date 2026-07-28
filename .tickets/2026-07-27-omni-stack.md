@@ -47,6 +47,10 @@ Status: completed locally on 2026-07-27.
   exactly `Access denied. This repository requires approval.` The published
   diagnostic therefore classifies this as authorization/license approval, not
   missing authentication.
+- After browser acceptance, repeated config-only pulls passed for the pinned
+  Gemma 3n checkpoint and all three canonical Google Gemma 4 repositories in
+  the current recipe registry. The access blocker is resolved without a full
+  checkpoint download.
 - Built the Qwen service locally from the pinned vLLM digest. The first audio
   request exposed a missing `vllm[audio]` runtime extra; a small pinned
   derivative image fixed that durable packaging gap.

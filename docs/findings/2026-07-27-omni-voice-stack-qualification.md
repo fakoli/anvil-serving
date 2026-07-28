@@ -92,6 +92,14 @@ container startup defect, GPU problem, or full-checkpoint storage failure.
 
 - [Gemma access diagnostic](2026-07-27-omni-stack-evidence/gemma3n-access-diagnostic.json)
 
+After the operator accepted the terms in the browser, the identical pinned
+Gemma 3n config-only pull passed and verified its snapshot. Config-only pulls
+also passed for the canonical Gemma 4 E4B, 12B QAT, and 31B QAT repositories
+already referenced by the recipe registry. No additional Gemma acceptance is
+currently required for this repository's model set.
+
+- [Post-acceptance Gemma verification](2026-07-27-omni-stack-evidence/gemma-access-verification.json)
+
 Qwen2.5-Omni-3B is the currently runnable small-Omni choice. Its official model
 card documents text, image, audio, and video input, while vLLM documents the
 Thinker path used here. This local run qualifies only the bounded text,

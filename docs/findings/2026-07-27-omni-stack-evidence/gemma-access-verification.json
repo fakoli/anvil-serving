@@ -1,0 +1,33 @@
+{
+  "schema_version": "model-access-verification/v1",
+  "date": "2026-07-27",
+  "credential_source": "user-local dotenv file passed by path; value not logged",
+  "probe": "anvil-serving models pull with only config.json included",
+  "results": [
+    {
+      "model": "google/gemma-3n-E2B-it",
+      "revision": "5e092ebca197cdcd8d8b195040accf22693501bc",
+      "exit_code": 0,
+      "snapshot_verified": true
+    },
+    {
+      "model": "google/gemma-4-E4B-it",
+      "revision": "ee0ef6023621cff504d758262d4e04895a5af4a2",
+      "exit_code": 0,
+      "snapshot_verified": true
+    },
+    {
+      "model": "google/gemma-4-12B-it-qat-w4a16-ct",
+      "revision": "1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee",
+      "exit_code": 0,
+      "snapshot_verified": true
+    },
+    {
+      "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+      "revision": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+      "exit_code": 0,
+      "snapshot_verified": true
+    }
+  ],
+  "conclusion": "The accepted Gemma terms and stored token now authorize every canonical Google Gemma repository referenced by the current recipe set. No full checkpoint download was requested by these probes."
+}

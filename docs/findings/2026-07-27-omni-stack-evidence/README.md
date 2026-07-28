@@ -4,6 +4,8 @@ Machine-readable evidence for the RTX 5090 Omni stack qualification.
 
 - `gemma3n-access-diagnostic.json`: bounded authenticated checkpoint access
   probe and exact repository-approval denial.
+- `gemma-access-verification.json`: post-acceptance config-only verification
+  for all canonical Google Gemma repositories in the current recipe set.
 - `omni-multimodal-preflight.json`: direct endpoint image and OCR gate.
 - `omni-capacity.json`: direct endpoint bounded c2 capacity probe.
 - `router-llm-voice.json`: routed auxiliary-text gate.

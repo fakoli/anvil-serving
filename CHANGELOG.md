@@ -36,6 +36,9 @@ All notable changes to this project are documented here. The format is based on
   includes progress bars or box-drawing characters that the active console
   codec cannot represent. Unsupported glyphs are escaped while startup stderr
   remains visible.
+- Authenticated model pulls that fail now preserve the exact container error
+  and point operators to the matching Hugging Face repository when access
+  denial requires browser-based terms acceptance.
 
 ### Breaking changes
 
