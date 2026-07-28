@@ -27,6 +27,7 @@ owning documentation link.
 | `router down` | Stop the deployed router. |
 | `router restart` | Restart the deployed router. |
 | `router reload` | Reload router configuration. |
+| `router install-config` | Atomically install a validated direct-router config, including tier-set migrations. |
 | `router status` | Show bounded router status. |
 | `router logs` | Read bounded router logs or explicitly follow new output. |
 
@@ -109,6 +110,21 @@ changes or removes that operator-home file.
 `--force-recreate` while retaining `--no-deps`, so the operation recreates only the
 selected router service and does not start or recreate model services, alter router
 configuration volumes, or modify the host outside Docker's requested router action.
+
+Install a complete direct-router config with the same preview-first boundary:
+
+```bash
+anvil-serving router install-config --config deployment/router.toml --dry-run
+anvil-serving router install-config --config deployment/router.toml --confirm
+```
+
+The confirmed command quiesces and drains the current tier set, validates and
+atomically writes the config, restarts the router, and succeeds only after the
+router reports the exact desired tier IDs. It returns `tier_status` and
+`unavailable_tiers` so stopped or unhealthy model serves remain visible without
+turning a successful config installation into a false failure. Use
+`router readmit` and `eval preflight` for readiness and qualification; installing
+a config does not promote an unavailable model or claim that every serve is ready.
 
 ## Tier transitions
 
