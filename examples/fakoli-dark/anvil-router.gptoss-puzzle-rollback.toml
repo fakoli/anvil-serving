@@ -20,44 +20,22 @@ health_path = "/health"
 model_identity = true
 
 [[router.tiers]]
-id = "auxiliary-local"
+id = "omni-local"
 base_url = "http://host.docker.internal:30003/v1"
-model = "gemma4-e4b-it"
+model = "nemotron3-omni-30b-a3b-nvfp4"
 dialect = "openai"
-context_limit = 32768
+context_limit = 65536
 privacy = "local"
 tool_support = true
-auth_env = "ANVIL_AUXILIARY_LOCAL_KEY"
-health_path = "/health"
-
-[[router.tiers]]
-id = "ocr-local"
-base_url = "http://host.docker.internal:30007/v1"
-model = "paddleocr-vl-1.6"
-dialect = "openai"
-context_limit = 16384
-privacy = "local"
-tool_support = false
-auth_env = "ANVIL_OCR_LOCAL_KEY"
-health_path = "/health"
-
-[[router.tiers]]
-id = "vision-local"
-base_url = "http://host.docker.internal:30008/v1"
-model = "qwen3-vl-4b-instruct"
-dialect = "openai"
-context_limit = 16384
-privacy = "local"
-tool_support = false
-auth_env = "ANVIL_VISION_LOCAL_KEY"
+auth_env = "ANVIL_OMNI_LOCAL_KEY"
 health_path = "/health"
 model_identity = true
 
 [router.model_routes]
 llm.primary = "primary-local"
-llm.voice = "auxiliary-local"
-vision.ocr = "ocr-local"
-vision.general = "vision-local"
+llm.voice = "omni-local"
+vision.ocr = "omni-local"
+vision.general = "omni-local"
 
 [[router.purpose_models]]
 id = "embeddings-local"

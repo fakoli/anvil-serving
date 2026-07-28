@@ -298,6 +298,22 @@ def test_serves_logs_resolves_name_and_prints(capsys):
     assert "HEAVY LOG" in out.out and "warn" in out.err
 
 
+def test_serves_logs_escapes_unicode_unsupported_by_console_codec():
+    class NarrowConsole:
+        encoding = "cp1252"
+
+        def __init__(self):
+            self.text = ""
+
+        def write(self, value):
+            value.encode(self.encoding)
+            self.text += value
+
+    stream = NarrowConsole()
+    serves._write_console_safe(stream, "load █ done\n")
+    assert stream.text == "load \\u2588 done\n"
+
+
 def test_serves_logs_argv_targets_the_named_container():
     seen = {}
     def fake(argv, **kw):

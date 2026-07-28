@@ -1,0 +1,45 @@
+{
+  "base_url": "http://127.0.0.1:39021/v1",
+  "completed": 6,
+  "concurrency": 2,
+  "context_distribution": {
+    "2048": 6
+  },
+  "context_seed": 0,
+  "context_tokens": 2048,
+  "engine": null,
+  "failed": 0,
+  "failures": [],
+  "gpu": null,
+  "manifest": null,
+  "max_context_tokens": 65536,
+  "max_tokens": 128,
+  "measurement_protocol": "capacity-v2",
+  "metrics": {
+    "content_chunks": 289,
+    "content_chunks_s": null,
+    "e2e_p50_ms": 422.5768000001153,
+    "e2e_p95_ms": 515.3733000001921,
+    "output_token_sources": {
+      "usage": 6
+    },
+    "output_tokens": 301,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 224.0822121157763,
+    "ttft_p50_ms": 122.1399000000929,
+    "ttft_p95_ms": 164.37170000017431,
+    "ttft_samples": 6
+  },
+  "model": "nemotron3-omni-30b-a3b-nvfp4",
+  "requests": 6,
+  "run_id": "benchmark-20260728T025918Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": true,
+    "reasoning_effort": null,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  },
+  "source_recipe": null,
+  "tier": null
+}

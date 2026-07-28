@@ -19,19 +19,20 @@ one local tier. There is no request classifier, quality-profile router,
 semantic fallback, cloud escalation, or hidden substitute model.
 
 The reference topology serves primary LLM work on the RTX PRO 6000. The RTX
-5090 handles a low-latency voice LLM, STT/TTS, embeddings, reranking, and
-on-demand ComfyUI. The gateway keeps authentication, dialect translation,
-streaming, readiness, admission, and decision evidence consistent across those
-capabilities.
+5090 offers either an exclusive 30B Omni stack for auxiliary text, general
+vision, and OCR, or a smaller Omni stack co-resident with dedicated STT/TTS.
+Embeddings/reranking and on-demand ComfyUI remain optional separate stacks. The
+gateway keeps authentication, dialect translation, streaming, readiness,
+admission, and decision evidence consistent across those capabilities.
 
 ## Direct capability contract
 
 ```toml
 [router.model_routes]
 llm.primary = "primary-local"
-llm.voice = "auxiliary-local"
-vision.ocr = "ocr-local"
-vision.general = "vision-local"
+llm.voice = "omni-local"
+vision.ocr = "omni-local"
+vision.general = "omni-local"
 ```
 
 Send one of those aliases as the chat `model`. Matching is case-insensitive

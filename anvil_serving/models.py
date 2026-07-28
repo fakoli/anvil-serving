@@ -571,11 +571,23 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
           f"{volume!r} (native ext4; avoids the 9P bind-mount tax)")
     print(f"[anvil-serving] $ {printable}", file=sys.stderr)
     try:
-        return _run(argv, env=child_env)
+        rc = _run(argv, env=child_env)
     except OSError as exc:
         print(f"[anvil-serving] could not run `docker` ({exc}) - is Docker installed, "
               "on PATH, and running?", file=sys.stderr)
         return 127
+    if rc != 0 and token_env:
+        model_url = "https://huggingface.co/%s" % urllib.parse.quote(
+            repo_id, safe="/"
+        )
+        print(
+            "[anvil-serving] authenticated download failed. Inspect the exact "
+            "container error above. If it reports access denial or required "
+            "approval, review and accept the repository terms in the same "
+            "account that owns the token: %s" % model_url,
+            file=sys.stderr,
+        )
+    return rc
 
 
 def build_sync_argv(out=None, hf_roots="", model_dirs=""):

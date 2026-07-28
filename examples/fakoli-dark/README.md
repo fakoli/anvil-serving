@@ -18,11 +18,17 @@ private-network examples, and controller authentication is named by the
 
 `anvil-router.live.toml` is a captured router recipe, not proof of a currently
 qualified deployment. Its additive `[router.model_routes]` capability aliases map
-`llm.primary` to the RTX PRO 6000-backed `primary-local` tier and `llm.voice` to the
-RTX 5090-backed `auxiliary-local` tier. Embeddings, reranking, and normalized STT/TTS
+`llm.primary` to the RTX PRO 6000-backed `primary-local` tier. `llm.voice`,
+`vision.general`, and `vision.ocr` all map to the RTX 5090-backed `omni-local`
+tier. Embeddings, reranking, and normalized STT/TTS
 remain their existing deterministic purpose/audio surfaces; on-demand ComfyUI is a
 lifecycle capability, not a chat route. The recipe does not alter serve reservations
 or establish a benchmark, readiness, or promotion result.
+
+The 5090 has two explicit Omni choices. `omni-stack` selects the exclusive
+30B routed tier. `omni-voice-stack` selects the unpromoted Qwen2.5-Omni-3B
+candidate together with the Parakeet STT and Kokoro TTS services; the shared
+reservation ledger prevents both choices from being admitted together.
 
 The RTX 5090 (`dark-fast`) is also the host's primary Windows display GPU. The confirmation-gated
 `anvil-serving host gpu-sharing probe` command audits and runs the profile-gated, read-only

@@ -69,6 +69,8 @@ def test_preflight_probe_schema_matches_local_bounds_and_controls():
         "none", "minimal", "low", "medium", "high"
     ]
     assert "allowed_finish_reasons" in schema
+    assert schema["image_expect"]["maxItems"] == 32
+    assert schema["ocr_expect"]["items"]["maxLength"] == 256
     assert "dry_run" in schema
 
 
@@ -87,3 +89,35 @@ def test_preflight_probe_rejects_invalid_ports_and_unknown_checks():
     assert invalid_port["error"]["code"] == "bad_base_url"
     assert unknown_check["ok"] is False
     assert unknown_check["error"]["code"] == "bad_argument"
+
+
+def test_preflight_probe_multimodal_arguments_reach_child(monkeypatch, tmp_path):
+    calls = []
+    image = tmp_path / "sample.png"
+    image.write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        mcp.subprocess,
+        "run",
+        lambda argv, **kwargs: (
+            calls.append((argv, kwargs))
+            or SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+        ),
+    )
+
+    result = mcp.call_tool("preflight_probe", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "checks": "image,ocr",
+        "image_path": str(image),
+        "image_expect": ["RTX 5090"],
+        "ocr_expect": ["Error 503"],
+        "dry_run": True,
+    })
+
+    assert result["ok"] is True
+    argv = calls[0][0]
+    assert argv[argv.index("--image-path") + 1] == str(image)
+    assert argv[argv.index("--image-expect") + 1] == "RTX 5090"
+    assert argv[argv.index("--ocr-expect") + 1] == "Error 503"

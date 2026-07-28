@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -323,6 +324,93 @@ def cmd_token(container, *, reveal=False, _run=subprocess.run):
     return 0
 
 
+def install_config(
+    config_file,
+    *,
+    router_url=None,
+    drain_timeout=120,
+    confirm=False,
+    dry_run=True,
+    _transition=transition_request,
+    _install=None,
+    _sleep=time.sleep,
+):
+    """Safely replace a deployed router config even when its tier set changes."""
+    from .router.config import load
+    from .serves import _install_router_config
+
+    selected = os.path.abspath(os.path.expanduser(config_file))
+    desired = [tier.id for tier in load(selected).tiers]
+    status = _transition("status", router_url=router_url)
+    rows = status.get("tiers", [])
+    if not isinstance(rows, list):
+        raise ValueError("router transition status was malformed")
+    current = [
+        row.get("tier_id") for row in rows
+        if isinstance(row, dict) and isinstance(row.get("tier_id"), str)
+    ]
+    plan = {
+        "config": selected,
+        "router_url": _safe_router_url(router_url or DEFAULT_ROUTER_URL),
+        "current_tiers": current,
+        "desired_tiers": desired,
+        "drain_timeout": drain_timeout,
+    }
+    if dry_run or not confirm:
+        return {"applied": False, "dry_run": True, **plan}
+
+    quiesced = []
+    try:
+        for tier_id in current:
+            _transition(
+                "quiesce", tier_id=tier_id, router_url=router_url,
+                confirm=True, dry_run=False,
+            )
+            quiesced.append(tier_id)
+        for tier_id in current:
+            result = _transition(
+                "drain", tier_id=tier_id, timeout=drain_timeout,
+                router_url=router_url, confirm=True, dry_run=False,
+            )
+            payload = result.get("result", result)
+            if not isinstance(payload, dict) or not payload.get("drained", False):
+                raise ValueError("router tier %r did not drain" % tier_id)
+    except Exception:
+        for tier_id in reversed(quiesced):
+            try:
+                _transition(
+                    "readmit", tier_id=tier_id, router_url=router_url,
+                    confirm=True, dry_run=False,
+                )
+            except Exception:
+                pass
+        raise
+
+    installer = _install or _install_router_config
+    if installer(selected) != 0:
+        raise ValueError("router config install failed or was rolled back")
+
+    deadline = time.monotonic() + 60
+    while True:
+        try:
+            post = _transition("status", router_url=router_url)
+            post_rows = post.get("tiers", [])
+            ready = {
+                row.get("tier_id"): row.get("ready")
+                for row in post_rows if isinstance(row, dict)
+            }
+            if set(ready) == set(desired) and all(
+                ready.get(tier_id) is True for tier_id in desired
+            ):
+                break
+        except ValueError:
+            pass
+        if time.monotonic() >= deadline:
+            raise ValueError("installed router config did not expose the ready desired tier set")
+        _sleep(1)
+    return {"applied": True, "dry_run": False, **plan}
+
+
 def _build_parser():
     parser = argparse.ArgumentParser(prog="anvil-serving router")
     actions = parser.add_subparsers(dest="action", required=True)
@@ -356,6 +444,11 @@ def _build_parser():
         if action in ("quiesce", "readmit"):
             item.add_argument("--confirm", action="store_true")
             item.add_argument("--dry-run", action="store_true")
+    install = actions.add_parser("install-config")
+    install.add_argument("--config", required=True)
+    install.add_argument("--router-url")
+    install.add_argument("--drain-timeout", type=float, default=120)
+    install.add_argument("--dry-run", action="store_true")
     return parser
 
 
@@ -393,6 +486,21 @@ def main(argv=None):
         print(json.dumps({"applied": rc == 0, "dry_run": False, **plan}, sort_keys=True))
         return rc
     if args.action == "status": return cmd_status(args.container)
+    if args.action == "install-config":
+        confirmed = guard.confirmation_authorized()
+        try:
+            result = install_config(
+                args.config,
+                router_url=args.router_url,
+                drain_timeout=args.drain_timeout,
+                confirm=confirmed,
+                dry_run=args.dry_run or not confirmed,
+            )
+        except ValueError as exc:
+            print("router config install failed: %s" % exc, file=sys.stderr)
+            return 1
+        print(json.dumps(result, sort_keys=True))
+        return 0
     if args.action in {"transition-status", "quiesce", "drain", "readmit"}:
         action = "status" if args.action == "transition-status" else args.action
         confirmed = bool(

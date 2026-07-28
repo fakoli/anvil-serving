@@ -12,7 +12,10 @@ Usage:
 Exit code 0 = all pass, 1 = any fail.
 """
 import argparse
+import base64
+import hashlib
 import json
+import mimetypes
 import os
 import sys
 import tempfile
@@ -91,6 +94,34 @@ def chat(base, model, messages, key=None, max_tokens=256, temperature=0.0,
     t0 = time.time()
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read()), time.time() - t0
+
+
+def load_image_data(path):
+    """Return a bounded image data URL plus non-sensitive input identity."""
+    if not path:
+        raise ValueError("multimodal checks require --image-path")
+    image_path = os.path.abspath(os.path.expanduser(path))
+    if os.path.islink(image_path):
+        raise ValueError("image path cannot be a symbolic link: %s" % image_path)
+    if not os.path.isfile(image_path):
+        raise ValueError("image path is not a regular file: %s" % image_path)
+    size = os.path.getsize(image_path)
+    if not 0 < size <= 10 * 1024 * 1024:
+        raise ValueError("image must be from 1 byte through 10 MiB")
+    mime, _encoding = mimetypes.guess_type(image_path)
+    if mime not in {"image/jpeg", "image/png", "image/webp"}:
+        raise ValueError("image must be PNG, JPEG, or WebP")
+    with open(image_path, "rb") as handle:
+        raw = handle.read(10 * 1024 * 1024 + 1)
+    if len(raw) != size:
+        raise ValueError("image changed while it was being read")
+    identity = {
+        "bytes": size,
+        "mime": mime,
+        "sha256": hashlib.sha256(raw).hexdigest(),
+    }
+    encoded = base64.b64encode(raw).decode("ascii")
+    return "data:%s;base64,%s" % (mime, encoded), identity
 
 def response_observation(response):
     """Retain the evidence needed to distinguish bad output from budget starvation."""
@@ -261,6 +292,52 @@ def t_smoke(base, model, key, ctk=None, max_tokens=256, reasoning_effort=None,
     except Exception as e:
         return False, f"error: {e}"
 
+
+def t_multimodal(base, model, key, data_url, image_identity, expectations, *,
+                 check, ctk=None, max_tokens=256, reasoning_effort=None,
+                 evidence=None, timeout=900):
+    prompts = {
+        "image": (
+            "Inspect this image. Describe what it shows and report the most "
+            "important labels, values, and status."
+        ),
+        "ocr": (
+            "Transcribe all visible text in this image exactly. Preserve numbers "
+            "and short labels. Return only the transcription."
+        ),
+    }
+    messages = [{"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": data_url}},
+        {"type": "text", "text": prompts[check]},
+    ]}]
+    try:
+        resp, dt = chat(
+            base, model, messages, key, max_tokens=max_tokens,
+            chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
+            timeout=timeout,
+        )
+        obs = _capture(evidence, check, resp, dt)
+        out = (resp["choices"][0]["message"].get("content") or "")
+        folded = out.casefold()
+        missing = [item for item in expectations if item.casefold() not in folded]
+        ok = not missing
+        obs.update({
+            "passed": ok,
+            "validation_detail": (
+                "all expected text present"
+                if ok else "missing expected text: %r" % missing
+            ),
+            "image": image_identity,
+            "expected": list(expectations),
+        })
+        return ok, (
+            f"{dt:.1f}s "
+            f"{'all expected text present' if ok else 'missing=' + repr(missing)} "
+            f"{_evidence_note(obs)}"
+        )
+    except Exception as e:
+        return False, f"error: {e}"
+
 def resolve_api_key(api_key_env=None):
     """Resolve auth for probes from an environment variable reference."""
     if api_key_env:
@@ -299,7 +376,13 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
     ap.add_argument("--needle-ctx", type=int, default=128000)
     ap.add_argument("--tool-batch", type=int, default=20)
     ap.add_argument("--checks", default="smoke,json,needle,tools",
-                    help="comma-separated checks: smoke,json,needle,tools")
+                    help="comma-separated checks: smoke,json,needle,tools,image,ocr")
+    ap.add_argument("--image-path",
+                    help="PNG, JPEG, or WebP input for image and OCR checks")
+    ap.add_argument("--image-expect", action="append", default=[],
+                    help="case-insensitive text required in the image-check response; repeatable")
+    ap.add_argument("--ocr-expect", action="append", default=[],
+                    help="case-insensitive text required in the OCR response; repeatable")
     ap.add_argument("--thinking-mode", choices=("default", "enabled", "disabled", "unsupported"),
                     default="default", help="model-family thinking control to request")
     ap.add_argument("--reasoning-effort",
@@ -341,9 +424,24 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
     if not 0 < a.timeout <= 3600:
         ap.error("--timeout must be greater than 0 and at most 3600 seconds")
     selected = [item.strip() for item in a.checks.split(",") if item.strip()]
-    unknown = sorted(set(selected) - {"smoke", "json", "needle", "tools"})
+    known_checks = {"smoke", "json", "needle", "tools", "image", "ocr"}
+    unknown = sorted(set(selected) - known_checks)
     if not selected or unknown:
-        ap.error("--checks must select smoke,json,needle,tools; unknown=%s" % unknown)
+        ap.error(
+            "--checks must select smoke,json,needle,tools,image,ocr; unknown=%s"
+            % unknown
+        )
+    image_data = None
+    image_identity = None
+    if {"image", "ocr"} & set(selected):
+        if "image" in selected and not a.image_expect:
+            ap.error("--checks image requires at least one --image-expect")
+        if "ocr" in selected and not a.ocr_expect:
+            ap.error("--checks ocr requires at least one --ocr-expect")
+        try:
+            image_data, image_identity = load_image_data(a.image_path)
+        except ValueError as exc:
+            ap.error(str(exc))
     allowed_finish_reasons = {
         item.strip() for item in a.allowed_finish_reasons.split(",") if item.strip()
     }
@@ -392,6 +490,9 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
                        "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
                        "max_completion_tokens": max_tokens},
             "timeout_seconds": a.timeout,
+            "multimodal_input": image_identity,
+            "image_expect": a.image_expect,
+            "ocr_expect": a.ocr_expect,
             "output": a.json_out,
             "deferred": ["endpoint identity", "model requests", "artifact write"],
         }, indent=2, sort_keys=True, ensure_ascii=True))
@@ -401,6 +502,16 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         "json": ("structured JSON", lambda: t_json(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
         "needle": (f"needle @ ~{a.needle_ctx} ctx", lambda: t_needle(a.base_url, a.model, api_key, a.needle_ctx, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
         "tools": (f"shared-prefix tool batch x{a.tool_batch}", lambda: t_tool_batch(a.base_url, a.model, api_key, a.tool_batch, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
+        "image": ("general image understanding", lambda: t_multimodal(
+            a.base_url, a.model, api_key, image_data, image_identity,
+            a.image_expect, check="image", ctk=ctk, max_tokens=max_tokens,
+            reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout,
+        )),
+        "ocr": ("verbatim image OCR", lambda: t_multimodal(
+            a.base_url, a.model, api_key, image_data, image_identity,
+            a.ocr_expect, check="ocr", ctk=ctk, max_tokens=max_tokens,
+            reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout,
+        )),
     }
     tests = [available[name] for name in selected]
     allok = True
@@ -440,6 +551,9 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         "budget": {"visible_answer_tokens": a.visible_answer_tokens,
                    "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
                    "max_completion_tokens": max_tokens},
+        "multimodal_input": image_identity,
+        "image_expect": a.image_expect,
+        "ocr_expect": a.ocr_expect,
         "checks": selected, "results": results, "observations": evidence,
         "evidence_policy": {"reasoning": a.reasoning_evidence,
                             "allowed_finish_reasons": sorted(allowed_finish_reasons),

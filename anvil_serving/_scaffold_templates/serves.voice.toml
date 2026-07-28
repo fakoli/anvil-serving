@@ -13,7 +13,10 @@ container = "anvil-voice-stt"
 port = 30010
 model = "tdt-0.6b-v3"
 engine = "audio"
-groups = ["voice"]             # serve groups (serves up/down/status --group)
+gpu_role = "dark-auxiliary"
+vram_mib = 2048
+residency = "resident"
+groups = ["voice", "omni-voice-stack"]
 up = "docker compose --project-name anvil-voice-audio -f {dir}/docker-compose.voice-audio.yml up -d stt"
 
 [[serve]]
@@ -24,7 +27,10 @@ port = 30011
 model = "kokoro"
 engine = "audio"
 health = "/health"
-groups = ["voice"]             # serve groups (serves up/down/status --group)
+gpu_role = "dark-auxiliary"
+vram_mib = 2048
+residency = "resident"
+groups = ["voice", "omni-voice-stack"]
 up = "docker compose --project-name anvil-voice-audio -f {dir}/docker-compose.voice-audio.yml up -d tts"
 
 # Realtime voice proxy as a Docker-MANAGED CONTAINER (reuses the anvil-serving

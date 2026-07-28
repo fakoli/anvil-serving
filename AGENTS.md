@@ -73,6 +73,29 @@ anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model <name>
 For router changes, the unit tests in `tests/router/` are the primary gate. Integration
 tests against a live local tier require `preflight`.
 
+## Failure investigation
+
+- Treat a failed health check, router response, or benchmark request as a
+  symptom, not a root cause. Inspect the authoritative logs for the component
+  that actually failed before changing models, images, routes, or recipes.
+- For managed containers, use the product's bounded lifecycle/status/log verbs
+  first. Capture the earliest actionable startup or request error from the
+  owning container, plus relevant exit state and health detail. If the product
+  cannot retrieve those logs, use the narrowest read-only Docker inspection
+  needed and record that missing product capability as a tooling gap.
+- Follow failures down the stack: caller response, router decision/upstream
+  error, serving-container logs, then engine/runtime/model-download details.
+  Do not stop at a higher-level 4xx/5xx when lower-level evidence is available.
+- Distinguish authentication, authorization/license, missing dependency,
+  incompatible engine/model, resource exhaustion, and application-quality
+  failures. Preserve the exact error and attempted identity in the dated
+  finding or ticket so later benchmarks can compare causes rather than just
+  pass/fail outcomes.
+- When the fix is in scope, make it durable in the managed image, manifest,
+  recipe, CLI, or controller surface, then rerun the failing probe and the
+  relevant regression gate. Do not silently work around the defect with an
+  unrecorded one-off command.
+
 ## Agent model strategy
 
 Use model depth at decision boundaries, then reduce it for bounded execution:
