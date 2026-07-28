@@ -83,12 +83,17 @@ _TEMPLATES_PACKAGE = "anvil_serving._scaffold_templates"
 _SANITIZE = (
     ("GPU-d0f446cf-1771-414c-e116-a39138798a8c", "GPU-REPLACE-WITH-PRIMARY-GPU-UUID"),
     ("GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1", "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID"),
+    ("GPU-00000000-0000-0000-0000-000000000002", "GPU-REPLACE-WITH-PRIMARY-GPU-UUID"),
+    ("GPU-00000000-0000-0000-0000-000000000001", "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID"),
     ("100.87.34.66", "REPLACE-WITH-YOUR-TAILNET-IP"),
+    ("192.0.2.20", "REPLACE-WITH-YOUR-TAILNET-IP"),
+    ("192.0.2.10", "REPLACE-WITH-YOUR-MINI-TAILNET-IP"),
 )
 
 _PRIMARY_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-PRIMARY-GPU-UUID"
 _AUXILIARY_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID"
 _TAILNET_IP_PLACEHOLDER = "REPLACE-WITH-YOUR-TAILNET-IP"
+_MINI_TAILNET_IP_PLACEHOLDER = "REPLACE-WITH-YOUR-MINI-TAILNET-IP"
 _TAILNET_IPV4 = ipaddress.ip_network("100.64.0.0/10")
 
 # (destination filename in the scaffold, template filename in _scaffold_templates/,
@@ -118,7 +123,7 @@ _SCAFFOLD_TEMPLATES = (
     ("operator-topology.toml", "operator-topology.toml",
      "examples/fakoli-dark/operator-topology.toml"),
     (".env.example", "env.example", "examples/fakoli-dark/.env.example"),
-    ("voice.toml", "voice.example.toml", "examples/voice/voice.example.toml"),
+    ("voice.toml", "voice.toml", "examples/fakoli-dark/voice.toml"),
 )
 
 
@@ -175,6 +180,7 @@ def _empty_host_discovery():
         "auxiliary_gpu": None,
         "tailnet_ip": None,
         "tailnet_source": None,
+        "topology_host": None,
     }
 
 
@@ -308,22 +314,38 @@ def discover_host(
     else:
         resolved_tailnet_ip = None
         tailnet_source = None
+    topology_host = None
+    if primary_gpu or auxiliary_gpu:
+        topology_host = "fakoli-dark"
+    elif sys.platform == "darwin":
+        topology_host = "fakoli-mini"
     return {
         "primary_gpu": primary_gpu,
         "auxiliary_gpu": auxiliary_gpu,
         "tailnet_ip": resolved_tailnet_ip,
         "tailnet_source": tailnet_source,
+        "topology_host": topology_host,
     }
 
 
 def _personalize_home_text(text, discovery):
-    replacements = (
+    replacements = [
         (_PRIMARY_GPU_PLACEHOLDER,
          discovery["primary_gpu"]["uuid"] if discovery["primary_gpu"] else None),
         (_AUXILIARY_GPU_PLACEHOLDER,
          discovery["auxiliary_gpu"]["uuid"] if discovery["auxiliary_gpu"] else None),
-        (_TAILNET_IP_PLACEHOLDER, discovery["tailnet_ip"]),
-    )
+    ]
+    if discovery["topology_host"] == "fakoli-dark":
+        replacements.append((_TAILNET_IP_PLACEHOLDER, discovery["tailnet_ip"]))
+        text = text.replace(
+            'command_host = "host:fakoli-mini"',
+            'command_host = "host:fakoli-dark"',
+        ).replace(
+            'command_runtime = "runtime:mini-native"',
+            'command_runtime = "runtime:dark-native"',
+        )
+    elif discovery["topology_host"] == "fakoli-mini":
+        replacements.append((_MINI_TAILNET_IP_PLACEHOLDER, discovery["tailnet_ip"]))
     for placeholder, value in replacements:
         if value:
             text = text.replace(placeholder, value)
@@ -371,6 +393,14 @@ def _home_plan(discovery=None):
         for dest_name, tmpl, _src in _SCAFFOLD_TEMPLATES
     ]
     plan.append(("edge.toml", _personalize_home_text(render_edge_config(), host)))
+    topology_text = dict(plan)["operator-topology.toml"]
+    if "GPU-REPLACE-WITH-" not in topology_text:
+        try:
+            parse_topology(tomllib.loads(topology_text))
+        except (tomllib.TOMLDecodeError, TopologyValidationError) as exc:
+            raise InitError(
+                "could not generate a valid operator topology (%s)" % exc
+            ) from exc
     return plan
 
 
@@ -828,6 +858,10 @@ def _main_home(a):
               % (discovery["tailnet_ip"], discovery["tailnet_source"]))
     else:
         print("  Tailnet IPv4: not detected; placeholder preserved")
+    if discovery["topology_host"]:
+        print("  Topology command host: %s [detected]" % discovery["topology_host"])
+    else:
+        print("  Topology command host: not detected; reference default preserved")
     print("  Secrets: copy .env.example to .env and fill it in (never committed).")
     print()
     print("Next steps (zero hand-assembly):")

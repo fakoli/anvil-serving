@@ -1,0 +1,57 @@
+# Canonical Dark-owned Anvil Voice configuration.
+#
+# This file is intentionally co-located with serves.voice.toml.  The default
+# profile owns STT/TTS and the optional Realtime proxy through the normal
+# anvil-serving lifecycle; Mini remains model-free in the reference topology.
+
+[voice]
+name = "anvil-voice-dark"
+realtime_host = "127.0.0.1"
+realtime_port = 8765
+
+[voice.llm]
+base_url = "http://127.0.0.1:8000/v1"
+model = "llm.voice"
+stream = true
+api_key_env = "ANVIL_ROUTER_TOKEN"
+system_prompt = "You are Anvil Voice. Keep spoken answers concise, direct, and useful."
+temperature = 0.2
+max_tokens = 256
+
+[voice.stt]
+base_url = "http://127.0.0.1:30010/v1"
+model = "tdt-0.6b-v3"
+stream = false
+response_format = "json"
+timeout = 120.0
+lifecycle = "managed"
+serve_name = "stt"
+manifest_path = "serves.voice.toml"
+ready_url = "http://127.0.0.1:30010/health"
+
+[voice.tts]
+base_url = "http://127.0.0.1:30011/v1"
+model = "kokoro"
+timeout = 120.0
+lifecycle = "managed"
+serve_name = "tts"
+manifest_path = "serves.voice.toml"
+ready_url = "http://127.0.0.1:30011/health"
+response_format = "pcm"
+source_sample_rate = 24000
+target_sample_rate = 16000
+
+[voice.proxy]
+lifecycle = "managed"
+serve_name = "realtime-proxy"
+manifest_path = "serves.voice.toml"
+listen_host = "127.0.0.1"
+listen_port = 8765
+ready_url = "http://127.0.0.1:8765/usage"
+stt_url = "http://127.0.0.1:30010/v1"
+tts_url = "http://127.0.0.1:30011/v1"
+router_url = "http://127.0.0.1:8000/v1"
+
+# A named profile makes the reference choice explicit without changing the
+# already-consistent default tables above.
+[voice.profiles.dark-audio]

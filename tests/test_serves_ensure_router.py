@@ -17,10 +17,11 @@ def proc(rc=0, out="", err=""):
 class FakeRun:
     """Capture argv for every docker call; answer `docker inspect` with `state`."""
 
-    def __init__(self, state="running", up_rc=0):
+    def __init__(self, state="running", up_rc=0, compose_project="anvil-serving"):
         self.calls = []
         self._state = state
         self._up_rc = up_rc
+        self._compose_project = compose_project
 
     def __call__(self, argv, **kw):
         self.calls.append(argv)
@@ -29,6 +30,8 @@ class FakeRun:
                 return proc(1, "", "Error: No such object")
             if self._state == "error":
                 return proc(1, "", "Cannot connect to the Docker daemon")
+            if "com.docker.compose.project" in " ".join(argv):
+                return proc(0, self._compose_project + "\n")
             return proc(0, self._state + "\n")
         # docker compose ... up ... -> the router bring-up
         if isinstance(argv, list) and "up" in argv:
@@ -98,6 +101,16 @@ def test_router_exited_gets_started(capsys):
     assert rc == 0
     assert "router: started" in capsys.readouterr().out
     assert run.ran_up()
+
+
+def test_router_exited_with_foreign_owner_is_not_silently_replaced(capsys):
+    run = FakeRun(state="exited", compose_project="fakoli-dark")
+
+    rc = serves.ensure_router_healthy(_run=run, _open=_open_down, env_file="")
+
+    assert rc == 1
+    assert not run.ran_up()
+    assert "--recreate" in capsys.readouterr().err
 
 
 def test_docker_error_is_reported_non_gating(capsys):

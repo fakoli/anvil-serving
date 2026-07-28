@@ -14,7 +14,41 @@ def test_workbench_up_dry_run_uses_packaged_compose_template(capsys):
     rendered = json.loads(capsys.readouterr().out)
     assert rendered["dry_run"] is True
     assert rendered["command"][:3] == ["docker", "compose", "--project-name"]
-    assert rendered["command"][-2:] == ["up", "--detach"]
+    assert rendered["command"][-5:] == [
+        "up", "--detach", "--wait", "--wait-timeout", "180"
+    ]
+
+
+def test_workbench_build_renders_local_companion_image_command(tmp_path, capsys):
+    source = tmp_path / "anvil-workbench"
+    dockerfile = source / "deploy" / "Dockerfile.hub"
+    dockerfile.parent.mkdir(parents=True)
+    dockerfile.write_text("FROM scratch\n", encoding="utf-8")
+
+    assert workbench.main(
+        [
+            "build",
+            "--source",
+            str(source),
+            "--image",
+            "anvil-workbench:test",
+            "--dry-run",
+        ]
+    ) == 0
+    rendered = json.loads(capsys.readouterr().out)
+    assert rendered == {
+        "ok": True,
+        "dry_run": True,
+        "command": [
+            "docker",
+            "build",
+            "--file",
+            str(dockerfile.resolve()),
+            "--tag",
+            "anvil-workbench:test",
+            str(source.resolve()),
+        ],
+    }
 
 
 @pytest.mark.parametrize("action", ("up", "down", "status", "logs"))
@@ -26,7 +60,7 @@ def test_workbench_missing_compose_file_is_a_clean_usage_error(action, tmp_path,
 @pytest.mark.parametrize(
     ("argv", "suffix"),
     [
-        (("up",), ("up", "--detach")),
+        (("up",), ("up", "--detach", "--wait", "--wait-timeout", "180")),
         (("down",), ("down",)),
         (("status",), ("ps", "--format", "json")),
         (("logs", "--tail", "17"), ("logs", "--tail", "17")),
@@ -44,7 +78,7 @@ def test_workbench_commands_render_cross_platform_argument_arrays(argv, suffix):
 
 
 def test_workbench_mutations_use_shared_confirmation_before_docker(capsys):
-    for action in ("up", "down"):
+    for action in ("build", "up", "down"):
         assert cli.main(["workbench", action]) == 3
         assert "rerun the same command with --confirm" in capsys.readouterr().err
 
@@ -62,7 +96,9 @@ def test_workbench_mutations_require_the_dispatcher_confirmation_scope(monkeypat
     assert "confirmation required" in json.loads(capsys.readouterr().err)["error"]
 
     assert cli.main(["workbench", "up", "--confirm"]) == 0
-    assert calls[0][-2:] == ["up", "--detach"]
+    assert calls[0][-5:] == [
+        "up", "--detach", "--wait", "--wait-timeout", "180"
+    ]
 
 
 @pytest.mark.parametrize("tail", ("0", "-1", "5001", "not-a-number"))
@@ -79,10 +115,12 @@ def test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle(capsy
     assert rendered["ok"] is True
     assert rendered["dry_run"] is True
     assert isinstance(rendered["command"], list)
-    assert rendered["command"][-2:] == ["up", "--detach"]
+    assert rendered["command"][-5:] == [
+        "up", "--detach", "--wait", "--wait-timeout", "180"
+    ]
 
     docs = (Path(__file__).resolve().parents[1] / "docs" / "WORKBENCH.md").read_text(encoding="utf-8")
-    for action in ("up", "down", "status", "logs"):
+    for action in ("build", "up", "down", "status", "logs"):
         assert f"anvil-serving workbench {action}" in docs
 
 
@@ -93,5 +131,15 @@ def test_workbench_compose_waits_for_neo4j_and_ignores_its_secret_env_file():
 
     assert "neo4j:\n        condition: service_healthy" in compose
     assert "cypher-shell" in compose
+    assert "http://127.0.0.1:8080/healthz" in compose
+    assert (
+        "WORKBENCH_ALLOW_INSECURE_DEV_ACTOR: "
+        "${WORKBENCH_ALLOW_INSECURE_DEV_ACTOR:-false}"
+    ) in compose
+    assert "WORKBENCH_SANDBOX_MODELS: ${WORKBENCH_SANDBOX_MODELS:-}" in compose
+    assert "networks: [workbench, serving]" in compose
+    assert "name: ${ANVIL_ROUTER_NETWORK:-anvil-serving_default}" in compose
+    assert "image: ${ANVIL_WORKBENCH_IMAGE:-anvil-workbench:local}" in compose
+    assert "ghcr.io/" not in compose
     assert "workbench.env" in gitignore
     assert "!workbench.env.example" in gitignore

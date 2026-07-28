@@ -17,6 +17,7 @@ from .transports import _is_safe_controller_ip
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 DEFAULT_COMPOSE = os.path.join(REPO, "examples", "fakoli-dark", "docker-compose.yml")
+DEFAULT_COMPOSE_PROJECT = "anvil-serving"
 DEFAULT_CONTAINER = "anvil-router"
 DEFAULT_SERVICE = "router"
 DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
@@ -133,17 +134,73 @@ def resolve_env_file(path=None):
     return None if selected is None else os.path.abspath(os.path.expanduser(selected))
 
 
-def _compose_up_argv(compose, service, env_file=None, recreate=False):
-    argv = ["docker", "compose"]
+def _compose_argv(compose, *, env_file=None):
+    argv = ["docker", "compose", "--project-name", DEFAULT_COMPOSE_PROJECT]
     if env_file:
         argv += ["--env-file", os.path.abspath(os.path.expanduser(env_file))]
-    argv += ["-f", compose, "up", "-d", "--no-deps"]
+    return argv + ["-f", compose]
+
+
+def _compose_up_argv(compose, service, env_file=None, recreate=False):
+    argv = _compose_argv(compose, env_file=env_file)
+    argv += ["up", "-d", "--no-deps"]
     if recreate:
         argv.append("--force-recreate")
     return argv + [service]
 
 
-def cmd_up(compose, service, env_file=None, dry_run=False, _run=subprocess.run, recreate=False):
+def _container_compose_project(container, _run=subprocess.run):
+    state = docker_state(container, _run=_run)
+    if state in {"absent", "error"}:
+        return state, None
+    result = _run(
+        [
+            "docker",
+            "inspect",
+            "--format",
+            '{{ index .Config.Labels "com.docker.compose.project" }}',
+            container,
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode:
+        return "error", None
+    return state, (result.stdout or "").strip() or None
+
+
+def cmd_up(
+    compose,
+    service,
+    env_file=None,
+    dry_run=False,
+    _run=subprocess.run,
+    recreate=False,
+    container=DEFAULT_CONTAINER,
+):
+    state, observed_project = _container_compose_project(container, _run=_run)
+    if state == "error":
+        print("cannot determine router Compose ownership", file=sys.stderr)
+        return 1
+    if state != "absent" and observed_project != DEFAULT_COMPOSE_PROJECT:
+        owner = observed_project or "none"
+        if not recreate:
+            print(
+                "router container %s belongs to Compose project %r, expected %r; "
+                "rerun `anvil-serving router up --recreate` to reconcile ownership"
+                % (container, owner, DEFAULT_COMPOSE_PROJECT),
+                file=sys.stderr,
+            )
+            return 1
+        if not dry_run:
+            remove_rc = _run_argv(
+                ["docker", "rm", "-f", container],
+                _run,
+            )
+            if remove_rc:
+                return remove_rc
     return _run_argv(
         _compose_up_argv(compose, service, env_file=env_file, recreate=recreate),
         _run,
@@ -152,7 +209,11 @@ def cmd_up(compose, service, env_file=None, dry_run=False, _run=subprocess.run, 
 
 
 def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
-    return _run_argv(["docker", "compose", "-f", compose, "stop", service], _run, dry_run=dry_run)
+    return _run_argv(
+        [*_compose_argv(compose), "stop", service],
+        _run,
+        dry_run=dry_run,
+    )
 
 
 def cmd_restart(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None):
@@ -175,6 +236,7 @@ def lifecycle_plan(action, *, compose=None, service=DEFAULT_SERVICE, env_file=No
     plan = {
         "action": action,
         "compose": None,
+        "compose_project": None,
         "env_file": None,
         "service": None,
         "container": container,
@@ -183,6 +245,7 @@ def lifecycle_plan(action, *, compose=None, service=DEFAULT_SERVICE, env_file=No
     if action in {"up", "down"}:
         selected_compose = resolve_compose_path(compose)
         plan["compose"] = selected_compose
+        plan["compose_project"] = DEFAULT_COMPOSE_PROJECT
         plan["service"] = service
         if action == "up":
             selected_env_file = resolve_env_file(env_file)
@@ -194,7 +257,7 @@ def lifecycle_plan(action, *, compose=None, service=DEFAULT_SERVICE, env_file=No
                 recreate=recreate,
             )
         else:
-            plan["command"] = ["docker", "compose", "-f", selected_compose, "stop", service]
+            plan["command"] = [*_compose_argv(selected_compose), "stop", service]
     else:
         plan["command"] = ["docker", "restart", container]
     return plan
@@ -319,6 +382,7 @@ def main(argv=None):
                 plan["service"],
                 plan["env_file"],
                 recreate=plan["recreate"],
+                container=plan["container"],
             )
         elif args.action == "down":
             rc = cmd_down(plan["compose"], plan["service"])

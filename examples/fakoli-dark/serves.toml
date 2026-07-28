@@ -30,7 +30,7 @@
 #                        operator resolved the T015 resident-set conflict by shrinking fast
 #                        (18432 -> 14336, pre-quantized FP8 checkpoint) and this reserve
 #                        (7168 -> 4608) so the full resident set (fast 14336 + embeddings
-#                        3200 + reranker 3456 + ocr 5120 = 26112 MiB) fits the 27999 MiB
+#                        3200 + reranker 3456 + ocr 6144 = 27136 MiB) fits the 27999 MiB
 #                        budget. (The operator's initial 10240 MiB fast target proved
 #                        physically unreachable: E4B's bf16 embeddings/per-layer-embeddings
 #                        survive every fp8 shape — measured 12.4 GiB FP8-Dynamic weights.)
@@ -56,6 +56,7 @@ reserve_mib = 4608
 
 [[serve]]
 name = "primary"                 # heavy quality tier — Laguna S 2.1 NVFP4
+stack = "serving"
 container = "vllm-laguna-s-primary"
 port = 30002
 model = "laguna-s-2.1-nvfp4"   # served-model-name (used by `anvil-serving eval`)
@@ -66,6 +67,7 @@ up = "docker compose -f {dir}/docker-compose.yml up -d primary"
 
 [[serve]]
 name = "primary-gptoss-puzzle-rollback" # ready rollback; stop `heavy` first because both own :30002
+stack = "serving"
 container = "vllm-gptoss-puzzle-primary-rollback"
 port = 30002
 model = "gpt-oss-puzzle-88b"
@@ -84,6 +86,7 @@ up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d primar
 # the T003 derive formula over-allocates when reserve_mib > 0) — change them together.
 [[serve]]
 name = "auxiliary"                  # fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090
+stack = "auxiliary"
 container = "vllm-gemma4-e4b-auxiliary"
 port = 30003
 model = "gemma4-e4b-it"        # served-model-name (used by `anvil-serving eval`)
@@ -110,6 +113,7 @@ up = "docker compose -f {dir}/docker-compose.yml up -d auxiliary"
 # deviation note there) — change them together.
 [[serve]]
 name = "embeddings"            # Qwen3-Embedding-0.6B (vLLM pooling runner, RTX 5090)
+stack = "auxiliary"
 container = "vllm-qwen3-embedding"
 port = 30005
 model = "qwen3-embedding-0.6b" # served-model-name (what /v1/embeddings callers send)
@@ -123,6 +127,7 @@ up = "docker compose -f {dir}/docker-compose.yml up -d embeddings"
 
 [[serve]]
 name = "reranker"              # Qwen3-Reranker-0.6B (vLLM sequence-classification, RTX 5090)
+stack = "auxiliary"
 container = "vllm-qwen3-reranker"
 port = 30006
 model = "qwen3-reranker-0.6b"  # served-model-name (what /rerank callers send)
@@ -146,20 +151,21 @@ up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
 #
 # CAPACITY (2026-07-13, gpu-reservations:T011 operator rebalance): with fast at
 # 14336 MiB (FP8-Dynamic) and reserve at 4608 MiB, the FULL resident set — fast
-# 14336 + embeddings 3200 + reranker 3456 + ocr 5120 = 26112 MiB — fits the
+# 14336 + embeddings 3200 + reranker 3456 + ocr 6144 = 27136 MiB — fits the
 # 27999 MiB dark-auxiliary budget with 1887 MiB of ledger headroom, so `serves up
 # ocr` admits alongside the T009 trio. (The earlier T015 conflict — fast at
 # 18432 left only 351 MiB free — was resolved by that rebalance; see the
 # [[gpu_roles]] note.)
 [[serve]]
 name = "ocr"                   # PaddleOCR-VL-1.6 (vLLM, RTX 5090)
+stack = "auxiliary"
 container = "vllm-paddleocr-vl"
 port = 30007
 model = "paddleocr-vl-1.6"     # served-model-name (the ocr-local router tier's `model`)
 engine = "vllm"
 health = "/health"
 gpu_role = "dark-auxiliary"
-vram_mib = 5120
+vram_mib = 6144
 residency = "resident"
 groups = ["ocr", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
@@ -179,13 +185,14 @@ up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
 # honest-measured breakdown).
 #
 # CAPACITY (2026-07-13): vision does NOT fit alongside the full resident set — fast
-# 14336 + embeddings 3200 + reranker 3456 + ocr 5120 = 26112 of the 27999 MiB budget
+# 14336 + embeddings 3200 + reranker 3456 + ocr 6144 = 27136 of the 27999 MiB budget
 # leaves 1887 MiB free < 12288. That is by design for an evictable serve: `serves up
 # vision` is correctly denied with the ledger until the operator frees residents
 # (e.g. `serves down ocr reranker embeddings` -> 13663 MiB free admits it). Which
 # residents dark-auxiliary hosts is the gpu-reservations:T015 resident-set decision.
 [[serve]]
 name = "vision"                # Qwen3-VL-4B-Instruct (vLLM, RTX 5090)
+stack = "auxiliary"
 container = "vllm-qwen3-vl-vision"
 port = 30008
 model = "qwen3-vl-4b-instruct" # served-model-name (the vision-local router tier's `model`)
@@ -237,8 +244,8 @@ reasoning_evidence = "required"
 # they use separate ports, `restart: "no"` compose services, and do not replace `fast`.
 #
 # Start/stop through the managed surface:
-#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
-#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml down voice-qwen3-32b
+#   anvil-serving serves up voice-qwen3-32b --manifest examples/fakoli-dark/serves.toml
+#   anvil-serving serves down voice-qwen3-32b --manifest examples/fakoli-dark/serves.toml
 #
 # The experiment compose defaults to loopback-only publishes. For cross-host Mini validation,
 # set VOICE_CANDIDATE_PUBLISH to this host's tailnet/private address before `serves up`.
@@ -312,8 +319,8 @@ up = "docker compose -f {dir}/docker-compose.experiment.yml up -d tts-gepard-fas
 # must be dry-run / started through `anvil-serving serves`, never as raw docker
 # commands:
 #
-#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml --dry-run up fast-qwen36-35b-a3b
-#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-devstral-small2-llamacpp
+#   anvil-serving serves up fast-qwen36-35b-a3b --manifest examples/fakoli-dark/serves.toml --dry-run
+#   anvil-serving serves up fast-devstral-small2-llamacpp --manifest examples/fakoli-dark/serves.toml
 #
 # Leave FAST_CANDIDATE_PUBLISH unset for same-host benchmark loops. Set it to a
 # controlled tailnet/private address only when Mini needs to reach Dark directly.

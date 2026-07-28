@@ -47,8 +47,8 @@ def test_reference_audio_targets_resolve_dark_owned_model_endpoints():
     assert resolved.tts.plan.resource.id == "dark-tts"
     assert resolved.stt.plan.resource_host.id == "fakoli-dark"
     assert resolved.tts.plan.resource_host.id == "fakoli-dark"
-    assert resolved.stt.base_url == "http://127.0.0.1:30110/v1"
-    assert resolved.tts.base_url == "http://127.0.0.1:30111/v1"
+    assert resolved.stt.base_url == "http://127.0.0.1:30010/v1"
+    assert resolved.tts.base_url == "http://127.0.0.1:30011/v1"
     assert resolved.stt.endpoint_kind == "host-relative-loopback"
     assert resolved.stt.plan.transport == "controller"
 

@@ -149,8 +149,10 @@ def discover_workspace_root(start: str | None = None) -> str:
             return current
         parent = os.path.dirname(current)
         if parent == current:
-            return ""
+            break
         current = parent
+    package_root = real_path(os.path.join(os.path.dirname(__file__), "..", ".."))
+    return package_root if has_workspace_marker(package_root) else ""
 
 
 def configured_benchmark_evidence_roots() -> list[str]:

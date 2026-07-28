@@ -241,19 +241,26 @@ def test_old_voice_lifecycle_paths_are_actionable_tombstones(
     assert "use `%s` instead" % replacement in captured.err
 
 
-def test_audio_requires_topology_before_serve_construction(
-    manifest_path, monkeypatch, capsys
+def test_audio_missing_default_topology_fails_before_serve_construction(
+    manifest_path, tmp_path, monkeypatch, capsys
 ):
+    config_home = tmp_path / "operator-home"
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
     monkeypatch.setattr(
         voice_cli,
         "_audio_serves",
-        lambda *args, **kwargs: pytest.fail("missing topology reached serve construction"),
+        lambda *args, **kwargs: pytest.fail(
+            "missing default topology reached serve construction"
+        ),
     )
 
     rc = voice_cli.main(["audio", "up", "--config", manifest_path, "--dry-run"])
 
     assert rc == 2
-    assert "--topology is required" in capsys.readouterr().err
+    error = capsys.readouterr().err
+    assert "invalid topology" in error
+    assert "operator-home" in error
+    assert "operator-topology.toml" in error
 
 
 def test_audio_up_uses_dark_owned_host_relative_endpoints(
@@ -280,8 +287,8 @@ def test_audio_up_uses_dark_owned_host_relative_endpoints(
 
     assert rc == 0
     assert seen == {
-        "stt": "http://127.0.0.1:30110/v1",
-        "tts": "http://127.0.0.1:30111/v1",
+        "stt": "http://127.0.0.1:30010/v1",
+        "tts": "http://127.0.0.1:30011/v1",
     }
     out = capsys.readouterr().out
     assert "stt owner=fakoli-dark execution=fakoli-dark transport=local" in out
@@ -463,6 +470,27 @@ def _no_topology_guard(monkeypatch):
         "_resolve_proxy_operation",
         lambda *a, **k: pytest.fail("managed/direct proxy path resolved topology"),
     )
+
+
+def test_managed_audio_readiness_comes_from_selected_serve_manifest(tmp_path):
+    manifest = tmp_path / "serves.voice.toml"
+    manifest.write_text(
+        """
+[[serve]]
+name = "stt"
+container = "anvil-voice-stt"
+port = 30010
+model = "tdt"
+engine = "audio"
+health = "/health"
+""".strip(),
+        encoding="utf-8",
+    )
+    assert voice_cli._managed_ready_url(
+        "http://127.0.0.1:30010/v1",
+        str(manifest),
+        "stt",
+    ) == "http://127.0.0.1:30010/health"
 
 
 @pytest.mark.parametrize("action", ["up", "down", "restart"])
@@ -778,8 +806,8 @@ def test_bridge_dry_run_prints_default_routes(capsys):
 
     assert rc == 0
     out = capsys.readouterr().out
-    assert "stt 127.0.0.1:30110 -> 192.0.2.20:30110" in out
-    assert "tts 127.0.0.1:30111 -> 192.0.2.20:30111" in out
+    assert "stt 127.0.0.1:30110 -> 192.0.2.20:30010" in out
+    assert "tts 127.0.0.1:30111 -> 192.0.2.20:30011" in out
 
 
 def test_bridge_refuses_non_loopback_live_bind_without_ack(capsys):
@@ -1347,6 +1375,44 @@ def test_cmd_benchmark_prints_success_json(manifest_path, monkeypatch, capsys):
     assert '"ttfa_ms": 12.3' in out
 
 
+def test_cmd_benchmark_audio_scope_skips_llm_and_proxy(manifest_path, monkeypatch, capsys):
+    seen = {}
+
+    def fake_run(data, **kwargs):
+        seen["data"] = data
+        seen["kwargs"] = kwargs
+        return {"scope": "audio", "audio_roundtrip_ms": 42.0}
+
+    monkeypatch.setattr(
+        voice_cli.voice_benchmark,
+        "run_audio_benchmark_from_manifest",
+        fake_run,
+    )
+
+    rc = voice_cli.main(
+        ["benchmark", "--scope", "audio", "--config", manifest_path]
+    )
+
+    assert rc == 0
+    assert seen["kwargs"] == {"profile": None}
+    assert '"scope": "audio"' in capsys.readouterr().out
+
+
+def test_cmd_benchmark_audio_scope_rejects_candidate_options(manifest_path, capsys):
+    rc = voice_cli.main([
+        "benchmark",
+        "--scope",
+        "audio",
+        "--config",
+        manifest_path,
+        "--candidate",
+        "not-used",
+    ])
+
+    assert rc == 2
+    assert "does not call an LLM" in capsys.readouterr().err
+
+
 def test_cmd_benchmark_resolves_profile_candidate_overlay_and_writes_evidence(
     tmp_path, monkeypatch, capsys
 ):
@@ -1562,6 +1628,7 @@ def test_cmd_benchmark_help_lists_profile_candidate_overlay_and_evidence_options
     assert "--candidate-model" in out
     assert "--candidate-api-key-env" in out
     assert "--evidence-out" in out
+    assert "--scope" in out
 
 
 def test_cmd_run_help_lists_profile_candidate_overlay_options(capsys):

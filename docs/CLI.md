@@ -56,7 +56,7 @@ separator.
 
 | Option | Purpose |
 | --- | --- |
-| `--topology PATH` | Use a deployment topology document for target resolution. |
+| `--topology PATH` | Use a deployment topology document for target resolution (default after target resolution is requested: `$ANVIL_SERVING_HOME/operator-topology.toml`). |
 | `--topology-overlay PATH` | Apply a deployment overlay to the topology. |
 | `--command-host host:ID` | Declare the host issuing the command. |
 | `--command-runtime runtime:ID` | Declare the runtime issuing the command. |
@@ -79,6 +79,9 @@ separator.
   time without changing the result envelope.
 - Resource-owner commands resolve through the declared topology. SSH is a recovery
   transport, not an implicit first choice.
+- Omitting `--topology` does not enable target resolution by itself. Once a target,
+  command host/runtime, transport, or another resolution option opts into it, the
+  dispatcher uses the operator config-home topology.
 - Examples use `127.0.0.1`, because loopback is host-relative.
 
 ## Complete command index
@@ -116,6 +119,7 @@ required operands, choices, and defaults.
 | `serves switch` | Switch a deployment role to an activation-ready recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--registry`<br>`--recipe` |
 | `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves status` | Show model serve status. | `read` / `bounded` | - |
+| `serves probe` | Run an engine-aware functional serve probe. | `read` / `bounded` | - |
 | `serves groups` | List serve groups across the manifest set and their members. | `read` / `bounded` | - |
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
@@ -132,6 +136,7 @@ required operands, choices, and defaults.
 | `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
 | `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
+| `models cache remove` | Remove one exact cached repository revision. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
 | `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -221,6 +226,7 @@ required operands, choices, and defaults.
 | `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `workbench` | Manage the optional private Anvil Workbench hub stack. | `read` / `bounded` | - |
+| `workbench build` | Build the Workbench hub image from the local companion checkout. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--source`<br>`--image` |
 | `workbench up` | Start the private Workbench hub, Postgres, and Neo4j projection. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `workbench down` | Stop the Workbench hub stack while preserving its named data volumes. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | - |

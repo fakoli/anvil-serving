@@ -229,14 +229,13 @@ def commands() -> CommandNode:
                 ),
                 docs_anchor="docs/cli/voice.md#realtime-proxy",
             ),
-            _resource_node(
+            _node(
                 "benchmark",
                 "Benchmark an end-to-end voice session.",
-                "anvil_serving.voice.cli",
-                role="realtime-proxy",
-                coowned_roles=("stt-proxy", "tts-proxy"),
-                argv_prefix=("benchmark",),
-                execution_runtime_roles=("native",),
+                handler=_handler(
+                    "anvil_serving.voice.cli",
+                    argv_prefix=("benchmark",),
+                ),
                 docs_anchor="docs/cli/voice.md#benchmark",
             ),
             _node(

@@ -40,7 +40,8 @@ swap.
 | Replace the deployed Primary recipe | `models recipes list` | Choose a row that activates `primary`, inspect it, then preview `serves switch primary MODEL --dry-run`. |
 | Add or revise an operator recipe | `models recipes create|update ... --dry-run` | Apply with `--confirm`; retain the numbered backup. |
 | Start a candidate without changing routing | `models recipes load MODEL --container NAME --dry-run` | Apply, run `eval preflight`, then review a `serves switch`. |
-| Reclaim cache space | `models cache prune --dry-run` | Add `--execute --confirm` only after reviewing the protected mixture. |
+| Remove one exact cached revision | `models cache remove OWNER/REPO --revision COMMIT --dry-run` | Apply with `--confirm` after reviewing the snapshot and reclaimable blobs. |
+| Reclaim cache space broadly | `models cache prune --dry-run` | Add `--execute --confirm` only after reviewing the protected mixture. |
 
 ## Commands
 
@@ -55,6 +56,7 @@ swap.
 | `models recipes update` | Replace one selected recipe. |
 | `models recipes delete` | Delete one selected recipe. |
 | `models recipes load` | Start a named local container from one recipe. |
+| `models cache remove` | Plan or remove one exact cached repository revision. |
 | `models cache prune` | Plan or prune model-cache storage. |
 
 ## Catalog sync
@@ -99,6 +101,13 @@ machine's automatic WSL cache-reclaim policy. When that policy is enabled, a
 successful confirmed pull captures operation cache growth and evaluates the
 best-effort page-cache-only postcondition once. A skip or failure warns without
 changing the successful download's exit code.
+
+A confirmed pull first queries repository metadata (or uses
+`--expected-bytes`), inspects the target snapshot inside the named volume, and
+fails before downloading unless free bytes cover the missing artifact bytes
+plus `--headroom-gib`. The download keeps native `hf download` progress and
+resumability. Success is reported only after the exact requested snapshot
+exists with no incomplete files or broken links.
 
 ## Recipes
 
@@ -206,6 +215,22 @@ anvil-serving models score --help
 
 Scoring ranks models from retained benchmark evidence. It does not auto-promote a
 recipe or modify router policy.
+
+## Cache remove
+
+Use the exact-removal verb when one known repository revision—not a policy
+selected set—is the target:
+
+```bash
+anvil-serving models cache remove OWNER/REPO --revision COMMIT --dry-run
+anvil-serving models cache remove OWNER/REPO --revision COMMIT --confirm
+```
+
+The selector requires both an exact `OWNER/REPO` and revision. Preview reports
+the matching snapshot and bytes that become unreferenced; apply removes only
+that snapshot, collects only blobs no remaining snapshot references, and
+verifies the target snapshot is absent. It does not approximate repository
+identity with a substring or wildcard.
 
 ## Cache prune
 

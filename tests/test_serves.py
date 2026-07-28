@@ -6,6 +6,7 @@ seams), so these run with no docker, no GPU, and no network.
 import os
 import textwrap
 import types
+import json
 
 import pytest
 
@@ -26,6 +27,20 @@ def _manifest(tmp_path, body):
     p = tmp_path / "serves.toml"
     p.write_text(textwrap.dedent(body), encoding="utf-8")
     return str(p)
+
+
+class _JsonResponse:
+    def __init__(self, value):
+        self.payload = json.dumps(value).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def read(self, limit=-1):
+        return self.payload[:limit] if limit >= 0 else self.payload
 
 
 def _inspect_returning(state, stop_rc=0, stop_err="", state_after_stop="exited"):
@@ -131,6 +146,154 @@ def test_load_manifest_accepts_audio_engine_for_non_llm_serves(tmp_path):
     assert serve["engine"] == "audio"
 
 
+# ---- engine-aware functional probes ---------------------------------------
+
+def test_probe_embedding_validates_vector_shape():
+    seen = {}
+
+    def open_request(request, timeout=0):
+        seen["url"] = request.full_url
+        seen["body"] = json.loads(request.data)
+        seen["timeout"] = timeout
+        return _JsonResponse({
+            "data": [{"embedding": [0.1, 0.2, 0.3]}],
+        })
+
+    result = serves.probe_serve(
+        {
+            "name": "embeddings",
+            "stack": "auxiliary",
+            "engine": "embedding",
+            "port": 30005,
+            "served_name": "embed-local",
+        },
+        text="probe",
+        timeout=12,
+        _open=open_request,
+    )
+    assert result["dimensions"] == 3 and result["vectors"] == 1
+    assert seen == {
+        "url": "http://127.0.0.1:30005/v1/embeddings",
+        "body": {"model": "embed-local", "input": ["probe"]},
+        "timeout": 12,
+    }
+
+
+def test_probe_reranker_requires_finite_score_for_every_document():
+    def open_request(_request, timeout=0):
+        return _JsonResponse({
+            "results": [
+                {"index": 0, "relevance_score": 0.9},
+                {"index": 1, "relevance_score": 0.1},
+            ],
+        })
+
+    result = serves.probe_serve(
+        {
+            "name": "reranker",
+            "engine": "reranker",
+            "port": 30006,
+            "served_name": "rerank-local",
+        },
+        _open=open_request,
+    )
+    assert result["documents"] == 2
+    assert result["top_index"] == 0
+
+
+def test_probe_ocr_sends_data_uri_but_returns_only_bounded_text(tmp_path):
+    image = tmp_path / "probe.png"
+    image.write_bytes(b"\x89PNG\r\n\x1a\nprobe")
+    seen = {}
+
+    def open_request(request, timeout=0):
+        seen["body"] = json.loads(request.data)
+        return _JsonResponse({
+            "choices": [{"message": {"content": "Anvil Serving Dashboard"}}],
+        })
+
+    result = serves.probe_serve(
+        {
+            "name": "ocr",
+            "engine": "vllm",
+            "port": 30007,
+            "served_name": "ocr-local",
+        },
+        text="Read the text.",
+        image_path=str(image),
+        _open=open_request,
+    )
+    image_url = seen["body"]["messages"][0]["content"][1]["image_url"]["url"]
+    assert image_url.startswith("data:image/png;base64,")
+    assert result["recognized_excerpt"] == "Anvil Serving Dashboard"
+    assert "base64" not in json.dumps(result)
+
+
+def test_probe_comfyui_validates_system_metadata():
+    result = serves.probe_serve(
+        {
+            "name": "comfyui",
+            "stack": "comfyui",
+            "engine": "image",
+            "port": 8188,
+            "model": "comfyui",
+            "health": "/system_stats",
+        },
+        _open=lambda *_args, **_kwargs: _JsonResponse({
+            "system": {"os": "posix"},
+            "devices": [{"name": "cuda:0"}],
+        }),
+    )
+    assert result["devices"] == 1
+    assert result["stack"] == "comfyui"
+
+
+def test_load_manifest_maps_stack_to_compose_project(tmp_path):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "stt"
+        stack = "voice-audio"
+        container = "anvil-voice-stt"
+        port = 30010
+        model = "tdt_ctc-110m"
+        engine = "audio"
+        up = "docker compose -f {dir}/voice.yml up -d stt"
+    """)
+    (serve,) = serves.load_manifest(path)
+    assert serve["stack"] == "voice-audio"
+    assert serves._expected_compose_project(serve) == "anvil-voice-audio"
+
+
+def test_load_manifest_rejects_stack_project_disagreement(tmp_path):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "stt"
+        stack = "voice-audio"
+        container = "anvil-voice-stt"
+        port = 30010
+        model = "tdt_ctc-110m"
+        engine = "audio"
+        up = "docker compose --project-name fakoli-dark -f {dir}/voice.yml up -d stt"
+    """)
+    with pytest.raises(ValueError, match="stack 'voice-audio'.*anvil-voice-audio"):
+        serves.load_manifest(path)
+
+
+@pytest.mark.parametrize("stack", ["Voice Audio", "voice_audio", "-voice", "voice-"])
+def test_load_manifest_rejects_invalid_stack_slug(tmp_path, stack):
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "stt"
+        stack = "{stack}"
+        container = "anvil-voice-stt"
+        port = 30010
+        model = "tdt_ctc-110m"
+        engine = "audio"
+    """)
+    with pytest.raises(ValueError, match="lowercase slug"):
+        serves.load_manifest(path)
+
+
 @pytest.mark.parametrize(
     ("name", "engine"),
     [("embeddings", "embedding"), ("reranker", "reranker")],
@@ -232,8 +395,8 @@ def test_load_manifest_rejects_empty_or_non_string_gpu_role(tmp_path, gpu_role):
         serves.load_manifest(path)
 
 
-def test_load_manifest_without_reservation_fields_parses_unchanged(tmp_path):
-    """A pre-reservation manifest entry parses to exactly today's dict shape."""
+def test_load_manifest_without_reservation_fields_gets_default_stack(tmp_path):
+    """A legacy entry gets the explicit serving-stack ownership default."""
     path = _manifest(tmp_path, """
         [[serve]]
         name = "fast"
@@ -250,12 +413,13 @@ def test_load_manifest_without_reservation_fields_parses_unchanged(tmp_path):
         "container": "vllm-gptoss",
         "port": 30001,
         "model": "auxiliary-local",
-        "served_name": "auxiliary-local",
-        "engine": "vllm",
-        "_manifest_dir": mdir,
+            "served_name": "auxiliary-local",
+            "engine": "vllm",
+            "stack": "serving",
+            "_manifest_dir": mdir,
         "health": "/health",
         "up": ["bash", mdir + "/serve.sh"],
-    }  # no reservation keys are invented for entries that never declared them
+        }  # stack is normalized; reservation keys still are not invented
 
 
 # ---- serve groups: field parse/validation --------------------------------
@@ -422,10 +586,9 @@ def test_shipped_fakoli_manifest_ocr_serve():
     assert ocr["gpu_role"] == "dark-auxiliary"
     assert ocr["residency"] == "resident"
     assert ocr["health"] == "/health"
-    # HONEST-MEASURED budget (see the manifest/compose comments): 1.82 GiB
-    # weights + the ~2.65 GiB multimodal-profiling floor + the serve's
-    # 16384-token KV window.
-    assert ocr["vram_mib"] == 5120
+    # Release-sweep live measurement: 5,607 MiB attributable resident-set
+    # delta, rounded up to a 6 GiB reservation.
+    assert ocr["vram_mib"] == 6144
     assert ocr["port"] == 30007 and ocr["model"] == "paddleocr-vl-1.6"
     # The FULL declared RESIDENT set (fast + embeddings + reranker + ocr) FITS
     # the dark-auxiliary budget after the 2026-07-13 T011 operator rebalance (fast
@@ -441,8 +604,8 @@ def test_shipped_fakoli_manifest_ocr_serve():
         if s.get("gpu_role") == "dark-auxiliary"
         and s.get("residency") == "resident"
     )
-    assert resident == 26112 and budget == 27999, (resident, budget)
-    assert budget - resident == 1887, (resident, budget)
+    assert resident == 27136 and budget == 27999, (resident, budget)
+    assert budget - resident == 863, (resident, budget)
 
 
 def test_shipped_fakoli_manifest_vision_serve():
@@ -964,6 +1127,69 @@ def test_is_compose_up_detects_compose_vs_script():
     assert not serves._is_compose_up(None)
 
 
+def test_compose_up_gets_stable_product_project():
+    original = ["docker", "compose", "-f", "x.yml", "up", "-d", "heavy"]
+    assert serves._compose_up_with_project(original) == [
+        "docker", "compose", "--project-name", "anvil-serving",
+        "-f", "x.yml", "up", "-d", "heavy",
+    ]
+    explicit = ["docker", "compose", "-p", "custom", "up", "-d"]
+    assert serves._compose_up_with_project(explicit) == explicit
+    assert serves._compose_up_with_project(original, "anvil-auxiliary") == [
+        "docker", "compose", "--project-name", "anvil-auxiliary",
+        "-f", "x.yml", "up", "-d", "heavy",
+    ]
+
+
+def test_cmd_up_refuses_foreign_compose_owner_without_explicit_recreate(capsys):
+    serve = [{
+        "name": "heavy",
+        "stack": "auxiliary",
+        "container": "vllm-heavy",
+        "port": 1,
+        "health": "/health",
+        "up": ["docker", "compose", "-f", "x.yml", "up", "-d", "heavy"],
+    }]
+    calls = []
+
+    def run(argv, **_kwargs):
+        calls.append(argv)
+        if ".State.Status" in " ".join(argv):
+            return proc(0, "exited\n")
+        if "com.docker.compose.project" in " ".join(argv):
+            return proc(0, "old-directory-name\n")
+        return proc(0)
+
+    assert serves.cmd_up(serve, ["heavy"], _run=run) == 1
+    assert not any(argv[:2] == ["docker", "compose"] for argv in calls)
+    assert "--recreate" in capsys.readouterr().out
+
+
+def test_cmd_up_waits_for_declared_health_and_fails_closed(capsys):
+    serve = [{
+        "name": "embed",
+        "container": "embed",
+        "port": 30003,
+        "health": "/health",
+        "up": ["bash", "start.sh"],
+    }]
+    run = _inspect_returning("exited")
+
+    def unavailable(_request, timeout=0):
+        raise OSError("not ready")
+
+    assert serves.cmd_up(
+        serve,
+        ["embed"],
+        _run=run,
+        wait_for_readiness=True,
+        readiness_timeout=0,
+        _open=unavailable,
+        _sleep=lambda _seconds: None,
+    ) == 1
+    assert "did not become ready" in capsys.readouterr().out
+
+
 def test_cmd_up_compose_serve_runs_compose_up_not_docker_start():
     # THE fix: an existing (stopped) compose serve is brought up with `docker compose
     # up -d` — which natively recreates on config drift — NOT a blind `docker start`
@@ -973,7 +1199,10 @@ def test_cmd_up_compose_serve_runs_compose_up_not_docker_start():
              "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
     run = _inspect_returning("exited")
     assert serves.cmd_up(serv, [], _run=run) == 0
-    assert ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"] in run.calls
+    assert [
+        "docker", "compose", "--project-name", "anvil-serving",
+        "-f", "/x/docker-compose.yml", "up", "-d",
+    ] in run.calls
     assert not any(c[:2] == ["docker", "start"] for c in run.calls)  # never blind-started
 
 
@@ -987,7 +1216,10 @@ def test_cmd_up_compose_serve_running_reruns_compose_up_for_drift():
              "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
     run = _inspect_returning("running")
     assert serves.cmd_up(serv, [], _run=run) == 0
-    assert ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"] in run.calls
+    assert [
+        "docker", "compose", "--project-name", "anvil-serving",
+        "-f", "/x/docker-compose.yml", "up", "-d",
+    ] in run.calls
     assert not any(c[:2] == ["docker", "start"] for c in run.calls)  # never blind-started
 
 
@@ -1042,7 +1274,9 @@ def test_cmd_up_recreate_flag_force_removes_then_reups_compose():
     run = _inspect_returning("exited")
     assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
     assert ["docker", "rm", "-f", "sglang"] in run.calls
-    assert ["docker", "compose", "up", "-d"] in run.calls
+    assert [
+        "docker", "compose", "--project-name", "anvil-serving", "up", "-d",
+    ] in run.calls
     assert not any(c[:2] == ["docker", "start"] for c in run.calls)
 
 
@@ -1070,7 +1304,9 @@ def test_cmd_up_recreate_on_absent_bootstraps_up_without_failing_rm():
              "model": "qwen35-awq-local", "up": ["docker", "compose", "up", "-d"]}]
     run = _inspect_returning("absent")
     assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
-    assert ["docker", "compose", "up", "-d"] in run.calls          # the `up` ran
+    assert [
+        "docker", "compose", "--project-name", "anvil-serving", "up", "-d",
+    ] in run.calls          # the `up` ran
     assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)  # no doomed rm -f
 
 

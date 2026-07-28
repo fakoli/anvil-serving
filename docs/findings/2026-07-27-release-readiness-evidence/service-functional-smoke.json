@@ -1,0 +1,139 @@
+{
+  "schema": "anvil-serving.release-readiness-smoke/v1",
+  "date": "2026-07-27",
+  "repository_revision": "58f7809588a603f2c7b41a7684c40fc02f77315c",
+  "installed_version": "0.13.3",
+  "host": "fakoli-dark",
+  "results": [
+    {
+      "capability": "embeddings",
+      "serve": "embeddings",
+      "endpoint": "http://127.0.0.1:30005/v1/embeddings",
+      "model": "qwen3-embedding-0.6b",
+      "status": "pass",
+      "observation": {
+        "object": "list",
+        "dimensions": 1024,
+        "prompt_tokens": 6
+      },
+      "stack": "auxiliary",
+      "probe_verb": "serves probe embeddings",
+      "lifecycle": "managed up, product probe, managed down"
+    },
+    {
+      "capability": "reranking",
+      "serve": "reranker",
+      "endpoint": "http://127.0.0.1:30006/v1/rerank",
+      "status": "pass",
+      "observation": {
+        "documents": 2,
+        "top_index": 0,
+        "top_score": 0.8994128704
+      },
+      "stack": "auxiliary",
+      "probe_verb": "serves probe reranker",
+      "lifecycle": "managed up, product probe, managed down"
+    },
+    {
+      "capability": "ocr",
+      "serve": "ocr",
+      "endpoint": "http://127.0.0.1:30007/v1/chat/completions",
+      "model": "paddleocr-vl-1.6",
+      "status": "pass",
+      "input": "docs/findings/2026-07-13-t013-vision-evidence/vision-test-screenshot.png",
+      "observation": {
+        "finish_reason": "stop",
+        "recognized_characters": 200,
+        "recognized_markers": [
+          "Anvil Serving Dashboard",
+          "GPU",
+          "HEALTHY"
+        ]
+      },
+      "stack": "auxiliary",
+      "probe_verb": "serves probe ocr --image PATH",
+      "lifecycle": "managed up, product probe, managed down"
+    },
+    {
+      "capability": "comfyui",
+      "serve": "comfyui",
+      "endpoint": "http://127.0.0.1:8188/system_stats",
+      "model": "comfyui-v0.27.1",
+      "status": "pass",
+      "observation": {
+        "system_metadata": true,
+        "devices": 1
+      },
+      "stack": "comfyui",
+      "probe_verb": "serves probe comfyui",
+      "lifecycle": "managed up, product probe, managed down"
+    },
+    {
+      "capability": "voice-tts-stt-round-trip",
+      "serves": [
+        "tts",
+        "stt"
+      ],
+      "tts_endpoint": "http://127.0.0.1:30011/v1/audio/speech",
+      "stt_endpoint": "http://127.0.0.1:30010/v1/audio/transcriptions",
+      "status": "pass",
+      "input_text": "Anvil voice release sweep.",
+      "wav_bytes": 83496,
+      "transcript": "Anvil Voice Release Sweep.",
+      "stack": "voice-audio",
+      "lifecycle": "managed voice audio up, round trip, managed voice audio down"
+    },
+    {
+      "capability": "voice-audio-benchmark",
+      "status": "pass",
+      "scope": "audio",
+      "observation": {
+        "audio_roundtrip_ms": 272.58,
+        "tts_ms": 150.71,
+        "stt_ms": 121.86,
+        "stt_wer": 0.0,
+        "tts_rtf": 0.0524,
+        "transcript": "The quick brown fox jumps over the lazy dog."
+      },
+      "evidence": "voice-audio-roundtrip.json",
+      "classification": "Dark-owned TTS-to-STT audio scope; no Mini realtime proxy required"
+    },
+    {
+      "capability": "workbench-agent-hub",
+      "status": "pass",
+      "image_revision": "590b088 plus local release-image packaging fix",
+      "local_image": "anvil-workbench:local",
+      "observation": {
+        "postgres": "healthy",
+        "neo4j": "healthy",
+        "hub": "healthy",
+        "healthz": {
+          "ok": true,
+          "service": "anvil-workbench",
+          "graph": "Neo4jEvidenceGraph"
+        },
+        "authenticated_serving_sandbox": {
+          "model": "llm.primary",
+          "status": "completed",
+          "output_text": "WORKBENCH_SERVING_OK"
+        }
+      },
+      "router_transport": "private Compose DNS on anvil-serving_default; host bind remained 127.0.0.1",
+      "credential_handling": "router token captured in process only and omitted from logs and evidence",
+      "lifecycle": "managed workbench build, up --wait, status, logs, health request, and authenticated sandbox request; stack left running",
+      "deployment_policy": "local companion build only; no container registry"
+    }
+  ],
+  "final_state": {
+    "embeddings": "test container removed",
+    "reranker": "test container removed",
+    "ocr": "test container removed",
+    "comfyui": "test container removed",
+    "voice_stt": "test container removed",
+    "voice_tts": "test container removed",
+    "workbench": "running healthy from anvil-workbench:local",
+    "laguna_primary": "running and HTTP 200",
+    "router": "left running",
+    "container_cleanup": "43 stopped containers removed; zero stopped containers remain; images and volumes preserved"
+  }
+}

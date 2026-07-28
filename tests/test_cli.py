@@ -984,27 +984,22 @@ def test_voice_audio_dispatch_resolves_coowned_dark_resources_and_forwards_conte
     assert capsys.readouterr().err == ""
 
 
-def test_voice_benchmark_json_includes_resolved_proxy_context(monkeypatch, capsys):
+def test_voice_benchmark_is_endpoint_client_not_proxy_owner(monkeypatch, capsys):
     topology = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
     monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: 0)
 
-    assert (
-        cli.main(
-            [
-                "voice",
-                "benchmark",
-                "--topology",
-                str(topology),
-                "--json",
-            ]
-        )
-        == 0
-    )
+    assert cli.main([
+        "voice", "benchmark", "--topology", str(topology), "--json",
+    ]) == 2
+    rejected = json.loads(capsys.readouterr().out)
+    assert rejected["error"]["code"] == "usage_error"
+    assert "does not support target-resolution options" in rejected["error"]["message"]
 
+    assert cli.main(["voice", "benchmark", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["context"]["resource"] == "mini-realtime-proxy"
-    assert payload["context"]["execution_host"] == "fakoli-mini"
-    assert payload["context"]["resource_endpoint"] == "http://127.0.0.1:8765/usage"
+    assert payload["context"]["resource"] is None
+    assert payload["context"]["execution_host"] is None
+    assert payload["context"]["resource_endpoint"] is None
 
 
 @pytest.mark.parametrize("path", [["voice", "profiles"], ["voice", "sidecar"]])
