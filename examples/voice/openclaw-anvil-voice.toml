@@ -19,7 +19,7 @@
 #
 # For live LLM A/B tests, keep the audio topology in --profile and compose the
 # candidate LLM with --candidate-overlay:
-#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
+#   anvil-serving serves up voice-qwen3-32b --manifest examples/fakoli-dark/serves.toml
 #   anvil-serving voice proxy run --topology ~/.anvil-serving/operator-topology.toml --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml
 # Static candidate-* profiles below are retained as LLM-only shortcuts. Use
 # --candidate-overlay when combining a candidate with a different audio

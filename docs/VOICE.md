@@ -452,9 +452,8 @@ On Fakoli Dark, leave `VOICE_TTS_CANDIDATE_PUBLISH` unset for Dark-local
 benchmark loops:
 
 ```bash
-anvil-serving serves --manifest examples/fakoli-dark/serves.toml up tts-gepard-fast
+anvil-serving serves up tts-gepard-fast --manifest examples/fakoli-dark/serves.toml
 anvil-serving voice benchmark \
-  --topology "$TOPOLOGY" \
   --config examples/voice/fakoli-dark.toml \
   --profile gepard-fast-tts \
   --evidence-out .anvil/evidence/voice-gepard-fast-tts.json
@@ -477,7 +476,6 @@ up and reachable on Dark's private address:
 ```bash
 anvil-serving voice proxy run --topology "$TOPOLOGY" --config examples/voice/openclaw-anvil-voice.toml --profile gepard-fast-tts
 anvil-serving voice benchmark \
-  --topology "$TOPOLOGY" \
   --config examples/voice/openclaw-anvil-voice.toml \
   --profile gepard-fast-tts \
   --evidence-out .anvil/evidence/voice-gepard-fast-tts.json
@@ -492,7 +490,7 @@ runs; set it to the Dark host's private/tailnet address only when Mini must
 reach the direct candidate endpoint:
 
 ```bash
-anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
+anvil-serving serves up voice-qwen3-32b --manifest examples/fakoli-dark/serves.toml
 anvil-serving voice proxy run \
   --topology "$TOPOLOGY" \
   --config examples/voice/openclaw-anvil-voice.toml \
@@ -500,7 +498,6 @@ anvil-serving voice proxy run \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
   --candidate qwen3-32b-nvfp4
 anvil-serving voice benchmark \
-  --topology "$TOPOLOGY" \
   --config examples/voice/openclaw-anvil-voice.toml \
   --profile dark-audio \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
@@ -657,14 +654,18 @@ correlation, equality, and terminal-before-response ordering. See
 
 ## Benchmark And Validation
 
-Use `voice benchmark` for a quick configured end-to-end sample. For reference
+Use `voice benchmark` for a quick configured end-to-end sample. The benchmark
+is an endpoint client and is not owned by the Realtime proxy. Use
+`--scope audio` for an LLM-free TTS-to-STT loop that can qualify the Dark audio
+stage independently. For reference
 OpenClaw Talk and candidate A/B, keep Mini model-free and use `dark-audio` or
 `mini-dark-audio-proxy`. Run `mini-audio` only when explicitly validating the
 optional same-host/local-audio mode; running it from a non-gateway checkout
 only tests that checkout's loopback and is a topology negative control.
 
 ```bash
-anvil-serving voice benchmark --topology "$TOPOLOGY" --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+anvil-serving voice benchmark --scope audio --config ~/.anvil-serving/voice.toml --profile dark-audio
 ```
 
 For candidate LLM A/B, keep audio topology in `--profile` and compose the LLM
@@ -672,7 +673,6 @@ candidate with an overlay:
 
 ```bash
 anvil-serving voice benchmark \
-  --topology "$TOPOLOGY" \
   --config examples/voice/openclaw-anvil-voice.toml \
   --profile dark-audio \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
@@ -688,7 +688,6 @@ Fakoli Mini or another gateway host:
 
 ```bash
 anvil-serving voice benchmark \
-  --topology "$TOPOLOGY" \
   --config examples/voice/openclaw-anvil-voice.toml \
   --profile dark-audio \
   --candidate-base-url http://100.87.34.66:39000/v1 \
@@ -704,8 +703,8 @@ voice alias, or make OpenClaw use the candidate outside this explicit run.
 
 For voice-LLM bakeoffs, pair `voice benchmark` with
 `anvil-serving eval benchmark quality` against the same loaded endpoint and record
-the final `anvil-serving serves --manifest examples/fakoli-dark/serves.toml
-status` after restoring production Fast. Voice benchmark JSON is stage-latency
+the final `anvil-serving serves status --manifest
+examples/fakoli-dark/serves.toml` after restoring production Fast. Voice benchmark JSON is stage-latency
 evidence unless the STT hypothesis and WER prove semantic transcription quality
 for the prompt; do not treat first-audio timing alone as a model-promotion
 gate.

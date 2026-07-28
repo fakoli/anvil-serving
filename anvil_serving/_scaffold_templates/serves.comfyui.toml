@@ -6,9 +6,9 @@
 # LLM manifest must never stop the ComfyUI tenant, and ComfyUI lifecycle commands must
 # never recreate the LLM tiers. Manage it with:
 #
-#   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml up comfyui
-#   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml status
-#   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml down comfyui
+#   anvil-serving serves up comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
+#   anvil-serving serves status --manifest examples/fakoli-dark/serves.comfyui.toml
+#   anvil-serving serves down comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
 #
 # ALWAYS name `comfyui` on up/down. The other [[serve]] rows below are LEDGER MIRRORS,
 # not lifecycle targets (see below).
@@ -43,6 +43,7 @@ reserve_mib = 4608
 # root also answers 200, but /system_stats proves the API layer is up).
 [[serve]]
 name = "comfyui"
+stack = "comfyui"
 container = "comfyui"
 port = 8188
 model = "comfyui-v0.27.1"      # UI/API tenant, not a served-model-name; label = pinned app version
@@ -52,7 +53,7 @@ gpu_role = "dark-auxiliary"
 vram_mib = 12288
 residency = "on-demand"
 groups = ["comfy"]             # serve groups (serves up/down/status --group)
-up = "docker compose -f {dir}/docker-compose.comfyui.yml up -d comfyui"
+up = "docker compose --project-name anvil-comfyui -f {dir}/docker-compose.comfyui.yml up -d comfyui"
 
 # ── Ledger mirrors of the serves.toml reservations on the same card ──
 # READ-ONLY rows: no `up` command (nothing here can start them), same name/container/
@@ -63,6 +64,7 @@ up = "docker compose -f {dir}/docker-compose.comfyui.yml up -d comfyui"
 # container names are the production ones).
 [[serve]]
 name = "auxiliary"                  # mirror — lifecycle in serves.toml
+stack = "auxiliary"
 container = "vllm-gemma4-e4b-auxiliary"
 port = 30003
 model = "gemma4-e4b-it"
@@ -74,6 +76,7 @@ residency = "resident"
 
 [[serve]]
 name = "embeddings"            # mirror — lifecycle in serves.toml
+stack = "auxiliary"
 container = "vllm-qwen3-embedding"
 port = 30005
 model = "qwen3-embedding-0.6b"
@@ -85,6 +88,7 @@ residency = "resident"
 
 [[serve]]
 name = "reranker"              # mirror — lifecycle in serves.toml
+stack = "auxiliary"
 container = "vllm-qwen3-reranker"
 port = 30006
 model = "qwen3-reranker-0.6b"
@@ -96,13 +100,14 @@ residency = "resident"
 
 [[serve]]
 name = "ocr"                   # mirror — lifecycle in serves.toml
+stack = "auxiliary"
 container = "vllm-paddleocr-vl"
 port = 30007
 model = "paddleocr-vl-1.6"
 engine = "vllm"
 health = "/health"
 gpu_role = "dark-auxiliary"
-vram_mib = 5120
+vram_mib = 6144
 residency = "resident"
 
 # vision is the evictable slot ComfyUI displaces. Mirroring its router_tier lets
@@ -112,6 +117,7 @@ residency = "resident"
 # tier (`router readmit --tier vision-local`).
 [[serve]]
 name = "vision"                # mirror — lifecycle in serves.toml
+stack = "auxiliary"
 container = "vllm-qwen3-vl-vision"
 port = 30008
 model = "qwen3-vl-4b-instruct"

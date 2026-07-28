@@ -9,6 +9,7 @@ import importlib
 import json
 from pathlib import Path
 import sys
+import types
 
 import pytest
 
@@ -168,6 +169,120 @@ def test_pull_nonzero_docker_exit_surfaces_clean_rc():
     rc = models.run_pull("openai/gpt-oss-120b", _run=lambda *a, **k: 17,
                          _environ={"HF_TOKEN": "hf_secret"})
     assert rc == 17  # docker failure passed through, not a traceback
+
+
+def test_pull_space_preflight_counts_only_missing_bytes_and_headroom(monkeypatch):
+    monkeypatch.setattr(
+        models,
+        "_volume_cache_report",
+        lambda *args, **kwargs: {"repo_bytes": 60, "free_bytes": 50},
+    )
+    report = models.preflight_pull(
+        "org/model",
+        "abc",
+        expected_bytes=100,
+        headroom_bytes=5,
+    )
+    assert report["missing_bytes"] == 40
+    assert report["required_free_bytes"] == 45
+    assert report["space_ok"] is True
+
+
+def test_volume_cache_report_accepts_python3_only_images():
+    seen = {}
+
+    def run(argv, **_kwargs):
+        seen["argv"] = argv
+        return types.SimpleNamespace(
+            returncode=0,
+            stdout='{"snapshot_exists": true, "repo_bytes": 10}\n',
+            stderr="",
+        )
+
+    report = models._volume_cache_report(
+        "report",
+        "org/model",
+        "abc",
+        image="qualified-vllm:image",
+        _run=run,
+    )
+    assert report["snapshot_exists"] is True
+    argv = seen["argv"]
+    assert ["--entrypoint", "sh"] == argv[argv.index("--entrypoint"):argv.index("--entrypoint") + 2]
+    assert "command -v python3" in argv[argv.index("qualified-vllm:image") + 2]
+    assert "anvil-cache-inspector" in argv
+
+
+def test_pull_space_preflight_fails_closed_before_download(monkeypatch):
+    monkeypatch.setattr(
+        models,
+        "_volume_cache_report",
+        lambda *args, **kwargs: {"repo_bytes": 10, "free_bytes": 20},
+    )
+    with pytest.raises(ValueError, match="insufficient Docker-volume space"):
+        models.preflight_pull(
+            "org/model",
+            "abc",
+            expected_bytes=100,
+            headroom_bytes=5,
+        )
+
+
+def test_verify_pull_rejects_incomplete_snapshot(monkeypatch):
+    monkeypatch.setattr(
+        models,
+        "_volume_cache_report",
+        lambda *args, **kwargs: {
+            "snapshot_exists": True,
+            "incomplete_count": 1,
+            "broken_symlink_count": 0,
+        },
+    )
+    with pytest.raises(ValueError, match="incomplete"):
+        models.verify_pull("org/model", "abc")
+
+
+def test_cache_remove_exact_revision_dry_run_and_apply(monkeypatch, capsys):
+    calls = []
+
+    def report(action, *args, **kwargs):
+        calls.append(action)
+        if action == "plan-remove":
+            return {
+                "snapshot": "abc",
+                "snapshot_exists": True,
+                "repo_bytes": 100,
+                "reclaimable_bytes": 80,
+            }
+        return {
+            "snapshot_exists_after": False,
+            "reclaimed_bytes": 80,
+            "repo_bytes_after": 20,
+        }
+
+    monkeypatch.setattr(models, "_volume_cache_report", report)
+    assert models.cache_remove_main(
+        ["org/model", "--revision", "abc", "--dry-run"]
+    ) == 0
+    assert calls == ["plan-remove"]
+    assert "estimated reclaimable bytes: 80" in capsys.readouterr().out
+
+    assert models.cache_remove_main(
+        ["org/model", "--revision", "abc", "--confirm"]
+    ) == 0
+    assert calls == ["plan-remove", "plan-remove", "remove"]
+    assert "reclaimed 80 bytes" in capsys.readouterr().out
+
+
+def test_cache_remove_rejects_unsafe_selector_before_docker(monkeypatch):
+    monkeypatch.setattr(
+        models,
+        "_volume_cache_report",
+        lambda *args, **kwargs: pytest.fail("docker must not run"),
+    )
+    assert models.cache_remove_main(
+        ["org/model", "--revision", "../main", "--dry-run"]
+    ) == 2
 
 
 def test_pull_rejects_image_option_injection(capsys):
@@ -1270,6 +1385,8 @@ def test_recipe_load_dispatches_through_canonical_cli(request, capsys):
 
 
 def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys):
+    from anvil_serving import serves
+
     seen = {}
 
     def fake_load(recipe, container):
@@ -1278,6 +1395,7 @@ def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys)
         return ["docker", "run"], 0
 
     monkeypatch.setattr(models.serve_recipes, "load_recipe", fake_load)
+    monkeypatch.setattr(serves, "_await_healthy", lambda *_args: True)
     rc = models.main([
         "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
         "--registry", _registry(request), "--confirm",
@@ -1326,6 +1444,22 @@ def test_pull_runs_reclaim_once_only_after_success(monkeypatch):
         lambda *_args, **_kwargs: events.append("pull") or 0,
     )
     monkeypatch.setattr(
+        models,
+        "preflight_pull",
+        lambda *_args, **_kwargs: {
+            "expected_bytes": 10,
+            "cached_repo_bytes": 0,
+            "missing_bytes": 10,
+            "free_bytes": 100,
+            "headroom_bytes": 5,
+        },
+    )
+    monkeypatch.setattr(
+        models,
+        "verify_pull",
+        lambda *_args, **_kwargs: {"snapshot": "abc", "repo_bytes": 10},
+    )
+    monkeypatch.setattr(
         models.host_ops, "automatic_cache_reclaim",
         lambda resolved, baseline, **kwargs: events.append(
             ("reclaim", resolved, baseline, kwargs)
@@ -1351,6 +1485,17 @@ def test_pull_failure_and_dry_run_never_reclaim(monkeypatch, capsys):
         lambda *_args, **_kwargs: reclaimed.append(True),
     )
     monkeypatch.setattr(models, "run_pull", lambda *_args, **_kwargs: 17)
+    monkeypatch.setattr(
+        models,
+        "preflight_pull",
+        lambda *_args, **_kwargs: {
+            "expected_bytes": 10,
+            "cached_repo_bytes": 0,
+            "missing_bytes": 10,
+            "free_bytes": 100,
+            "headroom_bytes": 5,
+        },
+    )
     assert models.pull_main(["org/model", "--no-token"]) == 17
     assert reclaimed == []
 
@@ -1403,7 +1548,7 @@ def test_recipe_load_waits_for_health_then_reclaims_once(
     assert events[2][3]["readiness"] is True
 
 
-def test_recipe_load_readiness_timeout_is_warning_only(request, monkeypatch):
+def test_recipe_load_readiness_timeout_fails_closed(request, monkeypatch):
     from anvil_serving import serves
 
     policy = _enabled_cache_policy()
@@ -1426,5 +1571,35 @@ def test_recipe_load_readiness_timeout_is_warning_only(request, monkeypatch):
     assert models.main([
         "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
         "--registry", _registry(request), "--confirm",
+    ]) == 1
+    assert seen == []
+
+
+def test_recipe_load_waits_for_health_when_cache_reclaim_is_disabled(
+        request, monkeypatch, capsys):
+    from anvil_serving import serves
+
+    policy = {
+        **_enabled_cache_policy(),
+        "enabled": False,
+    }
+    health = []
+    monkeypatch.setattr(models.host_ops, "load_cache_reclaim_policy", lambda: policy)
+    monkeypatch.setattr(models.host_ops, "capture_cache_before", lambda _policy: None)
+    monkeypatch.setattr(
+        models.serve_recipes, "load_recipe", lambda *_args: (["docker", "run"], 0)
+    )
+    monkeypatch.setattr(
+        serves, "_await_healthy",
+        lambda target, timeout, poll: health.append((target, timeout, poll)) or True,
+    )
+    assert models.main([
+        "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
+        "--registry", _registry(request), "--confirm",
     ]) == 0
-    assert seen == [{"operation": "models recipes load", "readiness": False}]
+    assert health == [(
+        {"port": 30002, "health": "/health"},
+        600,
+        2,
+    )]
+    assert "--model gpt-oss-120b" in capsys.readouterr().out

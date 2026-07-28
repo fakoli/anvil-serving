@@ -366,6 +366,7 @@ def test_scaffold_home_writes_placeholders_not_real_host_values(tmp_path):
             assert real not in text, f"{name} leaked reference host value {real}"
     # The placeholders the operator is told to edit are actually present.
     compose = (tmp_path / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "\nname: anvil-serving\n" in compose
     assert "GPU-REPLACE-WITH-PRIMARY-GPU-UUID" in compose
     assert "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID" in compose
 

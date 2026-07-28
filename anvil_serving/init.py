@@ -123,7 +123,7 @@ _SCAFFOLD_TEMPLATES = (
     ("operator-topology.toml", "operator-topology.toml",
      "examples/fakoli-dark/operator-topology.toml"),
     (".env.example", "env.example", "examples/fakoli-dark/.env.example"),
-    ("voice.toml", "voice.example.toml", "examples/voice/voice.example.toml"),
+    ("voice.toml", "voice.toml", "examples/fakoli-dark/voice.toml"),
 )
 
 

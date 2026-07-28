@@ -9,7 +9,13 @@ Anvil Workbench is an optional, separate private-tailnet product. It is not a ro
 
 ## Lifecycle
 
-The packaged Compose template runs a published Workbench hub image together with Postgres and Neo4j. It binds the browser endpoint to `127.0.0.1` by default. Publish it through a tailnet-aware identity proxy; do not expose the container port publicly.
+The packaged Compose template runs the locally built `anvil-workbench:local`
+hub image together with Postgres and Neo4j. Build it directly from the
+companion checkout before starting the stack. The hub Dockerfile ships its
+reviewed contract schemas, and `up` fails closed unless the complete stack
+becomes healthy. The service binds the browser endpoint to `127.0.0.1` by
+default. Publish that local endpoint through a tailnet-aware identity proxy;
+do not expose the container port publicly.
 
 This boundary is intentional: **Anvil Serving is the lifecycle and private-exposure plane, not
 the Workbench application.** It can start, stop, inspect, and expose the optional container
@@ -20,14 +26,40 @@ recreate its safe container lifecycle, credentials boundary, and tailnet exposur
 That proxy must inject the configured `WORKBENCH_IDENTITY_HEADER` only after stripping any browser-supplied copy. Workbench defaults to the `Tailscale-User-Login` header and rejects an absent identity; the insecure development override is not for a tailnet hub.
 
 ```powershell
+anvil-serving workbench build --source C:\Users\sdoum\ai-code\anvil-workbench --confirm
 anvil-serving workbench up --env-file .\workbench.env --confirm
 anvil-serving workbench status --env-file .\workbench.env
 anvil-serving workbench logs --env-file .\workbench.env --tail 200
 anvil-serving workbench down --env-file .\workbench.env --confirm
 ```
 
-`up` and `down` require `--confirm`; `down` preserves named database volumes. Use `--dry-run` to inspect the exact Docker Compose command. `logs --tail` accepts 1 through 5000 lines per service; `--follow` remains an intentional foreground stream. The environment file supplies owner, approver set, database passwords, and the private Anvil router base URL. The router token remains an environment variable on the Docker host, never a browser value or committed configuration.
+`build`, `up`, and `down` require `--confirm`; every mutation supports
+`--dry-run`. `build` defaults to
+`C:\Users\sdoum\ai-code\anvil-workbench` and the local
+`anvil-workbench:local` tag; override those with `--source` and `--image`.
+`down` preserves named database volumes. `up` waits for Postgres, Neo4j, and
+the hub's loopback `/healthz` endpoint and fails closed after 180 seconds by
+default (`--wait-timeout` accepts 1 through 600). A created container is
+therefore not reported as a usable Workbench. `logs --tail` accepts 1 through
+5000 lines per service; `--follow` remains an intentional foreground stream.
+The environment file supplies owner, approver set, database passwords, and the
+private Anvil router base URL. The router token remains an environment
+variable on the Docker host, never a browser value or committed configuration.
 `workbench.env` (and variants such as `workbench.env.dark`) are intentionally gitignored; commit only a value-free `workbench.env.example` if an example is needed.
+
+For a loopback-only authenticated Serving smoke test, set
+`WORKBENCH_ALLOW_INSECURE_DEV_ACTOR=true` and explicitly allow one configured
+direct alias with `WORKBENCH_SANDBOX_MODELS=llm.primary`. The packaged Compose
+template passes both settings through to Workbench. Never enable the insecure
+actor override on a tailnet-exposed deployment; production identity must come
+from the stripping, identity-aware proxy described above.
+
+On a same-host Docker deployment, set
+`ANVIL_ROUTER_BASE_URL=http://anvil-router:8000/v1`. The Workbench service joins
+the router's stable `anvil-serving_default` network and resolves the router by
+its Compose DNS name; host `127.0.0.1` would refer to the Workbench container,
+not the router. Override `ANVIL_ROUTER_NETWORK` only when the router uses a
+different reviewed Compose project name.
 
 ## Responses and correlation contract
 

@@ -36,6 +36,7 @@ from __future__ import annotations
 import array
 import json
 import math
+import re
 import time
 from dataclasses import fields
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
@@ -62,8 +63,10 @@ def word_error_rate(reference: str, hypothesis: str) -> float:
     the reference is empty but the hypothesis isn't (every hypothesis word is
     a pure insertion, capped at 1.0 for readability).
     """
-    ref = reference.split()
-    hyp = hypothesis.split()
+    # ASR WER is lexical: capitalization and terminal punctuation do not turn
+    # an otherwise identical spoken word into a substitution.
+    ref = re.findall(r"\w+(?:['’]\w+)*", reference.casefold())
+    hyp = re.findall(r"\w+(?:['’]\w+)*", hypothesis.casefold())
     if not ref:
         return 0.0 if not hyp else 1.0
     # Classic edit-distance DP table (rows=reference, cols=hypothesis).
@@ -528,6 +531,102 @@ def run_benchmark_from_manifest(
         stt_transport=stt_transport, llm_transport=llm_transport, tts_transport=tts_transport,
         stt_stream_fn=stt_stream_fn, llm_stream_fn=llm_stream_fn, tts_stream_fn=tts_stream_fn,
         profile=profile, candidate=candidate, route_identity=route_identity,
+    )
+
+
+def run_audio_benchmark(
+    *,
+    stt_config: STTStageConfig,
+    tts_config: TTSStageConfig,
+    reference_text: str = DEFAULT_REFERENCE_TEXT,
+    stt_transport: Optional[Callable[..., Any]] = None,
+    tts_transport: Optional[Callable[..., Any]] = None,
+    stt_stream_fn: Optional[StreamFn] = None,
+    tts_stream_fn: Optional[StreamFn] = None,
+    clock: Callable[[], float] = time.perf_counter,
+    profile: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Measure a TTS -> STT loop without requiring an LLM or Realtime proxy."""
+    stt_fn = stt_stream_fn or (
+        lambda p, sr, cfg: transcribe_stream(p, sr, cfg, transport=stt_transport)
+    )
+    tts_fn = tts_stream_fn or (
+        lambda text, cfg: stream_speech(text, cfg, transport=tts_transport)
+    )
+    started = clock()
+    chunks = [chunk for chunk in tts_fn(reference_text, tts_config) if chunk]
+    tts_finished = clock()
+    pcm = b"".join(chunks)
+    hypothesis = ""
+    for text, is_final in stt_fn(pcm, tts_config.source_sample_rate, stt_config):
+        hypothesis = text
+        if is_final:
+            break
+    finished = clock()
+    tts_seconds = max(0.0, tts_finished - started)
+    audio_seconds = (
+        (len(pcm) / 2) / tts_config.source_sample_rate if pcm else 0.0
+    )
+    stt_wer = word_error_rate(reference_text, hypothesis) if reference_text else None
+    result = {
+        "scope": "audio",
+        "audio_roundtrip_ms": round((finished - started) * 1000.0, 2),
+        "tts_ms": round(tts_seconds * 1000.0, 2),
+        "stt_ms": round((finished - tts_finished) * 1000.0, 2),
+        "tts_output_bytes": len(pcm),
+        "tts_audio_seconds": round(audio_seconds, 4),
+        "tts_rtf": round(tts_seconds / audio_seconds, 4) if audio_seconds else None,
+        "stt_hypothesis": hypothesis,
+        "reference_text": reference_text,
+        "stt_wer": round(stt_wer, 4) if stt_wer is not None else None,
+        "topology": {
+            "profile": profile,
+            "stt": {"base_url": stt_config.base_url, "model": stt_config.model},
+            "tts": {"base_url": tts_config.base_url, "model": tts_config.model},
+        },
+        "promotion_quality_evidence": False,
+        "promoted": False,
+    }
+    result["evidence"] = {
+        "schema_version": EVIDENCE_SCHEMA_VERSION,
+        "evidence_scope": "voice-pipeline",
+        "promotion_quality_evidence": False,
+        "identity": {
+            "scope": "audio",
+            "profile": profile,
+            "stt_model": stt_config.model,
+            "stt_base_url": stt_config.base_url,
+            "tts_model": tts_config.model,
+            "tts_base_url": tts_config.base_url,
+        },
+        "topology": dict(result["topology"]),
+        "runs": [dict(result, evidence=None, id="run-001")],
+    }
+    result["evidence"]["runs"][0].pop("evidence", None)
+    return result
+
+
+def run_audio_benchmark_from_manifest(
+    data: Mapping[str, Any],
+    *,
+    profile: Optional[str] = None,
+    reference_text: str = DEFAULT_REFERENCE_TEXT,
+    stt_transport: Optional[Callable[..., Any]] = None,
+    tts_transport: Optional[Callable[..., Any]] = None,
+    stt_stream_fn: Optional[StreamFn] = None,
+    tts_stream_fn: Optional[StreamFn] = None,
+) -> Dict[str, Any]:
+    """Build the two audio stage configs and run the bounded audio-only loop."""
+    voice = data.get("voice", {})
+    return run_audio_benchmark(
+        stt_config=_stage_config_from_table(voice.get("stt", {}), STTStageConfig),
+        tts_config=_stage_config_from_table(voice.get("tts", {}), TTSStageConfig),
+        reference_text=reference_text,
+        stt_transport=stt_transport,
+        tts_transport=tts_transport,
+        stt_stream_fn=stt_stream_fn,
+        tts_stream_fn=tts_stream_fn,
+        profile=profile,
     )
 
 

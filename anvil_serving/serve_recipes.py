@@ -482,7 +482,19 @@ def docker_run_argv(recipe: dict, *, container: str | None = None) -> list[str]:
     if gpu_uuid is not None and (not isinstance(gpu_uuid, str) or "\x00" in gpu_uuid):
         raise RecipeError("recipe.hardware.gpu_uuid must be a string without NUL bytes")
     argv += ["--gpus", "device=%s" % gpu_uuid if gpu_uuid else "all"]
-    for env in serve.get("env", []):
+    serve_env = list(serve.get("env", []))
+    visible_devices = [
+        env.split("=", 1)[1]
+        for env in serve_env
+        if isinstance(env, str) and env.startswith("CUDA_VISIBLE_DEVICES=")
+    ]
+    if gpu_uuid and visible_devices and visible_devices != [gpu_uuid]:
+        raise RecipeError(
+            "recipe.serve.env CUDA_VISIBLE_DEVICES must match recipe.hardware.gpu_uuid"
+        )
+    if gpu_uuid and not visible_devices:
+        serve_env.insert(0, "CUDA_VISIBLE_DEVICES=%s" % gpu_uuid)
+    for env in serve_env:
         if not _ENV_NAME_RE.match(env) or "\n" in env or "\r" in env or "\x00" in env:
             raise RecipeError("recipe.serve.env entries must be NAME=value without newlines")
         argv += ["-e", env]

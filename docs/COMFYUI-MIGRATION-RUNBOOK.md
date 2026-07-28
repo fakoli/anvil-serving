@@ -88,34 +88,35 @@ Always through the product surface, never raw `docker` (ADR-0002 / CLAUDE.md):
 # Admission first: the manifest mirrors the serves.toml dark-fast reservations, so
 # `up` is denied with the honest ledger when the card is committed. Free residents
 # via the MAIN manifest (or evict the vision slot, below) until 12288 MiB is free.
-anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml up comfyui
+anvil-serving serves up comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
 
 # UI: http://127.0.0.1:8188  (loopback-only; set COMFYUI_PUBLISH for tailnet opt-in)
 # API readiness: curl http://127.0.0.1:8188/system_stats
 # Library check:  curl http://127.0.0.1:8188/models/diffusion_models
 
 # Done with the task? Stopping the container IS the reservation release (ADR-0017).
-anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml down comfyui
-anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml status  # free again
+anvil-serving serves down comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
+anvil-serving serves status --manifest examples/fakoli-dark/serves.comfyui.toml  # free again
 ```
 
 When the `vision` evictable slot holds the VRAM, the on-demand tenant may take it
 through the drained ADR-0018 transition (T005):
 
 ```bash
-anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml \
-  up comfyui --evict --router-url http://100.87.34.66:8000
+anvil-serving serves up comfyui \
+  --manifest examples/fakoli-dark/serves.comfyui.toml \
+  --evict --router-url http://100.87.34.66:8000
 # ... after the ComfyUI task:
-anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml down comfyui
-anvil-serving serves --manifest examples/fakoli-dark/serves.toml up vision
+anvil-serving serves down comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
+anvil-serving serves up vision --manifest examples/fakoli-dark/serves.toml
 # then readmit tier vision-local per docs/CLI.md (`router readmit`).
 ```
 
 Capacity reality on the live box (2026-07-13): with the full resident set up (fast
-14336 + embeddings 3200 + reranker 3456 + ocr 5120 = 26112 of 27999 MiB) the ledger
-correctly **denies** `up comfyui` (free 1887 < 12288) — that denial is the feature.
+14336 + embeddings 3200 + reranker 3456 + ocr 6144 = 27136 of 27999 MiB) the ledger
+correctly **denies** `up comfyui` (free 863 < 12288) — that denial is the feature.
 Bring residents down via the main manifest (e.g. `serves down ocr embeddings
-reranker` frees 11776 → 13663 free) and restore them afterwards.
+reranker` frees 12800 → 13663 free) and restore them afterwards.
 
 ## Non-disruptive verification probe (no VRAM)
 

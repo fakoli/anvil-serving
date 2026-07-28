@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving.serve-vram-measurement/v1",
+  "date": "2026-07-27",
+  "host": "fakoli-dark",
+  "gpu_role": "dark-auxiliary",
+  "gpu": "GeForce RTX 5090",
+  "serve": "ocr",
+  "model": "paddleocr-vl-1.6",
+  "revision": "66317acc4c9fc17bd154591ce650735cd2855f3e",
+  "measurement": {
+    "baseline_device_used_mib": 1570,
+    "ready_and_requested_device_used_mib": 7177,
+    "attributable_delta_mib": 5607,
+    "old_reservation_mib": 5120,
+    "new_reservation_mib": 6144,
+    "headroom_over_observed_delta_mib": 537
+  },
+  "functional_request": {
+    "verb": "serves probe ocr --image docs/findings/2026-07-13-t013-vision-evidence/vision-test-screenshot.png",
+    "status": "pass",
+    "recognized_characters": 200,
+    "recognized_markers": [
+      "Anvil Serving Dashboard",
+      "GPU",
+      "HEALTHY"
+    ]
+  },
+  "lifecycle": "managed up, readiness wait, product probe, managed down",
+  "caveat": "The delta is device-level before/after evidence on an otherwise quiescent auxiliary role, not per-process NVML attribution."
+}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from ..arguments import (
@@ -29,6 +30,12 @@ def _voice_cli_argv(
     topology: str,
     dry_run: bool = False,
     profile: str = "",
+    topology_overlay: str = "",
+    command_host: str = "",
+    command_runtime: str = "",
+    target: str = "",
+    transport: str = "auto",
+    experimental_model_workload: bool = False,
     ready_timeout: float = 3.0,
     tail: int = 200,
 ) -> list[str]:
@@ -45,6 +52,18 @@ def _voice_cli_argv(
     if profile:
         argv += ["--profile", profile]
     argv += ["--topology", topology]
+    if topology_overlay:
+        argv += ["--topology-overlay", topology_overlay]
+    if command_host:
+        argv += ["--command-host", command_host]
+    if command_runtime:
+        argv += ["--command-runtime", command_runtime]
+    if target:
+        argv += ["--target", target]
+    if transport != "auto":
+        argv += ["--transport", transport]
+    if experimental_model_workload:
+        argv.append("--experimental-model-workload")
     if dry_run:
         argv.append("--dry-run")
     if action == "status":
@@ -128,6 +147,22 @@ def tool_voice_manage(args: dict) -> dict:
     config_arg = _str_arg(args, "config", "")
     config = voice_config.resolve_config_path(config_arg or None)
     profile = _str_arg(args, "profile", "")
+    topology_overlay = _str_arg(args, "topology_overlay", "")
+    command_host = _str_arg(args, "command_host", "")
+    command_runtime = _str_arg(args, "command_runtime", "")
+    target = _str_arg(args, "target", "")
+    transport = _str_arg(args, "transport", "auto")
+    if transport not in {"auto", "local", "controller"}:
+        raise ToolError(
+            "bad_transport",
+            "transport must be one of: auto, local, controller",
+            {"transport": transport},
+        )
+    experimental_model_workload = _arg_bool(
+        args.get("experimental_model_workload"),
+        False,
+        name="experimental_model_workload",
+    )
     topology_path = resolve_topology_path(
         _str_arg(args, "topology", "") or None,
         env_var="ANVIL_VOICE_TOPOLOGY",
@@ -149,12 +184,12 @@ def tool_voice_manage(args: dict) -> dict:
             config=config,
             profile=profile or None,
             topology=topology_path,
-            topology_overlay=None,
-            command_host=None,
-            command_runtime=None,
-            target=None,
-            transport="local",
-            experimental_model_workload=False,
+            topology_overlay=topology_overlay or None,
+            command_host=command_host or None,
+            command_runtime=command_runtime or None,
+            target=target or None,
+            transport=transport,
+            experimental_model_workload=experimental_model_workload,
             ready_timeout=ready_timeout,
             tail=tail,
             operation_timeout=float(timeout_seconds),
@@ -183,6 +218,12 @@ def tool_voice_manage(args: dict) -> dict:
         topology=topology_path,
         dry_run=preview,
         profile=profile,
+        topology_overlay=topology_overlay,
+        command_host=command_host,
+        command_runtime=command_runtime,
+        target=target,
+        transport=transport,
+        experimental_model_workload=experimental_model_workload,
         ready_timeout=ready_timeout,
         tail=tail,
     )
@@ -192,6 +233,12 @@ def tool_voice_manage(args: dict) -> dict:
         "profile": profile or None,
         "topology": topology_path,
         "owners": targets.as_dict(),
+        "command_host": command_host or None,
+        "command_runtime": command_runtime or None,
+        "requested_target": target or None,
+        "transport": transport,
+        "topology_overlay": topology_overlay or None,
+        "experimental_model_workload": experimental_model_workload,
         "timeout_seconds": timeout_seconds,
     }
     if action in {"status", "logs"}:
@@ -323,6 +370,16 @@ FAMILY = ToolFamily(
                     "config": {"type": "string"},
                     "profile": {"type": "string"},
                     "topology": {"type": "string"},
+                    "topology_overlay": {"type": "string"},
+                    "command_host": {"type": "string"},
+                    "command_runtime": {"type": "string"},
+                    "target": {"type": "string"},
+                    "transport": {
+                        "type": "string",
+                        "enum": ["auto", "local", "controller"],
+                        "default": "auto",
+                    },
+                    "experimental_model_workload": {"type": "boolean"},
                     "ready_timeout": {
                         "type": "number",
                         "minimum": 0.1,
