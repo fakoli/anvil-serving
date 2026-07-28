@@ -99,12 +99,10 @@ def test_help_lists_subcommands(capsys):
         voice_cli.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for sub in ("audio", "proxy", "benchmark", "profiles", "sidecar"):
+    for sub in ("up", "down", "audio", "proxy", "benchmark", "profiles", "sidecar"):
         assert sub in out
-    assert "up" not in out
-    assert "down" not in out
-    assert "start" not in out
-    assert "stop" not in out
+    assert "\n    start " not in out
+    assert "\n    stop " not in out
 
 
 @pytest.mark.parametrize(
@@ -211,7 +209,7 @@ def test_each_subcommand_validates_and_reports_ok(
             lambda data, **kwargs: {"ok": True},
         )
     argv = (
-        _audio_command(action[1], "--config", manifest_path)
+        _audio_command(action[1], "--config", manifest_path, "--dry-run")
         if action[0] == "audio" else [*action, "--config", manifest_path]
     )
     rc = voice_cli.main(argv)
@@ -222,8 +220,12 @@ def test_each_subcommand_validates_and_reports_ok(
 
 @pytest.mark.parametrize(
     ("removed", "replacement"),
-    [("up", "voice audio up"), ("down", "voice audio down"),
-     ("start", "voice audio up"), ("stop", "voice audio down")],
+    [
+        ("start", "voice audio up"),
+        ("stop", "voice audio down"),
+        ("run", "voice proxy run"),
+        ("bridge", "voice proxy bridge"),
+    ],
 )
 def test_old_voice_lifecycle_paths_are_actionable_tombstones(
     removed, replacement, manifest_path, monkeypatch, capsys
@@ -239,6 +241,194 @@ def test_old_voice_lifecycle_paths_are_actionable_tombstones(
     assert captured.out == ""
     assert "`voice %s` was removed" % removed in captured.err
     assert "use `%s` instead" % replacement in captured.err
+
+
+def test_voice_lifecycle_refuses_split_direct_endpoints(direct_proxy_manifest):
+    resolved = voice_cli.voice_config.resolve_manifest(direct_proxy_manifest)
+
+    error = voice_cli._voice_lifecycle_eligibility(resolved.data)
+
+    assert error is not None
+    assert "refuses split-host" in error
+    assert "stt_url" in error
+
+
+@pytest.mark.parametrize(
+    ("action", "expected_order"),
+    [("up", ["audio-up", "proxy-up"]), ("down", ["proxy-down", "audio-down"])],
+)
+def test_voice_lifecycle_returns_combined_result_in_dependency_order(
+    action, expected_order, monkeypatch
+):
+    calls = []
+    resolved = type("Resolved", (), {"data": {"voice": {}}})()
+    monkeypatch.setattr(voice_cli, "_load_resolved_config", lambda args: (resolved, None))
+    monkeypatch.setattr(voice_cli, "_voice_lifecycle_eligibility", lambda data: None)
+
+    def fake_audio(data, selected_action, **kwargs):
+        calls.append("audio-%s" % selected_action)
+        assert kwargs["dry_run"] is True
+        return {
+            "action": selected_action,
+            "dry_run": True,
+            "returncode": 0,
+            "serves": [],
+        }
+
+    def fake_proxy(args, selected_action, selected_resolved, *, deadline=None):
+        calls.append("proxy-%s" % selected_action)
+        assert args.dry_run is True
+        assert selected_resolved is resolved
+        assert deadline is not None
+        return {
+            "action": selected_action,
+            "dry_run": True,
+            "returncode": 0,
+            "lifecycle": "managed",
+        }
+
+    monkeypatch.setattr(voice_cli, "execute_audio_lifecycle", fake_audio)
+    monkeypatch.setattr(voice_cli, "_execute_proxy_managed_lifecycle", fake_proxy)
+    args = voice_cli.argparse.Namespace(
+        config=None,
+        profile=None,
+        dry_run=True,
+        timeout_seconds=12.0,
+    )
+
+    result = voice_cli.execute_voice_lifecycle(args, action)
+
+    assert calls == expected_order
+    assert result["action"] == action
+    assert result["dry_run"] is True
+    assert result["order"] == (
+        ["audio", "proxy"] if action == "up" else ["proxy", "audio"]
+    )
+    assert result["returncode"] == 0
+    assert result["audio"]["action"] == action
+    assert result["proxy"]["action"] == action
+
+
+def test_voice_up_skips_proxy_after_audio_failure(monkeypatch):
+    resolved = type("Resolved", (), {"data": {"voice": {}}})()
+    monkeypatch.setattr(voice_cli, "_load_resolved_config", lambda args: (resolved, None))
+    monkeypatch.setattr(voice_cli, "_voice_lifecycle_eligibility", lambda data: None)
+    monkeypatch.setattr(
+        voice_cli,
+        "execute_audio_lifecycle",
+        lambda *args, **kwargs: {
+            "action": "up",
+            "dry_run": False,
+            "returncode": 1,
+            "serves": [],
+        },
+    )
+    monkeypatch.setattr(
+        voice_cli,
+        "_execute_proxy_managed_lifecycle",
+        lambda *args, **kwargs: pytest.fail("failed audio started proxy"),
+    )
+    args = voice_cli.argparse.Namespace(
+        config=None,
+        profile=None,
+        dry_run=False,
+        timeout_seconds=300.0,
+    )
+
+    result = voice_cli.execute_voice_lifecycle(args, "up")
+
+    assert result["returncode"] == 1
+    assert result["proxy"] == {
+        "state": "skipped",
+        "reason": "audio bring-up failed",
+        "returncode": 0,
+    }
+
+
+def test_voice_down_skips_audio_after_proxy_failure(monkeypatch):
+    resolved = type("Resolved", (), {"data": {"voice": {}}})()
+    monkeypatch.setattr(voice_cli, "_load_resolved_config", lambda args: (resolved, None))
+    monkeypatch.setattr(voice_cli, "_voice_lifecycle_eligibility", lambda data: None)
+    monkeypatch.setattr(
+        voice_cli,
+        "_execute_proxy_managed_lifecycle",
+        lambda *args, **kwargs: {
+            "action": "down",
+            "dry_run": False,
+            "returncode": 1,
+            "lifecycle": "managed",
+        },
+    )
+    monkeypatch.setattr(
+        voice_cli,
+        "execute_audio_lifecycle",
+        lambda *args, **kwargs: pytest.fail("failed proxy stopped audio"),
+    )
+    args = voice_cli.argparse.Namespace(
+        config=None,
+        profile=None,
+        dry_run=False,
+        timeout_seconds=300.0,
+    )
+
+    result = voice_cli.execute_voice_lifecycle(args, "down")
+
+    assert result["returncode"] == 1
+    assert result["audio"]["reason"] == "proxy tear-down failed"
+
+
+@pytest.mark.parametrize(
+    ("action", "expected"),
+    [
+        ("up", ["stt-up", "tts-up", "proxy-up"]),
+        ("down", ["proxy-down", "stt-down", "tts-down"]),
+    ],
+)
+def test_root_voice_lifecycle_runs_shipped_colocated_manifest_without_topology(
+    action, expected, monkeypatch
+):
+    calls = []
+    monkeypatch.setattr(
+        voice_cli.stt_serve.STTServe,
+        "bring_up",
+        lambda self, **kwargs: calls.append("stt-up") or 0,
+    )
+    monkeypatch.setattr(
+        voice_cli.tts_serve.TTSServe,
+        "bring_up",
+        lambda self, **kwargs: calls.append("tts-up") or 0,
+    )
+    monkeypatch.setattr(
+        voice_cli.stt_serve.STTServe,
+        "tear_down",
+        lambda self, **kwargs: calls.append("stt-down") or 0,
+    )
+    monkeypatch.setattr(
+        voice_cli.tts_serve.TTSServe,
+        "tear_down",
+        lambda self, **kwargs: calls.append("tts-down") or 0,
+    )
+    monkeypatch.setattr(
+        voice_cli.proxy_serve.ProxyServe,
+        "bring_up",
+        lambda self, **kwargs: calls.append("proxy-up") or 0,
+    )
+    monkeypatch.setattr(
+        voice_cli.proxy_serve.ProxyServe,
+        "tear_down",
+        lambda self, **kwargs: calls.append("proxy-down") or 0,
+    )
+
+    rc = anvil_cli.main([
+        "voice",
+        action,
+        "--config",
+        "examples/fakoli-dark/voice.toml",
+        "--dry-run",
+    ])
+
+    assert rc == 0
+    assert calls == expected
 
 
 def test_audio_missing_default_topology_fails_before_serve_construction(
@@ -1911,7 +2101,7 @@ def test_run_does_not_refuse_start_when_endpoints_return_401(tmp_path, monkeypat
 
 def test_default_config_falls_back_to_shipped_example(capsys):
     # No --config passed: should use the shipped examples/voice example and succeed.
-    rc = voice_cli.main(_audio_command("up"))
+    rc = voice_cli.main(_audio_command("up", "--dry-run"))
     assert rc == 0
     out = capsys.readouterr().out
     assert "anvil-voice" in out

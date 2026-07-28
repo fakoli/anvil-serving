@@ -19,10 +19,9 @@
         "profile": 0,
         "score": 0,
         "serve": 1,
-        "voice-run-bridge": 0,
+        "voice-run-bridge": 4,
         "voice-sidecar": 1,
-        "voice-start-stop": 0,
-        "voice-up-down": 1
+        "voice-start-stop": 3
       },
       "canonical_counts": {
         "eval-benchmark-external": 17,
@@ -40,8 +39,9 @@
         "router-run": 17,
         "serves-multiplex": 1,
         "serves-render": 2,
-        "voice-audio": 16,
-        "voice-proxy": 30,
+        "voice-audio": 18,
+        "voice-lifecycle": 8,
+        "voice-proxy": 32,
         "voice-sidecar": 7
       },
       "files_by_category": {
@@ -69,8 +69,7 @@
         "serve": 0,
         "voice-run-bridge": 0,
         "voice-sidecar": 0,
-        "voice-start-stop": 0,
-        "voice-up-down": 0
+        "voice-start-stop": 0
       }
     },
     "full": {
@@ -91,10 +90,9 @@
         "profile": 0,
         "score": 1,
         "serve": 1,
-        "voice-run-bridge": 3,
+        "voice-run-bridge": 7,
         "voice-sidecar": 1,
-        "voice-start-stop": 1,
-        "voice-up-down": 1
+        "voice-start-stop": 4
       },
       "canonical_counts": {
         "eval-benchmark-external": 23,
@@ -112,8 +110,9 @@
         "router-run": 35,
         "serves-multiplex": 4,
         "serves-render": 8,
-        "voice-audio": 37,
-        "voice-proxy": 57,
+        "voice-audio": 39,
+        "voice-lifecycle": 8,
+        "voice-proxy": 59,
         "voice-sidecar": 29
       },
       "files_by_category": {
@@ -149,8 +148,7 @@
         "serve": 0,
         "voice-run-bridge": 0,
         "voice-sidecar": 0,
-        "voice-start-stop": 0,
-        "voice-up-down": 0
+        "voice-start-stop": 0
       }
     },
     "skills": {
@@ -173,8 +171,7 @@
         "serve": 0,
         "voice-run-bridge": 0,
         "voice-sidecar": 0,
-        "voice-start-stop": 0,
-        "voice-up-down": 0
+        "voice-start-stop": 0
       },
       "canonical_counts": {
         "eval-benchmark-external": 0,
@@ -193,6 +190,7 @@
         "serves-multiplex": 0,
         "serves-render": 0,
         "voice-audio": 3,
+        "voice-lifecycle": 0,
         "voice-proxy": 3,
         "voice-sidecar": 6
       },
@@ -224,8 +222,7 @@
         "serve": 0,
         "voice-run-bridge": 0,
         "voice-sidecar": 0,
-        "voice-start-stop": 0,
-        "voice-up-down": 0
+        "voice-start-stop": 0
       }
     }
   }
