@@ -43,7 +43,14 @@ class _JsonResponse:
         return self.payload[:limit] if limit >= 0 else self.payload
 
 
-def _inspect_returning(state, stop_rc=0, stop_err="", state_after_stop="exited"):
+def _inspect_returning(
+    state,
+    stop_rc=0,
+    stop_err="",
+    state_after_stop="exited",
+    remove_rc=0,
+    remove_err="",
+):
     """A fake _run: `docker inspect` -> `state` (or `state_after_stop` once a
     successful `docker stop` has run — cmd_down re-checks state to verify the
     stop STUCK), anything else -> proc(stop_rc)."""
@@ -61,6 +68,8 @@ def _inspect_returning(state, stop_rc=0, stop_err="", state_after_stop="exited")
             return proc(0, st + "\n")
         if isinstance(argv, list) and argv[:2] == ["docker", "stop"] and stop_rc == 0:
             stopped.append(argv)
+        if isinstance(argv, list) and argv[:3] == ["docker", "rm", "-f"]:
+            return proc(remove_rc, "", remove_err)
         return proc(stop_rc, "", stop_err)
 
     run.calls = calls
@@ -946,6 +955,7 @@ def test_cmd_down_stops_running():
     run = _inspect_returning("running")
     assert serves.cmd_down(serv, [], _run=run) == 0
     assert ["docker", "stop", "sglang"] in run.calls
+    assert ["docker", "rm", "-f", "sglang"] in run.calls
 
 
 def test_cmd_down_stops_paused_container_too():
@@ -954,13 +964,23 @@ def test_cmd_down_stops_paused_container_too():
     run = _inspect_returning("paused")
     assert serves.cmd_down(serv, [], _run=run) == 0
     assert ["docker", "stop", "vllm"] in run.calls
+    assert ["docker", "rm", "-f", "vllm"] in run.calls
 
 
-def test_cmd_down_skips_already_stopped():
+def test_cmd_down_removes_already_stopped():
     serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health"}]
     run = _inspect_returning("exited")
     assert serves.cmd_down(serv, [], _run=run) == 0
     assert not any(c[:2] == ["docker", "stop"] for c in run.calls)
+    assert ["docker", "rm", "-f", "vllm"] in run.calls
+
+
+def test_cmd_down_keep_container_preserves_stopped_container():
+    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health"}]
+    run = _inspect_returning("exited")
+    assert serves.cmd_down(serv, [], keep_container=True, _run=run) == 0
+    assert not any(c[:2] == ["docker", "stop"] for c in run.calls)
+    assert not any(c[:2] == ["docker", "rm"] for c in run.calls)
 
 
 def test_cmd_down_error_state_is_not_false_success():
@@ -976,13 +996,21 @@ def test_cmd_down_detects_restart_policy_revival():
     # container — the GPU was NOT freed, and down must not claim success.
     serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running", state_after_stop="running")
-    assert serves.cmd_down(serv, [], _run=run) == 1
+    assert serves.cmd_down(serv, [], keep_container=True, _run=run) == 1
 
 
 def test_cmd_down_reports_stop_failure():
     serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running", stop_rc=1, stop_err="boom")
     assert serves.cmd_down(serv, [], _run=run) == 1
+
+
+def test_cmd_down_reports_remove_failure_after_stop():
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running", remove_rc=1, remove_err="still referenced")
+    assert serves.cmd_down(serv, [], _run=run) == 1
+    assert ["docker", "stop", "sglang"] in run.calls
+    assert ["docker", "rm", "-f", "sglang"] in run.calls
 
 
 # ---- up ---------------------------------------------------------------------

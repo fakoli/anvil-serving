@@ -54,6 +54,34 @@ def test_serves_manage_captures_cli_cache_reclaim_postcondition(tmp_path, monkey
     assert "--confirm" in seen[0][0]
 
 
+def test_serves_manage_down_removes_by_default_and_can_keep_container(tmp_path):
+    manifest = _manifest(tmp_path)
+
+    default = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["heavy"],
+    })
+    assert default["ok"] is True
+    assert [step["kind"] for step in default["data"]["plan"]["commands"]] == [
+        "docker_stop",
+        "docker_rm_after_stop",
+    ]
+    assert "--keep-container" not in default["data"]["command"]
+
+    retained = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["heavy"],
+        "keep_container": True,
+    })
+    assert retained["ok"] is True
+    assert [step["kind"] for step in retained["data"]["plan"]["commands"]] == [
+        "docker_stop",
+    ]
+    assert "--keep-container" in retained["data"]["command"]
+
+
 def test_serves_promote_captures_same_postcondition_without_new_tool(
         tmp_path, monkeypatch):
     manifest = _manifest(tmp_path)

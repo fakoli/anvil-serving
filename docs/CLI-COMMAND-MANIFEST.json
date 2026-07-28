@@ -3216,13 +3216,24 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--keep-container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Stop without removing the container or its logs.",
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
       "path": "serves down",
       "recovery_capable": false,
       "remote_operation": {
-        "allowed_arguments": [],
+        "allowed_arguments": [
+          "keep_container"
+        ],
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
@@ -3234,7 +3245,7 @@
         "tool": "serves_manage"
       },
       "resource_role": "model-serve",
-      "summary": "Stop manifest-owned model serves.",
+      "summary": "Stop and remove manifest-owned model serves.",
       "transports": [
         "local",
         "controller"

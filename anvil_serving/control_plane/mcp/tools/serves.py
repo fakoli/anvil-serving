@@ -76,6 +76,7 @@ def _serves_cli_argv(
     *,
     dry_run: bool = False,
     recreate: bool = False,
+    keep_container: bool = False,
     compose: str = "",
     tail: Optional[int] = None,
     since: str = "",
@@ -93,6 +94,8 @@ def _serves_cli_argv(
         argv.append("--confirm")
     if recreate:
         argv.append("--recreate")
+    if keep_container:
+        argv.append("--keep-container")
     if tail is not None:
         argv += ["--tail", str(tail)]
     if since:
@@ -151,6 +154,7 @@ def _serves_manage_plan(
     *,
     compose: str = "",
     recreate: bool = False,
+    keep_container: bool = False,
     allow_literal: bool = False,
 ) -> tuple[list[dict], dict]:
     from .... import serves as serves_mod
@@ -231,14 +235,22 @@ def _serves_manage_plan(
         "commands": [],
     }
     if action == "down":
-        plan["commands"] = [
-            {
-                "kind": "docker_stop",
-                "target": item.get("name"),
-                "argv": ["docker", "stop", item["container"]],
-            }
-            for item in targets
-        ]
+        for item in targets:
+            plan["commands"].append(
+                {
+                    "kind": "docker_stop",
+                    "target": item.get("name"),
+                    "argv": ["docker", "stop", item["container"]],
+                }
+            )
+            if not keep_container:
+                plan["commands"].append(
+                    {
+                        "kind": "docker_rm_after_stop",
+                        "target": item.get("name"),
+                        "argv": ["docker", "rm", "-f", item["container"]],
+                    }
+                )
     elif action == "adopt":
         for item in targets:
             plan["commands"].append(
@@ -304,6 +316,9 @@ def tool_serves_manage(args: dict) -> dict:
     names = _str_list_arg(args, "names")
     compose = _str_arg(args, "compose", "")
     recreate = _arg_bool(args.get("recreate"), False, name="recreate")
+    keep_container = _arg_bool(
+        args.get("keep_container"), False, name="keep_container"
+    )
     allow_literal = _arg_bool(args.get("allow_literal"), False, name="allow_literal")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
@@ -313,6 +328,10 @@ def tool_serves_manage(args: dict) -> dict:
         raise ToolError("bad_argument", "'compose' is only valid with action='up'")
     if compose and recreate:
         raise ToolError("bad_argument", "'recreate' has no meaning with compose up")
+    if keep_container and action != "down":
+        raise ToolError(
+            "bad_argument", "'keep_container' is only valid with action='down'"
+        )
     if action == "rm" and not names:
         raise ToolError("missing_argument", "rm requires at least one name")
 
@@ -325,12 +344,19 @@ def tool_serves_manage(args: dict) -> dict:
         names,
         compose=compose,
         recreate=recreate,
+        keep_container=keep_container,
         allow_literal=allow_literal,
     )
 
     preview = dry_run or not confirm
     argv = _serves_cli_argv(
-        action, manifest, names, dry_run=preview, recreate=recreate, compose=compose
+        action,
+        manifest,
+        names,
+        dry_run=preview,
+        recreate=recreate,
+        keep_container=keep_container,
+        compose=compose,
     )
     target = {
         "action": action,
@@ -338,6 +364,7 @@ def tool_serves_manage(args: dict) -> dict:
         "names": names,
         "compose": compose or None,
         "recreate": recreate,
+        "keep_container": keep_container,
         "allow_literal": allow_literal,
         "timeout_seconds": timeout_seconds,
     }
@@ -478,6 +505,7 @@ FAMILY = ToolFamily(
                     "names": {"type": "array", "items": {"type": "string"}},
                     "compose": {"type": "string"},
                     "recreate": {"type": "boolean"},
+                    "keep_container": {"type": "boolean"},
                     "allow_literal": {"type": "boolean"},
                     "dry_run": {"type": "boolean"},
                     "confirm": {"type": "boolean"},

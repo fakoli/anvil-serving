@@ -33,14 +33,23 @@ def commands() -> CommandNode:
             ),
             _resource_node(
                 "down",
-                "Stop manifest-owned model serves.",
+                "Stop and remove manifest-owned model serves.",
                 "anvil_serving.serves",
                 role="model-serve",
-                options=CONFIRM_OPTIONS,
+                options=CONFIRM_OPTIONS
+                + (
+                    _option(
+                        "--keep-container",
+                        summary="Stop without removing the container or its logs.",
+                    ),
+                ),
                 mutation="mutate",
                 gpu=True,
                 remote_operation=_remote(
-                    "serves_manage", fixed=(("action", "down"),), positionals=("names",)
+                    "serves_manage",
+                    fixed=(("action", "down"),),
+                    allowed=("keep_container",),
+                    positionals=("names",),
                 ),
             ),
             _resource_node(
