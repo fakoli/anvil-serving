@@ -124,6 +124,46 @@ for same-host serves. Optional `health_path`, `timeout`, `max_concurrency`,
 The tier's `model` is the upstream served model name. It is not the public
 capability name.
 
+### Capacity metadata
+
+`GET /v1/models/capacity` exposes an allowlisted subset of descriptive metadata
+from `params.capacity`, joined with readiness and bounded live `/metrics` values
+from the serving engine:
+
+```toml
+engine = "vllm"
+quantization = "nvfp4"
+max_concurrency = 1
+params = { capacity = { gpu_role = "primary", gpu_name = "NVIDIA RTX PRO 6000 Blackwell Workstation Edition", gpu_memory_total_mib = 97887, model_memory_gib = 73.22, kv_cache_capacity_tokens = 571950, scheduler_max_num_seqs = 1, image_limit = 1, video_limit = 0 } }
+```
+
+The allowlisted capacity keys are `gpu_role`, `gpu_name`,
+`gpu_memory_total_mib`, `model_memory_gib`, `kv_cache_capacity_tokens`,
+`scheduler_max_num_seqs`, `image_limit`, and `video_limit`. Other `params`
+values are never returned. These values are operator-declared measurements,
+not runtime discovery.
+
+The endpoint accepts `model` and `gpu_role` filters. Optional `images`,
+`input_tokens`, `image_tokens`, and `output_tokens` parameters evaluate a
+request scenario. Image count alone cannot establish context use because image
+resolution and preprocessing determine visual token count, so a scenario with
+images reports context admissibility only when total `image_tokens` is supplied.
+
+`params.capabilities` is the allowlisted client-facing declaration used by
+`GET /v1/models/capabilities`: `modalities`, nested `thinking` fields
+(`supported`, `default`, `caller_override`, and optional `max_tokens`),
+`images_per_request`, and `video_per_request`.
+
+`params.fingerprint` supplies optional identity evidence for
+`GET /v1/models/fingerprints`: `model_revision`, `engine_version`,
+`image_digest`, and `config_fingerprint`. Unknown fields in either section stay
+private. The endpoint reports missing evidence as `null`; it never fabricates a
+digest or revision.
+
+See the
+[router observability API](THIN-CAPABILITY-GATEWAY.md#router-observability-api)
+for the full read-only surface and privacy boundary.
+
 ## Purpose models and audio
 
 `[[router.purpose_models]]` maps an exact model name to an embedding or rerank

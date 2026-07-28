@@ -14,15 +14,15 @@ context limit, request shape, and evaluation protocol. Follow a model name to th
 record. The chronological [result archive](../BENCHMARKS.md) also covers RTX 5090,
 voice, and earlier rounds.
 
-**Last evidence refresh: 2026-07-26.** No result on this page automatically
+**Last evidence refresh: 2026-07-28.** No result on this page automatically
 changes a router profile or production deployment; promotion remains human-gated.
 
 ## Current decision snapshot
 
 | Need | Best measured fit | Why | Important limit |
 |---|---|---|---|
-| Current Heavy serving, tools, and 240K context | [Laguna S 2.1 NVFP4](models.md#laguna-s-21-nvfp4) | Thinking-disabled repeated quality passed every check, 240K retrieval, and the promotion gate passed 10/10 tools | Thinking-enabled preflight intermittently exhausted its full completion budget |
-| Immediate managed rollback | [GPT-OSS Puzzle 88B](gpt-oss-puzzle-88b-recipe.md) | Exact fork image previously passed the full functional gate, 20/20 tools, and authenticated routing | Strict built-in quality failed one unified-diff attempt |
+| Current multimodal Primary, tools, and 240K context | [Qwen3.5 122B A10B NVFP4](models.md#qwen35-122b-a10b-nvfp4) | Image understanding/OCR passed in both thinking modes; 240K retrieval, 10/10 tools, and every repeated protocol-v3 check passed | One image per prompt, video disabled; near-ceiling prefill is slow |
+| Immediate managed rollback | [Laguna S 2.1 NVFP4](models.md#laguna-s-21-nvfp4) | Previously promoted pinned checkpoint passed repeated quality and 240K retrieval | Keep its thinking-disabled production contract |
 | Historical strict-quality rollback | [Gemma 4 12B IT QAT W4A16](models.md#gemma-4-12b-it-qat-w4a16) | Passed repeated protocol-v3 quality, 240K context, 20/20 tools, and guarded promotion | FP8 KV and several-minute cold compile; exact pinned July 15 tokenizer required |
 | Historical tuned Qwen quality | [ThinkingCap Qwen3.6-27B FP8](models.md#thinkingcap-qwen36-27b-fp8) | 9/10 stable MMLU-Pro items at 4K reasoning headroom in the July 12 slice | Historical candidate; MTP disabled in its validated recipe |
 | Heavy quality with a tight 1K reasoning budget | [Nemotron 3 Super 120B NVFP4](models.md#nemotron-3-super-120b-nvfp4) | 8/10 stable MMLU-Pro and 5/5 stable ARC at 1K; strong latency/quality balance | Served and tested at 131K, not its advertised 1M maximum |
@@ -30,18 +30,19 @@ changes a router profile or production deployment; promotion remains human-gated
 | Controlled long-generation throughput | [GPT-OSS-120B](models.md#gpt-oss-120b) | Established 183.2 tok/s control | No valid comparison-grade protocol-v3 quality result yet |
 | Low short-request latency | [Mistral Small 4 119B NVFP4](models.md#mistral-small-4-119b-nvfp4) | 0.30 s TTFT at concurrency 1 and 1.85 s at concurrency 5 | Only 5/10 stable MMLU-Pro items at its tuned 2K point |
 
-The current routed **Heavy tier** is **Laguna S 2.1 NVFP4** at
-`http://127.0.0.1:30002/v1`, served as `laguna-s-2.1-nvfp4` with a 262,144-token
-window and thinking disabled. GPT-OSS Puzzle 88B is the immediate managed
-rollback. Use the [Laguna qualification and promotion record](../findings/2026-07-26-laguna-s-heavy-qualification.md);
-the rollback still requires the exact Anvil vLLM fork commit and Harmony EOS
-override documented in the [Puzzle recipe](gpt-oss-puzzle-88b-recipe.md).
+The current routed **Primary tier** is **Qwen3.5 122B A10B NVFP4** at
+`http://127.0.0.1:30002/v1`, served as `qwen35-122b-a10b-nvfp4` with the native
+262,144-token window, one-image input, and thinking enabled by default. Requests
+may disable thinking explicitly. Laguna S 2.1 is the immediate managed rollback. Use the
+[Qwen qualification record](../findings/2026-07-28-qwen35-122b-primary-qualification.md)
+for exact identity, loading research, measurements, and caveats.
 
 ### Current protocol-v3 promotion comparison
 
 | Candidate | Repeated built-in quality | 32K quality TTFT | 128K quality TTFT | 240K quality TTFT | Decision |
 |---|---|---:|---:|---:|---|
-| Laguna S 2.1 NVFP4, thinking disabled | **pass** | **2.26 s** | **21.15 s** | **50.64 s** | **Current Heavy**; thinking-disabled contract |
+| Qwen3.5 122B A10B NVFP4, multimodal profile | **pass** | retained in raw artifact | 16.8 s enabled-thinking retrieval | 52.9 s disabled-thinking retrieval | **Current Primary**; default thinking plus request-level disable |
+| Laguna S 2.1 NVFP4, thinking disabled | **pass** | **2.26 s** | **21.15 s** | **50.64 s** | Immediate managed rollback |
 | GPT-OSS Puzzle 88B | fail unified diff 2/3; tools/session/timeout passed 3/3 | 2.44 s | 25.91 s | — | Immediate managed rollback; strict-quality caveat |
 | ThinkingCap Qwen3.6-27B FP8 | pass | 7.83 s | 57.60 s | 124.70 s | Rollback control |
 | Gemma 4 12B W4A16 | **pass** | 6.96 s | 44.61 s | **97.33 s** | **Immediate Heavy rollback** |
@@ -130,7 +131,8 @@ minimum evidence needed to publish them.
 
 | Candidate | Advertised context | Served limit | Long-context validation | Long-context TTFT | What is actually established |
 |---|---:|---:|---|---:|---|
-| Laguna S 2.1 NVFP4, thinking disabled | 262,144 | 262,144 | 243,641-prompt-token quality retrieval passed | 50.64 s at the 240K quality target | Current Heavy; exact model and engine revisions pinned |
+| Qwen3.5 122B A10B NVFP4, multimodal profile | 262,144 | 262,144 | 240K retrieval passed with the vision tower resident; 571,950 KV-cache tokens | 52.9 s at the 240K target | Current Primary; one image, default thinking, exact revision/image pinned |
+| Laguna S 2.1 NVFP4, thinking disabled | 262,144 | 262,144 | 243,641-prompt-token quality retrieval passed | 50.64 s at the 240K quality target | Immediate managed rollback; exact model and engine revisions pinned |
 | GPT-OSS Puzzle 88B | 131,072 | 131,072 | 130,696-prompt-token near-limit retrieval; 127,916-prompt-token quality target passed | 25.91 s at the 128K quality target | Immediate managed rollback; exact engine/model revisions pinned |
 | Gemma 4 12B IT QAT W4A16 | 262,144 | 262,144 | 240K promotion needle passed | 97.33 s at 240K in quality run | Historical strict-quality rollback; exact model/tokenizer revisions pinned |
 | Qwen3.6-27B community NVFP4 + MTP | 262,144 | 262,144 | 262K needle passed | 26.5 s at 131K | Native window validated; five full windows are not reserved |

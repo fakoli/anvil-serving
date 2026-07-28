@@ -488,7 +488,12 @@ def docker_run_argv(recipe: dict, *, container: str | None = None) -> list[str]:
         for env in serve_env
         if isinstance(env, str) and env.startswith("CUDA_VISIBLE_DEVICES=")
     ]
-    if gpu_uuid and visible_devices and visible_devices != [gpu_uuid]:
+    allow_index_pin = (
+        serve.get("allow_cuda_visible_devices_index") is True
+        and len(visible_devices) == 1
+        and visible_devices[0].isdigit()
+    )
+    if gpu_uuid and visible_devices and visible_devices != [gpu_uuid] and not allow_index_pin:
         raise RecipeError(
             "recipe.serve.env CUDA_VISIBLE_DEVICES must match recipe.hardware.gpu_uuid"
         )
