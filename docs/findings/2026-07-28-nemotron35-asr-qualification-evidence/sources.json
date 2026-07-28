@@ -1,0 +1,37 @@
+{
+  "observed_at": "2026-07-28",
+  "sources": [
+    {
+      "url": "https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b",
+      "published_or_observed_date": "2026-07-28",
+      "age_class": "current",
+      "evidence_type": "official model card",
+      "hardware_engine_relevance": "Defines checkpoint capabilities, processor conditioning, and Transformers requirement.",
+      "decision_impact": "Bounded Nemotron to one-shot English ASR and excluded unsupported general-audio claims."
+    },
+    {
+      "url": "https://huggingface.co/docs/transformers/v5.13.0/serve-cli/serving",
+      "published_or_observed_date": "2026-07-28",
+      "age_class": "current pinned runtime",
+      "evidence_type": "official runtime documentation",
+      "hardware_engine_relevance": "Documents the OpenAI-compatible Transformers serving surface used by the experiment.",
+      "decision_impact": "Selected the initial one-shot serving contract; local failures still required pinned source fixes."
+    },
+    {
+      "url": "https://github.com/QwenLM/Qwen3-ASR",
+      "published_or_observed_date": "2026-07-28",
+      "age_class": "current",
+      "evidence_type": "official repository",
+      "hardware_engine_relevance": "Documents Qwen3-ASR, vLLM, the OpenAI transcription endpoint, and the official runtime image.",
+      "decision_impact": "Selected the 0.6B control and supplied the official output parser used by the pinned image patch."
+    },
+    {
+      "url": "https://www.openslr.org/12",
+      "published_or_observed_date": "2026-07-27",
+      "age_class": "stable corpus source",
+      "evidence_type": "official public dataset registry",
+      "hardware_engine_relevance": "Provides LibriSpeech test-clean and test-other archives and checksums.",
+      "decision_impact": "Grounded the deterministic 24-sample primary human quality set."
+    }
+  ]
+}
