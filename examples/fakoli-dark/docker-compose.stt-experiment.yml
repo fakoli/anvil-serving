@@ -1,0 +1,92 @@
+# Sequential, loopback-only STT qualification serves for Fakoli Dark's RTX 5090.
+# Manage these through examples/fakoli-dark/serves.stt-experiment.toml. They do
+# not replace the live Parakeet endpoint on 30010 or change the router audio route.
+name: anvil-stt-experiment
+
+services:
+  nemotron35-asr:
+    build:
+      context: ./stt-experiments/nemotron
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${NEMOTRON_BASE_IMAGE:-pytorch/pytorch@sha256:60f22fb80755fd0b470fb47928dbd55816aa9f847edd95cf43c93253507a9ddf}
+        TRANSFORMERS_VERSION: "5.13.0"
+    image: ${NEMOTRON_ASR_IMAGE:-anvil-transformers-asr:5.13.0}
+    container_name: anvil-stt-nemotron35
+    restart: "no"
+    init: true
+    ipc: host
+    ports:
+      - "127.0.0.1:39041:8000"
+    volumes:
+      - "nemotron35-hfcache:/root/.cache/huggingface"
+      - "nemotron35-model:/models"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      NVIDIA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    entrypoint: ["/bin/bash", "-lc"]
+    command:
+      - >-
+        mkdir -p /root/.cache/huggingface/hub
+        && hf download nvidia/nemotron-3.5-asr-streaming-0.6b
+        --revision f3d333391852ba876df169dcc9ba902d25b6ab0b
+        --local-dir /models/nemotron-3.5-asr-streaming-0.6b
+        && transformers serve --host 0.0.0.0 --port 8000
+
+  qwen3-asr-0.6b:
+    build:
+      context: ./stt-experiments/qwen
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: qwenllm/qwen3-asr@sha256:fb75b775f089e06e5a1aaebffd421e37505cc630d50c86d889d95ffa45a7e16a
+    image: ${QWEN3_ASR_IMAGE:-anvil-qwen3-asr:official-vllm-0.14.0}
+    container_name: anvil-stt-qwen3-asr-0.6b
+    restart: "no"
+    init: true
+    ipc: host
+    shm_size: "4gb"
+    ports:
+      - "127.0.0.1:39042:8000"
+    volumes:
+      - "qwen3-asr-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # This pinned vLLM build parses CUDA_VISIBLE_DEVICES as an integer.
+      # NVIDIA_VISIBLE_DEVICES and the reservation retain the host UUID boundary.
+      NVIDIA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: "0"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    # Import the official qwen-asr package before vLLM so its Transformers
+    # architecture registration is present in this pinned runtime.
+    entrypoint: ["/bin/bash", "-lc"]
+    command:
+      - >-
+        exec python -c
+        'import qwen_asr; from vllm.entrypoints.cli.main import main; main()'
+        serve Qwen/Qwen3-ASR-0.6B
+        --revision 5eb144179a02acc5e5ba31e748d22b0cf3e303b0
+        --served-model-name qwen3-asr-0.6b
+        --host 0.0.0.0
+        --port 8000
+        --gpu-memory-utilization 0.20
+        --max-model-len 16384
+        --max-num-seqs 4
+
+volumes:
+  nemotron35-hfcache:
+  nemotron35-model:
+  qwen3-asr-hfcache:

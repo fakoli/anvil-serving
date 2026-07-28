@@ -1,0 +1,17 @@
+[voice.stt]
+base_url = "http://127.0.0.1:39041/v1"
+model = "/models/nemotron-3.5-asr-streaming-0.6b"
+stream = false
+response_format = "json"
+language = "en-US"
+timeout = 60.0
+
+[stt_benchmark.identity]
+served_name = "nemotron35-asr"
+checkpoint = "nvidia/nemotron-3.5-asr-streaming-0.6b"
+revision = "f3d333391852ba876df169dcc9ba902d25b6ab0b"
+runtime = "transformers-serve"
+runtime_version = "5.13.0"
+image = "anvil-transformers-asr:5.13.0"
+image_digest = "sha256:311ee25ead30100674d2885d4b2fdfb5cf13c8e2748bbcc144f98b014a371bf8"
+hardware = "Fakoli Dark RTX 5090"

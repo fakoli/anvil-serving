@@ -18,6 +18,7 @@ is model-free by default.
 | Manage the background proxy | `voice proxy status` | Preview `up`, `down`, or `restart`, then apply with `--confirm`. |
 | Forward Mini-local audio ports | `voice proxy bridge --dry-run` | Run the bridge in the foreground after reviewing both routes. |
 | Measure a voice candidate | `voice benchmark` | Retain structured evidence with `--evidence-out`. |
+| Qualify an STT model | `voice corpus prepare` | Validate it, then run `voice benchmark --scope stt`. |
 | Inspect configuration overlays | `voice profiles list` | Validate one resolved overlay with `voice profiles validate`. |
 | Prepare an optional sidecar | `voice sidecar validate` | Render a host command or Compose skeleton; neither command launches it. |
 
@@ -56,6 +57,8 @@ is model-free by default.
 | Command | Purpose |
 | --- | --- |
 | `voice benchmark` | Replay one end-to-end voice session against resolved endpoints. |
+| `voice corpus prepare` | Build the deterministic 24-human/6-synthetic English STT corpus. |
+| `voice corpus validate` | Fail closed on malformed JSONL, audio metadata, paths, or hashes. |
 | `voice profiles list` | List named overlays without contacting a service. |
 | `voice profiles validate` | Validate one fully merged profile offline. |
 
@@ -197,6 +200,34 @@ The benchmark records resolved model and endpoint identity with its end-to-end
 STT, router, and TTS metrics. Evidence output is restricted to the workspace or
 configured evidence root. Unreachable dependencies return nonzero and do not
 create a successful measurement record.
+
+### STT corpus
+
+Prepare the corpus into an evidence workspace:
+
+```bash
+anvil-serving voice corpus prepare --config ~/.anvil-serving/voice.audio-dark.toml --out artifacts/stt/corpus
+anvil-serving voice corpus validate --manifest artifacts/stt/corpus/manifest.jsonl --expected-cases 30
+```
+
+The versioned JSONL manifest resolves audio paths against itself and accepts
+only 16-kHz mono WAV/FLAC with matching SHA-256. Run a candidate through an
+STT-only overlay:
+
+```bash
+anvil-serving voice benchmark --scope stt \
+  --config ~/.anvil-serving/voice.audio-dark.toml \
+  --corpus artifacts/stt/corpus/manifest.jsonl \
+  --repetitions 3 --concurrency 1 \
+  --stt-candidate-overlay examples/fakoli-dark/stt-experiments/overlays/nemotron35-asr.toml \
+  --evidence-out artifacts/stt/nemotron-sequential.json
+```
+
+Use a separate `--repetitions 1 --concurrency 4` lane.
+`--auto-language-probes 6` records six additional unconditioned human
+requests; it does not qualify multilingual behavior. Evidence uses
+`stt-benchmark-evidence/v1`, writes atomically, and exits nonzero with
+`complete=false` if an expected request fails.
 
 ## Profiles
 
