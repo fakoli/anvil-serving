@@ -13,6 +13,7 @@ import ipaddress
 import os
 import sys
 import threading
+import time
 from http.server import ThreadingHTTPServer
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
 
@@ -34,7 +35,23 @@ from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, request_co
 from .dialects.translate import has_tool_artifacts
 from .front_door import make_server
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult, estimate_tokens
+from .model_capacity import (
+    MetricsProvider,
+    build_model_capacity,
+    fetch_vllm_metrics,
+)
+from .model_metadata import (
+    build_model_capabilities,
+    build_model_fingerprints,
+    build_router_status,
+)
 from .purpose import PurposeRouter
+from .router_telemetry import (
+    aggregate_stats,
+    find_request,
+    render_capacity_prometheus,
+    render_prometheus,
+)
 from .tier_health import build_tier_health
 from ..paths import config_path as operator_config_path
 from ..paths import first_existing
@@ -189,6 +206,7 @@ class RoutingBackend:
         *,
         availability: Optional[object] = None,
         admission: Optional[TierAdmission] = None,
+        capacity_metrics: Optional[MetricsProvider] = None,
     ) -> None:
         self._config = config
         self._backends: Dict[str, Backend] = {
@@ -201,6 +219,8 @@ class RoutingBackend:
         }
         self._availability = availability if availability is not None else AlwaysAvailable()
         self._admission = admission or TierAdmission(tier.id for tier in config.tiers)
+        self._capacity_metrics = capacity_metrics or fetch_vllm_metrics
+        self._started_at = time.time()
         self._decision_log = DecisionLog()
         self._thread_local: threading.local = threading.local()
 
@@ -309,6 +329,47 @@ class RoutingBackend:
     def tier_health(self) -> dict:
         return build_tier_health(self._config, self._availability)
 
+    def model_capacity(self, query: Mapping[str, list[str]]) -> dict:
+        return build_model_capacity(
+            self._config,
+            self._availability,
+            self._capacity_metrics,
+            query,
+        )
+
+    def model_capabilities(self, query: Mapping[str, list[str]]) -> dict:
+        return build_model_capabilities(self._config, self._availability, query)
+
+    def model_fingerprints(self, query: Mapping[str, list[str]]) -> dict:
+        return build_model_fingerprints(self._config, self._availability, query)
+
+    def router_status(self) -> dict:
+        return build_router_status(self._config, started_at=self._started_at)
+
+    def _validate_stats_model(self, query: Mapping[str, list[str]]) -> None:
+        values = query.get("model")
+        if values is not None and len(values) == 1:
+            if self._config.route_tier(values[0]) is None:
+                raise KeyError(values[0])
+
+    def router_stats(self, query: Mapping[str, list[str]]) -> dict:
+        self._validate_stats_model(query)
+        return aggregate_stats(self._decision_log.records, query)
+
+    def request_trace(self, request_id: str) -> dict:
+        return find_request(self._decision_log.records, request_id)
+
+    def prometheus_metrics(self, query: Mapping[str, list[str]]) -> str:
+        self._validate_stats_model(query)
+        capacity_query = (
+            {"model": query["model"]} if "model" in query else {}
+        )
+        capacity = self.model_capacity(capacity_query)
+        return (
+            render_prometheus(self._decision_log.records, query)
+            + render_capacity_prometheus(capacity)
+        )
+
     def transition_status(self, tier_id: Optional[str] = None) -> dict:
         tier_ids = (tier_id,) if tier_id is not None else tuple(tier.id for tier in self._config.tiers)
         rows = []
@@ -384,6 +445,7 @@ def build_server(
     timeout: Optional[float] = 120,
     availability: Optional[object] = None,
     admission: Optional[TierAdmission] = None,
+    capacity_metrics: Optional[MetricsProvider] = None,
 ) -> ThreadingHTTPServer:
     """Load direct routes and build an un-started authenticated front door."""
     config = load(config_path)
@@ -408,7 +470,16 @@ def build_server(
         raise ConfigError("no serviceable direct model-route tiers")
     if availability is None:
         availability = AlwaysAvailable() if injected else HttpHealthAvailability(config, env=env)
-    routing = RoutingBackend(config, backends, availability=availability, admission=admission)
+    if capacity_metrics is None:
+        def capacity_metrics(tier: Tier):
+            return fetch_vllm_metrics(tier, env=environ)
+    routing = RoutingBackend(
+        config,
+        backends,
+        availability=availability,
+        admission=admission,
+        capacity_metrics=capacity_metrics,
+    )
 
     purpose: Optional[PurposeRouter] = None
     if config.purpose_models:
@@ -460,7 +531,12 @@ def serve(
     _warn_if_public_bind(host, authed=authed)
     httpd = build_server(config_path, host=host, port=port)
     actual_host, actual_port = httpd.server_address[:2]
-    routes = "POST /v1/chat/completions, POST /v1/messages, GET /v1/models"
+    routes = (
+        "POST /v1/chat/completions, POST /v1/messages, GET /v1/models, "
+        "GET /v1/models/capacity, GET /v1/models/capabilities, "
+        "GET /v1/models/fingerprints, GET /v1/router/status, GET /v1/stats, "
+        "GET /v1/requests/{request_id}, GET /metrics"
+    )
     if getattr(httpd, "anvil_purpose", None) is not None:
         routes += ", POST /v1/embeddings, POST /v1/rerank"
     audio = getattr(httpd, "anvil_audio", None)
