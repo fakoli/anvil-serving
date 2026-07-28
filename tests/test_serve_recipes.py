@@ -311,6 +311,22 @@ def test_reconstruct_docker_run_rejects_gpu_visibility_mismatch():
         sr.reconstruct_docker_run(recipe)
 
 
+def test_reconstruct_docker_run_allows_explicit_numeric_gpu_visibility():
+    recipe = {
+        "model": "m/x",
+        "hardware": {"gpu_uuid": "GPU-selected"},
+        "serve": {
+            "image": "img",
+            "allow_cuda_visible_devices_index": True,
+            "env": ["CUDA_VISIBLE_DEVICES=1"],
+        },
+    }
+
+    cmd = sr.reconstruct_docker_run(recipe)
+    assert "--gpus device=GPU-selected" in cmd
+    assert "-e CUDA_VISIBLE_DEVICES=1" in cmd
+
+
 # ---- CAPTURE: capture_from_container (fake docker inspect) --------------------------
 
 _FAKE_INSPECT = [{
@@ -530,7 +546,43 @@ def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_rollback(request):
     assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in cmd
 
 
-def test_shipped_laguna_recipe_is_verified_primary_target(request):
+def test_shipped_qwen35_recipe_is_verified_primary_target(request):
+    root = request.config.rootpath
+    registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
+    recipe = sr.find_recipe(registry, "nvidia/Qwen3.5-122B-A10B-NVFP4")
+
+    assert recipe is not None
+    assert recipe["status"] == "verified"
+    serve = recipe["serve"]
+    assert serve["image"] == "nvcr.io/nvidia/vllm:26.06-py3"
+    assert serve["managed_serve"] == "primary"
+    assert serve["served_model_name"] == "qwen35-122b-a10b-nvfp4"
+    assert serve["port"] == 30002
+    assert serve["context_tokens"] == 262144
+    assert serve["allow_cuda_visible_devices_index"] is True
+    assert "CUDA_VISIBLE_DEVICES=1" in serve["env"]
+    assert "--revision 98915d837c4e7c87ac8296d02e89de19b3207e6d" in serve["flags"]
+    assert "--kv-cache-dtype bfloat16" in serve["flags"]
+    assert "--max-model-len 262144" in serve["flags"]
+    assert "--limit-mm-per-prompt '{\"image\":1,\"video\":0}'" in serve["flags"]
+    assert "--language-model-only" not in serve["flags"]
+    assert not any("enable_thinking" in flag for flag in serve["flags"])
+    assert recipe["activation"]["primary"] == {
+        "plan": "qwen35-122b-primary",
+        "direction": "promote",
+        "compose_service": "primary",
+    }
+
+    cmd = sr.reconstruct_docker_run(recipe)
+    assert cmd.startswith(
+        "docker run -d --gpus device=GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+    )
+    assert serve["image"] in cmd
+    assert "nvidia/Qwen3.5-122B-A10B-NVFP4" in cmd
+    assert "--max-model-len 262144" in cmd
+
+
+def test_shipped_laguna_recipe_is_verified_primary_rollback(request):
     root = request.config.rootpath
     registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
     recipe = sr.find_recipe(registry, "poolside/Laguna-S-2.1-NVFP4")
@@ -538,7 +590,7 @@ def test_shipped_laguna_recipe_is_verified_primary_target(request):
     assert recipe is not None
     assert recipe["status"] == "verified"
     serve = recipe["serve"]
-    assert serve["managed_serve"] == "primary"
+    assert serve["managed_serve"] == "primary-laguna-rollback"
     assert serve["served_model_name"] == "laguna-s-2.1-nvfp4"
     assert serve["port"] == 30002
     assert "--revision 07614121b31898586430f189d27a25a0be310843" in serve["flags"]
@@ -547,7 +599,7 @@ def test_shipped_laguna_recipe_is_verified_primary_target(request):
         in serve["flags"]
     )
     assert recipe["activation"]["primary"] == {
-        "plan": "laguna-s-2.1-primary",
-        "direction": "promote",
-        "compose_service": "primary",
+        "plan": "qwen35-122b-primary",
+        "direction": "rollback",
+        "compose_service": "primary-laguna-rollback",
     }
