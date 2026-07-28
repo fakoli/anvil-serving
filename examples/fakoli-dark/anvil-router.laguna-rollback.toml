@@ -1,5 +1,4 @@
-# Fakoli Dark reference topology. This is a configuration example, not live
-# qualification evidence. Use preflight and benchmark artifacts before exposure.
+# Fakoli Dark direct gateway rollback for the Primary serve.
 [server]
 auth_env = "ANVIL_ROUTER_TOKEN"
 
@@ -8,11 +7,10 @@ relay_timeout = 60
 availability_probe_interval = 5
 availability_probe_timeout = 1
 
-# RTX PRO 6000: the sole primary LLM capability.
 [[router.tiers]]
 id = "primary-local"
 base_url = "http://host.docker.internal:30002/v1"
-model = "qwen35-122b-a10b-nvfp4"
+model = "laguna-s-2.1-nvfp4"
 dialect = "openai"
 context_limit = 262144
 privacy = "local"
@@ -21,7 +19,6 @@ auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
 health_path = "/health"
 model_identity = true
 
-# RTX 5090: one exclusive Omni tier for auxiliary text, general vision, and OCR.
 [[router.tiers]]
 id = "omni-local"
 base_url = "http://host.docker.internal:30003/v1"

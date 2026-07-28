@@ -6,14 +6,15 @@
 # scripts had. DO NOT manage these serves with raw `docker`/`docker compose` — go through
 # `anvil-serving serves` so the management experience stays consistent.
 #
-#   heavy  -> service `primary`  (Laguna S 2.1 NVFP4, :30002, RTX PRO 6000 96GB / GPU 1)
+#   heavy  -> service `primary`  (Qwen3.5 122B A10B NVFP4, :30002, RTX PRO 6000 96GB / GPU 1)
 #   omni   -> service `omni` (Nemotron 3 Nano Omni, :30003, RTX 5090 / GPU 0)
 #   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
-# 2026-07-26 Heavy promotion: Laguna S 2.1 NVFP4 replaces GPT-OSS Puzzle after a
-# thinking-disabled functional gate, repeated chat/context/tool/session/intelligence
-# quality run, and 32K/128K/240K context probes. GPT-OSS Puzzle is the one retained
-# Heavy rollback. Older Heavy rollback definitions moved out of this live surface.
+# 2026-07-28 Primary promotion: NVIDIA Qwen3.5 122B A10B NVFP4 replaces Laguna S
+# after thinking-disabled and thinking-enabled functional gates, repeated
+# chat/context/tool/session/intelligence quality checks, and a 240K retrieval
+# pass. Laguna is the immediate rollback; GPT-OSS Puzzle remains a second-line
+# recovery option.
 # 2026-07-27 Omni consolidation: one Nemotron 3 Nano Omni serve replaces the
 # former auxiliary LLM, OCR, and general-vision services. It consumes the 5090
 # exclusively; embeddings and reranking remain a separate lifecycle stack.
@@ -34,13 +35,70 @@
 name: anvil-serving
 
 services:
-  # Primary tier: Poolside Laguna S 2.1 NVFP4 on the locally qualified vLLM nightly.
-  # Thinking is disabled by default because the enabled path intermittently exhausted
-  # its reasoning budget without producing a visible answer during qualification.
-  # Callers may still opt in per request with chat_template_kwargs.enable_thinking=true.
+  # Primary tier: NVIDIA Qwen3.5 122B A10B NVFP4 at its native 262,144-token
+  # window. The exact NGC 26.06 runtime, checkpoint revision, BF16 KV profile,
+  # and single-sequence policy passed the recorded local qualification.
+  # One image per prompt and default thinking passed the multimodal follow-up;
+  # callers may still disable thinking per request.
   primary:
+    image: ${PRIMARY_QWEN35_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.06-py3}
+    container_name: vllm-qwen35-122b-primary
+    restart: unless-stopped
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:30002:30002"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # The NGC 26.06 runtime int-parses CUDA_VISIBLE_DEVICES. PCI_BUS_ID index
+      # 1 is the PRO 6000 on this host; the Compose reservation below still
+      # pins the stable host UUID.
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/Qwen3.5-122B-A10B-NVFP4
+      --revision ${PRIMARY_QWEN35_REVISION:-98915d837c4e7c87ac8296d02e89de19b3207e6d}
+      --tokenizer-revision ${PRIMARY_QWEN35_TOKENIZER_REVISION:-98915d837c4e7c87ac8296d02e89de19b3207e6d}
+      --served-model-name qwen35-122b-a10b-nvfp4
+      --trust-remote-code
+      --quantization modelopt_fp4
+      --kv-cache-dtype bfloat16
+      --tensor-parallel-size 1
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --reasoning-parser qwen3
+      --limit-mm-per-prompt '{"image":1,"video":0}'
+      --enable-prefix-caching
+      --enable-chunked-prefill
+      --max-num-batched-tokens 8192
+      --gpu-memory-utilization 0.94
+      --max-num-seqs 1
+      --max-model-len 262144
+      --host 0.0.0.0 --port 30002
+      ${PRIMARY_QWEN35_EXTRA_ARGS:-}
+
+  # Immediate Primary rollback: the previously qualified Laguna S 2.1 profile.
+  # It deliberately shares :30002 and the PRO 6000, so the guarded promotion
+  # transaction stops Qwen before starting this service.
+  primary-laguna-rollback:
+    profiles: ["rollback"]
     image: ${PRIMARY_LAGUNA_VLLM_IMAGE:-vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1}
-    container_name: vllm-laguna-s-primary
+    container_name: vllm-laguna-s-primary-rollback
     restart: unless-stopped
     ipc: host
     shm_size: "16gb"
@@ -89,9 +147,7 @@ services:
       --host 0.0.0.0 --port 30002
       ${PRIMARY_LAGUNA_EXTRA_ARGS:-}
 
-  # The one ready Heavy rollback: the previously qualified GPT-OSS Puzzle 88B.
-  # It deliberately shares :30002 and the PRO 6000, so the guarded promotion
-  # transaction stops Laguna before starting this service.
+  # Second-line recovery option: the previously qualified GPT-OSS Puzzle 88B.
   primary-gptoss-puzzle-rollback:
     profiles: ["rollback"]
     image: ${PRIMARY_PUZZLE_VLLM_IMAGE:-anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82}
