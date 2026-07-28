@@ -1,5 +1,4 @@
-# Fakoli Dark reference topology. This is a configuration example, not live
-# qualification evidence. Use preflight and benchmark artifacts before exposure.
+# Fakoli Dark direct gateway rollback for the Primary serve.
 [server]
 auth_env = "ANVIL_ROUTER_TOKEN"
 
@@ -8,43 +7,18 @@ relay_timeout = 60
 availability_probe_interval = 5
 availability_probe_timeout = 1
 
-# RTX PRO 6000: the sole primary LLM capability.
 [[router.tiers]]
 id = "primary-local"
 base_url = "http://host.docker.internal:30002/v1"
-model = "qwen35-122b-a10b-nvfp4"
+model = "laguna-s-2.1-nvfp4"
 dialect = "openai"
 context_limit = 262144
 privacy = "local"
 tool_support = true
 auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
-engine = "vllm"
-quantization = "nvfp4"
-max_concurrency = 1
 health_path = "/health"
 model_identity = true
 
-[router.tiers.params.capacity]
-gpu_role = "primary"
-gpu_name = "NVIDIA RTX PRO 6000 Blackwell Workstation Edition"
-gpu_memory_total_mib = 97887
-model_memory_gib = 73.22
-kv_cache_capacity_tokens = 571950
-scheduler_max_num_seqs = 1
-image_limit = 1
-video_limit = 0
-
-[router.tiers.params.capabilities]
-modalities = ["text", "image"]
-thinking = { supported = true, default = "enabled", caller_override = true }
-images_per_request = 1
-video_per_request = 0
-
-[router.tiers.params.fingerprint]
-model_revision = "98915d837c4e7c87ac8296d02e89de19b3207e6d"
-engine_version = "vllm-0.22.1-7b9cb5b7.dev-ngc26.06"
-
-# RTX 5090: one exclusive Omni tier for auxiliary text, general vision, and OCR.
 [[router.tiers]]
 id = "omni-local"
 base_url = "http://host.docker.internal:30003/v1"

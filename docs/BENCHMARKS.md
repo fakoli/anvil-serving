@@ -101,9 +101,32 @@ recorded intent rather than a claim of hard server-side partitioning.
 
 These rows are from the [Fast-tier LLM bakeoff](findings/2026-07-08-fast-tier-llm-bakeoff.md) and its [human-gated promotion record](findings/2026-07-08-fast-tier-promotion.md). The voice artifacts in that bakeoff measure STT, LLM, and TTS stage timing, but their STT hypothesis is empty with WER `1.0`; they are **not** semantic speech-recognition accuracy results. The displayed decode rate is derived from the recorded evidence as `output_tokens * 1000 / (e2e_ms - ttft_ms)`.
 
+## Qwen3.5 122B Primary qualification (2026-07-28)
+
+The qualified Primary is **`nvidia/Qwen3.5-122B-A10B-NVFP4`**, served as
+`qwen35-122b-a10b-nvfp4` on the RTX PRO 6000. Revision
+`98915d837c4e7c87ac8296d02e89de19b3207e6d` runs in pinned NVIDIA vLLM 26.06
+with ModelOpt FP4 weights, BF16 KV cache, one admitted sequence, and the
+checkpoint's native **262,144-token** window. The final profile loads the vision
+tower, accepts one image per prompt, disables video, and enables thinking by
+default while preserving per-request disable.
+
+Thinking-disabled smoke, JSON, 240K retrieval, and 10/10 tools passed. The
+repeated protocol-v3 suite passed chat, 32K/128K/240K context, tools, session
+recall, unified diff, and timeout triage at 100%. Thinking-enabled use separately
+passed a 128K gate. Image understanding and verbatim OCR passed with thinking
+disabled and enabled, and default thinking produced reasoning evidence. With
+the vision tower resident, vLLM retained 571,950 KV-cache tokens (2.18 full
+windows), and the 240K retrieval gate measured 52.9 seconds TTFT.
+
+MTP is disabled, and the runtime marks the ModelOpt and Mamba prefix-cache paths
+experimental. Laguna S 2.1 remains the immediate managed rollback. See the
+[dated qualification](findings/2026-07-28-qwen35-122b-primary-qualification.md)
+and linked raw JSON.
+
 ## Laguna S 2.1 Heavy qualification (2026-07-26)
 
-The current Heavy tier is **`poolside/Laguna-S-2.1-NVFP4`**, served as
+The immediate Primary rollback is **`poolside/Laguna-S-2.1-NVFP4`**, served as
 `laguna-s-2.1-nvfp4` on the RTX PRO 6000 with a 262,144-token window. The
 deployment pins checkpoint revision
 `07614121b31898586430f189d27a25a0be310843` and vLLM image

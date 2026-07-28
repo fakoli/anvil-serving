@@ -1,0 +1,85 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39017/v1",
+  "model": "qwen35-122b-a10b-nvfp4",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 8192,
+    "max_completion_tokens": 8448
+  },
+  "multimodal_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "2.2s got=\"```python\\nsum(xs)\\n```\\n\\nThis one-liner uses Python'\" finish='stop' visible=131 reasoning_chars=480 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=33 reasoning_chars=3565 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "\n\n```python\nsum(xs)\n```\n\nThis one-liner uses Python's built-in `sum()` function to return the sum of all elements in the list `xs`.",
+      "finish_reason": "stop",
+      "content_chars": 131,
+      "content_excerpt": "\n\n```python\nsum(xs)\n```\n\nThis one-liner uses Python's built-in `sum()` function to return the sum of all elements in the list `xs`.",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 480,
+      "reasoning_excerpt": "This is a straightforward question. The user wants a Python one-liner that returns the sum of a list `xs`.\n\nThe most common and Pythonic way to do this is using the built-in `sum()` function.\n\nThe one",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 26,
+        "total_tokens": 186,
+        "completion_tokens": 160,
+        "prompt_tokens_details": null
+      },
+      "test": "smoke",
+      "seconds": 2.236,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "\n\n{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 33,
+      "content_excerpt": "\n\n{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 3565,
+      "reasoning_excerpt": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Input: \"Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.\"\n    *   Constraint: Return *ONLY* a JSON object.\n    *   Content:",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 28,
+        "total_tokens": 938,
+        "completion_tokens": 910,
+        "prompt_tokens_details": null
+      },
+      "test": "json",
+      "seconds": 11.539,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "required",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

@@ -651,11 +651,16 @@ rationale = "Prefix cache is load-bearing for AGENTIC work but IRRELEVANT for si
 
 [[recipe]]
 model = "nvidia/Qwen3.5-122B-A10B-NVFP4"
-status = "unverified"
-source = "operator-confirmed local Compose startup on fakoli-dark 2026-07-26; captured from candidate-heavy (NGC 26.06, BF16 KV)."
+status = "verified"
+source = "Qualified locally on fakoli-dark 2026-07-28 at revision 98915d837c4e7c87ac8296d02e89de19b3207e6d with NGC 26.06, BF16 KV, 262,144 configured context, 240K retrieval, repeated deterministic quality, and c1 capacity evidence."
 family = "qwen3.5"
 total_params_b = 122
 active_params_b = 10
+
+[recipe.download]
+repo = "nvidia/Qwen3.5-122B-A10B-NVFP4"
+revision = "98915d837c4e7c87ac8296d02e89de19b3207e6d"
+volume = "vllm-hfcache"
 
 [recipe.hardware]
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
@@ -668,61 +673,69 @@ engine = "vllm"
 image = "nvcr.io/nvidia/vllm:26.06-py3"
 entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
 model_flag = "--model"
-managed_serve = "heavy-qwen35-122b"
+allow_cuda_visible_devices_index = true
+managed_serve = "primary"
 served_model_name = "qwen35-122b-a10b-nvfp4"
 quantization = "modelopt_fp4"
-port = 39017
-context_tokens = 131072
+port = 30002
+context_tokens = 262144
 
 env = [
   "CUDA_VISIBLE_DEVICES=1",
   "VLLM_USE_V2_MODEL_RUNNER=0",
-  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
   "FLASHINFER_CUDA_ARCH_LIST=12.0f",
   "CUDA_DEVICE_ORDER=PCI_BUS_ID",
 ]
 
 flags = [
+  "--revision 98915d837c4e7c87ac8296d02e89de19b3207e6d",
+  "--tokenizer-revision 98915d837c4e7c87ac8296d02e89de19b3207e6d",
   "--served-model-name qwen35-122b-a10b-nvfp4",
   "--trust-remote-code",
   "--quantization modelopt_fp4",
   "--kv-cache-dtype bfloat16",
   "--tensor-parallel-size 1",
-  "--reasoning-parser qwen3",
   "--enable-auto-tool-choice",
   "--tool-call-parser qwen3_coder",
-  "--max-model-len 131072",
-  "--max-num-seqs 1",
-  "--max-num-batched-tokens 8192",
-  "--gpu-memory-utilization 0.94",
-  "--language-model-only",
+  "--reasoning-parser qwen3",
+  "--limit-mm-per-prompt '{\"image\":1,\"video\":0}'",
   "--enable-prefix-caching",
   "--enable-chunked-prefill",
+  "--max-num-batched-tokens 8192",
+  "--gpu-memory-utilization 0.94",
+  "--max-num-seqs 1",
+  "--max-model-len 262144",
   "--host 0.0.0.0",
-  "--port 39017",
+  "--port 30002",
 ]
 
 [recipe.measured]
-throughput_single_tok_s = 38.8
-ttft_p50_ms = 223.4
-throughput_probe_tok_s = 41.5
-longctx_100k_ttft_p50_s = 28.0
-longctx_100k_throughput_tok_s = 8.06
-vram_used_gb = 94.1
-model_weights_gb = 72.35
-kv_cache_tokens = 354960
+throughput_single_tok_s = 65.0
+ttft_p50_ms = 150.0
+throughput_probe_tok_s = 61.0
+longctx_240k_ttft_p50_s = 69.58
+vram_used_gb = 88.5
+model_weights_gb = 73.22
+kv_cache_tokens = 571950
 host_ram_peak_gb = 6.0
-cold_start_s = 250
+cold_start_s = 203
 cuda_graphs = "captured (PIECEWISE=2, FULL=1)"
-preflight = "Historical 2026-07-10 result for the former 26.04/FP8-KV profile; this NGC 26.06/BF16-KV profile still needs its own preflight."
-context_validation = "Historical 128k needle result for the former profile; not current-profile qualification."
-tool_calls = "Historical 20/20 result for the former profile; not current-profile qualification."
-reasoning = "Historical result for the former profile; not current-profile qualification."
-caveats = "The captured NGC 26.06/BF16-KV configuration has a successful operator-confirmed startup, but no recorded Anvil preflight or benchmark yet."
+preflight = "Vision-enabled profile passed image understanding and OCR with thinking disabled and enabled; disabled-thinking 240K text gate passed smoke, JSON, retrieval, and 10/10 tools; enabled-thinking 128K text gate passed with 3/3 tools."
+context_validation = "Vision-enabled profile retained 571,950 KV-cache tokens (2.18 full windows) and passed the 240K retrieval gate in 52.9 s."
+tool_calls = "10/10 shared-prefix preflight plus 3/3 repeated protocol-v3 tool checks passed."
+reasoning = "Default thinking and explicit thinking-enabled preflights passed with 8,192 reasoning-headroom tokens. Per-request thinking disable remains supported."
+caveats = "The NVIDIA ModelOpt NVFP4 format and vLLM Mamba align-mode prefix caching are marked experimental by the runtime. Image input is bounded to one item and video is disabled. MTP remains disabled. Thinking adds latency and requires explicit completion headroom."
 
 [recipe.fit]
-suited = ["quality", "long-context", "planning", "review", "research"]
-rationale = "Working NGC 26.06 Compose candidate for quality, long-context, planning, and review. It is not promoted and the current BF16-KV profile needs its own functional and benchmark evidence."
+suited = ["quality", "long-context", "planning", "review", "research", "vision", "ocr"]
+rationale = "Qualified multimodal Primary profile for quality, long-context, planning, review, image understanding, and OCR at the checkpoint's native 262,144-token window. Thinking is enabled by default and remains request-controllable."
+
+[recipe.activation]
+
+[recipe.activation.primary]
+plan = "qwen35-122b-primary"
+direction = "promote"
+compose_service = "primary"
 
 [[recipe]]
 model = "olka-fi/Qwen3.5-122B-A10B-MXFP4"
@@ -1213,13 +1226,6 @@ note = "Native Harmony template; no chat-template override. The pinned checkpoin
 suited = ["heavy", "agentic", "quality", "long-context", "planning", "review"]
 rationale = "Ready Heavy rollback. The exact-commit image passed direct functional, long-context, repeated tool-call, Responses, streaming, and tool-result gates on the RTX PRO 6000."
 
-[recipe.activation]
-
-[recipe.activation.primary]
-plan = "laguna-s-2.1-primary"
-direction = "rollback"
-compose_service = "primary-gptoss-puzzle-rollback"
-
 [[recipe]]
 model = "poolside/Laguna-S-2.1-NVFP4"
 status = "verified"
@@ -1242,7 +1248,7 @@ vram_total_gb = 96
 [recipe.serve]
 engine = "vllm"
 image = "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1"
-managed_serve = "primary"
+managed_serve = "primary-laguna-rollback"
 served_model_name = "laguna-s-2.1-nvfp4"
 quantization = "compressed-tensors NVFP4; auto-detected from model config"
 context_tokens = 262144
@@ -1295,9 +1301,9 @@ rationale = "Current Heavy-tier candidate validated with thinking disabled on on
 [recipe.activation]
 
 [recipe.activation.primary]
-plan = "laguna-s-2.1-primary"
-direction = "promote"
-compose_service = "primary"
+plan = "qwen35-122b-primary"
+direction = "rollback"
+compose_service = "primary-laguna-rollback"
 
 [[recipe]]
 model = "morosystems/ThinkingCap-Qwen3.6-27B-NVFP4"

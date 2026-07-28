@@ -36,30 +36,40 @@ Unless a model section says otherwise, the July 2026 Heavy experiments used FP8
 KV cache, text-only mode, prefix caching disabled for independent-prompt
 comparisons, and a maximum of five admitted sequences.
 
-## Laguna S 2.1 NVFP4
+## Qwen3.5 122B A10B NVFP4
 
 | Setting | Tested value |
 |---|---|
-| Checkpoint | [`poolside/Laguna-S-2.1-NVFP4`](https://huggingface.co/poolside/Laguna-S-2.1-NVFP4), revision `07614121b31898586430f189d27a25a0be310843` |
-| Managed service / endpoint | `heavy` / `http://127.0.0.1:30002/v1` |
-| Served name | `laguna-s-2.1-nvfp4` |
-| Engine path | vLLM `0.23.1rc1.dev1327+gf25953cc5`; pinned nightly image; NVFP4; FP8 KV |
-| Context / admission | 262,144 served; 240K quality retrieval and 120K promotion retrieval passed |
-| Router reasoning control | `chat_template_kwargs.enable_thinking=false` |
+| Checkpoint | [`nvidia/Qwen3.5-122B-A10B-NVFP4`](https://huggingface.co/nvidia/Qwen3.5-122B-A10B-NVFP4), revision `98915d837c4e7c87ac8296d02e89de19b3207e6d` |
+| Managed service / endpoint | `primary` / `http://127.0.0.1:30002/v1` |
+| Served name | `qwen35-122b-a10b-nvfp4` |
+| Engine path | NVIDIA vLLM 26.06, observed vLLM `0.22.1+7b9cb5b7.dev`; ModelOpt NVFP4; BF16 KV |
+| Context / admission | 262,144 served; 240K quality retrieval and near-ceiling capacity passed; one sequence |
+| Multimodal / reasoning | One image per prompt, video disabled; thinking enabled by default and request-controllable |
 
-**Why choose it.** The thinking-disabled production shape passed repeated
-protocol-v3 context, tool, session, unified-diff, and timeout-triage gates at a
-required 100% pass rate. It also passed the promotion gate with 10/10 tools and
-was verified through the managed router after promotion.
+**Why choose it.** This exact checkpoint and runtime passed thinking-disabled
+smoke, JSON, 240K retrieval, 10/10 tools, and the repeated protocol-v3 context,
+tool, session, unified-diff, and timeout-triage gates at a required 100% pass
+rate. With the vision tower resident, image understanding and OCR passed with
+thinking disabled and enabled; default thinking passed separately with
+reasoning evidence.
 
-**Gotchas.** The upstream template enables thinking by default. A local
-thinking-enabled smoke intermittently consumed its entire 4,352-token completion
-allowance without producing a visible answer, even though the immediate rerun
-passed. Keep disabled thinking in both the router defaults and qualification
-commands. Do not generalize the short-output capacity result into a controlled
-decode rate.
+**Gotchas.** The native maximum is exactly 262,144, not a distinct 264K mode.
+Keep BF16 KV, one admitted sequence, the one-image bound, and explicit
+reasoning headroom for thinking requests. The runtime marks ModelOpt FP4 and
+Mamba prefix-cache alignment experimental. Vision-enabled 240K retrieval
+measured 52.9 seconds TTFT. MTP was not qualified.
 
-Evidence: [Laguna S Heavy qualification](../findings/2026-07-26-laguna-s-heavy-qualification.md).
+Evidence: [Qwen3.5 122B Primary qualification](../findings/2026-07-28-qwen35-122b-primary-qualification.md).
+
+## Laguna S 2.1 NVFP4
+
+Laguna remains the immediate managed Primary rollback at revision
+`07614121b31898586430f189d27a25a0be310843`, served as
+`laguna-s-2.1-nvfp4` with its previously qualified 262,144-token,
+thinking-disabled contract. See the
+[Laguna qualification](../findings/2026-07-26-laguna-s-heavy-qualification.md)
+for the exact pinned runtime and evidence.
 
 ## GPT-OSS Puzzle 88B
 
@@ -73,12 +83,11 @@ Evidence: [Laguna S Heavy qualification](../findings/2026-07-26-laguna-s-heavy-q
 | Router reasoning control | OpenAI `reasoning_effort=high` default; low used for bounded promotion gates |
 | Complete reproduction guide | [Build, pull, serve, gate, route, and roll back](gpt-oss-puzzle-88b-recipe.md) |
 
-**Why retain it.** This is the branch-backed Heavy rollback the local serving
+**Why retain it.** This is a branch-backed historical Heavy rollback the local serving
 stack was built to exercise. The qualified shape passes chat, structured JSON,
 long-context retrieval, automatic tools, Responses API, streaming, and tool-result
 continuation on the RTX PRO 6000. Its earlier transition did not establish a
-quality or throughput advantage over Gemma 4; it is now retained as Laguna S's
-single declared rollback.
+quality or throughput advantage over Gemma 4.
 
 **Gotchas.** The pinned checkpoint omits Harmony token `200012` (`<|call|>`) from
 its EOS list. Keep the server-level full generation-config override
