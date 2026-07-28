@@ -7,7 +7,7 @@
 > **Benchmark and serve local models through one explicit capability gateway.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.15.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.16.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 </div>
@@ -39,6 +39,13 @@ Send one of those aliases as the chat `model`. Matching is case-insensitive
 after trimming; compatibility prefixes are not accepted. `/v1/models` advertises the
 configured aliases. Unknown or missing chat aliases return 404. An unavailable
 selected tier returns an exhaustion error, not an alternate model.
+The authenticated `/v1/models/capacity` endpoint joins declared model/GPU
+capacity with bounded live engine telemetry; it does not operate a serve or
+grant the router GPU-device access.
+Related authenticated endpoints expose declared capabilities and fingerprints,
+router build/config identity, bounded-buffer statistics, request traces, and
+Prometheus gauges. See the
+[router observability API](docs/THIN-CAPABILITY-GATEWAY.md#router-observability-api).
 
 Purpose models and audio are equally explicit: embeddings and reranking use
 their configured model names on dedicated endpoints, while STT/TTS use
@@ -74,6 +81,7 @@ With the selected serves running, call the gateway:
 
 ```bash
 curl -s http://127.0.0.1:8000/v1/models
+curl -s 'http://127.0.0.1:8000/v1/models/capacity?model=llm.primary&images=1&image_tokens=2048'
 curl -s http://127.0.0.1:8000/v1/chat/completions \
   -H 'content-type: application/json' \
   -d '{"model":"llm.primary","messages":[{"role":"user","content":"hello"}]}'
