@@ -56,11 +56,13 @@ requires `bash` on PATH (Git Bash / WSL on Windows); a stopped container is just
 `docker start`ed and needs none of this.
 """
 import argparse
+import base64
 from contextlib import contextmanager, nullcontext
 import copy
 import hashlib
 import json
 import math
+import mimetypes
 import numbers
 import os
 import re
@@ -133,10 +135,17 @@ EVICTION_DRAIN_TIMEOUT = 120
 DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
 DEFAULT_ROUTER_CONTAINER = "anvil-router"
 DEFAULT_ROUTER_CFG_VOLUME = "anvil-router-cfg"
+DEFAULT_STACK = "serving"
+DEFAULT_COMPOSE_PROJECT = "anvil-serving"
+_STACK_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _ROUTER_CFG_SIDE_MOUNT = "/cfg"
 _ROUTER_CFG_PATH = "/cfg/config.toml"
 LIFECYCLE_READINESS_TIMEOUT_SECONDS = 600
 LIFECYCLE_READINESS_POLL_SECONDS = 2
+_DOCKER_STATES = {
+    "absent", "created", "dead", "error", "exited", "paused", "removing",
+    "restarting", "running", "unknown",
+}
 _ENGINE_MARKERS = {
     "vllm": re.compile(r"(^|[^a-z0-9])vllm([^a-z0-9]|$)"),
     "sglang": re.compile(r"(^|[^a-z0-9])sglang([^a-z0-9]|$)"),
@@ -509,6 +518,21 @@ def load_manifest(path):
         s["model"] = s.get("model") or s.get("served_name")
         s["served_name"] = s.get("served_name") or s["model"]
         up = shlex.split(s["up"]) if s.get("up") else None
+        stack = s.get("stack", DEFAULT_STACK)
+        if not isinstance(stack, str) or not _STACK_RE.fullmatch(stack):
+            raise ValueError(
+                "serve entry stack must be a lowercase slug "
+                f"(for example 'serving' or 'voice-audio'): {raw!r}"
+            )
+        s["stack"] = stack
+        if _is_compose_up(up):
+            explicit_project = _explicit_compose_project(up)
+            expected_project = _stack_project(stack)
+            if explicit_project and explicit_project != expected_project:
+                raise ValueError(
+                    f"serve entry stack {stack!r} owns Compose project "
+                    f"{expected_project!r}, but up declares {explicit_project!r}: {raw!r}"
+                )
         s["engine"] = _normalize_engine(s, up)
         _normalize_reservation(s, raw)
         _normalize_groups(s, raw)
@@ -1826,6 +1850,73 @@ def docker_state(container, _run=subprocess.run):
     return (r.stdout or "").strip() or "unknown"
 
 
+def docker_compose_project(container, _run=subprocess.run):
+    """Return one container's Compose project label, or ``None`` when absent.
+
+    A lifecycle operation must not infer ownership from the directory holding a
+    compose file.  The label is Docker's durable identity for an existing
+    container; callers compare it with the explicit project in the launch argv.
+    """
+    try:
+        result = _run(
+            [
+                "docker", "inspect", "-f",
+                '{{index .Config.Labels "com.docker.compose.project"}}',
+                container,
+            ],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return None
+    if result.returncode != 0:
+        return None
+    value = (result.stdout or "").strip()
+    # Several older injected test runners return the state for every inspect
+    # template.  A Docker state is never a useful Compose owner.
+    return value if value and value not in _DOCKER_STATES and value != "<no value>" else None
+
+
+def _docker_port_occupants(ports, _run=subprocess.run):
+    """Return non-authoritative Docker rows publishing any requested host port."""
+    wanted = {int(port) for port in ports}
+    found = {port: [] for port in wanted}
+    if not wanted:
+        return found
+    try:
+        result = _run(
+            ["docker", "ps", "-a", "--format", "{{json .}}"],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return found
+    if result.returncode != 0:
+        return found
+    for line in (result.stdout or "").splitlines():
+        try:
+            row = json.loads(line)
+        except (TypeError, json.JSONDecodeError):
+            continue
+        published = {
+            int(match)
+            for match in re.findall(r"(?::|\[::\]:)(\d+)->", str(row.get("Ports") or ""))
+        }
+        labels = {}
+        for item in str(row.get("Labels") or "").split(","):
+            key, separator, value = item.partition("=")
+            if separator:
+                labels[key] = value
+        item = {
+            "container": row.get("Names") or row.get("Name") or row.get("ID"),
+            "state": row.get("State") or row.get("Status"),
+            "compose_project": labels.get("com.docker.compose.project"),
+        }
+        for port in wanted & published:
+            found[port].append(item)
+    return found
+
+
 def _health(port, path, _open=urllib.request.urlopen):
     url = "http://127.0.0.1:%s%s" % (port, path)
     try:
@@ -1875,10 +1966,22 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
     status_scope = _serving_path_scope(serves, selected)
     rows = []
     states = {}
+    occupants = _docker_port_occupants((s["port"] for s in selected), _run=_run)
     for s in selected:
         st = docker_state(s["container"], _run=_run)
         states[s["container"]] = st
         health = _health(s["port"], s.get("health", "/health"), _open=_open) if st == "running" else None
+        up = s.get("up")
+        expected_project = _expected_compose_project(s) if _is_compose_up(up) else None
+        observed_project = (
+            docker_compose_project(s["container"], _run=_run)
+            if st not in {"absent", "error"} and expected_project
+            else None
+        )
+        conflicts = [
+            item for item in occupants.get(int(s["port"]), [])
+            if item.get("container") != s["container"]
+        ]
         rows.append({
             "name": s["name"],
             "container": s["container"],
@@ -1889,6 +1992,13 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
             "health_status": health,
             "model": s.get("model"),
             "engine": s.get("engine"),
+            "stack": s.get("stack", DEFAULT_STACK),
+            "expected_compose_project": expected_project,
+            "observed_compose_project": observed_project,
+            "compose_ownership_mismatch": bool(
+                expected_project and observed_project and expected_project != observed_project
+            ),
+            "port_conflicts": conflicts,
         })
     return {
         "serves": rows,
@@ -1924,6 +2034,7 @@ def cmd_status(
     )
     selected_containers = {s["container"] for s in selected}
     states = {}
+    occupants = _docker_port_occupants((s["port"] for s in selected), _run=_run)
 
     def state_of(container):
         if container not in states:
@@ -1938,6 +2049,36 @@ def cmd_status(
         health = _health(s["port"], s["health"], _open=_open) if st == "running" else None
         print("%-16s %-16s %-6s %-9s %s" % (
             s["name"], s["container"], s["port"], st, health if health else "-"))
+        up = s.get("up")
+        expected_project = _expected_compose_project(s) if _is_compose_up(up) else None
+        if expected_project and st not in {"absent", "error"}:
+            observed_project = docker_compose_project(s["container"], _run=_run)
+            if observed_project and observed_project != expected_project:
+                print(
+                    "  WARNING: %s stack ownership mismatch: stack %r expects "
+                    "Compose project %r, observed %r"
+                    % (
+                        s["container"],
+                        s.get("stack", DEFAULT_STACK),
+                        expected_project,
+                        observed_project,
+                    )
+                )
+        conflicts = [
+            item for item in occupants.get(int(s["port"]), [])
+            if item.get("container") != s["container"]
+        ]
+        for conflict in conflicts:
+            print(
+                "  WARNING: port %s also published by unmanaged/conflicting "
+                "container %s (project=%s state=%s)"
+                % (
+                    s["port"],
+                    conflict.get("container") or "?",
+                    conflict.get("compose_project") or "-",
+                    conflict.get("state") or "-",
+                )
+            )
     gpus = _gpu_lines(_run=_run)
     if gpus:
         print("\nGPU memory (index, used MiB, total MiB):")
@@ -2084,6 +2225,44 @@ def _is_compose_up(up):
     if not up:
         return False
     return up[:2] == ["docker", "compose"] or up[0] == "docker-compose"
+
+
+def _stack_project(stack):
+    """Map the user-facing stack name to Docker Compose's ownership label."""
+    return "anvil-" + stack
+
+
+def _explicit_compose_project(up):
+    """Return a project explicitly authored in a Compose argv, if present."""
+    if not _is_compose_up(up):
+        return None
+    for index, token in enumerate(up):
+        if token in {"-p", "--project-name"} and index + 1 < len(up):
+            return up[index + 1]
+        if token.startswith("--project-name="):
+            return token.split("=", 1)[1]
+    return None
+
+
+def _expected_compose_project(serve):
+    """Return the durable Compose owner implied by a serve's stack."""
+    return _stack_project(serve.get("stack", DEFAULT_STACK))
+
+
+def _compose_project_from_up(up):
+    """Compatibility helper: explicit Compose project or the serving default."""
+    return _explicit_compose_project(up) or DEFAULT_COMPOSE_PROJECT
+
+
+def _compose_up_with_project(up, project=DEFAULT_COMPOSE_PROJECT):
+    """Make Compose ownership independent of the selected file's directory."""
+    if not _is_compose_up(up) or any(
+        token in {"-p", "--project-name"} or token.startswith("--project-name=")
+        for token in up
+    ):
+        return list(up)
+    insert_at = 2 if up[:2] == ["docker", "compose"] else 1
+    return list(up[:insert_at]) + ["--project-name", project] + list(up[insert_at:])
 
 
 def _warn_drift(s, _run=subprocess.run):
@@ -2248,7 +2427,10 @@ def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
 
 def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
            evict=False, drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
-           _transition=None):
+           _transition=None, wait_for_readiness=False,
+           readiness_timeout=LIFECYCLE_READINESS_TIMEOUT_SECONDS,
+           readiness_poll=LIFECYCLE_READINESS_POLL_SECONDS,
+           _open=urllib.request.urlopen, _sleep=time.sleep):
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
@@ -2330,6 +2512,29 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
 
         up = s.get("up")
         compose = _is_compose_up(up)
+        if compose:
+            expected_project = _expected_compose_project(s)
+            up = _compose_up_with_project(up, expected_project)
+            if st not in {"absent", "error"}:
+                observed_project = docker_compose_project(s["container"], _run=_run)
+                if (
+                    observed_project
+                    and observed_project != expected_project
+                    and not recreate
+                ):
+                    print(
+                        "  %s: stack ownership mismatch for stack %r "
+                        "(observed project %r, expected %r); "
+                        "rerun `serves up %s --recreate` to replace only "
+                        "this container under the managed stack"
+                        % (
+                            s["container"], s.get("stack", DEFAULT_STACK),
+                            observed_project, expected_project,
+                            s["name"],
+                        )
+                    )
+                    rc = 1
+                    continue
 
         if recreate:
             # Explicit clean recreate from `up` (compose OR script): force-remove the
@@ -2373,8 +2578,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
             desc = "compose up %s: %s" % (s["name"], " ".join(up))
         elif st == "running":
             _warn_drift(s, _run=_run)  # script serve: can't self-heal, so at least warn
-            print("  %s: already running" % s["container"])
-            continue
+            steps, desc = [], "%s: already running" % s["container"]
         else:  # exited / created -- a `docker run` script serve
             # A `docker run` script can't be re-run over an existing container (name
             # clash), so we `docker start` it — but that resurrects whatever model it
@@ -2394,6 +2598,28 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                 print("  FAILED: %s" % (r.stderr or r.stdout or "").strip())
                 rc = 1
                 break
+        else:
+            if wait_for_readiness:
+                print(
+                    "  waiting up to %ss for %s%s"
+                    % (readiness_timeout, s["name"], s["health"])
+                )
+                if not _await_healthy(
+                    s,
+                    readiness_timeout,
+                    readiness_poll,
+                    _open=_open,
+                    _sleep=_sleep,
+                ):
+                    print(
+                        "  FAILED: %s did not become ready at "
+                        "http://127.0.0.1:%s%s within %ss"
+                        % (
+                            s["name"], s["port"], s["health"],
+                            readiness_timeout,
+                        )
+                    )
+                    rc = 1
     return rc
 
 
@@ -2533,7 +2759,13 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
     try:
         if follow:
             return _run(argv).returncode  # stream to the terminal; capturing would block
-        r = _run(argv, capture_output=True, text=True)
+        r = _run(
+            argv,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
     except FileNotFoundError:
         print("cannot read logs: docker not available", file=sys.stderr)
         return 1
@@ -2542,8 +2774,181 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
     return r.returncode
 
 
+def _probe_json(url, payload=None, *, timeout=60, _open=urllib.request.urlopen):
+    """Send one bounded JSON request and return its decoded object."""
+    data = None if payload is None else json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Accept": "application/json",
+            **({"Content-Type": "application/json"} if data is not None else {}),
+        },
+        method="POST" if data is not None else "GET",
+    )
+    with _open(request, timeout=timeout) as response:
+        raw = response.read(8 * 1024 * 1024)
+    value = json.loads(raw)
+    if not isinstance(value, dict):
+        raise ValueError("endpoint returned JSON that is not an object")
+    return value
+
+
+def probe_serve(
+    serve,
+    *,
+    text="Anvil Serving release readiness probe.",
+    image_path=None,
+    timeout=60,
+    _open=urllib.request.urlopen,
+):
+    """Functionally probe one declared serve and return bounded evidence.
+
+    The engine label chooses the protocol. Lifecycle and HTTP health alone do
+    not prove that an embedding, reranker, OCR, or ComfyUI workload can process
+    its defining request.
+    """
+    engine = serve.get("engine")
+    model = serve.get("served_name") or serve.get("model")
+    base = "http://127.0.0.1:%s" % serve["port"]
+    if engine == "embedding":
+        endpoint = base + "/v1/embeddings"
+        payload = {"model": model, "input": [text]}
+        response = _probe_json(endpoint, payload, timeout=timeout, _open=_open)
+        rows = response.get("data")
+        vector = rows[0].get("embedding") if isinstance(rows, list) and rows and isinstance(rows[0], dict) else None
+        if not isinstance(vector, list) or not vector:
+            raise ValueError("embedding response did not contain a non-empty vector")
+        return {
+            "serve": serve["name"],
+            "stack": serve.get("stack", DEFAULT_STACK),
+            "engine": engine,
+            "model": model,
+            "endpoint": endpoint,
+            "vectors": len(rows),
+            "dimensions": len(vector),
+        }
+    if engine == "reranker":
+        endpoint = base + "/v1/rerank"
+        documents = [text, "This document is intentionally unrelated."]
+        payload = {"model": model, "query": text, "documents": documents}
+        response = _probe_json(endpoint, payload, timeout=timeout, _open=_open)
+        rows = response.get("results")
+        if not isinstance(rows, list) or len(rows) != len(documents):
+            raise ValueError("reranker response did not score every document")
+        scores = [
+            row.get("relevance_score")
+            for row in rows
+            if isinstance(row, dict) and isinstance(row.get("relevance_score"), numbers.Real)
+        ]
+        if len(scores) != len(rows) or any(not math.isfinite(float(score)) for score in scores):
+            raise ValueError("reranker response contained a missing or non-finite score")
+        return {
+            "serve": serve["name"],
+            "stack": serve.get("stack", DEFAULT_STACK),
+            "engine": engine,
+            "model": model,
+            "endpoint": endpoint,
+            "documents": len(rows),
+            "top_index": rows[0].get("index"),
+            "top_score": scores[0],
+        }
+    if engine == "image":
+        endpoint = base + serve.get("health", "/system_stats")
+        response = _probe_json(endpoint, timeout=timeout, _open=_open)
+        if not isinstance(response.get("system"), dict):
+            raise ValueError("image service did not return ComfyUI system metadata")
+        devices = response.get("devices")
+        return {
+            "serve": serve["name"],
+            "stack": serve.get("stack", DEFAULT_STACK),
+            "engine": engine,
+            "model": model,
+            "endpoint": endpoint,
+            "devices": len(devices) if isinstance(devices, list) else 0,
+        }
+    if image_path and engine in {"vllm", "sglang", "q36"}:
+        resolved = os.path.abspath(os.path.expanduser(image_path))
+        size = os.path.getsize(resolved)
+        if size > 20 * 1024 * 1024:
+            raise ValueError("probe image exceeds the 20 MiB safety limit")
+        with open(resolved, "rb") as handle:
+            encoded = base64.b64encode(handle.read()).decode("ascii")
+        media_type = mimetypes.guess_type(resolved)[0] or "application/octet-stream"
+        endpoint = base + "/v1/chat/completions"
+        payload = {
+            "model": model,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": text},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": "data:%s;base64,%s" % (media_type, encoded)},
+                    },
+                ],
+            }],
+            "max_tokens": 256,
+            "temperature": 0,
+        }
+        response = _probe_json(endpoint, payload, timeout=timeout, _open=_open)
+        choices = response.get("choices")
+        message = choices[0].get("message") if isinstance(choices, list) and choices and isinstance(choices[0], dict) else None
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("image-language response did not contain recognized text")
+        return {
+            "serve": serve["name"],
+            "stack": serve.get("stack", DEFAULT_STACK),
+            "engine": engine,
+            "model": model,
+            "endpoint": endpoint,
+            "image": resolved,
+            "recognized_characters": len(content),
+            "recognized_excerpt": content[:200],
+        }
+    raise ValueError(
+        "no functional probe is defined for engine %r; use `eval preflight` "
+        "for chat LLMs or `voice benchmark` for audio serves" % engine
+    )
+
+
+def cmd_probe(serves, names, *, text, image_path, timeout, _open=urllib.request.urlopen):
+    """CLI wrapper for :func:`probe_serve`; library work returns dictionaries."""
+    try:
+        targets = _select(serves, names)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    if len(targets) != 1:
+        print("serves probe requires exactly one serve name", file=sys.stderr)
+        return 2
+    serve = targets[0]
+    state = docker_state(serve["container"])
+    if state != "running":
+        print(
+            "cannot probe %s: container %s is %s (run `serves up %s` first)"
+            % (serve["name"], serve["container"], state, serve["name"]),
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        result = probe_serve(
+            serve,
+            text=text,
+            image_path=image_path,
+            timeout=timeout,
+            _open=_open,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print("serve probe failed: %s" % exc, file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 _ACTIONS = (
-    "status", "up", "down", "rm", "adopt", "logs", "groups", "switch",
+    "status", "probe", "up", "down", "rm", "adopt", "logs", "groups", "switch",
     "promote", "render",
 )
 # Actions that accept `--group NAME` (repeatable) — they act across the whole
@@ -2552,6 +2957,7 @@ _GROUP_ACTIONS = frozenset({"up", "down", "status"})
 
 _ACTION_DESCRIPTIONS = {
     "status": "Show docker and health state for manifest serves.",
+    "probe": "Run one engine-aware functional request against a serve.",
     "up": "Start manifest serves or an ad-hoc compose service.",
     "down": "Stop manifest serves and verify they stay stopped.",
     "rm": "Remove serve containers after explicit confirmation.",
@@ -2599,9 +3005,9 @@ def _build_action_parser(action):
                        help="deployment role to switch (for example: heavy)")
         p.add_argument("recipe_selector", nargs="?", metavar="MODEL",
                        help="recipe model id or unique basename to activate; omit to list choices")
-    elif action == "logs":
+    elif action in {"logs", "probe"}:
         p.add_argument("names", nargs=1, metavar="NAME",
-                       help="serve name/container to read logs from.")
+                       help="serve name/container to act on.")
     elif action == "groups":
         p.set_defaults(names=[])
     else:
@@ -2664,6 +3070,26 @@ def _build_action_parser(action):
                        help="stream new output (Ctrl-C to stop).")
     else:
         p.set_defaults(tail="200", since=None, follow=False)
+    if action == "probe":
+        p.add_argument(
+            "--text",
+            default="Anvil Serving release readiness probe.",
+            help="probe text or OCR instruction (default: %(default)s)",
+        )
+        p.add_argument("--image", help="image path for an OCR/vision probe")
+        p.add_argument(
+            "--timeout",
+            type=float,
+            default=60,
+            metavar="SECONDS",
+            help="HTTP deadline from 0.1 through 600 seconds (default: %(default)s)",
+        )
+    else:
+        p.set_defaults(
+            text="Anvil Serving release readiness probe.",
+            image=None,
+            timeout=60,
+        )
     if action == "switch":
         p.add_argument("--recipe", metavar="MODEL",
                        help="recipe model id or unique basename to activate (compatibility form)")
@@ -2707,6 +3133,9 @@ def main(argv=None):
             raise
         return int(exc.code or 2)
     a.action = action
+    if not 0.1 <= a.timeout <= 600:
+        print("--timeout must be between 0.1 and 600 seconds", file=sys.stderr)
+        return 2
 
     # Reject conflicting selectors before resolving manifests or registries. This
     # is an argument error, so its result must not depend on which config files
@@ -2848,6 +3277,14 @@ def main(argv=None):
         )
     if a.action == "logs":
         return cmd_logs(serves, a.names, tail=a.tail, since=a.since, follow=a.follow)
+    if a.action == "probe":
+        return cmd_probe(
+            serves,
+            a.names,
+            text=a.text,
+            image_path=a.image,
+            timeout=a.timeout,
+        )
     if a.action == "down":
         return cmd_down(serves, group_names if group_names is not None else a.names,
                         dry_run=a.dry_run)
@@ -2855,7 +3292,7 @@ def main(argv=None):
         target_names = group_names if group_names is not None else a.names
         rc = cmd_up(serves, target_names, dry_run=a.dry_run, recreate=a.recreate,
                     evict=a.evict, drain_timeout=a.drain_timeout,
-                    router_url=a.router_url)
+                    router_url=a.router_url, wait_for_readiness=not a.dry_run)
         return _finish_cache_reclaim(
             rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,
             readiness_targets=_select(serves, target_names),

@@ -163,6 +163,7 @@ def tool_router_manage(args: dict) -> dict:
         "action": action,
         "container": container,
         "compose": lifecycle["compose"],
+        "compose_project": lifecycle["compose_project"],
         "service": lifecycle["service"],
         "env_file": lifecycle["env_file"],
         "recreate": recreate,

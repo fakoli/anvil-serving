@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+from pathlib import Path
 import subprocess
 import sys
 
@@ -14,10 +15,11 @@ from anvil_serving import mcp
 from anvil_serving.benchmarking import artifacts as benchmark_artifacts
 from anvil_serving.control_plane.mcp import catalog
 from anvil_serving.control_plane.mcp.tools import TOOL_FAMILIES
+from anvil_serving.control_plane.mcp.tools import models as model_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "309071cfa38762be00bc01c7ab02a9f72bdf1542467a2efc9ce1e71901d5cf29"
+    "d77454383455909486f407b02a112dac2dcf4318ac8e5e790ca23359dbf0ee14"
 )
 HANDLER_MAP_SHA256 = (
     "163b612cc5aeee2f50ee09eb23344e9d39790de3990b410831de37db789a6e18"
@@ -214,6 +216,33 @@ def test_public_artifact_policy_uses_domain_errors_and_mcp_translates_them():
     assert domain_error.value.code == "bad_artifact_path"
     assert mcp_error.value.code == domain_error.value.code
     assert mcp_error.value.details == domain_error.value.details
+
+
+def test_artifact_policy_falls_back_to_editable_package_workspace(
+        tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("ANVIL_WORKSPACE_ROOT", raising=False)
+
+    workspace = benchmark_artifacts.discover_workspace_root()
+
+    assert workspace == str(Path(__file__).resolve().parents[1])
+
+
+def test_models_inventory_defaults_to_operator_config_home(tmp_path, monkeypatch):
+    from anvil_serving import models, paths
+
+    seen = {}
+    monkeypatch.setattr(paths, "config_home", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        models,
+        "load_model_catalog",
+        lambda catalog_dir: seen.setdefault("catalog_dir", catalog_dir) or {},
+    )
+
+    result = model_tools.tool_models_inventory({})
+
+    assert result["ok"]
+    assert seen["catalog_dir"] == str(tmp_path / "model-library")
 
 
 @pytest.mark.parametrize(

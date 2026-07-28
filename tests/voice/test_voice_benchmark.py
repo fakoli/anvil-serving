@@ -18,6 +18,7 @@ from anvil_serving.voice.benchmark import (
     DEFAULT_REFERENCE_TEXT,
     EVIDENCE_SCHEMA_VERSION,
     build_evidence_record,
+    run_audio_benchmark,
     run_benchmark,
     run_benchmark_from_manifest,
     synth_sample_pcm,
@@ -29,11 +30,46 @@ from anvil_serving.voice.stages.stt import STTStageConfig
 from anvil_serving.voice.stages.tts import TTSStageConfig
 
 
+def test_audio_benchmark_measures_tts_to_stt_without_llm():
+    clock_values = iter([1.0, 1.2, 1.5])
+
+    result = run_audio_benchmark(
+        stt_config=STTStageConfig(base_url="http://127.0.0.1:30010/v1", model="stt"),
+        tts_config=TTSStageConfig(
+            base_url="http://127.0.0.1:30011/v1",
+            model="tts",
+            source_sample_rate=16000,
+        ),
+        tts_stream_fn=lambda text, config: iter([b"\x00\x00" * 1600]),
+        stt_stream_fn=lambda pcm, sample_rate, config: iter([
+            (DEFAULT_REFERENCE_TEXT, True)
+        ]),
+        clock=lambda: next(clock_values),
+        profile="dark-audio",
+    )
+
+    assert result["scope"] == "audio"
+    assert result["audio_roundtrip_ms"] == 500.0
+    assert result["tts_ms"] == 200.0
+    assert result["stt_ms"] == 300.0
+    assert result["tts_output_bytes"] == 3200
+    assert result["stt_wer"] == 0.0
+    assert result["evidence"]["evidence_scope"] == "voice-pipeline"
+    assert result["evidence"]["promotion_quality_evidence"] is False
+
+
 # --------------------------------------------------------------------------- #
 # word_error_rate
 # --------------------------------------------------------------------------- #
 def test_wer_identical_strings_is_zero():
     assert word_error_rate("a b c", "a b c") == 0.0
+
+
+def test_wer_ignores_case_and_punctuation():
+    assert word_error_rate(
+        "The quick brown fox jumps over the lazy dog.",
+        "the quick brown fox jumps over the lazy dog",
+    ) == 0.0
 
 
 def test_wer_completely_different_same_length_is_one():

@@ -8,7 +8,7 @@
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-26**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-27**.
 
 ## Read these results correctly
 
@@ -103,6 +103,26 @@ was 75.46 and 83.24 tok/s. These are batch-capacity figures, not controlled
 long-decode rates. GPT-OSS Puzzle 88B is the sole declared managed rollback.
 Commands, exact identity, failure evidence, and raw artifacts are in the
 [Laguna S qualification record](findings/2026-07-26-laguna-s-heavy-qualification.md).
+
+### Release-sweep recheck and Agents-A1 challenger (2026-07-27)
+
+A smaller pre-release recheck retained the Laguna thinking-disabled contract:
+smoke, JSON, 120K retrieval, and tools 20/20 passed, as did the selected
+repeated quality suites. Four-request c1 capacity measured 0.079-second TTFT
+p50 and 62.18 aggregate tok/s; eight-request c8 measured 2.22-second TTFT p50
+and 86.68 aggregate tok/s. This corroborates, but does not replace, the larger
+July 26 qualification.
+
+`InternScience/Agents-A1` revision
+`addff08f1653ee72765c5cf458fe84556bb34f8e` was also loaded on the RTX PRO
+6000 as an unpromoted challenger. Its default-thinking smoke failed with no
+visible answer and `finish_reason=length`; with thinking disabled, smoke, JSON,
+120K retrieval, tools 20/20, intelligence 6/6 attempts, session 3/3, and tool
+quality 3/3 passed. Capacity measured 0.30-second TTFT p50 and 85.19 aggregate
+tok/s at c1, and 1.38-second TTFT p50 and 142 aggregate tok/s at c8. Retain it
+for future comparison only, with thinking disabled as part of the tested
+contract. The [release-readiness sweep](findings/2026-07-27-anvil-serving-release-readiness-sweep.md)
+links the raw artifacts and lifecycle caveats.
 
 ## GPT-OSS Puzzle 88B Heavy compatibility (2026-07-18)
 

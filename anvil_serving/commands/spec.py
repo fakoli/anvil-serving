@@ -305,7 +305,12 @@ def _resource_node(
 
 GLOBAL_OPTIONS = (
     _option(
-        "--topology", summary="Topology document used for target resolution.", value_name="PATH"
+        "--topology",
+        summary=(
+            "Topology document used for target resolution "
+            "(default: operator config home)."
+        ),
+        value_name="PATH",
     ),
     _option(
         "--topology-overlay",

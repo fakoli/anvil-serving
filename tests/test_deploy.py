@@ -219,8 +219,8 @@ def test_deploy_cli_emits_manifest_and_tier_stub(tmp_path, monkeypatch, capsys):
     assert len(parsed) == 1
     assert parsed[0] == {
         "name": "primary-local", "container": "sglang", "port": 30000,
-        "model": "qwen35-awq-local", "served_name": "qwen35-awq-local",
-        "engine": "sglang", "health": "/health",
+            "model": "qwen35-awq-local", "served_name": "qwen35-awq-local",
+            "engine": "sglang", "stack": "serving", "health": "/health",
         "_manifest_dir": str(tmp_path),
         "up": ["docker", "compose", "-f", str(out_path).replace("\\", "/"), "up", "-d", "sglang"],
     }

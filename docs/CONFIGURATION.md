@@ -11,15 +11,15 @@ config home: `$ANVIL_SERVING_HOME`, or `~/.anvil-serving/` when that variable
 is unset. It copies the packaged templates mirrored from `configs/` and the
 reference manifests into that directory. When an optional path is omitted, the
 runtime checks that config home first, then any legacy CWD or checkout default
-the command supports. Explicit `--config`, `--manifest`, and `--registry`
-paths always take precedence.
+the command supports. Explicit `--config`, `--manifest`, `--registry`, and
+`--topology` paths always take precedence.
 
 The operator files include `router.toml`, `serves.toml`,
-`serve-recipes.toml`, `voice.toml`, `host.toml`, Compose files, and
-`.env.example`. Each existing file is backed up beside the target as a numbered
-`.anvil.bak.N` file before `init` replaces it. Content-identical files are left
-untouched, so repeated runs do not create redundant backups, including for
-`.env.example`.
+`serve-recipes.toml`, `voice.toml`, `host.toml`, `operator-topology.toml`,
+Compose files, and `.env.example`. Each existing file is backed up beside the
+target as a numbered `.anvil.bak.N` file before `init` replaces it.
+Content-identical files are left untouched, so repeated runs do not create
+redundant backups, including for `.env.example`.
 
 By default, `init` asks `nvidia-smi` for stable GPU UUIDs and total memory, then
 assigns the largest card to Primary and the smallest distinct card to Auxiliary.
@@ -32,6 +32,23 @@ unconfigured. `--primary-gpu-uuid`, `--auxiliary-gpu-uuid`, and `--tailnet-ip`
 override individual values. `--no-detect-host` leaves all host placeholders in
 place. A one-GPU machine does not silently assign both concurrent roles to the
 same card.
+
+## Operator topology (`operator-topology.toml`)
+
+Topology-aware commands use
+`$ANVIL_SERVING_HOME/operator-topology.toml` (default
+`~/.anvil-serving/operator-topology.toml`) when `--topology` is omitted.
+An explicit path wins. MCP voice tools preserve their existing
+`ANVIL_VOICE_TOPOLOGY` override between the explicit argument and config-home
+default. Deployment overlays remain explicit through `--topology-overlay`.
+
+`init` writes the topology beside the other operator configuration. On the
+reference GPU host it binds the detected Primary and Auxiliary GPU UUIDs,
+tailnet address, and local command-host identity into that file. On the
+model-free Mini it can bind the Mini address when the host is identifiable as
+macOS. Values for another host are kept as visible placeholders rather than
+invented. Missing or invalid topology files fail closed; repository examples
+and packaged documentation topologies are never runtime fallbacks.
 
 ## Machine policy (`host.toml`)
 

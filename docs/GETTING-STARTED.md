@@ -75,7 +75,9 @@ anvil-serving router run             # uses ~/.anvil-serving/router.toml
 
 `init` detects stable NVIDIA GPU UUIDs and total memory, assigns the
 highest-VRAM card to Primary and the lowest-VRAM card to Auxiliary, and resolves this
-node's Tailscale IPv4 address. Equal capacities are resolved by runtime index.
+node's Tailscale IPv4 address. It writes those discovered values into
+`operator-topology.toml` when it can identify the current node in the reference
+topology. Equal capacities are resolved by runtime index.
 The generated workload mapping puts the primary LLM on Primary and the smaller
 LLM, STT, TTS, OCR, embeddings, reranker, vision, and ComfyUI on Auxiliary.
 Values it cannot detect remain clearly marked
@@ -83,11 +85,13 @@ placeholders. Secrets are never written (only `.env.example`). Existing
 operator files are backed up (`.anvil.bak.N`) only when their generated content
 differs; identical files are left in place without another backup. Use
 `--primary-gpu-uuid`, `--auxiliary-gpu-uuid`, or `--tailnet-ip` to override discovery,
-or `--no-detect-host` to keep all host placeholders. Explicit `--config` and
-`--manifest` paths always win. Set `ANVIL_SERVING_HOME` to use an alternate
-machine-level config directory. For a single-model quick bring-up into the CWD
-instead, use `anvil-serving init --single-model`. See [`init`](cli/host.md#init)
-for the full set.
+or `--no-detect-host` to keep all host placeholders. Topology-aware commands
+default to `$ANVIL_SERVING_HOME/operator-topology.toml` after target resolution
+is requested; explicit `--topology`, `--config`, and `--manifest` paths always
+win. Set `ANVIL_SERVING_HOME` to use an alternate machine-level config
+directory. For a single-model quick bring-up into the CWD instead, use
+`anvil-serving init --single-model`. See [`init`](cli/host.md#init) for the full
+set.
 
 Before starting the router, stand up those serves and validate each endpoint:
 

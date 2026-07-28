@@ -279,6 +279,10 @@ def test_recipe_entrypoint_and_model_flag_reject_unsafe_or_incomplete_values():
 def test_reconstruct_docker_run_includes_env_volume_and_flags():
     cmd = sr.reconstruct_docker_run(_RECIPE)
     assert "-e FLASHINFER_CUDA_ARCH_LIST=12.0f" in cmd
+    assert (
+        "-e CUDA_VISIBLE_DEVICES=GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+        in cmd
+    )
     assert "-v vllm-hfcache:/root/.cache/huggingface" in cmd
     assert "--gpus device=GPU-d0f446cf-1771-414c-e116-a39138798a8c" in cmd
     assert "-p 127.0.0.1:30002:30002" in cmd
@@ -292,6 +296,19 @@ def test_reconstruct_docker_run_falls_back_without_gpu_uuid_or_port():
     assert "--gpus all" in cmd
     assert "-p " not in cmd
     assert cmd.rstrip().endswith("--foo bar")
+
+
+def test_reconstruct_docker_run_rejects_gpu_visibility_mismatch():
+    recipe = {
+        "model": "m/x",
+        "hardware": {"gpu_uuid": "GPU-selected"},
+        "serve": {
+            "image": "img",
+            "env": ["CUDA_VISIBLE_DEVICES=GPU-other"],
+        },
+    }
+    with pytest.raises(sr.RecipeError, match="must match"):
+        sr.reconstruct_docker_run(recipe)
 
 
 # ---- CAPTURE: capture_from_container (fake docker inspect) --------------------------

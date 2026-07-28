@@ -7,6 +7,7 @@ import json
 import sys
 
 from .commands import COMMAND_TREE, CommandNode
+from .paths import default_topology_path, resolve_topology_path
 from .targets import CommandSpec, resolve_execution_plan
 from .topology import load_topology, load_topology_result
 
@@ -55,7 +56,14 @@ def _parser() -> argparse.ArgumentParser:
         ("resolve", "resolve one canonical command without executing it"),
     ):
         leaf = actions.add_parser(action, help=help_text)
-        leaf.add_argument("--topology", required=True, help="base topology TOML")
+        leaf.add_argument(
+            "--topology",
+            default=default_topology_path(),
+            help=(
+                "base topology TOML (default: "
+                "$ANVIL_SERVING_HOME/operator-topology.toml)"
+            ),
+        )
         leaf.add_argument("--topology-overlay", help="partial deployment overlay TOML")
         if action == "resolve":
             leaf.add_argument("--command", required=True, help="canonical leaf, e.g. 'host status'")
@@ -70,18 +78,21 @@ def _parser() -> argparse.ArgumentParser:
 
 def run(argv=None) -> dict:
     args = _parser().parse_args(argv)
+    topology_path = resolve_topology_path(args.topology)
     if args.action == "validate":
-        result = load_topology_result(args.topology, args.topology_overlay)
+        result = load_topology_result(topology_path, args.topology_overlay)
         return {
             "valid": result.ok,
             "errors": [asdict(error) for error in result.errors],
             "topology": result.topology.id if result.topology else None,
+            "topology_path": topology_path,
             "overlay": args.topology_overlay,
         }
-    topology = load_topology(args.topology, args.topology_overlay)
+    topology = load_topology(topology_path, args.topology_overlay)
     if args.action == "show":
         return {
             "topology": topology.id,
+            "topology_path": topology_path,
             "schema_version": topology.schema_version,
             "overlay": args.topology_overlay,
             "hosts": [asdict(host) for host in topology.hosts],
@@ -113,6 +124,7 @@ def run(argv=None) -> dict:
     )
     result = plan.as_dict()
     result["resolved_command"] = result["command"]
+    result["topology_path"] = topology_path
     return result
 
 

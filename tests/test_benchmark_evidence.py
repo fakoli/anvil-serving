@@ -112,6 +112,39 @@ def test_summarize_protocol_v2_quality_counts_stability_and_budget_failures(
     assert "do not retain" not in json.dumps(summary)
 
 
+def test_summarize_protocol_v3_top_level_quality_suites(tmp_path: Path) -> None:
+    artifact = _write(tmp_path / "quality-v3.json", {
+        "schema": "anvil-serving.benchmark/v1",
+        "identity": {"model": "laguna"},
+        "evaluation_protocol": {"version": 3, "repetitions": 3},
+        "suites": {},
+        "tool": {
+            "status": "passed",
+            "checks": [{
+                "status": "passed",
+                "attempt_count": 3,
+                "pass_count": 3,
+            }],
+        },
+        "session": {
+            "status": "passed",
+            "checks": [{
+                "status": "passed",
+                "attempt_count": 3,
+                "pass_count": 3,
+            }],
+        },
+        "voice": {"status": "skipped"},
+    })
+
+    summary = benchmark_evidence.summarize_artifact(artifact)
+
+    assert [suite["name"] for suite in summary["quality"]["suites"]] == [
+        "session", "tool",
+    ]
+    assert all(suite["passed_attempts"] == 3 for suite in summary["quality"]["suites"])
+
+
 def test_discover_filters_and_skips_non_benchmark_json(tmp_path: Path) -> None:
     _write(tmp_path / "one.json", {
         "schema": "anvil-serving.benchmark/v1",

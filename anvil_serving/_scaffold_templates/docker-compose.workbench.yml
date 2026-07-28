@@ -1,6 +1,8 @@
 services:
   workbench:
-    image: ${ANVIL_WORKBENCH_IMAGE:-ghcr.io/fakoli/anvil-workbench:latest}
+    # Built from the local companion checkout by
+    # `anvil-serving workbench build --confirm`.
+    image: ${ANVIL_WORKBENCH_IMAGE:-anvil-workbench:local}
     environment:
       WORKBENCH_DATABASE_URL: postgresql://workbench:${WORKBENCH_POSTGRES_PASSWORD:?set in env file}@db:5432/workbench
       WORKBENCH_NEO4J_URI: bolt://neo4j:7687
@@ -9,8 +11,14 @@ services:
       WORKBENCH_OWNER: ${WORKBENCH_OWNER:?set in env file}
       WORKBENCH_APPROVERS: ${WORKBENCH_APPROVERS:-}
       WORKBENCH_IDENTITY_HEADER: ${WORKBENCH_IDENTITY_HEADER:-Tailscale-User-Login}
+      # Local loopback smoke only. A deployed hub must keep this false and use
+      # its identity-aware tailnet proxy.
+      WORKBENCH_ALLOW_INSECURE_DEV_ACTOR: ${WORKBENCH_ALLOW_INSECURE_DEV_ACTOR:-false}
       ANVIL_ROUTER_BASE_URL: ${ANVIL_ROUTER_BASE_URL:?set in env file}
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:?set in host environment}
+      # Explicit direct aliases allowed on Workbench's bounded Serving sandbox.
+      # Empty keeps the sandbox unavailable.
+      WORKBENCH_SANDBOX_MODELS: ${WORKBENCH_SANDBOX_MODELS:-}
       WORKBENCH_EMBEDDING_MODEL: ${WORKBENCH_EMBEDDING_MODEL:-}
       WORKBENCH_RERANK_MODEL: ${WORKBENCH_RERANK_MODEL:-}
     depends_on:
@@ -20,8 +28,18 @@ services:
         condition: service_healthy
     ports:
       - "${ANVIL_WORKBENCH_BIND:-127.0.0.1}:${ANVIL_WORKBENCH_PORT:-8090}:8080"
-    networks: [workbench]
+    networks: [workbench, serving]
     restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3).read(1)"
+      interval: 5s
+      timeout: 4s
+      retries: 30
+      start_period: 10s
 
   db:
     image: postgres:17-alpine
@@ -57,6 +75,11 @@ services:
 networks:
   workbench:
     name: anvil-workbench
+  serving:
+    # The router is loopback-published on the host. Same-host containers reach
+    # it through its stable Compose DNS identity instead of host loopback.
+    external: true
+    name: ${ANVIL_ROUTER_NETWORK:-anvil-serving_default}
 
 volumes:
   workbench-postgres:

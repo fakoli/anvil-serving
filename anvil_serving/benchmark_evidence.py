@@ -310,7 +310,11 @@ def summarize_artifact(path: str | Path) -> dict[str, Any]:
         ("mtp_off", mtp_off, ("mean_tok_s",)),
         ("mtp_on", mtp_on, ("mean_tok_s",)),
     ))
-    raw_suites = _mapping(raw.get("suites"))
+    raw_suites = dict(_mapping(raw.get("suites")))
+    for name in ("intelligence", "tool", "session", "voice"):
+        top_level_suite = _mapping(raw.get(name))
+        if name not in raw_suites and isinstance(top_level_suite.get("checks"), list):
+            raw_suites[name] = top_level_suite
     if len(raw_suites) > MAX_SUITES:
         raise EvidenceError(f"artifact exceeds {MAX_SUITES} suite limit: {artifact_path}")
     suites = [
