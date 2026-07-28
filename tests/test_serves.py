@@ -541,7 +541,8 @@ def test_load_manifest_normalizes_llamacpp_alias_and_served_name(tmp_path):
 def test_shipped_fakoli_manifest_is_valid():
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     names = {s["name"] for s in serves_list}
-    assert {"primary", "auxiliary", "fast-devstral-small2-llamacpp"} <= names
+    assert {"primary", "omni", "omni-small",
+            "fast-devstral-small2-llamacpp"} <= names
     by_name = {s["name"]: s for s in serves_list}
     assert by_name["fast-qwen36-35b-a3b"]["engine"] == "vllm"
     assert by_name["fast-glm47-flash-sglang"]["engine"] == "sglang"
@@ -551,7 +552,7 @@ def test_shipped_fakoli_manifest_is_valid():
 def test_shipped_fakoli_manifest_purpose_model_serves():
     # gpu-reservations:T009 — the embeddings/reranker serves are resident
     # ADR-0017 reservations on the multi-tenant 5090 with truthful engine
-    # labels, and the resident set fits the declared dark-auxiliary budget.
+    # labels, and this separate stack fits the dark-auxiliary budget.
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
     emb, rr = by_name["embeddings"], by_name["reranker"]
@@ -567,79 +568,45 @@ def test_shipped_fakoli_manifest_purpose_model_serves():
     assert rr["vram_mib"] == 3456
     assert emb["port"] == 30005 and emb["model"] == "qwen3-embedding-0.6b"
     assert rr["port"] == 30006 and rr["model"] == "qwen3-reranker-0.6b"
-    # The T009 resident trio (auxiliary + embeddings + reranker) must fit the role
-    # budget — the manifest-level guarantee that `serves up` admits all three
-    # together.
-    by = {s["name"]: s for s in serves_list}
+    # The purpose-model stack must fit without the mutually exclusive Omni tier.
     budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
-    trio = sum(by[n]["vram_mib"] for n in ("auxiliary", "embeddings", "reranker"))
-    assert trio <= budget, (trio, budget)
+    purpose_stack = emb["vram_mib"] + rr["vram_mib"]
+    assert purpose_stack <= budget, (purpose_stack, budget)
 
 
-def test_shipped_fakoli_manifest_ocr_serve():
-    # gpu-reservations:T011 — PaddleOCR-VL-1.6 is a declared `resident`
-    # ADR-0017 reservation behind the "vision.ocr" alias (ocr-local, :30007).
+def test_shipped_fakoli_manifest_omni_serve():
+    # The large evictable Omni tier replaces the old auxiliary, OCR, and vision
+    # containers. Its declaration plus either voice sidecar exceeds the usable
+    # RTX 5090 budget, keeping that operational choice exclusive.
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
-    ocr = by_name["ocr"]
-    assert ocr["engine"] == "vllm"
-    assert ocr["gpu_role"] == "dark-auxiliary"
-    assert ocr["residency"] == "resident"
-    assert ocr["health"] == "/health"
-    # Release-sweep live measurement: 5,607 MiB attributable resident-set
-    # delta, rounded up to a 6 GiB reservation.
-    assert ocr["vram_mib"] == 6144
-    assert ocr["port"] == 30007 and ocr["model"] == "paddleocr-vl-1.6"
-    # The FULL declared RESIDENT set (fast + embeddings + reranker + ocr) FITS
-    # the dark-auxiliary budget after the 2026-07-13 T011 operator rebalance (fast
-    # 18432 -> 14336 via the pre-quantized FP8-Dynamic checkpoint, reserve
-    # 7168 -> 4608), resolving the previously pinned T015 oversubscription
-    # (full - budget == 4769). This pin keeps the next rebalance deliberate:
-    # the resident set must keep fitting. (T013: the sum is residency-filtered —
-    # `evictable` serves like `vision` are OUTSIDE the always-on guarantee and
-    # pinned separately in test_shipped_fakoli_manifest_vision_serve.)
+    omni = by_name["omni"]
+    assert omni["engine"] == "vllm"
+    assert omni["gpu_role"] == "dark-auxiliary"
+    assert omni["residency"] == "evictable"
+    assert omni["health"] == "/health"
+    assert omni["router_tier"] == "omni-local"
+    assert omni["vram_mib"] == 27999
+    assert omni["port"] == 30003
+    assert omni["model"] == "nemotron3-omni-30b-a3b-nvfp4"
     budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
-    resident = sum(
-        s["vram_mib"] for s in serves_list
-        if s.get("gpu_role") == "dark-auxiliary"
-        and s.get("residency") == "resident"
-    )
-    assert resident == 27136 and budget == 27999, (resident, budget)
-    assert budget - resident == 863, (resident, budget)
+    assert omni["vram_mib"] <= budget
+    assert omni["vram_mib"] + 2048 > budget
 
 
-def test_shipped_fakoli_manifest_vision_serve():
-    # gpu-reservations:T013 — Qwen3-VL-4B-Instruct is the first `evictable`
-    # ADR-0017 reservation on dark-auxiliary, behind the "vision.general" alias
-    # (vision-local, :30008). Evictable means: admitted only when the ledger
-    # has headroom, and stopped (drain-first, via the declared router_tier)
-    # when an `on-demand` acquisition needs the VRAM (T005 eviction flow).
-    serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
-    by_name = {s["name"]: s for s in serves_list}
-    vision = by_name["vision"]
-    assert vision["engine"] == "vllm"
-    assert vision["gpu_role"] == "dark-auxiliary"
-    assert vision["residency"] == "evictable"
-    assert vision["health"] == "/health"
-    # The ADR-0018 drain hook: eviction quiesces + drains this router tier
-    # before the container is stopped (serves._evict_victims).
-    assert vision["router_tier"] == "vision-local"
-    # HONEST-MEASURED budget (see the manifest/compose comments): bf16 weights
-    # + the multimodal-profiling floor + the fp8-KV 16384-token window.
-    assert vision["vram_mib"] == 12288
-    assert vision["port"] == 30008 and vision["model"] == "qwen3-vl-4b-instruct"
-    # CAPACITY (deliberate, not an accident): vision does NOT fit alongside the
-    # full resident set — that is what `evictable` residency is for. This pin
-    # keeps the trade-off visible: if the resident set shrinks enough that
-    # vision becomes co-residable, or vision's budget changes, re-decide
-    # (gpu-reservations:T015) instead of silently drifting.
-    budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
-    resident = sum(
-        s["vram_mib"] for s in serves_list
-        if s.get("gpu_role") == "dark-auxiliary"
-        and s.get("residency") == "resident"
-    )
-    assert resident + vision["vram_mib"] > budget, (resident, vision["vram_mib"], budget)
+def test_shipped_fakoli_manifest_small_omni_fits_with_voice():
+    serves_set = serves.load_manifest_set(serves.EXAMPLE_MANIFEST)
+    by_name = {s["name"]: s for s in serves_set}
+    small = by_name["omni-small"]
+    assert small["engine"] == "vllm"
+    assert small["gpu_role"] == "dark-auxiliary"
+    assert small["residency"] == "evictable"
+    assert small["vram_mib"] == 24576
+    assert small["port"] == 30013
+    assert small["model"] == "qwen25-omni-3b"
+    budget = reservations.budgets_of(serves_set)["dark-auxiliary"].budget_mib
+    voice = by_name["stt"]["vram_mib"] + by_name["tts"]["vram_mib"]
+    assert small["vram_mib"] + voice <= budget
 
 
 def test_load_manifest_accepts_image_engine(tmp_path):

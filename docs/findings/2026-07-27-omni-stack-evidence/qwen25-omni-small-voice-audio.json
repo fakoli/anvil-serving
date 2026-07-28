@@ -1,0 +1,52 @@
+{
+  "evidence_scope": "voice-pipeline",
+  "identity": {
+    "profile": "dark-audio",
+    "scope": "audio",
+    "stt_base_url": "http://127.0.0.1:30010/v1",
+    "stt_model": "tdt-0.6b-v3",
+    "tts_base_url": "http://127.0.0.1:30011/v1",
+    "tts_model": "kokoro"
+  },
+  "promotion_quality_evidence": false,
+  "runs": [
+    {
+      "audio_roundtrip_ms": 710.68,
+      "id": "run-001",
+      "promoted": false,
+      "promotion_quality_evidence": false,
+      "reference_text": "the quick brown fox jumps over the lazy dog",
+      "scope": "audio",
+      "stt_hypothesis": "The quick brown fox jumps over the lazy dog.",
+      "stt_ms": 421.41,
+      "stt_wer": 0.0,
+      "topology": {
+        "profile": "dark-audio",
+        "stt": {
+          "base_url": "http://127.0.0.1:30010/v1",
+          "model": "tdt-0.6b-v3"
+        },
+        "tts": {
+          "base_url": "http://127.0.0.1:30011/v1",
+          "model": "kokoro"
+        }
+      },
+      "tts_audio_seconds": 2.8767,
+      "tts_ms": 289.27,
+      "tts_output_bytes": 138082,
+      "tts_rtf": 0.1006
+    }
+  ],
+  "schema_version": "voice-benchmark-evidence/v1",
+  "topology": {
+    "profile": "dark-audio",
+    "stt": {
+      "base_url": "http://127.0.0.1:30010/v1",
+      "model": "tdt-0.6b-v3"
+    },
+    "tts": {
+      "base_url": "http://127.0.0.1:30011/v1",
+      "model": "kokoro"
+    }
+  }
+}

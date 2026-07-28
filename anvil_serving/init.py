@@ -114,6 +114,8 @@ _SCAFFOLD_TEMPLATES = (
     ("serves.voice.toml", "serves.voice.toml", "examples/fakoli-dark/serves.voice.toml"),
     ("serves.comfyui.toml", "serves.comfyui.toml", "examples/fakoli-dark/serves.comfyui.toml"),
     ("docker-compose.yml", "docker-compose.yml", "examples/fakoli-dark/docker-compose.yml"),
+    ("Dockerfile.omni-small", "Dockerfile.omni-small",
+     "examples/fakoli-dark/Dockerfile.omni-small"),
     ("docker-compose.voice-audio.yml", "docker-compose.voice-audio.yml",
      "examples/fakoli-dark/docker-compose.voice-audio.yml"),
     ("docker-compose.voice-proxy.yml", "docker-compose.voice-proxy.yml",

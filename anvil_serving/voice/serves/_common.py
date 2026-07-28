@@ -106,7 +106,10 @@ class ServeLifecycle:
 
     def _serves(self) -> List[dict]:
         try:
-            return generic_serves.load_manifest(self.manifest_path)
+            # Audio has its own lifecycle manifest, but it shares the host GPU
+            # with the normal and on-demand stacks. Load the complete colocated
+            # manifest set so admission sees every committed reservation.
+            return generic_serves.load_manifest_set(self.manifest_path)
         except FileNotFoundError as exc:
             raise ServeNotConfigured(
                 "no serves manifest at %s -- declare a [[serve]] entry named "

@@ -6,6 +6,46 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- Collapsed the RTX 5090 auxiliary LLM, general-vision, and OCR containers into
+  one pinned, managed Nemotron 3 Nano Omni tier. `llm.voice`,
+  `vision.general`, and `vision.ocr` now select `omni-local`; embeddings and
+  reranking remain a separate mutually exclusive stack.
+- Added bounded `image` and `ocr` preflight checks with independent expected
+  text, input type/size validation, and content-addressed evidence for CLI and
+  controller callers.
+- Added an operator-selectable `omni-voice-stack`: pinned Qwen2.5-Omni-3B
+  co-resident with the existing Parakeet STT and Kokoro TTS services on the RTX
+  5090. The exclusive 30B Omni recipe remains available, and the smaller model
+  is not router-promoted by this change.
+- Serve, voice, controller, and ComfyUI lifecycle paths now derive admission
+  from the complete colocated `serves*.toml` manifest set. Cross-stack GPU
+  reservations can no longer be omitted simply by entering through a different
+  lifecycle verb.
+
+### Fixed
+
+- The small-Omni vLLM image now includes pinned audio extras. The stock image
+  accepted text/image/OCR but failed audio requests with the explicit
+  `vllm[audio]` dependency error.
+- The Gemma 3n E2B candidate now records its Hugging Face license-gate failure
+  as an unverified recipe instead of treating the 403 as an authentication or
+  container-start failure.
+- `serves logs` no longer crashes on Windows when UTF-8 container output
+  includes progress bars or box-drawing characters that the active console
+  codec cannot represent. Unsupported glyphs are escaped while startup stderr
+  remains visible.
+- Authenticated model pulls that fail now preserve the exact container error
+  and point operators to the matching Hugging Face repository when access
+  denial requires browser-based terms acceptance.
+
+### Breaking changes
+
+- Removed the `auxiliary-local`, `ocr-local`, and `vision-local` reference-tier
+  contracts and the `auxiliary`, `ocr`, and `vision` production serve names.
+  Single-user deployments should replace them with `omni-local` and `omni`.
+
 ## [0.14.0] - 2026-07-27
 
 Anvil Serving 0.14.0 is the production-readiness and modularization release.

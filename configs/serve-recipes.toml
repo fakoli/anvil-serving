@@ -835,8 +835,8 @@ rationale = "Functional at full 131k with workarounds, but 15 tok/s single-strea
 
 [[recipe]]
 model = "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
-status = "unverified"
-source = "measured on fakoli-dark 2026-07-11 — vLLM nightly v0.23.1rc1 ONLY (unsupported on <=0.19/NGC 26.04). Kept unverified pending a fully-passing preflight on a PINNED stable >=0.23 release (the nightly needle probe 400s beyond the 64k claim; see preflight-transcripts.md)"
+status = "verified"
+source = "qualified on fakoli-dark 2026-07-27 — pinned nightly image/checkpoint, text/JSON/4K/tools, image understanding, OCR, and bounded c2 capacity all passed"
 family = "nemotron3-omni"
 total_params_b = 30
 active_params_b = 3
@@ -848,25 +848,91 @@ vram_total_gb = 32
 
 [recipe.serve]
 engine = "vllm"
-image = "vllm/vllm-openai:nightly (v0.23.1rc1 at measurement; pin a stable >=0.23 release)"
-managed_serve = "cand-nemotron3-omni-30b"
+image = "vllm/vllm-openai:nightly@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+managed_serve = "omni"
 served_model_name = "nemotron3-omni-30b-a3b-nvfp4"
 quantization = "modelopt (auto-detected modelopt_mixed)"
-port = 39021
+port = 30003
 context_tokens = 65536
-note = "Arch NemotronH_Nano_Omni_Reasoning_V3 is NOT in vLLM 0.19 (NGC 26.04), and the NGC release-notes --hf-overrides masquerade FAILS on this NVFP4 checkpoint (scale-key mismatch). Nightly serves it natively: --reasoning-parser nemotron_v3 --enable-auto-tool-choice --tool-call-parser qwen3_coder. Sound encoder (AVLM) initializes; multimodal input quality NOT tested."
+note = "Exclusive RTX 5090 stack for llm.voice, vision.general, and vision.ocr. Pinned checkpoint revision dc5f0b0bfddf8b6e0f5891475be9af05b80126fe; vLLM 0.23.1rc1.dev531+ga65f93fb2; measured 27674 MiB draw leaves only about 325 MiB against the 27999 MiB usable budget, so purpose models, voice models, and ComfyUI must not co-reside."
 
 [recipe.measured]
 throughput_single_tok_s = 27.3
 ttft_warm_p50_ms = 675
 context_validation = "65536 pass (TTFT 3.1 s full prefill)"
-tool_calls = "PASS (20/20)"
+tool_calls = "PASS (3/3 release gate; historical 20/20)"
 intelligence_checks = "0/2"
-preflight = "pass within window (needle probe exceeds 64k claim by design)"
+preflight = "PASS smoke, JSON, 4K needle, tools, image understanding, and OCR with thinking disabled"
+capacity_c2 = "6/6 at 2048-token context; TTFT p50/p95 122/164 ms; E2E p50/p95 423/515 ms; 224.08 aggregate output tok/s"
+evidence = [
+  "docs/findings/2026-07-27-omni-stack-evidence/omni-multimodal-preflight.json",
+  "docs/findings/2026-07-27-omni-stack-evidence/omni-capacity.json",
+]
 
 [recipe.fit]
-suited = ["multimodal", "experimental"]
-rationale = "Only multimodal-capable candidate that serves. Keep experimental until a stable engine release lists the arch."
+suited = ["auxiliary-text", "multimodal", "ocr"]
+rationale = "Qualified as the exclusive RTX 5090 Omni stack. The pinned nightly engine remains a release caveat; do not silently move the image or checkpoint revision."
+
+[[recipe]]
+model = "google/gemma-3n-E2B-it"
+status = "unverified"
+source = "official Google/Hugging Face model card and current vLLM supported-model documentation reviewed 2026-07-27; local qualification pending"
+family = "gemma3n"
+total_params_b = 5
+active_params_b = 2
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:nightly@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+served_model_name = "gemma3n-e2b-it"
+quantization = "bf16"
+port = 30013
+context_tokens = 32768
+note = "Recipe retained for text/image/audio-to-text evaluation. Pinned checkpoint revision 5e092ebca197cdcd8d8b195040accf22693501bc. Live load on 2026-07-27 was blocked before model download because the host Hugging Face account had not accepted Google's gated Gemma license."
+
+[recipe.measured]
+preflight = "NOT RUN — candidate recipe only"
+caveats = "Gemma license acceptance and HF access are required. Do not route or promote until text, image, OCR, audio-input, capacity, and voice co-residency gates pass."
+
+[recipe.fit]
+suited = ["multimodal", "ocr-candidate", "audio-understanding", "voice-co-residency"]
+rationale = "The official BF16 checkpoint is about 10.9 GB and vLLM supports text, image, and audio input. It is the smallest practical Gemma Omni candidate for retaining dedicated STT/TTS on a 32 GB 5090."
+
+[[recipe]]
+model = "Qwen/Qwen2.5-Omni-3B"
+status = "unverified"
+source = "official Qwen model card and current vLLM supported-model documentation reviewed 2026-07-27; local qualification in progress"
+family = "qwen25-omni"
+total_params_b = 6
+active_params_b = 3
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:nightly@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+managed_serve = "omni-small"
+served_model_name = "qwen25-omni-3b"
+quantization = "bf16"
+port = 30013
+context_tokens = 32768
+note = "Pinned checkpoint revision f75b40e3da2003cdd6e1829b1f420ca70797c34e. vLLM serves the Thinker text/image/audio-to-text path; dedicated Parakeet STT and Kokoro TTS remain resident. The 24576 MiB reservation is based on a 28743 MiB live total minus the 4295 MiB display plus voice baseline, rounded up to the next GiB."
+
+[recipe.measured]
+preflight = "NOT RUN — candidate load pending"
+caveats = "The Qwen model card's BF16 minimum is 18.38 GB for a 15-second video and says practical use is typically at least 1.2x higher. Do not route or promote until text, image, OCR, audio-input, capacity, and voice co-residency gates pass."
+
+[recipe.fit]
+suited = ["multimodal", "ocr-candidate", "audio-understanding", "voice-co-residency"]
+rationale = "Ungated small Omni candidate that fits the measured 5090 voice/display envelope while retaining dedicated low-latency STT/TTS."
 
 [[recipe]]
 model = "deepreinforce-ai/Ornith-1.0-35B-FP8"

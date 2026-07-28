@@ -17,6 +17,26 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 - Quality-profile and production changes remain human-gated. A benchmark can recommend a change; it never promotes a model by itself.
 - External benchmark data is an advisory prior, not a local result. See [External benchmarks](EXTERNAL-BENCHMARKS.md) for its import and comparison workflow.
 
+## RTX 5090 Omni choices
+
+The routed reference tier remains the exclusive 30B Nemotron Omni serve. A
+second, unpromoted `Qwen/Qwen2.5-Omni-3B` configuration is now locally
+validated as the `omni-voice-stack` choice with dedicated Parakeet STT and
+Kokoro TTS co-resident on the RTX 5090.
+
+The small-Omni capacity probe completed 6/6 requests at concurrency two with a
+2,048-token prompt and 128-token output cap. TTFT p50/p95 was 0.04/0.06
+seconds, end-to-end p50/p95 was 0.32/0.33 seconds, and aggregate output
+throughput was 243 tok/s. Text/JSON/4K, image, OCR, and basic audio-input gates
+passed. The separate voice round trip passed with 0.0 WER in 710.68 ms.
+Measured GPU use for Qwen plus voice plus display was 28,743 of 32,607 MiB.
+
+These are bounded capability and capacity results, not a general quality
+comparison or router promotion. The
+[small Omni plus voice finding](findings/2026-07-27-omni-voice-stack-qualification.md)
+records exact identities, raw evidence, the noisy Omni audio response, and the
+Gemma 3n license blocker.
+
 ## Current Fast-tier result
 
 The reference Fast tier on Fakoli Dark's RTX 5090 is **`leon-se/gemma-4-E4B-it-FP8-Dynamic`**, served as `gemma4-e4b-it` with FP8 KV cache and a 32K context limit. The July 16 official-checkpoint/template rerun retained this control: it passed all repeated quality gates, while the new-template E2B, E4B, and 12B Fast candidates each failed the strict timeout-triage check with thinking disabled.
@@ -241,7 +261,7 @@ and raw evidence: [Blackwell local model bakeoff](findings/2026-07-10-blackwell-
 | MiniMax-M2.7-REAP-139B-A10B, vLLM NGC 26.04 NVFP4, 64K | PRO 6000 | 65,536 | pass (thinking disabled) | pass | 97.2 tok/s | 64K pass (TTFT 14.3 s); no 131K headroom | Best measured heavy candidate of the base round - superseded by Puzzle-75B (extension table below); not promoted (community REAP checkpoint) |
 | Ornith-1.0-35B, vLLM NGC 26.04 FP8, 131K | PRO 6000 | 131,072 | pass (thinking disabled) | pass 20/20 | 29.2 tok/s | 131K pass — needle 11.9 s, fastest 131k full-prefill measured (13.1 s) | Retain as agentic/long-context specialist; not promoted |
 | Nemotron-3-Nano-30B-A3B, vLLM NGC 26.04 NVFP4 + PIECEWISE graphs + nano_v3 parser, 131K | RTX 5090 | 131,072 | ALL PASS | pass | 15.0 tok/s | 131K pass (FULL graphs hang — upstream bug workaround required) | Keep experimental |
-| Nemotron-3-Nano-Omni-30B, vLLM **nightly v0.23** NVFP4, 64K | RTX 5090 | 65,536 | pass in window | pass 20/20 | 27.3 tok/s | 64K pass (TTFT 3.1 s) | Keep experimental; unsupported on vLLM ≤0.19 — watch for stable release |
+| Nemotron-3-Nano-Omni-30B, pinned vLLM **nightly v0.23** NVFP4, 64K | RTX 5090 | 65,536 | **PASS** text, image, and OCR | pass (release gate 3/3; historical 20/20) | 224.08 tok/s aggregate at c2/2K/128 output cap; historical 27.3 tok/s long decode | 64K pass (historical TTFT 3.1 s) | **Current exclusive Omni stack** for auxiliary text, image, and OCR; pinned-nightly caveat |
 | Gemma-4-31B-IT NVFP4, vLLM gemma4-unified, six configs | RTX 5090 | none fit | fail (KV OOM ladder) | — | — | — | Reject under tested configuration (32 GB + WSL2 legacy runner); llama.cpp GGUF / PRO 6000 untested |
 | DeepSeek-V4-Flash NVFP4, NGC + nightly attempts | PRO 6000 | not reached | — | — | — | — | Not enough evidence (engine-version reject; nightly load aborted) |
 

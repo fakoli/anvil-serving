@@ -1,0 +1,53 @@
+{
+  "schema_version": "serve-runtime-diagnostics/v1",
+  "date": "2026-07-27",
+  "serve": "omni-small",
+  "container": "vllm-qwen25-omni-3b",
+  "collection": {
+    "primary_command": "anvil-serving serves logs omni-small --manifest examples/fakoli-dark/serves.toml --tail 120 --since 30m",
+    "package_inventory_fallback": "bounded read-only container inspection because the product has no package-inventory verb"
+  },
+  "identity": {
+    "model": "Qwen/Qwen2.5-Omni-3B",
+    "revision": "f75b40e3da2003cdd6e1829b1f420ca70797c34e",
+    "served_model_name": "qwen25-omni-3b",
+    "vllm": "0.23.1rc1.dev531+ga65f93fb2",
+    "transformers": "5.12.1"
+  },
+  "installed_audio_packages": {
+    "av": "18.0.0",
+    "soundfile": "0.14.0",
+    "soxr": "1.1.0",
+    "flash-attn": null
+  },
+  "startup": {
+    "checkpoint_size_gib": 11.15,
+    "model_load_memory_gib": 8.84,
+    "kv_cache_memory_gib": 13.63,
+    "max_model_len": 32768,
+    "gpu_memory_utilization": 0.72,
+    "health_http_status": 200
+  },
+  "warnings": [
+    {
+      "component": "vllm Qwen2.5-Omni audio tower",
+      "exact": "flash_attn is not available, the model may not yield the exactly same result as the transformers implementation in the audio tower part.",
+      "classification": "audio numerical-alignment caveat",
+      "impact": "The bounded audio request still returned HTTP 200, but this warning is a plausible contributor to the noisy response and prevents an audio-quality claim."
+    },
+    {
+      "component": "transformers model configuration validation",
+      "exact": "Model config audio_start_token_id/audio_end_token_id and vision/TTS token ids were reported outside a vocabulary range of 0..8447.",
+      "classification": "runtime compatibility warning",
+      "impact": "Text, image, OCR, and audio-input probes passed, but the warning requires upstream compatibility review before promotion."
+    }
+  ],
+  "resolved_failure": {
+    "exact_api_error": "Please install vllm[audio] for audio support",
+    "classification": "missing runtime dependency in the stock image",
+    "fix": "The managed derivative image installs pinned av, scipy, soundfile, and soxr packages.",
+    "verification": "The same audio-input request returned HTTP 200 after the image rebuild.",
+    "log_retention_caveat": "The failed stock-image container was replaced before this diagnostic sweep, so its Docker log stream is no longer available. The exact API error was preserved from the failed request."
+  },
+  "promotion_quality_evidence": false
+}

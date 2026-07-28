@@ -102,6 +102,23 @@ def commands() -> CommandNode:
                 ),
             ),
             _resource_node(
+                "install-config",
+                "Validate and atomically install a router config, including tier-set migrations.",
+                "anvil_serving.router_manage",
+                role="router",
+                options=CONFIRM_OPTIONS
+                + (
+                    _option("--config", summary="Complete direct router config.", value_name="PATH"),
+                    _option("--router-url", summary="Private router base URL.", value_name="URL"),
+                    _option(
+                        "--drain-timeout",
+                        summary="Per-tier bounded drain timeout.",
+                        value_name="SECONDS",
+                    ),
+                ),
+                mutation="mutate",
+            ),
+            _resource_node(
                 "endpoint",
                 "Show the router listen address and this node's Tailscale DNS name.",
                 "anvil_serving.router_endpoint",

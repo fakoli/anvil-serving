@@ -40,7 +40,7 @@ def _routing(availability) -> RoutingBackend:
     config = load(_CONFIG)
     return RoutingBackend(
         config,
-        {"primary-local": StaticBackend(["heavy"]), "auxiliary-local": StaticBackend(["fast"])},
+        {"primary-local": StaticBackend(["heavy"]), "omni-local": StaticBackend(["omni"])},
         availability=availability,
     )
 
@@ -61,10 +61,10 @@ def test_unready_direct_route_never_calls_its_upstream():
 def test_ready_alias_relays_to_its_single_configured_tier():
     routing = _routing(_Ready())
 
-    assert list(routing.generate(_request("llm.voice"))) == ["fast"]
+    assert list(routing.generate(_request("llm.voice"))) == ["omni"]
     record = routing._decision_log.records[-1]
-    assert record.served_tier == "auxiliary-local"
-    assert record.requested_tier == "auxiliary-local"
+    assert record.served_tier == "omni-local"
+    assert record.requested_tier == "omni-local"
 
 
 def test_unknown_alias_is_not_probed_or_substituted():
