@@ -64,6 +64,19 @@ def test_manifest_records_recursive_paths_and_metadata():
     records = {record["path"]: record for record in manifest_data()["commands"]}
 
     assert "eval benchmark external compare" in records
+    assert records["voice up"]["resource_role"] == "stt-serve"
+    assert records["voice up"]["coowned_resource_roles"] == [
+        "tts-serve",
+        "realtime-proxy",
+    ]
+    assert records["voice up"]["transports"] == ["local"]
+    assert records["voice up"]["execution_runtime_roles"] == ["docker"]
+    assert records["voice up"]["mutation_class"] == "mutate"
+    assert records["voice up"]["remote_operation"] is None
+    assert records["voice down"]["coowned_resource_roles"] == [
+        "tts-serve",
+        "realtime-proxy",
+    ]
     assert records["voice audio up"]["resource_role"] == "stt-serve"
     assert records["voice audio up"]["coowned_resource_roles"] == ["tts-serve"]
     assert records["voice audio status"]["remote_operation"]["tool"] == "voice_manage"
@@ -139,6 +152,23 @@ def test_manifest_records_recursive_paths_and_metadata():
     }
     assert "--experimental-model-workload" in global_flags
     assert "--allow-ssh-fallback" in global_flags
+
+
+def test_voice_aggregate_refuses_split_topology(capsys):
+    rc = cli.main([
+        "voice",
+        "up",
+        "--dry-run",
+        "--topology",
+        "examples/fakoli-dark/operator-topology.toml",
+        "--command-host",
+        "host:fakoli-dark",
+        "--command-runtime",
+        "runtime:dark-docker",
+    ])
+
+    assert rc == 3
+    assert "does not support execution runtime role 'native'" in capsys.readouterr().err
 
 
 def test_duplicate_paths_fail_validation():

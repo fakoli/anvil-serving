@@ -772,7 +772,13 @@ def _proxy_serve_base_url(voice: Dict[str, Any]) -> str:
     return "http://%s:%d" % (host, port)
 
 
-def _proxy_serve_from_config(args, voice: Dict[str, Any], manifest_dir: str | None) -> proxy_serve.ProxyServe:
+def _proxy_serve_from_config(
+    args,
+    voice: Dict[str, Any],
+    manifest_dir: str | None,
+    *,
+    _run: Callable[..., Any] | None = None,
+) -> proxy_serve.ProxyServe:
     """Construct the Docker-managed :class:`ProxyServe` from ``[voice.proxy]``,
     mirroring ``_audio_serves``' per-serve construction for STT/TTS."""
     proxy = dict(voice.get("proxy", {}))
@@ -787,7 +793,10 @@ def _proxy_serve_from_config(args, voice: Dict[str, Any], manifest_dir: str | No
     manifest_path = proxy.get("manifest_path") or proxy.get("serves_manifest")
     if manifest_path:
         config_kwargs["manifest_path"] = _resolve_manifest_reference(manifest_path, manifest_dir)
-    return proxy_serve.ProxyServe(proxy_serve.ProxyServeConfig(**config_kwargs))
+    return proxy_serve.ProxyServe(
+        proxy_serve.ProxyServeConfig(**config_kwargs),
+        _run=_run,
+    )
 
 
 def _proxy_process_service(
@@ -822,18 +831,25 @@ def _print_proxy_process_result(result: dict) -> int:
     return int(result.get("returncode", 0))
 
 
-def _cmd_proxy_managed_lifecycle(args, action: str, resolved) -> int:
+def _execute_proxy_managed_lifecycle(
+    args,
+    action: str,
+    resolved,
+    *,
+    deadline: float | None = None,
+) -> dict:
     """Docker-MANAGED proxy up/down/restart, mirroring the audio managed
     branch: delegate to :class:`ProxyServe` (which delegates to
-    ``anvil_serving.serves``). No topology resolution -- the managed container
-    is harness-independent."""
+    ``anvil_serving.serves``) and return structured data."""
     voice = resolved.data.get("voice", {})
-    serve = _proxy_serve_from_config(args, voice, resolved.data.get("_manifest_dir"))
-    dry_run = getattr(args, "dry_run", False)
-    print(
-        "voice proxy %s: managed serve_name=%s base_url=%s"
-        % (action, serve.config.serve_name, serve.config.base_url)
+    run = _deadline_subprocess_runner(deadline) if deadline is not None else None
+    serve = _proxy_serve_from_config(
+        args,
+        voice,
+        resolved.data.get("_manifest_dir"),
+        _run=run,
     )
+    dry_run = getattr(args, "dry_run", False)
     try:
         if action == "up":
             rc = serve.bring_up(dry_run=dry_run)
@@ -845,23 +861,197 @@ def _cmd_proxy_managed_lifecycle(args, action: str, resolved) -> int:
                 rc = serve.bring_up(dry_run=dry_run)
         else:  # pragma: no cover - guarded by the subparser choices
             raise ValueError("unknown managed proxy action %r" % action)
-    except ServeNotConfigured as exc:
-        return _print_proxy_process_result({
+    except (ServeNotConfigured, subprocess.TimeoutExpired) as exc:
+        return {
             "action": action,
             "lifecycle": "managed",
-            "returncode": 0,
-            "state": "not_configured",
+            "returncode": 0 if isinstance(exc, ServeNotConfigured) else 1,
+            "state": (
+                "not_configured"
+                if isinstance(exc, ServeNotConfigured)
+                else "failed"
+            ),
             "detail": str(exc),
             "serve_name": serve.config.serve_name,
-        })
-    return _print_proxy_process_result({
+        }
+    return {
         "action": action,
         "lifecycle": "managed",
         "returncode": rc,
         "dry_run": dry_run,
         "serve_name": serve.config.serve_name,
         "endpoint": serve.realtime_url,
-    })
+    }
+
+
+def _cmd_proxy_managed_lifecycle(args, action: str, resolved) -> int:
+    """Print the existing proxy CLI envelope around the structured executor."""
+    voice = resolved.data.get("voice", {})
+    serve = _proxy_serve_from_config(args, voice, resolved.data.get("_manifest_dir"))
+    print(
+        "voice proxy %s: managed serve_name=%s base_url=%s"
+        % (action, serve.config.serve_name, serve.config.base_url)
+    )
+    return _print_proxy_process_result(
+        _execute_proxy_managed_lifecycle(args, action, resolved)
+    )
+
+
+def _voice_lifecycle_eligibility(data: dict) -> str | None:
+    """Return why the aggregate is unsafe, or ``None`` for one managed host."""
+    voice = data.get("voice", {})
+    tables = {kind: voice.get(kind, {}) for kind in ("stt", "tts", "proxy")}
+    unmanaged = [
+        kind
+        for kind, table in tables.items()
+        if not isinstance(table, dict) or table.get("lifecycle", "managed") != "managed"
+    ]
+    if unmanaged:
+        return "requires managed STT, TTS, and proxy lifecycles (not managed: %s)" % (
+            ", ".join(unmanaged)
+        )
+
+    direct = _proxy_direct_targets(voice)
+    if direct is None:
+        return "requires direct [voice.proxy] stt_url, tts_url, and router_url"
+    for kind in ("stt", "tts"):
+        configured = str(tables[kind].get("base_url", "")).rstrip("/")
+        proxy_url = str(direct["%s_url" % kind]).rstrip("/")
+        configured_parts = urllib.parse.urlsplit(configured)
+        proxy_parts = urllib.parse.urlsplit(proxy_url)
+        if configured_parts.hostname != "127.0.0.1":
+            return (
+                "refuses split-host voice lifecycle: [voice.%s] must use host-relative "
+                "127.0.0.1" % kind
+            )
+        serve_name = tables[kind].get("serve_name") or kind
+        if (
+            proxy_parts.scheme != configured_parts.scheme
+            or proxy_parts.hostname != serve_name
+            or proxy_parts.path.rstrip("/") != configured_parts.path.rstrip("/")
+        ):
+            return (
+                "refuses split-host voice lifecycle: proxy %s_url must use managed "
+                "service DNS %r and the configured path" % (kind, serve_name)
+            )
+
+    manifest_dir = data.get("_manifest_dir")
+    manifest_paths = {}
+    for kind, table in tables.items():
+        raw_path = table.get("manifest_path") or table.get("serves_manifest")
+        if not raw_path:
+            return "[voice.%s] must declare a managed serves manifest" % kind
+        resolved_path = _resolve_manifest_reference(raw_path, manifest_dir)
+        manifest_paths[kind] = os.path.normcase(os.path.abspath(resolved_path))
+    if len(set(manifest_paths.values())) != 1:
+        return "requires STT, TTS, and proxy to share one managed serves manifest"
+
+    try:
+        serves = generic_serves.load_manifest(next(iter(manifest_paths.values())))
+    except (OSError, ValueError) as exc:
+        return "cannot load shared voice serves manifest: %s" % exc
+    by_name = {serve["name"]: serve for serve in serves}
+    for kind, table in tables.items():
+        serve_name = table.get("serve_name") or kind
+        serve = by_name.get(serve_name)
+        if serve is None:
+            return "shared voice serves manifest has no %s entry %r" % (kind, serve_name)
+        if "voice" not in (serve.get("groups") or []):
+            return "managed %s serve %r is not in the voice group" % (kind, serve_name)
+    return None
+
+
+def execute_voice_lifecycle(args, action: str) -> dict:
+    """Execute the safe co-located aggregate and return one combined result."""
+    if action not in {"up", "down"}:
+        raise ValueError("voice lifecycle action must be up or down")
+    dry_run = getattr(args, "dry_run", False)
+    base = {
+        "action": action,
+        "dry_run": dry_run,
+        "order": ["audio", "proxy"] if action == "up" else ["proxy", "audio"],
+        "returncode": 0,
+        "audio": None,
+        "proxy": None,
+    }
+    resolved, err = _load_resolved_config(args)
+    if err:
+        return {**base, "returncode": 2, "error": err}
+    assert resolved is not None
+    eligibility_error = _voice_lifecycle_eligibility(resolved.data)
+    if eligibility_error:
+        return {**base, "returncode": 3, "error": eligibility_error}
+
+    data = resolved.data
+    deadline = time.monotonic() + args.timeout_seconds
+
+    def skipped(reason: str) -> dict:
+        return {"state": "skipped", "reason": reason, "returncode": 0}
+
+    if action == "up":
+        audio = execute_audio_lifecycle(
+            data,
+            "up",
+            dry_run=dry_run,
+            timeout_seconds=max(0.1, deadline - time.monotonic()),
+        )
+        if audio["returncode"] != 0:
+            return {
+                **base,
+                "returncode": audio["returncode"],
+                "audio": audio,
+                "proxy": skipped("audio bring-up failed"),
+            }
+        proxy = _execute_proxy_managed_lifecycle(
+            args,
+            "up",
+            resolved,
+            deadline=deadline,
+        )
+    else:
+        proxy = _execute_proxy_managed_lifecycle(
+            args,
+            "down",
+            resolved,
+            deadline=deadline,
+        )
+        if proxy["returncode"] != 0:
+            return {
+                **base,
+                "returncode": proxy["returncode"],
+                "audio": skipped("proxy tear-down failed"),
+                "proxy": proxy,
+            }
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return {
+                **base,
+                "returncode": 1,
+                "audio": skipped("overall lifecycle deadline expired"),
+                "proxy": proxy,
+            }
+        audio = execute_audio_lifecycle(
+            data,
+            "down",
+            dry_run=dry_run,
+            timeout_seconds=remaining,
+        )
+    return {
+        **base,
+        "returncode": max(audio["returncode"], proxy["returncode"]),
+        "audio": audio,
+        "proxy": proxy,
+    }
+
+
+def cmd_voice_lifecycle(args) -> int:
+    result = execute_voice_lifecycle(args, args.action)
+    stream = sys.stderr if result.get("error") else sys.stdout
+    print(
+        "voice %s: %s" % (args.action, json.dumps(result, sort_keys=True)),
+        file=stream,
+    )
+    return int(result["returncode"])
 
 
 def cmd_proxy_lifecycle(args):
@@ -1459,7 +1649,7 @@ def build_parser():
     sub = p.add_subparsers(
         dest="action",
         required=True,
-        metavar="{audio,proxy,benchmark,profiles,sidecar}",
+        metavar="{up,down,audio,proxy,benchmark,profiles,sidecar}",
     )
 
     def add_config(sp):
@@ -1507,6 +1697,23 @@ def build_parser():
             action="store_true",
             help="allow a topology-permitted experimental model workload",
         )
+
+    for action, help_text in (
+        ("up", "start the co-located managed STT, TTS, and realtime proxy stack"),
+        ("down", "stop the co-located managed realtime proxy, TTS, and STT stack"),
+    ):
+        sp = sub.add_parser(action, help=help_text)
+        add_config(sp)
+        add_profile(sp)
+        add_dry_run(sp)
+        sp.add_argument(
+            "--timeout-seconds",
+            type=_bounded_operation_timeout,
+            default=300.0,
+            metavar="SECONDS",
+            help="overall managed lifecycle deadline from 1 through 7200 seconds",
+        )
+        sp.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
 
     sp = audio_sub.add_parser("up", help="bring up the Dark-owned STT/TTS serves")
     add_audio_resolution(sp)
@@ -1714,8 +1921,6 @@ def main_profiles_validate(argv=None):
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     removed_audio_paths = {
-        "up": "voice audio up",
-        "down": "voice audio down",
         "start": "voice audio up",
         "stop": "voice audio down",
         "run": "voice proxy run",
@@ -1737,6 +1942,8 @@ def main(argv=None):
         "benchmark": cmd_benchmark,
         "profiles": cmd_profiles,
     }
+    if args.action in {"up", "down"}:
+        return cmd_voice_lifecycle(args)
     if args.action == "audio":
         return {
             "up": cmd_up,
