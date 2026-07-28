@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- Ruff linting now selects the repository's intended `E4`, `E7`, `E9`, and
+  `F` rule families explicitly, so CI can track current Ruff releases without
+  inheriting newly promoted default rules.
+
 ## [0.15.0] - 2026-07-27
 
 Anvil Serving 0.15.0 is the selectable Omni voice and lifecycle-cleanup
