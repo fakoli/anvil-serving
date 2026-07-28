@@ -6,6 +6,37 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-27
+
+Anvil Serving 0.14.0 is the production-readiness and modularization release.
+Since 0.13.3, the supported operator path has been exercised end to end on the
+reference two-GPU host, repaired where live testing exposed gaps, and organized
+around explicit single-user lifecycle boundaries.
+
+### Highlights
+
+- **Production capability sweep completed.** Managed serving, router, recipe,
+  benchmark, voice, OCR, reranker, embeddings, ComfyUI, and Workbench workflows
+  were exercised through product commands. Agent-A1 and Laguna results, the
+  voice round trip, purpose-model checks, and final runtime state are published
+  in the dated release-readiness finding.
+- **One stack per operational purpose.** Serving, auxiliary capabilities,
+  voice audio, ComfyUI, and Workbench no longer share ambiguous Compose project
+  ownership. Each stack can be operated independently, while the router remains
+  owned by Anvil Serving.
+- **A reproducible local Workbench path.** Operators can build the Workbench
+  image locally, bring up its private stack, reuse the router authentication
+  contract, and verify the complete Workbench-to-router-to-model path without
+  publishing or pulling a project image from an external repository.
+- **Stronger benchmark evidence.** Capacity runs now have deterministic context
+  plans, authoritative token accounting, explicit `capacity-v2` measurement
+  identity, bounded failure retention, and fail-closed validation. The benchmark
+  implementation is split into focused modules behind its public facade.
+- **Smaller, explicit control-plane modules.** Command registration, controller
+  services, MCP foundations, and all MCP tool families are independently
+  reviewable packages. Public compatibility facades and deterministic direct
+  dispatch remain in place.
+
 ### Breaking changes
 
 - **Generated hardware and live serving roles are now Primary/Auxiliary only.**
@@ -18,6 +49,22 @@ All notable changes to this project are documented here. The format is based on
   `anvil_serving.commands`. The manifest no longer duplicates documentation in
   `examples`, `configuration_notes`, or `behavior_notes`; leaf parsers own
   detailed argument help and the CLI reference owns workflows and guidance.
+
+### Added
+
+- **Explicit operator stacks.** Serving, auxiliary capabilities, voice audio,
+  ComfyUI, and Workbench now have separate Compose projects and lifecycle
+  boundaries. Router ownership is fixed to the `anvil-serving` project, Dark
+  owns model-serving resources, and purpose stacks can be started and stopped
+  independently without colliding on a shared Compose project.
+- **Locally built Workbench lifecycle.** `workbench build` provides a
+  confirmation-gated local image build, while Workbench startup uses private
+  Compose DNS and the authenticated router contract. The release sweep
+  validated the complete Workbench-to-router-to-Laguna path.
+- **Published production-readiness evidence.** The dated release sweep records
+  live Agent-A1 and Laguna capacity and quality runs plus managed voice, OCR,
+  reranker, embeddings, ComfyUI, router, recipe, and Workbench lifecycle
+  validation on the reference hardware.
 
 ### Changed
 
@@ -50,6 +97,21 @@ All notable changes to this project are documented here. The format is based on
   without filesystem discovery or eager handler imports. Shared lifecycle
   options are declared once, and the legacy `anvil_serving.command_tree`
   module is reduced to compatibility imports.
+- **Controller and MCP internals are independently reviewable packages.**
+  Persistence, security, transport, protocol, runtime, catalog, and tool-family
+  implementations now live under `anvil_serving.control_plane`; the existing
+  `anvil_serving.controller` and `anvil_serving.mcp` modules remain explicit
+  compatibility facades with deterministic direct dispatch.
+
+### Fixed
+
+- **Live lifecycle commands now match their production contracts.** The sweep
+  corrected Compose project attribution, router ownership, purpose-stack
+  selection, readiness checks, model-cache and benchmark-evidence handling,
+  voice routing, and cleanup of stopped test containers through product verbs.
+- **Workbench bring-up is reproducible without an external image repository.**
+  The CLI builds the local image, obtains the existing router authentication
+  contract, starts the stack, and verifies the authenticated sandbox path.
 
 ## [0.13.3] - 2026-07-26
 
@@ -1144,7 +1206,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.13.3...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/fakoli/anvil-serving/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/fakoli/anvil-serving/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/fakoli/anvil-serving/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/fakoli/anvil-serving/compare/v0.13.0...v0.13.1
