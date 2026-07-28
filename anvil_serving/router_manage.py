@@ -335,7 +335,13 @@ def install_config(
     _install=None,
     _sleep=time.sleep,
 ):
-    """Safely replace a deployed router config even when its tier set changes."""
+    """Safely replace a deployed router config even when its tier set changes.
+
+    Installation verifies that the restarted router exposes the exact desired
+    tier IDs.  Per-tier readiness is reported, but an intentionally stopped or
+    otherwise unavailable serve does not make a structurally successful config
+    installation fail.
+    """
     from .router.config import load
     from .serves import _install_router_config
 
@@ -395,20 +401,31 @@ def install_config(
         try:
             post = _transition("status", router_url=router_url)
             post_rows = post.get("tiers", [])
-            ready = {
-                row.get("tier_id"): row.get("ready")
-                for row in post_rows if isinstance(row, dict)
-            }
-            if set(ready) == set(desired) and all(
-                ready.get(tier_id) is True for tier_id in desired
-            ):
-                break
+            if not isinstance(post_rows, list):
+                raise ValueError("router transition status was malformed")
+            tier_ids = []
+            for row in post_rows:
+                if not isinstance(row, dict) or not isinstance(row.get("tier_id"), str):
+                    raise ValueError("router transition status was malformed")
+                tier_ids.append(row["tier_id"])
+            well_formed = len(tier_ids) == len(set(tier_ids))
+            if well_formed and set(tier_ids) == set(desired):
+                unavailable = [
+                    tier_id for tier_id, row in zip(tier_ids, post_rows)
+                    if row.get("ready") is not True
+                ]
+                return {
+                    "applied": True,
+                    "dry_run": False,
+                    "tier_status": post_rows,
+                    "unavailable_tiers": unavailable,
+                    **plan,
+                }
         except ValueError:
             pass
         if time.monotonic() >= deadline:
-            raise ValueError("installed router config did not expose the ready desired tier set")
+            raise ValueError("installed router config did not expose the desired tier set")
         _sleep(1)
-    return {"applied": True, "dry_run": False, **plan}
 
 
 def _build_parser():

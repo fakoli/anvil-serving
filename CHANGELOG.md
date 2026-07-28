@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-07-28
+
+### Fixed
+
+- `router install-config --confirm` now succeeds when the restarted router
+  exposes the exact configured tier set even if one or more model serves are
+  currently unavailable. The command still reports per-tier readiness and
+  lists unavailable tiers without conflating configuration installation with
+  model readiness, preflight qualification, or promotion.
+
 ## [0.16.0] - 2026-07-28
 
 Anvil Serving 0.16.0 is the multimodal primary and router observability
@@ -1321,7 +1331,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/fakoli/anvil-serving/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/fakoli/anvil-serving/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/fakoli/anvil-serving/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/fakoli/anvil-serving/compare/v0.13.3...v0.14.0
