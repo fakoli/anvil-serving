@@ -969,7 +969,9 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
             print("  gate: quiesce router tier %s" % tier_id)
             print("  gate: drain router tier %s (timeout %ss)" % (
                 tier_id, plan["drain_timeout"]))
-        cmd_down(serves, stop_names, dry_run=True, _run=_run)
+        cmd_down(
+            serves, stop_names, dry_run=True, keep_container=True, _run=_run
+        )
         cmd_up(serves, [target["name"]], dry_run=True, recreate=True, _run=_run)
         print("  gate: exact served-model identity for %s" % target["served_name"])
         for gate in gates:
@@ -1005,7 +1007,9 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                 plan, quiesced, _run=_run
             ) else 3
 
-    if cmd_down(serves, stop_names, _run=_run) != 0:
+    # Preserve displaced/candidate containers and their logs until the
+    # promotion transaction and its rollback opportunity complete.
+    if cmd_down(serves, stop_names, keep_container=True, _run=_run) != 0:
         return 1
     target_state = docker_state(target["container"], _run=_run)
     reuse_target = (
@@ -2126,9 +2130,18 @@ def cmd_groups(serves, as_json=False):
     return 0
 
 
-def cmd_down(serves, names, dry_run=False, _run=subprocess.run):
-    # ADR-0017: stopping a container IS the reservation release — the ledger is
-    # derived from docker state, so no bookkeeping happens (or could drift) here.
+def cmd_down(
+    serves, names, dry_run=False, keep_container=False, _run=subprocess.run
+):
+    """Stop selected serves and remove their containers by default.
+
+    ``keep_container=True`` preserves the stopped container and its logs for
+    diagnostics or a cheap restart. The normal operator contract removes stale
+    runtime configuration so model experiments do not accumulate in Docker.
+    """
+    # ADR-0017: stopping/removing a container IS the reservation release — the
+    # ledger is derived from docker state, so no bookkeeping happens (or could
+    # drift) here.
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
@@ -2141,29 +2154,67 @@ def cmd_down(serves, names, dry_run=False, _run=subprocess.run):
                   "permission?)" % s["container"])
             rc = 1
             continue
-        if st == "absent" or st in _STOPPED:
-            print("  %s: %s (nothing to stop)" % (s["container"], st))
+        if st == "absent":
+            print("  %s: absent (nothing to stop or remove)" % s["container"])
+            continue
+        if st in _STOPPED:
+            if keep_container:
+                print("  %s: %s (kept for logs/restart)" % (s["container"], st))
+                continue
+            print("  rm -f %s (%s)" % (s["container"], st))
+            if dry_run:
+                continue
+            removed = _run(
+                ["docker", "rm", "-f", s["container"]],
+                capture_output=True,
+                text=True,
+            )
+            if removed.returncode == 0:
+                print("  removed %s" % s["container"])
+            else:
+                print(
+                    "  FAILED to remove %s: %s"
+                    % (s["container"], (removed.stderr or "").strip())
+                )
+                rc = 1
             continue
         # running / paused / restarting / removing / unknown -> stop (frees the GPU).
         # Honor --dry-run: `down` is state-changing (it frees GPUs / kills in-flight
         # serving), so a preview must NOT actually stop anything.
         print("  stop %s" % s["container"])
         if dry_run:
+            if not keep_container:
+                print("  rm -f %s" % s["container"])
             continue
         r = _run(["docker", "stop", s["container"]], capture_output=True, text=True)
         if r.returncode == 0:
-            # Verify the stop STUCK: a `restart: always` policy revives the
-            # container immediately, silently un-freeing the GPU we just freed.
-            # 'restarting' is the same revival caught mid-backoff — it will be
-            # 'running' moments later, so it is NOT a clean stop either.
-            st_after = docker_state(s["container"], _run=_run)
-            if st_after in ("running", "restarting"):
-                print("  WARNING: %s is %s again after stop (restart policy?) - "
-                      "the GPU was NOT freed; `serves rm %s` removes it, or fix the "
-                      "container's restart policy" % (s["container"], st_after, s["container"]))
-                rc = 1
+            if keep_container:
+                # Verify the stop STUCK: a `restart: always` policy revives the
+                # container immediately, silently un-freeing the GPU.
+                st_after = docker_state(s["container"], _run=_run)
+                if st_after in ("running", "restarting"):
+                    print(
+                        "  WARNING: %s is %s again after stop (restart policy?) - "
+                        "the GPU was NOT freed; omit `--keep-container` to remove it"
+                        % (s["container"], st_after)
+                    )
+                    rc = 1
+                else:
+                    print("  stopped and kept %s" % s["container"])
             else:
-                print("  stopped %s" % s["container"])
+                removed = _run(
+                    ["docker", "rm", "-f", s["container"]],
+                    capture_output=True,
+                    text=True,
+                )
+                if removed.returncode == 0:
+                    print("  stopped and removed %s" % s["container"])
+                else:
+                    print(
+                        "  FAILED to remove %s after stop: %s"
+                        % (s["container"], (removed.stderr or "").strip())
+                    )
+                    rc = 1
         else:
             print("  FAILED to stop %s: %s" % (s["container"], (r.stderr or "").strip()))
             rc = 1
@@ -2973,7 +3024,7 @@ _ACTION_DESCRIPTIONS = {
     "status": "Show docker and health state for manifest serves.",
     "probe": "Run one engine-aware functional request against a serve.",
     "up": "Start manifest serves or an ad-hoc compose service.",
-    "down": "Stop manifest serves and verify they stay stopped.",
+    "down": "Stop and remove manifest serve containers.",
     "rm": "Remove serve containers after explicit confirmation.",
     "adopt": "Bring externally-started serves under compose management.",
     "logs": "Show bounded or streaming docker logs for one serve.",
@@ -3051,6 +3102,15 @@ def _build_action_parser(action):
                        help="skip the confirmation prompt (these actions docker rm -f containers).")
     else:
         p.set_defaults(yes=False)
+    if action == "down":
+        p.add_argument(
+            "--keep-container",
+            action="store_true",
+            help="stop without removing the container, preserving its logs and "
+                 "created configuration for inspection or restart.",
+        )
+    else:
+        p.set_defaults(keep_container=False)
     if action == "up":
         p.add_argument("--compose", metavar="FILE",
                        help="bring up an ad-hoc/experiment serve from this compose file; names are compose service names.")
@@ -3306,7 +3366,7 @@ def main(argv=None):
         )
     if a.action == "down":
         return cmd_down(serves, group_names if group_names is not None else a.names,
-                        dry_run=a.dry_run)
+                        dry_run=a.dry_run, keep_container=a.keep_container)
     if a.action == "up":
         target_names = group_names if group_names is not None else a.names
         rc = cmd_up(serves, target_names, dry_run=a.dry_run, recreate=a.recreate,

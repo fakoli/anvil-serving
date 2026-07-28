@@ -12,7 +12,7 @@ is model-free by default.
 | Goal | Start here | Then |
 | --- | --- | --- |
 | Inspect audio readiness | `voice audio status` | Read a bounded tail with `voice audio logs`. |
-| Change STT/TTS lifecycle | `voice audio up --dry-run` | Apply with `--confirm`; use `down` to stop owned serves. |
+| Change STT/TTS lifecycle | `voice audio up --dry-run` | Apply with `--confirm`; `down` stops native processes and stops/removes managed containers. |
 | Run the realtime proxy interactively | `voice proxy run` | Interrupt the foreground process when finished. |
 | Manage the background proxy | `voice proxy status` | Preview `up`, `down`, or `restart`, then apply with `--confirm`. |
 | Forward Mini-local audio ports | `voice proxy bridge --dry-run` | Run the bridge in the foreground after reviewing both routes. |
@@ -29,7 +29,7 @@ is model-free by default.
 | `voice audio status` | Read bounded STT/TTS readiness from the declared owner. |
 | `voice audio logs` | Read a bounded log tail for each owned audio serve. |
 | `voice audio up` | Preview or start managed/native STT and TTS serves. |
-| `voice audio down` | Preview or stop only managed/native STT and TTS serves. |
+| `voice audio down` | Preview or stop native STT/TTS processes and stop/remove managed containers. |
 
 ### Operate the Mini realtime layer
 

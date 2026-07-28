@@ -35,7 +35,9 @@ Add management verbs; **the deployed router's config + profile is a MUTABLE dock
 
 - `serves rm` (retire any container, incl. a non-manifest port squatter), `serves adopt` (recreate
   an externally-started serve under compose), `serves up --compose <file>` (an experiment serve not
-  in the manifest). `serves down` honors `--dry-run`.
+  in the manifest). `serves down` stops and removes selected containers by default so experiments
+  do not accumulate stale Docker configuration; `--keep-container` preserves a stopped container
+  and its logs for diagnostics or restart. `serves down` honors `--dry-run`.
 - `anvil-serving router {up|down|restart|reload|status|token}` manages the ADR-0004 container.
 - `anvil-serving router promote --profile [--config]` is the containerized write-back:
   **(1) validate** the profile against the DEPLOYED image's OWN loader (version-safe — a newer local
