@@ -109,25 +109,54 @@ def test_documented_invocation_supplies_required_arguments(doc: str, invocation:
         pytest.skip(f"{command} renders help without an argparse usage line")
 
     tail = usage[usage.index(command) + len(command) :] if command in usage else usage
+
+    # Options that take a value, so they can be skipped when counting positionals.
+    valued = set(re.findall(r"(--[a-z][a-z0-9-]*) [A-Za-z_][A-Za-z0-9_]*", tail))
+
     # Required options appear unbracketed in an argparse usage line.
     for option in re.findall(r"(?<![\[\w-])(--[a-z][a-z0-9-]*)", tail):
         assert option in tokens, (
             f"{doc}: '{invocation}' omits required option {option}\n  usage: {usage}"
         )
-    # Required positionals are bare uppercase tokens left after optional
-    # `[...]` groups are removed. Strip innermost-first so nesting collapses.
+
+    # Required positionals are whatever is left after optional `[...]` groups are
+    # removed. Metavars are not always uppercase (`repo_id`), so match on shape:
+    # a bare token that is not an option and not an option's value.
     required = tail
     while True:
         collapsed = re.sub(r"\[[^\[\]]*\]", " ", required)
         if collapsed == required:
             break
         required = collapsed
-    positionals = [t for t in required.split() if t.isupper() and t.isalpha()]
-    if positionals:
-        supplied = [t for t in bare if t not in command.split()]
-        assert supplied, (
-            f"{doc}: '{invocation}' omits required positional {positionals[0]}\n  usage: {usage}"
-        )
+    required_positionals: list[str] = []
+    skip_next = False
+    for token in required.split():
+        if skip_next:
+            skip_next = False
+            continue
+        if token.startswith("-"):
+            skip_next = token in valued
+            continue
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token):
+            required_positionals.append(token)
+
+    # Count what the documented form actually supplies, skipping option values.
+    supplied: list[str] = []
+    skip_next = False
+    for token in tokens[len(command.split()) :]:
+        if skip_next:
+            skip_next = False
+            continue
+        if token.startswith("-"):
+            skip_next = token in valued
+            continue
+        supplied.append(token)
+
+    assert len(supplied) >= len(required_positionals), (
+        f"{doc}: '{invocation}' supplies {len(supplied)} positional(s) but "
+        f"{command} requires {len(required_positionals)} "
+        f"({', '.join(required_positionals)})\n  usage: {usage}"
+    )
 
 
 def test_router_transition_forms_use_the_tier_option():
@@ -142,3 +171,14 @@ def test_router_transition_forms_use_the_tier_option():
         assert "--tier" in line, f"router {action} documented without the required --tier"
     drain = next(ln for ln in text.splitlines() if "router drain" in ln and "anvil-serving" in ln)
     assert "--timeout" in drain, "router drain documented without the required --timeout"
+
+
+def test_router_install_config_documents_its_required_option():
+    """`router install-config` renders custom help, so pin --config explicitly."""
+    text = (ROOT / "docs" / "MODEL-PROMOTION.md").read_text(encoding="utf-8")
+    lines = [
+        ln for ln in text.splitlines() if "router install-config" in ln and "anvil-serving" in ln
+    ]
+    assert lines, "MODEL-PROMOTION.md no longer documents router install-config"
+    for line in lines:
+        assert "--config" in line, f"install-config documented without --config: {line.strip()}"

@@ -74,7 +74,7 @@ along with c1 admission and the one-image limit.
 | [Mistral Small 4 119B NVFP4](models/mistral-small-4.md) | `no-promotion` | NVFP4 · FP8 KV | 131,072 · 5 seqs | `reasoning_effort`; 2,048 headroom | **0.30 s @c1** · 1.85 s @c5 · 51.90 s @131K | 57.82 `agg` @c1 · 67.04 `agg` @c5 | `cand-mistral-small4-119b-nvfp4` |
 | [ThinkingCap Qwen3.6 27B FP8](models/qwen36-27b.md) | `no-promotion` | compressed-tensors FP8 · FP8 KV | 262,144 · 5 seqs | **on** by default (256 + 4,096 headroom) | 1.01 s @c1 · 4.66 s @c5 · 32.3 s @131K needle | 7.92 `agg` @c5 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L3) |
 | Qwen3.6 27B official FP8 | `no-promotion` | FP8 + MTP 3 · FP8 KV | 262,144 · 5 seqs | off for capacity | 1.59 s @c1 · 5.68 s @c5 · 32.9 s @131K | 8.31 `agg` @c5 | `cand-qwen36-fp8` |
-| Unsloth Qwen3.6 27B NVFP4 | `no-promotion` | NVFP4 + MTP 2 · FP8 KV | 262,144 · 5 seqs | off for capacity | 968.07 ms @c1 (1 req) · 3.68 s @c5 | 10.497 `agg` @c1 · 15.21 `agg` @c5 | `cand-unsloth-qwen36-27b-nvfp4` |
+| Unsloth Qwen3.6 27B NVFP4 | `no-promotion` | NVFP4 + MTP 2 · FP8 KV | 262,144 · 5 seqs | off for capacity | 968.07 ms @c1 (1 req) · 3.68 s @c5 | *c1 rate withheld — 1 req / 14 out tok* · 15.21 `agg` @c5 (66 out tok) | `cand-unsloth-qwen36-27b-nvfp4` |
 | [Qwen3.5 122B NVFP4, NGC 26.04](models/qwen35-122b.md) | `no-promotion` | ModelOpt NVFP4 · FP8 KV | 131,072 · c1 | off for gates | 223 ms p50 @8K · ~28 s @100K | 38.8 `agg` @c1 (10 req × 8K) | earlier candidate window |
 | [Qwen3.5 122B MXFP4 / Marlin](models/qwen35-122b.md) | `no-promotion` | MXFP4 → Marlin W4A16 · FP8 KV | 131,072 · 2 seqs | off | 720.79 / 974.40 ms @8K · 25.8 s @128K needle | 30.57 `agg` | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L740) |
 
@@ -136,12 +136,13 @@ Every row here is `historical-invalid` for exact rerun: no pinned checkpoint rev
 **do not rank on these numbers** — they are retained because a negative or partial result is
 still evidence.
 
-The rate column is `agg` throughout: the same 10-request, 256-token-cap harness used elsewhere
-on this page, not controlled long generation.
+Rate cells here come from the same 10-request, 256-token-cap `agg` harness used elsewhere on
+this page. Both llama.cpp rows additionally ran with a warm prefix cache (~0.87–0.90 hit rate),
+which inflates their aggregates relative to the vLLM rows, none of which record prefix reuse.
 
 | Config | Engine | Context | Output rate | Warm TTFT | Verdict |
 | --- | --- | --- | --- | --- | --- |
-| Qwen3.5 35B-A3B Q4_K_M | llama.cpp | 64K | ~147 `agg` — server timing over **41 tokens**; weakest evidence on this page | 178 ms | fast-tier candidate; not promoted |
+| Qwen3.5 35B-A3B Q4_K_M | llama.cpp | 64K | 56.279 `agg` @c1 (424 out tok) | 178 ms | fast-tier candidate; not promoted |
 | Gemma 4 E4B QAT UD-Q4_K_XL | llama.cpp | 64K | 96.96 `agg` @c1 (401 out tok) | **61 ms** | low-latency specialist; not promoted |
 | Nemotron Nano Omni 30B | vLLM nightly | 65,536 | 27.3 `agg` @c1 (236 out tok) | 675 ms | keep experimental |
 | Nemotron 3 Nano 30B (text) | NGC vLLM 0.19 | 131,072 | 15.0 `agg` @c1 (322 out tok) | 1.68 s | keep experimental |

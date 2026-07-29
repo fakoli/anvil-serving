@@ -316,3 +316,19 @@ def test_nav_gate_keeps_quoted_titles_containing_a_hash(tmp_path: Path):
 def test_nav_targets_is_none_without_an_mkdocs_config(tmp_path: Path):
     """Documented fail-open: a tree with no docs site has no nav to enforce."""
     assert audit._nav_targets(tmp_path) is None
+
+
+def test_nav_gate_survives_an_apostrophe_in_an_unquoted_title(tmp_path: Path):
+    """`- Operator's guide:` must not open a quoted scalar and swallow a comment."""
+    nav = "  - Operator's guide: index.md  # TODO restore WORKBENCH.md" + chr(10)
+    root = _nav_tree(tmp_path, nav)
+
+    assert [gap["page"] for gap in audit.nav_coverage_gaps(root)] == ["docs/WORKBENCH.md"]
+
+
+def test_nav_gate_keeps_a_title_with_an_escaped_quote(tmp_path: Path):
+    """An escaped quote must not end the scalar and strip a legitimate page."""
+    nav = '  - "Say \\" # ok": WORKBENCH.md' + chr(10)
+    root = _nav_tree(tmp_path, nav)
+
+    assert audit.nav_coverage_gaps(root) == []
