@@ -4,6 +4,19 @@ The benchmark guide is designed to grow without turning unlike measurements
 into a misleading leaderboard. This page defines the vocabulary, comparison
 classes, execution pipeline, and minimum publication record.
 
+## Evidence and decision labels
+
+Every published run carries one or more evidence labels:
+`external-prior`, `compatibility-only`, `functional`, `capacity`, `quality`,
+and `historical-invalid`. The decision is recorded separately as `current`,
+`rollback`, `challenger`, `no-promotion`, or `rejected`.
+
+The measured GPU is the card that executed the workload.
+`protected/co-resident` means another card or service remained available during
+the run; `topology-only` means the hardware was described but not exercised.
+Neither is measurement evidence. In particular, the July 28 ASR qualification
+measured the RTX 5090 while protecting the RTX PRO 6000.
+
 ## Measurement classes
 
 | Label | What it measures | What it does not establish |

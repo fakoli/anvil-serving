@@ -1,10 +1,19 @@
 # Benchmark results
 
 > **Looking for the maintained decision view?** Start with the
-> [RTX PRO 6000 benchmark guide](benchmarks/index.md), then use the
-> [model recipes and gotchas](benchmarks/models.md) and
-> [methodology](benchmarks/methodology.md). This page remains the chronological
-> result archive, including Fast-tier, voice, and historical rounds.
+> [hardware-first benchmark portal](benchmarks/index.md), choose
+> [RTX PRO 6000](benchmarks/hardware/rtx-pro-6000.md) or
+> [RTX 5090](benchmarks/hardware/rtx-5090.md), then use the
+> [model dossiers](benchmarks/models/index.md) and
+> [run catalog](benchmarks/runs.md). This stable URL remains the chronological
+> campaign archive, including Fast-tier, voice, and historical rounds.
+
+The maintained 2026-07-28 LLM chain is Qwen3.5 122B NVFP4 (`current`),
+Laguna S 2.1 NVFP4 (immediate managed `rollback`), GPT-OSS Puzzle 88B (secondary
+pinned `rollback` with the strict unified-diff caveat), Gemma 4 and ThinkingCap
+(historical controls), and Agents-A1 (`challenger`, `no-promotion`). Nemotron
+3.5 ASR and Qwen3-ASR were measured on the RTX 5090 while the PRO 6000 was
+protected. Older sections below preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 

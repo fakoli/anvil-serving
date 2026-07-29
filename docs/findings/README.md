@@ -4,8 +4,13 @@ Dated evidence snapshots — benchmarks, live validations, and lab notebooks —
 decisions recorded in `docs/adr/` and the PRD task history. Each file is a **point-in-time
 record**, accurate as of its date and not maintained afterwards; treat the ADRs and the main
 docs as the current source of truth. `.json` files are the machine-readable raw evidence
-backing a companion `.md` narrative. For the current user-facing conclusions and comparable
-configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
+backing a companion `.md` narrative. For current conclusions, enter through the
+[benchmark portal](../benchmarks/index.md), choose
+[RTX PRO 6000](../benchmarks/hardware/rtx-pro-6000.md) or
+[RTX 5090](../benchmarks/hardware/rtx-5090.md), then use the
+[model dossiers](../benchmarks/models/index.md) or
+[run catalog](../benchmarks/runs.md). This page remains the complete
+chronological evidence index. Newest first.
 
 ## Policy
 

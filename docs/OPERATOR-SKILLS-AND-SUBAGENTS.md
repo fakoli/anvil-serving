@@ -31,3 +31,17 @@ Multi-sample STT corpus qualification uses
 preparation, repeated/concurrent WER/CER and latency evidence, restoration
 checks, and the dated finding; lifecycle mechanics remain in the CLI and
 managed serve manifests.
+
+All LLM, vision, Omni, STT, and TTS publication phases use
+`skills/anvil-serving-benchmark-docs/SKILL.md`. The required matrix is:
+
+| Always update | Conditional update |
+|---|---|
+| Finding + findings index | Archive when recommendation/reference/comparison changes |
+| Run catalog | Methodology when workload/evidence contract changes |
+| Model dossier | Portal when current/rollback/challenger changes |
+| Measured hardware page | |
+
+Classify other GPUs as measured, protected/co-resident, topology-only, or
+unrelated. Publication preserves failures and `no-promotion`; it never grants
+serve or alias authority.
