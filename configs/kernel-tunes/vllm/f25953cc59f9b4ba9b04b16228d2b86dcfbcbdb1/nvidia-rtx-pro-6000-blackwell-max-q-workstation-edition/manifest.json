@@ -3,7 +3,8 @@
   "decision": "rejected",
   "observed_at": "2026-07-29T09:00:00Z",
   "artifact": {
-    "path": "configs/kernel-tunes/vllm/f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1/nvidia-rtx-pro-6000-blackwell-max-q-workstation-edition/configs/E=256,N=512,device_name=NVIDIA_RTX_PRO_6000_Blackwell_Max-Q_Workstation_Edition,dtype=fp8_w8a8.json",
+    "path": "configs/kernel-tunes/vllm/f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1/nvidia-rtx-pro-6000-blackwell-max-q-workstation-edition/moe-config.json",
+    "repository_filename": "moe-config.json",
     "engine_required_filename": "E=256,N=512,device_name=NVIDIA_RTX_PRO_6000_Blackwell_Max-Q_Workstation_Edition,dtype=fp8_w8a8.json",
     "bytes": 3294,
     "sha256": "232cda3b62b2367c26f48dd16f506b9f7b84da903585c6bc36be0fe793cb50e5"
