@@ -97,7 +97,7 @@ OpenClaw sync is a render-first workflow:
 
 ```bash
 anvil-serving harness sync openclaw --config configs/example.toml --dry-run
-anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --base-url http://100.87.34.66:8000/v1 --skills --confirm
+anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --base-url http://100.64.0.10:8000/v1 --skills --confirm
 ```
 
 The router configuration supplies direct aliases and their tier context limits. `--base-url`

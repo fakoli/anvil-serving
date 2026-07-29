@@ -28,7 +28,7 @@ not a promotion recommendation and does not change production routing.
 | Voice profile | `mini-audio` |
 | Command path | `/Users/sdoumbouya/anvil-serving-t007/.venv/bin/anvil-serving` |
 | Realtime endpoint | `ws://127.0.0.1:8765/v1/realtime` |
-| LLM endpoint | `http://100.87.34.66:8000/v1` |
+| LLM endpoint | `http://100.64.0.10:8000/v1` |
 | LLM request model | `fast-local` |
 | Router auth env | `ANVIL_ROUTER_TOKEN` |
 | STT endpoint | `http://127.0.0.1:30010/v1` |
@@ -69,7 +69,7 @@ Decision-only `/v1/route` probe:
 
 | Field | Value |
 |---|---|
-| URL | `http://100.87.34.66:8000/v1/route` |
+| URL | `http://100.64.0.10:8000/v1/route` |
 | HTTP status | `200` |
 | Request model | `fast-local` |
 | Provider | `fast-local` |

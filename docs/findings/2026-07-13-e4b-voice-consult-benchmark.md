@@ -17,7 +17,7 @@ the strength of this run.
 `anvil-serving voice benchmark` replays one STT -> LLM -> TTS turn end-to-end and
 records TTFA / turn latency / STT / LLM-stage / TTS / RTF. It was run against
 `examples/voice/fakoli-dark.toml`, whose LLM stage points at the deployed router
-(`http://100.87.34.66:8000/v1`, model `chat-fast`).
+(`http://100.64.0.10:8000/v1`, model `chat-fast`).
 
 Route identity was verified independently before measuring:
 

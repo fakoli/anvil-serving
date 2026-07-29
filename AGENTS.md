@@ -22,6 +22,23 @@ readiness, admission, and metadata-only decisions. The canonical product descrip
    gateway is direct-only: extend its explicit route, protocol, readiness, or
    admission seams; do not reintroduce inferred routing or fallback behavior.
 
+## Published-docs topology policy
+
+Everything under `docs/` is published to the public site, including raw evidence
+JSON/text under `docs/findings/`. Published files use **generic topology values**:
+
+- The generic tailnet placeholder address is `100.64.0.10`. Never write a real
+  tailnet/private address, MagicDNS name, or any other network identity of an
+  operator's machine into `docs/`. If evidence output contains one, redact it to
+  the placeholder before committing and note the redaction in the finding.
+- Real topology values (actual tailnet addresses, host bindings, ports in use)
+  live only in repo-internal, non-published files: this file, `CLAUDE.md`,
+  `examples/`, and gitignored `.env`/config. Do not "fix" a published doc by
+  copying a real address back in, and do not change `examples/` or code to
+  generic values — those must keep working against the real deployment.
+- Host names (`Fakoli Dark`, `Fakoli Mini`, `fakoli-dark`) are acceptable in
+  published docs; they carry no network-reachable information.
+
 ## Code conventions
 
 - **Stdlib-only** in `anvil_serving/` — no new runtime dependencies without explicit sign-off.

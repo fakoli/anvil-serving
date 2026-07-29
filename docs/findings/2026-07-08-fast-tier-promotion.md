@@ -112,7 +112,7 @@ Runtime status after promotion:
 OpenClaw gateway sync:
 
 ```powershell
-anvil-serving harness sync openclaw --config examples\fakoli-dark\anvil-router.live.toml --base-url http://100.87.34.66:8000/v1 --voice --voice-realtime-url ws://127.0.0.1:8765/v1/realtime --gateway-host fakoli-mini --restart
+anvil-serving harness sync openclaw --config examples\fakoli-dark\anvil-router.live.toml --base-url http://100.64.0.10:8000/v1 --voice --voice-realtime-url ws://127.0.0.1:8765/v1/realtime --gateway-host fakoli-mini --restart
 ```
 
 Result: synced six Anvil preset models into

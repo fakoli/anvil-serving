@@ -7,18 +7,18 @@
     },
     "profile": "dark-audio",
     "route": {
-      "endpoint_host": "100.87.34.66",
+      "endpoint_host": "100.64.0.10",
       "model": "qwen36-27b",
       "provider": "fast-local",
       "tier": "local",
       "work_class": null
     },
     "stt": {
-      "base_url": "http://100.87.34.66:30110/v1",
+      "base_url": "http://100.64.0.10:30110/v1",
       "model": "tdt_ctc-110m"
     },
     "tts": {
-      "base_url": "http://100.87.34.66:30111/v1",
+      "base_url": "http://100.64.0.10:30111/v1",
       "model": "kokoro"
     }
   },
@@ -62,8 +62,8 @@
   "topology": {
     "endpoints": {
       "llm_base_url": "http://127.0.0.1:39013/v1",
-      "stt_base_url": "http://100.87.34.66:30110/v1",
-      "tts_base_url": "http://100.87.34.66:30111/v1"
+      "stt_base_url": "http://100.64.0.10:30110/v1",
+      "tts_base_url": "http://100.64.0.10:30111/v1"
     },
     "mini_model_free_assertion": {
       "checked": true,

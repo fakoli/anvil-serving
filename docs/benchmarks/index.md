@@ -1,18 +1,20 @@
-# Benchmark portal
+# Benchmarks
 
-Use this page to enter the evidence by **measured hardware**, then follow the
-model dossier and dated finding for the exact recipe and retained artifacts.
-These are local decision records, not a universal leaderboard. A configuration
-or passing run never changes a serve or route without a separate human gate.
+Measured local-model results on real Blackwell hardware: exact model revision,
+engine, quantization, context, concurrency, and retained artifacts for every
+number. These are local decision records, not a universal leaderboard — a
+passing run never changes a serve or route without a separate human gate.
 
 **Last evidence review: 2026-07-29.**
 
-> **Looking for the numbers?** The
-> [model comparison table](comparison.md) puts every measured configuration —
-> TTFT, throughput, context, reasoning mode, and recipe link — in one place,
-> grouped by card.
+## Start with the numbers
 
-## Choose the measured hardware
+The **[model comparison table](comparison.md)** puts every measured
+configuration — TTFT, throughput, context, reasoning mode, and recipe link —
+in one place, grouped by card. If you have one of these GPUs and want to know
+what runs on it and how well, start there.
+
+## Browse by hardware
 
 | Hardware | Current role | Start here |
 |---|---|---|
@@ -23,7 +25,13 @@ Both cards are installed in Fakoli Dark. Fakoli Mini is model-free in the
 reference topology. Cross-card tests must say which card was measured and which
 was merely protected or co-resident.
 
-## Current decision chain
+## Browse by model
+
+Each **[model dossier](models/index.md)** is a stable, model-centered summary:
+current status, every measured configuration, working recipes, and links to the
+dated findings behind each conclusion.
+
+## What is serving today
 
 1. **Agents-A1 official FP8** — `current` multimodal Primary with thinking
    disabled.
@@ -36,10 +44,7 @@ was merely protected or co-resident.
 6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — measured on the RTX 5090.
    The RTX PRO 6000 was protected, not benchmarked.
 
-See the [run catalog](runs.md) for the complete indexed history and the
-[model dossiers](models/index.md) for stable, model-centered summaries.
-
-## Evidence status
+## How to read the evidence
 
 Evidence labels describe what was observed:
 
@@ -56,12 +61,16 @@ Decision labels are separate: `current`, `rollback`, `challenger`,
 `no-promotion`, and `rejected`. A quality result can still be `no-promotion`;
 a failed load can be `rejected` while remaining useful compatibility evidence.
 
-## Other views
+Full comparison rules, instrument definitions, and artifact requirements:
+[Methodology and evidence rules](methodology.md).
 
-- [Model dossiers](models/index.md)
-- [Run catalog](runs.md)
-- [RTX PRO 6000 mention audit](rtx-pro-6000-audit.md)
-- [Methodology and comparison rules](methodology.md)
-- [Chronological campaign archive](../BENCHMARKS.md)
-- [Complete findings index](../findings/README.md)
-- [GPT-OSS Puzzle operator recipe](gpt-oss-puzzle-88b-recipe.md)
+## Complete history
+
+- [Run catalog](runs.md) — every retained, decision-relevant run, indexed by
+  hardware and date.
+- [Findings index](../findings/README.md) — the dated reports with full
+  commands, raw artifacts, and failure cases.
+- [External benchmarks](../EXTERNAL-BENCHMARKS.md) — advisory priors imported
+  from official and community sources, kept separate from local results.
+- [Chronological campaign archive](../BENCHMARKS.md) — the stable-URL summary
+  of historical rounds, including Fast-tier and voice campaigns.

@@ -45,7 +45,7 @@
     "handshake_ok": true
   },
   "embeddings_through_router": {
-    "endpoint": "POST http://100.87.34.66:8000/v1/embeddings",
+    "endpoint": "POST http://100.64.0.10:8000/v1/embeddings",
     "authed": "ANVIL_ROUTER_TOKEN",
     "http": 200,
     "model": "qwen3-embedding-0.6b",

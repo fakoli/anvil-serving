@@ -181,12 +181,12 @@ response_format = "pcm"
 protocol = "openai"
 
 [voice.profiles.dark-audio.stt]
-base_url = "http://100.87.34.66:30110/v1"
+base_url = "http://100.64.0.10:30110/v1"
 model = "tdt-0.6b-v3"
 lifecycle = "external"
 
 [voice.profiles.dark-audio.tts]
-base_url = "http://100.87.34.66:30111/v1"
+base_url = "http://100.64.0.10:30111/v1"
 model = "kokoro"
 lifecycle = "external"
 response_format = "pcm"
@@ -488,7 +488,7 @@ anvil-serving serves up tts-gepard-fast
 
 That `fakoli-dark.toml` profile marks Gepard as `managed` and names the
 `tts-gepard-fast` serve. If Mini must reach this candidate directly, start the
-Dark service with `VOICE_TTS_CANDIDATE_PUBLISH=100.87.34.66`.
+Dark service with `VOICE_TTS_CANDIDATE_PUBLISH=100.64.0.10`.
 
 From the Mini gateway, use the OpenClaw profile only after the Dark service is
 up and reachable on Dark's private address:
@@ -571,7 +571,7 @@ Talk realtime block next to the normal anvil model provider config:
 ```bash
 anvil-serving harness sync openclaw \
   --config configs/example.toml \
-  --base-url http://100.87.34.66:8000/v1 \
+  --base-url http://100.64.0.10:8000/v1 \
   --voice \
   --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
   --voice-consult-model llm.voice \
@@ -734,7 +734,7 @@ Fakoli Mini or another gateway host:
 anvil-serving voice benchmark \
   --config examples/voice/openclaw-anvil-voice.toml \
   --profile dark-audio \
-  --candidate-base-url http://100.87.34.66:39000/v1 \
+  --candidate-base-url http://100.64.0.10:39000/v1 \
   --candidate-model qwen3-32b-nvfp4 \
   --candidate qwen3-32b-nvfp4-dark-direct \
   --evidence-out .anvil/evidence/voice-qwen3-32b-dark-direct.json

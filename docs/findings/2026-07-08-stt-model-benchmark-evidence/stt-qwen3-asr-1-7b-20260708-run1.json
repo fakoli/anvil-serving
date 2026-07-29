@@ -4,7 +4,7 @@
     "candidate": "stt-qwen3-asr-1-7b",
     "profile": "dark-audio",
     "stt": {
-      "base_url": "http://100.87.34.66:39101/v1",
+      "base_url": "http://100.64.0.10:39101/v1",
       "model": "qwen3-asr-1.7b"
     }
   },

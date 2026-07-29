@@ -35,7 +35,7 @@ fingerprint matches the live tier identity, startup re-stamping marks nothing st
 
 ## Live verification (decision log)
 
-A live `chat-fast` request through the tailnet front door (`http://100.87.34.66:8000/v1`,
+A live `chat-fast` request through the tailnet front door (`http://100.64.0.10:8000/v1`,
 healthz 200 post-reload) returned the expected completion from the fast tier. The router
 decision log ([chat-fast-decision-log.json](2026-07-13-e4b-fast-router-promotion-evidence/chat-fast-decision-log.json))
 records: `work_class = chat-fast`, `requested_tiers = [fast-local, heavy-local]`,
@@ -45,7 +45,7 @@ serves only `gemma4-e4b-it` (`/v1/models`), so `served = fast-local` is the E4B 
 ## Harness lockstep (OpenClaw on fakoli-mini)
 
 `anvil-serving harness sync openclaw --config examples/fakoli-dark/anvil-router.live.toml
---base-url http://100.87.34.66:8000/v1 --gateway-host fakoli-mini --confirm` merged the rendered
+--base-url http://100.64.0.10:8000/v1 --gateway-host fakoli-mini --confirm` merged the rendered
 provider into `~/.openclaw/openclaw.json` (backup taken). Rendered preset `contextWindow` values
 remain the LARGEST routed tier window per the clamp gotcha — 131072 for every preset, because
 each preset (including chat-fast, fast-first) still routes to the 131072-token heavy tier; the
