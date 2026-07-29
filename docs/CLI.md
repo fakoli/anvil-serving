@@ -136,6 +136,7 @@ required operands, choices, and defaults.
 | `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
+| `models cache inventory` | Inspect Docker model-cache storage. | `read` / `bounded` | - |
 | `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
 | `models cache remove` | Remove one exact cached repository revision. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
@@ -144,6 +145,7 @@ required operands, choices, and defaults.
 | `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark quality` | Run repeated quality suites and retain comparison evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `eval benchmark multimodal` | Run a hashed deterministic image/video corpus. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark evidence` | Inspect retained local benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark evidence list` | List retained local benchmark artifacts. | `read` / `bounded` | - |
 | `eval benchmark evidence show` | Show a normalized benchmark artifact summary. | `read` / `bounded` | - |

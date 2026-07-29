@@ -30,6 +30,7 @@ import tomllib
 import sys
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from . import config
 from . import guard
 from . import host as host_ops
@@ -178,6 +179,109 @@ if action == "remove" and report["snapshot_exists"]:
     })
 
 print(json.dumps(report, sort_keys=True))
+"""
+
+_VOLUME_INVENTORY_HELPER = r"""
+import datetime
+import json
+import os
+from pathlib import Path
+import shutil
+import sys
+
+cache = Path(sys.argv[1])
+hub = cache / "hub"
+
+def tree_bytes(path):
+    total = 0
+    if not path.exists():
+        return 0
+    for base, _dirs, files in os.walk(path, followlinks=False):
+        for name in files:
+            item = Path(base) / name
+            try:
+                if not item.is_symlink():
+                    total += item.stat().st_size
+            except OSError:
+                pass
+    return total
+
+def utc_timestamp(value):
+    if value is None:
+        return None
+    return datetime.datetime.fromtimestamp(
+        value, datetime.timezone.utc
+    ).isoformat().replace("+00:00", "Z")
+
+repositories = []
+if hub.is_dir():
+    for root in sorted(hub.glob("models--*"), key=lambda item: item.name.lower()):
+        if not root.is_dir():
+            continue
+        encoded = root.name[len("models--"):]
+        if "--" not in encoded:
+            continue
+        owner, repo = encoded.split("--", 1)
+        refs = {}
+        refs_root = root / "refs"
+        if refs_root.is_dir():
+            for ref in sorted(refs_root.rglob("*")):
+                if not ref.is_file():
+                    continue
+                try:
+                    refs[str(ref.relative_to(refs_root)).replace("\\", "/")] = (
+                        ref.read_text(encoding="utf-8").strip()
+                    )
+                except (OSError, UnicodeError):
+                    pass
+        snapshots_root = root / "snapshots"
+        snapshots = sorted(
+            item.name for item in snapshots_root.iterdir() if item.is_dir()
+        ) if snapshots_root.is_dir() else []
+        incomplete_count = 0
+        incomplete_bytes = 0
+        broken_symlink_count = 0
+        latest_mtime = None
+        for base, _dirs, files in os.walk(root, followlinks=False):
+            for name in files:
+                item = Path(base) / name
+                try:
+                    stat = item.lstat()
+                    latest_mtime = max(latest_mtime or stat.st_mtime, stat.st_mtime)
+                    if name.endswith(".incomplete") and not item.is_symlink():
+                        incomplete_count += 1
+                        incomplete_bytes += stat.st_size
+                    if item.is_symlink() and not item.exists():
+                        broken_symlink_count += 1
+                except OSError:
+                    pass
+        repositories.append({
+            "repo_id": owner + "/" + repo,
+            "logical_bytes": tree_bytes(root),
+            "snapshots": snapshots,
+            "refs": refs,
+            "incomplete_count": incomplete_count,
+            "incomplete_bytes": incomplete_bytes,
+            "broken_symlink_count": broken_symlink_count,
+            "latest_cache_modification_at": utc_timestamp(latest_mtime),
+        })
+
+usage = shutil.disk_usage(cache)
+print(json.dumps({
+    "schema_version": "model-cache-inventory/v1",
+    "cache": {
+        "path": str(cache),
+        "capacity_bytes": usage.total,
+        "used_bytes": usage.used,
+        "available_bytes": usage.free,
+        "logical_bytes": tree_bytes(cache),
+    },
+    "repositories": repositories,
+    "timestamp_caveat": (
+        "Cache modification timestamps describe local filesystem changes; "
+        "they do not prove when a model was last served or benchmarked."
+    ),
+}, sort_keys=True))
 """
 
 
@@ -383,6 +487,167 @@ def _volume_cache_report(
         return json.loads((result.stdout or "").strip().splitlines()[-1])
     except (IndexError, json.JSONDecodeError) as exc:
         raise ValueError("named model cache inspection returned invalid JSON") from exc
+
+
+def _docker_size_bytes(value):
+    """Parse Docker's human size strings using its decimal unit convention."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.upper() == "N/A":
+        return None
+    match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)\s*([kmgtp]?B)", text, re.IGNORECASE)
+    if not match:
+        return None
+    factors = {
+        "B": 1,
+        "KB": 1000,
+        "MB": 1000**2,
+        "GB": 1000**3,
+        "TB": 1000**4,
+        "PB": 1000**5,
+    }
+    return int(float(match.group(1)) * factors[match.group(2).upper()])
+
+
+def _run_json_command(argv, label, *, _run=subprocess.run):
+    try:
+        result = _run(argv, capture_output=True, text=True)
+    except OSError as exc:
+        raise ValueError("could not inspect %s: %s" % (label, exc)) from exc
+    if result.returncode != 0:
+        raise ValueError(
+            "%s inspection failed: %s"
+            % (label, (result.stderr or result.stdout or "command returned non-zero").strip())
+        )
+    try:
+        return json.loads((result.stdout or "").strip())
+    except json.JSONDecodeError as exc:
+        raise ValueError("%s inspection returned invalid JSON" % label) from exc
+
+
+def _volume_inventory_report(
+    *,
+    volume=DEFAULT_PULL_VOLUME,
+    image=DEFAULT_PULL_IMAGE,
+    _run=subprocess.run,
+):
+    interpreter_shim = (
+        'if command -v python3 >/dev/null 2>&1; then exec python3 "$@"; '
+        'elif command -v python >/dev/null 2>&1; then exec python "$@"; '
+        'else echo "model cache image has no python interpreter" >&2; exit 127; fi'
+    )
+    argv = [
+        "docker", "run", "--rm", "--network", "none",
+        "--mount",
+        "type=volume,source=%s,target=%s,readonly" % (volume, HF_CACHE_MOUNTPOINT),
+        "--entrypoint", "sh", image,
+        "-c", interpreter_shim,
+        "anvil-cache-inventory",
+        "-c", _VOLUME_INVENTORY_HELPER,
+        HF_CACHE_MOUNTPOINT,
+    ]
+    return _run_json_command(argv, "named model cache volume", _run=_run)
+
+
+def _image_reference(row):
+    repository = str(row.get("Repository") or "")
+    tag = str(row.get("Tag") or "")
+    if not repository or repository == "<none>" or not tag or tag == "<none>":
+        return None
+    return "%s:%s" % (repository, tag)
+
+
+def _latest_container_observation(image, containers):
+    reference = _image_reference(image)
+    image_id = str(image.get("ID") or "")
+    observed = []
+    for container in containers:
+        candidate = str(container.get("Image") or "")
+        if candidate not in {reference, image_id, image_id.removeprefix("sha256:")}:
+            continue
+        created = str(container.get("CreatedAt") or "").strip()
+        if created:
+            observed.append(created)
+    return max(observed) if observed else None
+
+
+def cache_inventory(
+    *,
+    volume=DEFAULT_PULL_VOLUME,
+    image=DEFAULT_PULL_IMAGE,
+    _run=subprocess.run,
+):
+    """Return a read-only inventory of one model volume and Docker storage."""
+    if any(separator in volume for separator in ("/", "\\", ":")):
+        raise ValueError("volume must be a named Docker volume")
+    if not image or image.startswith("-"):
+        raise ValueError("image must be a Docker image reference")
+    volume_report = _volume_inventory_report(volume=volume, image=image, _run=_run)
+    docker_report = _run_json_command(
+        ["docker", "system", "df", "-v", "--format", "{{json .}}"],
+        "Docker storage",
+        _run=_run,
+    )
+    containers = docker_report.get("Containers") or []
+    normalized_containers = []
+    for row in containers:
+        normalized_containers.append({
+            "container_id": row.get("Container ID") or row.get("ID"),
+            "name": row.get("Names") or row.get("Name"),
+            "image_reference": row.get("Image"),
+            "image_id": row.get("ImageID"),
+            "created_at": row.get("CreatedAt"),
+            "state": row.get("State"),
+            "status": row.get("Status"),
+        })
+    images = []
+    for row in docker_report.get("Images") or []:
+        images.append({
+            "reference": _image_reference(row),
+            "image_id": row.get("ID"),
+            "created_at": row.get("CreatedAt"),
+            "attached_container_count": int(row.get("Containers") or 0),
+            "size_bytes": _docker_size_bytes(row.get("Size")),
+            "shared_bytes": _docker_size_bytes(row.get("SharedSize")),
+            "unique_bytes": _docker_size_bytes(row.get("UniqueSize")),
+            "last_container_observed_at": _latest_container_observation(row, containers),
+        })
+    build_cache = []
+    for row in docker_report.get("BuildCache") or []:
+        build_cache.append({
+            "id": row.get("ID"),
+            "cache_type": row.get("CacheType"),
+            "in_use": str(row.get("InUse") or "").lower() == "true",
+            "size_bytes": _docker_size_bytes(row.get("Size")),
+            "created_at": row.get("CreatedAt"),
+            "last_used_at": row.get("LastUsedAt"),
+            "usage_count": int(row.get("UsageCount") or 0),
+        })
+    volumes = []
+    for row in docker_report.get("LocalVolumes") or []:
+        volumes.append({
+            "name": row.get("Name") or row.get("VolumeName"),
+            "links": int(row.get("Links") or 0),
+            "size_bytes": _docker_size_bytes(row.get("Size")),
+        })
+    return {
+        **volume_report,
+        "volume": volume,
+        "inspector_image": image,
+        "docker": {
+            "images": images,
+            "containers": normalized_containers,
+            "volumes": volumes,
+            "build_cache": build_cache,
+            "usage_caveat": (
+                "Image last_container_observed_at is derived from retained container "
+                "creation metadata, not a complete execution history. Docker's "
+                "reclaimable-volume label does not establish that a volume is disposable."
+            ),
+        },
+        "observed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
 
 
 def preflight_pull(
@@ -884,6 +1149,56 @@ def cache_remove_main(argv):
     return 0
 
 
+def cache_inventory_main(argv):
+    """Render the read-only named-volume and Docker storage inventory."""
+    ap = argparse.ArgumentParser(
+        prog="anvil-serving models cache inventory",
+        description=(
+            "Read one named Hugging Face cache volume and Docker storage metadata. "
+            "The command never removes cache bytes."
+        ),
+    )
+    ap.add_argument("--volume", default=DEFAULT_PULL_VOLUME)
+    ap.add_argument("--image", default=DEFAULT_PULL_IMAGE)
+    ap.add_argument(
+        "--output",
+        help="atomically write the JSON inventory to this file as well as stdout",
+    )
+    args = ap.parse_args(argv)
+    try:
+        report = cache_inventory(volume=args.volume, image=args.image)
+    except ValueError as exc:
+        print("model cache inventory failed: %s" % exc, file=sys.stderr)
+        return 1
+    payload = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    if args.output:
+        target = os.path.abspath(args.output)
+        parent = os.path.dirname(target)
+        if not os.path.isdir(parent):
+            print("model cache inventory output directory does not exist", file=sys.stderr)
+            return 2
+        fd, staged = tempfile.mkstemp(
+            prefix=".%s." % os.path.basename(target),
+            suffix=".tmp",
+            dir=parent,
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(staged, target)
+        except OSError as exc:
+            try:
+                os.unlink(staged)
+            except OSError:
+                pass
+            print("model cache inventory output failed: %s" % exc, file=sys.stderr)
+            return 1
+    print(payload, end="")
+    return 0
+
+
 # The serve-recipe registry ships at <repo>/configs/serve-recipes.toml.
 DEFAULT_REGISTRY = os.path.join("configs", "serve-recipes.toml")
 
@@ -1173,6 +1488,10 @@ def _build_recipe_parser():
                         help="new Docker container name for this loaded recipe")
     p_load.add_argument("--registry", default=None,
                         help="registry TOML (default precedence: config home, configs/, packaged)")
+    p_load.add_argument(
+        "--gpu-device",
+        help="override the recipe GPU with one discovered GPU UUID or index",
+    )
     p_load.add_argument("--dry-run", action="store_true",
                         help="print the exact docker command without starting it")
     p_load.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
@@ -1284,7 +1603,9 @@ def _recipe_main(argv):
             recipe = serve_recipes.find_recipe(registry, a.model)
             if recipe is None:
                 raise serve_recipes.RecipeError("no serve recipe for %r in %s" % (a.model, registry_path))
-            command = serve_recipes.docker_run_argv(recipe, container=a.container)
+            command = serve_recipes.docker_run_argv(
+                recipe, container=a.container, gpu_device=a.gpu_device
+            )
         except serve_recipes.RecipeError as exc:
             print(str(exc), file=sys.stderr)
             return 1
@@ -1295,6 +1616,7 @@ def _recipe_main(argv):
             print("registry digest: %s" % serve_recipes.registry_digest(registry_path))
             print("model: %s" % recipe["model"])
             print("container: %s" % a.container)
+            print("gpu device override: %s" % (a.gpu_device or "none"))
             print("docker command:")
             print(printable)
             print(
@@ -1312,7 +1634,12 @@ def _recipe_main(argv):
         before = host_ops.capture_cache_before(cache_policy)
         print("loading recipe %r as container %r" % (recipe["model"], a.container))
         print("$ " + printable)
-        _command, rc = serve_recipes.load_recipe(recipe, a.container)
+        if a.gpu_device:
+            _command, rc = serve_recipes.load_recipe(
+                recipe, a.container, gpu_device=a.gpu_device
+            )
+        else:
+            _command, rc = serve_recipes.load_recipe(recipe, a.container)
         if rc:
             print("recipe load failed with docker exit code %s" % rc, file=sys.stderr)
             return rc
@@ -1652,6 +1979,8 @@ def main(argv):
     if argv and argv[0] == "recipe":
         return _recipe_main(argv[1:])
     if argv and argv[0] == "cache":
+        if len(argv) > 1 and argv[1] == "inventory":
+            return cache_inventory_main(argv[2:])
         if len(argv) > 1 and argv[1] == "prune":
             from . import cache_prune
             return cache_prune.main(
@@ -1662,6 +1991,7 @@ def main(argv):
             return cache_remove_main(argv[2:])
         cache_ap = argparse.ArgumentParser(prog="anvil-serving models cache")
         cache_sub = cache_ap.add_subparsers(dest="cache_action", required=True)
+        cache_sub.add_parser("inventory", help="inspect Docker model-cache storage")
         cache_sub.add_parser("prune", help="plan and gate Hugging Face cache cleanup")
         cache_sub.add_parser("remove", help="remove one exact repository revision")
         cache_ap.parse_args(argv[1:])

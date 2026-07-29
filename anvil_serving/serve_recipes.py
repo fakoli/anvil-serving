@@ -468,21 +468,37 @@ def delete_recipe(registry: dict, selector: str) -> tuple[dict, dict]:
 # --------------------------------------------------------------------------- #
 # READ (reproduce) — rebuild the exact `docker run` from a recorded recipe.
 # --------------------------------------------------------------------------- #
-def docker_run_argv(recipe: dict, *, container: str | None = None) -> list[str]:
+def docker_run_argv(
+    recipe: dict,
+    *,
+    container: str | None = None,
+    gpu_device: str | None = None,
+) -> list[str]:
     """Build the argv for a loopback-bound recipe load without shell interpolation."""
     validate_recipe(recipe, require_loadable=True)
     if container is not None and not _CONTAINER_NAME_RE.fullmatch(container):
         raise RecipeError("container name must use only letters, digits, '.', '_', or '-'")
+    if gpu_device is not None and (
+        not isinstance(gpu_device, str)
+        or not gpu_device
+        or gpu_device.startswith("-")
+        or "\x00" in gpu_device
+        or any(character.isspace() for character in gpu_device)
+    ):
+        raise RecipeError("gpu_device must be one UUID or index without whitespace")
     serve = recipe["serve"]
     hw = recipe.get("hardware") or {}
     argv = ["docker", "run", "-d"]
     if container:
         argv += ["--name", container]
-    gpu_uuid = hw.get("gpu_uuid")
+    gpu_uuid = gpu_device or hw.get("gpu_uuid")
     if gpu_uuid is not None and (not isinstance(gpu_uuid, str) or "\x00" in gpu_uuid):
         raise RecipeError("recipe.hardware.gpu_uuid must be a string without NUL bytes")
     argv += ["--gpus", "device=%s" % gpu_uuid if gpu_uuid else "all"]
-    serve_env = list(serve.get("env", []))
+    serve_env = [
+        env for env in serve.get("env", [])
+        if gpu_device is None or not env.startswith("CUDA_VISIBLE_DEVICES=")
+    ]
     visible_devices = [
         env.split("=", 1)[1]
         for env in serve_env
@@ -544,9 +560,15 @@ def reconstruct_docker_run(recipe: dict) -> str:
     return shlex.join(docker_run_argv(recipe))
 
 
-def load_recipe(recipe: dict, container: str, *, _run=subprocess.run) -> tuple[list[str], int]:
+def load_recipe(
+    recipe: dict,
+    container: str,
+    *,
+    gpu_device: str | None = None,
+    _run=subprocess.run,
+) -> tuple[list[str], int]:
     """Start a named recipe container once and return its exact argv and exit code."""
-    argv = docker_run_argv(recipe, container=container)
+    argv = docker_run_argv(recipe, container=container, gpu_device=gpu_device)
     try:
         completed = _run(argv, check=False)
     except OSError:

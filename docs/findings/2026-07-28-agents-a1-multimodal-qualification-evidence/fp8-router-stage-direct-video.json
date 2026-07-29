@@ -1,0 +1,79 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:30010/v1",
+  "model": "agents-a1-fp8-mm",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 1024
+  },
+  "multimodal_input": null,
+  "video_input": {
+    "bytes": 11627,
+    "mime": "video/mp4",
+    "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+  },
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [
+    "red",
+    "green"
+  ],
+  "checks": [
+    "video"
+  ],
+  "results": [
+    {
+      "name": "bounded video understanding",
+      "passed": true,
+      "detail": "2.2s all expected text present finish='stop' visible=789 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "This video consists of a sequence of static title cards with text, set against a solid dark blue background. The events unfold as follows:\n\n- **00:00 - 00:03**: The video begins with the text \"FIRST RED\" displayed in a bold, red, sans-serif font. The text is centered on the screen and remains static for the duration.\n- **00:03 - 00:04**: A transition occurs where the text \"FIRST RED\" is replaced by the text \"THEN GREEN\". During this brief moment, both phrases are visible, with \"THEN GREEN\" in a bright green font appearing over the fading red text.\n- **00:04 - 00:08**: The screen settles on the final title card, which displays the text \"THEN GREEN\" in the same bold, green, sans-serif font, centered on the dark blue background. This image remains static until the end of the video.",
+      "finish_reason": "stop",
+      "content_chars": 789,
+      "content_excerpt": "This video consists of a sequence of static title cards with text, set against a solid dark blue background. The events unfold as follows:\n\n- **00:00 - 00:03**: The video begins with the text \"FIRST R",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 375,
+        "total_tokens": 578,
+        "completion_tokens": 203,
+        "prompt_tokens_details": null
+      },
+      "test": "video",
+      "seconds": 2.169,
+      "passed": true,
+      "validation_detail": "all expected text present",
+      "video": {
+        "bytes": 11627,
+        "mime": "video/mp4",
+        "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+      },
+      "expected": [
+        "red",
+        "green"
+      ]
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "forbidden",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

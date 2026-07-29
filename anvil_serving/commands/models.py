@@ -105,6 +105,13 @@ def commands() -> CommandNode:
                 "Manage model cache storage.",
                 children=(
                     _resource_node(
+                        "inventory",
+                        "Inspect Docker model-cache storage.",
+                        "anvil_serving.models",
+                        role="model-catalog",
+                        docs_anchor="docs/cli/models.md#cache-inventory",
+                    ),
+                    _resource_node(
                         "prune",
                         "Plan or prune the model cache.",
                         "anvil_serving.models",

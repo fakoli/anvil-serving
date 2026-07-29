@@ -18,7 +18,7 @@ from anvil_serving.router.decision_log import (
     DecisionRecord,
 )
 from anvil_serving.router.front_door import make_server
-from anvil_serving.router.internal import NoAvailableTierError
+from anvil_serving.router.internal import BackendClientError, NoAvailableTierError
 from anvil_serving.router.serve import RoutingBackend
 
 
@@ -359,6 +359,61 @@ def test_backend_failures_do_not_leak_internal_names_or_exception_text():
     assert status == 500
     assert b"supersecret-internal-error" not in raw
     assert headers["Server"].strip() == "anvil"
+
+
+def test_media_limit_is_a_clean_413_caller_error():
+    class MediaLimit:
+        def generate(self, request):
+            raise NoAvailableTierError(
+                "vision.test", ("private-tier",), kind="media_limit"
+            )
+
+    with running_backend(MediaLimit()) as (host, port):
+        status, _, raw = _request(
+            host,
+            port,
+            "POST",
+            "/v1/chat/completions",
+            {
+                "model": "llm.primary",
+                "messages": [{"role": "user", "content": "media"}],
+            },
+        )
+
+    payload = json.loads(raw)
+    assert status == 413
+    assert payload["error"]["type"] == "payload_too_large"
+    assert payload["error"]["message"] == "request exceeds the configured media limits"
+    assert b"private-tier" not in raw
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_backend_client_error_is_a_sanitized_4xx_before_response(stream):
+    class ClientFailure:
+        def generate(self, request):
+            raise BackendClientError(
+                400,
+                "invalid_request_error",
+                "model upstream rejected the request",
+            )
+
+    with running_backend(ClientFailure()) as (host, port):
+        status, _, raw = _request(
+            host,
+            port,
+            "POST",
+            "/v1/chat/completions",
+            {
+                "model": "llm.primary",
+                "messages": [{"role": "user", "content": "bad media"}],
+                "stream": stream,
+            },
+        )
+
+    payload = json.loads(raw)
+    assert status == 400
+    assert payload["error"]["type"] == "invalid_request_error"
+    assert payload["error"]["message"] == "model upstream rejected the request"
 
 
 def test_decision_summary_endpoint_keeps_direct_metadata_only():

@@ -43,7 +43,10 @@ def _tier() -> Tier:
                 "kv_cache_capacity_tokens": 571_950,
                 "scheduler_max_num_seqs": 1,
                 "image_limit": 1,
-                "video_limit": 0,
+                "video_limit": 1,
+                "media_admission_enabled": True,
+                "image_tokens_estimate": 2048,
+                "video_tokens_estimate": 8192,
             },
         },
     )
@@ -123,7 +126,13 @@ def test_capacity_snapshot_joins_config_readiness_and_live_engine_metrics():
         "scheduler_max_num_seqs": 1,
         "model_memory_gib": 73.22,
     }
-    assert row["multimodal"] == {"image_limit": 1, "video_limit": 0}
+    assert row["multimodal"] == {
+        "admission_enabled": True,
+        "image_limit": 1,
+        "video_limit": 1,
+        "image_tokens_estimate": 2048,
+        "video_tokens_estimate": 8192,
+    }
     assert row["live"]["kv_cache_used_tokens_estimate"] == 142_988
     assert row["live"]["kv_cache_remaining_tokens_estimate"] == 428_962
 
@@ -157,7 +166,7 @@ def test_one_image_scenario_is_allowed_when_image_tokens_are_supplied():
     assert scenario["allowed"] is True
 
 
-def test_image_count_without_image_tokens_does_not_fake_context_cost():
+def test_image_count_uses_declared_visual_token_estimate():
     result = build_model_capacity(
         _config(),
         AlwaysAvailable(),
@@ -166,9 +175,10 @@ def test_image_count_without_image_tokens_does_not_fake_context_cost():
     )
     scenario = result["data"][0]["scenario"]
     assert scenario["within_image_limit"] is True
-    assert scenario["within_context_limit"] is None
-    assert scenario["allowed"] is None
-    assert "image_tokens is required" in scenario["note"]
+    assert scenario["image_tokens"] == 2048
+    assert scenario["image_tokens_source"] == "configured_estimate"
+    assert scenario["within_context_limit"] is True
+    assert scenario["allowed"] is True
 
 
 def test_two_image_scenario_is_rejected_by_the_declared_limit():
@@ -180,8 +190,76 @@ def test_two_image_scenario_is_rejected_by_the_declared_limit():
     )
     scenario = result["data"][0]["scenario"]
     assert scenario["within_image_limit"] is False
-    assert scenario["within_context_limit"] is None
+    assert scenario["within_context_limit"] is True
     assert scenario["allowed"] is False
+
+
+def test_video_scenario_accounts_for_count_and_visual_tokens():
+    result = build_model_capacity(
+        _config(),
+        AlwaysAvailable(),
+        _live,
+        {
+            "videos": ["1"],
+            "input_tokens": ["1000"],
+            "video_tokens": ["8192"],
+            "output_tokens": ["16384"],
+        },
+    )
+    scenario = result["data"][0]["scenario"]
+    assert scenario["videos"] == 1
+    assert scenario["context_tokens"] == 25_576
+    assert scenario["within_video_limit"] is True
+    assert scenario["allowed"] is True
+
+
+def test_video_count_uses_declared_visual_token_estimate():
+    result = build_model_capacity(
+        _config(),
+        AlwaysAvailable(),
+        _live,
+        {"videos": ["1"]},
+    )
+    scenario = result["data"][0]["scenario"]
+    assert scenario["within_video_limit"] is True
+    assert scenario["video_tokens"] == 8192
+    assert scenario["video_tokens_source"] == "configured_estimate"
+    assert scenario["within_context_limit"] is True
+    assert scenario["allowed"] is True
+
+
+def test_missing_visual_estimate_remains_indeterminate_not_free():
+    config = _config()
+    capacity = config.tiers[0].params["capacity"]
+    capacity.pop("image_tokens_estimate")
+    capacity.pop("video_tokens_estimate")
+    scenario = build_model_capacity(
+        config,
+        AlwaysAvailable(),
+        _live,
+        {"images": ["1"], "videos": ["1"]},
+    )["data"][0]["scenario"]
+    assert scenario["within_context_limit"] is None
+    assert scenario["allowed"] is None
+    assert "configured image_tokens_estimate is required" in scenario["note"]
+    assert "configured video_tokens_estimate is required" in scenario["note"]
+
+
+def test_video_limit_and_context_overflow_are_rejected():
+    over_count = build_model_capacity(
+        _config(), AlwaysAvailable(), _live, {"videos": ["2"]}
+    )["data"][0]["scenario"]
+    over_context = build_model_capacity(
+        _config(),
+        AlwaysAvailable(),
+        _live,
+        {"videos": ["1"], "video_tokens": ["262144"], "output_tokens": ["1"]},
+    )["data"][0]["scenario"]
+
+    assert over_count["within_video_limit"] is False
+    assert over_count["allowed"] is False
+    assert over_context["within_context_limit"] is False
+    assert over_context["allowed"] is False
 
 
 def test_metrics_provider_fault_degrades_only_live_values():

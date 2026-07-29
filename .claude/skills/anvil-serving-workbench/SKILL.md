@@ -52,7 +52,7 @@ narration.
 - Voice: `voice_manage` and `voice_proxy_manage`.
 - Host, models, and telemetry: `doctor_summary`, `host_summary`,
   `gpu_inventory`, `observability_collect`, `host_manage`,
-  `models_inventory`, and `cache_prune_plan`.
+  `models_inventory`, `model_cache_inventory`, and `cache_prune_plan`.
 - Harness: `openclaw_sync`, `openclaw_gateway_status`, and
   `openclaw_gateway_restart`.
 - Evaluation and evidence: `preflight_probe`, `benchmark_probe`,

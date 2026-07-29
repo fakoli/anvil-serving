@@ -56,6 +56,7 @@ swap.
 | `models recipes update` | Replace one selected recipe. |
 | `models recipes delete` | Delete one selected recipe. |
 | `models recipes load` | Start a named local container from one recipe. |
+| `models cache inventory` | Record a read-only model-cache and Docker storage inventory. |
 | `models cache remove` | Plan or remove one exact cached repository revision. |
 | `models cache prune` | Plan or prune model-cache storage. |
 
@@ -231,6 +232,29 @@ the matching snapshot and bytes that become unreferenced; apply removes only
 that snapshot, collects only blobs no remaining snapshot references, and
 verifies the target snapshot is absent. It does not approximate repository
 identity with a substring or wildcard.
+
+## Cache inventory
+
+Capture a read-only, machine-readable inventory before and after storage work:
+
+```bash
+anvil-serving models cache inventory
+anvil-serving models cache inventory --output ./cache-inventory.json
+```
+
+The `model-cache-inventory/v1` result includes filesystem capacity, used, and
+available bytes; cached repositories, revisions, snapshots, logical and
+incomplete bytes, and modification timestamps; plus Docker image, container,
+volume, and build-cache accounting. `--volume` and `--image` select the named
+Hugging Face cache volume and inspection image. The volume is mounted read-only,
+and `--output` uses an atomic replacement after requiring an existing parent
+directory.
+
+Modification, creation, and Docker last-used timestamps are observations for
+inventory and cleanup planning. They are not proof that a model was actually
+served or benchmarked. Use retained benchmark evidence and protected runtime
+state for qualification and deletion decisions. Agents can request the same
+read-only report through the `model_cache_inventory` MCP tool.
 
 ## Cache prune
 

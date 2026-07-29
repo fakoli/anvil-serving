@@ -47,23 +47,40 @@ queueing and first-token components. When that evidence is absent, publish the
 long-context TTFT as a labeled prefill-latency proxy and leave prefill tok/s
 blank.
 
+**Effective client-observed prefill rate.** Prompt tokens divided by TTFT. This
+includes queueing, scheduling, prompt processing, and first-token work, so it
+is useful for matched end-to-end A/Bs but is not standalone or kernel-only
+prefill throughput. `capacity-v3` labels this field
+`effective_prefill_tok_s`.
+
+**Generation duration.** Client-observed E2E minus TTFT. It begins at the first
+non-empty streamed content delta and ends when the response stream completes.
+
 **Controlled decode rate.** For a long-generation workload, approximately:
 
 ```text
-output tokens / (end-to-end seconds - time-to-first-token seconds)
+(output tokens - 1) / generation seconds
 ```
 
 The harness should retain its direct timing fields and token counts. Avoid this
 derived rate for very short outputs, where timer and scheduling overhead dominate.
 
+**Mean inter-token latency.** Generation duration divided by
+`output tokens - 1`. This is a per-request mean interval, not a raw timestamp
+trace for every token.
+
 **Aggregate output throughput.** Total output tokens across all requests divided
 by wall time. This is useful for batch capacity at a stated concurrency, but it
 is not interchangeable with per-request controlled decode.
 The local harness uses `usage.completion_tokens` when the endpoint returns it.
-Under capacity measurement protocol `capacity-v2`, usage is required for exact
-token throughput. When usage is absent, exact throughput is null and streamed
-content chunks are retained only as a diagnostic rate. Comparison tooling treats
-different capacity measurement protocols as a workload mismatch.
+Under capacity measurement protocol `capacity-v3`, usage is required for exact
+token throughput, effective prefill, decode, and mean inter-token metrics.
+When usage is absent, exact token-derived values are null and streamed content
+chunks are retained only as a diagnostic rate. Each successful request retains
+its planned context, request index, prompt/output token counts, TTFT, generation
+duration, E2E, effective prefill, decode rate, and mean inter-token latency.
+Comparison tooling treats different capacity measurement protocols as a
+workload mismatch.
 
 **Percentiles.** Capacity summaries use the nearest-rank method over successful
 samples. Sort the values, compute `ceil(percentile * sample_count / 100)`, and
@@ -135,7 +152,7 @@ Every new benchmark finding should preserve:
 | Memory recipe | weight quantization, KV dtype, GPU utilization, served context, KV capacity, admission cap |
 | Generation recipe | sampling settings, thinking control, reasoning headroom, visible-answer allowance, MTP/speculative settings |
 | Workload | suite revision, prompt length, request count, concurrency, cache policy, expected answer protocol |
-| Results | completion count, TTFT, E2E, token counts, throughput class, quality attempts, truncations and failures |
+| Results | completion count, TTFT, effective prefill, generation duration, decode rate, mean inter-token latency, E2E, token counts, throughput class, quality attempts, truncations and failures |
 | Provenance | observed date, source dates, age class, raw artifact links, checksums or run lineage when available |
 | Decision | candidate role, caveats, gate status, and whether any human-approved promotion occurred |
 
