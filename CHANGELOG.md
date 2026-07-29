@@ -6,6 +6,60 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **Documentation portal is organized by capability.** The mkdocs navigation now
+  leads with what anvil-serving does today — serve models, qualify and benchmark,
+  route through the gateway, voice and audio, operate the host, integrate a
+  harness — with dated benchmarks and findings kept as a separate evidence layer.
+  This adopts 15 pages that existed but were unreachable from the nav, including
+  `docs/WORKBENCH.md` (the documented home of six `workbench` commands),
+  `docs/TAILNET-ENDPOINT-RUNBOOK.md` (the only prose for the `edge` commands),
+  and ADRs 0016–0026, 0028, and 0029. `docs/index.md` was rewritten as a
+  capability map.
+- **Evergreen docs no longer read as single-model documents.** `docs/VOICE.md`
+  describes the `stt`/`tts` audio purposes and routed serves rather than naming
+  specific STT/TTS models as architecture nouns, and `docs/TROUBLESHOOTING.md`
+  states reasoning-control guidance as behavior classes (template-controlled
+  versus budget-controlled) instead of a two-vendor taxonomy. Current model
+  occupants remain documented in the benchmark portal and model dossiers.
+- `docs/SERVES-AND-EVAL.md` merged into `docs/OPERATOR-PLAYBOOKS.md`; both
+  described the same serve → preflight → publish walkthrough.
+- Dated campaign snapshots in `docs/BENCHMARKS.md` are labelled as such and defer
+  current routing state to the benchmark portal.
+
+### Added
+
+- **A master model comparison table** at `docs/benchmarks/comparison.md`: every
+  measured configuration in one place, grouped by card, with quantization and KV
+  dtype, served context and admission, reasoning mode, TTFT (carrying its depth
+  and concurrency), output rate, and a link to the working recipe. Rate cells
+  name their instrument — controlled long-generation decode, short-output
+  aggregate capacity, or continuous-batching aggregate — because the repository's
+  own methodology forbids comparing them to each other. Unmeasured metrics are
+  marked rather than estimated, and configurations without a pinned revision are
+  flagged as unable to ground a new equivalence claim.
+- **Operator documentation for three capabilities that had none.**
+  `docs/PURPOSE-MODELS.md` documents embeddings and reranking — the
+  `[[router.purpose_models]]` field contract, why the surface routes by exact
+  model name instead of by alias, and its qualification boundary.
+  `docs/MODEL-PROMOTION.md` documents the guarded `serves promote` transaction,
+  the distinct `router quiesce` / `drain` / `readmit` states, and what makes a
+  rollback target real. `docs/MODEL-LIFECYCLE.md` documents the `models`
+  family: catalog sync, artifact pull, the recipe registry, and cache
+  reclamation.
+- `scripts/audit_cli_references.py` now fails when a page referenced by a
+  `docs_anchor` in `docs/CLI-COMMAND-MANIFEST.json` is not reachable from the
+  mkdocs navigation. `mkdocs build --strict` reports an out-of-nav page only at
+  INFO level, so documented command pages could previously fall out of the site
+  while CI stayed green.
+
+### Removed
+
+- `docs/SYSTEM-OBSERVABILITY-DASHBOARD-MILESTONES.md`, a PRD execution plan
+  pinned to the v0.11/v0.12 source line. The `dashboard` and `collectors`
+  commands it described are documented in the CLI reference.
+
 ## [0.16.1] - 2026-07-28
 
 ### Fixed

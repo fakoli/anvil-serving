@@ -26,6 +26,8 @@ MAX_TEXT_FILE_BYTES = 4 * 1024 * 1024
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_REL = Path("docs/CLI-COMMAND-MANIFEST.json")
 CLI_DOC_REL = Path("docs/CLI.md")
+MKDOCS_REL = Path("mkdocs.yml")
+DOCS_DIR_REL = Path("docs")
 INVENTORY_REL = Path("docs/CLI-REFERENCE-AUDIT.json")
 FIXTURE_REL = Path("tests/fixtures/cli_reference_audit")
 
@@ -104,6 +106,9 @@ _SKILL_BARE_RE = {
     for name in {"serve", "multiplexer", "profile", "preflight", "score"}
 }
 _UNRELEASED_HEADING_RE = re.compile(r"^\[?unreleased\]?(?:\s|$)", re.IGNORECASE)
+
+_NAV_KEY_RE = re.compile(r"^nav:\s*$")
+_NAV_MD_RE = re.compile(r"([A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*\.md)")
 
 
 @dataclass(frozen=True)
@@ -592,6 +597,62 @@ def generated_docs_match(root: Path) -> bool:
     return _block(text, INDEX_START, INDEX_END) == render_manifest_index(manifest)
 
 
+def _nav_targets(root: Path) -> set[str] | None:
+    """Return mkdocs nav page targets as repo-relative posix paths.
+
+    The nav block is scanned with a bounded regex rather than a YAML loader so this
+    audit keeps running in CI jobs that do not install the docs toolchain. Returns
+    None when the tree has no mkdocs config, which means there is no nav to enforce.
+    """
+    path = root / MKDOCS_REL
+    if not path.is_file():
+        return None
+    body: list[str] = []
+    in_nav = False
+    for line in _read_text(path).splitlines():
+        if not in_nav:
+            in_nav = _NAV_KEY_RE.match(line) is not None
+            continue
+        if line.strip() and not line[0].isspace():
+            break
+        body.append(line.split("#", 1)[0] if line.lstrip().startswith("#") else line)
+    return {
+        (DOCS_DIR_REL / match.group(1)).as_posix()
+        for line in body
+        for match in _NAV_MD_RE.finditer(line)
+    }
+
+
+def _manifest_doc_pages(manifest: dict[str, object]) -> dict[str, list[str]]:
+    """Map each docs_anchor page to the command paths that point at it."""
+    pages: dict[str, set[str]] = {}
+    for command in manifest["commands"]:
+        anchor = command.get("docs_anchor")
+        if not isinstance(anchor, str):
+            continue
+        page = anchor.split("#", 1)[0].strip()
+        if page:
+            pages.setdefault(page, set()).add(str(command.get("path", "")))
+    return {page: sorted(commands) for page, commands in pages.items()}
+
+
+def nav_coverage_gaps(root: Path) -> list[dict[str, object]]:
+    """Documented command pages that the mkdocs nav never links.
+
+    mkdocs reports an out-of-nav page at INFO level, so a page can silently fall out
+    of the site while --strict still passes. Any page the command manifest points
+    readers at must stay reachable from the nav.
+    """
+    nav = _nav_targets(root)
+    if nav is None:
+        return []
+    return [
+        {"page": page, "commands": commands}
+        for page, commands in sorted(_manifest_doc_pages(_manifest(root)).items())
+        if page not in nav
+    ]
+
+
 def update_generated_docs(root: Path) -> None:
     manifest = _manifest(root)
     path = root / CLI_DOC_REL
@@ -663,6 +724,7 @@ def main(argv: list[str] | None = None) -> int:
             record = inventory_record(result)
         inventory_ok = inventory_matches(root, args.scope, record)
         generated_ok = True if args.scope == "fixtures" else generated_docs_match(root)
+        nav_gaps = [] if args.scope == "fixtures" else nav_coverage_gaps(root)
     except (
         FileNotFoundError,
         OSError,
@@ -678,13 +740,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"CLI reference audit failed: {exc}", file=sys.stderr)
         return 1
 
-    ok = not result.violations and inventory_ok and generated_ok
+    ok = not result.violations and inventory_ok and generated_ok and not nav_gaps
     payload = {
         "ok": ok,
         "scope": args.scope,
         "record": record,
         "inventory_match": inventory_ok,
         "generated_docs_match": generated_ok,
+        "nav_coverage_gaps": nav_gaps,
         "files": list(result.files),
         "violations": [asdict(hit) for hit in result.violations],
     }
@@ -694,10 +757,17 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"scope={args.scope} files={len(result.files)} "
             f"violations={len(result.violations)} inventory={'ok' if inventory_ok else 'stale'} "
-            f"generated={'ok' if generated_ok else 'stale'}"
+            f"generated={'ok' if generated_ok else 'stale'} "
+            f"nav={'ok' if not nav_gaps else f'{len(nav_gaps)} unreachable'}"
         )
         for hit in result.violations:
             print(f"{hit.path}:{hit.line}: stale {hit.name}: {hit.text}", file=sys.stderr)
+        for gap in nav_gaps:
+            commands = ", ".join(gap["commands"])
+            print(
+                f"{gap['page']}: not reachable from the mkdocs nav but referenced by: {commands}",
+                file=sys.stderr,
+            )
     return 0 if ok else 1
 
 

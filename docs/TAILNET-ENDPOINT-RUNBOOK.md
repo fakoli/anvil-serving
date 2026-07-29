@@ -268,7 +268,7 @@ tailscale serve reset   # remove all serve config (HTTPS + path mappings) for th
 
 The router and model-serve lifecycle is managed **only** through the anvil-serving
 `router` / `serves` / `voice` verbs (with `--confirm`), never raw `docker` — see
-[Serves & eval](SERVES-AND-EVAL.md).
+[Operator playbooks](OPERATOR-PLAYBOOKS.md).
 
 ---
 

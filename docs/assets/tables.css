@@ -1,0 +1,34 @@
+/* Wide benchmark comparison tables.
+ *
+ * The readthedocs theme wraps table cells aggressively, which turns a
+ * many-column measurement table into an unreadable stack. Let these tables
+ * scroll horizontally instead and keep each row on one line where possible.
+ */
+
+.rst-content table.docutils,
+.rst-content table {
+  display: table;
+}
+
+/* The comparison page marks its wide tables by wrapping them in a section
+ * that follows an h2/h3; scope the scroll to the content area so ordinary
+ * two-column tables elsewhere are unaffected. */
+.rst-content .section > table,
+.rst-content table.benchmark-wide {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.rst-content .section > table td,
+.rst-content .section > table th {
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+/* Keep the first column (model/config) readable and anchored visually. */
+.rst-content .section > table td:first-child {
+  white-space: normal;
+  min-width: 14rem;
+}

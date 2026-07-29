@@ -14,6 +14,11 @@ theme:
   # with pymdownx.highlight (which handles syntax highlighting at build time).
   highlightjs: false
 
+extra_css:
+  # Wide measurement tables on the comparison page need horizontal scroll;
+  # the readthedocs theme otherwise wraps every cell into an unreadable stack.
+  - assets/tables.css
+
 plugins:
   - search
   - mermaid2:
@@ -24,31 +29,41 @@ plugins:
 nav:
   - Home: index.md
   - Get started: GETTING-STARTED.md
-  - Architecture: ARCHITECTURE.md
-  - Reference:
-      - CLI:
-          - Overview: CLI.md
-          - Router: cli/router.md
-          - Model serves: cli/serves.md
-          - Models & recipes: cli/models.md
-          - Evaluation & benchmarks: cli/eval.md
-          - Host & setup: cli/host.md
-          - Control plane & integrations: cli/control-plane.md
-          - Voice: cli/voice.md
-      - Configuration: CONFIGURATION.md
-      - Terminology: TERMINOLOGY.md
-  - Product design:
+  - Serve models:
+      - Catalog, artifacts & recipes: MODEL-LIFECYCLE.md
+      - Promote and roll back: MODEL-PROMOTION.md
+      - Serve lifecycle commands: cli/serves.md
+      - Models & recipes commands: cli/models.md
+      - Model settings example: MODEL-SETTINGS-EXAMPLE.md
+  - Qualify & benchmark:
+      - Evaluation & benchmark commands: cli/eval.md
+      - Methodology & evidence: benchmarks/methodology.md
+  - Route through the gateway:
+      - Architecture: ARCHITECTURE.md
       - Thin capability gateway: THIN-CAPABILITY-GATEWAY.md
-  - Operations:
+      - Configuration reference: CONFIGURATION.md
+      - Embeddings & reranking: PURPOSE-MODELS.md
+      - Router commands: cli/router.md
+      - Terminology: TERMINOLOGY.md
+  - Voice & audio:
+      - Voice pipeline: VOICE.md
+      - Voice commands: cli/voice.md
+  - Operate the host:
       - Operator playbooks: OPERATOR-PLAYBOOKS.md
       - Troubleshooting: TROUBLESHOOTING.md
-      - Serves & eval: SERVES-AND-EVAL.md
-      - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
-      - Model settings: MODEL-SETTINGS-EXAMPLE.md
+      - Host & setup commands: cli/host.md
+      - Control plane & integrations commands: cli/control-plane.md
       - Device topologies: DEVICE-TOPOLOGIES.md
+      - Tailnet endpoint runbook: TAILNET-ENDPOINT-RUNBOOK.md
+      - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
+  - Integrate a harness:
+      - Agent workbench: WORKBENCH.md
+      - OpenClaw integration spec: OPENCLAW-INTEGRATION-SPEC.md
       - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
-  - Benchmarks & findings:
+  - Command index: CLI.md
+  - Evidence:
       - Benchmark portal: benchmarks/index.md
+      - Model comparison table: benchmarks/comparison.md
       - Hardware:
           - RTX PRO 6000: benchmarks/hardware/rtx-pro-6000.md
           - RTX 5090: benchmarks/hardware/rtx-5090.md
@@ -78,16 +93,12 @@ nav:
               - Nemotron 3.5 ASR: benchmarks/models/nemotron35-asr.md
               - Kokoro: benchmarks/models/kokoro.md
               - Gemma 4 E4B Fast: benchmarks/models/gemma4-e4b.md
-      - Legacy model recipes & gotchas: benchmarks/models.md
+          - RTX PRO 6000 recipe index (compatibility): benchmarks/models.md
       - GPT-OSS Puzzle 88B recipe: benchmarks/gpt-oss-puzzle-88b-recipe.md
-      - Methodology & evidence: benchmarks/methodology.md
       - Result archive: BENCHMARKS.md
       - External benchmarks: EXTERNAL-BENCHMARKS.md
       - Findings index: findings/README.md
-  - Integrations:
-      - OpenClaw integration spec: OPENCLAW-INTEGRATION-SPEC.md
-      - Voice pipeline: VOICE.md
-  - Decisions & research:
+  - Decisions:
       - ADR overview: adr/README.md
       - 'ADR-0001: Cloud cost & subscription auth': adr/0001-cloud-cost-and-subscription-auth.md
       - 'ADR-0002: Serves are Compose-defined': adr/0002-serves-are-compose-defined.md
@@ -97,14 +108,27 @@ nav:
       - 'ADR-0006: Multiplexer swap draining': adr/0006-multiplexer-swap-draining.md
       - 'ADR-0007: Subscription-auth cloud tier (superseded)': adr/0007-subscription-auth-cloud-tier.md
       - 'ADR-0008: Heavy-tier speculative decoding': adr/0008-heavy-tier-speculative-decoding.md
-      - 'ADR-0009: Profile write-back loop': adr/0009-profile-write-back-loop.md
+      - 'ADR-0009: Profile write-back loop (superseded by ADR-0028)': adr/0009-profile-write-back-loop.md
       - 'ADR-0010: Specialized-engine tier': adr/0010-specialized-engine-tier.md
-      - 'ADR-0011: Two-mode operation': adr/0011-two-mode-operation.md
+      - 'ADR-0011: Two-mode operation (superseded by ADR-0028)': adr/0011-two-mode-operation.md
       - 'ADR-0012: Serve and router management verbs': adr/0012-serve-and-router-management-verbs.md
       - 'ADR-0013: OpenClaw layers and MCP control plane': adr/0013-openclaw-layers-and-mcp-control-plane.md
       - 'ADR-0014: Tailnet controller transport': adr/0014-tailnet-controller-transport.md
       - 'ADR-0015: Operator skills and sub-agent workflows': adr/0015-operator-skills-and-subagent-workflows.md
+      - 'ADR-0016: Runtime tier readiness': adr/0016-runtime-tier-readiness.md
+      - 'ADR-0017: GPU residency reservations': adr/0017-gpu-residency-reservations.md
+      - 'ADR-0018: Router transition safety': adr/0018-router-transition-safety.md
+      - 'ADR-0019: anvil-serving owns the tailnet edge': adr/0019-anvil-serving-owns-the-tailnet-edge.md
+      - 'ADR-0020: init defaults to the home scaffold': adr/0020-init-defaults-to-home-scaffold-shipped-as-package-data.md
+      - 'ADR-0021: CLI interaction contract': adr/0021-cli-interaction-contract.md
+      - 'ADR-0022: Evaluation evidence protocol': adr/0022-evaluation-evidence-protocol.md
+      - 'ADR-0023: Lifecycle-aware WSL cache reclaim': adr/0023-lifecycle-aware-wsl-cache-reclaim.md
+      - 'ADR-0024: Normalized audio gateway': adr/0024-normalized-audio-gateway.md
+      - 'ADR-0025: TTS-authoritative Realtime transcripts': adr/0025-tts-authoritative-realtime-assistant-transcripts.md
+      - 'ADR-0026: Opt-in transparent response model': adr/0026-opt-in-transparent-response-model.md
       - 'ADR-0027: Public findings are durable evidence': adr/0027-public-findings-are-durable-evidence.md
+      - 'ADR-0028: Serving, benchmarks, and a thin capability gateway': adr/0028-serving-benchmarks-and-thin-capability-gateway.md
+      - 'ADR-0029: Modular command registry': adr/0029-modular-command-registry.md
       - ADR template: adr/template.md
   - Changelog: changelog.md
 

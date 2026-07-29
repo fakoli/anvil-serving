@@ -168,7 +168,8 @@ for the full read-only surface and privacy boundary.
 
 `[[router.purpose_models]]` maps an exact model name to an embedding or rerank
 serve. It is separate from chat aliases and exposes `/v1/embeddings` or
-`/v1/rerank`.
+`/v1/rerank`. See [Embeddings and reranking](PURPOSE-MODELS.md) for the field
+contract, request examples, and why this surface routes by model name.
 
 `[[router.audio_routes]]` maps a named, operator-owned STT or TTS serve to the
 normalized `/v1/audio/transcriptions` or `/v1/audio/speech` gateway. Audio
