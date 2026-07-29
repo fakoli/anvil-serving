@@ -9,6 +9,7 @@ reported as measured.
 
 | Date | Capability | Exact model/configuration | Measured hardware | Evidence | Decision | Dossier / finding |
 |---|---|---|---|---|---|---|
+| 2026-07-28 | Multimodal challenger | Agents-A1 BF16 `addff08f`, official FP8 `4d7d5938`, and ProtoLabs NVFP4 `ff24ba5c`; vLLM `f25953cc`, FP8 KV, 131K; isolated router and FP8 MoE A/B | RTX PRO 6000 | `functional`, `capacity`, `quality` | FP8 principal candidate; NVFP4 compact text Pareto; generated tune rejected; `no-promotion` | [Agents-A1](models/agents-a1.md) · [multimodal qualification](../findings/2026-07-28-agents-a1-multimodal-qualification.md) |
 | 2026-07-28 | Primary LLM | Qwen3.5 122B A10B NVFP4, rev `98915d837c4e7c87ac8296d02e89de19b3207e6d`, BF16 KV, 262K, c1 | RTX PRO 6000 | `functional`, `capacity`, `quality` | `current` | [Qwen3.5](models/qwen35-122b.md) · [qualification](../findings/2026-07-28-qwen35-122b-primary-qualification.md) |
 | 2026-07-27 | Challenger LLM | Agents-A1, rev `addff08f1653ee72765c5cf458fe84556bb34f8e`, thinking disabled | RTX PRO 6000 | `functional`, `capacity`, `quality` | `challenger`, `no-promotion` | [Agents-A1](models/agents-a1.md) · [release sweep](../findings/2026-07-27-anvil-serving-release-readiness-sweep.md) |
 | 2026-07-27 | Heavy control | Laguna S 2.1 NVFP4, rev `07614121b31898586430f189d27a25a0be310843` | RTX PRO 6000 | `functional`, `capacity`, `quality` | `rollback` | [Laguna](models/laguna-s-2.1.md) · [release sweep](../findings/2026-07-27-anvil-serving-release-readiness-sweep.md) |

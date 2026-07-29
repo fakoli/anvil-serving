@@ -35,6 +35,7 @@ from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, request_co
 from .dialects.translate import has_tool_artifacts
 from .front_door import make_server
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult, estimate_tokens
+from .media_admission import evaluate_media_admission
 from .model_capacity import (
     MetricsProvider,
     build_model_capacity,
@@ -65,10 +66,13 @@ class _AdmissionIterator:
         factory: Callable[[], Iterator[str]],
         lease: AdmissionLease,
         on_complete: Callable[[], None],
+        *,
+        resources: Tuple[object, ...] = (),
     ) -> None:
         self._factory = factory
         self._lease = lease
         self._on_complete = on_complete
+        self._resources = resources
         self._inner: Optional[Iterator[str]] = None
         self._closed = False
 
@@ -101,7 +105,13 @@ class _AdmissionIterator:
             if callable(closer):
                 closer()
         finally:
-            self._lease.release()
+            try:
+                for resource in self._resources:
+                    closer = getattr(resource, "close", None)
+                    if callable(closer):
+                        closer()
+            finally:
+                self._lease.release()
 
 
 _WILDCARD_HOSTS = {"", "0.0.0.0", "::"}
@@ -183,12 +193,19 @@ class _ConcurrencyLimitedBackend:
         self._sem = threading.BoundedSemaphore(max_concurrency)
 
     def generate(self, request: InternalRequest) -> Iterator[str]:
+        self._sem.acquire()
+        try:
+            inner = self._inner.generate(request)
+        except BaseException:
+            self._sem.release()
+            raise
+
         def guarded() -> Iterator[str]:
-            self._sem.acquire()
             try:
-                yield from self._inner.generate(request)
+                yield from inner
             finally:
                 self._sem.release()
+
         return guarded()
 
     def get_last_structured(self) -> Optional[StructuredResult]:
@@ -278,6 +295,21 @@ class RoutingBackend:
         if self._prompt_tokens(request) > tier.context_limit:
             self._record(request, tier, served=False, reason="over_context", outcome="skipped")
             raise NoAvailableTierError(request.model, (tier.id,), kind="over_context")
+        media = evaluate_media_admission(
+            tier.params,
+            request.raw,
+            prompt_tokens=self._prompt_tokens(request),
+            context_limit=tier.context_limit,
+        )
+        if not media.allowed:
+            reason = (
+                "over_context"
+                if media.reason == "context_limit"
+                else "media_admission_%s" % media.reason
+            )
+            kind = "over_context" if media.reason == "context_limit" else "media_limit"
+            self._record(request, tier, served=False, reason=reason, outcome="skipped")
+            raise NoAvailableTierError(request.model, (tier.id,), kind=kind)
         if has_tool_artifacts(request.raw) and not tier.tool_support:
             self._record(request, tier, served=False, reason="tools_unsupported", outcome="skipped")
             raise NoAvailableTierError(request.model, (tier.id,), kind="unsupported_tools")
@@ -293,6 +325,18 @@ class RoutingBackend:
         if lease is None:
             self._record(request, tier, served=False, reason="quiesced", outcome="skipped")
             raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
+
+        try:
+            upstream = backend.generate(request)
+        except BaseException as exc:
+            self._record(
+                request,
+                tier,
+                served=False,
+                reason=f"backend_error_{type(exc).__name__}",
+            )
+            lease.release()
+            raise
 
         fragments: List[str] = []
 
@@ -314,7 +358,7 @@ class RoutingBackend:
 
         def relay() -> Iterator[str]:
             try:
-                for delta in backend.generate(request):
+                for delta in upstream:
                     fragments.append(delta)
                     yield delta
             except GeneratorExit:
@@ -324,7 +368,7 @@ class RoutingBackend:
                 self._record(request, tier, served=False, reason=f"backend_error_{type(exc).__name__}")
                 raise
 
-        return _AdmissionIterator(relay, lease, on_complete)
+        return _AdmissionIterator(relay, lease, on_complete, resources=(upstream,))
 
     def tier_health(self) -> dict:
         return build_tier_health(self._config, self._availability)

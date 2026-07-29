@@ -1,0 +1,180 @@
+{
+  "schema": "router-multimodal-qualification-evidence/v1",
+  "observed_at": "2026-07-29T09:08:44Z",
+  "router": {
+    "config": "configs/agents-a1-qualification-router.toml",
+    "base_url": "http://127.0.0.1:18000/v1",
+    "route_alias": "vision.agents_a1_qualification",
+    "tier": "agents-a1-fp8-qualification",
+    "live_primary_changed": false
+  },
+  "upstream": {
+    "base_url": "http://127.0.0.1:30010/v1",
+    "model": "agents-a1-fp8-mm",
+    "revision": "4d7d59380f327b76e73bc71f40e0c589ad0ca1d5"
+  },
+  "media": {
+    "video": {
+      "path": "benchmarks/corpora/agents-a1-v1/temporal-order-10s.mp4",
+      "mime": "video/mp4",
+      "bytes": 11627,
+      "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+    },
+    "images": [
+      {
+        "path": "benchmarks/corpora/agents-a1-v1/scene.png",
+        "mime": "image/png",
+        "bytes": 13187,
+        "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+      },
+      {
+        "path": "benchmarks/corpora/agents-a1-v1/ocr.png",
+        "mime": "image/png",
+        "bytes": 15916,
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      {
+        "path": "benchmarks/corpora/agents-a1-v1/chart.png",
+        "mime": "image/png",
+        "bytes": 12635,
+        "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+      },
+      {
+        "path": "benchmarks/corpora/agents-a1-v1/ui.png",
+        "mime": "image/png",
+        "bytes": 16940,
+        "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+      }
+    ]
+  },
+  "admission": {
+    "image_limit": 4,
+    "video_limit": 1,
+    "image_tokens_estimate": 2048,
+    "video_tokens_estimate": 16384,
+    "capacity_snapshot": {
+      "object": "list",
+      "data": [
+        {
+          "object": "model_capacity",
+          "id": "agents-a1-fp8-qualification",
+          "aliases": [
+            "vision.agents_a1_qualification"
+          ],
+          "model": "agents-a1-fp8-mm",
+          "loaded": true,
+          "readiness": {
+            "state": "ready",
+            "reason": "identity_passed"
+          },
+          "engine": {
+            "name": "vllm",
+            "quantization": "fp8"
+          },
+          "gpu": {
+            "role": "qualification",
+            "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+            "memory_total_mib": 97887
+          },
+          "capacity": {
+            "context_limit_tokens": 131072,
+            "kv_cache_capacity_tokens": null,
+            "full_context_concurrency": null,
+            "configured_max_concurrency": 4,
+            "scheduler_max_num_seqs": 4,
+            "model_memory_gib": null
+          },
+          "multimodal": {
+            "admission_enabled": true,
+            "image_limit": 4,
+            "video_limit": 1,
+            "image_tokens_estimate": 2048,
+            "video_tokens_estimate": 16384
+          },
+          "live": {
+            "status": "available",
+            "reason": null,
+            "requests_running": 0.0,
+            "requests_waiting": 0.0,
+            "kv_cache_usage_fraction": 0.0,
+            "kv_cache_used_tokens_estimate": null,
+            "kv_cache_remaining_tokens_estimate": null,
+            "preemptions_total": 0.0,
+            "multimodal_cache_queries_total": 15.0,
+            "multimodal_cache_hits_total": 10.0
+          },
+          "scenario": null
+        }
+      ]
+    }
+  },
+  "logging_policy": "No request media bytes or data URLs are retained in this artifact; only paths, hashes, byte counts, response metadata, model output, and bounded errors are recorded.",
+  "tests": {
+    "mixed_one_video_four_images": {
+      "status": 200,
+      "latency_ms": 1996.949,
+      "finish_reason": "stop",
+      "content": "Based on the video content, here is the brief identification of the color order and salient facts from each image:\n\n**Color Order:**\nThe sequence of colors presented across the video is:\n1. **Red,** from the text \"FIRST RED\".\n2. **Green,** from the text \"THEN GREEN\" and the subsequent green shapes.\n\n---\n\n**Salient Facts from Each Image:**\n\n- **Image 1 (Sunny Day Scene):** This static image presents a simple scenario with a \"RED CAR\" positioned in front of a \"GREEN PARK\" under a \"SUNNY DAY.\"\n\n- **Image 2 (Anvil Alert):** This image provides a system alert with three key pieces of information: the status \"ANVIL READY,\" a specific code \"42917,\" and a high temperature reading of \"42 C.\"\n\n- **Image 3 ((Quarterly Units Chart):** This chart visualizes a consistent upward trend in \"QUARTERLY UNITS\" over three quarters, increasing from 10 in Q1 to 20 in Q2, and finally to 30 in Q3.\n\n- **Image 4 ((Anvil Serving Status):** This screen displays the operational status of the anvil, showing it is \"READY\" and being served, with the GPU usage at \"42 PERCENT.\"",
+      "usage": {
+        "prompt_tokens": 1260,
+        "completion_tokens": 287,
+        "total_tokens": 1547
+      },
+      "passed": true
+    },
+    "two_video_overflow": {
+      "status": 413,
+      "latency_ms": 4.014,
+      "error_body": "{\"error\": {\"type\": \"payload_too_large\", \"message\": \"request exceeds the configured media limits\"}}",
+      "passed": true
+    },
+    "five_image_overflow": {
+      "status": 413,
+      "latency_ms": 2.914,
+      "error_body": "{\"error\": {\"type\": \"payload_too_large\", \"message\": \"request exceeds the configured media limits\"}}",
+      "passed": true
+    },
+    "malformed_video": {
+      "status": 500,
+      "latency_ms": 17.371,
+      "error_body": "{\"error\": {\"type\": \"internal_error\", \"message\": \"internal error\"}}",
+      "passed": false
+    },
+    "tools_with_video": {
+      "status": 200,
+      "latency_ms": 988.265,
+      "finish_reason": "stop",
+      "tool_calls": [
+        {
+          "id": "chatcmpl-tool-a3c9960221a7fb75",
+          "type": "function",
+          "function": {
+            "name": "record_video_colors",
+            "arguments": "{\"second\": \"green\", \"first\": \"red\"}"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 643,
+        "completion_tokens": 40,
+        "total_tokens": 683
+      },
+      "passed": true
+    },
+    "streaming_video": {
+      "status": 200,
+      "latency_ms": 165.405,
+      "content_type": "text/event-stream",
+      "data_events": 6,
+      "done_seen": true,
+      "passed": true
+    },
+    "unsupported_anthropic_video": {
+      "status": 500,
+      "latency_ms": 3.082,
+      "error_body": "{\"type\": \"error\", \"error\": {\"type\": \"internal_error\", \"message\": \"internal error\"}}",
+      "passed": false
+    }
+  },
+  "passed": false
+}

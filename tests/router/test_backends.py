@@ -15,14 +15,20 @@ real network.
 """
 from __future__ import annotations
 
+import io
 import json
+import urllib.error
 from typing import Dict
 
 import pytest
 
-from anvil_serving.router.backends.relay import discover_single_model
+from anvil_serving.router.backends.relay import (
+    RelayBackendError,
+    _urlopen_transport,
+    discover_single_model,
+)
 from anvil_serving.router.config import ConfigError, RouterConfig, Tier
-from anvil_serving.router.internal import InternalRequest, Message
+from anvil_serving.router.internal import BackendClientError, InternalRequest, Message
 from anvil_serving.router.serve import build_backend_for_tier, build_backends
 
 
@@ -111,6 +117,52 @@ def test_build_backend_for_tier_direct_call_keeps_120s_default():
     concern, not a change to build_backend_for_tier's own default."""
     relay = build_backend_for_tier(_local_tier(), env={})
     assert relay._timeout == pytest.approx(120.0)
+
+
+@pytest.mark.parametrize("status", [400, 413, 415, 422])
+def test_caller_correctable_upstream_status_is_sanitized_4xx(monkeypatch, status):
+    def fail(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            "http://private-upstream.invalid/v1/chat/completions",
+            status,
+            "private provider detail",
+            {},
+            io.BytesIO(b'{"error":"private response body"}'),
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", fail)
+
+    with pytest.raises(BackendClientError) as exc_info:
+        _urlopen_transport(
+            "http://127.0.0.1:30010/v1/chat/completions",
+            data=b"{}",
+            headers={},
+            timeout=1,
+        )
+
+    assert exc_info.value.status == status
+    assert "private" not in exc_info.value.message
+
+
+def test_upstream_server_error_remains_internal(monkeypatch):
+    def fail(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            "http://private-upstream.invalid/v1/chat/completions",
+            500,
+            "private provider detail",
+            {},
+            io.BytesIO(b'{"error":"private response body"}'),
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", fail)
+
+    with pytest.raises(RelayBackendError):
+        _urlopen_transport(
+            "http://127.0.0.1:30010/v1/chat/completions",
+            data=b"{}",
+            headers={},
+            timeout=1,
+        )
 
 
 # --------------------------------------------------------------------------- #

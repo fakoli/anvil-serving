@@ -60,6 +60,21 @@ readiness, admission, and metadata-only decisions. The canonical product descrip
   chronological archive only when guidance/comparisons change and methodology
   only when its contract changes. Separate measured hardware from
   protected/co-resident or topology-only mentions.
+- **Kernel tunes are explicit, pinned artifacts.** Use
+  `skills/anvil-serving-kernel-tuning/SKILL.md` for missing MoE/GEMM config
+  warnings, kernel bottlenecks, and retuning after runtime or GPU changes.
+  Store tunes under
+  `configs/kernel-tunes/<engine>/<engine-revision>/<gpu-slug>/` with a
+  `kernel-tune-manifest/v1`; use a short Windows-portable repository filename,
+  record the exact engine-required filename in the manifest, and keep raw
+  default/tuned evidence under the dated finding. A stored tune is inert until
+  an exact managed recipe supplies it under that engine-required filename
+  through a read-only mount preparation step or pinned derived image layer,
+  selects it through the engine-supported control, and startup logs prove it
+  loaded. Never reuse a tune across a different GPU product,
+  engine/Triton/CUDA build, dtype, TP size, or model geometry without
+  requalification. A missing-config warning is a tuning candidate, not proof
+  that tuning will improve end-to-end performance.
 - **Return dicts, not print-side-effects** in library code. CLI wrappers print; modules return.
 - **Never self-verify.** Don't write a check that uses the same model to validate its own
   output. Preflight and benchmark gates must be independent.

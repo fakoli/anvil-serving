@@ -1,0 +1,45 @@
+{
+  "base_url": "http://127.0.0.1:30010/v1",
+  "completed": 4,
+  "concurrency": 2,
+  "context_distribution": {
+    "128000": 4
+  },
+  "context_seed": 0,
+  "context_tokens": 128000,
+  "engine": "vllm-f25953cc",
+  "failed": 0,
+  "failures": [],
+  "gpu": "rtx-pro-6000",
+  "manifest": null,
+  "max_context_tokens": 131072,
+  "max_tokens": 64,
+  "measurement_protocol": "capacity-v2",
+  "metrics": {
+    "content_chunks": 230,
+    "content_chunks_s": null,
+    "e2e_p50_ms": 24639.38810000036,
+    "e2e_p95_ms": 24789.392700000462,
+    "output_token_sources": {
+      "usage": 4
+    },
+    "output_tokens": 233,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 4.713212327425916,
+    "ttft_p50_ms": 12330.985700000383,
+    "ttft_p95_ms": 24252.303799999936,
+    "ttft_samples": 4
+  },
+  "model": "agents-a1-bf16-mm",
+  "requests": 4,
+  "run_id": "benchmark-20260729T045743Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": null,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  },
+  "source_recipe": null,
+  "tier": null
+}

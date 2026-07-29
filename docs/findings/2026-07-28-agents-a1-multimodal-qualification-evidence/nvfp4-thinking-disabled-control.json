@@ -1,0 +1,8 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "nvfp4-text-functional-preflight.json",
+  "observed_at": "2026-07-29T04:39:00Z",
+  "observation": "Thinking-disabled smoke, JSON, 8K retrieval, 20 tool calls, Responses subset, streaming tool call, and tool-result continuation all returned zero reasoning characters."
+}
