@@ -50,7 +50,7 @@ anvil-serving --help
 
 **Where do these serves come from?** anvil-serving manages local model serves as Docker Compose
 services: declare them in a manifest, then run `anvil-serving serves up` (see
-[Serves & eval](SERVES-AND-EVAL.md)). `anvil-serving serves render` renders a tuned compose file for a
+[Operator playbooks](OPERATOR-PLAYBOOKS.md)). `anvil-serving serves render` renders a tuned compose file for a
 given GPU and model, and `configs/serve-recipes.toml` in the repository carries known-good serve
 recipes. The model names below (`gpt-oss-20b`, `qwen35-awq-local`) are not magic — they are the
 `model` values the two tiers in `configs/example.toml` declare; if your serves run different
@@ -97,12 +97,15 @@ directory. For a single-model quick bring-up into the CWD instead, use
 `anvil-serving init --single-model`. See [`init`](cli/host.md#init) for the full
 set.
 
-Before starting the router, stand up those serves and validate each endpoint:
+Before starting the router, stand up those serves and validate each endpoint. `--model` is the
+serve's `--served-model-name`, so substitute whatever your manifest declares:
 
 ```bash
-anvil-serving eval preflight --base-url http://127.0.0.1:30003/v1 --model nemotron3-omni-30b-a3b-nvfp4
-anvil-serving eval preflight --base-url http://127.0.0.1:30002/v1 --model laguna-s-2.1-nvfp4
+anvil-serving eval preflight --base-url http://127.0.0.1:<port>/v1 --model <served-model>
 ```
+
+For the two-tier `configs/example.toml` shape that means one preflight per tier endpoint, each
+naming that tier's own `model` value.
 
 Then start the router:
 
@@ -147,7 +150,8 @@ to need on a first run:
 - Port `8000` already in use → pass `--port <free-port>`.
 - `preflight` fails → the serve is not up, or the `--model` name does not match the serve's
   served model name.
-- The router answers `503` → that is the quality gate exhausting cleanly, not a crash; see the
+- The router answers `503` → the alias is configured but its local tier cannot serve right now.
+  That is the gateway refusing cleanly rather than substituting another model; see the
   troubleshooting entry before changing anything.
 - Requests hang ~20s on Windows → a `localhost` URL sneaked in; use `127.0.0.1`.
 
@@ -159,6 +163,6 @@ to need on a first run:
   serves, and the [CLI reference](CLI.md) for the full command surface.
 - Read [Device topologies](DEVICE-TOPOLOGIES.md) before spreading gateway, voice, router, or serve roles across more devices.
 - Read [Model settings](MODEL-SETTINGS-EXAMPLE.md) before serving thinking-by-default models.
-- Read [Serves & eval](SERVES-AND-EVAL.md) to manage Docker Compose model serves.
+- Read [Operator playbooks](OPERATOR-PLAYBOOKS.md) to manage Docker Compose model serves.
 - Read [Voice pipeline](VOICE.md) to run STT/TTS lifecycle, the Realtime voice server, and model-free Mini gateway validation.
 - Read [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) for the reference gateway setup.

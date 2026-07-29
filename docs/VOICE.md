@@ -40,15 +40,15 @@ client -- bearer token --> router /v1/audio/* -- private hop --> Dark STT/TTS se
 `{"purpose":"stt","audio_b64":"...","format":"wav|pcm16|webm_opus","is_final":true}`
 and returns `text`, `is_final`, `duration_ms`, `model`, and `request_id`. `duration_ms` is `null`
 when the source container has no reliably derivable duration (for example, `webm_opus`). `pcm16`
-requires an explicit `sample_rate` and is wrapped as WAV before the Parakeet multipart hop. Interim
-audio is rejected: this is a one-shot boundary, not a streaming STT protocol.
+requires an explicit `sample_rate` and is wrapped as WAV before the multipart hop to the routed
+STT serve. Interim audio is rejected: this is a one-shot boundary, not a streaming STT protocol.
 
 `POST /v1/audio/speech` accepts JSON
 `{"purpose":"tts","input":"...","response_format":"pcm16"}` and returns JSON
 `{"audio_b64":"...","format":"pcm16","sample_rate":24000,"model":"...","request_id":"..."}`.
-The router requests Kokoro's live-qualified raw PCM16 contract, validates its media type and whole
-sample framing, then base64-encodes the bytes. WAV and MP3 output remain unavailable until their
-upstream contracts have separate live qualification.
+The router requests the routed TTS serve's live-qualified raw PCM16 contract, validates its media
+type and whole sample framing, then base64-encodes the bytes. WAV and MP3 output remain
+unavailable until those upstream contracts have separate live qualification.
 
 Both endpoints use the same bearer/`x-api-key` authentication as `/v1/responses`. Decisions log
 only opaque route id, byte counts (including rejected bounded upstream responses), outcome,
@@ -146,7 +146,12 @@ ownership, so the normal Mini/Dark reference path remains explicit.
 
 ## Manifest Shape
 
-A voice manifest has one `[voice]` section and three endpoint subsections:
+A voice manifest has one `[voice]` section and three endpoint subsections. The router models
+audio as two purposes — `stt` and `tts` — and each resolves to exactly one configured audio
+route. The `model` values below are the serves this reference topology currently runs, not part
+of the contract: substitute whatever your STT and TTS serves advertise. Which models are
+currently routed, and the evidence that qualified them, live in the
+[benchmark portal](benchmarks/index.md).
 
 ```toml
 [voice]
@@ -392,9 +397,9 @@ current-information lookups.
   the audio topology and LLM candidate remain independent.
 
 The `mini-audio` profile lowers `voice.llm.speech_chunk_max_chars` to `56` for
-the Mini-local Kokoro TTS path. In live Talk measurements this reduced first
+the Mini-local TTS path. In live Talk measurements this reduced first
 audio latency versus the `72` character cross-topology default, while a more
-aggressive `48` character split produced Kokoro stream errors on some sentence
+aggressive `48` character split produced TTS stream errors on some sentence
 fragments.
 
 ### Reference Mini/Dark operation
@@ -826,10 +831,10 @@ If `tts first_output_ms` is high for a large `text_chars` value, lower
 `voice.llm.speech_chunk_max_chars` in the active voice profile before changing
 models. That keeps the same answer path but starts TTS on smaller word-boundary
 chunks.
-For the optional Mini-local Kokoro path, keep the checked-in `mini-audio`
+For the optional Mini-local audio path, keep the checked-in `mini-audio`
 override near `56` unless fresh `voice_stage_timing` evidence shows a better
 value; values near `48` have produced stream errors in live A/B tests.
-If Kokoro closes a TTS stream before producing any audio for a chunk, the TTS
+If the TTS serve closes a stream before producing any audio for a chunk, the TTS
 stage retries once and can fall back to a separator-safe spoken form such as
 `up to date` instead of `up-to-date`; failures after audio has started still
 surface as real stage errors.
