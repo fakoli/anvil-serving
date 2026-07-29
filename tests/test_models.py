@@ -5,6 +5,7 @@ serves natively, avoiding the 9P bind-mount tax — CLAUDE.md gotcha #15).
 Every test is HERMETIC: docker is never invoked (subprocess is mocked or we
 stay on --dry-run). No real docker, no network.
 """
+import io
 import importlib
 import json
 from pathlib import Path
@@ -1578,6 +1579,16 @@ def test_recipe_container_logs_are_bounded_and_identity_checked(capsys):
         "docker", "logs", "--tail", "37", "--since", "10m", "recipe-heavy",
     ]
     assert "candidate ready" in capsys.readouterr().out
+
+
+def test_recipe_console_output_escapes_unicode_for_narrow_windows_codec():
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1252")
+
+    models._write_console_text(stream, "vLLM █ ready\n")
+    stream.flush()
+
+    assert raw.getvalue().decode("cp1252").splitlines() == [r"vLLM \u2588 ready"]
 
 
 def test_recipe_container_unload_rechecks_identity_before_exact_remove(capsys):

@@ -9,10 +9,10 @@ evidence class, decision boundary, failures, and dated history.
 
 | Dossier | Current decision | Contents |
 |---|---|---|
-| [Qwen3.5 122B](qwen35-122b.md) | `current` | Current NVFP4 and historical MXFP4 |
+| [Agents-A1](agents-a1.md) | `current` | Thinking-disabled FP8 Primary; BF16 control and compact NVFP4 text profile |
+| [Qwen3.5 122B](qwen35-122b.md) | `rollback` | Immediate NVFP4 rollback and historical MXFP4 |
 | [Laguna S 2.1 and Laguna XS](laguna-s-2.1.md) | `rollback` / `rejected` | Qualified S and failed XS path |
-| [GPT-OSS Puzzle 88B](gpt-oss-puzzle-88b.md) | `rollback` | Secondary pinned rollback |
-| [Agents-A1](agents-a1.md) | `challenger`, `no-promotion` | Thinking-disabled qualification |
+| [GPT-OSS Puzzle 88B](gpt-oss-puzzle-88b.md) | `rollback` | Additional pinned rollback |
 | [Gemma 4 PRO variants](gemma-4.md) | `no-promotion` / `rejected` | Official and Unsloth 12B, 26B, 31B |
 | [Qwen3.6 27B and ThinkingCap](qwen36-27b.md) | `no-promotion` | Community NVFP4+MTP, official FP8, Unsloth, ThinkingCap |
 | [Nemotron 3 Super 120B](nemotron3-super-120b.md) | `no-promotion` | Historical quality/capacity challenger |

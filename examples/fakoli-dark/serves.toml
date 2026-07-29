@@ -4,10 +4,10 @@
 # "which model containers exist, on which ports". Manage the serves ONLY through
 # `anvil-serving serves` (which delegates to docker-compose.yml), never raw `docker`.
 #
-# 2026-07-28 reconcile: Primary = NVIDIA Qwen3.5 122B A10B NVFP4 at
-# 262,144 tokens with one-image input and thinking enabled by default
-# (:30002, PRO 6000); callers may disable thinking per request.
-# Laguna S 2.1 is the immediate rollback; GPT-OSS Puzzle remains second-line.
+# 2026-07-29 reconcile: Primary = Agents-A1 official FP8 at 262,144 tokens
+# with four-image/one-video input and thinking hard-disabled by the router
+# (:30002, PRO 6000). Qwen3.5 122B is the immediate rollback; Laguna S 2.1 and
+# GPT-OSS Puzzle remain additional recovery options.
 # 2026-07-27 Omni consolidation: Nemotron 3 Nano Omni owns the RTX 5090
 # exclusively and backs auxiliary text, general vision, and OCR through one
 # router tier on :30003. Embeddings and reranking remain a separate,
@@ -33,18 +33,28 @@ vram_mib = 32607
 reserve_mib = 3072
 
 [[serve]]
-name = "primary"                 # primary quality tier — Qwen3.5 122B A10B NVFP4
+name = "primary"                 # primary quality tier — Agents-A1 official FP8
 stack = "serving"
-container = "vllm-qwen35-122b-primary"
+container = "vllm-agents-a1-fp8-primary"
 port = 30002
-model = "qwen35-122b-a10b-nvfp4" # served-model-name (used by `anvil-serving eval`)
+model = "agents-a1-fp8-mm-262k" # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
 groups = ["primary-only", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d primary"
 
 [[serve]]
-name = "primary-laguna-rollback" # immediate rollback; stop Primary first because both own :30002
+name = "primary-qwen35-rollback" # immediate rollback; stop Primary first because both own :30002
+stack = "serving"
+container = "vllm-qwen35-122b-primary-rollback"
+port = 30002
+model = "qwen35-122b-a10b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d primary-qwen35-rollback"
+
+[[serve]]
+name = "primary-laguna-rollback" # additional rollback; shares :30002
 stack = "serving"
 container = "vllm-laguna-s-primary-rollback"
 port = 30002
@@ -145,40 +155,31 @@ up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
 # and complete model+router rollback. This single-GPU plan validates the newly
 # started target in-transaction; a separately resident candidate cannot coexist.
 [[promotion]]
-name = "qwen35-122b-primary"
+name = "agents-a1-fp8-primary"
 target = "primary"
-rollback = "primary-laguna-rollback"
+rollback = "primary-qwen35-rollback"
 router_config = "{dir}/anvil-router.live.toml"
-rollback_router_config = "{dir}/anvil-router.laguna-rollback.toml"
+rollback_router_config = "{dir}/anvil-router.qwen35-rollback.toml"
 affected_tiers = ["primary-local"]
 drain_timeout = 120
 needle_ctx = 240000
-tool_batch = 10
+tool_batch = 20
 startup_timeout = 900
 rollback_startup_timeout = 600
 poll_interval = 5
 router_health_url = "http://127.0.0.1:8000/healthz"
 
 [[promotion.gate]]
-name = "qwen35-functional-thinking-disabled"
+name = "agents-a1-functional-thinking-disabled"
 checks = "smoke,json,needle,tools"
 thinking_mode = "disabled"
 visible_answer_tokens = 256
 reasoning_headroom_tokens = 0
 reasoning_evidence = "forbidden"
-json_out = "{dir}/../../docs/findings/2026-07-28-qwen35-122b-primary-evidence/promotion-functional-preflight.json"
-
-[[promotion.gate]]
-name = "qwen35-default-thinking"
-checks = "smoke,json"
-thinking_mode = "default"
-visible_answer_tokens = 256
-reasoning_headroom_tokens = 8192
-reasoning_evidence = "required"
-json_out = "{dir}/../../docs/findings/2026-07-28-qwen35-122b-primary-evidence/promotion-default-thinking.json"
+json_out = "{dir}/../../docs/findings/2026-07-29-agents-a1-primary-promotion-evidence/promotion-functional-preflight.json"
 
 [[promotion.rollback_gate]]
-name = "laguna-functional-thinking-disabled"
+name = "qwen35-functional-thinking-disabled"
 checks = "smoke,json,needle,tools"
 thinking_mode = "disabled"
 visible_answer_tokens = 256
