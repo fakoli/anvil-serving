@@ -1,0 +1,96 @@
+{
+  "base_url": "http://127.0.0.1:30010/v1",
+  "completed": 2,
+  "concurrency": 1,
+  "context_distribution": {
+    "240000": 2
+  },
+  "context_seed": 0,
+  "context_tokens": 240000,
+  "engine": "vllm-7b9cb5b7-ngc-26.06",
+  "failed": 0,
+  "failures": [],
+  "finished_at": "2026-07-29T10:36:35Z",
+  "gpu": "rtx-pro-6000",
+  "manifest": null,
+  "max_context_tokens": 262144,
+  "max_tokens": 64,
+  "measurement_protocol": "capacity-v3",
+  "metrics": {
+    "content_chunks": 113,
+    "content_chunks_s": null,
+    "decode_tok_s_p50": 60.263339314022716,
+    "decode_tok_s_p95": 61.26289493855221,
+    "e2e_p50_ms": 69737.97489999924,
+    "e2e_p95_ms": 71100.69890000159,
+    "effective_prefill_tok_s_p50": 3303.505120738375,
+    "effective_prefill_tok_s_p95": 3358.599962846771,
+    "generation_p50_ms": 832.4777999987418,
+    "generation_p95_ms": 1045.411700000841,
+    "mean_inter_token_latency_ms_p50": 16.32309411762239,
+    "mean_inter_token_latency_ms_p95": 16.593836507949856,
+    "output_token_sources": {
+      "usage": 2
+    },
+    "output_tokens": 116,
+    "prefix_cache_hit_avg": null,
+    "prompt_token_samples": 2,
+    "prompt_tokens": 462854,
+    "prompt_tokens_p50": 231426.0,
+    "prompt_tokens_p95": 231428.0,
+    "throughput_tok_s": 0.8236001153287148,
+    "ttft_p50_ms": 68905.4971000005,
+    "ttft_p95_ms": 70055.28720000075,
+    "ttft_samples": 2
+  },
+  "model": "qwen35-122b-a10b-nvfp4-video-262k",
+  "request_timings": [
+    {
+      "decode_tok_s": 61.26289493855221,
+      "e2e_ms": 69737.97489999924,
+      "effective_prefill_tok_s": 3358.599962846771,
+      "generation_ms": 832.4777999987418,
+      "mean_inter_token_latency_ms": 16.32309411762239,
+      "output_token_source": "usage",
+      "output_tokens": 52,
+      "planned_context_tokens": 240000,
+      "prompt_tokens": 231426,
+      "request_index": 0,
+      "ttft_ms": 68905.4971000005
+    },
+    {
+      "decode_tok_s": 60.263339314022716,
+      "e2e_ms": 71100.69890000159,
+      "effective_prefill_tok_s": 3303.505120738375,
+      "generation_ms": 1045.411700000841,
+      "mean_inter_token_latency_ms": 16.593836507949856,
+      "output_token_source": "usage",
+      "output_tokens": 64,
+      "planned_context_tokens": 240000,
+      "prompt_tokens": 231428,
+      "request_index": 1,
+      "ttft_ms": 70055.28720000075
+    }
+  ],
+  "requests": 2,
+  "run_id": "benchmark-20260729T103414Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": null,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  },
+  "source_recipe": null,
+  "started_at": "2026-07-29T10:34:14Z",
+  "tier": null,
+  "timing_methodology": {
+    "clock": "client time.perf_counter",
+    "decode": "usage completion tokens after the first token divided by client-observed generation time",
+    "effective_prefill": "usage.prompt_tokens divided by client-observed TTFT; includes queueing, scheduling, prefill, and first-token work",
+    "generation": "client-observed E2E minus TTFT",
+    "mean_inter_token_latency": "client-observed generation time divided by completion tokens after the first token; not a raw per-token timestamp trace",
+    "ttft": "request start through the first non-empty streamed content delta"
+  },
+  "wall_clock_ms": 140845.0507000016
+}

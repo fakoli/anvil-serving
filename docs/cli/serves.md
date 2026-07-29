@@ -171,7 +171,10 @@ anvil-serving serves promote PROMOTION_PLAN --confirm
 `PROMOTION_PLAN` names a `[[promotion]]` entry in the selected serves manifest.
 Promotion stages the candidate, runs preflight, and preserves a rollback path. It is
 separate from [`models recipes load`](models.md#load-a-recipe), which starts a named
-local container but never promotes router policy.
+local container but never promotes router policy. Recipe-loaded candidates are
+inspected and removed through
+[`models recipes status|logs|unload`](models.md#operate-a-loaded-recipe), not
+raw Docker or manifest-only `serves` verbs.
 
 Promotion and an explicitly requested rollback also evaluate the enabled machine cache
 policy exactly once after their existing readiness gates. Controller-dispatched serve

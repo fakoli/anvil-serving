@@ -1501,6 +1501,123 @@ def test_recipe_load_dispatches_through_canonical_cli(request, capsys):
     assert "RECIPE LOAD PLAN" in capsys.readouterr().out
 
 
+def _recipe_container_inspect(
+    *,
+    model="openai/gpt-oss-120b",
+    revision="0123456789abcdef0123456789abcdef01234567",
+    state="running",
+):
+    return json.dumps([{
+        "Config": {
+            "Image": "vllm/vllm-openai:nightly",
+            "Labels": {
+                "io.anvil-serving.managed-by": "models-recipes",
+                "io.anvil-serving.recipe.model": model,
+                "io.anvil-serving.recipe.revision": revision,
+            },
+        },
+        "Image": "sha256:" + "a" * 64,
+        "State": {
+            "Status": state,
+            "Running": state == "running",
+            "Health": {"Status": "healthy"},
+        },
+    }])
+
+
+def _recipe_identity():
+    return {
+        "model": "openai/gpt-oss-120b",
+        "download": {"revision": "0123456789abcdef0123456789abcdef01234567"},
+    }
+
+
+def test_recipe_container_status_requires_exact_recipe_ownership():
+    def fake(argv, **_kwargs):
+        assert argv == ["docker", "inspect", "recipe-heavy"]
+        return types.SimpleNamespace(
+            returncode=0,
+            stdout=_recipe_container_inspect(),
+            stderr="",
+        )
+
+    identity = models._recipe_container_identity(
+        _recipe_identity(), "recipe-heavy", _run=fake
+    )
+
+    assert identity["state"] == "running"
+    assert identity["health"] == "healthy"
+    assert identity["image_id"] == "sha256:" + "a" * 64
+
+
+def test_recipe_container_logs_are_bounded_and_identity_checked(capsys):
+    calls = []
+
+    def fake(argv, **_kwargs):
+        calls.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return types.SimpleNamespace(
+                returncode=0,
+                stdout=_recipe_container_inspect(),
+                stderr="",
+            )
+        return types.SimpleNamespace(
+            returncode=0,
+            stdout="candidate ready\n",
+            stderr="",
+        )
+
+    assert models._recipe_container_logs(
+        _recipe_identity(),
+        "recipe-heavy",
+        tail=37,
+        since="10m",
+        _run=fake,
+    ) == 0
+    assert calls[-1] == [
+        "docker", "logs", "--tail", "37", "--since", "10m", "recipe-heavy",
+    ]
+    assert "candidate ready" in capsys.readouterr().out
+
+
+def test_recipe_container_unload_rechecks_identity_before_exact_remove(capsys):
+    calls = []
+
+    def fake(argv, **_kwargs):
+        calls.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return types.SimpleNamespace(
+                returncode=0,
+                stdout=_recipe_container_inspect(),
+                stderr="",
+            )
+        return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    assert models._recipe_container_unload(
+        _recipe_identity(),
+        "recipe-heavy",
+        confirm=True,
+        _run=fake,
+    ) == 0
+    assert calls.count(["docker", "inspect", "recipe-heavy"]) == 2
+    assert calls[-1] == ["docker", "rm", "-f", "recipe-heavy"]
+    assert "unloaded recipe container" in capsys.readouterr().out
+
+
+def test_recipe_container_operations_refuse_unlabeled_container():
+    def fake(_argv, **_kwargs):
+        return types.SimpleNamespace(
+            returncode=0,
+            stdout=_recipe_container_inspect(model="other/model"),
+            stderr="",
+        )
+
+    with pytest.raises(serve_recipes.RecipeError, match="not owned"):
+        models._recipe_container_identity(
+            _recipe_identity(), "recipe-heavy", _run=fake
+        )
+
+
 def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys):
     from anvil_serving import serves
 

@@ -41,6 +41,14 @@ readiness, admission, and metadata-only decisions. The canonical product descrip
   or any repeatable operator action, integrate it as an `anvil-serving` CLI verb
   and, where appropriate, an MCP/controller tool. Do not create random one-off
   scripts as the operational path.
+- **Operate model candidates through recipes and Anvil Serving, not raw Docker.**
+  Record every reproducible candidate in a serve-recipe registry; start it with
+  `models recipes load`, then use `models recipes status`, `models recipes logs`,
+  and `models recipes unload` for its lifecycle. Use `serves` verbs for
+  manifest-owned deployments. Raw Docker is limited to the narrowest read-only
+  diagnosis when the product surface itself is broken; treat that as an
+  immediate product gap, create or update a `.tickets/` record, fix the Anvil
+  surface, and return to the managed command before continuing.
 - **Benchmark research must be date-aware.** When choosing or comparing Fast/Heavy
   model candidates, prefer current official sources and recent hardware-matched
   community data. Record the source URL, published/observed date, age class, evidence

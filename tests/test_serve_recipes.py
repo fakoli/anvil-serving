@@ -164,7 +164,9 @@ def test_load_recipe_file_requires_one_recipe(tmp_path):
 
 def test_docker_run_argv_uses_named_container_and_loopback_port():
     argv = sr.docker_run_argv(_RECIPE, container="heavy-candidate")
-    assert argv[:6] == ["docker", "run", "-d", "--name", "heavy-candidate", "--gpus"]
+    assert argv[:5] == ["docker", "run", "-d", "--name", "heavy-candidate"]
+    assert "io.anvil-serving.managed-by=models-recipes" in argv
+    assert "io.anvil-serving.recipe.model=openai/gpt-oss-120b" in argv
     assert ["-p", "127.0.0.1:30002:30002"] == argv[argv.index("-p"):argv.index("-p") + 2]
     assert argv[argv.index("vllm/vllm-openai:nightly") + 1] == "openai/gpt-oss-120b"
 
@@ -206,7 +208,7 @@ def test_find_recipe_exact_and_basename():
 def test_reconstruct_docker_run_model_is_positional_after_image():
     cmd = sr.reconstruct_docker_run(_RECIPE)
     img_i = cmd.index("vllm/vllm-openai:nightly")
-    model_i = cmd.index("openai/gpt-oss-120b")
+    model_i = cmd.rindex("openai/gpt-oss-120b")
     assert img_i < model_i, "model must be a POSITIONAL after the image"
     # no accidental extra 'serve' verb (entrypoint already is `vllm serve`).
     assert " serve " not in cmd

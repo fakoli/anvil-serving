@@ -1,0 +1,68 @@
+{
+  "schema": "agents-a1-qwen-head-to-head-identity/v1",
+  "observed_at": "2026-07-29T10:16:58Z",
+  "repository": {
+    "branch": "codex/agents-a1-qwen-head-to-head",
+    "commit": "06f54e2f5fce8e1784f598de963242edba3fe20e",
+    "worktree": "C:\\Users\\sdoum\\ai-code\\anvil-serving-wt-agents-a1-qwen-head-to-head"
+  },
+  "hardware": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "index": 1,
+    "memory_mib": 97887,
+    "architecture": "sm_120"
+  },
+  "corpus": {
+    "schema": "multimodal-corpus/v1",
+    "path": "benchmarks/corpora/agents-a1-v1/corpus.json",
+    "sha256": "ebff9dcc87a7fd13f801fc19eeea7271aec01a99fe560d721be99c1c9becad49",
+    "cases": 15,
+    "attempts": 30
+  },
+  "profiles": [
+    {
+      "model_repository": "InternScience/Agents-A1-FP8",
+      "model_revision": "4d7d59380f327b76e73bc71f40e0c589ad0ca1d5",
+      "cached_logical_bytes": 37707879596,
+      "served_model_name": "agents-a1-fp8-mm-262k",
+      "runtime_image": "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1",
+      "runtime_image_id": "sha256:212a1bd7b4267c604408d17dc0048ef152101bc67fbe6ba8567899fc1f227bcd",
+      "engine_version": "0.23.1rc1.dev1327+gf25953cc5",
+      "engine_revision": "f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1",
+      "quantization": "compressed-tensors fp8",
+      "kv_dtype": "fp8",
+      "configured_context_tokens": 262144,
+      "checkpoint_max_position_embeddings": 262144,
+      "max_sequences": 1,
+      "media_policy": {
+        "images": 4,
+        "videos": 1
+      },
+      "thinking_mode": "disabled"
+    },
+    {
+      "model_repository": "nvidia/Qwen3.5-122B-A10B-NVFP4",
+      "model_revision": "98915d837c4e7c87ac8296d02e89de19b3207e6d",
+      "cached_logical_bytes": 83531051082,
+      "served_model_name": "qwen35-122b-a10b-nvfp4-video-262k",
+      "runtime_image": "nvcr.io/nvidia/vllm:26.06-py3",
+      "runtime_image_id": "sha256:bebcf9576b1720214319ee5c7ee4f7661954cbbf59ed3fcd188cd79a67f1967e",
+      "engine_version": "0.22.1+7b9cb5b7.dev",
+      "engine_revision": null,
+      "engine_revision_abbreviated": "7b9cb5b7",
+      "engine_build_ref": "f6c161e872eacdbcdd16fdae647bd5318a12f49b",
+      "quantization": "modelopt_fp4",
+      "kv_dtype": "bfloat16",
+      "configured_context_tokens": 262144,
+      "checkpoint_max_position_embeddings": 262144,
+      "max_sequences": 1,
+      "media_policy": {
+        "images": 4,
+        "videos": 1
+      },
+      "thinking_mode": "disabled"
+    }
+  ],
+  "comparison_boundary": "Same context, corpus, sampling controls, thinking mode, GPU, direct endpoint shape, and concurrency. Runtime, quantization, KV dtype, and model size remain production-shaped profile differences and must not be described as a controlled weights-only experiment."
+}

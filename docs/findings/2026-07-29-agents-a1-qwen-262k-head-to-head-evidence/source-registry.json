@@ -1,0 +1,78 @@
+{
+  "schema": "source-registry/v1",
+  "observed_date": "2026-07-29",
+  "sources": [
+    {
+      "id": "agents-a1-fp8-model-card",
+      "url": "https://huggingface.co/InternScience/Agents-A1-FP8",
+      "published_or_updated": "2026-07",
+      "age_class": "current",
+      "evidence_class": "official-model-card",
+      "hardware_relevance": "Identity and capability prior only; the target-hardware result is local evidence.",
+      "decision_impact": "Pins the official FP8 checkpoint selected for the same-context comparison."
+    },
+    {
+      "id": "agents-a1-multimodal-discussion-18",
+      "url": "https://huggingface.co/InternScience/Agents-A1/discussions/18",
+      "published_or_updated": "2026-07",
+      "age_class": "current",
+      "evidence_class": "publisher-community-response",
+      "hardware_relevance": "Capability claim only; no target-hardware or broad video benchmark.",
+      "decision_impact": "Supports testing multimodal reasoning but does not establish video quality."
+    },
+    {
+      "id": "qwen35-122b-official-model-card",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-122B-A10B",
+      "published_or_updated": "observed-2026-07-29",
+      "age_class": "current",
+      "evidence_class": "official-model-card",
+      "hardware_relevance": "Architecture, 262K context, OpenAI video_url, and external benchmark prior; not an RTX PRO 6000 result.",
+      "decision_impact": "Confirms native video input and motivates running the current checkpoint through the identical local corpus."
+    },
+    {
+      "id": "qwen35-122b-nvidia-nvfp4-model-card",
+      "url": "https://huggingface.co/nvidia/Qwen3.5-122B-A10B-NVFP4",
+      "published_or_updated": "2026-06-01",
+      "age_class": "current",
+      "evidence_class": "official-quant-model-card",
+      "hardware_relevance": "Lists text, image, and MP4/WebM video with vLLM and Blackwell; local behavior remains separately measured.",
+      "decision_impact": "Confirms that the exact current Primary quant is intended to retain video input."
+    },
+    {
+      "id": "vllm-multimodal-inputs",
+      "url": "https://docs.vllm.ai/en/stable/features/multimodal_inputs/",
+      "published_or_updated": "observed-2026-07-29",
+      "age_class": "current",
+      "evidence_class": "official-runtime-documentation",
+      "hardware_relevance": "Wire-format and decoder prior; each pinned runtime is tested locally.",
+      "decision_impact": "Defines the direct OpenAI video_url request path and bounded media controls."
+    },
+    {
+      "id": "nvidia-vllm-26-06-container",
+      "url": "https://catalog.ngc.nvidia.com/orgs/nvidia/containers/vllm/26.06-py3",
+      "published_or_updated": "2026-06-26",
+      "age_class": "current",
+      "evidence_class": "official-runtime-container",
+      "hardware_relevance": "Exact runtime tag and build metadata used for the Qwen lane; decoder behavior is established by local logs.",
+      "decision_impact": "Pins vLLM 0.22.1+7b9cb5b7, full NGC build ref f6c161e872eacdbcdd16fdae647bd5318a12f49b, and the runtime boundary for the H.264 failure."
+    },
+    {
+      "id": "local-agents-a1-campaign",
+      "url": "docs/findings/2026-07-28-agents-a1-multimodal-qualification.md",
+      "published_or_updated": "2026-07-29",
+      "age_class": "current",
+      "evidence_class": "local-functional-capacity-quality",
+      "hardware_relevance": "Same RTX PRO 6000, exact Agents-A1 revisions, and pinned nightly.",
+      "decision_impact": "Provides the 131K baseline and exact 30-attempt corpus being rerun unchanged."
+    },
+    {
+      "id": "local-qwen-primary-qualification",
+      "url": "docs/findings/2026-07-28-qwen35-122b-primary-qualification.md",
+      "published_or_updated": "2026-07-28",
+      "age_class": "current",
+      "evidence_class": "local-functional-capacity-quality",
+      "hardware_relevance": "Same RTX PRO 6000, exact Qwen checkpoint, and current pinned NGC runtime.",
+      "decision_impact": "Provides the 262K text/image baseline; video was disabled and therefore remains the comparison gap."
+    }
+  ]
+}

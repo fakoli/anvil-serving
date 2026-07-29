@@ -56,6 +56,9 @@ swap.
 | `models recipes update` | Replace one selected recipe. |
 | `models recipes delete` | Delete one selected recipe. |
 | `models recipes load` | Start a named local container from one recipe. |
+| `models recipes status` | Inspect one exact recipe-loaded candidate container. |
+| `models recipes logs` | Read bounded logs from one exact recipe-loaded candidate container. |
+| `models recipes unload` | Remove one exact recipe-loaded candidate container. |
 | `models cache inventory` | Record a read-only model-cache and Docker storage inventory. |
 | `models cache remove` | Plan or remove one exact cached repository revision. |
 | `models cache prune` | Plan or prune model-cache storage. |
@@ -207,6 +210,23 @@ Only then does it evaluate the cache threshold, fixed 1 GiB growth gate, and set
 gate. A readiness timeout skips reclaim and leaves the container running; it does not
 change the successful load's exit code. Configure the default-off policy in
 [`host.toml`](../CONFIGURATION.md#machine-policy-hosttoml).
+
+### Operate a loaded recipe
+
+`load` labels the candidate with its exact recipe model and revision. Status,
+logs, and unload verify those ownership labels before acting, so a mistyped
+container name cannot silently target an unrelated workload.
+
+```bash
+anvil-serving models recipes status MODEL --container my-candidate --registry ./serve-recipes.local.toml
+anvil-serving models recipes logs MODEL --container my-candidate --registry ./serve-recipes.local.toml --tail 200
+anvil-serving models recipes unload MODEL --container my-candidate --registry ./serve-recipes.local.toml --dry-run
+anvil-serving models recipes unload MODEL --container my-candidate --registry ./serve-recipes.local.toml --confirm
+```
+
+Use these commands for isolated benchmark candidates. Use `serves status`,
+`serves logs`, and `serves down` for manifest-owned deployments. Do not use raw
+Docker as the normal candidate lifecycle path.
 
 ## Model scoring
 
