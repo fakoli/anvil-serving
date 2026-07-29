@@ -183,6 +183,14 @@ human-gated, and the change is covered by independent tests.
   `e4c132b0b5662c71ca7db2ab542668019e75e146`; the intended campaign remains
   staged, `.scratch-agents-a1/` remains untracked, no campaign container
   remains, and `anvil-router` is still healthy on `127.0.0.1:8000`.
+- PR #329 initially failed all four Windows jobs during checkout before tests
+  ran because the repository copy of vLLM's exact generated MoE filename made
+  the runner path 263 characters. Shortened only the repository artifact to
+  `moe-config.json`, retained the exact engine-required filename in
+  `kernel-tune-manifest/v1`, and made the derived image copy map the portable
+  source name to the byte-exact runtime lookup name. Updated the tuning skill,
+  contract, agent guidance, and regression test so future tune artifacts
+  remain Windows-checkout-safe without changing engine activation behavior.
 
 ## Friction
 
