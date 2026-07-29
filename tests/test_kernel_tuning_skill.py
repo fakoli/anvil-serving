@@ -10,6 +10,7 @@ WRAPPER = ROOT / ".agents" / "skills" / "anvil-serving-kernel-tuning" / "SKILL.m
 OPENAI_YAML = SKILL.parent / "agents" / "openai.yaml"
 AGENTS = ROOT / "AGENTS.md"
 TUNES = ROOT / "configs" / "kernel-tunes"
+GITATTRIBUTES = ROOT / ".gitattributes"
 
 
 def test_kernel_tuning_skill_requires_paired_end_to_end_evidence():
@@ -54,6 +55,7 @@ def test_kernel_tuning_discovery_surfaces_point_to_canonical_skill():
 
 
 def test_kernel_tune_artifacts_are_byte_bound_and_windows_checkout_safe():
+    assert "configs/kernel-tunes/** -text" in GITATTRIBUTES.read_text(encoding="utf-8")
     manifests = list(TUNES.glob("*/*/*/manifest.json"))
     assert manifests
     for manifest_path in manifests:
