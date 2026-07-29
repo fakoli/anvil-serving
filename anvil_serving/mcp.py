@@ -113,7 +113,7 @@ from .operator_output import CONTEXT_FIELDS, context_from_plan
 
 
 SERVER_INFO = {"name": "anvil-serving", "version": __version__}
-PROTOCOL_VERSION = "2024-11-05"
+PROTOCOL_VERSION = "2026-07-28"
 
 
 def _fail(code: str, message: str, details: Optional[dict] = None) -> dict:

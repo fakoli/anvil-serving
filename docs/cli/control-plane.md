@@ -136,6 +136,13 @@ anvil-serving mcp tools --json
 The catalog comes from the same declarations used by the HTTP controller. Tool
 listing does not invoke a tool, read a credential, or contact a remote service.
 
+The only supported wire version is MCP `2026-07-28`. Every request includes
+protocol version, client capabilities, and optional client identity metadata.
+Clients begin with `server/discover`; the old `initialize` and `initialized`
+messages are not accepted. HTTP clients call `/mcp` with matching
+`MCP-Protocol-Version` and `Mcp-Method` headers, plus `Mcp-Name` for a tool
+call.
+
 For a local operator process, run stdio MCP directly:
 
 ```bash
@@ -153,7 +160,13 @@ anvil-serving mcp serve --controller-url http://100.64.0.10:8765 --auth-env ANVI
 The URL and token environment-variable name must be provided together. Proxy
 mode accepts only loopback/private/tailnet controller URLs, forwards only
 `tools/list` and `tools/call`, and verifies that the remote catalog is a valid
-subset of the local contracts.
+subset of the local contracts. A controller base URL with no path is resolved
+to `/mcp`.
+
+OpenClaw `2026.7.1-2` and later stores this stdio declaration under its native
+`mcp.servers` configuration. Keep the controller token in the OpenClaw service
+environment and pass only `--auth-env ANVIL_CONTROLLER_TOKEN` in the server
+arguments; do not save the token value in OpenClaw's MCP JSON.
 
 ## Controller
 
@@ -168,7 +181,9 @@ The default bind is `127.0.0.1:8765`, and all public CLI binds require the token
 named by `--auth-token-env`. Private and tailnet addresses are allowed with
 authentication. A public or wildcard address also requires
 `--allow-public-bind`. `--allow-operation` is repeatable and reduces the served
-catalog to the declared operations.
+catalog to the declared operations. `--state-db` places the durable idempotency
+store at an explicit path, which the controller image maps to its named state
+volume.
 
 Probe identity and capabilities without calling a management tool:
 

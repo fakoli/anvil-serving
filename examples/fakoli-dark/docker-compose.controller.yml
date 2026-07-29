@@ -1,0 +1,101 @@
+# Containerized Anvil Serving control plane for Fakoli Dark.
+#
+# Fakoli Mini reaches this service through host-owned Tailscale Serve. The
+# controller itself is published only on Windows loopback and owns no model
+# traffic. It receives a deliberately narrow set of Docker-compatible tools.
+name: anvil-serving-controller
+
+services:
+  controller:
+    build:
+      context: ../..
+      target: controller
+    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.17.0}
+    container_name: anvil-serving-controller
+    restart: unless-stopped
+    user: "999:999"
+    group_add:
+      # Docker Desktop exposes /var/run/docker.sock as root:root 0660.
+      - "0"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    gpus: all
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${ANVIL_CONTROLLER_PUBLISH:-127.0.0.1}:8765:8765"
+    environment:
+      ANVIL_CONTROLLER_TOKEN: ${ANVIL_CONTROLLER_TOKEN:?set ANVIL_CONTROLLER_TOKEN}
+      ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      ANVIL_SERVING_HOME: /etc/anvil
+      ANVIL_SERVING_LOOPBACK_ALIAS: host.docker.internal
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount only declared operational artifacts. Do not mount the operator's
+      # home, SSH/GitHub config, or the broad operator configuration directory.
+      - ./serves.toml:/etc/anvil/serves.toml:ro
+      - ./serves.voice.toml:/etc/anvil/serves.voice.toml:ro
+      - ./voice.toml:/etc/anvil/voice.toml:ro
+      - ./docker-compose.yml:/etc/anvil/docker-compose.yml:ro
+      - ./docker-compose.flexibility.yml:/etc/anvil/docker-compose.flexibility.yml:ro
+      - ./docker-compose.voice-audio.yml:/etc/anvil/docker-compose.voice-audio.yml:ro
+      - anvil-controller-state:/var/lib/anvil-serving
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8765"
+      - --allow-public-bind
+      - --state-db
+      - /var/lib/anvil-serving/controller-operations.sqlite3
+      - --allow-operation
+      - operation_contracts
+      - --allow-operation
+      - router_status
+      - --allow-operation
+      - router_logs
+      - --allow-operation
+      - router_manage
+      - --allow-operation
+      - router_transition
+      - --allow-operation
+      - decision_summary
+      - --allow-operation
+      - serves_status
+      - --allow-operation
+      - reservation_status
+      - --allow-operation
+      - serves_manage
+      - --allow-operation
+      - serves_logs
+      - --allow-operation
+      - voice_manage
+      - --allow-operation
+      - gpu_inventory
+      - --allow-operation
+      - preflight_probe
+      - --allow-operation
+      - benchmark_probe
+      - --allow-operation
+      - workflow_packet_validate
+    healthcheck:
+      test:
+        - CMD
+        - anvil-serving
+        - controller
+        - status
+        - --url
+        - http://127.0.0.1:8765
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  anvil-controller-state:

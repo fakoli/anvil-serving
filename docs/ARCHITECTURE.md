@@ -41,6 +41,38 @@ its loopback audio proxies forward to Dark rather than hosting a model.
 gateway can only expose a configured capability. It neither proves model
 quality nor promotes a new recipe.
 
+## Split-host controller
+
+Fakoli Dark owns the execution plane. Its dedicated Linux controller image
+contains Anvil Serving, the pinned Docker CLI and Compose plugin, and the
+NVIDIA runtime view. It receives only the Docker socket, declared serving
+manifests, and a durable operation-state volume. Host loopback URLs in those
+manifests are rewritten to the explicit `host.docker.internal` alias inside
+the container; ordinary native and router-container behavior is unchanged.
+
+Fakoli Mini owns the client plane. OpenClaw launches `anvil-serving mcp serve`
+as an stdio MCP server, which authenticates to the Dark controller through
+host-owned Tailscale Serve. The controller is published on Dark's Windows
+loopback only, so neither the container port nor Docker socket is directly
+reachable from the tailnet.
+
+```mermaid
+flowchart LR
+    O["OpenClaw on Fakoli Mini"] --> P["MCP 2026 stdio proxy"]
+    P --> T["Tailscale Serve /anvil-controller on Fakoli Dark"]
+    T --> C["controller container on 127.0.0.1:8765"]
+    C --> D["Docker Desktop socket"]
+    C --> H["Dark host endpoints"]
+    D --> S["router and declared serves"]
+```
+
+The controller runs non-root with a read-only root filesystem, dropped Linux
+capabilities, and an explicit operation allowlist. Docker-socket membership is
+still host-equivalent authority over Docker, so the token, loopback publish,
+tailnet ACL, restricted tool catalog, and absence of home/SSH/GitHub mounts are
+the actual security boundary. Git and SSH credentials are deliberately not
+available in the image.
+
 ## Operator command architecture
 
 The public CLI is assembled from explicit command families under
@@ -104,6 +136,12 @@ adapts its domain errors to the MCP error contract rather than carrying a
 second path-validation implementation. Controller internals consume the public
 MCP catalog/call surface, while MCP foundations and tool families do not import
 controller internals.
+
+MCP uses the `2026-07-28` stateless request contract exclusively.
+`server/discover`, `tools/list`, and `tools/call` are the only JSON-RPC methods
+served at `/mcp`; `initialize` is intentionally absent. Request metadata and
+the matching `MCP-Protocol-Version`, `Mcp-Method`, and conditional `Mcp-Name`
+HTTP headers are validated before dispatch.
 
 ## Deliberate non-components
 

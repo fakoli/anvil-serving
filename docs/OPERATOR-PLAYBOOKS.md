@@ -69,6 +69,63 @@ In the reference topology, Fakoli Dark owns LLM, STT, and TTS serves. Fakoli Min
 OpenClaw Gateway and realtime proxy only. Use `voice audio` and `voice proxy` commands with an
 explicit topology file; loopback addresses are host-relative.
 
+## Operate Dark from Mini
+
+Build and start the restricted controller on Fakoli Dark from the repository
+root. Keep the token in the process environment or a host secret manager:
+
+```powershell
+$env:ANVIL_CONTROLLER_TOKEN = '<generated secret>'
+docker compose -f examples/fakoli-dark/docker-compose.controller.yml build controller
+docker compose -f examples/fakoli-dark/docker-compose.controller.yml up -d --wait controller
+anvil-serving controller status --url http://127.0.0.1:8765
+```
+
+The deployment publishes only `127.0.0.1:8765`. Expose that loopback listener
+to the tailnet from the Dark host, not from the container:
+
+```powershell
+tailscale serve --bg --set-path=/anvil-controller http://127.0.0.1:8765
+tailscale serve status
+```
+
+On Fakoli Mini, install the same Anvil Serving revision and provide the same
+token to the OpenClaw gateway's owner-only service environment. Register the
+stdio proxy through OpenClaw's current `mcp.servers` surface:
+
+```bash
+openclaw mcp add anvil-serving \
+  --command /Users/<operator>/.local/bin/anvil-serving \
+  --arg mcp --arg serve \
+  --arg=--controller-url \
+  --arg https://fakoli-dark.<tailnet>.ts.net/anvil-controller/mcp \
+  --arg=--auth-env \
+  --arg ANVIL_CONTROLLER_TOKEN \
+  --no-probe
+openclaw mcp doctor
+openclaw mcp probe anvil-serving
+```
+
+The Mini-side process is a model-free stdio proxy. It performs MCP
+`2026-07-28` discovery and forwards only `tools/list` and `tools/call` to
+Dark's `/mcp` endpoint. There is no legacy initialize exchange.
+Do not put the token in `mcp.servers.*.env` or an HTTP header in
+`openclaw.json`; the child process inherits it from the gateway service
+environment.
+
+The example controller includes Docker-compatible router, serve, voice,
+inventory, preflight, benchmark-probe, and workflow-validation tools. It
+excludes native-host management, OpenClaw gateway lifecycle, promotion,
+artifact publication, and experimental manifests that are not mounted.
+SSH remains an explicit break-glass transport for native-only work; it is not
+an automatic fallback from controller errors.
+
+The Docker socket is intentionally writable because lifecycle operations need
+it. Do not mount a user home, `.ssh`, GitHub CLI config, or the whole operator
+configuration directory into this container. Consequently, GitHub- or
+SSH-authenticated actions are unavailable inside it; perform those on an
+operator host or add a separately reviewed, narrowly scoped credential path.
+
 ## OpenClaw sync
 
 Render or apply OpenClaw provider configuration through `harness sync openclaw`. The generated

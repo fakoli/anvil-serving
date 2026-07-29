@@ -103,6 +103,13 @@ mapping is an exposure decision, not a model promotion claim.
 | `anvil-serving voice` | Operator-owned STT/TTS, bridge, Realtime, and voice benchmark lifecycle. |
 | `anvil-serving mcp serve` / `controller` | Structured same-host or private control-plane access. |
 
+The reference split-host control plane runs the controller in the dedicated
+Linux `controller` image on Fakoli Dark and exposes it through host-owned
+Tailscale Serve. Fakoli Mini runs only the MCP stdio proxy used by OpenClaw.
+The wire contract is MCP `2026-07-28` only: every request carries protocol
+metadata, clients begin with `server/discover`, and the removed
+`initialize`/`initialized` exchange is not supported.
+
 ## Documentation
 
 - [Getting started](docs/GETTING-STARTED.md)
