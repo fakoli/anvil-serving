@@ -119,6 +119,9 @@ evidence.
   does not replace `anvil-serving eval preflight`, capacity benchmarking, or
   repeated `anvil-serving eval benchmark quality` evidence for LLM serve
   qualification.
+  Publish a meaningful retained result through
+  `skills/anvil-serving-benchmark-docs/SKILL.md`; keep measured hardware
+  separate from protected/co-resident hardware and retain `promoted=false`.
 - Multi-sample STT qualification:
   use `anvil-serving voice corpus prepare|validate` and
   `anvil-serving voice benchmark --scope stt` through the canonical

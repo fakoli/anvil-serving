@@ -132,6 +132,11 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   visible output, reasoning-channel evidence, finish reasons, separate visible
   and reasoning budgets, provenance, and per-attempt failure classification.
   Do not rank or promote from an older one-shot score that lacks that evidence.
+  After every meaningful retained benchmark, qualification, failed load,
+  promotion, or rollback, complete the publication phase through
+  `skills/anvil-serving-benchmark-docs/SKILL.md`. Update the finding/index, run
+  catalog, model dossier, and measured hardware page as one transaction; do
+  not treat publication as serve or route authority.
 - Promotion evidence: assemble status, gateway probes, preflight, benchmark
   artifacts, serve/direct-alias config diffs, and reviewer recommendation with
   `promoted=false`.

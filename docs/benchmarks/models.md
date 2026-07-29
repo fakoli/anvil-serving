@@ -1,5 +1,10 @@
 # RTX PRO 6000 model recipes and gotchas
 
+> **Stable compatibility page.** Existing deep links into this guide remain
+> supported. New navigation starts at the
+> [model dossier index](models/index.md), which includes RTX 5090 models and
+> separates current status from dated campaign conclusions.
+
 This page turns the [benchmark tables](index.md) into operating guidance for one
 RTX PRO 6000 Blackwell 96 GB. The durable production and experiment recipes
 live in
@@ -83,7 +88,7 @@ for the exact pinned runtime and evidence.
 | Router reasoning control | OpenAI `reasoning_effort=high` default; low used for bounded promotion gates |
 | Complete reproduction guide | [Build, pull, serve, gate, route, and roll back](gpt-oss-puzzle-88b-recipe.md) |
 
-**Why retain it.** This is a branch-backed historical Heavy rollback the local serving
+**Why retain it.** This is the secondary pinned rollback the local serving
 stack was built to exercise. The qualified shape passes chat, structured JSON,
 long-context retrieval, automatic tools, Responses API, streaming, and tool-result
 continuation on the RTX PRO 6000. Its earlier transition did not establish a

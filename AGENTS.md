@@ -54,6 +54,12 @@ readiness, admission, and metadata-only decisions. The canonical product descrip
   hardware, engine/quant/context/concurrency, gate status, metrics, failures, and caveats.
   Link evidence rather than copying raw JSON; label external priors and incomplete or failed
   runs accurately. Publishing evidence never bypasses the human gate for promotion.
+- **Apply the benchmark publication matrix.** Follow
+  `skills/anvil-serving-benchmark-docs/SKILL.md`: update the dated finding and
+  index, run catalog, model dossier, and measured hardware page. Update the
+  chronological archive only when guidance/comparisons change and methodology
+  only when its contract changes. Separate measured hardware from
+  protected/co-resident or topology-only mentions.
 - **Return dicts, not print-side-effects** in library code. CLI wrappers print; modules return.
 - **Never self-verify.** Don't write a check that uses the same model to validate its own
   output. Preflight and benchmark gates must be independent.
