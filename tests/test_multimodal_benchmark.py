@@ -11,6 +11,7 @@ from anvil_serving.benchmarking import multimodal
 
 MODEL_REVISION = "a" * 40
 ENGINE_REVISION = "b" * 40
+ENGINE_BUILD_REF = "c" * 40
 
 
 def _media(tmp_path, name, raw):
@@ -167,3 +168,34 @@ def test_runner_records_identity_media_sampling_outputs_and_aggregates(
     assert artifact["aggregates"]["modality"]["image"]["pass_rate"] == 1.0
     assert artifact["passed"] is True
     assert seen_sampling == [None, None]
+
+
+def test_runner_records_exact_engine_build_ref_when_revision_is_unavailable(
+    monkeypatch, tmp_path
+):
+    image = _media(tmp_path, "scene.png", b"\x89PNG\r\n\x1a\nscene")
+    corpus = _manifest(tmp_path, [_case([image])])
+    output = tmp_path / "evidence.json"
+    argv = _argv(corpus, output)
+    revision_index = argv.index("--engine-revision")
+    argv[revision_index:revision_index + 2] = [
+        "--engine-build-ref",
+        ENGINE_BUILD_REF,
+    ]
+    monkeypatch.setattr(multimodal, "_endpoint_models", lambda *_args: ["agents-a1"])
+
+    def fake_chat(*_args, **_kwargs):
+        return {
+            "choices": [{
+                "finish_reason": "stop",
+                "message": {"content": "READY. RED changes to GREEN."},
+            }],
+            "usage": {"prompt_tokens": 12, "completion_tokens": 7},
+        }, 0.25
+
+    rc = multimodal.main(argv, chat_request=fake_chat)
+
+    assert rc == 0
+    identity = json.loads(output.read_text(encoding="utf-8"))["identity"]
+    assert identity["engine_revision"] is None
+    assert identity["engine_build_ref"] == ENGINE_BUILD_REF

@@ -4,7 +4,7 @@
 
 Text-qualified `challenger` with thinking disabled; multimodal hard gate
 28/30; `no-promotion`.
-Review date: 2026-07-28.
+Review date: 2026-07-29.
 
 ## Immutable identity
 
@@ -22,8 +22,9 @@ were isolated from the live Primary route.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
-Pinned vLLM nightly `f25953cc...`, FP8 KV, 131,072 operational context,
-thinking disabled. BF16 multimodal reached c16; official FP8 reached c32;
+Pinned vLLM nightly `f25953cc...`, FP8 KV, thinking disabled. The official FP8
+profile now passes a 262,144 operational context at c1; the earlier 131,072
+profile reached c32. BF16 multimodal reached c16; official FP8 reached c32;
 NVFP4 uses text-only Marlin with the FlashInfer sampler disabled and no MTP.
 The hardware-specific official FP8 MoE tune was generated and loaded but is
 rejected; the default kernel selection remains the qualified recipe.
@@ -37,6 +38,9 @@ direct video, tools, streaming, Responses, session, unified-diff, timeout, and
 128K c4, and a compact-allocation follow-up. The isolated FP8 router passed
 same-dialect video, media admission, tools, SSE, malformed media, and
 fail-closed unsupported-dialect probes after the two recorded router fixes.
+At 262K, official FP8 passed 240K retrieval and 20/20 tools, retained 51.93
+GiB KV, and measured 32.97 s TTFT plus 155.8 tok/s decode at 231,426 prompt
+tokens.
 
 ## Decision and promotion state
 
@@ -44,6 +48,9 @@ BF16 is the correctness control. Official FP8 is the principal
 production-shaped candidate but does not clear the predeclared 100%
 multimodal assertion gate. NVFP4 is Pareto-preferred for compact text-only
 deployment, not image/video. All remain `no-promotion`.
+The official FP8 profile wins the bounded 262K comparison with the current
+Qwen Primary, but promotion still requires a matched repeated protocol-v3
+quality run and a separate human gate.
 The generated FP8 MoE tune is not adopted: its three-run 8K c16 throughput mean
 regressed 1.399% and missed the 5% gate.
 
@@ -52,12 +59,13 @@ regressed 1.399% and missed the 5% gate.
 Thinking must remain disabled for the production contract. The two video
 failures localized the exact event interval but omitted one required assertion
 word; identical BF16 and FP8 output rules out a measured FP8 regression.
-NVFP4's publisher documents a vision-tower crash. All variants reject 240K
-against the served 131,072-token limit.
+NVFP4's publisher documents a vision-tower crash. The earlier 131K profiles
+reject 240K; official FP8 accepts it only in the new 262K c1 profile.
 Client-observed effective prefill includes queueing and scheduling and must not
 be read as a kernel-only prefill rate.
 
 ## Dated run history
 
+- [2026-07-29 Qwen 262K head-to-head](../../findings/2026-07-29-agents-a1-qwen-262k-head-to-head.md)
 - [2026-07-28 multimodal and quantization qualification](../../findings/2026-07-28-agents-a1-multimodal-qualification.md)
 - [2026-07-27 release-readiness qualification](../../findings/2026-07-27-anvil-serving-release-readiness-sweep.md#agents-a1-qualification)

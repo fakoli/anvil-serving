@@ -1,10 +1,10 @@
 """`anvil-serving models` — catalog + fetch verbs for local model management.
 
-Two sub-actions:
+Sub-actions:
   * ``sync`` — scan HF caches + model dirs, pull cards, build the catalog (-> `_sync.py`).
   * ``pull`` — download a Hugging Face repo INTO A NAMED DOCKER VOLUME so it's ready
     to serve natively (see ``pull_main`` / ``build_pull_argv`` below).
-  * ``recipe`` — manage recorded serve recipes (list/show/create/update/delete/load);
+  * ``recipe`` — manage recorded serve recipes and candidate containers;
     benchmark ``--recipe-out`` remains the evidence-producing generate path.
 
 Why ``pull`` mounts a NAMED VOLUME and not a host ``C:/…`` path (CLAUDE.md gotcha #15):
@@ -53,6 +53,10 @@ LIFECYCLE_READINESS_POLL_SECONDS = 2
 DEFAULT_PULL_HEADROOM_BYTES = 5 * 1024**3
 _REPO_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 _REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
+_RECIPE_CONTAINER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+_RECIPE_MANAGED_LABEL = "io.anvil-serving.managed-by"
+_RECIPE_MODEL_LABEL = "io.anvil-serving.recipe.model"
+_RECIPE_REVISION_LABEL = "io.anvil-serving.recipe.revision"
 
 _VOLUME_CACHE_HELPER = r"""
 import json
@@ -1351,6 +1355,154 @@ def _help_description(outcome, *examples):
     )
 
 
+def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
+    """Return a fail-closed identity for one container created by recipe load."""
+    if not _RECIPE_CONTAINER_RE.fullmatch(container):
+        raise serve_recipes.RecipeError(
+            "container name must use only letters, digits, '.', '_', or '-'"
+        )
+    try:
+        completed = _run(
+            ["docker", "inspect", container],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError as exc:
+        raise serve_recipes.RecipeError(
+            "cannot inspect recipe container %r: %s" % (container, exc)
+        ) from None
+    if completed.returncode:
+        raise serve_recipes.RecipeError(
+            "recipe container %r does not exist or cannot be inspected: %s"
+            % (container, (completed.stderr or "").strip())
+        )
+    try:
+        rows = json.loads(completed.stdout)
+        row = rows[0]
+        labels = (row.get("Config") or {}).get("Labels") or {}
+        state = row.get("State") or {}
+    except (IndexError, TypeError, ValueError, AttributeError):
+        raise serve_recipes.RecipeError(
+            "docker returned malformed identity for recipe container %r" % container
+        ) from None
+    expected_revision = (recipe.get("download") or {}).get("revision")
+    observed_revision = labels.get(_RECIPE_REVISION_LABEL)
+    mismatches = []
+    if labels.get(_RECIPE_MANAGED_LABEL) != "models-recipes":
+        mismatches.append("managed-by label")
+    if labels.get(_RECIPE_MODEL_LABEL) != recipe["model"]:
+        mismatches.append("model label")
+    if expected_revision and observed_revision != expected_revision:
+        mismatches.append("revision label")
+    if mismatches:
+        raise serve_recipes.RecipeError(
+            "container %r is not owned by the selected recipe (%s mismatch)"
+            % (container, ", ".join(mismatches))
+        )
+    return {
+        "schema": "recipe-container-status/v1",
+        "container": container,
+        "model": recipe["model"],
+        "revision": observed_revision,
+        "image": (row.get("Config") or {}).get("Image"),
+        "image_id": row.get("Image"),
+        "state": state.get("Status"),
+        "running": bool(state.get("Running")),
+        "health": ((state.get("Health") or {}).get("Status")),
+    }
+
+
+def _recipe_container_logs(
+    recipe,
+    container,
+    *,
+    tail=200,
+    since=None,
+    _run=subprocess.run,
+):
+    """Read bounded logs only after exact recipe-container ownership checks."""
+    _recipe_container_identity(recipe, container, _run=_run)
+    if isinstance(tail, bool) or not isinstance(tail, int) or not 1 <= tail <= 5000:
+        raise serve_recipes.RecipeError("tail must be from 1 through 5000")
+    if since is not None and (
+        not isinstance(since, str)
+        or not since
+        or since.startswith("-")
+        or any(character in since for character in "\x00\r\n")
+    ):
+        raise serve_recipes.RecipeError(
+            "since must be one non-option timestamp or relative duration"
+        )
+    argv = ["docker", "logs", "--tail", str(tail)]
+    if since:
+        argv += ["--since", since]
+    argv.append(container)
+    try:
+        completed = _run(
+            argv,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError as exc:
+        raise serve_recipes.RecipeError(
+            "cannot read recipe container logs: %s" % exc
+        ) from None
+    if completed.stdout:
+        sys.stdout.write(completed.stdout)
+    if completed.stderr:
+        sys.stderr.write(completed.stderr)
+    return completed.returncode
+
+
+def _recipe_container_unload(
+    recipe,
+    container,
+    *,
+    dry_run=False,
+    confirm=False,
+    _run=subprocess.run,
+):
+    """Remove one exact recipe-owned candidate container."""
+    identity = _recipe_container_identity(recipe, container, _run=_run)
+    if dry_run:
+        print("RECIPE UNLOAD PLAN")
+        print("container: %s" % container)
+        print("model: %s" % identity["model"])
+        print("revision: %s" % (identity["revision"] or "unrecorded"))
+        print("state: %s" % identity["state"])
+        print("ordered actions: verify recipe ownership labels; remove exact container")
+        print("deferred until apply: confirmation and identity recheck")
+        return 0
+    if not _confirm_recipe_mutation(
+        "unload container %s" % container,
+        recipe["model"],
+        confirm=confirm,
+        dry_run=False,
+    ):
+        return 3
+    _recipe_container_identity(recipe, container, _run=_run)
+    completed = _run(
+        ["docker", "rm", "-f", container],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if completed.returncode:
+        print(
+            "recipe unload failed: %s"
+            % ((completed.stderr or completed.stdout or "").strip()),
+            file=sys.stderr,
+        )
+        return completed.returncode
+    print("unloaded recipe container %r" % container)
+    return 0
+
+
 def _print_recipe_mutation_plan(
     action,
     registry_path,
@@ -1495,6 +1647,35 @@ def _build_recipe_parser():
     p_load.add_argument("--dry-run", action="store_true",
                         help="print the exact docker command without starting it")
     p_load.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+    for action, summary in (
+        ("status", "inspect one exact recipe-loaded candidate container"),
+        ("logs", "read bounded logs from one exact recipe-loaded candidate container"),
+        ("unload", "remove one exact recipe-loaded candidate container"),
+    ):
+        parser = sub.add_parser(
+            action,
+            help=summary,
+            description=_help_description(
+                summary.capitalize() + ".",
+                "anvil-serving models recipes %s MODEL --container NAME" % action,
+            ),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        parser.add_argument("model", metavar="MODEL",
+                            help="model id or unambiguous basename")
+        parser.add_argument("--container", required=True, metavar="NAME",
+                            help="container created by models recipes load")
+        parser.add_argument("--registry", default=None,
+                            help="registry TOML (default precedence: config home, configs/, packaged)")
+        if action == "logs":
+            parser.add_argument("--tail", type=int, default=200,
+                                help="bounded trailing lines, 1 through 5000")
+            parser.add_argument("--since",
+                                help="only logs since one timestamp or relative duration")
+        if action == "unload":
+            parser.add_argument("--dry-run", action="store_true",
+                                help="verify identity and preview removal")
+            parser.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
     return ap
 
 
@@ -1534,6 +1715,32 @@ def _recipe_main(argv):
             return 1
         _print_recipe_show(recipe)
         return 0
+    if a.recipe_action in {"status", "logs", "unload"}:
+        recipe = serve_recipes.find_recipe(registry, a.model)
+        if recipe is None:
+            print("no serve recipe for %r in %s" % (a.model, registry_path), file=sys.stderr)
+            return 1
+        try:
+            if a.recipe_action == "status":
+                identity = _recipe_container_identity(recipe, a.container)
+                print(json.dumps(identity, indent=2, sort_keys=True))
+                return 0
+            if a.recipe_action == "logs":
+                return _recipe_container_logs(
+                    recipe,
+                    a.container,
+                    tail=a.tail,
+                    since=a.since,
+                )
+            return _recipe_container_unload(
+                recipe,
+                a.container,
+                dry_run=a.dry_run,
+                confirm=a.confirm,
+            )
+        except serve_recipes.RecipeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
     if a.recipe_action in {"create", "update"}:
         try:
             replacement = serve_recipes.load_recipe_file(a.recipe_file)
@@ -1620,8 +1827,14 @@ def _recipe_main(argv):
             print("docker command:")
             print(printable)
             print(
-                "recovery after a successful start by this command: docker rm -f %s"
-                % shlex.quote(a.container)
+                "recovery after a successful start by this command: "
+                "anvil-serving models recipes unload %s --container %s "
+                "--registry %s --confirm"
+                % (
+                    shlex.quote(recipe["model"]),
+                    shlex.quote(a.container),
+                    shlex.quote(registry_path),
+                )
             )
             print("ownership condition: never remove a container that existed before apply")
             print("deferred until apply: confirmation and Docker start")
@@ -1660,12 +1873,23 @@ def _recipe_main(argv):
                 file=sys.stderr,
             )
             print(
-                "inspect: docker logs --tail 200 %s" % shlex.quote(a.container),
+                "inspect: anvil-serving models recipes logs %s --container %s "
+                "--registry %s --tail 200"
+                % (
+                    shlex.quote(recipe["model"]),
+                    shlex.quote(a.container),
+                    shlex.quote(registry_path),
+                ),
                 file=sys.stderr,
             )
             print(
-                "recovery: anvil-serving serves rm %s --allow-literal --confirm --yes"
-                % shlex.quote(a.container),
+                "recovery: anvil-serving models recipes unload %s --container %s "
+                "--registry %s --confirm"
+                % (
+                    shlex.quote(recipe["model"]),
+                    shlex.quote(a.container),
+                    shlex.quote(registry_path),
+                ),
                 file=sys.stderr,
             )
             return 1

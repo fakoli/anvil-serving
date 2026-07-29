@@ -5,7 +5,7 @@ model dossier and dated finding for the exact recipe and retained artifacts.
 These are local decision records, not a universal leaderboard. A configuration
 or passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-07-28.**
+**Last evidence review: 2026-07-29.**
 
 > **Looking for the numbers?** The
 > [model comparison table](comparison.md) puts every measured configuration —
@@ -32,7 +32,8 @@ was merely protected or co-resident.
 4. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
    controls, not the current rollback order.
 5. **Agents-A1** — benchmark-qualified `challenger` with thinking disabled;
-   `no-promotion`.
+   the official FP8 profile wins the bounded 262K head-to-head, but remains
+   `no-promotion` pending a matched repeated quality suite.
 6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — measured on the RTX 5090.
    The RTX PRO 6000 was protected, not benchmarked.
 
