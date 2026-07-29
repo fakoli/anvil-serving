@@ -55,14 +55,16 @@ advisory only.
 
 | Model / config | Status | Quant · KV | Context · adm. | Thinking | TTFT | Output rate | Recipe |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [Qwen3.5 122B A10B NVFP4](models/qwen35-122b.md) | `current` | ModelOpt NVFP4 · **BF16 KV** | 262,144 · c1 | default **on**, per-request disable | 0.15 / 0.26 s p50/p95 @8K c1 · 52.9 s @240K retrieval · 69.58 s @240K c1 | 65 `agg` @c1 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L652) |
+| [Agents-A1 official FP8 multimodal](models/agents-a1.md) | `current` | compressed-tensors FP8 · FP8 KV | 262,144 · c1 | **must be off** | 0.25 / 0.53 s @8K c1 · 32.97 / 33.44 s @231K c1 | 188.1 tok/s decode @8K · 155.8 tok/s decode @231K | [promotion](../findings/2026-07-29-agents-a1-primary-promotion.md) |
+| [Qwen3.5 122B A10B NVFP4](models/qwen35-122b.md) | `rollback` | ModelOpt NVFP4 · **BF16 KV** | 262,144 · c1 | default **on**, per-request disable | 0.15 / 0.26 s p50/p95 @8K c1 · 68.91 s @231K, c1 matched lane | 60.3 tok/s decode @231K · 59.45 `agg` @8K c1 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml) |
 | [Laguna S 2.1 NVFP4](models/laguna-s-2.1.md) | `rollback` | NVFP4 · FP8 KV | 262,144 | **must be off** | 0.07 / 0.55 s @c1 · 3.44 / 4.37 s @c8 · quality ctx 2.26 / 21.15 / 50.64 s @32K/128K/240K | 75.46 `agg` @c1 · 83.24 `agg` @c8 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L1229) |
 | [GPT-OSS Puzzle 88B](models/gpt-oss-puzzle-88b.md) | `rollback` | MXFP4 + Marlin MoE · FP8 KV | 131,072 · 8 seqs | `reasoning_effort` (`low` for gates) | 0.393 / 0.956 s @8K c1 · 0.766 / 1.075 s @8K c8 · 25.906 s @128K | 3.85 / 17.85 `agg` — **only 20 / 86 output tokens; not a decode rate** | [full recipe](gpt-oss-puzzle-88b-recipe.md) |
 
-Qwen3.5 122B is the only row here on **BF16 KV**; nearly everything else uses FP8 KV. Preserve it,
-along with c1 admission and the one-image limit.
+Qwen3.5 122B is the only row here on **BF16 KV**; preserve that exact rollback,
+along with c1 admission and its one-image limit. Agents-A1 keeps thinking
+disabled, four-image/one-video admission, and the rejected MoE tune inactive.
 
-### Evaluated candidates — none promoted
+### Other evaluated candidates
 
 | Model / config | Status | Quant · KV | Context · adm. | Thinking | TTFT | Output rate | Recipe |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -72,7 +74,6 @@ along with c1 admission and the one-image limit.
 | [Qwen3.6 27B community NVFP4 + MTP](models/qwen36-27b.md) | `no-promotion` | ModelOpt NVFP4 + MTP 3 · FP8 KV | 262,144 · 5 seqs | off for capacity | 0.63 s @c1 · 3.22 s @c5 · 26.5 s @131K needle | **95.0 `long-gen`** (MTP 1.36× from 69.9) | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L1057) |
 | [Ornith 1.0 35B FP8](models/ornith-35b.md) | `no-promotion` | compressed-tensors FP8 · FP8 KV | 131,072 | off | 772 ms warm @8K · **13.1 s full 131K prefill** (fastest of its set) | 29.2 `agg` @c1 (**273 out tok over 10 req**) | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L950) |
 | [Agents-A1 BF16 multimodal](models/agents-a1.md) | `challenger` · `no-promotion` | BF16 · FP8 KV | 131,072 · c16 text, media c1 gated | **must be off** | 0.30 / 0.35 s @8K c1 · 1.50 / 4.82 s @8K c16 · 11.99 / 12.08 s @128K c1 | 89.98 `agg` @c1 · 162.33 `agg` @c16 | [multimodal recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/agents-a1-qualification-multimodal-recipes.toml) |
-| [Agents-A1 official FP8 multimodal](models/agents-a1.md) | `challenger` · `no-promotion` | compressed-tensors FP8 · FP8 KV | 131,072 · c32 text, media c1 gated | **must be off** | 0.25 / 0.43 s @8K c1 · 1.57 / 7.53 s @8K c32 · 11.04 / 11.13 s @128K c1 | 103.92 `agg` @c1 · 218.05 `agg` @c32 | [multimodal recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/agents-a1-qualification-multimodal-recipes.toml) |
 | [Agents-A1 ProtoLabs NVFP4 text](models/agents-a1.md) | `challenger` · `no-promotion` | NVFP4 → Marlin W4A16 · FP8 KV | 131,072 · c16; vision excluded | **must be off** | 0.27 / 0.32 s @8K c1 · 1.08 / 4.32 s @8K c16 | 104.58 `agg` @c1 · 197.93 `agg` @c16 compact | [compact recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/agents-a1-qualification-nvfp4-compact-recipe.toml) |
 | [Nemotron 3 Super 120B NVFP4](models/nemotron3-super-120b.md) | `no-promotion` | NVFP4 · FP8 KV | 131,072 · 5 seqs | both; 1,024 headroom recommended | 0.62 s @c1 · 2.52 s @c5 · 16.76 s @131K | 33.19 `agg` @c1 · 45.90 `agg` @c5 | `cand-nemotron3-super-120b` |
 | [Mistral Small 4 119B NVFP4](models/mistral-small-4.md) | `no-promotion` | NVFP4 · FP8 KV | 131,072 · 5 seqs | `reasoning_effort`; 2,048 headroom | **0.30 s @c1** · 1.85 s @c5 · 51.90 s @131K | 57.82 `agg` @c1 · 67.04 `agg` @c5 | `cand-mistral-small4-119b-nvfp4` |
@@ -203,7 +204,7 @@ image level only. STT RTF and isolated per-model VRAM were never measured.
 
 Rows carrying `not measured` are gaps in the evidence, not zeros. Notably: standalone prefill
 throughput is not published anywhere (long-context TTFT is used as a labelled proxy instead),
-controlled long-generation decode was never captured for the current Qwen3.5 122B Primary, and
+controlled long-generation decode was never captured for the Qwen3.5 122B rollback, and
 STT real-time factor was never measured for any ASR model.
 
 Several configurations lack a pinned checkpoint revision and therefore cannot be re-run exactly —

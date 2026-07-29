@@ -44,18 +44,41 @@ Unless a model section says otherwise, the July 2026 Heavy experiments used FP8
 KV cache, text-only mode, prefix caching disabled for independent-prompt
 comparisons, and a maximum of five admitted sequences.
 
-## Qwen3.5 122B A10B NVFP4
+## Agents-A1 official FP8
+
+| Setting | Tested value |
+|---|---|
+| Checkpoint | [`InternScience/Agents-A1-FP8`](https://huggingface.co/InternScience/Agents-A1-FP8), revision `4d7d59380f327b76e73bc71f40e0c589ad0ca1d5` |
+| Managed service / endpoint | `primary` / `http://127.0.0.1:30002/v1` |
+| Served name | `agents-a1-fp8-mm-262k` |
+| Engine path | vLLM `0.23.1rc1.dev1327+gf25953cc5`; compressed-tensors FP8; FP8 KV |
+| Context / admission | 262,144 served; 240K retrieval and complete repeated protocol-v3 passed; one sequence |
+| Multimodal / reasoning | Four images and one video per request; thinking hard-disabled by the router |
+
+**Why choose it.** It passed the complete thinking-disabled serving contract,
+used 35.31 GiB of reported model memory, retained 51.93 GiB of KV, and
+materially outperformed the former Qwen Primary in the matched 240K lane. Its
+exact runtime also delivered direct video.
+
+**Gotchas.** Keep thinking disabled, c1 admission, and the media bounds. The
+strict multimodal corpus remains 28/30 with a documented assertion-word
+caveat. The exact-hardware MoE tune regressed matched throughput by 1.399% and
+must remain inactive.
+
+Evidence: [Agents-A1 Primary promotion](../findings/2026-07-29-agents-a1-primary-promotion.md).
+
+## Qwen3.5 122B A10B NVFP4 rollback
 
 | Setting | Tested value |
 |---|---|
 | Checkpoint | [`nvidia/Qwen3.5-122B-A10B-NVFP4`](https://huggingface.co/nvidia/Qwen3.5-122B-A10B-NVFP4), revision `98915d837c4e7c87ac8296d02e89de19b3207e6d` |
-| Managed service / endpoint | `primary` / `http://127.0.0.1:30002/v1` |
+| Managed service / endpoint | `primary-qwen35-rollback` / `http://127.0.0.1:30002/v1` when selected |
 | Served name | `qwen35-122b-a10b-nvfp4` |
 | Engine path | NVIDIA vLLM 26.06, observed vLLM `0.22.1+7b9cb5b7.dev`; ModelOpt NVFP4; BF16 KV |
 | Context / admission | 262,144 served; 240K quality retrieval and near-ceiling capacity passed; one sequence |
 | Multimodal / reasoning | One image per prompt, video disabled; thinking enabled by default and request-controllable |
 
-**Why choose it.** This exact checkpoint and runtime passed thinking-disabled
+**Why retain it.** This exact checkpoint and runtime passed thinking-disabled
 smoke, JSON, 240K retrieval, 10/10 tools, and the repeated protocol-v3 context,
 tool, session, unified-diff, and timeout-triage gates at a required 100% pass
 rate. With the vision tower resident, image understanding and OCR passed with

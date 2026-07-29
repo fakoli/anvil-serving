@@ -1,0 +1,52 @@
+{
+  "schema": "agents-a1-qwen-head-to-head-serve-state/v1",
+  "observed_at": "2026-07-29T10:14:22Z",
+  "repository": {
+    "branch": "codex/agents-a1-qwen-head-to-head",
+    "commit": "06f54e2f5fce8e1784f598de963242edba3fe20e",
+    "worktree": "C:\\Users\\sdoum\\ai-code\\anvil-serving-wt-agents-a1-qwen-head-to-head",
+    "dirty_state": "campaign ticket, recipes, and evidence scaffolding untracked"
+  },
+  "source": [
+    "python -m anvil_serving.cli serves status --json",
+    "python -m anvil_serving.cli router status --json",
+    "python -m anvil_serving.cli host gpus --json",
+    "docker ps",
+    "bounded docker inspect anvil-router"
+  ],
+  "serves": {
+    "primary": "absent",
+    "omni": "absent",
+    "omni-small": "absent",
+    "embeddings": "absent",
+    "reranker": "absent",
+    "agents-a1-fp8-262k-head-to-head": "absent",
+    "qwen35-122b-video-262k-head-to-head": "absent"
+  },
+  "router": {
+    "container": "anvil-router",
+    "configured_image": "anvil-serving:0.16.0",
+    "image_id": "sha256:e0105cbeb45b995f2e13ae1c9345e9877884cdac3acce4bc59c390a2701ad385",
+    "state": "running",
+    "health": "healthy",
+    "published_port": "127.0.0.1:8000",
+    "restart_policy": "unless-stopped"
+  },
+  "gpu_memory_mib": [
+    {
+      "index": 0,
+      "name": "NVIDIA GeForce RTX 5090",
+      "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+      "used": 3277,
+      "total": 32607
+    },
+    {
+      "index": 1,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+      "used": 510,
+      "total": 97887
+    }
+  ],
+  "restore_contract": "Remove both campaign containers; leave the exact router image, state, health, port, and restart policy unchanged; keep every listed managed serve absent."
+}

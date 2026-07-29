@@ -1,0 +1,115 @@
+{
+  "schema": "agents-a1-qwen-head-to-head-comparison/v1",
+  "observed_date": "2026-07-29",
+  "comparison_boundary": {
+    "matched": [
+      "NVIDIA RTX PRO 6000",
+      "262144 configured context tokens",
+      "concurrency 1",
+      "thinking disabled",
+      "same 30-attempt hashed multimodal corpus",
+      "same 8K and 240K capacity request shapes"
+    ],
+    "not_matched": [
+      "model architecture and parameter count",
+      "weight quantization",
+      "KV-cache dtype",
+      "vLLM runtime and engine build"
+    ],
+    "interpretation": "Production-shaped profile comparison, not a controlled weights-only experiment."
+  },
+  "profiles": {
+    "agents_a1_fp8": {
+      "model": "InternScience/Agents-A1-FP8",
+      "revision": "4d7d59380f327b76e73bc71f40e0c589ad0ca1d5",
+      "served_model": "agents-a1-fp8-mm-262k",
+      "runtime_image_id": "sha256:212a1bd7b4267c604408d17dc0048ef152101bc67fbe6ba8567899fc1f227bcd",
+      "weight_memory_gib": 35.31,
+      "kv_memory_gib": 51.93,
+      "kv_tokens": 5277426,
+      "reported_full_context_concurrency": 20.13,
+      "functional_240k": "pass",
+      "multimodal": {
+        "overall": "28/30",
+        "image": "12/12",
+        "video": "12/14",
+        "mixed": "4/4"
+      },
+      "capacity_8k_c1": {
+        "ttft_p50_ms": 252.0158,
+        "ttft_p95_ms": 531.2478,
+        "effective_prefill_p50_tok_s": 29167.5704,
+        "generation_p50_ms": 334.1254,
+        "decode_p50_tok_s": 188.0507,
+        "mean_inter_token_latency_p50_ms": 5.317,
+        "e2e_p50_ms": 585.9611,
+        "aggregate_output_tok_s": 102.6022
+      },
+      "capacity_240k_c1": {
+        "actual_prompt_tokens_p50": 231426,
+        "ttft_p50_ms": 32974.6949,
+        "ttft_p95_ms": 33442.2877,
+        "effective_prefill_p50_tok_s": 6920.2204,
+        "generation_p50_ms": 400.7887,
+        "decode_p50_tok_s": 155.8404,
+        "mean_inter_token_latency_p50_ms": 6.3617,
+        "e2e_p50_ms": 33375.4836,
+        "aggregate_output_tok_s": 1.9039
+      }
+    },
+    "qwen35_122b_nvfp4": {
+      "model": "nvidia/Qwen3.5-122B-A10B-NVFP4",
+      "revision": "98915d837c4e7c87ac8296d02e89de19b3207e6d",
+      "served_model": "qwen35-122b-a10b-nvfp4-video-262k",
+      "runtime_image_id": "sha256:bebcf9576b1720214319ee5c7ee4f7661954cbbf59ed3fcd188cd79a67f1967e",
+      "weight_memory_gib": 73.22,
+      "kv_memory_gib": 13.84,
+      "kv_tokens": 571950,
+      "reported_full_context_concurrency": 2.18,
+      "functional_240k": "pass",
+      "multimodal": {
+        "overall": "12/30",
+        "image": "12/12",
+        "video": "0/14",
+        "mixed": "0/4",
+        "failure_boundary": "The NGC 26.06 image could not decode H.264 codec ID 27, so video frames never reached the model."
+      },
+      "capacity_8k_c1": {
+        "ttft_p50_ms": 145.8179,
+        "ttft_p95_ms": 934.5586,
+        "effective_prefill_p50_tok_s": 50214.9042,
+        "generation_p50_ms": 609.7364,
+        "decode_p50_tok_s": 78.7307,
+        "mean_inter_token_latency_p50_ms": 12.6958,
+        "e2e_p50_ms": 748.0626,
+        "aggregate_output_tok_s": 59.4542
+      },
+      "capacity_240k_c1": {
+        "actual_prompt_tokens_p50": 231426,
+        "ttft_p50_ms": 68905.4971,
+        "ttft_p95_ms": 70055.2872,
+        "effective_prefill_p50_tok_s": 3303.5051,
+        "generation_p50_ms": 832.4778,
+        "decode_p50_tok_s": 60.2633,
+        "mean_inter_token_latency_p50_ms": 16.3231,
+        "e2e_p50_ms": 69737.9749,
+        "aggregate_output_tok_s": 0.8236
+      }
+    }
+  },
+  "derived_comparison": {
+    "agents_weight_memory_reduction_percent": 51.78,
+    "agents_kv_capacity_multiple": 3.75,
+    "agents_reported_full_context_concurrency_multiple": 9.23,
+    "qwen_8k_effective_prefill_multiple": 1.72,
+    "agents_8k_decode_multiple": 2.39,
+    "agents_240k_effective_prefill_multiple": 2.09,
+    "agents_240k_decode_multiple": 2.59,
+    "agents_240k_ttft_reduction_percent": 52.15
+  },
+  "decision": {
+    "head_to_head_winner": "Agents-A1 official FP8",
+    "reason": "It passed the same 240K functional gate, used about half the weight memory, retained far more KV capacity, was materially faster end-to-end at 8K and 240K, and was the only tested profile whose runtime delivered video frames to the model.",
+    "production_decision": "Do not promote from this run alone. Qwen retains the current Primary role because its earlier repeated protocol-v3 quality qualification was not rerun for Agents-A1 at 262K; run that matched repeated quality lane before a human promotion decision."
+  }
+}

@@ -5,7 +5,7 @@ model dossier and dated finding for the exact recipe and retained artifacts.
 These are local decision records, not a universal leaderboard. A configuration
 or passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-07-28.**
+**Last evidence review: 2026-07-29.**
 
 > **Looking for the numbers?** The
 > [model comparison table](comparison.md) puts every measured configuration —
@@ -25,14 +25,14 @@ was merely protected or co-resident.
 
 ## Current decision chain
 
-1. **Qwen3.5 122B A10B NVFP4** — `current` Primary.
-2. **Laguna S 2.1 NVFP4** — immediate managed `rollback`.
-3. **GPT-OSS Puzzle 88B** — secondary pinned `rollback`; repeated strict
+1. **Agents-A1 official FP8** — `current` multimodal Primary with thinking
+   disabled.
+2. **Qwen3.5 122B A10B NVFP4** — immediate managed `rollback`.
+3. **Laguna S 2.1 NVFP4** — additional managed `rollback`.
+4. **GPT-OSS Puzzle 88B** — additional pinned `rollback`; repeated strict
    unified-diff formatting passed only 2/3.
-4. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
+5. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
    controls, not the current rollback order.
-5. **Agents-A1** — benchmark-qualified `challenger` with thinking disabled;
-   `no-promotion`.
 6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — measured on the RTX 5090.
    The RTX PRO 6000 was protected, not benchmarked.
 
