@@ -1,0 +1,145 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:30010/v1",
+  "model": "agents-a1-fp8-mm",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 512,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 512
+  },
+  "multimodal_input": null,
+  "video_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [],
+  "checks": [
+    "responses",
+    "streaming-tools",
+    "tool-result"
+  ],
+  "results": [
+    {
+      "name": "Responses API subset",
+      "passed": true,
+      "detail": "0.2s status='completed' output='READY' reasoning_chars=0"
+    },
+    {
+      "name": "streaming tool call",
+      "passed": true,
+      "detail": "0.2s done=True events=8 valid tool_call get_weather(city='Oakland') finish='tool_calls'"
+    },
+    {
+      "name": "tool-result continuation",
+      "passed": true,
+      "detail": "0.8s tool result retained finish='stop' visible=11 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "test": "responses",
+      "seconds": 0.184,
+      "finish_reason": "stop",
+      "content_chars": 5,
+      "content_excerpt": "READY",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "input_tokens": 16,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "input_tokens_per_turn": [],
+          "cached_tokens_per_turn": []
+        },
+        "output_tokens": 2,
+        "output_tokens_details": {
+          "reasoning_tokens": 0,
+          "tool_output_tokens": 0,
+          "output_tokens_per_turn": [],
+          "tool_output_tokens_per_turn": []
+        },
+        "total_tokens": 18
+      },
+      "response_status": "completed",
+      "passed": true,
+      "validation_detail": "completed exact READY"
+    },
+    {
+      "test": "streaming-tools",
+      "seconds": 0.23,
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 281,
+        "total_tokens": 308,
+        "completion_tokens": 27
+      },
+      "sse_done": true,
+      "event_count": 8,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 281,
+        "total_tokens": 308,
+        "completion_tokens": 27,
+        "prompt_tokens_details": null
+      },
+      "test": "tool-result-initial",
+      "seconds": 0.216,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "OAKLAND 72F",
+      "finish_reason": "stop",
+      "content_chars": 11,
+      "content_excerpt": "OAKLAND 72F",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 99,
+        "total_tokens": 107,
+        "completion_tokens": 8,
+        "prompt_tokens_details": null
+      },
+      "test": "tool-result-continuation",
+      "seconds": 0.618,
+      "passed": true,
+      "validation_detail": "tool result retained"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "forbidden",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

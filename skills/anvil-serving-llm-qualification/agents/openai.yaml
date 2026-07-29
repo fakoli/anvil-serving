@@ -1,0 +1,4 @@
+interface:
+  display_name: "Anvil Serving LLM Qualification"
+  short_description: "Qualify local text, image, and video model profiles"
+  default_prompt: "Use $anvil-serving-llm-qualification to qualify a pinned local LLM profile and retain reproducible evidence."

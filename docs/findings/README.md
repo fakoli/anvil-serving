@@ -51,6 +51,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-28 | [2026-07-28-agents-a1-multimodal-qualification.md](2026-07-28-agents-a1-multimodal-qualification.md) | Agents-A1 BF16, official FP8, and ProtoLabs NVFP4 qualification on the RTX PRO 6000: text/image/video gates, context/capacity, memory, kernel tuning, routed media admission, and no-promotion decision |
 | 2026-07-28 | [2026-07-28-qwen35-122b-primary-qualification.md](2026-07-28-qwen35-122b-primary-qualification.md) | Official NVIDIA Qwen3.5 122B NVFP4 at its native 262,144-token window: pinned recipe, single-PRO-6000 gates, current loading research, caveats, and Laguna rollback |
 | 2026-07-28 | [2026-07-28-nemotron35-asr-qualification.md](2026-07-28-nemotron35-asr-qualification.md) | Shared 30-case English STT qualification: Nemotron 3.5 ASR not qualified, Qwen3-ASR 0.6B qualified as an unpromoted replacement candidate, reusable corpus/evidence CLI, and restored protected services |
 | 2026-07-27 | [2026-07-27-omni-voice-stack-qualification.md](2026-07-27-omni-voice-stack-qualification.md) | Co-resident Qwen2.5-Omni-3B, Parakeet STT, and Kokoro TTS on the RTX 5090; measured memory, multimodal gates, Gemma license blocker, and no-promotion caveat |

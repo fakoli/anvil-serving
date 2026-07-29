@@ -179,6 +179,19 @@ def test_final_answer_regex_rejects_conflicting_later_marker():
     ]
 
 
+def test_timeout_triage_accepts_streaming_as_a_practical_latency_fix():
+    prompt = next(
+        item for item in benchmark_runner.INTELLIGENCE_PROMPTS
+        if item["id"] == "parallel_timeout_triage"
+    )
+    result = bm.evaluate_text_checks(
+        "The 3000 ms total exceeds the timeout; stream TTS while the LLM finishes.",
+        prompt["checks"],
+    )
+
+    assert all(item["passed"] for item in result)
+
+
 def test_failure_class_distinguishes_visible_answer_budget_exhaustion():
     observation = {
         "content": "partial explanation without a final",
@@ -302,6 +315,55 @@ def test_mixed_token_sources_suppress_exact_output_throughput():
     assert metrics["content_chunks"] == 2
 
 
+def test_result_metrics_record_prefill_generation_decode_and_inter_token_latency():
+    metrics = benchmark_runner.result_metrics([
+        {
+            "request_index": 1,
+            "ttft": 0.1,
+            "e2e": 0.5,
+            "out_toks": 9,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 9},
+        },
+        {
+            "request_index": 0,
+            "ttft": 0.2,
+            "e2e": 0.7,
+            "out_toks": 11,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 200, "completion_tokens": 11},
+        },
+    ])
+
+    assert metrics["generation_p50_ms"] == pytest.approx(400)
+    assert metrics["generation_p95_ms"] == pytest.approx(500)
+    assert metrics["effective_prefill_tok_s_p50"] == pytest.approx(1000)
+    assert metrics["effective_prefill_tok_s_p95"] == pytest.approx(1000)
+    assert metrics["decode_tok_s_p50"] == pytest.approx(20)
+    assert metrics["decode_tok_s_p95"] == pytest.approx(20)
+    assert metrics["mean_inter_token_latency_ms_p50"] == pytest.approx(50)
+    assert metrics["prompt_tokens"] == 300
+    assert metrics["prompt_token_samples"] == 2
+    assert [row["request_index"] for row in benchmark_runner.result_timings([
+        {
+            "request_index": 1,
+            "ttft": 0.1,
+            "e2e": 0.5,
+            "out_toks": 9,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 100},
+        },
+        {
+            "request_index": 0,
+            "ttft": 0.2,
+            "e2e": 0.7,
+            "out_toks": 11,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 200},
+        },
+    ])] == [0, 1]
+
+
 def test_atomic_json_rejects_non_finite_numbers_without_replacing_target(tmp_path):
     target = tmp_path / "artifact.json"
     target.write_text('{"previous": true}\n', encoding="utf-8")
@@ -334,7 +396,7 @@ def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp
     assert rc in (0, None)
     summary = json.loads(out.read_text(encoding="utf-8"))
     assert summary["schema"] == "anvil-serving.benchmark/v1"
-    assert summary["measurement_protocol"] == "capacity-v2"
+    assert summary["measurement_protocol"] == "capacity-v3"
     assert summary["model"] == "local-heavy"
     assert summary["engine"] == "vllm"
     assert summary["gpu"] == "dark-heavy"
@@ -343,11 +405,21 @@ def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp
     assert summary["context_seed"] == 0
     assert sum(summary["context_distribution"].values()) == 2
     assert summary["metrics"]["ttft_p50_ms"] == 100.0
+    assert summary["metrics"]["generation_p50_ms"] == 100.0
     assert summary["metrics"]["e2e_p50_ms"] == 200.0
+    assert summary["metrics"]["effective_prefill_tok_s_p50"] == 1000.0
+    assert summary["metrics"]["decode_tok_s_p50"] == pytest.approx(70.0)
+    assert summary["metrics"]["mean_inter_token_latency_ms_p50"] == pytest.approx(
+        100.0 / 7
+    )
+    assert summary["metrics"]["prompt_tokens"] == 200
     assert summary["metrics"]["throughput_tok_s"] > 0
     assert summary["metrics"]["output_tokens"] == 16
     assert summary["metrics"]["output_token_sources"] == {"unknown": 2}
     assert summary["metrics"]["prefix_cache_hit_avg"] == 0.4
+    assert [row["request_index"] for row in summary["request_timings"]] == [0, 1]
+    assert summary["timing_methodology"]["clock"] == "client time.perf_counter"
+    assert summary["wall_clock_ms"] > 0
 
 
 # ---- GENERATE: benchmarking a serve ALSO records its recipe (--recipe-out) ---------
