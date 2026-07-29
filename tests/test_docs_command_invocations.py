@@ -37,6 +37,18 @@ DOC_PATHS = (
     Path("docs/PURPOSE-MODELS.md"),
 )
 
+# Dispatcher-level options consumed before argparse; they take a value.
+GLOBAL_VALUED_OPTIONS = frozenset(
+    {
+        "--target",
+        "--transport",
+        "--topology",
+        "--topology-overlay",
+        "--command-host",
+        "--command-runtime",
+    }
+)
+
 _INVOCATION_RE = re.compile(r"^anvil-serving\s+(.+)$")
 _USAGE_RE = re.compile(r"usage:\s*(.+?)(?:\n\n|\Z)", re.DOTALL)
 
@@ -111,7 +123,10 @@ def test_documented_invocation_supplies_required_arguments(doc: str, invocation:
     tail = usage[usage.index(command) + len(command) :] if command in usage else usage
 
     # Options that take a value, so they can be skipped when counting positionals.
+    # Dispatcher options are stripped before argparse sees them and so never appear
+    # in a usage line; without them their values would count as positionals.
     valued = set(re.findall(r"(--[a-z][a-z0-9-]*) [A-Za-z_][A-Za-z0-9_]*", tail))
+    valued |= GLOBAL_VALUED_OPTIONS
 
     # Required options appear unbracketed in an argparse usage line.
     for option in re.findall(r"(?<![\[\w-])(--[a-z][a-z0-9-]*)", tail):
@@ -152,10 +167,17 @@ def test_documented_invocation_supplies_required_arguments(doc: str, invocation:
             continue
         supplied.append(token)
 
-    assert len(supplied) >= len(required_positionals), (
-        f"{doc}: '{invocation}' supplies {len(supplied)} positional(s) but "
-        f"{command} requires {len(required_positionals)} "
-        f"({', '.join(required_positionals)})\n  usage: {usage}"
+    # Optional positionals appear bracketed; count them so a legitimate form that
+    # omits one still passes, while a surplus bare token (an option misspelled as a
+    # positional, which argparse rejects) does not.
+    optional_positionals = re.findall(r"\[([A-Za-z_][A-Za-z0-9_]*)(?: \.\.\.)?\]", tail)
+    lower = len(required_positionals)
+    # `[names ...]` accepts any number, so the upper bound is unbounded.
+    upper = float("inf") if "..." in tail else lower + len(optional_positionals)
+    assert lower <= len(supplied) <= upper, (
+        f"{doc}: '{invocation}' supplies {len(supplied)} positional(s); "
+        f"{command} accepts {lower}-{upper} "
+        f"(required: {', '.join(required_positionals) or 'none'})\n  usage: {usage}"
     )
 
 
