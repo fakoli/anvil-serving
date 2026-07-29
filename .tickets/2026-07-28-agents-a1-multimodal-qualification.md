@@ -191,6 +191,12 @@ human-gated, and the change is covered by independent tests.
   source name to the byte-exact runtime lookup name. Updated the tuning skill,
   contract, agent guidance, and regression test so future tune artifacts
   remain Windows-checkout-safe without changing engine activation behavior.
+- The next Windows matrix reached the full suite and exposed CRLF conversion of
+  the renamed tune artifact: checkout bytes hashed to `28c88535...` instead of
+  the measured `232cda3b...`. Added `configs/kernel-tunes/** -text` to
+  `.gitattributes` and extended the regression test so manifests bind both a
+  portable path and cross-platform byte identity. This preserves the exact
+  3,294-byte artifact in `core.autocrlf=true` Windows clones.
 
 ## Friction
 
