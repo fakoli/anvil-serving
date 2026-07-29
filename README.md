@@ -118,6 +118,7 @@ metadata, clients begin with `server/discover`, and the removed
 - [Thin capability gateway](docs/THIN-CAPABILITY-GATEWAY.md)
 - [CLI reference](docs/CLI.md)
 - [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md)
+- [Fakoli Mini to Dark remote control](examples/fakoli-dark/REMOTE-CONTROL.md)
 - [Voice pipeline](docs/VOICE.md)
 - [Benchmarks](docs/benchmarks/index.md)
   - [RTX PRO 6000](docs/benchmarks/hardware/rtx-pro-6000.md)

@@ -35,6 +35,8 @@ services:
       HF_TOKEN: ${HF_TOKEN:-}
       ANVIL_SERVING_HOME: /etc/anvil
       ANVIL_SERVING_LOOPBACK_ALIAS: host.docker.internal
+      ANVIL_COMMAND_HOST: host:fakoli-dark
+      ANVIL_COMMAND_RUNTIME: runtime:dark-docker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # Mount only declared operational artifacts. Do not mount the operator's
@@ -42,6 +44,7 @@ services:
       - ./serves.toml:/etc/anvil/serves.toml:ro
       - ./serves.voice.toml:/etc/anvil/serves.voice.toml:ro
       - ./voice.toml:/etc/anvil/voice.toml:ro
+      - ./operator-topology.toml:/etc/anvil/operator-topology.toml:ro
       - ./docker-compose.yml:/etc/anvil/docker-compose.yml:ro
       - ./docker-compose.flexibility.yml:/etc/anvil/docker-compose.flexibility.yml:ro
       - ./docker-compose.voice-audio.yml:/etc/anvil/docker-compose.voice-audio.yml:ro

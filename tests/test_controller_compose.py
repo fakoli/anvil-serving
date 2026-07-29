@@ -25,6 +25,8 @@ def test_controller_compose_is_hardened_and_loopback_published():
     assert "group_add:" in text and '- "0"' in text
     assert "gpus: all" in text
     assert "host.docker.internal:host-gateway" in text
+    assert "ANVIL_COMMAND_HOST: host:fakoli-dark" in text
+    assert "ANVIL_COMMAND_RUNTIME: runtime:dark-docker" in text
 
 
 def test_controller_compose_mounts_explicit_artifacts_not_operator_homes():
@@ -35,6 +37,7 @@ def test_controller_compose_mounts_explicit_artifacts_not_operator_homes():
     assert "/.config/gh" not in text
     assert ":/etc/anvil:ro" not in text
     assert "./serves.toml:/etc/anvil/serves.toml:ro" in text
+    assert "./operator-topology.toml:/etc/anvil/operator-topology.toml:ro" in text
     assert "./docker-compose.yml:/etc/anvil/docker-compose.yml:ro" in text
 
 

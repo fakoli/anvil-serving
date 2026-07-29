@@ -11,6 +11,10 @@ All notable changes to this project are documented here. The format is based on
 - The unreleased MCP/controller surface now implements only MCP `2026-07-28`:
   stateless per-request metadata, `server/discover`, required result/cache
   fields, standardized HTTP headers, and no legacy initialize lifecycle.
+- Mini-to-Dark typed CLI operation now accepts declared credential environment
+  references, supports `serves down --dry-run`, permits container-backed GPU
+  inventory, and includes a deployment runbook plus complete live validation
+  boundaries.
 - Fakoli Dark can run the restricted controller as a dedicated non-root Linux
   image with Docker-socket and GPU visibility, explicit configuration mounts,
   container-to-host loopback rewriting, durable operation state, and a
