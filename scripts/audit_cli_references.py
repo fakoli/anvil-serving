@@ -598,16 +598,29 @@ def generated_docs_match(root: Path) -> bool:
 
 
 def _strip_yaml_comment(line: str) -> str:
-    """Drop a YAML comment, honoring quoted nav titles that may contain '#'."""
+    """Drop a YAML comment, honoring quoted nav titles that may contain '#'.
+
+    A quote only opens a quoted scalar at the start of a value. An apostrophe
+    inside a bare word -- ``- Operator's guide: index.md`` -- must not open one,
+    or the rest of the line reads as quoted and its trailing comment survives,
+    letting a commented-out page satisfy the nav gate.
+    """
     quote: str | None = None
+    previous = ""
     for index, char in enumerate(line):
         if quote is not None:
-            if char == quote:
+            if char == "\\" and quote == '"':
+                previous = "\\" if previous != "\\" else ""
+                continue
+            if char == quote and previous != "\\":
                 quote = None
-        elif char in ("'", '"'):
+            previous = "" if previous == "\\" else char
+            continue
+        if char in ("'", '"') and (previous == "" or previous in " \t:-[{,"):
             quote = char
-        elif char == "#":
+        elif char == "#" and (previous == "" or previous in " \t"):
             return line[:index]
+        previous = char
     return line
 
 
