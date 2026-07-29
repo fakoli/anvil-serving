@@ -90,10 +90,13 @@ difference or failure.
 
 ## Publish and Reflect
 
-Publish raw JSON links and a dated finding with checkpoint revision, image
-digest, hardware/topology, corpus provenance, schedule, primary and synthetic
-metrics, failures, restoration state, capability boundaries, and a
-non-promotion decision.
+Delegate publication to
+`skills/anvil-serving-benchmark-docs/SKILL.md`. Publish raw JSON links and a
+dated finding with checkpoint revision, image digest, measured hardware,
+protected/co-resident topology, corpus provenance, schedule, primary and
+synthetic metrics, failures, restoration state, capability boundaries, and a
+non-promotion decision. Update the run catalog, model dossier, and measured
+hardware page through that canonical publication contract.
 
 Maintain a friction log while running:
 

@@ -1,0 +1,91 @@
+# RTX PRO 6000 mention audit
+
+This audit classifies every tracked Markdown file containing an RTX PRO 6000
+name at the 2026-07-28 review. Evidence-directory Markdown is classified with
+its own file, not inherited implicitly from the parent finding. This is a
+coverage control; benchmark results remain in the [run catalog](runs.md).
+
+## `measured-on`
+
+`docs/BENCHMARKS.md`; `docs/benchmarks/gpt-oss-puzzle-88b-recipe.md`;
+`docs/benchmarks/hardware/rtx-pro-6000.md`; `docs/benchmarks/index.md`;
+`docs/benchmarks/methodology.md`; `docs/benchmarks/models.md`;
+`docs/benchmarks/models/agents-a1.md`;
+`docs/benchmarks/models/deepseek-v4-flash.md`;
+`docs/benchmarks/models/gemma-4.md`;
+`docs/benchmarks/models/gpt-oss-120b.md`;
+`docs/benchmarks/models/gpt-oss-puzzle-88b.md`;
+`docs/benchmarks/models/index.md`;
+`docs/benchmarks/models/laguna-s-2.1.md`;
+`docs/benchmarks/models/minimax-m27-reap.md`;
+`docs/benchmarks/models/mistral-small-4.md`;
+`docs/benchmarks/models/nemotron-puzzle-75b.md`;
+`docs/benchmarks/models/nemotron3-super-120b.md`;
+`docs/benchmarks/models/ornith-35b.md`;
+`docs/benchmarks/models/qwen35-122b.md`;
+`docs/benchmarks/models/qwen36-27b.md`; `docs/benchmarks/runs.md`;
+`docs/findings/2026-07-10-blackwell-local-model-bakeoff.md`;
+`docs/findings/2026-07-10-blackwell-local-model-bakeoff-evidence/failures.md`;
+`docs/findings/2026-07-10-blackwell-local-model-bakeoff-evidence/preflight-transcripts.md`;
+`docs/findings/2026-07-10-blackwell-local-model-bakeoff-evidence/reproduction.md`;
+`docs/findings/2026-07-10-qwen35-122b-heavy-candidate.md`;
+`docs/findings/2026-07-12-gpt-oss-120b-deterministic-recheck.md`;
+`docs/findings/2026-07-12-heavy-intelligence-challengers.md`;
+`docs/findings/2026-07-12-nemotron-puzzle-recheck.md`;
+`docs/findings/2026-07-12-qwen35-122b-mxfp4-benchmark.md`;
+`docs/findings/2026-07-12-qwen36-27b-eval-baseline.md`;
+`docs/findings/2026-07-12-qwen36-27b-heavy-variation-bakeoff.md`;
+`docs/findings/2026-07-12-qwen36-protocol-v2-comparison.md`;
+`docs/findings/2026-07-12-rtx-pro-6000-heavy-eval-v2.md`;
+`docs/findings/2026-07-12-rtx-pro-6000-heavy-eval-v2-evidence/laguna-reproduction.md`;
+`docs/findings/2026-07-12-thinkingcap-heavy-promotion.md`;
+`docs/findings/2026-07-13-q36-pro6000-container-recipe.md`;
+`docs/findings/2026-07-13-q36-pro6000-container-recipe-evidence/reproduction.md`;
+`docs/findings/2026-07-16-gemma4-chat-template-bakeoff.md`;
+`docs/findings/2026-07-16-gemma4-unsloth-nvfp4-follow-up.md`;
+`docs/findings/2026-07-16-gemma4-vllm0251-wsl2-c128.md`;
+`docs/findings/2026-07-17-gemma4-31b-optimization.md`;
+`docs/findings/2026-07-17-gpt-oss-puzzle-qualification.md`;
+`docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion.md`;
+`docs/findings/2026-07-26-laguna-s-heavy-qualification.md`;
+`docs/findings/2026-07-27-anvil-serving-release-readiness-sweep.md`;
+`docs/findings/2026-07-28-qwen35-122b-primary-qualification.md`;
+`docs/findings/blackwell-sm120-lab-notebook.md`;
+`.tickets/2026-07-27-release-sweep-fixes.md`;
+`examples/fakoli-dark/q36/README.md`.
+
+## `protected/co-resident`
+
+`docs/findings/2026-07-07-voice-latency-model-shortlist.md`;
+`docs/findings/2026-07-08-stt-model-benchmark.md`;
+`docs/benchmarks/hardware/rtx-5090.md`;
+`docs/benchmarks/models/nemotron-omni-30b.md`;
+`docs/benchmarks/models/parakeet.md`;
+`docs/benchmarks/models/qwen25-omni-3b.md`;
+`docs/benchmarks/models/qwen3-asr.md`;
+`docs/findings/2026-07-13-t011-ocr-rebalance.md`;
+`docs/findings/2026-07-13-t015-resident-set.md`;
+`docs/findings/2026-07-28-nemotron35-asr-qualification.md`;
+`docs/findings/2026-07-voice-stt-ab.md`;
+`docs/findings/2026-07-voice-tts-ab.md`.
+
+## `topology-only`
+
+`README.md`; `CLAUDE.md`; `docs/ARCHITECTURE.md`; `docs/CONFIGURATION.md`;
+`docs/EXTERNAL-BENCHMARKS.md`; `docs/THIN-CAPABILITY-GATEWAY.md`;
+`docs/TROUBLESHOOTING.md`; `docs/adr/0010-specialized-engine-tier.md`;
+`docs/adr/0011-two-mode-operation.md`;
+`docs/adr/0017-gpu-residency-reservations.md`;
+`docs/adr/0018-router-transition-safety.md`;
+`docs/benchmarks/rtx-pro-6000-audit.md`;
+`docs/findings/2026-07-12-green-context-mps-capability.md`;
+`docs/findings/2026-07-18-lifecycle-aware-wsl-cache-reclaim.md`;
+`docs/findings/README.md`; `docs/index.md`;
+`examples/fakoli-dark/README.md`;
+`skills/anvil-serving-benchmark-docs/SKILL.md`.
+
+## `unrelated`
+
+`CHANGELOG.md` (release-history mention);
+`tests/fixtures/external_benchmarks/rtx6kpro_summary.md` (test fixture, not local
+qualification evidence).

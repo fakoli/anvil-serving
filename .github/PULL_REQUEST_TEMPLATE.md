@@ -31,6 +31,11 @@
 - [ ] Required Anvil tasks are `done` with observed proofs and explicit human dispositions
 - [ ] Code author and task reviewer are different people/agents
 - [ ] Documentation and adversarial final reviews have explicit dispositions
+- [ ] Model work updates the finding/index, run catalog, dossier, and measured hardware page
+- [ ] Benchmark docs distinguish measured hardware from protected/co-resident or topology-only hardware
+- [ ] Failed/incomplete runs and `no-promotion` outcomes remain visible
+- [ ] `docs/BENCHMARKS.md` and methodology changed only when their documented triggers apply
+- [ ] Documentation changes did not operate or promote a serve/route
 
 ## Notes for reviewers
 
