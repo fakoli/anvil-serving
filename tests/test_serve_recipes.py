@@ -548,7 +548,33 @@ def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_rollback(request):
     assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in cmd
 
 
-def test_shipped_qwen35_recipe_is_verified_primary_target(request):
+def test_shipped_agents_a1_recipe_is_verified_primary_target(request):
+    root = request.config.rootpath
+    registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
+    recipe = sr.find_recipe(registry, "InternScience/Agents-A1-FP8")
+
+    assert recipe is not None
+    assert recipe["status"] == "verified"
+    serve = recipe["serve"]
+    assert serve["image"] == (
+        "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1"
+    )
+    assert serve["managed_serve"] == "primary"
+    assert serve["served_model_name"] == "agents-a1-fp8-mm-262k"
+    assert serve["port"] == 30002
+    assert serve["context_tokens"] == 262144
+    assert "--revision 4d7d59380f327b76e73bc71f40e0c589ad0ca1d5" in serve["flags"]
+    assert "--kv-cache-dtype fp8" in serve["flags"]
+    assert "--max-model-len 262144" in serve["flags"]
+    assert "--limit-mm-per-prompt '{\"image\":4,\"video\":1}'" in serve["flags"]
+    assert recipe["activation"]["primary"] == {
+        "plan": "agents-a1-fp8-primary",
+        "direction": "promote",
+        "compose_service": "primary",
+    }
+
+
+def test_shipped_qwen35_recipe_is_verified_primary_rollback(request):
     root = request.config.rootpath
     registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
     recipe = sr.find_recipe(registry, "nvidia/Qwen3.5-122B-A10B-NVFP4")
@@ -557,7 +583,7 @@ def test_shipped_qwen35_recipe_is_verified_primary_target(request):
     assert recipe["status"] == "verified"
     serve = recipe["serve"]
     assert serve["image"] == "nvcr.io/nvidia/vllm:26.06-py3"
-    assert serve["managed_serve"] == "primary"
+    assert serve["managed_serve"] == "primary-qwen35-rollback"
     assert serve["served_model_name"] == "qwen35-122b-a10b-nvfp4"
     assert serve["port"] == 30002
     assert serve["context_tokens"] == 262144
@@ -570,9 +596,9 @@ def test_shipped_qwen35_recipe_is_verified_primary_target(request):
     assert "--language-model-only" not in serve["flags"]
     assert not any("enable_thinking" in flag for flag in serve["flags"])
     assert recipe["activation"]["primary"] == {
-        "plan": "qwen35-122b-primary",
-        "direction": "promote",
-        "compose_service": "primary",
+        "plan": "agents-a1-fp8-primary",
+        "direction": "rollback",
+        "compose_service": "primary-qwen35-rollback",
     }
 
     cmd = sr.reconstruct_docker_run(recipe)
@@ -601,7 +627,7 @@ def test_shipped_laguna_recipe_is_verified_primary_rollback(request):
         in serve["flags"]
     )
     assert recipe["activation"]["primary"] == {
-        "plan": "qwen35-122b-primary",
+        "plan": "agents-a1-fp8-primary",
         "direction": "rollback",
         "compose_service": "primary-laguna-rollback",
     }

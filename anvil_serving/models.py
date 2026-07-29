@@ -1452,10 +1452,20 @@ def _recipe_container_logs(
             "cannot read recipe container logs: %s" % exc
         ) from None
     if completed.stdout:
-        sys.stdout.write(completed.stdout)
+        _write_console_text(sys.stdout, completed.stdout)
     if completed.stderr:
-        sys.stderr.write(completed.stderr)
+        _write_console_text(sys.stderr, completed.stderr)
     return completed.returncode
+
+
+def _write_console_text(stream, value):
+    """Write child output without crashing on a narrow Windows console codec."""
+    try:
+        stream.write(value)
+    except UnicodeEncodeError:
+        encoding = getattr(stream, "encoding", None) or "ascii"
+        escaped = value.encode(encoding, errors="backslashreplace").decode(encoding)
+        stream.write(escaped)
 
 
 def _recipe_container_unload(

@@ -8,10 +8,11 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained 2026-07-29 LLM chain is Qwen3.5 122B NVFP4 (`current`),
-Laguna S 2.1 NVFP4 (immediate managed `rollback`), GPT-OSS Puzzle 88B (secondary
-pinned `rollback` with the strict unified-diff caveat), Gemma 4 and ThinkingCap
-(historical controls), and Agents-A1 (`challenger`, `no-promotion`). Nemotron
+The maintained 2026-07-29 LLM chain is Agents-A1 official FP8 (`current`,
+thinking disabled), Qwen3.5 122B NVFP4 (immediate managed `rollback`),
+Laguna S 2.1 NVFP4 and GPT-OSS Puzzle 88B (additional `rollback` profiles; Puzzle
+retains the strict unified-diff caveat), and Gemma 4 and ThinkingCap
+(historical controls). Nemotron
 3.5 ASR and Qwen3-ASR were measured on the RTX 5090 while the PRO 6000 was
 protected. Older sections below preserve what was concluded at their dates.
 
@@ -133,11 +134,30 @@ Agents-A1 passed 12/14 video and 4/4 mixed attempts, while Qwen's exact NGC
 26.06 runtime failed every video-containing request before inference because
 its OpenCV/FFmpeg build lacked an H.264 decoder.
 
-Agents-A1 wins this bounded serving comparison. Qwen remains Primary because
-its complete repeated protocol-v3 quality suite was not rerun head-to-head
-against Agents-A1 at 262K. Promotion remains separately human-gated. See the
+Agents-A1 won this bounded serving comparison. It subsequently passed the
+complete repeated protocol-v3 suite at the 262K profile and received the
+separate human promotion gate; Qwen is now the immediate rollback. See the
 [dated head-to-head](findings/2026-07-29-agents-a1-qwen-262k-head-to-head.md)
-and linked raw evidence.
+and the [promotion record](findings/2026-07-29-agents-a1-primary-promotion.md)
+with linked raw evidence.
+
+## Agents-A1 FP8 Primary promotion (2026-07-29)
+
+The exact official FP8 profile passed a three-repetition, thinking-disabled
+protocol-v3 suite covering 32K/128K/240K context, tools, session recall,
+unified diff, and timeout triage at a required 100% rate. Context TTFT was
+1.571, 12.839, and 35.209 seconds respectively; no reasoning leaked into the
+disabled contract. The managed transaction then passed smoke, JSON, 240K
+retrieval in 24.9 seconds, and 20/20 tools before installing the exact router
+configuration and verifying the served model identity.
+
+The Primary is now `InternScience/Agents-A1-FP8` revision
+`4d7d59380f327b76e73bc71f40e0c589ad0ca1d5`, served as
+`agents-a1-fp8-mm-262k` with FP8 KV, c1 admission, four-image/one-video limits,
+and thinking hard-disabled by the router. Qwen3.5 122B is the immediate
+managed rollback. The strict multimodal corpus caveat remains explicit at
+28/30; both missed cases named the correct event interval but omitted one
+required assertion word, and BF16 reproduced the same result.
 
 ## Qwen3.5 122B Primary qualification (2026-07-28)
 

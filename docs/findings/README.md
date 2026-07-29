@@ -51,6 +51,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-29 | [2026-07-29-agents-a1-primary-promotion.md](2026-07-29-agents-a1-primary-promotion.md) | Agents-A1 official FP8 passes the complete 262K protocol-v3 gate and becomes the thinking-disabled Primary; Qwen3.5 becomes the immediate managed rollback |
 | 2026-07-29 | [2026-07-29-agents-a1-qwen-262k-head-to-head.md](2026-07-29-agents-a1-qwen-262k-head-to-head.md) | Same-GPU, same-context Agents-A1 official FP8 versus current Qwen3.5 122B NVFP4: matched 8K/240K telemetry, unchanged image/video corpus, runtime video failure, restoration, and no-promotion verdict |
 | 2026-07-28 | [2026-07-28-agents-a1-multimodal-qualification.md](2026-07-28-agents-a1-multimodal-qualification.md) | Agents-A1 BF16, official FP8, and ProtoLabs NVFP4 qualification on the RTX PRO 6000: text/image/video gates, context/capacity, memory, kernel tuning, routed media admission, and no-promotion decision |
 | 2026-07-28 | [2026-07-28-qwen35-122b-primary-qualification.md](2026-07-28-qwen35-122b-primary-qualification.md) | Official NVIDIA Qwen3.5 122B NVFP4 at its native 262,144-token window: pinned recipe, single-PRO-6000 gates, current loading research, caveats, and Laguna rollback |
