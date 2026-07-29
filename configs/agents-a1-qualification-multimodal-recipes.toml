@@ -1,0 +1,106 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "InternScience/Agents-A1"
+status = "qualification-candidate"
+source = "Agents-A1 multimodal qualification campaign; BF16 image/video profile"
+family = "qwen3.5-moe-vl"
+total_params_b = 35
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+arch = "sm_120"
+vram_total_gb = 96
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1"
+quantization = "bf16"
+context_tokens = 131072
+port = 30010
+served_model_name = "agents-a1-bf16-mm"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+]
+flags = [
+  "--revision addff08f1653ee72765c5cf458fe84556bb34f8e",
+  "--served-model-name agents-a1-bf16-mm",
+  "--kv-cache-dtype fp8",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--limit-mm-per-prompt '{\"image\":4,\"video\":1}'",
+  "--media-io-kwargs '{\"video\":{\"num_frames\":-1}}'",
+  "--max-model-len 131072",
+  "--max-num-seqs 16",
+  "--gpu-memory-utilization 0.92",
+  "--host 0.0.0.0",
+  "--port 30010",
+]
+
+[recipe.fit]
+suited = ["qualification", "text", "image", "video", "mixed-media"]
+rationale = "BF16 multimodal quality ceiling with one video and four images per request."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/InternScience/Agents-A1",
+  "https://docs.vllm.ai/en/stable/features/multimodal_inputs/",
+]
+community = ["https://huggingface.co/InternScience/Agents-A1/discussions/18"]
+
+[[recipe]]
+model = "InternScience/Agents-A1-FP8"
+status = "qualification-candidate"
+source = "Agents-A1 multimodal qualification campaign; official FP8 principal candidate"
+family = "qwen3.5-moe-vl"
+total_params_b = 35
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+arch = "sm_120"
+vram_total_gb = 96
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1"
+quantization = "compressed-tensors fp8"
+context_tokens = 131072
+port = 30010
+served_model_name = "agents-a1-fp8-mm"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+]
+flags = [
+  "--revision 4d7d59380f327b76e73bc71f40e0c589ad0ca1d5",
+  "--served-model-name agents-a1-fp8-mm",
+  "--kv-cache-dtype fp8",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--limit-mm-per-prompt '{\"image\":4,\"video\":1}'",
+  "--media-io-kwargs '{\"video\":{\"num_frames\":-1}}'",
+  "--max-model-len 131072",
+  "--max-num-seqs 32",
+  "--gpu-memory-utilization 0.92",
+  "--host 0.0.0.0",
+  "--port 30010",
+]
+
+[recipe.fit]
+suited = ["qualification", "text", "image", "video", "mixed-media", "production-shaped"]
+rationale = "Principal production-shaped candidate with official FP8 weights and FP8 KV."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/InternScience/Agents-A1-FP8",
+  "https://docs.vllm.ai/en/stable/features/multimodal_inputs/",
+]

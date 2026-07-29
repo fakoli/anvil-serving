@@ -50,9 +50,11 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-07-18-gpt-oss-puzzle-heavy-promotion.md`;
 `docs/findings/2026-07-26-laguna-s-heavy-qualification.md`;
 `docs/findings/2026-07-27-anvil-serving-release-readiness-sweep.md`;
+`docs/findings/2026-07-28-agents-a1-multimodal-qualification.md`;
 `docs/findings/2026-07-28-qwen35-122b-primary-qualification.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/2026-07-27-release-sweep-fixes.md`;
+`.tickets/2026-07-28-agents-a1-multimodal-qualification.md`;
 `examples/fakoli-dark/q36/README.md`.
 
 ## `protected/co-resident`

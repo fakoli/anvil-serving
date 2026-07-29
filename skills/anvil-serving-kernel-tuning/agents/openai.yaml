@@ -1,0 +1,4 @@
+interface:
+  display_name: "Anvil Serving Kernel Tuning"
+  short_description: "Qualify hardware-specific kernel tunes safely"
+  default_prompt: "Use $anvil-serving-kernel-tuning to decide whether a local model needs kernel tuning and qualify the resulting tune."

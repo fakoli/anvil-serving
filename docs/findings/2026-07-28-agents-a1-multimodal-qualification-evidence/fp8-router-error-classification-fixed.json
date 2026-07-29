@@ -1,0 +1,66 @@
+{
+  "schema": "router-multimodal-error-evidence/v1",
+  "observed_at": "2026-07-29T09:15:20Z",
+  "router": {
+    "config": "configs/agents-a1-qualification-router.toml",
+    "base_url": "http://127.0.0.1:18000/v1",
+    "route_alias": "vision.agents_a1_qualification",
+    "tier": "agents-a1-fp8-qualification",
+    "live_primary_changed": false
+  },
+  "upstream": {
+    "base_url": "http://127.0.0.1:30010/v1",
+    "model": "agents-a1-fp8-mm",
+    "revision": "4d7d59380f327b76e73bc71f40e0c589ad0ca1d5"
+  },
+  "fix": {
+    "contract": "Caller-correctable upstream media rejections and unsupported cross-dialect video translation return sanitized 4xx responses before any streaming 200 response is committed.",
+    "upstream_status_allowlist": [
+      400,
+      413,
+      415,
+      422
+    ],
+    "upstream_5xx_behavior": "Remains a sanitized internal 500.",
+    "media_bytes_logged": false
+  },
+  "tests": {
+    "malformed_video_non_streaming": {
+      "status": 400,
+      "content_type": "application/json",
+      "error": {
+        "type": "invalid_request_error",
+        "message": "model upstream rejected the request"
+      },
+      "passed": true
+    },
+    "malformed_video_streaming": {
+      "status": 400,
+      "content_type": "application/json",
+      "error": {
+        "type": "invalid_request_error",
+        "message": "model upstream rejected the request"
+      },
+      "passed": true
+    },
+    "unsupported_anthropic_video_non_streaming": {
+      "status": 400,
+      "content_type": "application/json",
+      "error": {
+        "type": "invalid_request_error",
+        "message": "cross-dialect video translation is unsupported"
+      },
+      "passed": true
+    },
+    "unsupported_anthropic_video_streaming": {
+      "status": 400,
+      "content_type": "application/json",
+      "error": {
+        "type": "invalid_request_error",
+        "message": "cross-dialect video translation is unsupported"
+      },
+      "passed": true
+    }
+  },
+  "passed": true
+}

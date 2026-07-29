@@ -67,6 +67,24 @@ def has_image_artifacts(raw: Mapping[str, Any]) -> bool:
     return False
 
 
+def has_video_artifacts(raw: Mapping[str, Any]) -> bool:
+    """True when the raw wire body carries video content worth preserving."""
+    messages = raw.get("messages")
+    if not _is_seq(messages):
+        return False
+    for message in messages:
+        if not isinstance(message, Mapping):
+            continue
+        content = message.get("content")
+        if _is_seq(content):
+            for block in content:
+                if isinstance(block, Mapping) and block.get("type") in (
+                    "video_url", "input_video", "video",
+                ):
+                    return True
+    return False
+
+
 def has_tool_artifacts(raw: Mapping[str, Any]) -> bool:
     """True when the raw wire body carries any tool structure worth preserving.
 

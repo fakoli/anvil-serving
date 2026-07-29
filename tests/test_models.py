@@ -8,6 +8,7 @@ stay on --dry-run). No real docker, no network.
 import importlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 import types
 
@@ -805,6 +806,118 @@ def test_models_cache_prune_help_uses_canonical_usage(capsys):
     assert "usage: anvil-serving models cache prune" in out
     assert "--mixture" in out
     assert "--dry-run" in out
+
+
+def test_cache_inventory_normalizes_volume_and_docker_storage():
+    volume_report = {
+        "schema_version": "model-cache-inventory/v1",
+        "cache": {
+            "capacity_bytes": 1000,
+            "used_bytes": 700,
+            "available_bytes": 300,
+            "logical_bytes": 600,
+        },
+        "repositories": [{
+            "repo_id": "org/model",
+            "logical_bytes": 10,
+            "snapshots": ["abc"],
+            "refs": {"main": "abc"},
+            "incomplete_count": 0,
+            "incomplete_bytes": 0,
+            "broken_symlink_count": 0,
+            "latest_cache_modification_at": "2026-07-01T00:00:00Z",
+        }],
+        "timestamp_caveat": "not last use",
+    }
+    docker_report = {
+        "Images": [{
+            "Repository": "example/image",
+            "Tag": "1",
+            "ID": "sha256:abc",
+            "CreatedAt": "2026-07-01 00:00:00 +0000 UTC",
+            "Containers": "1",
+            "Size": "2GB",
+            "SharedSize": "500MB",
+            "UniqueSize": "1.5GB",
+        }],
+        "Containers": [{
+            "Container ID": "container-1",
+            "Names": "candidate",
+            "Image": "example/image:1",
+            "CreatedAt": "2026-07-02 00:00:00 +0000 UTC",
+            "State": "running",
+            "Status": "Up 1 hour",
+            "Labels": "com.docker.compose.project.config_files=C:/private/path",
+        }],
+        "LocalVolumes": [{"Name": "vllm-hfcache", "Links": "0", "Size": "600B"}],
+        "BuildCache": [{
+            "ID": "cache-1",
+            "CacheType": "regular",
+            "InUse": "false",
+            "Size": "25MB",
+            "CreatedAt": "2026-07-01 00:00:00 +0000 UTC",
+            "LastUsedAt": "2026-07-03 00:00:00 +0000 UTC",
+            "UsageCount": "2",
+        }],
+    }
+    calls = []
+
+    def fake_run(argv, **_kwargs):
+        calls.append(argv)
+        payload = volume_report if argv[:2] == ["docker", "run"] else docker_report
+        return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
+
+    report = models.cache_inventory(
+        volume="vllm-hfcache",
+        image="example/inspector:1",
+        _run=fake_run,
+    )
+
+    assert report["schema_version"] == "model-cache-inventory/v1"
+    assert report["repositories"][0]["repo_id"] == "org/model"
+    assert report["docker"]["images"][0]["unique_bytes"] == 1_500_000_000
+    assert report["docker"]["images"][0]["last_container_observed_at"].startswith("2026-07-02")
+    assert report["docker"]["containers"] == [{
+        "container_id": "container-1",
+        "name": "candidate",
+        "image_reference": "example/image:1",
+        "image_id": None,
+        "created_at": "2026-07-02 00:00:00 +0000 UTC",
+        "state": "running",
+        "status": "Up 1 hour",
+    }]
+    assert report["docker"]["build_cache"][0]["last_used_at"].startswith("2026-07-03")
+    assert "readonly" in calls[0][calls[0].index("--mount") + 1]
+    assert calls[1] == [
+        "docker", "system", "df", "-v", "--format", "{{json .}}"
+    ]
+
+
+def test_cache_inventory_cli_dispatches_renders_and_writes_atomically(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        models,
+        "cache_inventory",
+        lambda **_kwargs: {
+            "schema_version": "model-cache-inventory/v1",
+            "repositories": [],
+        },
+    )
+
+    output = tmp_path / "inventory.json"
+    assert cli.main([
+        "models", "cache", "inventory", "--output", str(output)
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["schema_version"] == "model-cache-inventory/v1"
+    assert json.loads(output.read_text(encoding="utf-8")) == payload
+    assert list(tmp_path.glob(".*.tmp")) == []
+
+
+def test_cache_inventory_rejects_path_like_volume(capsys):
+    assert models.cache_inventory_main(["--volume", "C:/cache"]) == 1
+    assert "named Docker volume" in capsys.readouterr().err
 
 
 def test_cache_prune_default_dry_run_does_not_create_catalog_directory(

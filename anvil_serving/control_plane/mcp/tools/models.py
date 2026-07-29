@@ -85,6 +85,30 @@ def tool_models_inventory(args: dict) -> dict:
     return _ok({"synced": False, "dry_run": False, "catalog": inventory})
 
 
+def tool_model_cache_inventory(args: dict) -> dict:
+    from .... import models
+
+    allowed = {"volume", "image"}
+    extras = sorted(str(key) for key in args if key not in allowed)
+    if extras:
+        raise ToolError(
+            "bad_argument",
+            "unsupported model_cache_inventory argument(s)",
+            {"arguments": extras},
+        )
+    volume = _str_arg(args, "volume", models.DEFAULT_PULL_VOLUME)
+    image = _str_arg(args, "image", models.DEFAULT_PULL_IMAGE)
+    try:
+        inventory = models.cache_inventory(volume=volume, image=image)
+    except ValueError as exc:
+        raise ToolError(
+            "model_cache_inventory_failed",
+            str(exc),
+            {"volume": volume, "image": image},
+        ) from exc
+    return _ok({"inventory": inventory})
+
+
 def _cache_prune_plan_argv(mixture: list[str], *, include_servable: bool) -> list[str]:
     argv = [sys.executable, "-m", "anvil_serving.cli", "models", "cache", "prune", "--json"]
     if mixture:
@@ -155,6 +179,19 @@ FAMILY = ToolFamily(
                 }
             ),
             "handler": tool_models_inventory,
+        },
+        "model_cache_inventory": {
+            "description": (
+                "Read one Docker model-cache volume plus Docker image, volume, "
+                "container, and build-cache accounting."
+            ),
+            "inputSchema": _schema(
+                {
+                    "volume": {"type": "string"},
+                    "image": {"type": "string"},
+                }
+            ),
+            "handler": tool_model_cache_inventory,
         },
         "cache_prune_plan": {
             "description": "Return a JSON model-cache prune plan and dry-run report; deletion is not available through MCP.",

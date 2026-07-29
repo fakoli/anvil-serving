@@ -1,0 +1,56 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "InternScience/Agents-A1-FP8"
+status = "qualification-candidate-kernel-tuned"
+source = "Agents-A1 target-GPU fused-MoE default-versus-tuned qualification"
+family = "qwen3.5-moe-vl"
+total_params_b = 35
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+arch = "sm_120"
+vram_total_gb = 96
+
+[recipe.serve]
+engine = "vllm"
+image = "anvil-vllm:agents-a1-fp8-tuned-f25953cc"
+quantization = "compressed-tensors fp8"
+context_tokens = 131072
+port = 30010
+served_model_name = "agents-a1-fp8-text"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "VLLM_TUNED_CONFIG_FOLDER=/opt/anvil/kernel-tunes",
+]
+flags = [
+  "--revision 4d7d59380f327b76e73bc71f40e0c589ad0ca1d5",
+  "--served-model-name agents-a1-fp8-text",
+  "--language-model-only",
+  "--kv-cache-dtype fp8",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--max-model-len 131072",
+  "--max-num-seqs 32",
+  "--gpu-memory-utilization 0.92",
+  "--host 0.0.0.0",
+  "--port 30010",
+]
+
+[recipe.fit]
+suited = ["qualification", "text", "kernel-tuned", "agentic", "long-context"]
+rationale = "Matched FP8 text recipe with only the pinned target-GPU fused-MoE config activated."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/InternScience/Agents-A1-FP8",
+  "https://github.com/vllm-project/vllm/blob/f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1/benchmarks/kernels/benchmark_moe.py",
+]
+local = [
+  "configs/kernel-tunes/vllm/f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1/nvidia-rtx-pro-6000-blackwell-max-q-workstation-edition/manifest.json",
+]

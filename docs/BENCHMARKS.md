@@ -141,6 +141,45 @@ experimental. Laguna S 2.1 remains the immediate managed rollback. See the
 [dated qualification](findings/2026-07-28-qwen35-122b-primary-qualification.md)
 and linked raw JSON.
 
+## Agents-A1 multimodal and quantization qualification (2026-07-28)
+
+Agents-A1 BF16, official FP8, and ProtoLabs NVFP4 were compared on the single
+RTX PRO 6000 with pinned vLLM `f25953cc`, FP8 KV, a 131,072-token operational
+window, and thinking disabled. BF16 and FP8 passed text, image, OCR, direct
+`video_url`, tools, streaming, Responses, session, and 128K c1/c2/c4 gates.
+They also produced the same 28/30 strict multimodal corpus result: all 12 image
+and four mixed-media attempts passed, while two video outputs found the exact
+event interval but omitted one required assertion word. That matching failure
+is not an FP8 quant regression, but it does block the predeclared 100%
+multimodal hard gate.
+
+| Profile | 8K throughput | Memory observation | Outcome |
+|---|---|---|---|
+| BF16 multimodal | c1/c8/c16: 90/151/162 tok/s | 65.53 GiB model, 19.53 GiB KV | Correctness control; 28/30 multimodal |
+| Official FP8 multimodal | c1/c8/c16/c32: 104/193/200/218 tok/s | 35.31 GiB model, 49.66 GiB KV | Principal production-shaped candidate; 28/30, no promotion |
+| Official FP8 text | c1/c8/c16/c32: 101/190/207/225 tok/s | 34.46 GiB model, 50.81 GiB KV | Matched text control |
+| ProtoLabs NVFP4 text | c1/c8/c16: 105/187/204 tok/s | 21.03 GiB model | Pareto-preferred compact text profile; no image/video |
+
+The FP8 vision tower costs approximately 1.5 GiB of practical runtime
+headroom. Video adds request-dependent visual-token and decode pressure rather
+than persistent weights, so the isolated router profile starts at one video
+and four images with explicit admission estimates. NVFP4 is not a speed win
+over FP8, and its publisher documents a vision-tower crash on this stack; its
+qualification is text-only. All 240K requests failed closed at the served
+131,072-token boundary.
+
+The official FP8 runtime also lacked a GPU-specific E=256/N=512 MoE kernel
+config. The complete 18-batch target-GPU tuner took 3h 30m 50s. Its exact tune
+loaded and preserved functional gates, but the paired three-run 8K c16 A/B
+regressed aggregate throughput by 1.399% (214.21 to 211.21 tok/s), so the tune
+is rejected and remains inert. The isolated router passed same-dialect video,
+media admission, tools, and SSE; malformed and unsupported cross-dialect video
+now fail as sanitized 4xx responses in both streaming and non-streaming form.
+Full source review, storage evidence, Creative Commons fixtures, publication
+timings, raw results, router boundary, and decision table are in the
+[dated multimodal qualification](findings/2026-07-28-agents-a1-multimodal-qualification.md).
+No production route changed.
+
 ## Laguna S 2.1 Heavy qualification (2026-07-26)
 
 The immediate Primary rollback is **`poolside/Laguna-S-2.1-NVFP4`**, served as

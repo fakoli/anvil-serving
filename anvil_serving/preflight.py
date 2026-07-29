@@ -20,6 +20,7 @@ import os
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -77,7 +78,7 @@ def _validate_output_path(path):
 
 def chat(base, model, messages, key=None, max_tokens=256, temperature=0.0,
          tools=None, tool_choice=None, timeout=900, chat_template_kwargs=None,
-         reasoning_effort=None):
+         reasoning_effort=None, mm_processor_kwargs=None):
     url = base.rstrip("/") + "/chat/completions"
     body = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
     if tools: body["tools"] = tools
@@ -88,12 +89,101 @@ def chat(base, model, messages, key=None, max_tokens=256, temperature=0.0,
     # reasoning via "reasoning effort", not the chat template) -> needs adequate tokens.
     if chat_template_kwargs: body["chat_template_kwargs"] = chat_template_kwargs
     if reasoning_effort is not None: body["reasoning_effort"] = reasoning_effort
+    if mm_processor_kwargs: body["mm_processor_kwargs"] = mm_processor_kwargs
     headers = {"Content-Type": "application/json"}
     if key: headers["Authorization"] = "Bearer " + key
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
     t0 = time.time()
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read()), time.time() - t0
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read()), time.time() - t0
+    except urllib.error.HTTPError as exc:
+        raw = exc.read(4097)
+        bounded = raw[:4096].decode("utf-8", errors="replace").strip()
+        if len(raw) > 4096:
+            bounded += "...[truncated]"
+        detail = bounded or exc.reason or "no response body"
+        raise RuntimeError("HTTP %s: %s" % (exc.code, detail)) from exc
+
+
+def responses_request(base, model, prompt, key=None, max_tokens=256,
+                      temperature=0.0, chat_template_kwargs=None, timeout=900):
+    """Send the bounded stateless Responses API subset used by preflight."""
+    url = base.rstrip("/") + "/responses"
+    body = {
+        "model": model,
+        "input": prompt,
+        "max_output_tokens": max_tokens,
+        "temperature": temperature,
+    }
+    if chat_template_kwargs:
+        body["chat_template_kwargs"] = chat_template_kwargs
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = "Bearer " + key
+    request = urllib.request.Request(
+        url, data=json.dumps(body).encode(), headers=headers
+    )
+    started = time.time()
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read()), time.time() - started
+    except urllib.error.HTTPError as exc:
+        raw = exc.read(4097)
+        bounded = raw[:4096].decode("utf-8", errors="replace").strip()
+        if len(raw) > 4096:
+            bounded += "...[truncated]"
+        detail = bounded or exc.reason or "no response body"
+        raise RuntimeError("HTTP %s: %s" % (exc.code, detail)) from exc
+
+
+def chat_stream(base, model, messages, key=None, max_tokens=256, tools=None,
+                tool_choice=None, chat_template_kwargs=None, timeout=900):
+    """Read a bounded Chat Completions SSE stream and retain parsed events."""
+    url = base.rstrip("/") + "/chat/completions"
+    body = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.0,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+    if tools:
+        body["tools"] = tools
+    if tool_choice:
+        body["tool_choice"] = tool_choice
+    if chat_template_kwargs:
+        body["chat_template_kwargs"] = chat_template_kwargs
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = "Bearer " + key
+    request = urllib.request.Request(
+        url, data=json.dumps(body).encode(), headers=headers
+    )
+    started = time.time()
+    events = []
+    done = False
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8", errors="replace").strip()
+                if not line.startswith("data:"):
+                    continue
+                payload = line[5:].strip()
+                if payload == "[DONE]":
+                    done = True
+                    break
+                if payload:
+                    events.append(json.loads(payload))
+                if len(events) > 10000:
+                    raise RuntimeError("SSE event limit exceeded")
+    except urllib.error.HTTPError as exc:
+        raw = exc.read(4097)
+        bounded = raw[:4096].decode("utf-8", errors="replace").strip()
+        detail = bounded or exc.reason or "no response body"
+        raise RuntimeError("HTTP %s: %s" % (exc.code, detail)) from exc
+    return events, done, time.time() - started
 
 
 def load_image_data(path):
@@ -122,6 +212,36 @@ def load_image_data(path):
     }
     encoded = base64.b64encode(raw).decode("ascii")
     return "data:%s;base64,%s" % (mime, encoded), identity
+
+
+def load_video_data(path):
+    """Return a bounded video data URL plus non-sensitive input identity."""
+    if not path:
+        raise ValueError("video check requires --video-path")
+    video_path = os.path.abspath(os.path.expanduser(path))
+    if os.path.islink(video_path):
+        raise ValueError("video path cannot be a symbolic link: %s" % video_path)
+    if not os.path.isfile(video_path):
+        raise ValueError("video path is not a regular file: %s" % video_path)
+    size = os.path.getsize(video_path)
+    max_bytes = 128 * 1024 * 1024
+    if not 0 < size <= max_bytes:
+        raise ValueError("video must be from 1 byte through 128 MiB")
+    mime, _encoding = mimetypes.guess_type(video_path)
+    if mime not in {"video/mp4", "video/webm", "video/quicktime"}:
+        raise ValueError("video must be MP4, WebM, or QuickTime")
+    with open(video_path, "rb") as handle:
+        raw = handle.read(max_bytes + 1)
+    if len(raw) != size:
+        raise ValueError("video changed while it was being read")
+    identity = {
+        "bytes": size,
+        "mime": mime,
+        "sha256": hashlib.sha256(raw).hexdigest(),
+    }
+    encoded = base64.b64encode(raw).decode("ascii")
+    return "data:%s;base64,%s" % (mime, encoded), identity
+
 
 def response_observation(response):
     """Retain the evidence needed to distinguish bad output from budget starvation."""
@@ -260,6 +380,186 @@ def t_tool_batch(base, model, key, n, ctk=None, max_tokens=256,
     passed = sum(oks)
     return passed == n, f"{passed}/{n} clean (sample: {details[0] if details else 'n/a'})"
 
+
+def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
+                     evidence=None, timeout=900):
+    """Require one valid tool call reconstructed from an SSE stream."""
+    messages = [{
+        "role": "user",
+        "content": "What's the weather in Oakland? Use the tool.",
+    }]
+    try:
+        events, done, seconds = chat_stream(
+            base, model, messages, key, max_tokens=max_tokens, tools=TOOLS,
+            tool_choice="auto", chat_template_kwargs=ctk, timeout=timeout,
+        )
+        calls = {}
+        finish_reason = None
+        usage = None
+        reasoning = ""
+        for event in events:
+            if isinstance(event.get("usage"), dict):
+                usage = event["usage"]
+            choices = event.get("choices")
+            if not isinstance(choices, list) or not choices:
+                continue
+            choice = choices[0] if isinstance(choices[0], dict) else {}
+            finish_reason = choice.get("finish_reason") or finish_reason
+            delta = choice.get("delta") if isinstance(choice.get("delta"), dict) else {}
+            for field in ("reasoning", "reasoning_content"):
+                if isinstance(delta.get(field), str):
+                    reasoning += delta[field]
+            for raw_call in delta.get("tool_calls") or []:
+                if not isinstance(raw_call, dict):
+                    continue
+                index = raw_call.get("index", 0)
+                call = calls.setdefault(index, {
+                    "id": "", "type": "function",
+                    "function": {"name": "", "arguments": ""},
+                })
+                call["id"] += raw_call.get("id") or ""
+                function = raw_call.get("function") or {}
+                call["function"]["name"] += function.get("name") or ""
+                call["function"]["arguments"] += function.get("arguments") or ""
+        message = {"content": "", "tool_calls": [calls[key] for key in sorted(calls)]}
+        valid, detail = validate_tool_call(message)
+        passed = done and valid and finish_reason == "tool_calls"
+        if evidence is not None:
+            evidence.append({
+                "test": "streaming-tools",
+                "seconds": round(seconds, 3),
+                "finish_reason": finish_reason,
+                "content_chars": 0,
+                "content_excerpt": "",
+                "reasoning_field": "stream_delta" if reasoning else None,
+                "reasoning_chars": len(reasoning),
+                "reasoning_excerpt": reasoning[:200],
+                "reasoning_tokens": None,
+                "usage": usage,
+                "sse_done": done,
+                "event_count": len(events),
+                "passed": passed,
+                "validation_detail": detail,
+            })
+        return passed, (
+            f"{seconds:.1f}s done={done} events={len(events)} {detail} "
+            f"finish={finish_reason!r}"
+        )
+    except Exception as exc:
+        return False, "error: %s" % exc
+
+
+def t_tool_result(base, model, key, ctk=None, max_tokens=256,
+                  reasoning_effort=None, evidence=None, timeout=900):
+    """Complete a tool-call, tool-result, final-answer exchange."""
+    messages = [{
+        "role": "user",
+        "content": "What's the weather in Oakland? Use the tool.",
+    }]
+    try:
+        first, first_seconds = chat(
+            base, model, messages, key, max_tokens=max_tokens, tools=TOOLS,
+            tool_choice="auto", chat_template_kwargs=ctk,
+            reasoning_effort=reasoning_effort, timeout=timeout,
+        )
+        first_obs = _capture(evidence, "tool-result-initial", first, first_seconds)
+        assistant = first["choices"][0]["message"]
+        valid, detail = validate_tool_call(assistant)
+        first_obs.update({"passed": valid, "validation_detail": detail})
+        if not valid:
+            return False, detail
+        tool_call = assistant["tool_calls"][0]
+        messages.extend([
+            {
+                "role": "assistant",
+                "content": assistant.get("content"),
+                "tool_calls": assistant["tool_calls"],
+            },
+            {
+                "role": "tool",
+                "tool_call_id": tool_call["id"],
+                "content": '{"city":"Oakland","temperature_f":72,"condition":"sunny"}',
+            },
+            {
+                "role": "user",
+                "content": "Reply exactly OAKLAND 72F using the tool result.",
+            },
+        ])
+        final, final_seconds = chat(
+            base, model, messages, key, max_tokens=max_tokens,
+            chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
+            timeout=timeout,
+        )
+        final_obs = _capture(
+            evidence, "tool-result-continuation", final, final_seconds
+        )
+        output = final_obs["content"].casefold().replace(" ", "")
+        passed = "oakland" in output and "72f" in output
+        final_obs.update({
+            "passed": passed,
+            "validation_detail": (
+                "tool result retained" if passed else "tool result missing"
+            ),
+        })
+        return passed, (
+            f"{first_seconds + final_seconds:.1f}s "
+            f"{'tool result retained' if passed else 'tool result missing'} "
+            f"{_evidence_note(final_obs)}"
+        )
+    except Exception as exc:
+        return False, "error: %s" % exc
+
+
+def t_responses(base, model, key, ctk=None, max_tokens=256,
+                evidence=None, timeout=900):
+    """Require a visible completed answer from the stateless Responses subset."""
+    try:
+        response, seconds = responses_request(
+            base, model, "Reply with exactly READY", key,
+            max_tokens=max_tokens, chat_template_kwargs=ctk, timeout=timeout,
+        )
+        text_parts = []
+        reasoning = ""
+        for item in response.get("output") or []:
+            if not isinstance(item, dict):
+                continue
+            for part in item.get("content") or []:
+                if not isinstance(part, dict):
+                    continue
+                if part.get("type") == "output_text" and isinstance(part.get("text"), str):
+                    text_parts.append(part["text"])
+                if part.get("type") == "reasoning_text" and isinstance(part.get("text"), str):
+                    reasoning += part["text"]
+        output = "".join(text_parts).strip()
+        status = response.get("status")
+        passed = status == "completed" and output == "READY"
+        if evidence is not None:
+            evidence.append({
+                "test": "responses",
+                "seconds": round(seconds, 3),
+                "finish_reason": "stop" if status == "completed" else status,
+                "content_chars": len(output),
+                "content_excerpt": output[:200],
+                "reasoning_field": "reasoning_text" if reasoning else None,
+                "reasoning_chars": len(reasoning),
+                "reasoning_excerpt": reasoning[:200],
+                "reasoning_tokens": None,
+                "usage": response.get("usage"),
+                "response_status": status,
+                "passed": passed,
+                "validation_detail": (
+                    "completed exact READY" if passed
+                    else "status=%r output=%r" % (status, output[:80])
+                ),
+            })
+        return passed, (
+            f"{seconds:.1f}s status={status!r} output={output[:80]!r} "
+            f"reasoning_chars={len(reasoning)}"
+        )
+    except Exception as exc:
+        return False, "error: %s" % exc
+
+
 def t_json(base, model, key, ctk=None, max_tokens=256, reasoning_effort=None,
            evidence=None, timeout=900):
     msgs = [{"role": "user", "content": 'Return ONLY a JSON object: {"language":"python","ok":true}. No prose.'}]
@@ -338,6 +638,47 @@ def t_multimodal(base, model, key, data_url, image_identity, expectations, *,
     except Exception as e:
         return False, f"error: {e}"
 
+
+def t_video(base, model, key, data_url, video_identity, expectations, *,
+            ctk=None, max_tokens=256, reasoning_effort=None, evidence=None,
+            timeout=900):
+    """Run one bounded OpenAI ``video_url`` correctness probe."""
+    messages = [{"role": "user", "content": [
+        {"type": "video_url", "video_url": {"url": data_url}},
+        {"type": "text", "text": (
+            "Inspect the complete video. Describe the ordered events, visible "
+            "state changes, and any readable labels or text."
+        )},
+    ]}]
+    try:
+        resp, dt = chat(
+            base, model, messages, key, max_tokens=max_tokens,
+            chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
+            timeout=timeout,
+        )
+        obs = _capture(evidence, "video", resp, dt)
+        out = (resp["choices"][0]["message"].get("content") or "")
+        folded = out.casefold()
+        missing = [item for item in expectations if item.casefold() not in folded]
+        ok = not missing
+        obs.update({
+            "passed": ok,
+            "validation_detail": (
+                "all expected text present"
+                if ok else "missing expected text: %r" % missing
+            ),
+            "video": video_identity,
+            "expected": list(expectations),
+        })
+        return ok, (
+            f"{dt:.1f}s "
+            f"{'all expected text present' if ok else 'missing=' + repr(missing)} "
+            f"{_evidence_note(obs)}"
+        )
+    except Exception as e:
+        return False, f"error: {e}"
+
+
 def resolve_api_key(api_key_env=None):
     """Resolve auth for probes from an environment variable reference."""
     if api_key_env:
@@ -375,14 +716,23 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
                     help="read the bearer token from this environment variable")
     ap.add_argument("--needle-ctx", type=int, default=128000)
     ap.add_argument("--tool-batch", type=int, default=20)
-    ap.add_argument("--checks", default="smoke,json,needle,tools",
-                    help="comma-separated checks: smoke,json,needle,tools,image,ocr")
+    ap.add_argument(
+        "--checks", default="smoke,json,needle,tools",
+        help=(
+            "comma-separated checks: smoke,json,needle,tools,streaming-tools,"
+            "tool-result,responses,image,ocr,video"
+        ),
+    )
     ap.add_argument("--image-path",
                     help="PNG, JPEG, or WebP input for image and OCR checks")
     ap.add_argument("--image-expect", action="append", default=[],
                     help="case-insensitive text required in the image-check response; repeatable")
     ap.add_argument("--ocr-expect", action="append", default=[],
                     help="case-insensitive text required in the OCR response; repeatable")
+    ap.add_argument("--video-path",
+                    help="MP4, WebM, or QuickTime input for the video check")
+    ap.add_argument("--video-expect", action="append", default=[],
+                    help="case-insensitive text required in the video response; repeatable")
     ap.add_argument("--thinking-mode", choices=("default", "enabled", "disabled", "unsupported"),
                     default="default", help="model-family thinking control to request")
     ap.add_argument("--reasoning-effort",
@@ -424,11 +774,15 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
     if not 0 < a.timeout <= 3600:
         ap.error("--timeout must be greater than 0 and at most 3600 seconds")
     selected = [item.strip() for item in a.checks.split(",") if item.strip()]
-    known_checks = {"smoke", "json", "needle", "tools", "image", "ocr"}
+    known_checks = {
+        "smoke", "json", "needle", "tools", "streaming-tools",
+        "tool-result", "responses", "image", "ocr", "video",
+    }
     unknown = sorted(set(selected) - known_checks)
     if not selected or unknown:
         ap.error(
-            "--checks must select smoke,json,needle,tools,image,ocr; unknown=%s"
+            "--checks must select smoke,json,needle,tools,streaming-tools,"
+            "tool-result,responses,image,ocr,video; unknown=%s"
             % unknown
         )
     image_data = None
@@ -440,6 +794,15 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
             ap.error("--checks ocr requires at least one --ocr-expect")
         try:
             image_data, image_identity = load_image_data(a.image_path)
+        except ValueError as exc:
+            ap.error(str(exc))
+    video_data = None
+    video_identity = None
+    if "video" in selected:
+        if not a.video_expect:
+            ap.error("--checks video requires at least one --video-expect")
+        try:
+            video_data, video_identity = load_video_data(a.video_path)
         except ValueError as exc:
             ap.error(str(exc))
     allowed_finish_reasons = {
@@ -491,8 +854,10 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
                        "max_completion_tokens": max_tokens},
             "timeout_seconds": a.timeout,
             "multimodal_input": image_identity,
+            "video_input": video_identity,
             "image_expect": a.image_expect,
             "ocr_expect": a.ocr_expect,
+            "video_expect": a.video_expect,
             "output": a.json_out,
             "deferred": ["endpoint identity", "model requests", "artifact write"],
         }, indent=2, sort_keys=True, ensure_ascii=True))
@@ -502,6 +867,16 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         "json": ("structured JSON", lambda: t_json(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
         "needle": (f"needle @ ~{a.needle_ctx} ctx", lambda: t_needle(a.base_url, a.model, api_key, a.needle_ctx, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
         "tools": (f"shared-prefix tool batch x{a.tool_batch}", lambda: t_tool_batch(a.base_url, a.model, api_key, a.tool_batch, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
+        "streaming-tools": ("streaming tool call", lambda: t_streaming_tool(
+            a.base_url, a.model, api_key, ctk, max_tokens, evidence, a.timeout,
+        )),
+        "tool-result": ("tool-result continuation", lambda: t_tool_result(
+            a.base_url, a.model, api_key, ctk, max_tokens,
+            a.reasoning_effort, evidence, a.timeout,
+        )),
+        "responses": ("Responses API subset", lambda: t_responses(
+            a.base_url, a.model, api_key, ctk, max_tokens, evidence, a.timeout,
+        )),
         "image": ("general image understanding", lambda: t_multimodal(
             a.base_url, a.model, api_key, image_data, image_identity,
             a.image_expect, check="image", ctk=ctk, max_tokens=max_tokens,
@@ -510,6 +885,11 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         "ocr": ("verbatim image OCR", lambda: t_multimodal(
             a.base_url, a.model, api_key, image_data, image_identity,
             a.ocr_expect, check="ocr", ctk=ctk, max_tokens=max_tokens,
+            reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout,
+        )),
+        "video": ("bounded video understanding", lambda: t_video(
+            a.base_url, a.model, api_key, video_data, video_identity,
+            a.video_expect, ctk=ctk, max_tokens=max_tokens,
             reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout,
         )),
     }
@@ -552,8 +932,10 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
                    "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
                    "max_completion_tokens": max_tokens},
         "multimodal_input": image_identity,
+        "video_input": video_identity,
         "image_expect": a.image_expect,
         "ocr_expect": a.ocr_expect,
+        "video_expect": a.video_expect,
         "checks": selected, "results": results, "observations": evidence,
         "evidence_policy": {"reasoning": a.reasoning_evidence,
                             "allowed_finish_reasons": sorted(allowed_finish_reasons),

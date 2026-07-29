@@ -27,7 +27,7 @@ does not host a model.
 | 2 | [Laguna S 2.1](../models/laguna-s-2.1.md) | `rollback` | Immediate managed rollback; thinking disabled |
 | 3 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | `rollback` | Secondary pinned rollback; strict unified-diff caveat |
 | 4 | [Gemma 4](../models/gemma-4.md) / [ThinkingCap](../models/qwen36-27b.md) | `no-promotion` | Historical strict-quality controls |
-| 5 | [Agents-A1](../models/agents-a1.md) | `challenger` + `no-promotion` | Qualified only with thinking disabled |
+| 5 | [Agents-A1](../models/agents-a1.md) | `challenger` + `no-promotion` | FP8 text/image/video candidate; NVFP4 compact text only; thinking disabled |
 
 ## Comparable quality and context
 
@@ -36,7 +36,7 @@ does not host a model.
 | Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `current` |
 | Laguna S 2.1 NVFP4 | Passed protocol-v3 with thinking disabled | 32K/128K/240K passed; TTFT 2.26/21.15/50.64 s | `rollback` |
 | GPT-OSS Puzzle 88B | Tools/session/timeout 3/3; unified diff 2/3 | 32K and 128K retained | `rollback` |
-| Agents-A1 | 6/6 intelligence, session 3/3, tools 3/3 disabled-thinking | 120K retrieval | `challenger`, `no-promotion` |
+| Agents-A1 | BF16/FP8 text gates pass; identical 28/30 multimodal corpus; NVFP4 repeated text pass | 128K c1/c2/c4 pass; 240K rejected at 131,072 limit | `challenger`, `no-promotion` |
 | Gemma 4 12B QAT W4A16 | Historical protocol-v3 control passed | 240K passed | `no-promotion` |
 | ThinkingCap Qwen3.6 27B FP8 | Historical strict-quality control passed | 240K retained | `no-promotion` |
 
@@ -44,6 +44,8 @@ does not host a model.
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
+| Agents-A1 FP8 multimodal | 131,072 | 32 text; media c1 gated | 218 tok/s at 8K c32; one video/four-image isolated policy; generated MoE tune rejected after -1.399% A/B |
+| Agents-A1 NVFP4 compact text | 131,072 | 16 | 198 tok/s at 8K c16; 128K c4 pass; vision excluded |
 | Qwen3.5 122B NVFP4 | 262,144 | 1 | BF16 KV; near-ceiling prefill is slow |
 | Laguna S 2.1 NVFP4 | 262,144 | recorded recipe | FP8 KV; disabled-thinking contract |
 | GPT-OSS Puzzle 88B MXFP4 | 131,072 | 8 | FP8 KV; pinned Anvil vLLM |
@@ -53,6 +55,11 @@ does not host a model.
 
 ## Recent changes
 
+- 2026-07-28: Agents-A1 BF16/FP8 image and direct-video capability passed,
+  but both reached only 28/30 on the strict multimodal corpus. NVFP4 qualified
+  as a compact text-only profile. Isolated routed video passed after bounded
+  thinking/error-classification fixes, and the FP8 tune was rejected; no route
+  changed.
 - 2026-07-28: Qwen3.5 122B became the human-gated Primary; Laguna moved to
   immediate rollback.
 - 2026-07-27: Agents-A1 qualified as a thinking-disabled challenger without

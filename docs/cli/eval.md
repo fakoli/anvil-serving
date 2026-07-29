@@ -14,6 +14,7 @@ the gateway's alias map.
 | --- | --- |
 | `eval preflight` | Run functional compatibility checks against an endpoint. |
 | `eval benchmark capacity` | Measure throughput and latency. |
+| `eval benchmark multimodal` | Run a hash-pinned image/video/mixed-media corpus. |
 | `eval benchmark quality` | Run a repeatable quality suite with retained evidence. |
 | `eval benchmark external` | Import and compare advisory external benchmark priors. |
 | `eval usage` | Summarize local evaluation usage. |
@@ -37,9 +38,14 @@ anvil-serving eval benchmark capacity `
 
 The capacity artifact records the requested context distribution, the sampling
 seed, engine/hardware target, completed and failed requests, sanitized failure
-classes, and how output tokens were counted. Measurement protocol `capacity-v2`
-uses exact `usage.completion_tokens`; when usage is unavailable, exact token
-throughput is null and content-chunk rate is retained only as a diagnostic.
+classes, and how output tokens were counted. Measurement protocol `capacity-v3`
+uses exact `usage.prompt_tokens` and `usage.completion_tokens` to retain
+per-request and aggregate TTFT, effective prefill rate, generation duration,
+decode rate, mean inter-token latency, E2E latency, and token counts.
+Effective prefill includes queueing, scheduling, prompt processing, and
+first-token work; it is not a kernel-only measurement. When exact usage is
+unavailable, token-derived rates are null and content-chunk rate is retained
+only as a diagnostic.
 
 Quality runs require an explicit built-in suite or an externally authored suite
 file plus stable candidate and configuration identities:
