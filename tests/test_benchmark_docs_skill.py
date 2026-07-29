@@ -75,11 +75,11 @@ def test_current_pro_decision_chain_is_consistent_in_maintained_views():
     for path in (PORTAL, PRO, ARCHIVE):
         text = path.read_text(encoding="utf-8")
         positions = [
+            text.index("Agents-A1"),
             text.index("Qwen3.5"),
             text.index("Laguna S 2.1"),
             text.index("GPT-OSS Puzzle"),
             text.index("Gemma 4"),
-            text.index("Agents-A1"),
         ]
         assert positions == sorted(positions), path
 

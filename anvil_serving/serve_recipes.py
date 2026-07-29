@@ -495,6 +495,18 @@ def docker_run_argv(
     if gpu_uuid is not None and (not isinstance(gpu_uuid, str) or "\x00" in gpu_uuid):
         raise RecipeError("recipe.hardware.gpu_uuid must be a string without NUL bytes")
     argv += ["--gpus", "device=%s" % gpu_uuid if gpu_uuid else "all"]
+    argv += [
+        "--label",
+        "io.anvil-serving.managed-by=models-recipes",
+        "--label",
+        "io.anvil-serving.recipe.model=%s" % recipe["model"],
+    ]
+    revision = (recipe.get("download") or {}).get("revision")
+    if revision:
+        argv += [
+            "--label",
+            "io.anvil-serving.recipe.revision=%s" % revision,
+        ]
     serve_env = [
         env for env in serve.get("env", [])
         if gpu_device is None or not env.startswith("CUDA_VISIBLE_DEVICES=")
