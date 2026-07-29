@@ -1,7 +1,7 @@
 # RTX PRO 6000 mention audit
 
 This audit classifies every tracked Markdown file containing an RTX PRO 6000
-name at the 2026-07-28 review. Evidence-directory Markdown is classified with
+name at the 2026-07-29 review. Evidence-directory Markdown is classified with
 its own file, not inherited implicitly from the parent finding. This is a
 coverage control; benchmark results remain in the [run catalog](runs.md).
 
@@ -52,9 +52,13 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-07-27-anvil-serving-release-readiness-sweep.md`;
 `docs/findings/2026-07-28-agents-a1-multimodal-qualification.md`;
 `docs/findings/2026-07-28-qwen35-122b-primary-qualification.md`;
+`docs/findings/2026-07-29-agents-a1-primary-promotion.md`;
+`docs/findings/2026-07-29-agents-a1-qwen-262k-head-to-head.md`;
+`docs/findings/2026-07-29-agents-a1-qwen-262k-head-to-head-evidence/README.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/2026-07-27-release-sweep-fixes.md`;
 `.tickets/2026-07-28-agents-a1-multimodal-qualification.md`;
+`.tickets/2026-07-29-agents-a1-qwen-262k-head-to-head.md`;
 `examples/fakoli-dark/q36/README.md`.
 
 ## `protected/co-resident`

@@ -303,7 +303,9 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
     ap.add_argument("--model", required=True)
     ap.add_argument("--model-revision", required=True)
     ap.add_argument("--runtime-image", required=True)
-    ap.add_argument("--engine-revision", required=True)
+    engine_identity = ap.add_mutually_exclusive_group(required=True)
+    engine_identity.add_argument("--engine-revision")
+    engine_identity.add_argument("--engine-build-ref")
     ap.add_argument("--hardware", required=True)
     ap.add_argument("--corpus", required=True)
     ap.add_argument("--output", required=True)
@@ -326,8 +328,10 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
 
     if not _HEX_40.fullmatch(args.model_revision):
         ap.error("--model-revision must be an exact 40-character lowercase commit")
-    if not _HEX_40.fullmatch(args.engine_revision):
+    if args.engine_revision is not None and not _HEX_40.fullmatch(args.engine_revision):
         ap.error("--engine-revision must be an exact 40-character lowercase commit")
+    if args.engine_build_ref is not None and not _HEX_40.fullmatch(args.engine_build_ref):
+        ap.error("--engine-build-ref must be an exact 40-character lowercase ref")
     if not 1 <= args.concurrency <= 4:
         ap.error("--concurrency must be from 1 through 4")
     if not 1 <= args.max_tokens <= 65536:
@@ -370,6 +374,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
                 "model_revision": args.model_revision,
                 "runtime_image": args.runtime_image,
                 "engine_revision": args.engine_revision,
+                "engine_build_ref": args.engine_build_ref,
                 "hardware": args.hardware,
             },
             "corpus": {
@@ -525,6 +530,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
             "served_models": served_models,
             "runtime_image": args.runtime_image,
             "engine_revision": args.engine_revision,
+            "engine_build_ref": args.engine_build_ref,
             "hardware": args.hardware,
         },
         "configuration": {

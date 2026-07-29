@@ -164,7 +164,9 @@ def test_load_recipe_file_requires_one_recipe(tmp_path):
 
 def test_docker_run_argv_uses_named_container_and_loopback_port():
     argv = sr.docker_run_argv(_RECIPE, container="heavy-candidate")
-    assert argv[:6] == ["docker", "run", "-d", "--name", "heavy-candidate", "--gpus"]
+    assert argv[:5] == ["docker", "run", "-d", "--name", "heavy-candidate"]
+    assert "io.anvil-serving.managed-by=models-recipes" in argv
+    assert "io.anvil-serving.recipe.model=openai/gpt-oss-120b" in argv
     assert ["-p", "127.0.0.1:30002:30002"] == argv[argv.index("-p"):argv.index("-p") + 2]
     assert argv[argv.index("vllm/vllm-openai:nightly") + 1] == "openai/gpt-oss-120b"
 
@@ -206,7 +208,7 @@ def test_find_recipe_exact_and_basename():
 def test_reconstruct_docker_run_model_is_positional_after_image():
     cmd = sr.reconstruct_docker_run(_RECIPE)
     img_i = cmd.index("vllm/vllm-openai:nightly")
-    model_i = cmd.index("openai/gpt-oss-120b")
+    model_i = cmd.rindex("openai/gpt-oss-120b")
     assert img_i < model_i, "model must be a POSITIONAL after the image"
     # no accidental extra 'serve' verb (entrypoint already is `vllm serve`).
     assert " serve " not in cmd
@@ -546,7 +548,33 @@ def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_rollback(request):
     assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in cmd
 
 
-def test_shipped_qwen35_recipe_is_verified_primary_target(request):
+def test_shipped_agents_a1_recipe_is_verified_primary_target(request):
+    root = request.config.rootpath
+    registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
+    recipe = sr.find_recipe(registry, "InternScience/Agents-A1-FP8")
+
+    assert recipe is not None
+    assert recipe["status"] == "verified"
+    serve = recipe["serve"]
+    assert serve["image"] == (
+        "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1"
+    )
+    assert serve["managed_serve"] == "primary"
+    assert serve["served_model_name"] == "agents-a1-fp8-mm-262k"
+    assert serve["port"] == 30002
+    assert serve["context_tokens"] == 262144
+    assert "--revision 4d7d59380f327b76e73bc71f40e0c589ad0ca1d5" in serve["flags"]
+    assert "--kv-cache-dtype fp8" in serve["flags"]
+    assert "--max-model-len 262144" in serve["flags"]
+    assert "--limit-mm-per-prompt '{\"image\":4,\"video\":1}'" in serve["flags"]
+    assert recipe["activation"]["primary"] == {
+        "plan": "agents-a1-fp8-primary",
+        "direction": "promote",
+        "compose_service": "primary",
+    }
+
+
+def test_shipped_qwen35_recipe_is_verified_primary_rollback(request):
     root = request.config.rootpath
     registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
     recipe = sr.find_recipe(registry, "nvidia/Qwen3.5-122B-A10B-NVFP4")
@@ -555,7 +583,7 @@ def test_shipped_qwen35_recipe_is_verified_primary_target(request):
     assert recipe["status"] == "verified"
     serve = recipe["serve"]
     assert serve["image"] == "nvcr.io/nvidia/vllm:26.06-py3"
-    assert serve["managed_serve"] == "primary"
+    assert serve["managed_serve"] == "primary-qwen35-rollback"
     assert serve["served_model_name"] == "qwen35-122b-a10b-nvfp4"
     assert serve["port"] == 30002
     assert serve["context_tokens"] == 262144
@@ -568,9 +596,9 @@ def test_shipped_qwen35_recipe_is_verified_primary_target(request):
     assert "--language-model-only" not in serve["flags"]
     assert not any("enable_thinking" in flag for flag in serve["flags"])
     assert recipe["activation"]["primary"] == {
-        "plan": "qwen35-122b-primary",
-        "direction": "promote",
-        "compose_service": "primary",
+        "plan": "agents-a1-fp8-primary",
+        "direction": "rollback",
+        "compose_service": "primary-qwen35-rollback",
     }
 
     cmd = sr.reconstruct_docker_run(recipe)
@@ -599,7 +627,7 @@ def test_shipped_laguna_recipe_is_verified_primary_rollback(request):
         in serve["flags"]
     )
     assert recipe["activation"]["primary"] == {
-        "plan": "qwen35-122b-primary",
+        "plan": "agents-a1-fp8-primary",
         "direction": "rollback",
         "compose_service": "primary-laguna-rollback",
     }

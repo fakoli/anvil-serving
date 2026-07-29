@@ -1,0 +1,88 @@
+# Fakoli Dark direct gateway rollback for the prior Qwen Primary serve.
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+
+[router]
+relay_timeout = 60
+availability_probe_interval = 5
+availability_probe_timeout = 1
+
+[[router.tiers]]
+id = "primary-local"
+base_url = "http://host.docker.internal:30002/v1"
+model = "qwen35-122b-a10b-nvfp4"
+dialect = "openai"
+context_limit = 262144
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
+engine = "vllm"
+quantization = "nvfp4"
+max_concurrency = 1
+health_path = "/health"
+model_identity = true
+
+[router.tiers.params.capacity]
+gpu_role = "primary"
+gpu_name = "NVIDIA RTX PRO 6000 Blackwell Workstation Edition"
+gpu_memory_total_mib = 97887
+model_memory_gib = 73.22
+kv_cache_capacity_tokens = 571950
+scheduler_max_num_seqs = 1
+image_limit = 1
+video_limit = 0
+
+[router.tiers.params.capabilities]
+modalities = ["text", "image"]
+thinking = { supported = true, default = "enabled", caller_override = true }
+images_per_request = 1
+video_per_request = 0
+
+[router.tiers.params.fingerprint]
+model_revision = "98915d837c4e7c87ac8296d02e89de19b3207e6d"
+engine_version = "vllm-0.22.1-7b9cb5b7.dev-ngc26.06"
+
+[[router.tiers]]
+id = "omni-local"
+base_url = "http://host.docker.internal:30003/v1"
+model = "nemotron3-omni-30b-a3b-nvfp4"
+dialect = "openai"
+context_limit = 65536
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_OMNI_LOCAL_KEY"
+health_path = "/health"
+model_identity = true
+
+[router.model_routes]
+llm.primary = "primary-local"
+llm.voice = "omni-local"
+vision.ocr = "omni-local"
+vision.general = "omni-local"
+
+[[router.purpose_models]]
+id = "embeddings-local"
+kind = "embedding"
+model = "qwen3-embedding-0.6b"
+base_url = "http://host.docker.internal:30005/v1"
+
+[[router.purpose_models]]
+id = "reranker-local"
+kind = "rerank"
+model = "qwen3-reranker-0.6b"
+base_url = "http://host.docker.internal:30006/v1"
+
+[[router.audio_routes]]
+id = "dark-stt"
+purpose = "stt"
+model = "tdt-0.6b-v3"
+base_url = "http://host.docker.internal:30010/v1"
+default = true
+
+[[router.audio_routes]]
+id = "dark-tts"
+purpose = "tts"
+model = "kokoro"
+base_url = "http://host.docker.internal:30011/v1"
+source_sample_rate = 24000
+default = true

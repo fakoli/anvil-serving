@@ -1,0 +1,11 @@
+{
+  "container": "agents-a1-fp8-primary-qualification",
+  "health": null,
+  "image": "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1",
+  "image_id": "sha256:212a1bd7b4267c604408d17dc0048ef152101bc67fbe6ba8567899fc1f227bcd",
+  "model": "InternScience/Agents-A1-FP8",
+  "revision": "4d7d59380f327b76e73bc71f40e0c589ad0ca1d5",
+  "running": true,
+  "schema": "recipe-container-status/v1",
+  "state": "running"
+}
