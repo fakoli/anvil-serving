@@ -4,6 +4,9 @@
 sm_120. **Host:** Fakoli Dark, Windows 11 with Docker Desktop/WSL2.
 **Reviewed:** 2026-07-28.
 
+> Side-by-side speed and recipe links for every configuration measured on this
+> card: [model comparison table](../comparison.md#rtx-pro-6000-blackwell-max-q-96-gb-sm_120-300-w).
+
 This page contains only measurements made on the PRO 6000. Tests that merely
 kept this card running or described its topology belong in the
 [mention audit](../rtx-pro-6000-audit.md), not the result tables.

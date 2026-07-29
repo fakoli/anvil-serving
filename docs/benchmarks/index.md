@@ -7,6 +7,11 @@ or passing run never changes a serve or route without a separate human gate.
 
 **Last evidence review: 2026-07-28.**
 
+> **Looking for the numbers?** The
+> [model comparison table](comparison.md) puts every measured configuration —
+> TTFT, throughput, context, reasoning mode, and recipe link — in one place,
+> grouped by card.
+
 ## Choose the measured hardware
 
 | Hardware | Current role | Start here |
