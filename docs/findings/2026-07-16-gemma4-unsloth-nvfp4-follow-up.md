@@ -85,7 +85,7 @@ All swaps used `anvil-serving serves` with a dry-run before apply. Final restore
 
 - Fast: `gemma4-e4b-it`, 32K, HTTP 200.
 - Heavy: `gemma4-12b-it-w4a16-ct`, 256K, HTTP 200.
-- Router: running on its configured Tailscale bind `100.87.34.66:8000`; unauthenticated probe returned the expected HTTP 401.
+- Router: running on its configured Tailscale bind `100.64.0.10:8000`; unauthenticated probe returned the expected HTTP 401.
 - Both Gemma 4 lab serves: stopped.
 
 Representative command shape:
