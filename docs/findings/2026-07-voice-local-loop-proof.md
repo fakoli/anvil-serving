@@ -180,7 +180,7 @@ python scripts/voice/local_loop_demo.py --capture
 Result: the microphone/STT path advanced past the prior silent-input blocker:
 the pipeline generated a user turn with transcript `Testing, testing, testing,
 testing.` The LLM stage then failed on
-`http://100.87.34.66:8000/v1/chat/completions` with HTTP 401 Unauthorized.
+`http://100.64.0.10:8000/v1/chat/completions` with HTTP 401 Unauthorized.
 
 Interpretation: the router endpoint was reachable and enforcing auth, but the
 live shell did not have `ANVIL_ROUTER_TOKEN` loaded. The harness now validates

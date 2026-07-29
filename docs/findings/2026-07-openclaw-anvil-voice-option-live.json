@@ -106,7 +106,7 @@
     }
   },
   "route_proof": {
-    "url": "http://100.87.34.66:8000/v1/route",
+    "url": "http://100.64.0.10:8000/v1/route",
     "request_model": "fast-local",
     "tier": "local",
     "model": "qwen36-27b",

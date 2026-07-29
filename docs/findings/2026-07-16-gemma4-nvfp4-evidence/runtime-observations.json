@@ -18,6 +18,6 @@
   "operational_caveats": [
     "The first 31B start exceeded the five-minute polling workflow only because health became available at the deadline after compile and FlashInfer autotune; the endpoint then reported HTTP 200.",
     "Bounded Docker log capture can hit a Windows cp1252 UnicodeDecodeError on the vLLM banner unless PYTHONIOENCODING=utf-8 is set.",
-    "The deployed router is bound to 100.87.34.66:8000 rather than 127.0.0.1:8000; an unauthenticated restoration probe correctly returned HTTP 401."
+    "The deployed router is bound to 100.64.0.10:8000 rather than 127.0.0.1:8000; an unauthenticated restoration probe correctly returned HTTP 401."
   ]
 }

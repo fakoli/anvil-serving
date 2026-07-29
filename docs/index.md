@@ -48,7 +48,7 @@ reference pages stay true as models change.
 | Read this | When you need |
 | --- | --- |
 | [Model comparison table](benchmarks/comparison.md) | **Every measured configuration in one table** — TTFT, throughput, reasoning, and recipe links. |
-| [Benchmark portal](benchmarks/index.md) | Hardware-first current decisions and evidence labels. |
+| [Benchmarks overview](benchmarks/index.md) | Hardware-first current decisions and evidence labels. |
 | [Model dossiers](benchmarks/models/index.md) | Per-model status, recipe, and decision boundary. |
 | [RTX PRO 6000](benchmarks/hardware/rtx-pro-6000.md) | Primary LLM measurements and rollback chain. |
 | [RTX 5090](benchmarks/hardware/rtx-5090.md) | Omni, vision, and STT/TTS measurements. |
