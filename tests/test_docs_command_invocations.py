@@ -125,7 +125,7 @@ def test_documented_invocation_supplies_required_arguments(doc: str, invocation:
     # Options that take a value, so they can be skipped when counting positionals.
     # Dispatcher options are stripped before argparse sees them and so never appear
     # in a usage line; without them their values would count as positionals.
-    valued = set(re.findall(r"(--[a-z][a-z0-9-]*) [A-Za-z_][A-Za-z0-9_]*", tail))
+    valued = set(re.findall(r"(--[a-z][a-z0-9-]*) (?:[A-Za-z_][A-Za-z0-9_]*|\{[^}]*\})", tail))
     valued |= GLOBAL_VALUED_OPTIONS
 
     # Required options appear unbracketed in an argparse usage line.
