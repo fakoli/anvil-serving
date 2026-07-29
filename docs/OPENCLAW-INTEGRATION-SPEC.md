@@ -33,7 +33,7 @@ sync command can render them.
 ```bash
 anvil-serving harness sync openclaw \
   --config configs/example.toml \
-  --base-url http://100.87.34.66:8000/v1 \
+  --base-url http://100.64.0.10:8000/v1 \
   --confirm
 ```
 

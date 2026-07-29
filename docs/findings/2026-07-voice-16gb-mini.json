@@ -133,15 +133,15 @@
     },
     "error": null
   },
-  "llm_endpoint": "http://100.87.34.66:8000/v1",
-  "llm_endpoint_host": "100.87.34.66",
+  "llm_endpoint": "http://100.64.0.10:8000/v1",
+  "llm_endpoint_host": "100.64.0.10",
   "llm_endpoint_is_fakoli_dark": true,
   "llm_routed_remote": true,
   "llm_auth_env": "ANVIL_ROUTER_TOKEN",
   "llm_auth_env_present": true,
   "route_proof": {
     "ok": true,
-    "url": "http://100.87.34.66:8000/v1/route",
+    "url": "http://100.64.0.10:8000/v1/route",
     "status": 200,
     "request_model": "fast-local",
     "auth_env": "ANVIL_ROUTER_TOKEN",
@@ -160,7 +160,7 @@
   "route_auth_negative": {
     "required": true,
     "auth_env": "ANVIL_ROUTER_TOKEN",
-    "url": "http://100.87.34.66:8000/v1/route",
+    "url": "http://100.64.0.10:8000/v1/route",
     "auth_enforced": true,
     "ok": true,
     "status": 401

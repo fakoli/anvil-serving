@@ -61,7 +61,7 @@ The interpretation depends on where a command is executed:
 | Host | Owns |
 |---|---|
 | Fakoli Mini | OpenClaw Gateway and Anvil Voice Realtime/proxy only in the reference path. Its 16 GB RAM is reserved for OpenClaw, Claude Code, and Codex. |
-| Fakoli Dark | Anvil router at `http://100.87.34.66:8000/v1`, candidate LLM serves, and the intended STT/TTS model hosting or bridge boundary for candidate testing. |
+| Fakoli Dark | Anvil router at `http://100.64.0.10:8000/v1`, candidate LLM serves, and the intended STT/TTS model hosting or bridge boundary for candidate testing. |
 | Mini proxy profile | `mini-dark-audio-proxy` loopback endpoints on Mini at `127.0.0.1:30110` and `127.0.0.1:30111`, only valid after Mini-side proxy listeners are up |
 | Optional Mini-local profile | `mini-audio`, valid only for explicit same-host/local-audio validation, not normal candidate A/B |
 

@@ -55,7 +55,7 @@ surface — see the verification below.
 ## The MagicDNS form
 
 On the live multi-GPU box (`fakoli-dark`) the router publishes on the Tailscale IPv4
-`100.87.34.66:8000`. The MagicDNS name that resolves to that IP is read from Tailscale
+`100.64.0.10:8000`. The MagicDNS name that resolves to that IP is read from Tailscale
 itself — never hardcoded:
 
 ```bash
@@ -71,12 +71,12 @@ http://fakoli-dark.tail4378d.ts.net:8000
 ```
 
 Any tailnet peer (with MagicDNS enabled in the tailnet's DNS settings) resolves that name
-to `100.87.34.66` and reaches the one front door. The three equivalent forms:
+to `100.64.0.10` and reaches the one front door. The three equivalent forms:
 
 | Form | Endpoint | When |
 |---|---|---|
 | **MagicDNS name** (preferred) | `http://fakoli-dark.tail4378d.ts.net:8000` | Human-facing, survives an IP change |
-| Tailnet IPv4 | `http://100.87.34.66:8000` | Scripts that already hold the IP |
+| Tailnet IPv4 | `http://100.64.0.10:8000` | Scripts that already hold the IP |
 | Tailnet IPv6 | `http://[fd7a:115c:a1e0::8701:2247]:8000` | IPv6-only peers |
 
 ### Binding the front door to the tailnet
@@ -89,7 +89,7 @@ interface at start time — **do not** change the default, pass `--host` on the 
 # Bind all interfaces (tailnet included). REQUIRE token auth when non-loopback.
 anvil-serving router run --host 0.0.0.0 --port 8000 --config <config.toml>
 #   ...or pin exactly the tailnet IP so nothing else is exposed:
-anvil-serving router run --host 100.87.34.66 --port 8000 --config <config.toml>
+anvil-serving router run --host 100.64.0.10 --port 8000 --config <config.toml>
 ```
 
 A non-loopback bind is gated by `_warn_if_public_bind`
@@ -100,7 +100,7 @@ expose the front door with no credential. Always run the tailnet bind with
 are a pair, never one without the other.
 
 > Tailscale ACLs remain the outer boundary: only tailnet peers can reach
-> `100.87.34.66:8000` at all. The bearer token is the inner boundary. T014 changes
+> `100.64.0.10:8000` at all. The bearer token is the inner boundary. T014 changes
 > neither — it documents binding the existing server to the interface Tailscale already
 > owns.
 

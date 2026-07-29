@@ -17,7 +17,7 @@ as a standalone promotion decision.
 
 - Capture time: `2026-07-07T01:25:03Z`
 - Gateway: Fakoli Mini running OpenClaw
-- Router: Fakoli Dark anvil-serving front door at `http://100.87.34.66:8000/v1`
+- Router: Fakoli Dark anvil-serving front door at `http://100.64.0.10:8000/v1`
 - Runner: `examples/openclaw/colo_smoke.py --run-generations --run-interaction-benchmark`
 - Artifact filename: `openclaw-colo-live-interactions-repeatable.json` in the operator evidence root
 - Artifact SHA-256: `6e108cb68fa9b28600f3854406ffd51302900db267ed0d9a314ba0614768239f`
@@ -110,7 +110,7 @@ Use the caveat with the citation:
 python examples/openclaw/colo_smoke.py \
   --live \
   --gateway-host fakoli-mini \
-  --router-base-url http://100.87.34.66:8000/v1 \
+  --router-base-url http://100.64.0.10:8000/v1 \
   --run-generations \
   --run-interaction-benchmark \
   --artifact .anvil/evidence/openclaw-colo-live-interactions-repeatable.json \

@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- Docs site theme switched from ReadTheDocs to Material for MkDocs (nav tabs,
+  dark mode, native wide-table scrolling; `docs/assets/tables.css` removed).
+- The Evidence nav section is now **Benchmarks**, restructured visitor-first:
+  comparison table as the entry point, the GPT-OSS Puzzle operator recipe filed
+  under its model dossier, and the mention audit, compatibility recipe index,
+  and chronological result archive grouped under an Archive subsection.
+- Published docs now use the generic tailnet placeholder `100.64.0.10`
+  everywhere; the real tailnet address was redacted from all published pages
+  and raw evidence files (see the redaction note in `docs/findings/README.md`
+  and the new "Published-docs topology policy" in `AGENTS.md`).
+
 ## [0.17.0] - 2026-07-29
 
 Anvil Serving 0.17.0 is the Agents-A1 multimodal qualification and Primary

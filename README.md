@@ -112,7 +112,7 @@ mapping is an exposure decision, not a model promotion claim.
 - [CLI reference](docs/CLI.md)
 - [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md)
 - [Voice pipeline](docs/VOICE.md)
-- [Benchmark portal](docs/benchmarks/index.md)
+- [Benchmarks](docs/benchmarks/index.md)
   - [RTX PRO 6000](docs/benchmarks/hardware/rtx-pro-6000.md)
   - [RTX 5090](docs/benchmarks/hardware/rtx-5090.md)
 - [Benchmark run catalog](docs/benchmarks/runs.md)

@@ -105,7 +105,7 @@ through the drained ADR-0018 transition (T005):
 ```bash
 anvil-serving serves up comfyui \
   --manifest examples/fakoli-dark/serves.comfyui.toml \
-  --evict --router-url http://100.87.34.66:8000
+  --evict --router-url http://100.64.0.10:8000
 # ... after the ComfyUI task:
 anvil-serving serves down comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
 anvil-serving serves up vision --manifest examples/fakoli-dark/serves.toml

@@ -14,8 +14,8 @@
 - The intended Dark audio boundary may be a Mini-local proxy that forwards
   `127.0.0.1:30110` and `127.0.0.1:30111` from Mini to Fakoli Dark. Those
   conventional proxy ports were not listening during this validation.
-- Dark router `http://100.87.34.66:8000/v1` was reachable. Direct Dark audio
-  ports `100.87.34.66:30110` and `100.87.34.66:30111` were not reachable from
+- Dark router `http://100.64.0.10:8000/v1` was reachable. Direct Dark audio
+  ports `100.64.0.10:30110` and `100.64.0.10:30111` were not reachable from
   this operator host during the check.
 
 Interpretation: Mini-local loopback and Mini-local proxy loopback are valid
