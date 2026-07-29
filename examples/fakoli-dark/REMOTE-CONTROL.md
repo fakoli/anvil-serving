@@ -64,7 +64,9 @@ anvil-serving router logs --tail 50 --transport controller
 anvil-serving serves status --transport controller
 anvil-serving serves logs primary --tail 50 --transport controller
 
-anvil-serving host gpus --transport controller
+anvil-serving host gpus \
+  --target host:fakoli-dark \
+  --transport controller
 ```
 
 Add `--json` to any command for a machine-readable envelope that records the
@@ -200,6 +202,7 @@ Validated from Mini against the live Dark controller on 2026-07-29:
 | Controller discovery | Healthy; 15 restricted tools |
 | MCP `server/discover` and `tools/list` | Passed with `2026-07-28` |
 | All 15 controller tools | Exercised successfully as a live read or non-mutating preview |
+| Direct typed CLI matrix | 19 passed; 3 state-dependent refusals described below |
 | Router status, logs, lifecycle previews | Passed |
 | Serve status, primary logs, lifecycle previews | Passed |
 | GPU inventory | Both Dark GPUs visible |
