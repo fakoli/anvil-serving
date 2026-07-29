@@ -10,15 +10,16 @@ measurement path can quietly alter what is serving.
 
 ## The transaction
 
-`serves promote` stages a candidate recipe, qualifies it, swaps the role, and keeps a rollback
-path throughout. Preview first, then repeat with explicit confirmation:
+`serves promote` takes the name of a `[[promotion]]` plan declared in your manifest — not a role
+or a model name. It stages the candidate recipe, qualifies it, swaps the role, and keeps a
+rollback path throughout. Preview first, then repeat with explicit confirmation:
 
 ```bash
-anvil-serving serves promote <role> --dry-run
+anvil-serving serves promote <promotion-plan> --dry-run
 ```
 
 ```bash
-anvil-serving serves promote <role> --confirm
+anvil-serving serves promote <promotion-plan> --confirm
 ```
 
 The dry run is not a formality — it is where you confirm the resolved recipe, target role, and
@@ -28,7 +29,7 @@ If the candidate fails its gate, the transaction restores the previous state rat
 leaving a half-promoted role. Roll back deliberately with the same command surface:
 
 ```bash
-anvil-serving serves promote <role> --rollback --confirm
+anvil-serving serves promote <promotion-plan> --rollback --confirm
 ```
 
 ## Draining before a swap
@@ -37,13 +38,15 @@ A role swap must not sever in-flight work. The router exposes the three transiti
 separately so each one is observable rather than implied:
 
 ```bash
-anvil-serving router quiesce <tier>            # stop admitting new requests
-anvil-serving router drain <tier>              # wait for active work to finish
-anvil-serving router readmit <tier>            # return the tier to service
-anvil-serving router transition-status         # inspect current transition state
+anvil-serving router quiesce --tier <tier> --confirm
+anvil-serving router drain --tier <tier> --timeout 120
+anvil-serving router readmit --tier <tier> --confirm
+anvil-serving router transition-status
 ```
 
-`quiesce` and `readmit` mutate; `drain` only waits and reports. Keeping them distinct means
+`--tier` is a required option on all three, and `drain` additionally requires `--timeout` in
+seconds so a wait can never hang unbounded. `quiesce` and `readmit` mutate and therefore take
+`--confirm`; `drain` only waits and reports. Keeping them distinct means
 "stopped accepting work", "finished outstanding work", and "back in service" can never be
 confused for one another — the failure mode ADR-0018 exists to prevent.
 
@@ -55,12 +58,14 @@ when you are staging something by hand or recovering from an interrupted transit
 `serves switch` points a deployment role at an activation-ready recipe:
 
 ```bash
-anvil-serving serves switch <role> --recipe <recipe-id> --registry <registry.toml> --dry-run
-anvil-serving serves switch <role> --recipe <recipe-id> --registry <registry.toml> --confirm
+anvil-serving serves switch <role> <model> --registry <registry.toml> --dry-run
+anvil-serving serves switch <role> <model> --registry <registry.toml> --confirm
 ```
 
-A recipe existing in a registry is deliberately **not** sufficient to alter a live routing
-tier. The switch requires a reviewed activation mapping, so an experiment recorded during a
+`<model>` is the recipe's model id or an unambiguous basename, for example
+`Laguna-S-2.1-NVFP4`. (`--recipe MODEL` is accepted as a compatibility spelling of the same
+selector.) A recipe existing in a registry is deliberately **not** sufficient to alter a live
+routing tier. The switch requires a reviewed activation mapping, so an experiment recorded during a
 bakeoff cannot become production by being written down.
 
 ## Installing a router configuration

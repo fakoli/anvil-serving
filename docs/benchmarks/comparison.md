@@ -21,7 +21,8 @@ A row with a small `agg` number is usually not a slow model — it is a short wo
 Puzzle rows below produced only 20 to 86 output tokens, so their `agg` figures are explicitly
 unusable as decode rates.
 
-**TTFT only means something with its depth and concurrency**, so each cell carries them. A
+**TTFT only means something with its depth and concurrency.** Cells carry depth always, and
+concurrency wherever more than one level was measured; a bare `@8K` row was measured at c1. A
 near-ceiling TTFT (tens of seconds) is prefill-bound and is a *prefill-latency proxy*, not a
 latency regression.
 
@@ -31,7 +32,15 @@ completion budget and returns no visible answer.
 
 **Engine spread is wide** — NGC vLLM 0.19 through 0.25.1, pinned nightlies, a custom Anvil fork,
 and llama.cpp/q36. Rows measured on different engines are not clean comparisons even at the same
-context and concurrency. Full rules: [Methodology and evidence](methodology.md).
+context and concurrency.
+
+**A row is not always one run.** Where a model was measured across several campaigns, the cells
+here may come from different dates and engine windows — the Qwen3.6 27B MTP row pairs a
+2026-07-12 TTFT with a 2026-07-10/11 decode A/B, and the Gemma 12B QAT row pairs the 07-16
+bakeoff capacity with the follow-up's equal-length diagnostic (that follow-up recorded 20/68
+for the same capacity point, so the runs are close but not identical). Follow the dossier and
+dated finding before treating a row as a single experiment. Full rules:
+[Methodology and evidence](methodology.md).
 
 ---
 
@@ -57,16 +66,16 @@ along with c1 admission and the one-image limit.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | [GPT-OSS 120B](models/gpt-oss-120b.md) | `no-promotion` | MXFP4 + Marlin · FP8 KV | 131,072 | `reasoning_effort` | 655.67 / 1257.35 ms @8K · 28.9 s @128K needle | **183.2 `long-gen`** | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L113) |
 | [Nemotron 3 Puzzle 75B NVFP4](models/nemotron-puzzle-75b.md) | `no-promotion` | NVFP4 MoE + MTP 3 · FP8 KV | 131,072 · 2 seqs | off | 458.93 / 492.91 ms @8K · 13.2 s @128K needle | **137.0 `long-gen`** (MTP 1.50× from 91.4) | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L1020) |
-| [MiniMax M2.7 REAP 139B](models/minimax-m27-reap.md) | `no-promotion` | NVFP4 · FP8 KV | 65,536 · c1 | off (no parser) | 86 ms warm @8K · 14.3 s @64K | **97.2 `long-gen`** | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L984) |
+| [MiniMax M2.7 REAP 139B](models/minimax-m27-reap.md) | `no-promotion` | NVFP4 · FP8 KV | 65,536 · c1 | off (no parser) | 86 ms warm @8K · 14.3 s @64K | 97.2 `agg` @c1 (2,179 out tok) | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L984) |
 | [Qwen3.6 27B community NVFP4 + MTP](models/qwen36-27b.md) | `no-promotion` | ModelOpt NVFP4 + MTP 3 · FP8 KV | 262,144 · 5 seqs | off for capacity | 0.63 s @c1 · 3.22 s @c5 · 26.5 s @131K needle | **95.0 `long-gen`** (MTP 1.36× from 69.9) | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L1057) |
-| [Ornith 1.0 35B FP8](models/ornith-35b.md) | `no-promotion` | compressed-tensors FP8 · FP8 KV | 131,072 | off | 772 ms warm @8K · **13.1 s full 131K prefill** (fastest of its set) | **29.2 `long-gen`** | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L950) |
+| [Ornith 1.0 35B FP8](models/ornith-35b.md) | `no-promotion` | compressed-tensors FP8 · FP8 KV | 131,072 | off | 772 ms warm @8K · **13.1 s full 131K prefill** (fastest of its set) | 29.2 `agg` @c1 (**273 out tok over 10 req**) | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L950) |
 | [Agents-A1](models/agents-a1.md) | `challenger` · `no-promotion` | *not recorded* | *not recorded* · c1/c8 | **must be off** | 0.30 / 0.44 s @c1 · 1.38 / 3.53 s @c8 | 85.19 `agg` @c1 · 142 `agg` @c8 | run recorded in release sweep |
 | [Nemotron 3 Super 120B NVFP4](models/nemotron3-super-120b.md) | `no-promotion` | NVFP4 · FP8 KV | 131,072 · 5 seqs | both; 1,024 headroom recommended | 0.62 s @c1 · 2.52 s @c5 · 16.76 s @131K | 33.19 `agg` @c1 · 45.90 `agg` @c5 | `cand-nemotron3-super-120b` |
 | [Mistral Small 4 119B NVFP4](models/mistral-small-4.md) | `no-promotion` | NVFP4 · FP8 KV | 131,072 · 5 seqs | `reasoning_effort`; 2,048 headroom | **0.30 s @c1** · 1.85 s @c5 · 51.90 s @131K | 57.82 `agg` @c1 · 67.04 `agg` @c5 | `cand-mistral-small4-119b-nvfp4` |
 | [ThinkingCap Qwen3.6 27B FP8](models/qwen36-27b.md) | `no-promotion` | compressed-tensors FP8 · FP8 KV | 262,144 · 5 seqs | **on** by default (256 + 4,096 headroom) | 1.01 s @c1 · 4.66 s @c5 · 32.3 s @131K needle | 7.92 `agg` @c5 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L3) |
 | Qwen3.6 27B official FP8 | `no-promotion` | FP8 + MTP 3 · FP8 KV | 262,144 · 5 seqs | off for capacity | 1.59 s @c1 · 5.68 s @c5 · 32.9 s @131K | 8.31 `agg` @c5 | `cand-qwen36-fp8` |
-| Unsloth Qwen3.6 27B NVFP4 | `no-promotion` | NVFP4 + MTP 2 · FP8 KV | 262,144 · 5 seqs | off for capacity | 3.68 s @c5 (c1 *not measured*) | 15.21 `agg` @c5 | `cand-unsloth-qwen36-27b-nvfp4` |
-| [Qwen3.5 122B NVFP4, NGC 26.04](models/qwen35-122b.md) | `no-promotion` | ModelOpt NVFP4 · FP8 KV | 131,072 · c1 | off for gates | 223 ms p50 @8K · ~28 s @100K | 38.8 `long-gen` warm single-stream | earlier candidate window |
+| Unsloth Qwen3.6 27B NVFP4 | `no-promotion` | NVFP4 + MTP 2 · FP8 KV | 262,144 · 5 seqs | off for capacity | 968.07 ms @c1 (1 req) · 3.68 s @c5 | 10.497 `agg` @c1 · 15.21 `agg` @c5 | `cand-unsloth-qwen36-27b-nvfp4` |
+| [Qwen3.5 122B NVFP4, NGC 26.04](models/qwen35-122b.md) | `no-promotion` | ModelOpt NVFP4 · FP8 KV | 131,072 · c1 | off for gates | 223 ms p50 @8K · ~28 s @100K | 38.8 `agg` @c1 (10 req × 8K) | earlier candidate window |
 | [Qwen3.5 122B MXFP4 / Marlin](models/qwen35-122b.md) | `no-promotion` | MXFP4 → Marlin W4A16 · FP8 KV | 131,072 · 2 seqs | off | 720.79 / 974.40 ms @8K · 25.8 s @128K needle | 30.57 `agg` | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L740) |
 
 ### Gemma 4 family — 2026-07-16 template bakeoff
@@ -77,7 +86,7 @@ Capacity columns are mixed short-generation workloads — `agg`, not decode.
 | Config | Status | Quality | 32K cap. c1 | 32K cap. c2 | Quality-ctx TTFT 32K / 128K / 240K | 1,024-tok diagnostic |
 | --- | --- | --- | --- | --- | --- | --- |
 | [Gemma 4 12B QAT W4A16](models/gemma-4.md) | `no-promotion` | **pass** | 1.52 s · 21 `agg` | 0.27 s · 54 `agg` | 6.96 / 44.61 / 97.33 s | 109.03 `long-gen` |
-| Gemma 4 26B-A4B BF16 | `rejected` | fail (timeout triage 0/3) | 0.73 s · 36 `agg` | 0.31 s · 77 `agg` | capacity 11.93 s @120K · 34.07 s @240K | *not measured* |
+| Gemma 4 26B-A4B BF16 (`gemma-4-26B-A4B-it`) | `rejected` | fail (timeout triage 0/3) | 0.73 s · 36 `agg` | 0.31 s · 77 `agg` | capacity 11.93 s @120K · 34.07 s @240K | *not measured* |
 | [Gemma 4 31B W4A16](models/gemma-4.md) | `rejected` (latency) | pass | 4.02 s · 7 `agg` | 0.41 s · 19 `agg` | 15.44 / 112.30 / 248.57 s | 62.3 `long-gen` (07-17 probe) |
 | Unsloth Gemma 4 12B NVFP4 | `no-promotion` | fail (tool 1/3) | 21 `agg` | 76 `agg` | 3.23 / 32.70 / 81.47 s | 98.86 `long-gen` |
 | Unsloth Gemma 4 26B-A4B NVFP4 | `no-promotion` | fail (timeout triage 1/3) | **45 `agg`** | **122 `agg`** | 1.83 / 18.93 / 48.27 s | **191.46 `long-gen`** |
@@ -114,40 +123,46 @@ STT/TTS. Usable budget is **27,999 MiB** after a 4,608 MiB system/audio reserve.
 | [Gemma 4 E4B FP8-Dynamic](models/gemma4-e4b.md) | `no-promotion` (historical Fast) | FP8-Dynamic · FP8 KV | 32,768 | — | 0.46 s @c1 · 0.58 s @c2 | 49 `agg` @c1 · 79 `agg` @c2 | *not measured* |
 | Gemma 4 E2B W4A16 | `no-promotion` | W4A16 · FP8 KV | 131,072 | — | 0.43 s @c1 · 0.21 s @c2 | 96 `agg` @c1 · 204 `agg` @c2 | *not measured* |
 | Gemma 4 31B W4A16 (Fast lane) | `rejected` | W4A16 · FP8 KV | 64K practical | — | 2.60 s @30K c1 · 8.81 s @c2 | 9 `agg` · 8 `agg` | 128K needs 6.35 GiB KV, only 4.28 available |
-| Gemma 4 26B BF16 | `rejected` | BF16 | — | — | *not measured* | *not measured* | 48.57 GiB model; **negative 5.74 GiB KV headroom** |
+| Gemma 4 26B-A4B BF16 (`gemma-4-26B-A4B-it`) | `rejected` | BF16 | — | — | *not measured* | *not measured* | 48.57 GiB model; **negative 5.74 GiB KV headroom** |
 
 Both Omni probes used the same shape (6/6 requests, c2, 2,048-token prompt, 128-token cap) but
 were reported at different precision, so their TTFTs are not comparable at millisecond
 granularity.
 
-### 2026-07-10/11 bakeoff — historical, single-stream
+### 2026-07-10/11 bakeoff — historical
 
-These are labelled `historical-invalid` for exact rerun (no pinned revisions), but the
-single-stream decode numbers are the cleanest `long-gen` figures on this card.
+Every row here is `historical-invalid` for exact rerun: no pinned checkpoint revisions. Per
+[methodology](methodology.md), `historical-invalid` does not establish promotion evidence, so
+**do not rank on these numbers** — they are retained because a negative or partial result is
+still evidence.
 
-| Config | Engine | Context | Decode | Warm TTFT | Verdict |
+The rate column is `agg` throughout: the same 10-request, 256-token-cap harness used elsewhere
+on this page, not controlled long generation.
+
+| Config | Engine | Context | Output rate | Warm TTFT | Verdict |
 | --- | --- | --- | --- | --- | --- |
-| Qwen3.5 35B-A3B Q4_K_M | llama.cpp | 64K | **~147 `long-gen`** | **178 ms** | strongest fast candidate; not promoted |
-| Gemma 4 E4B QAT UD-Q4_K_XL | llama.cpp | 64K | 97 `long-gen` | **61 ms** | low-latency specialist; not promoted |
-| Nemotron Nano Omni 30B | vLLM nightly | 65,536 | 27.3 `long-gen` | 675 ms | keep experimental |
-| Nemotron 3 Nano 30B (text) | NGC vLLM 0.19 | 131,072 | 15.0 `long-gen` | 1.68 s | keep experimental |
+| Qwen3.5 35B-A3B Q4_K_M | llama.cpp | 64K | ~147 `agg` — server timing over **41 tokens**; weakest evidence on this page | 178 ms | fast-tier candidate; not promoted |
+| Gemma 4 E4B QAT UD-Q4_K_XL | llama.cpp | 64K | 96.96 `agg` @c1 (401 out tok) | **61 ms** | low-latency specialist; not promoted |
+| Nemotron Nano Omni 30B | vLLM nightly | 65,536 | 27.3 `agg` @c1 (236 out tok) | 675 ms | keep experimental |
+| Nemotron 3 Nano 30B (text) | NGC vLLM 0.19 | 131,072 | 15.0 `agg` @c1 (322 out tok) | 1.68 s | keep experimental |
 | Gemma 4 31B IT NVFP4 | vLLM gemma4-unified | — | *not measured* | *not measured* | **rejected** — all six configs died at KV allocation |
 
 ---
 
 ## Audio — STT and TTS
 
-All audio rows were measured **on the RTX 5090** while the PRO 6000 was protected and running.
-The PRO 6000 is never the measuring device for these numbers.
+All audio rows were measured **on the RTX 5090**; the PRO 6000 is never the measuring device
+for these numbers. The STT qualification additionally records the PRO 6000 as protected and
+running during the run; the TTS round-trip source does not mention that card either way.
 
 STT ran a shared 30-case corpus (`stt-corpus/v1`, 170.4 s): **24 human recordings are the primary
 quality set; 6 synthetic phrases are reported separately and must never be merged in.**
 
-| Model | Status | Primary-human WER | Sequential p50 / p95 | Concurrency-4 p95 | Req/s |
-| --- | --- | --- | --- | --- | --- |
-| [Parakeet TDT 0.6B v3](models/parakeet.md) | `current` | **3.343%** | 72.35 / 177.87 ms | 240.43 ms | 12.80 |
-| [Qwen3-ASR 0.6B](models/qwen3-asr.md) | `challenger` · `no-promotion` | 3.621% | **67.40 / 113.58 ms** | **137.36 ms** | 14.86 |
-| [Nemotron 3.5 ASR 0.6B](models/nemotron35-asr.md) | `rejected` | 6.685% | 121.60 / 225.45 ms | 747.82 ms | 7.87 |
+| Model | Status | Primary-human WER | Sequential p50 / p95 | Sequential req/s | Concurrency-4 p95 | c4 req/s |
+| --- | --- | --- | --- | --- | --- | --- |
+| [Parakeet TDT 0.6B v3](models/parakeet.md) | `current` | **3.343%** | 72.35 / 177.87 ms | 12.80 | 240.43 ms | 21.00 |
+| [Qwen3-ASR 0.6B](models/qwen3-asr.md) | `challenger` · `no-promotion` | 3.621% | **67.40 / 113.58 ms** | 14.86 | **137.36 ms** | **47.25** |
+| [Nemotron 3.5 ASR 0.6B](models/nemotron35-asr.md) | `rejected` | 6.685% | 121.60 / 225.45 ms | 7.87 | 747.82 ms | 8.68 |
 
 Qwen3-ASR is 36.1% faster at sequential p95 and within the declared one-point non-inferiority
 margin — but Parakeet stays routed. Meeting the margin does not authorize a route change.
@@ -164,10 +179,10 @@ image level only. STT RTF and isolated per-model VRAM were never measured.
 
 ## Where the recipes live
 
-- **[`configs/serve-recipes.toml`](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml)** — 31 recorded recipes with the exact image digest, quantization, context, flags, and environment. Inspect one locally:
+- **[`configs/serve-recipes.toml`](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml)** — 31 recorded recipes with quantization, context, flags, and environment. **9 of the 31 pin an image by `sha256:` digest; the rest pin a mutable tag** (`vllm/vllm-openai:nightly`, `lmsysorg/sglang:latest`), so those cannot be reproduced exactly. Inspect one locally:
 
     ```bash
-    anvil-serving models recipes show <recipe-id>
+    anvil-serving models recipes show <model>
     ```
 
 - **[`examples/fakoli-dark/`](https://github.com/fakoli/anvil-serving/tree/main/examples/fakoli-dark)** — the compose files and serve manifests behind the reference topology.

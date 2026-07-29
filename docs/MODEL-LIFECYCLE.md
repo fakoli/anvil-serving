@@ -57,7 +57,7 @@ different result and needs its own qualification.
 
 ```bash
 anvil-serving models recipes list
-anvil-serving models recipes show <recipe-id>
+anvil-serving models recipes show <model>
 ```
 
 The packaged registry that ships with the product is immutable. Mutations require an explicit
@@ -65,21 +65,23 @@ operator-owned registry path, and are written atomically with backups:
 
 ```bash
 anvil-serving models recipes create --registry <registry.toml> --recipe-file <recipe.toml> --dry-run
-anvil-serving models recipes update --registry <registry.toml> --recipe-file <recipe.toml> --confirm
-anvil-serving models recipes delete --registry <registry.toml> --confirm
+anvil-serving models recipes update <model> --registry <registry.toml> --recipe-file <recipe.toml> --confirm
+anvil-serving models recipes delete <model> --registry <registry.toml> --confirm
 ```
 
-`--registry` is required for these three: there is no implicit default that could let a
-mutation land in the packaged registry by omission.
+`--registry` is required for all three: there is no implicit default that could let a mutation
+land in the packaged registry by omission. `update` and `delete` also take the target `<model>`
+as a positional — the model id or an unambiguous basename.
 
 `models recipes load` starts a candidate container from a recipe:
 
 ```bash
-anvil-serving models recipes load <recipe-id> --dry-run
-anvil-serving models recipes load <recipe-id> --confirm
+anvil-serving models recipes load <model> --container <name> --dry-run
+anvil-serving models recipes load <model> --container <name> --confirm
 ```
 
-The candidate binds to loopback and changes no router policy. This is the intended way to try a
+`--container` is required and names the new Docker container, so a loaded candidate can never
+collide with a managed serve. The candidate binds to loopback and changes no router policy. This is the intended way to try a
 model without touching production: load it, qualify it with `eval preflight`, and only then
 consider [promotion](MODEL-PROMOTION.md).
 
