@@ -12,7 +12,8 @@ editing.
 
 ## 1. Inspect exact evidence
 
-1. Inspect the retained artifact with `anvil-serving eval evidence` or the
+1. Inspect the retained artifact with
+   `anvil-serving eval benchmark evidence show ARTIFACT --json` or the
    applicable modality skill. Do not infer a pass from a command transcript.
 2. Record model repository and exact revision, served name, image digest and
    engine revision, quantization, KV format, context, concurrency, host,

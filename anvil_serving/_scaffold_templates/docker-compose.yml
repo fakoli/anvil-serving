@@ -6,15 +6,15 @@
 # scripts had. DO NOT manage these serves with raw `docker`/`docker compose` — go through
 # `anvil-serving serves` so the management experience stays consistent.
 #
-#   heavy  -> service `primary`  (Qwen3.5 122B A10B NVFP4, :30002, RTX PRO 6000 96GB / GPU 1)
+#   heavy  -> service `primary`  (Agents-A1 official FP8, :30002, RTX PRO 6000 96GB / GPU 1)
 #   omni   -> service `omni` (Nemotron 3 Nano Omni, :30003, RTX 5090 / GPU 0)
 #   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
-# 2026-07-28 Primary promotion: NVIDIA Qwen3.5 122B A10B NVFP4 replaces Laguna S
-# after thinking-disabled and thinking-enabled functional gates, repeated
-# chat/context/tool/session/intelligence quality checks, and a 240K retrieval
-# pass. Laguna is the immediate rollback; GPT-OSS Puzzle remains a second-line
-# recovery option.
+# 2026-07-29 Primary promotion: Agents-A1 official FP8 replaces Qwen3.5 122B
+# after the matched 262K head-to-head, thinking-disabled functional gate, and
+# repeated protocol-v3 chat/context/tool/session/intelligence suite. Qwen is the
+# immediate rollback; Laguna and GPT-OSS Puzzle remain additional recovery
+# options.
 # 2026-07-27 Omni consolidation: one Nemotron 3 Nano Omni serve replaces the
 # former auxiliary LLM, OCR, and general-vision services. It consumes the 5090
 # exclusively; embeddings and reranking remain a separate lifecycle stack.
@@ -35,14 +35,60 @@
 name: anvil-serving
 
 services:
-  # Primary tier: NVIDIA Qwen3.5 122B A10B NVFP4 at its native 262,144-token
-  # window. The exact NGC 26.06 runtime, checkpoint revision, BF16 KV profile,
-  # and single-sequence policy passed the recorded local qualification.
-  # One image per prompt and default thinking passed the multimodal follow-up;
-  # callers may still disable thinking per request.
+  # Primary tier: Agents-A1 official FP8 at its native 262,144-token window.
+  # The exact vLLM nightly, checkpoint revision, FP8 KV profile, multimodal
+  # limits, and single-sequence policy passed the recorded local qualification.
+  # Thinking is hard-disabled at the router; default thinking is not qualified.
   primary:
+    image: ${PRIMARY_AGENTS_A1_VLLM_IMAGE:-vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1}
+    container_name: vllm-agents-a1-fp8-primary
+    restart: unless-stopped
+    ipc: host
+    shm_size: "32gb"
+    ports:
+      - "127.0.0.1:30002:30002"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    entrypoint: ["vllm"]
+    command: >
+      serve InternScience/Agents-A1-FP8
+      --revision ${PRIMARY_AGENTS_A1_REVISION:-4d7d59380f327b76e73bc71f40e0c589ad0ca1d5}
+      --served-model-name agents-a1-fp8-mm-262k
+      --kv-cache-dtype fp8
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --reasoning-parser qwen3
+      --limit-mm-per-prompt '{"image":4,"video":1}'
+      --media-io-kwargs '{"video":{"num_frames":-1}}'
+      --gpu-memory-utilization 0.94
+      --max-num-seqs 1
+      --max-model-len 262144
+      --host 0.0.0.0 --port 30002
+      ${PRIMARY_AGENTS_A1_EXTRA_ARGS:-}
+
+  # Immediate Primary rollback: the previously qualified Qwen3.5 122B profile.
+  # It shares :30002 and the PRO 6000, so the guarded promotion transaction
+  # stops Agents-A1 before starting this service.
+  primary-qwen35-rollback:
+    profiles: ["rollback"]
     image: ${PRIMARY_QWEN35_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.06-py3}
-    container_name: vllm-qwen35-122b-primary
+    container_name: vllm-qwen35-122b-primary-rollback
     restart: unless-stopped
     ipc: host
     shm_size: "16gb"
@@ -52,9 +98,6 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      # The NGC 26.06 runtime int-parses CUDA_VISIBLE_DEVICES. PCI_BUS_ID index
-      # 1 is the PRO 6000 on this host; the Compose reservation below still
-      # pins the stable host UUID.
       CUDA_VISIBLE_DEVICES: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -92,9 +135,7 @@ services:
       --host 0.0.0.0 --port 30002
       ${PRIMARY_QWEN35_EXTRA_ARGS:-}
 
-  # Immediate Primary rollback: the previously qualified Laguna S 2.1 profile.
-  # It deliberately shares :30002 and the PRO 6000, so the guarded promotion
-  # transaction stops Qwen before starting this service.
+  # Additional Primary rollback: the previously qualified Laguna S 2.1 profile.
   primary-laguna-rollback:
     profiles: ["rollback"]
     image: ${PRIMARY_LAGUNA_VLLM_IMAGE:-vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1}

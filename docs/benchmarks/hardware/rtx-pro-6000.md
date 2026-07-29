@@ -14,29 +14,29 @@ kept this card running or described its topology belong in the
 ## Current topology and services
 
 The card owns the router-adjacent Primary LLM serve. The current Primary is
-Qwen3.5 122B A10B NVFP4 at `http://127.0.0.1:30002/v1`, served as
-`qwen35-122b-a10b-nvfp4`, with BF16 KV, a 262,144-token window, one admitted
-sequence, one image per request, and thinking enabled by default. Fakoli Mini
-does not host a model.
+Agents-A1 official FP8 at `http://127.0.0.1:30002/v1`, served as
+`agents-a1-fp8-mm-262k`, with FP8 KV, a 262,144-token window, one admitted
+sequence, four images and one video per request, and thinking hard-disabled by
+the router. Fakoli Mini does not host a model.
 
 ## Current, rollback, and challenger state
 
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
-| 1 | [Qwen3.5 122B](../models/qwen35-122b.md) | `current` | Multimodal Primary; default thinking, request-level disable; 240K retrieval |
-| 2 | [Laguna S 2.1](../models/laguna-s-2.1.md) | `rollback` | Immediate managed rollback; thinking disabled |
-| 3 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | `rollback` | Secondary pinned rollback; strict unified-diff caveat |
-| 4 | [Gemma 4](../models/gemma-4.md) / [ThinkingCap](../models/qwen36-27b.md) | `no-promotion` | Historical strict-quality controls |
-| 5 | [Agents-A1](../models/agents-a1.md) | `challenger` + `no-promotion` | FP8 text/image/video candidate; NVFP4 compact text only; thinking disabled |
+| 1 | [Agents-A1](../models/agents-a1.md) | `current` | FP8 text/image/video Primary; thinking disabled; 240K retrieval |
+| 2 | [Qwen3.5 122B](../models/qwen35-122b.md) | `rollback` | Immediate managed rollback; image/OCR; 240K retrieval |
+| 3 | [Laguna S 2.1](../models/laguna-s-2.1.md) | `rollback` | Additional managed rollback; thinking disabled |
+| 4 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | `rollback` | Additional pinned rollback; strict unified-diff caveat |
+| 5 | [Gemma 4](../models/gemma-4.md) / [ThinkingCap](../models/qwen36-27b.md) | `no-promotion` | Historical strict-quality controls |
 
 ## Comparable quality and context
 
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
-| Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `current` |
+| Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `rollback` |
 | Laguna S 2.1 NVFP4 | Passed protocol-v3 with thinking disabled | 32K/128K/240K passed; TTFT 2.26/21.15/50.64 s | `rollback` |
 | GPT-OSS Puzzle 88B | Tools/session/timeout 3/3; unified diff 2/3 | 32K and 128K retained | `rollback` |
-| Agents-A1 | BF16/FP8 text gates pass; identical 28/30 multimodal corpus; NVFP4 repeated text pass | Official FP8 now passes 240K on a 262,144 serve; 32.97 s TTFT p50 at 231,426 actual tokens | `challenger`, `no-promotion` |
+| Agents-A1 | Official FP8 passed three-repetition protocol-v3; BF16/FP8 retain the identical 28/30 multimodal corpus | 240K on a 262,144 serve; 35.21 s promotion-quality TTFT, 32.97 s capacity TTFT p50 at 231,426 actual tokens | `current` |
 | Gemma 4 12B QAT W4A16 | Historical protocol-v3 control passed | 240K passed | `no-promotion` |
 | ThinkingCap Qwen3.6 27B FP8 | Historical strict-quality control passed | 240K retained | `no-promotion` |
 
@@ -55,6 +55,9 @@ does not host a model.
 
 ## Recent changes
 
+- 2026-07-29: Agents-A1 official FP8 passed the missing three-repetition
+  protocol-v3 suite at the 262K profile and was promoted through the managed
+  transaction. Qwen3.5 is now the immediate rollback.
 - 2026-07-29: Agents-A1 official FP8 passed the same 262K/240K functional
   and capacity shape as Qwen. It used 35.31 versus 73.22 GiB model memory,
   halved 240K TTFT, and delivered the unchanged video corpus. Qwen passed all

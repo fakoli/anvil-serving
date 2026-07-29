@@ -2,8 +2,8 @@
 
 ## Current status and review date
 
-Text-qualified `challenger` with thinking disabled; multimodal hard gate
-28/30; `no-promotion`.
+`current` Primary with thinking disabled. The retained strict multimodal corpus
+is 28/30 with a documented assertion caveat.
 Review date: 2026-07-29.
 
 ## Immutable identity
@@ -17,8 +17,9 @@ Review date: 2026-07-29.
 
 ## Tested hardware and topology
 
-One RTX PRO 6000 on Fakoli Dark. Candidate serves and the qualification router
-were isolated from the live Primary route.
+One RTX PRO 6000 on Fakoli Dark. Qualification used isolated candidate serves;
+the exact official FP8 profile was promoted through the managed Primary
+transaction on 2026-07-29.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
@@ -44,13 +45,11 @@ tokens.
 
 ## Decision and promotion state
 
-BF16 is the correctness control. Official FP8 is the principal
-production-shaped candidate but does not clear the predeclared 100%
-multimodal assertion gate. NVFP4 is Pareto-preferred for compact text-only
-deployment, not image/video. All remain `no-promotion`.
-The official FP8 profile wins the bounded 262K comparison with the current
-Qwen Primary, but promotion still requires a matched repeated protocol-v3
-quality run and a separate human gate.
+BF16 is the correctness control. Official FP8 is the human-gated `current`
+Primary after winning the bounded Qwen comparison and passing the complete
+three-repetition protocol-v3 suite at the 262K serving profile. NVFP4 is
+Pareto-preferred for compact text-only deployment, not image/video, and
+remains `no-promotion`.
 The generated FP8 MoE tune is not adopted: its three-run 8K c16 throughput mean
 regressed 1.399% and missed the 5% gate.
 
@@ -66,6 +65,7 @@ be read as a kernel-only prefill rate.
 
 ## Dated run history
 
+- [2026-07-29 Primary promotion](../../findings/2026-07-29-agents-a1-primary-promotion.md)
 - [2026-07-29 Qwen 262K head-to-head](../../findings/2026-07-29-agents-a1-qwen-262k-head-to-head.md)
 - [2026-07-28 multimodal and quantization qualification](../../findings/2026-07-28-agents-a1-multimodal-qualification.md)
 - [2026-07-27 release-readiness qualification](../../findings/2026-07-27-anvil-serving-release-readiness-sweep.md#agents-a1-qualification)

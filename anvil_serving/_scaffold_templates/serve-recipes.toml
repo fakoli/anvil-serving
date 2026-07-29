@@ -650,6 +650,78 @@ suited = ["single-turn-quality", "quality"]
 rationale = "Prefix cache is load-bearing for AGENTIC work but IRRELEVANT for single-turn SINGLE-TURN QUALITY work — so a GDN hybrid becomes viable precisely in single-turn quality workloads. Cache-off is a feature here, not a bug."
 
 [[recipe]]
+model = "InternScience/Agents-A1-FP8"
+status = "verified"
+source = "Qualified and promoted on fakoli-dark 2026-07-29 at revision 4d7d59380f327b76e73bc71f40e0c589ad0ca1d5 with vLLM f25953cc, FP8 KV, 262,144 context, 240K retrieval, repeated protocol-v3 quality, direct image/video, and c1 capacity evidence."
+family = "qwen3.5-moe-vl"
+total_params_b = 35
+
+[recipe.download]
+repo = "InternScience/Agents-A1-FP8"
+revision = "4d7d59380f327b76e73bc71f40e0c589ad0ca1d5"
+volume = "vllm-hfcache"
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1"
+managed_serve = "primary"
+served_model_name = "agents-a1-fp8-mm-262k"
+quantization = "compressed-tensors fp8"
+port = 30002
+context_tokens = 262144
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+]
+flags = [
+  "--revision 4d7d59380f327b76e73bc71f40e0c589ad0ca1d5",
+  "--served-model-name agents-a1-fp8-mm-262k",
+  "--kv-cache-dtype fp8",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--reasoning-parser qwen3",
+  "--limit-mm-per-prompt '{\"image\":4,\"video\":1}'",
+  "--media-io-kwargs '{\"video\":{\"num_frames\":-1}}'",
+  "--gpu-memory-utilization 0.94",
+  "--max-num-seqs 1",
+  "--max-model-len 262144",
+  "--host 0.0.0.0",
+  "--port 30002",
+]
+
+[recipe.measured]
+model_weights_gb = 35.31
+kv_cache_gb = 51.93
+kv_cache_tokens = 5277426
+reported_full_context_concurrency = 20.13
+longctx_240k_ttft_p50_s = 32.97
+longctx_240k_decode_p50_tok_s = 155.8
+preflight = "Thinking-disabled smoke, JSON, 240K retrieval, and 20/20 tools passed. The complete three-repetition protocol-v3 suite passed at 32K, 128K, and 240K."
+multimodal = "Direct image/video and isolated routed video passed. The strict corpus remains 28/30 because two correct event-localization intervals omitted one required assertion word; BF16 matched the failures."
+reasoning = "Thinking is hard-disabled by the production router and was forbidden in the promotion gate."
+caveats = "The generated exact-hardware MoE tune regressed matched primary-lane throughput 1.399% and remains rejected/inert. Admission is c1 despite the larger reported KV pool."
+
+[recipe.fit]
+suited = ["quality", "agentic", "coding", "long-context", "planning", "review", "research", "vision", "video", "ocr"]
+rationale = "Current multimodal Primary: materially lower memory and higher long-context speed than the prior Qwen profile, complete thinking-disabled protocol-v3 pass, and a documented 28/30 strict video assertion caveat."
+
+[recipe.activation]
+
+[recipe.activation.primary]
+plan = "agents-a1-fp8-primary"
+direction = "promote"
+compose_service = "primary"
+
+[[recipe]]
 model = "nvidia/Qwen3.5-122B-A10B-NVFP4"
 status = "verified"
 source = "Qualified locally on fakoli-dark 2026-07-28 at revision 98915d837c4e7c87ac8296d02e89de19b3207e6d with NGC 26.06, BF16 KV, 262,144 configured context, 240K retrieval, repeated deterministic quality, and c1 capacity evidence."
@@ -674,7 +746,7 @@ image = "nvcr.io/nvidia/vllm:26.06-py3"
 entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
 model_flag = "--model"
 allow_cuda_visible_devices_index = true
-managed_serve = "primary"
+managed_serve = "primary-qwen35-rollback"
 served_model_name = "qwen35-122b-a10b-nvfp4"
 quantization = "modelopt_fp4"
 port = 30002
@@ -728,14 +800,14 @@ caveats = "The NVIDIA ModelOpt NVFP4 format and vLLM Mamba align-mode prefix cac
 
 [recipe.fit]
 suited = ["quality", "long-context", "planning", "review", "research", "vision", "ocr"]
-rationale = "Qualified multimodal Primary profile for quality, long-context, planning, review, image understanding, and OCR at the checkpoint's native 262,144-token window. Thinking is enabled by default and remains request-controllable."
+rationale = "Immediate managed Primary rollback for quality, long-context, planning, review, image understanding, and OCR at the checkpoint's native 262,144-token window. Thinking is enabled by default and remains request-controllable."
 
 [recipe.activation]
 
 [recipe.activation.primary]
-plan = "qwen35-122b-primary"
-direction = "promote"
-compose_service = "primary"
+plan = "agents-a1-fp8-primary"
+direction = "rollback"
+compose_service = "primary-qwen35-rollback"
 
 [[recipe]]
 model = "olka-fi/Qwen3.5-122B-A10B-MXFP4"
@@ -1301,7 +1373,7 @@ rationale = "Current Heavy-tier candidate validated with thinking disabled on on
 [recipe.activation]
 
 [recipe.activation.primary]
-plan = "qwen35-122b-primary"
+plan = "agents-a1-fp8-primary"
 direction = "rollback"
 compose_service = "primary-laguna-rollback"
 
