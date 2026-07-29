@@ -6,8 +6,42 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-07-29
+
+Anvil Serving 0.17.0 is the Agents-A1 multimodal qualification and Primary
+promotion release. It adds reproducible image and video benchmarking, promotes
+the pinned official FP8 checkpoint at a 262,144-token context window, and keeps
+Qwen3.5 122B NVFP4 as the immediate managed rollback.
+
+### Highlights
+
+- **Agents-A1 FP8 Primary.** The reference Primary is
+  `InternScience/Agents-A1-FP8` at its pinned revision, served with FP8 KV,
+  multimodal image/video support, thinking hard-disabled by the router, and a
+  262,144-token context window.
+- **Measured Qwen head-to-head.** The production-shaped comparison records
+  exact runtime identity, protocol-v3 quality, long-context retrieval, TTFT,
+  effective prefill, decode, memory/KV allocation, image/video behavior, and
+  routed promotion gates. Qwen3.5 remains a first-class rollback rather than
+  being discarded.
+- **Reusable qualification system.** Versioned multimodal corpora and evidence,
+  cache inventory and guarded cleanup, managed recipe lifecycle, kernel-tuning
+  contracts, and hardware-first benchmark publication are now reusable product
+  surfaces instead of campaign-only procedures.
+
 ### Changed
 
+- Promoted Agents-A1 official FP8 to the guarded `llm.primary` route after the
+  262K protocol-v3 and routed preflight gates passed. The matched comparison
+  measured 35.31 GiB model memory and 51.93 GiB KV allocation for Agents-A1,
+  versus 73.22 GiB and 13.84 GiB for Qwen3.5; Agents-A1 also delivered the
+  video corpus on the exact qualified runtime.
+- Preserved `nvidia/Qwen3.5-122B-A10B-NVFP4` as the immediate managed rollback.
+  Promotion remains explicit and reversible through the guarded recipe
+  transaction.
+- Kept the generated RTX PRO 6000 FP8 MoE tune rejected and inactive: its
+  matched A/B regressed primary-lane throughput by 1.399%. Tune artifacts now
+  carry exact engine, GPU, dtype, tensor-parallel, and model-geometry identity.
 - **Documentation portal is organized by capability.** The mkdocs navigation now
   leads with what anvil-serving does today — serve models, qualify and benchmark,
   route through the gateway, voice and audio, operate the host, integrate a
@@ -30,6 +64,21 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `eval benchmark multimodal` and bounded image/video preflight support with
+  versioned manifests, media hashes, deterministic assertions, latency and
+  token telemetry, and raw evidence suitable for independent review.
+- Video-safe router relay and admission behavior, including preservation of
+  OpenAI `video_url` blocks, fail-closed unsupported translations, and bounded
+  image/video capacity accounting.
+- Read-only model-cache inventory plus guarded exact-revision cleanup evidence,
+  including filesystem, Hugging Face snapshot, incomplete download, Docker
+  image, container-reference, and last-observed metadata.
+- Managed recipe status, bounded logs, and unload operations so model lifecycle
+  and failure investigation remain within the Anvil command surface.
+- Reusable LLM qualification, kernel-tuning, and benchmark-publication skills,
+  with pinned evidence contracts and ticketed friction from the campaign.
+- A deterministic image, mixed-media, and 10–120 second video corpus, including
+  Creative Commons source provenance and normalized media hashes.
 - **A master model comparison table** at `docs/benchmarks/comparison.md`: every
   measured configuration in one place, grouped by card, with quantization and KV
   dtype, served context and admission, reasoning mode, TTFT (carrying its depth
@@ -1385,7 +1434,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/fakoli/anvil-serving/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/fakoli/anvil-serving/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/fakoli/anvil-serving/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/fakoli/anvil-serving/compare/v0.14.0...v0.15.0
