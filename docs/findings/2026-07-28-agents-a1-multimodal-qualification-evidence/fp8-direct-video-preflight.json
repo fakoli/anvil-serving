@@ -1,0 +1,79 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:30010/v1",
+  "model": "agents-a1-fp8-mm",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 1024
+  },
+  "multimodal_input": null,
+  "video_input": {
+    "bytes": 11627,
+    "mime": "video/mp4",
+    "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+  },
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [
+    "red",
+    "green"
+  ],
+  "checks": [
+    "video"
+  ],
+  "results": [
+    {
+      "name": "bounded video understanding",
+      "passed": true,
+      "detail": "1.9s all expected text present finish='stop' visible=643 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "This video consists of a sequence of static title cards with text, set against a solid dark blue background. The events unfold as follows:\n\n- **00:00 - 00:04**: The video begins with the text \"FIRST RED\" displayed in a bold, red, sans-serif font. The text is centered horizontally and vertically on the screen. This image remains static for the first four seconds.\n\n- **00:04 - 00:09**: At the four-second mark, the text on the screen changes. It now reads \"THEN GREEN\" in a bold, bright green, sans-serif font, maintaining the same centered position and style as the previous text. This final screen remains static until the end of the video.",
+      "finish_reason": "stop",
+      "content_chars": 643,
+      "content_excerpt": "This video consists of a sequence of static title cards with text, set against a solid dark blue background. The events unfold as follows:\n\n- **00:00 - 00:04**: The video begins with the text \"FIRST R",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 375,
+        "total_tokens": 532,
+        "completion_tokens": 157,
+        "prompt_tokens_details": null
+      },
+      "test": "video",
+      "seconds": 1.92,
+      "passed": true,
+      "validation_detail": "all expected text present",
+      "video": {
+        "bytes": 11627,
+        "mime": "video/mp4",
+        "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+      },
+      "expected": [
+        "red",
+        "green"
+      ]
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "any",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

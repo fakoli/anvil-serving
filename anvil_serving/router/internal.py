@@ -36,6 +36,23 @@ class DialectError(Exception):
         self.message = message
 
 
+class BackendClientError(Exception):
+    """A backend rejected a request for a caller-correctable reason.
+
+    ``message`` is safe to return to the caller. Backend implementations must
+    keep upstream hosts, credentials, response bodies, and provider details in
+    server-side logs rather than attaching them to this exception.
+    """
+
+    def __init__(self, status: int, etype: str, message: str):
+        if status < 400 or status > 499:
+            raise ValueError("BackendClientError status must be a 4xx code")
+        super().__init__(message)
+        self.status = status
+        self.etype = etype
+        self.message = message
+
+
 class NoAvailableTierError(Exception):
     """A configured direct route cannot dispatch to its single tier."""
 
@@ -52,6 +69,7 @@ class NoAvailableTierError(Exception):
         detail = {
             "unknown_model": "model alias is not configured",
             "over_context": "request exceeds the configured tier context window",
+            "media_limit": "request exceeds the configured tier media limits",
             "unsupported_tools": "configured tier does not support tools",
             "unavailable": "configured tier is not ready",
             "unbound": "configured tier has no bound backend",

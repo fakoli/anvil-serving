@@ -1,0 +1,150 @@
+{
+  "schema": "kernel-tune-manifest/v1",
+  "decision": "rejected",
+  "observed_at": "2026-07-29T09:00:00Z",
+  "artifact": {
+    "path": "configs/kernel-tunes/vllm/f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1/nvidia-rtx-pro-6000-blackwell-max-q-workstation-edition/moe-config.json",
+    "repository_filename": "moe-config.json",
+    "engine_required_filename": "E=256,N=512,device_name=NVIDIA_RTX_PRO_6000_Blackwell_Max-Q_Workstation_Edition,dtype=fp8_w8a8.json",
+    "bytes": 3294,
+    "sha256": "232cda3b62b2367c26f48dd16f506b9f7b84da903585c6bc36be0fe793cb50e5"
+  },
+  "runtime": {
+    "image": "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1",
+    "image_digest": "sha256:212a1bd7b4267c604408d17dc0048ef152101bc67fbe6ba8567899fc1f227bcd",
+    "engine_version": "0.23.1rc1.dev1327+gf25953cc5",
+    "engine_revision": "f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1",
+    "tuner_revision": "f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1",
+    "tuner_source": "benchmarks/kernels/benchmark_moe.py",
+    "ray_version": "2.56.1",
+    "torch_version": "2.11.0+cu130",
+    "cuda_version": "13.0",
+    "triton_version": "3.6.0"
+  },
+  "model": {
+    "repository": "InternScience/Agents-A1-FP8",
+    "revision": "4d7d59380f327b76e73bc71f40e0c589ad0ca1d5",
+    "served_name": "agents-a1-fp8-text",
+    "architecture": "Qwen3_5MoeForConditionalGeneration",
+    "kernel_family": "fused_moe_triton_fp8",
+    "dtype": "fp8_w8a8",
+    "tensor_parallel_size": 1,
+    "geometry": {
+      "num_experts": 256,
+      "experts_per_token": 8,
+      "hidden_size": 2048,
+      "moe_intermediate_size": 512,
+      "layers": 40
+    }
+  },
+  "gpu": {
+    "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "compute_capability": "12.0",
+    "memory_mib": 97887,
+    "driver_version": "610.88"
+  },
+  "tuning": {
+    "arguments": [
+      "--model",
+      "/root/.cache/huggingface/hub/models--InternScience--Agents-A1-FP8/snapshots/4d7d59380f327b76e73bc71f40e0c589ad0ca1d5",
+      "--tp-size",
+      "1",
+      "--dtype",
+      "fp8_w8a8",
+      "--batch-size",
+      "1",
+      "2",
+      "4",
+      "8",
+      "16",
+      "24",
+      "32",
+      "48",
+      "64",
+      "96",
+      "128",
+      "256",
+      "512",
+      "1024",
+      "1536",
+      "2048",
+      "3072",
+      "4096",
+      "--save-dir",
+      "/tuned",
+      "--tune"
+    ],
+    "batch_sizes": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      24,
+      32,
+      48,
+      64,
+      96,
+      128,
+      256,
+      512,
+      1024,
+      1536,
+      2048,
+      3072,
+      4096
+    ],
+    "configurations_per_batch": 1920,
+    "total_configurations": 34560,
+    "started_at": "2026-07-29T05:06:09Z",
+    "artifact_written_at": "2026-07-29T08:36:59Z",
+    "duration_seconds": 12650,
+    "completion_state": "artifact_validated_all_18_batches",
+    "retries": [
+      {
+        "attempt": 1,
+        "result": "failed",
+        "error": "The official worker attempted int(ray.get_gpu_ids()[0]) while Ray exposed the Docker-visible GPU UUID."
+      },
+      {
+        "attempt": 2,
+        "result": "completed",
+        "change": "Docker remained constrained to the exact GPU UUID while physical CUDA device 1 was exposed numerically inside the isolated tuner."
+      }
+    ],
+    "evidence_limit": "The temporary tuner used automatic container removal. The durable 18-key artifact and its write timestamp prove completion, but a retained final container exit record and final batch completion line are unavailable."
+  },
+  "activation": {
+    "environment_variable": "VLLM_TUNED_CONFIG_FOLDER",
+    "container_path": "/opt/anvil/kernel-tunes",
+    "delivery": "pinned derived image layer",
+    "derived_image": "anvil-vllm:agents-a1-fp8-tuned-f25953cc",
+    "derived_image_digest": "sha256:2a20134de1583bbf36d344377d0b68a1748398bd26dc011c39ce6d89092e9a69",
+    "recipe": "configs/agents-a1-qualification-fp8-tuned-recipe.toml",
+    "startup_proof": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-tuned-startup.log",
+    "startup_proof_message": "Using configuration from /opt/anvil/kernel-tunes/E=256,N=512,device_name=NVIDIA_RTX_PRO_6000_Blackwell_Max-Q_Workstation_Edition,dtype=fp8_w8a8.json for MoE layer."
+  },
+  "qualification": {
+    "default_recipe": "configs/agents-a1-qualification-text-recipes.toml#InternScience/Agents-A1-FP8",
+    "tuned_recipe": "configs/agents-a1-qualification-fp8-tuned-recipe.toml#InternScience/Agents-A1-FP8",
+    "default_functional": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-default-functional.json",
+    "tuned_functional": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-tuned-functional.json",
+    "comparison": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-comparison.json",
+    "warning_proof": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-default-startup.log",
+    "raw_tuner_artifact": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/E=256,N=512,device_name=NVIDIA_RTX_PRO_6000_Blackwell_Max-Q_Workstation_Edition,dtype=fp8_w8a8.json",
+    "thresholds": {
+      "primary_minimum_improvement_percent": 5.0,
+      "protected_maximum_regression_percent": 3.0,
+      "functional_pass_rate_required": 1.0
+    },
+    "measured_deltas_percent": {
+      "primary_throughput": -1.399,
+      "primary_e2e_p95_improvement": -0.907,
+      "primary_ttft_p95_improvement": 2.127,
+      "protected_e2e_p95_regression": -1.576
+    }
+  },
+  "recommendation": "Do not activate this tune. It loaded correctly and retained all functional gates, but the three-run primary aggregate throughput mean regressed by 1.399 percent and failed the 5 percent adoption threshold.",
+  "applicability": "Only vLLM f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1 with Triton 3.6.0, CUDA 13.0, TP=1, fp8_w8a8 fused MoE E=256/N=512 on the exact RTX PRO 6000 Blackwell Max-Q product is covered."
+}

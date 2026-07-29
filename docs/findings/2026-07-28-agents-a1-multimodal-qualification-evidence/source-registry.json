@@ -1,0 +1,105 @@
+{
+  "schema": "source-registry/v1",
+  "observed_date": "2026-07-28",
+  "sources": [
+    {
+      "id": "agents-a1-bf16-model-card",
+      "url": "https://huggingface.co/InternScience/Agents-A1",
+      "published_or_updated": "2026-07",
+      "age_class": "current",
+      "evidence_class": "official-model-card",
+      "hardware_relevance": "Recipe prior only; not an RTX PRO 6000 measurement.",
+      "decision_impact": "Established the BF16 identity, image support, vLLM recipe, 262K advertised context, and --language-model-only control."
+    },
+    {
+      "id": "agents-a1-fp8-model-card",
+      "url": "https://huggingface.co/InternScience/Agents-A1-FP8",
+      "published_or_updated": "2026-07",
+      "age_class": "current",
+      "evidence_class": "official-model-card",
+      "hardware_relevance": "Recipe prior only; local FP8 results use the pinned RTX PRO 6000 campaign.",
+      "decision_impact": "Selected the official FP8 checkpoint as the principal production-shaped candidate."
+    },
+    {
+      "id": "agents-a1-nvfp4-model-card",
+      "url": "https://huggingface.co/protoLabsAI/Agents-A1-NVFP4",
+      "published_or_updated": "2026-07",
+      "age_class": "current",
+      "evidence_class": "publisher-model-card",
+      "hardware_relevance": "Quant recipe prior; local Marlin and memory behavior were measured independently.",
+      "decision_impact": "Limited NVFP4 to text-only qualification because the publisher documents a vision-tower crash."
+    },
+    {
+      "id": "agents-a1-multimodal-discussion-18",
+      "url": "https://huggingface.co/InternScience/Agents-A1/discussions/18",
+      "published_or_updated": "2026-07",
+      "age_class": "current",
+      "evidence_class": "publisher-community-response",
+      "hardware_relevance": "Capability claim only; no target-hardware or broad VQA evidence.",
+      "decision_impact": "Supported testing multimodal reasoning but increased the need for local image/video qualification because the authors invited broader VQA evaluation."
+    },
+    {
+      "id": "vllm-multimodal-inputs",
+      "url": "https://docs.vllm.ai/en/stable/features/multimodal_inputs/",
+      "published_or_updated": "observed-2026-07-28",
+      "age_class": "current",
+      "evidence_class": "official-runtime-documentation",
+      "hardware_relevance": "Wire-format and decoder prior; local support was tested on the pinned nightly and target GPU.",
+      "decision_impact": "Selected the OpenAI-compatible video_url path and bounded image/video controls."
+    },
+    {
+      "id": "qwen3-vl-pixel-control",
+      "url": "https://github.com/QwenLM/Qwen3-VL/blob/main/README.md#pixel-control-via-official-processor",
+      "published_or_updated": "observed-2026-07-28",
+      "age_class": "current",
+      "evidence_class": "official-base-model-documentation",
+      "hardware_relevance": "Processor and visual-token prior; Agents-A1 behavior was measured locally.",
+      "decision_impact": "Motivated explicit fps/num_frames controls and visual-token admission accounting."
+    },
+    {
+      "id": "vllm-video-num-frames-35909",
+      "url": "https://github.com/vllm-project/vllm/issues/35909",
+      "published_or_updated": "2026-07",
+      "age_class": "current",
+      "evidence_class": "upstream-runtime-issue",
+      "hardware_relevance": "Qwen3-VL/Qwen3.5 video compatibility lead, not local proof.",
+      "decision_impact": "Required mutually exclusive fps/num_frames controls and retention of the lowest actionable direct-video error."
+    },
+    {
+      "id": "vllm-missing-moe-config-17619",
+      "url": "https://github.com/vllm-project/vllm/issues/17619",
+      "published_or_updated": "2025-05",
+      "age_class": "stale",
+      "evidence_class": "upstream-runtime-issue",
+      "hardware_relevance": "Generic missing-config guidance; target-GPU benefit remained unmeasured.",
+      "decision_impact": "Identified the official benchmark_moe.py --tune path while community reports of long runs and possible regressions made a paired end-to-end A/B mandatory."
+    },
+    {
+      "id": "vllm-pinned-moe-tuner",
+      "url": "https://github.com/vllm-project/vllm/blob/f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1/benchmarks/kernels/benchmark_moe.py",
+      "published_or_updated": "pinned-commit",
+      "age_class": "current",
+      "evidence_class": "official-runtime-source",
+      "hardware_relevance": "Exact tuner implementation used on the target GPU.",
+      "decision_impact": "Defined the generated filename, Triton-version field, batch grid, and exhaustive per-batch search behavior."
+    },
+    {
+      "id": "wikimedia-chemical-traffic-light",
+      "url": "https://commons.wikimedia.org/wiki/File:Chemical_Traffic_Light.webm",
+      "published_or_updated": "observed-2026-07-28",
+      "age_class": "current",
+      "evidence_class": "creative-commons-fixture-source",
+      "hardware_relevance": "Real-world corpus media, not performance evidence.",
+      "decision_impact": "Supplied a licensed state-change video; a deterministic MP4 derivative was required after the pinned decoder recovered only four frames from the WebM."
+    },
+    {
+      "id": "wikimedia-cat-opening-door",
+      "url": "https://commons.wikimedia.org/wiki/File:Cat_opening_door.webm",
+      "published_or_updated": "observed-2026-07-28",
+      "age_class": "current",
+      "evidence_class": "creative-commons-fixture-source",
+      "hardware_relevance": "Real-world corpus media, not performance evidence.",
+      "decision_impact": "Supplied a licensed continuity video; a deterministic MP4 derivative was required after the pinned decoder recovered only four frames from the WebM."
+    }
+  ]
+}

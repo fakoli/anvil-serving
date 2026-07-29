@@ -1,0 +1,195 @@
+{
+  "schema": "kernel-tune-ab-comparison/v1",
+  "observed_at": "2026-07-29T09:00:00Z",
+  "measurement_protocol": "capacity-v3",
+  "identity": {
+    "model": "InternScience/Agents-A1-FP8",
+    "revision": "4d7d59380f327b76e73bc71f40e0c589ad0ca1d5",
+    "served_model_name": "agents-a1-fp8-text",
+    "runtime_revision": "f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "default_image": "vllm/vllm-openai@sha256:212a1bd7b4267c604408d17dc0048ef152101bc67fbe6ba8567899fc1f227bcd",
+    "tuned_image": "anvil-vllm@sha256:2a20134de1583bbf36d344377d0b68a1748398bd26dc011c39ce6d89092e9a69",
+    "tune_sha256": "232cda3b62b2367c26f48dd16f506b9f7b84da903585c6bc36be0fe793cb50e5"
+  },
+  "methodology": {
+    "repetitions": 3,
+    "warmup": "one unscored run immediately before each measured lane",
+    "primary": "8192 prompt tokens, 64 output-token cap, concurrency 16, 32 requests",
+    "protected": "128000 prompt tokens, 64 output-token cap, concurrency 1, 2 requests",
+    "request_order": "identical deterministic seed and request index order",
+    "functional_gate": "default and tuned preflight artifacts both passed all seven deterministic checks",
+    "timing": "client-observed capacity-v3; effective prefill includes queueing/scheduling/first-token work"
+  },
+  "thresholds": {
+    "primary_minimum_improvement_percent": 5.0,
+    "protected_maximum_regression_percent": 3.0,
+    "functional_pass_rate_required": 1.0
+  },
+  "default": {
+    "primary": {
+      "repetitions": 3,
+      "requests_total": 96.0,
+      "failures_total": 0.0,
+      "means": {
+        "throughput_tok_s": 214.20999,
+        "ttft_p50_ms": 1057.0472,
+        "ttft_p95_ms": 3909.001733,
+        "effective_prefill_tok_s_p50": 6780.432595,
+        "effective_prefill_tok_s_p95": 19658.370381,
+        "generation_p50_ms": 3533.1056,
+        "generation_p95_ms": 4132.523567,
+        "decode_tok_s_p50": 17.713457,
+        "decode_tok_s_p95": 81.689693,
+        "mean_inter_token_latency_ms_p50": 56.451845,
+        "mean_inter_token_latency_ms_p95": 68.568281,
+        "e2e_p50_ms": 4465.218667,
+        "e2e_p95_ms": 7476.187033,
+        "prompt_tokens": 235401.0,
+        "output_tokens": 1981.333333
+      },
+      "artifacts": [
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-default-v3-primary-r1.json",
+          "sha256": "10ac583765999c52bc328e8ea89317cdcf2e6fb05970a333a827b9a93ffecd1e"
+        },
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-default-v3-primary-r2.json",
+          "sha256": "5ec8a88fd1b5aad5ce7543e97fd94652208909fb00a735be0b49364a3dfa9eb1"
+        },
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-default-v3-primary-r3.json",
+          "sha256": "b3d2888ad0180134e9214df8c42d1345d4c9c2c079f6e6432ce1e055fd45708e"
+        }
+      ]
+    },
+    "protected": {
+      "repetitions": 3,
+      "requests_total": 6.0,
+      "failures_total": 0.0,
+      "means": {
+        "throughput_tok_s": 5.140383,
+        "ttft_p50_ms": 11213.2745,
+        "ttft_p95_ms": 11259.5753,
+        "effective_prefill_tok_s_p50": 10875.640445,
+        "effective_prefill_tok_s_p95": 10920.763522,
+        "generation_p50_ms": 334.7935,
+        "generation_p95_ms": 338.4435,
+        "decode_tok_s_p50": 172.363073,
+        "decode_tok_s_p95": 175.238608,
+        "mean_inter_token_latency_ms_p50": 5.707167,
+        "mean_inter_token_latency_ms_p95": 5.801789,
+        "e2e_p50_ms": 11549.177333,
+        "e2e_p95_ms": 11596.909467,
+        "prompt_tokens": 244905.0,
+        "output_tokens": 119.0
+      },
+      "artifacts": [
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-default-v3-protected-r1.json",
+          "sha256": "967c2afe7a60a156d5ed048e4283704c51a04d5153ec9933d809cc1d433d71f7"
+        },
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-default-v3-protected-r2.json",
+          "sha256": "d8f9726ad4ae3ee6988f34b8d5e413c0b7ce8c4b888abda26cd4e9620d5d5f14"
+        },
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-default-v3-protected-r3.json",
+          "sha256": "08e1ad12ac45347d5cf3e96b0fd3c4041336fb0df109f1f8b36e97eefd5c55a4"
+        }
+      ]
+    }
+  },
+  "tuned": {
+    "primary": {
+      "repetitions": 3,
+      "requests_total": 96.0,
+      "failures_total": 0.0,
+      "means": {
+        "throughput_tok_s": 211.213185,
+        "ttft_p50_ms": 1242.5714,
+        "ttft_p95_ms": 3825.846,
+        "effective_prefill_tok_s_p50": 5838.273896,
+        "effective_prefill_tok_s_p95": 18969.204485,
+        "generation_p50_ms": 3160.8926,
+        "generation_p95_ms": 4123.218333,
+        "decode_tok_s_p50": 18.303321,
+        "decode_tok_s_p95": 70.412673,
+        "mean_inter_token_latency_ms_p50": 52.441467,
+        "mean_inter_token_latency_ms_p95": 73.600161,
+        "e2e_p50_ms": 4366.8572,
+        "e2e_p95_ms": 7544.000133,
+        "prompt_tokens": 235401.0,
+        "output_tokens": 1920.0
+      },
+      "artifacts": [
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-tuned-v3-primary-r1.json",
+          "sha256": "381b9d9a64372ddf5a2650f307e60f1c4e3704afb8456f740670e965c2be003a"
+        },
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-tuned-v3-primary-r2.json",
+          "sha256": "b5ceac13623418ce4fd2d3cce02b03243ea19d489db5c2f90ce0a415bc16f9b8"
+        },
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-tuned-v3-primary-r3.json",
+          "sha256": "d2636bef512571b64d2c33d57e85655b895f58dd6bf2fbc173dce82f91831286"
+        }
+      ]
+    },
+    "protected": {
+      "repetitions": 3,
+      "requests_total": 6.0,
+      "failures_total": 0.0,
+      "means": {
+        "throughput_tok_s": 5.185567,
+        "ttft_p50_ms": 11010.537033,
+        "ttft_p95_ms": 11073.246367,
+        "effective_prefill_tok_s_p50": 11059.152401,
+        "effective_prefill_tok_s_p95": 11122.268366,
+        "generation_p50_ms": 327.737833,
+        "generation_p95_ms": 340.8984,
+        "decode_tok_s_p50": 173.074118,
+        "decode_tok_s_p95": 173.920383,
+        "mean_inter_token_latency_ms_p50": 5.749787,
+        "mean_inter_token_latency_ms_p95": 5.777939,
+        "e2e_p50_ms": 11338.274867,
+        "e2e_p95_ms": 11414.144767,
+        "prompt_tokens": 244905.0,
+        "output_tokens": 118.0
+      },
+      "artifacts": [
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-tuned-v3-protected-r1.json",
+          "sha256": "6700cf9511c998ce24d26353339f6b2f544f66d9a62bb73e0de6cc71541df695"
+        },
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-tuned-v3-protected-r2.json",
+          "sha256": "9d9fd1f9f6ba37ed41a57776d65469afa1acad3fae47a128a020498129a92f75"
+        },
+        {
+          "path": "docs/findings/2026-07-28-agents-a1-multimodal-qualification-evidence/fp8-moe-ab-tuned-v3-protected-r3.json",
+          "sha256": "1011a7b8430fd94a91b347c033226e0328422c935d1a9de8bed85b36b3dd29a4"
+        }
+      ]
+    }
+  },
+  "deltas_percent": {
+    "primary_throughput": -1.399,
+    "primary_e2e_p95_improvement": -0.907,
+    "primary_ttft_p95_improvement": 2.127,
+    "primary_generation_p95_improvement": 0.225,
+    "protected_e2e_p95_regression": -1.576,
+    "protected_ttft_p95_regression": -1.655,
+    "protected_decode_throughput": 0.413
+  },
+  "hard_gates": {
+    "default_functional_passed": true,
+    "tuned_functional_passed": true,
+    "default_capacity_failures": 0,
+    "tuned_capacity_failures": 0
+  },
+  "decision": "rejected",
+  "recommendation": "Do not activate the tune. It loaded correctly and preserved functional behavior, but its three-run primary aggregate throughput mean regressed and it did not meet the 5 percent adoption threshold."
+}

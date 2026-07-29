@@ -208,41 +208,102 @@ def _scenario(
     *,
     context_limit: int,
     image_limit: Optional[int],
+    video_limit: Optional[int],
+    image_tokens_estimate: Optional[int],
+    video_tokens_estimate: Optional[int],
 ) -> Optional[dict]:
-    names = ("images", "input_tokens", "image_tokens", "output_tokens")
+    names = (
+        "images", "videos", "input_tokens", "image_tokens", "video_tokens",
+        "output_tokens",
+    )
     if not any(name in query for name in names):
         return None
     images = _integer_arg(query, "images") or 0
+    videos = _integer_arg(query, "videos") or 0
     input_tokens = _integer_arg(query, "input_tokens") or 0
-    image_tokens = _integer_arg(query, "image_tokens")
+    requested_image_tokens = _integer_arg(query, "image_tokens")
+    requested_video_tokens = _integer_arg(query, "video_tokens")
+    image_tokens = (
+        requested_image_tokens
+        if requested_image_tokens is not None
+        else images * image_tokens_estimate
+        if image_tokens_estimate is not None
+        else None
+    )
+    video_tokens = (
+        requested_video_tokens
+        if requested_video_tokens is not None
+        else videos * video_tokens_estimate
+        if video_tokens_estimate is not None
+        else None
+    )
     output_tokens = _integer_arg(query, "output_tokens") or 0
 
     within_image_limit = None if image_limit is None else images <= image_limit
+    within_video_limit = None if video_limit is None else videos <= video_limit
     context_tokens = None
     within_context = None
-    if images == 0 or image_tokens is not None:
-        context_tokens = input_tokens + (image_tokens or 0) + output_tokens
+    if (
+        (images == 0 or image_tokens is not None)
+        and (videos == 0 or video_tokens is not None)
+    ):
+        context_tokens = (
+            input_tokens + (image_tokens or 0) + (video_tokens or 0)
+            + output_tokens
+        )
         within_context = context_tokens <= context_limit
-    if within_image_limit is False or within_context is False:
+    if (
+        within_image_limit is False
+        or within_video_limit is False
+        or within_context is False
+    ):
         allowed = False
-    elif within_image_limit is True and within_context is True:
+    elif (
+        within_image_limit is True
+        and within_video_limit is True
+        and within_context is True
+    ):
         allowed = True
     else:
         allowed = None
+    notes = []
+    if images > 0 and image_tokens is None:
+        notes.append(
+            "image_tokens or a configured image_tokens_estimate is required "
+            "when images are present"
+        )
+    if videos > 0 and video_tokens is None:
+        notes.append(
+            "video_tokens or a configured video_tokens_estimate is required "
+            "when videos are present"
+        )
     return {
         "images": images,
+        "videos": videos,
         "input_tokens": input_tokens,
         "image_tokens": image_tokens,
+        "video_tokens": video_tokens,
+        "image_tokens_source": (
+            "request"
+            if requested_image_tokens is not None
+            else "configured_estimate"
+            if images > 0 and image_tokens_estimate is not None
+            else None
+        ),
+        "video_tokens_source": (
+            "request"
+            if requested_video_tokens is not None
+            else "configured_estimate"
+            if videos > 0 and video_tokens_estimate is not None
+            else None
+        ),
         "output_tokens": output_tokens,
         "context_tokens": context_tokens,
         "within_image_limit": within_image_limit,
+        "within_video_limit": within_video_limit,
         "within_context_limit": within_context,
         "allowed": allowed,
-        "note": (
-            "image_tokens is required for a context result when images are present"
-            if images > 0 and image_tokens is None
-            else None
-        ),
+        "note": "; ".join(notes) or None,
     }
 
 
@@ -254,7 +315,8 @@ def build_model_capacity(
 ) -> dict:
     """Build a capacity snapshot for configured chat tiers."""
     supported = {
-        "model", "gpu_role", "images", "input_tokens", "image_tokens", "output_tokens"
+        "model", "gpu_role", "images", "videos", "input_tokens",
+        "image_tokens", "video_tokens", "output_tokens",
     }
     if set(query) - supported:
         raise ValueError("unsupported query parameter")
@@ -290,6 +352,13 @@ def build_model_capacity(
             continue
 
         image_limit = _nonnegative_int(capacity.get("image_limit"))
+        video_limit = _nonnegative_int(capacity.get("video_limit"))
+        image_tokens_estimate = _nonnegative_int(
+            capacity.get("image_tokens_estimate")
+        )
+        video_tokens_estimate = _nonnegative_int(
+            capacity.get("video_tokens_estimate")
+        )
         kv_capacity = _positive_int(capacity.get("kv_cache_capacity_tokens"))
         live = _metrics(metrics_provider, tier)
         values = dict(live.values) if live.status == "available" else {}
@@ -345,8 +414,11 @@ def build_model_capacity(
                 ),
             },
             "multimodal": {
+                "admission_enabled": capacity.get("media_admission_enabled") is True,
                 "image_limit": image_limit,
-                "video_limit": _nonnegative_int(capacity.get("video_limit")),
+                "video_limit": video_limit,
+                "image_tokens_estimate": image_tokens_estimate,
+                "video_tokens_estimate": video_tokens_estimate,
             },
             "live": {
                 "status": live.status,
@@ -368,6 +440,9 @@ def build_model_capacity(
                 query,
                 context_limit=tier.context_limit,
                 image_limit=image_limit,
+                video_limit=video_limit,
+                image_tokens_estimate=image_tokens_estimate,
+                video_tokens_estimate=video_tokens_estimate,
             ),
         })
     return {"object": "list", "data": rows}

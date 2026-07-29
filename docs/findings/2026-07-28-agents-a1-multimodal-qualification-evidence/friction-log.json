@@ -1,0 +1,182 @@
+{
+  "schema": "qualification-friction-log/v1",
+  "campaign": "agents-a1-multimodal-qualification",
+  "entries": [
+    {
+      "sequence": 1,
+      "area": "storage",
+      "symptom": "The selected-snapshot recovery estimate did not explain roughly 1.9 TB of occupied filesystem space.",
+      "cause": "Selected logical checkpoint bytes, total Hugging Face logical bytes, Docker image/build-cache attribution, and filesystem used bytes are different quantities.",
+      "resolution": "Added model-cache-inventory/v1 with filesystem capacity/used/available, repository/snapshot logical bytes, incomplete bytes, Docker unique bytes, references, containers, and timestamp caveats.",
+      "evidence": [
+        "cache-inventory-before.json",
+        "cache-cleanup-result.json",
+        "cache-inventory-after-cleanup.json"
+      ]
+    },
+    {
+      "sequence": 2,
+      "area": "runtime-selection",
+      "symptom": "A fixed recipe GPU identity was not portable to the current host mapping.",
+      "cause": "Docker GPU constraints and CUDA visibility needed the discovered campaign device rather than a copied host identity.",
+      "resolution": "Added an explicit guarded --gpu-device recipe-load override that pins Docker and CUDA visibility together.",
+      "evidence": []
+    },
+    {
+      "sequence": 3,
+      "area": "video-fixtures",
+      "symptom": "The pinned video decoder recovered only four of 112 frames from each Creative Commons WebM and warned about 108 broken frames.",
+      "cause": "The original WebM encodings were poorly supported by the pinned OpenCV/vLLM decode path.",
+      "resolution": "Retained the licensed originals and generated deterministic pinned MP4 derivatives with provenance and SHA-256 hashes; the corpus now uses the derivatives.",
+      "evidence": [
+        "fp8-multimodal-c1.json",
+        "fp8-multimodal-c1-normalized-cc.json"
+      ]
+    },
+    {
+      "sequence": 4,
+      "area": "preflight",
+      "symptom": "HTTP failures hid the bounded upstream response body needed to diagnose exact context overflow.",
+      "cause": "The preflight error path retained only the HTTP status exception.",
+      "resolution": "Captured and bounded the HTTPError response body and added regression coverage.",
+      "evidence": [
+        "fp8-mm-240k-boundary.json",
+        "bf16-mm-240k-boundary.json",
+        "nvfp4-text-240k-boundary.json"
+      ]
+    },
+    {
+      "sequence": 5,
+      "area": "quality-validator",
+      "symptom": "A correct suggestion to stream TTS was marked as a timeout-triage failure.",
+      "cause": "The deterministic latency-fix allowlist recognized parallelization but omitted streaming.",
+      "resolution": "Added the semantically valid streaming marker and a regression test; the unchanged NVFP4 model then passed the repeated quality suite.",
+      "evidence": [
+        "nvfp4-text-quality-protocol-v3-r3-full.json",
+        "nvfp4-text-quality-protocol-v3-r3-full-fixed.json"
+      ]
+    },
+    {
+      "sequence": 6,
+      "area": "moe-kernel-tuning",
+      "symptom": "vLLM reported no E=256,N=512 FP8 MoE config for the RTX PRO 6000 and warned that performance might be sub-optimal.",
+      "cause": "The pinned nightly contains no matching hardware-specific fused-MoE JSON.",
+      "resolution": "Started the exact pinned benchmark_moe.py tuner and required a default-versus-tuned end-to-end A/B before recommendation.",
+      "evidence": []
+    },
+    {
+      "sequence": 7,
+      "area": "moe-kernel-tuning",
+      "symptom": "The first tuner launch failed when Ray parsed the Docker-visible GPU UUID as an integer.",
+      "cause": "The official worker assumes ray.get_gpu_ids()[0] is numeric.",
+      "resolution": "Kept Docker constrained to the exact UUID while exposing physical CUDA device 1 numerically inside the isolated tuner.",
+      "evidence": []
+    },
+    {
+      "sequence": 8,
+      "area": "moe-kernel-tuning",
+      "symptom": "The initial estimate treated 1,920 candidates as the complete run.",
+      "cause": "The official tuner evaluates 1,920 configurations independently for every requested batch size.",
+      "resolution": "Report completed batches against all 18 planned batches and extrapolate a duration range from completed batch timings.",
+      "evidence": []
+    },
+    {
+      "sequence": 9,
+      "area": "verification",
+      "symptom": "The first full pytest invocation ended with a Windows invalid-output-pipe traceback.",
+      "cause": "An accidental 10-second shell deadline terminated pytest while it was writing progress.",
+      "resolution": "Classified it as a harness timeout and restarted exactly one hidden captured pytest process.",
+      "evidence": []
+    },
+    {
+      "sequence": 10,
+      "area": "moe-kernel-tuning",
+      "symptom": "The completed temporary tuner container was unavailable for a final exit-state inspection.",
+      "cause": "The authorized tuner launch used automatic container removal.",
+      "resolution": "Validated the durable artifact against all 18 planned batch-size keys, retained its write timestamp and hash, and recorded the missing final exit record as an evidence limit.",
+      "evidence": [
+        "E=256,N=512,device_name=NVIDIA_RTX_PRO_6000_Blackwell_Max-Q_Workstation_Edition,dtype=fp8_w8a8.json",
+        "fp8-moe-ab-comparison.json"
+      ]
+    },
+    {
+      "sequence": 11,
+      "area": "kernel-tune-packaging",
+      "symptom": "The first derived image copied more repository configuration than the exact tune.",
+      "cause": "Docker resolved a broad configs source path against the repository build context.",
+      "resolution": "Narrowed the image layer to the exact nested tune path, rebuilt, and verified the in-image SHA-256 against the manifest.",
+      "evidence": [
+        "fp8-moe-ab-tuned-startup.log"
+      ]
+    },
+    {
+      "sequence": 12,
+      "area": "serve-observability",
+      "symptom": "The product logs command could not find a recipe-loaded candidate container.",
+      "cause": "Log discovery was limited to serves present in the operator manifest.",
+      "resolution": "Used a narrow read-only Docker log capture for this campaign and retained recipe-loaded container log discovery as a product gap.",
+      "evidence": [
+        "fp8-moe-ab-default-startup.log",
+        "fp8-moe-ab-tuned-startup.log"
+      ]
+    },
+    {
+      "sequence": 13,
+      "area": "benchmark-publication",
+      "symptom": "The capacity artifact did not retain enough per-request timing decomposition for publication.",
+      "cause": "The prior schema emphasized TTFT, E2E, and aggregate throughput.",
+      "resolution": "Added capacity-v3 with per-request TTFT, effective prefill, generation duration, decode rate, mean inter-token latency, exact token counts, wall time, and explicit client-observed methodology.",
+      "evidence": [
+        "fp8-moe-ab-comparison.json",
+        "fp8-moe-ab-default-v3-primary-r1.json",
+        "fp8-moe-ab-tuned-v3-primary-r1.json"
+      ]
+    },
+    {
+      "sequence": 14,
+      "area": "router-thinking-contract",
+      "symptom": "The first routed smoke returned no visible answer after 1,024 completion tokens.",
+      "cause": "The isolated router did not hard-set the campaign's thinking-disabled production contract.",
+      "resolution": "Pinned chat_template_kwargs.enable_thinking=false in the qualification tier and reran the routed preflight successfully.",
+      "evidence": [
+        "fp8-router-preflight.json",
+        "fp8-router-preflight-fixed.json"
+      ]
+    },
+    {
+      "sequence": 15,
+      "area": "router-error-classification",
+      "symptom": "Malformed upstream video and unsupported cross-dialect video surfaced as generic HTTP 500 responses.",
+      "cause": "The front door treated every relay exception as an internal fault and streaming relay setup deferred request rejection until after response setup.",
+      "resolution": "Added typed sanitized backend client errors, eager request validation and stream opening, safe 400/413/415/422 propagation, and retained upstream 5xx as internal errors.",
+      "evidence": [
+        "fp8-router-multimodal-matrix.json",
+        "fp8-router-error-classification-fixed.json"
+      ]
+    },
+    {
+      "sequence": 16,
+      "area": "evidence-format",
+      "symptom": "Four start captures used a .json extension but contained a container ID line followed by a JSON command envelope.",
+      "cause": "The lifecycle command emitted both the raw container ID and structured output to the same capture.",
+      "resolution": "Renamed the captures to .log so every retained .json artifact is parseable as one JSON document.",
+      "evidence": [
+        "fp8-moe-ab-default-start.log",
+        "fp8-moe-ab-default-v3-start.log",
+        "fp8-moe-ab-tuned-start.log",
+        "fp8-router-candidate-start.log"
+      ]
+    },
+    {
+      "sequence": 17,
+      "area": "recipe-lifecycle",
+      "symptom": "The recipe loader had no symmetric unload command for campaign teardown.",
+      "cause": "models recipes currently exposes load but not stop/remove lifecycle.",
+      "resolution": "Verified the exact container ID, stopped and removed only that campaign container, and captured the restored serve/router state. A durable symmetric unload verb remains a product gap.",
+      "evidence": [
+        "fp8-router-candidate-start.log",
+        "serve-state-after.json"
+      ]
+    }
+  ]
+}

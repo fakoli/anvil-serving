@@ -3,10 +3,39 @@
 import json
 import sys
 from base64 import b64decode
+from io import BytesIO
+from urllib.error import HTTPError
 
 import pytest
 
 from anvil_serving import preflight as pf
+
+
+def test_chat_preserves_bounded_http_error_body(monkeypatch):
+    body = json.dumps({
+        "error": {
+            "message": "maximum context length is 131072 tokens",
+            "type": "BadRequestError",
+        }
+    }).encode()
+
+    def reject(*_args, **_kwargs):
+        raise HTTPError(
+            "http://127.0.0.1:30000/v1/chat/completions",
+            400,
+            "Bad Request",
+            {},
+            BytesIO(body),
+        )
+
+    monkeypatch.setattr(pf.urllib.request, "urlopen", reject)
+
+    with pytest.raises(RuntimeError, match="HTTP 400.*maximum context length"):
+        pf.chat(
+            "http://127.0.0.1:30000/v1",
+            "candidate",
+            [{"role": "user", "content": "test"}],
+        )
 
 
 def test_response_observation_records_finish_and_reasoning_evidence():
@@ -247,6 +276,20 @@ def test_load_image_data_is_bounded_and_records_identity(tmp_path):
     assert len(identity["sha256"]) == 64
 
 
+def test_load_video_data_is_bounded_and_records_identity(tmp_path):
+    video = tmp_path / "sample.mp4"
+    raw = b"\x00\x00\x00\x18ftypmp42bounded"
+    video.write_bytes(raw)
+
+    data_url, identity = pf.load_video_data(video)
+
+    assert data_url.startswith("data:video/mp4;base64,")
+    assert b64decode(data_url.split(",", 1)[1]) == raw
+    assert identity["bytes"] == len(raw)
+    assert identity["mime"] == "video/mp4"
+    assert len(identity["sha256"]) == 64
+
+
 def test_multimodal_check_requires_all_independent_expectations(monkeypatch):
     def fake_chat(*args, **kwargs):
         messages = args[2]
@@ -282,6 +325,48 @@ def test_preflight_multimodal_selection_requires_image_and_expectations(tmp_path
             "--base-url", "http://127.0.0.1:30000/v1",
             "--model", "candidate",
             "--checks", "image,ocr",
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+
+
+def test_video_check_uses_official_openai_video_url_shape(monkeypatch):
+    def fake_chat(*args, **kwargs):
+        messages = args[2]
+        assert messages[0]["content"][0] == {
+            "type": "video_url",
+            "video_url": {"url": "data:video/mp4;base64,AA=="},
+        }
+        return {
+            "choices": [{
+                "finish_reason": "stop",
+                "message": {"content": "The light changes from red to green."},
+            }]
+        }, 0.01
+
+    monkeypatch.setattr(pf, "chat", fake_chat)
+    evidence = []
+    ok, detail = pf.t_video(
+        "http://127.0.0.1:30000/v1",
+        "candidate",
+        None,
+        "data:video/mp4;base64,AA==",
+        {"bytes": 1, "mime": "video/mp4", "sha256": "b" * 64},
+        ["red", "green"],
+        evidence=evidence,
+    )
+
+    assert ok is True
+    assert "all expected text present" in detail
+    assert evidence[0]["video"]["sha256"] == "b" * 64
+
+
+def test_preflight_video_selection_requires_video_and_expectations():
+    with pytest.raises(SystemExit) as exc:
+        pf.main([
+            "--base-url", "http://127.0.0.1:30000/v1",
+            "--model", "candidate",
+            "--checks", "video",
             "--dry-run",
         ])
     assert exc.value.code == 2

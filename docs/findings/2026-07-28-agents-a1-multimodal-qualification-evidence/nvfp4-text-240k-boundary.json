@@ -1,0 +1,42 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:30010/v1",
+  "model": "agents-a1-nvfp4-text",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 64,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 64
+  },
+  "multimodal_input": null,
+  "video_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [],
+  "checks": [
+    "needle"
+  ],
+  "results": [
+    {
+      "name": "needle @ ~240000 ctx",
+      "passed": false,
+      "detail": "error: HTTP 400: {\"error\":{\"message\":\"This model's maximum context length is 131072 tokens. However, you requested 64 output tokens and your prompt contains at least 131009 input tokens, for a total of at least 131073 tokens. Please reduce the length of the input prompt or the number of requested output tokens. (parameter=input_tokens, value=131009)\",\"type\":\"BadRequestError\",\"param\":\"input_tokens\",\"code\":400}}"
+    }
+  ],
+  "observations": [],
+  "evidence_policy": {
+    "reasoning": "any",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": false
+}

@@ -70,11 +70,115 @@ def percentile(values, quantile):
     return percentiles(values, [quantile])[0]
 
 
+def _finite_number(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    value = float(value)
+    return value if math.isfinite(value) else None
+
+
+def _usage_token_count(usage, key):
+    if not isinstance(usage, dict):
+        return None
+    value = usage.get(key)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def result_timing(result, fallback_index=None):
+    """Return one publication-safe request timing row.
+
+    Effective prefill throughput uses prompt tokens divided by client-observed
+    TTFT, so it includes queueing, scheduling, prefill, and first-token work.
+    Decode throughput excludes the first token and uses the interval after TTFT.
+    """
+    if not isinstance(result, dict):
+        return None
+    ttft = _finite_number(result.get("ttft"))
+    e2e = _finite_number(result.get("e2e"))
+    if ttft is None or e2e is None or ttft < 0 or e2e < ttft:
+        return None
+    usage = result.get("usage")
+    prompt_tokens = _usage_token_count(usage, "prompt_tokens")
+    output_tokens = result.get("out_toks")
+    if (
+        isinstance(output_tokens, bool)
+        or not isinstance(output_tokens, int)
+        or output_tokens < 0
+    ):
+        output_tokens = None
+    source = result.get("output_token_source")
+    exact_output_tokens = source in (None, "usage")
+    generation = e2e - ttft
+    decode_tokens = (
+        max(output_tokens - 1, 0)
+        if exact_output_tokens and output_tokens is not None else None
+    )
+    row = {
+        "request_index": result.get("request_index", fallback_index),
+        "planned_context_tokens": result.get("planned_context_tokens"),
+        "prompt_tokens": prompt_tokens,
+        "output_tokens": output_tokens if exact_output_tokens else None,
+        "output_token_source": source or "unknown",
+        "ttft_ms": ttft * 1000.0,
+        "generation_ms": generation * 1000.0,
+        "e2e_ms": e2e * 1000.0,
+        "effective_prefill_tok_s": (
+            prompt_tokens / ttft if prompt_tokens is not None and ttft > 0 else None
+        ),
+        "decode_tok_s": (
+            decode_tokens / generation
+            if decode_tokens is not None and decode_tokens > 0 and generation > 0
+            else None
+        ),
+        "mean_inter_token_latency_ms": (
+            generation * 1000.0 / decode_tokens
+            if decode_tokens is not None and decode_tokens > 0 and generation > 0
+            else None
+        ),
+    }
+    return row
+
+
+def result_timings(results):
+    rows = [
+        row
+        for index, result in enumerate(results)
+        if (row := result_timing(result, fallback_index=index)) is not None
+    ]
+    return sorted(
+        rows,
+        key=lambda row: (
+            row["request_index"] is None,
+            row["request_index"] if row["request_index"] is not None else 0,
+        ),
+    )
+
+
+def _timing_percentiles(rows, key, *, scale=1.0):
+    values = [row.get(key) for row in rows if row.get(key) is not None]
+    if not values:
+        return None, None
+    p50, p95 = percentiles(values, [50, 95])
+    return p50 * scale, p95 * scale
+
+
 def result_metrics(results):
-    ttfts = [result.get("ttft") for result in results if isinstance(result, dict)]
-    e2es = [result.get("e2e") for result in results if isinstance(result, dict)]
-    ttft_p50, ttft_p95 = percentiles(ttfts, [50, 95])
-    e2e_p50, e2e_p95 = percentiles(e2es, [50, 95])
+    timing_rows = result_timings(results)
+    ttft_p50, ttft_p95 = _timing_percentiles(timing_rows, "ttft_ms")
+    e2e_p50, e2e_p95 = _timing_percentiles(timing_rows, "e2e_ms")
+    generation_p50, generation_p95 = _timing_percentiles(
+        timing_rows, "generation_ms"
+    )
+    prefill_p50, prefill_p95 = _timing_percentiles(
+        timing_rows, "effective_prefill_tok_s"
+    )
+    decode_p50, decode_p95 = _timing_percentiles(timing_rows, "decode_tok_s")
+    mitl_p50, mitl_p95 = _timing_percentiles(
+        timing_rows, "mean_inter_token_latency_ms"
+    )
+    prompt_p50, prompt_p95 = _timing_percentiles(timing_rows, "prompt_tokens")
     raw_output_units = sum(
         result.get("out_toks") or 0
         for result in results
@@ -91,12 +195,29 @@ def result_metrics(results):
         for result in results
         if isinstance(result, dict)
     )
+    prompt_tokens = [
+        row["prompt_tokens"]
+        for row in timing_rows
+        if row["prompt_tokens"] is not None
+    ]
     return {
-        "ttft_p50_ms": ttft_p50 * 1000.0 if any(v is not None for v in ttfts) else None,
-        "ttft_p95_ms": ttft_p95 * 1000.0 if any(v is not None for v in ttfts) else None,
-        "ttft_samples": sum(value is not None for value in ttfts),
-        "e2e_p50_ms": e2e_p50 * 1000.0,
-        "e2e_p95_ms": e2e_p95 * 1000.0,
+        "ttft_p50_ms": ttft_p50,
+        "ttft_p95_ms": ttft_p95,
+        "ttft_samples": len(timing_rows),
+        "generation_p50_ms": generation_p50,
+        "generation_p95_ms": generation_p95,
+        "e2e_p50_ms": e2e_p50,
+        "e2e_p95_ms": e2e_p95,
+        "effective_prefill_tok_s_p50": prefill_p50,
+        "effective_prefill_tok_s_p95": prefill_p95,
+        "decode_tok_s_p50": decode_p50,
+        "decode_tok_s_p95": decode_p95,
+        "mean_inter_token_latency_ms_p50": mitl_p50,
+        "mean_inter_token_latency_ms_p95": mitl_p95,
+        "prompt_tokens": sum(prompt_tokens) if prompt_tokens else None,
+        "prompt_token_samples": len(prompt_tokens),
+        "prompt_tokens_p50": prompt_p50,
+        "prompt_tokens_p95": prompt_p95,
         "output_tokens": raw_output_units if exact_output_tokens else None,
         "content_chunks": content_chunks,
     }
@@ -144,7 +265,10 @@ INTELLIGENCE_PROMPTS = [
             },
             {
                 "name": "offers_latency_fix",
-                "contains_any": ["faster", "reduce", "parallel", "cache", "shorter", "limit"],
+                "contains_any": [
+                    "faster", "reduce", "parallel", "cache", "shorter", "limit",
+                    "stream",
+                ],
             },
         ],
     },

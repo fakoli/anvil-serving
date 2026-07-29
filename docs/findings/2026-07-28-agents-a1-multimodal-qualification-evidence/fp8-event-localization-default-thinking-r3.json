@@ -1,0 +1,77 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:30010/v1",
+  "model": "agents-a1-fp8-mm",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 1024
+  },
+  "multimodal_input": null,
+  "video_input": {
+    "bytes": 13829,
+    "mime": "video/mp4",
+    "sha256": "5e0f40b3760e009f8ea0035b96bb4a8654fea58e0bb8a31a838eb78b224e7cbf"
+  },
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [
+    "alert",
+    "42"
+  ],
+  "checks": [
+    "video"
+  ],
+  "results": [
+    {
+      "name": "bounded video understanding",
+      "passed": true,
+      "detail": "4.0s all expected text present finish='stop' visible=422 reasoning_chars=2123 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "\n\nThe video displays a static dark blue background with the white text \"TIMELINE RUNNING\" in the upper left corner.\n\n- **00:00 - 00:42**: The screen remains unchanged, showing only the white text.\n- **00:42 - 00:48**: Red text appears below the white text, reading \"ALERT AT 42 SECONDS\".\n- **00:48 - 00:59**: The red text disappears, returning the screen to its initial state with just the white text until the video ends.",
+      "finish_reason": "stop",
+      "content_chars": 422,
+      "content_excerpt": "\n\nThe video displays a static dark blue background with the white text \"TIMELINE RUNNING\" in the upper left corner.\n\n- **00:00 - 00:42**: The screen remains unchanged, showing only the white text.\n- *",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 2123,
+      "reasoning_excerpt": "The user wants a description of the video.\n\n1.  **Analyze the video:**\n    *   The video is very simple. It's a static background with text.\n    *   The background is a solid dark blue color.\n    *   ",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 2098,
+        "total_tokens": 2828,
+        "completion_tokens": 730,
+        "prompt_tokens_details": null
+      },
+      "test": "video",
+      "seconds": 4.004,
+      "passed": true,
+      "validation_detail": "all expected text present",
+      "video": {
+        "bytes": 13829,
+        "mime": "video/mp4",
+        "sha256": "5e0f40b3760e009f8ea0035b96bb4a8654fea58e0bb8a31a838eb78b224e7cbf"
+      },
+      "expected": [
+        "alert",
+        "42"
+      ]
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "any",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}
