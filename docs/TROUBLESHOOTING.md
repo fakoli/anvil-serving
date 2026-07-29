@@ -44,12 +44,18 @@ Exit code 0 means all passed; 1 means at least one failed.
   id or a gateway alias. A mismatch surfaces as an HTTP 404 / model-not-found error from the
   serve.
 - **Thinking-budget timeout or false-fail:** inspect the reported `finish_reason`, visible length,
-  reasoning-channel length, and reasoning-token usage. For a functional gate on Qwen-style
-  models, use `--thinking-mode disabled` (or `--no-thinking`) with the default 256 visible-token
-  allocation. For a quality gate, use `--thinking-mode enabled` with benchmark-calibrated
-  `--reasoning-headroom-tokens`; this headroom is added to `--visible-answer-tokens` as the API
-  completion cap. GPT-OSS-style models ignore Qwen's chat-template control; use their supported
-  `--reasoning-effort` semantics and an explicit budget instead.
+  reasoning-channel length, and reasoning-token usage. How you control reasoning depends on which
+  class the served model belongs to:
+
+    - *Template-controlled reasoning* — the model exposes a chat-template switch. For a
+      functional gate use `--thinking-mode disabled` (or `--no-thinking`) with the default 256
+      visible-token allocation. For a quality gate use `--thinking-mode enabled` with
+      benchmark-calibrated `--reasoning-headroom-tokens`; that headroom is added to
+      `--visible-answer-tokens` as the API completion cap.
+    - *Budget-controlled reasoning* — the model has no template switch and silently ignores one.
+      Use its supported `--reasoning-effort` semantics plus an explicit completion budget.
+
+  Check the model card to determine which class applies before assuming a control works.
 - **Tool-batch failures on new hardware:** garbage signatures (`<<tool`, `<|`, `function=`)
   in the batch test are the known sm_120 failure mode — see CLAUDE.md gotcha 7 and
   `docs/findings/blackwell-sm120-lab-notebook.md`.
@@ -65,19 +71,23 @@ result; it does not retry another model.
 
 **What to check.**
 
-- Is the tier's model a thinking-by-default model (Qwen3.5, gpt-oss, GLM, ...)?
+- Does the tier's model reason by default? Many current instruct models do.
 - Is the caller sending a small `max_tokens` (< 4096)?
 - Inspect the upstream serve response and its generation settings.
 
-**Fix.** Either disable thinking on the tier — in the tier's config:
+**Fix.** Which fix works depends on the model's reasoning-control class:
 
-```toml
-extra_body = { chat_template_kwargs = { enable_thinking = false } }
-```
+- *Template-controlled* — disable thinking in the tier's config:
 
-— or give the model an adequate budget (>= 4096 tokens) so it finishes reasoning and still
-answers. gpt-oss-style models ignore `enable_thinking` and need the budget approach. Full
-per-model settings walkthrough: [Model settings](MODEL-SETTINGS-EXAMPLE.md).
+    ```toml
+    extra_body = { chat_template_kwargs = { enable_thinking = false } }
+    ```
+
+- *Budget-controlled* — the model ignores `enable_thinking`. Give it an adequate completion
+  budget (>= 4096 tokens) so it finishes reasoning and still answers.
+
+Either way, confirm the class from the model card rather than assuming the template switch is
+honored. Full per-model settings walkthrough: [Model settings](MODEL-SETTINGS-EXAMPLE.md).
 
 ## OpenClaw shows the wrong context window / requests get clamped
 
