@@ -112,7 +112,10 @@ mapping is an exposure decision, not a model promotion claim.
 - [CLI reference](docs/CLI.md)
 - [Serves and evaluation](docs/SERVES-AND-EVAL.md)
 - [Voice pipeline](docs/VOICE.md)
-- [Benchmark guide](docs/benchmarks/index.md)
+- [Benchmark portal](docs/benchmarks/index.md)
+  - [RTX PRO 6000](docs/benchmarks/hardware/rtx-pro-6000.md)
+  - [RTX 5090](docs/benchmarks/hardware/rtx-5090.md)
+- [Benchmark run catalog](docs/benchmarks/runs.md)
 - [OpenClaw integration](docs/OPENCLAW-INTEGRATION-SPEC.md)
 - [ADRs](docs/adr/README.md)
 

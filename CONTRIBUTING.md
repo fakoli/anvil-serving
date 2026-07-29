@@ -144,6 +144,23 @@ silently change direction and never delete an ADR — supersede it.
   or a reader-facing comparison. Clearly distinguish local measurements from external advisory
   priors. Publishing results never authorizes a routing or production-model promotion.
 
+### Benchmark publication matrix
+
+Use `skills/anvil-serving-benchmark-docs/SKILL.md` whenever a model is
+configured, served, benchmarked, qualified, promoted, rolled back, or fails
+meaningfully.
+
+| Always update | Update only when changed |
+|---|---|
+| Dated finding and findings index | `docs/BENCHMARKS.md`: recommendation, reference deployment, or reader comparison |
+| Run catalog | Methodology: workload or evidence contract |
+| Model dossier | Portal: current/rollback/challenger decision |
+| Measured hardware page | |
+
+Record measured hardware separately from protected/co-resident hardware.
+Preserve incomplete and non-promotion outcomes. Documentation never authorizes
+a serve or route mutation.
+
 ### Public findings policy
 
 [`ADR-0027`](docs/adr/0027-public-findings-are-durable-evidence.md) makes `docs/findings/` the

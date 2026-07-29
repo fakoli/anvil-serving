@@ -42,6 +42,9 @@ for status, serving lifecycle, voice audio, preflight, benchmark runs, and provi
 | [Voice pipeline](VOICE.md) | STT/TTS, realtime, and Mini-to-Dark topology. |
 | [Operator playbooks](OPERATOR-PLAYBOOKS.md) | Controlled operations and evidence publication. |
 | [Troubleshooting](TROUBLESHOOTING.md) | Diagnose aliases, serves, auth, and preflight. |
-| [Benchmark results](BENCHMARKS.md) | Current measured results and caveats. |
+| [Benchmark portal](benchmarks/index.md) | Hardware-first current decisions and evidence labels. |
+| [RTX PRO 6000](benchmarks/hardware/rtx-pro-6000.md) | Primary LLM measurements, rollback chain, and history. |
+| [RTX 5090](benchmarks/hardware/rtx-5090.md) | Omni, vision, STT/TTS measurements, and history. |
+| [Benchmark archive](BENCHMARKS.md) | Chronological campaigns and historical comparisons. |
 | [Findings](findings/README.md) | Dated evidence snapshots. |
 | [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Gateway provider contract. |
