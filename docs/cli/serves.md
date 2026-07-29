@@ -191,7 +191,7 @@ deployment topology assigns that model workload to the current host.
 
 ## Related references
 
-- [Serves & eval](../SERVES-AND-EVAL.md)
+- [Operator playbooks](../OPERATOR-PLAYBOOKS.md)
+- [Promote and roll back](../MODEL-PROMOTION.md)
 - [Models & recipes](models.md)
 - [Evaluation & benchmarks](eval.md)
-- [Operator playbooks](../OPERATOR-PLAYBOOKS.md)

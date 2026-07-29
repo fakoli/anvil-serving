@@ -110,7 +110,7 @@ mapping is an exposure decision, not a model promotion claim.
 - [Configuration](docs/CONFIGURATION.md)
 - [Thin capability gateway](docs/THIN-CAPABILITY-GATEWAY.md)
 - [CLI reference](docs/CLI.md)
-- [Serves and evaluation](docs/SERVES-AND-EVAL.md)
+- [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md)
 - [Voice pipeline](docs/VOICE.md)
 - [Benchmark portal](docs/benchmarks/index.md)
   - [RTX PRO 6000](docs/benchmarks/hardware/rtx-pro-6000.md)

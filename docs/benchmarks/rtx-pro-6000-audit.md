@@ -7,7 +7,8 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
-`docs/BENCHMARKS.md`; `docs/benchmarks/gpt-oss-puzzle-88b-recipe.md`;
+`docs/BENCHMARKS.md`; `docs/benchmarks/comparison.md`;
+`docs/benchmarks/gpt-oss-puzzle-88b-recipe.md`;
 `docs/benchmarks/hardware/rtx-pro-6000.md`; `docs/benchmarks/index.md`;
 `docs/benchmarks/methodology.md`; `docs/benchmarks/models.md`;
 `docs/benchmarks/models/agents-a1.md`;

@@ -280,4 +280,4 @@ anvil-serving dashboard serve --host 100.64.0.10 --auth-env ANVIL_DASHBOARD_TOKE
 - [Getting started](../GETTING-STARTED.md)
 - [Configuration](../CONFIGURATION.md)
 - [Device topologies](../DEVICE-TOPOLOGIES.md)
-- [System observability dashboard](../SYSTEM-OBSERVABILITY-DASHBOARD-MILESTONES.md)
+- [Collectors and observability adapters](control-plane.md#collectors)

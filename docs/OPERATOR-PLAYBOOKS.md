@@ -3,6 +3,10 @@
 Use the control plane to operate named local serves and direct capability aliases. The router
 does not infer intent, choose between models, or promote benchmark results.
 
+`anvil-serving serves` owns lifecycle for declared local model processes. `anvil-serving eval`
+checks and benchmarks one explicit endpoint. Both surfaces produce evidence for an operator;
+neither selects a model at request time.
+
 ## Read-only inventory
 
 1. Inspect the router and serving substrate:
@@ -11,6 +15,7 @@ does not infer intent, choose between models, or promote benchmark results.
    anvil-serving doctor --config <router.toml>
    anvil-serving router status
    anvil-serving serves status --manifest <serves.toml>
+   anvil-serving serves logs <serve-name> --manifest <serves.toml> --tail 200
    ```
 
 2. Confirm the caller alias in `[router.model_routes]` maps to the intended local tier.
@@ -37,11 +42,26 @@ The MCP equivalents are `doctor_summary`, `router_status`, `serves_status`,
      --model <served-model> --confirm
    ```
 
-3. Record benchmark evidence only after preflight passes. Publish a dated finding and raw
-   artifact link when the outcome changes a current recommendation or reference deployment.
+3. Record benchmark evidence only after preflight passes. Capture the model revision, engine,
+   quantization, context, concurrency, hardware, failures, and raw artifact path. Publish a
+   dated finding under `docs/findings/` and update the
+   [benchmark portal](benchmarks/index.md) when the outcome changes a current recommendation
+   or reference deployment.
 
 4. Promote or roll back only through the guarded `serves promote` transaction with explicit
-   human approval. A benchmark never updates an alias or serve automatically.
+   human approval. A benchmark never updates an alias or serve automatically. See
+   [Promote and roll back](MODEL-PROMOTION.md) for the full transaction, the quiesce/drain/
+   readmit sequence, and what makes a rollback target real.
+
+Use the transition commands to quiesce and drain a local tier before an operator-approved
+serving change.
+
+## Direct aliases
+
+The router's `[router.model_routes]` maps a caller-facing alias to exactly one local tier.
+Update that mapping only as an explicit configuration change, and only after the target serve
+carries the required evidence. The gateway returns 404 for an unknown alias and an error for a
+configured alias whose local tier cannot serve; it never falls back to another model.
 
 ## Voice topology
 

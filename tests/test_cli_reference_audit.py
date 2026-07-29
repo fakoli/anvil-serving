@@ -212,6 +212,7 @@ def test_generated_manifest_index_matches_checked_in_cli_reference():
     assert len(rows) == len(set(rows))
     assert "`--follow`" in index
 
+
 def test_repository_scope_inventories_match():
     tracked = {
         line.replace("\\", "/")
@@ -236,3 +237,115 @@ def test_repository_discovery_does_not_walk_untracked_trees(monkeypatch):
     _, files = audit.discover_files(ROOT, "full")
 
     assert files
+
+
+def _nav_tree(tmp_path: Path, nav_body: str) -> Path:
+    """Minimal tree with an mkdocs nav and a one-command manifest."""
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "mkdocs.yml").write_text(
+        f"site_name: t\n\nnav:\n{nav_body}\nmarkdown_extensions:\n  - tables\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "docs" / "CLI-COMMAND-MANIFEST.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "commands": [
+                    {
+                        "path": "workbench up",
+                        "summary": "s",
+                        "mutation_class": "mutate",
+                        "output_policy": "text",
+                        "visible": True,
+                        "options": [],
+                        "docs_anchor": "docs/WORKBENCH.md#lifecycle",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return tmp_path
+
+
+def test_nav_gate_flags_a_page_the_nav_never_links(tmp_path: Path):
+    """The WORKBENCH.md class of rot: documented command, unreachable page."""
+    root = _nav_tree(tmp_path, "  - Home: index.md\n")
+
+    gaps = audit.nav_coverage_gaps(root)
+
+    assert [gap["page"] for gap in gaps] == ["docs/WORKBENCH.md"]
+    assert gaps[0]["commands"] == ["workbench up"]
+
+
+def test_nav_gate_accepts_a_page_the_nav_links(tmp_path: Path):
+    root = _nav_tree(tmp_path, "  - Home: index.md\n  - Workbench: WORKBENCH.md\n")
+
+    assert audit.nav_coverage_gaps(root) == []
+
+
+def test_nav_gate_is_not_satisfied_by_a_trailing_comment(tmp_path: Path):
+    """A commented-out path must not count as navigable (fail-open regression)."""
+    root = _nav_tree(tmp_path, "  - Home: index.md  # TODO restore WORKBENCH.md\n")
+
+    assert [gap["page"] for gap in audit.nav_coverage_gaps(root)] == ["docs/WORKBENCH.md"]
+
+
+def test_nav_gate_is_not_satisfied_by_a_commented_out_entry(tmp_path: Path):
+    root = _nav_tree(tmp_path, "  - Home: index.md\n  # - Workbench: WORKBENCH.md\n")
+
+    assert [gap["page"] for gap in audit.nav_coverage_gaps(root)] == ["docs/WORKBENCH.md"]
+
+
+def test_nav_gate_ignores_md_paths_outside_the_nav_block(tmp_path: Path):
+    root = _nav_tree(tmp_path, "  - Home: index.md\n")
+    path = root / "mkdocs.yml"
+    path.write_text(
+        path.read_text(encoding="utf-8") + "\nextra:\n  note: WORKBENCH.md\n", encoding="utf-8"
+    )
+
+    assert [gap["page"] for gap in audit.nav_coverage_gaps(root)] == ["docs/WORKBENCH.md"]
+
+
+def test_nav_gate_keeps_quoted_titles_containing_a_hash(tmp_path: Path):
+    root = _nav_tree(tmp_path, "  - 'Sharp #1 guide': WORKBENCH.md\n")
+
+    assert audit.nav_coverage_gaps(root) == []
+
+
+def test_nav_targets_is_none_without_an_mkdocs_config(tmp_path: Path):
+    """Documented fail-open: a tree with no docs site has no nav to enforce."""
+    assert audit._nav_targets(tmp_path) is None
+
+
+def test_nav_gate_survives_an_apostrophe_in_an_unquoted_title(tmp_path: Path):
+    """`- Operator's guide:` must not open a quoted scalar and swallow a comment."""
+    nav = "  - Operator's guide: index.md  # TODO restore WORKBENCH.md" + chr(10)
+    root = _nav_tree(tmp_path, nav)
+
+    assert [gap["page"] for gap in audit.nav_coverage_gaps(root)] == ["docs/WORKBENCH.md"]
+
+
+def test_nav_gate_keeps_a_title_with_an_escaped_quote(tmp_path: Path):
+    """An escaped quote must not end the scalar and strip a legitimate page."""
+    nav = '  - "Say \\" # ok": WORKBENCH.md' + chr(10)
+    root = _nav_tree(tmp_path, nav)
+
+    assert audit.nav_coverage_gaps(root) == []
+
+
+@pytest.mark.parametrize(
+    "nav_line, expected",
+    [
+        ("  - The '90s guide: index.md  # TODO restore WORKBENCH.md", ["docs/WORKBENCH.md"]),
+        ("  - Notes -'x: index.md  # TODO restore WORKBENCH.md", ["docs/WORKBENCH.md"]),
+        ("  - Home: index.md  # TODO restore WORKBENCH.md", ["docs/WORKBENCH.md"]),
+        ("  - 'It''s #1 guide': WORKBENCH.md", []),
+        ("  - 'Sharp #1 guide': WORKBENCH.md", []),
+    ],
+)
+def test_nav_gate_quote_and_comment_handling(tmp_path: Path, nav_line: str, expected: list[str]):
+    """An unterminated quote must not let a commented-out page satisfy the gate."""
+    root = _nav_tree(tmp_path, nav_line + chr(10))
+
+    assert [gap["page"] for gap in audit.nav_coverage_gaps(root)] == expected
