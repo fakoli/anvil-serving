@@ -1,0 +1,43 @@
+# Isolated Agents-A1 qualification router. Never use as the live Primary config.
+
+[server]
+auth_env = "ANVIL_AGENTS_A1_QUALIFICATION_KEY"
+
+[router]
+relay_timeout = 120
+availability_probe_interval = 2
+availability_probe_timeout = 1
+
+[[router.tiers]]
+id = "agents-a1-fp8-qualification"
+base_url = "http://127.0.0.1:30010/v1"
+model = "agents-a1-fp8-mm"
+dialect = "openai"
+context_limit = 131072
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_AGENTS_A1_UPSTREAM_KEY"
+engine = "vllm"
+quantization = "fp8"
+max_concurrency = 4
+health_path = "/health"
+model_identity = true
+extra_body = { chat_template_kwargs = { enable_thinking = false } }
+
+[router.tiers.params.capacity]
+gpu_role = "qualification"
+gpu_name = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+gpu_memory_total_mib = 97887
+scheduler_max_num_seqs = 4
+media_admission_enabled = true
+image_limit = 4
+video_limit = 1
+image_tokens_estimate = 2048
+video_tokens_estimate = 16384
+
+[router.tiers.params.capabilities]
+modalities = ["text", "image", "video"]
+supports_tools = true
+
+[router.model_routes]
+vision.agents_a1_qualification = "agents-a1-fp8-qualification"

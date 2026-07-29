@@ -1,0 +1,75 @@
+{
+  "schema_version": "agents-a1-cache-cleanup/v1",
+  "observed_date": "2026-07-28",
+  "volume": "vllm-hfcache",
+  "filesystem": "/dev/sdd",
+  "free_bytes_before": 15447490560,
+  "free_bytes_after": 350050500608,
+  "target_free_bytes": 350000000000,
+  "target_met": true,
+  "model_snapshot_removals": [
+    {
+      "repo_id": "RedHatAI/Qwen3-32B-FP8-dynamic",
+      "revision": "c6732fc26128341172e4005bad34aafa51c32866",
+      "reclaimed_bytes": 38818286494,
+      "reason": "incomplete and unqualified"
+    },
+    {
+      "repo_id": "nvidia/Gemma-4-31B-IT-NVFP4",
+      "revision": "e5ef03afa233c35cb000323ff098d4291e1dd07c",
+      "reclaimed_bytes": 32666144114,
+      "reason": "rejected under the tested configuration"
+    },
+    {
+      "repo_id": "poolside/Laguna-XS-2.1-NVFP4",
+      "revision": "07133fb3df1cc3111478e24ee71a823a598c8c2f",
+      "reclaimed_bytes": 19526,
+      "reason": "failed tested snapshot; blobs shared with the second cached snapshot"
+    },
+    {
+      "repo_id": "poolside/Laguna-XS-2.1-NVFP4",
+      "revision": "444b2a1043bbb1d387b69ce363db18451f7c7f73",
+      "reclaimed_bytes": 21596009013,
+      "reason": "unqualified snapshot; final reference to the shared blob set"
+    },
+    {
+      "repo_id": "olka-fi/Qwen3.5-122B-A10B-MXFP4",
+      "revision": "345839ea666a70f5035672f7c88afcba6281921f",
+      "reclaimed_bytes": 79208831973,
+      "reason": "slow local result and one of five deterministic planning cases"
+    }
+  ],
+  "model_reclaimed_bytes": 172288291120,
+  "image_cleanup": {
+    "policy": "exact unattached dangling, superseded, rejected-candidate, and pre-0.15 application images only",
+    "removed_large_images": [
+      "sha256:e1c1ff1af9a15921bfa11d1d95047258c1797392cdbfa296e7639da446b23f97",
+      "sha256:9cf8694a27722418a1f175d90f85d5afb5a728fd4a9907d7f0565efecfa14d32",
+      "sha256:85cb155713f41f9b7599d1c543601b622bc6bda9a76a793beebe7d4c2942842b",
+      "anvil-vllm-test:gpt-oss-puzzle-precommit",
+      "lmsysorg/sglang:dev-cu13-laguna-xs-2-1",
+      "vllm/vllm-openai:latest",
+      "vllm/vllm-openai:v0.25.1",
+      "nvidia/cuda:13.1.2-devel-ubuntu24.04"
+    ],
+    "removed_superseded_application_families": [
+      "anvil-serving releases older than 0.15.0",
+      "anvil-workbench:review-c2be7e2"
+    ],
+    "protected_examples": [
+      "anvil-serving:0.16.0",
+      "anvil-serving:0.15.0",
+      "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1",
+      "anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82",
+      "voice and audio images",
+      "current and rollback model snapshots"
+    ]
+  },
+  "build_cache": {
+    "policy": "unused for at least 168 hours",
+    "reclaimed_bytes_reported": 152900000
+  },
+  "broad_prune_used": false,
+  "volume_deleted": false,
+  "rollback": "Removed cache bytes and image layers are recoverable only by re-downloading or rebuilding their exact identities."
+}

@@ -1,0 +1,8 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "nvfp4-compact-functional-preflight.json",
+  "observed_at": "2026-07-29T04:48:00Z",
+  "observation": "The compact-allocation serve passed all thinking-disabled text and interface checks with zero reasoning characters."
+}

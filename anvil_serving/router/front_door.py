@@ -67,6 +67,7 @@ from .dialects.responses import ResponsesDialect
 from .discovery import models_payload
 from .internal import (
     Backend,
+    BackendClientError,
     DialectError,
     NoAvailableTierError,
 )
@@ -272,6 +273,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     dialect=dialect,
                 )
                 return
+            if getattr(e, "kind", None) == "media_limit":
+                print(f"[anvil] 413 over-media-limit request: {e}", file=sys.stderr)
+                self._error(
+                    413,
+                    "payload_too_large",
+                    "request exceeds the configured media limits",
+                    dialect=dialect,
+                )
+                return
             print(f"[anvil] {exhaustion_status} no available tier: {e}",
                   file=sys.stderr)
             self._error(
@@ -288,6 +298,21 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._json(status, dialect.render_error(status, etype, message))
             else:
                 self._json(status, {"error": {"type": etype, "message": message}})
+
+        def _backend_client_error(
+            self, error: BackendClientError, dialect: Dialect
+        ) -> None:
+            """Return a backend-declared, sanitized caller error."""
+            print(
+                f"[anvil] {error.status} backend rejected request: {error.message}",
+                file=sys.stderr,
+            )
+            self._error(
+                error.status,
+                error.etype,
+                error.message,
+                dialect=dialect,
+            )
 
         def _fail_framing(self, status: int, etype: str, message: str,
                           drainable: bool, n: int,
@@ -363,6 +388,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # The configured exhaustion status lets the caller apply its own
                 # transport retry policy.
                 self._no_tier_response(e, dialect=dialect)
+                return
+            except BackendClientError as e:
+                self._backend_client_error(e, dialect)
                 return
             except Exception as e:
                 print(f"[anvil] 500 backend error in generate(): {e}", file=sys.stderr)
@@ -1159,6 +1187,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     # the full rationale (ADR-0001 §Mechanism, advise-and-defer:T004).
                     # over_context -> 413; unbound/exhausted -> exhaustion_status.
                     self._no_tier_response(e, dialect=dialect)
+                    return
+                except BackendClientError as e:
+                    self._backend_client_error(e, dialect)
                     return
                 except Exception as e:
                     # Unexpected backend fault: log the detail server-side; send

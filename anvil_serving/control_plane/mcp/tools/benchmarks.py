@@ -43,42 +43,62 @@ def tool_preflight_probe(args: dict) -> dict:
     no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
     checks = _str_arg(args, "checks") or "smoke,json,needle,tools"
     selected_checks = [item.strip() for item in checks.split(",") if item.strip()]
-    known_checks = {"smoke", "json", "needle", "tools", "image", "ocr"}
+    known_checks = {"smoke", "json", "needle", "tools", "image", "ocr", "video"}
     unknown_checks = sorted(set(selected_checks) - known_checks)
     if not selected_checks or unknown_checks:
         raise ToolError(
             "bad_argument",
-            "checks must select smoke,json,needle,tools,image,ocr",
+            "checks must select smoke,json,needle,tools,image,ocr,video",
             {"unknown": unknown_checks},
         )
     image_path = _str_arg(args, "image_path")
+    video_path = _str_arg(args, "video_path")
     image_expect = [item.strip() for item in _str_list_arg(args, "image_expect")]
     ocr_expect = [item.strip() for item in _str_list_arg(args, "ocr_expect")]
-    if any(not item for item in image_expect + ocr_expect):
+    video_expect = [item.strip() for item in _str_list_arg(args, "video_expect")]
+    if any(not item for item in image_expect + ocr_expect + video_expect):
         raise ToolError("bad_argument", "multimodal expectations must be non-empty strings")
+    allowed_roots = (
+        os.path.abspath(os.getcwd()),
+        os.path.abspath(os.path.expanduser("~/.anvil-serving")),
+    )
+
+    def resolve_media_path(path: str, *, kind: str) -> str:
+        resolved = os.path.abspath(os.path.expanduser(path))
+        try:
+            contained = any(
+                os.path.commonpath((resolved, root)) == root
+                for root in allowed_roots
+            )
+        except ValueError:
+            contained = False
+        if not contained:
+            raise ToolError(
+                "unsafe_%s_path" % kind,
+                "%s_path must be under the controller working directory or ~/.anvil-serving"
+                % kind,
+            )
+        if os.path.islink(resolved) or not os.path.isfile(resolved):
+            raise ToolError(
+                "bad_argument",
+                "%s_path must be a regular non-symlink file" % kind,
+            )
+        return resolved
+
     if {"image", "ocr"} & set(selected_checks):
         if not image_path:
             raise ToolError("bad_argument", "multimodal checks require image_path")
-        resolved_image = os.path.abspath(os.path.expanduser(image_path))
-        allowed_roots = (
-            os.path.abspath(os.getcwd()),
-            os.path.abspath(os.path.expanduser("~/.anvil-serving")),
-        )
-        if not any(
-            os.path.commonpath((resolved_image, root)) == root
-            for root in allowed_roots
-        ):
-            raise ToolError(
-                "unsafe_image_path",
-                "image_path must be under the controller working directory or ~/.anvil-serving",
-            )
-        if os.path.islink(resolved_image) or not os.path.isfile(resolved_image):
-            raise ToolError("bad_argument", "image_path must be a regular non-symlink file")
-        image_path = resolved_image
+        image_path = resolve_media_path(image_path, kind="image")
         if "image" in selected_checks and not image_expect:
             raise ToolError("bad_argument", "image check requires image_expect")
         if "ocr" in selected_checks and not ocr_expect:
             raise ToolError("bad_argument", "ocr check requires ocr_expect")
+    if "video" in selected_checks:
+        if not video_path:
+            raise ToolError("bad_argument", "video check requires video_path")
+        video_path = resolve_media_path(video_path, kind="video")
+        if not video_expect:
+            raise ToolError("bad_argument", "video check requires video_expect")
     thinking_mode = _str_arg(args, "thinking_mode") or "default"
     if thinking_mode not in {"default", "enabled", "disabled", "unsupported"}:
         raise ToolError("bad_argument", "thinking_mode has an unsupported value")
@@ -156,10 +176,14 @@ def tool_preflight_probe(args: dict) -> dict:
         argv += ["--reasoning-effort", reasoning_effort]
     if image_path:
         argv += ["--image-path", image_path]
+    if video_path:
+        argv += ["--video-path", video_path]
     for expectation in image_expect:
         argv += ["--image-expect", expectation]
     for expectation in ocr_expect:
         argv += ["--ocr-expect", expectation]
+    for expectation in video_expect:
+        argv += ["--video-expect", expectation]
     if dry_run:
         argv.append("--dry-run")
         result = _run_argv(argv, confirm=True, timeout=min(operation_timeout, 60))
@@ -331,6 +355,12 @@ FAMILY = ToolFamily(
                         "maxItems": 32,
                     },
                     "ocr_expect": {
+                        "type": "array",
+                        "items": {"type": "string", "maxLength": 256},
+                        "maxItems": 32,
+                    },
+                    "video_path": {"type": "string"},
+                    "video_expect": {
                         "type": "array",
                         "items": {"type": "string", "maxLength": 256},
                         "maxItems": 32,

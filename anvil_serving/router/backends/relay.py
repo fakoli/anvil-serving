@@ -30,11 +30,12 @@ from ..dialects.translate import (
     anthropic_tools_to_openai,
     has_image_artifacts,
     has_tool_artifacts,
+    has_video_artifacts,
     openai_messages_to_anthropic,
     openai_tool_choice_to_anthropic,
     openai_tools_to_anthropic,
 )
-from ..internal import InternalRequest, StructuredResult
+from ..internal import BackendClientError, InternalRequest, StructuredResult
 from .sse import (
     AnthropicStreamAssembler,
     OpenAIStreamAssembler,
@@ -67,6 +68,41 @@ _ANTHROPIC_VERSION = "2023-06-01"
 _DEFAULT_MAX_TOKENS = 1024
 
 
+class _ClosingIterator:
+    """Close an eagerly opened upstream response even before first iteration."""
+
+    def __init__(self, inner: Iterator[str], close: Callable[[], None]) -> None:
+        self._inner = inner
+        self._close = close
+        self._closed = False
+
+    def __iter__(self) -> "_ClosingIterator":
+        return self
+
+    def __next__(self) -> str:
+        if self._closed:
+            raise StopIteration
+        try:
+            return next(self._inner)
+        except BaseException:
+            self.close()
+            raise
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            closer = getattr(self._inner, "close", None)
+            if callable(closer):
+                closer()
+        finally:
+            try:
+                self._close()
+            except Exception:  # noqa: BLE001 - best-effort close
+                pass
+
+
 def split_into_deltas(text: str) -> List[str]:
     """Split text into lossless word-sized streaming deltas."""
     if not text:
@@ -80,6 +116,33 @@ class RelayBackendError(RuntimeError):
 
     Carries a sanitized message only — never the request headers or the key.
     """
+
+
+_CALLER_REJECTION_STATUSES = frozenset((400, 413, 415, 422))
+
+
+def _raise_http_error(e: urllib.error.HTTPError) -> None:
+    """Map caller-correctable upstream rejections without leaking details."""
+    print(
+        f"[anvil-serving] model upstream returned HTTP {e.code} {e.reason}",
+        file=sys.stderr,
+        flush=True,
+    )
+    if e.code in _CALLER_REJECTION_STATUSES:
+        if e.code == 413:
+            raise BackendClientError(
+                413,
+                "payload_too_large",
+                "model upstream rejected the request as too large",
+            ) from None
+        raise BackendClientError(
+            e.code,
+            "invalid_request_error",
+            "model upstream rejected the request",
+        ) from None
+    raise RelayBackendError(
+        f"model upstream returned HTTP {e.code} {e.reason}"
+    ) from None
 
 
 def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
@@ -113,9 +176,7 @@ def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
     except RelayBackendError:
         raise
     except urllib.error.HTTPError as e:  # status carries no secret
-        raise RelayBackendError(
-            f"model upstream returned HTTP {e.code} {e.reason}"
-        ) from None
+        _raise_http_error(e)
     except urllib.error.URLError as e:
         # Log the full reason server-side (may include upstream host / TLS detail)
         # and surface only a generic, client-safe message so the upstream hostname
@@ -142,9 +203,7 @@ def _urlopen_stream_transport(url: str, *, data: bytes,
     try:
         return urllib.request.urlopen(req, timeout=timeout)
     except urllib.error.HTTPError as e:  # status carries no secret
-        raise RelayBackendError(
-            f"model upstream returned HTTP {e.code} {e.reason}"
-        ) from None
+        _raise_http_error(e)
     except urllib.error.URLError as e:
         print(
             f"[anvil-serving] model upstream transport error: {e.reason}",
@@ -394,6 +453,7 @@ class RelayBackend:
         BUFFERED transport with no stream companion keeps the old buffered
         path so existing hermetic setups never touch the network.
         """
+        self._validate_request(request)
         if request.stream and (
             self._stream_transport is not None
             or self._transport is _urlopen_transport
@@ -501,17 +561,19 @@ class RelayBackend:
                 f"model upstream request failed (tier={self._tier.id!r})"
             ) from None
 
-        try:
+        def relay_response() -> Iterator[str]:
             resp_headers = getattr(resp, "headers", None)
             ctype = ""
             if resp_headers is not None:
                 ctype = str(resp_headers.get("Content-Type") or "").lower()
             if "text/event-stream" not in ctype:
-                # Upstream ignored stream:true — parse the plain JSON body with
-                # the buffered extractors (same result, no streaming).
+                # Upstream ignored stream:true — parse the plain JSON body
+                # with the buffered extractors (same result, no streaming).
                 raw = resp.read()
-                if (self._max_response_bytes is not None
-                        and len(raw) > self._max_response_bytes):
+                if (
+                    self._max_response_bytes is not None
+                    and len(raw) > self._max_response_bytes
+                ):
                     raise RelayBackendError(
                         f"cloud response body exceeded max_response_bytes="
                         f"{self._max_response_bytes} (tier={self._tier.id!r})"
@@ -540,11 +602,8 @@ class RelayBackend:
                         )
                 yield delta
             self._thread_local.last_result = assembler.result()
-        finally:
-            try:
-                resp.close()
-            except Exception:  # noqa: BLE001 - best-effort close
-                pass
+
+        return _ClosingIterator(relay_response(), resp.close)
 
     # ------------------------------------------------------------------ #
     # request construction (the auth-bearing seam the tests inspect)
@@ -575,6 +634,7 @@ class RelayBackend:
         return headers
 
     def _build_body(self, request: InternalRequest) -> Dict[str, Any]:
+        self._validate_request(request)
         # Prefer the tier's configured concrete provider model id over the routing
         # token in request.model. A routing token (e.g. "planning", "quick-edit")
         # forwarded verbatim to the upstream provider causes a 4xx rejection; the
@@ -593,26 +653,29 @@ class RelayBackend:
         preserve_tools = (
             request.dialect in _SUPPORTED_DIALECTS and has_tool_artifacts(raw)
         )
-        # Wire fidelity for image-carrying requests (gpu-reservations:T011):
+        # Wire fidelity for image/video requests:
         # the flattened request.messages keep only text, so an OCR/vision
         # request relayed from the flattened form silently loses the image the
         # caller sent — the tier then answers a text-only prompt and the
         # failure is invisible. SAME-DIALECT only: the raw messages are
         # forwarded verbatim (like the same-dialect tool path). Cross-dialect
-        # image translation is deliberately out of scope — such a request
-        # keeps the pre-T011 flattened behaviour.
-        preserve_images = (
+        # image translation retains the historical flattened behavior. Video
+        # translation fails closed because silently dropping temporal evidence
+        # would turn a multimodal request into a misleading text-only answer.
+        has_images = has_image_artifacts(raw)
+        has_video = has_video_artifacts(raw)
+        preserve_media = (
             request.dialect in _SUPPORTED_DIALECTS
             and request.dialect == self._tier.dialect
-            and has_image_artifacts(raw)
+            and (has_images or has_video)
         )
 
         if self._tier.dialect == DIALECT_ANTHROPIC:
             # Anthropic's messages array is user/assistant only; the system
             # prompt rides the top-level `system` field.
-            # preserve_images implies request.dialect == tier dialect, so it
+            # preserve_media implies request.dialect == tier dialect, so it
             # always selects this verbatim branch, never the translated one.
-            if preserve_images or (
+            if preserve_media or (
                 preserve_tools and request.dialect == DIALECT_ANTHROPIC
             ):
                 msgs: List[Dict[str, Any]] = [
@@ -670,9 +733,9 @@ class RelayBackend:
             return body
 
         # openai-compatible: the system prompt rides as a role=system message.
-        # preserve_images implies same-dialect (see above), so it always takes
+        # preserve_media implies same-dialect (see above), so it always takes
         # this verbatim branch.
-        if preserve_images or (preserve_tools and request.dialect == DIALECT_OPENAI):
+        if preserve_media or (preserve_tools and request.dialect == DIALECT_OPENAI):
             msgs = [
                 dict(m) for m in raw.get("messages") or ()
                 if isinstance(m, Mapping)
@@ -747,6 +810,18 @@ class RelayBackend:
         # extra_body_defaults are SOFT (the request wins); extra_body is the HARD override.
         self._apply_tier_extra_body(body)
         return body
+
+    def _validate_request(self, request: InternalRequest) -> None:
+        """Reject media translations that cannot preserve caller evidence."""
+        raw: Mapping[str, Any] = (
+            request.raw if isinstance(request.raw, Mapping) else {}
+        )
+        if has_video_artifacts(raw) and request.dialect != self._tier.dialect:
+            raise BackendClientError(
+                400,
+                "invalid_request_error",
+                "cross-dialect video translation is unsupported",
+            )
 
     def _apply_tier_extra_body(self, body: Dict[str, Any]) -> Dict[str, Any]:
         """Apply the tier's SOFT defaults (request wins, via ``setdefault``) then the HARD

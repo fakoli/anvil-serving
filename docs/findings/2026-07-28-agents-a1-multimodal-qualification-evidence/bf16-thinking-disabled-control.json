@@ -1,0 +1,8 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "bf16-mm-functional-preflight.json",
+  "observed_at": "2026-07-29T04:57:00Z",
+  "observation": "BF16 multimodal passed the complete thinking-disabled functional and interface preflight with zero reasoning characters."
+}

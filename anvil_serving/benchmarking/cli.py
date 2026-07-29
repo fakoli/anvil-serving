@@ -45,6 +45,7 @@ from .requests import (
 from .runner import (
     cached_fraction,
     result_metrics as _result_metrics,
+    result_timings as _result_timings,
     run_bakeoff,
     sample_ctx,
     validate_eval_work_plan,
@@ -60,6 +61,10 @@ def main(
     detect_context_limit=detect_max_model_len,
 ):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "multimodal":
+        from . import multimodal
+
+        return multimodal.main(argv[1:])
     workload = argv.pop(0) if argv and argv[0] in {"capacity", "quality"} else None
     if prog is None:
         prog = "anvil-serving eval benchmark"
@@ -544,10 +549,15 @@ def main(
         prompt = make_prompt(
             shared, ctx, i, max_prompt_tokens=cap
         )
-        return validate_stream_result(stream_request(
+        result = validate_stream_result(stream_request(
             a.base_url, a.model, prompt, api_key, a.max_tokens,
             timeout=a.timeout, **control_kwargs,
         ))
+        return {
+            **result,
+            "request_index": i,
+            "planned_context_tokens": ctx,
+        }
 
     capnote = f" max_model_len={max_model_len}(ctx<={cap})" if cap is not None else ""
     thinknote = "" if thinking["mode"] == "default" else f" thinking={thinking['mode']}"
@@ -577,7 +587,9 @@ def main(
                 failures.append(failure)
                 print("  req error:", failure["error_type"])
     wall = time.perf_counter() - t0
+    finished_at = time.time()
     metrics = _result_metrics(results)
+    request_timings = _result_timings(results)
     out_tot = metrics["output_tokens"]
     cfs = [cached_fraction(r["usage"]) for r in results]
     cfs = [c for c in cfs if c is not None]
@@ -599,14 +611,37 @@ def main(
         "E2E   p50/p95:    %.2fs / %.2fs"
         % (metrics["e2e_p50_ms"] / 1000.0, metrics["e2e_p95_ms"] / 1000.0)
     )
+    print(
+        "GEN   p50/p95:    %.2fs / %.2fs"
+        % (
+            metrics["generation_p50_ms"] / 1000.0,
+            metrics["generation_p95_ms"] / 1000.0,
+        )
+    )
+    if metrics["effective_prefill_tok_s_p50"] is not None:
+        print(
+            "prefill p50/p95: %.0f / %.0f effective input tok/s"
+            % (
+                metrics["effective_prefill_tok_s_p50"],
+                metrics["effective_prefill_tok_s_p95"],
+            )
+        )
+    if metrics["decode_tok_s_p50"] is not None:
+        print(
+            "decode p50/p95:  %.1f / %.1f tok/s per request"
+            % (metrics["decode_tok_s_p50"], metrics["decode_tok_s_p95"])
+        )
     if out_tot is not None:
         print(f"throughput:       {(out_tot / wall if wall else 0.0):.0f} output tok/s (aggregate)")
     else:
         print("throughput:       unavailable (endpoint omitted exact token usage)")
     summary = {
         "schema": "anvil-serving.benchmark/v1",
-        "measurement_protocol": "capacity-v2",
+        "measurement_protocol": "capacity-v3",
         "run_id": time.strftime("benchmark-%Y%m%dT%H%M%SZ", time.gmtime(started_at)),
+        "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
+        "finished_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(finished_at)),
+        "wall_clock_ms": wall * 1000.0,
         "base_url": a.base_url,
         "model": a.model,
         "engine": a.engine,
@@ -630,6 +665,26 @@ def main(
             "thinking_mode": thinking["mode"],
             "reasoning_effort": reasoning_effort,
         },
+        "timing_methodology": {
+            "clock": "client time.perf_counter",
+            "ttft": (
+                "request start through the first non-empty streamed content delta"
+            ),
+            "effective_prefill": (
+                "usage.prompt_tokens divided by client-observed TTFT; includes "
+                "queueing, scheduling, prefill, and first-token work"
+            ),
+            "generation": "client-observed E2E minus TTFT",
+            "decode": (
+                "usage completion tokens after the first token divided by "
+                "client-observed generation time"
+            ),
+            "mean_inter_token_latency": (
+                "client-observed generation time divided by completion tokens "
+                "after the first token; not a raw per-token timestamp trace"
+            ),
+        },
+        "request_timings": request_timings,
         "metrics": {
             **metrics,
             "throughput_tok_s": (

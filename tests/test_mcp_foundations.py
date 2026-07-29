@@ -19,10 +19,10 @@ from anvil_serving.control_plane.mcp.tools import models as model_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "f823383c38cc9d4b790bb990bc8f4eec8f2a56db2318f2d61a7528479ac5b42b"
+    "c6859022695a53b0e11aae06b9ba61f4c9feecaafe09c35d5fd4c10f0cf8d397"
 )
 HANDLER_MAP_SHA256 = (
-    "163b612cc5aeee2f50ee09eb23344e9d39790de3990b410831de37db789a6e18"
+    "5246860c95839155069b77f10561de08d8b09b0b2387afbb3279f5d4fd3be511"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -44,6 +44,7 @@ TOOL_NAMES = [
     "observability_collect",
     "host_manage",
     "models_inventory",
+    "model_cache_inventory",
     "cache_prune_plan",
     "openclaw_sync",
     "openclaw_gateway_restart",
@@ -243,6 +244,29 @@ def test_models_inventory_defaults_to_operator_config_home(tmp_path, monkeypatch
 
     assert result["ok"]
     assert seen["catalog_dir"] == str(tmp_path / "model-library")
+
+
+def test_model_cache_inventory_is_read_only_and_structured(monkeypatch):
+    from anvil_serving import models
+
+    seen = {}
+    monkeypatch.setattr(
+        models,
+        "cache_inventory",
+        lambda **kwargs: seen.update(kwargs) or {
+            "schema_version": "model-cache-inventory/v1",
+            "repositories": [],
+        },
+    )
+
+    result = model_tools.tool_model_cache_inventory({
+        "volume": "vllm-hfcache",
+        "image": "example/inspector:1",
+    })
+
+    assert result["ok"]
+    assert result["data"]["inventory"]["schema_version"] == "model-cache-inventory/v1"
+    assert seen == {"volume": "vllm-hfcache", "image": "example/inspector:1"}
 
 
 @pytest.mark.parametrize(
