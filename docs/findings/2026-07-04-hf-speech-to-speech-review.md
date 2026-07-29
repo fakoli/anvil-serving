@@ -211,7 +211,7 @@ spare on the 96GB heavy card, or split STT/TTS onto the 5090.
 ## 9. What this means for us (→ the `voice-pipeline` PRD)
 
 The single highest-leverage fact: **the LLM stage is literally `openai.OpenAI(base_url, api_key)`.**
-Point it at the anvil router (`http://100.87.34.66:8000/v1`, `--llm_backend chat-completions`,
+Point it at the anvil router (`http://100.64.0.10:8000/v1`, `--llm_backend chat-completions`,
 token-authed) and every voice turn inherits anvil's work-class routing + structural verify + cloud
 fallback **with zero glue**. Use **chat-completions, not the default responses-api** — anvil doesn't
 expose the Responses API.

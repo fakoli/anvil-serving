@@ -7,16 +7,16 @@
   "turn_latency_budget_ms": 5000.0,
   "route_identity_verified": "POST /v1/route {\"model\":\"chat-fast\"} -> gemma4-e4b-it / fast-local / local (confidence 1.0)",
   "candidate": {
-    "label": "gemma4-e4b-it via chat-fast (live router 100.87.34.66:8000)",
+    "label": "gemma4-e4b-it via chat-fast (live router 100.64.0.10:8000)",
     "route": {
-      "endpoint_host": "100.87.34.66",
+      "endpoint_host": "100.64.0.10",
       "model": "gemma4-e4b-it",
       "provider": "fast-local",
       "tier": "local",
       "work_class": null
     },
     "llm": {
-      "base_url": "http://100.87.34.66:8000/v1",
+      "base_url": "http://100.64.0.10:8000/v1",
       "model": "chat-fast"
     },
     "stt": {

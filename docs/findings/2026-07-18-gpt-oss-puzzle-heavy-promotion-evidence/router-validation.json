@@ -4,7 +4,7 @@
   "router": {
     "container": "anvil-router",
     "image": "anvil-serving:0.13.2",
-    "base_url": "http://100.87.34.66:8000",
+    "base_url": "http://100.64.0.10:8000",
     "health_http_status": 200,
     "auth_configured": true,
     "profile_loaded": true

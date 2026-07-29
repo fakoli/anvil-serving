@@ -41,7 +41,7 @@ visible answers, and exposed 1,246 and 639 parsed reasoning characters. See
 Both the forward and rollback profile/config pairs passed the rebuilt deployed
 router image's loader before the model swap. After profile/config replacement,
 the router reloaded successfully and the actual Tailnet health endpoint
-`http://100.87.34.66:8000/healthz` returned HTTP 200. The direct Heavy health
+`http://100.64.0.10:8000/healthz` returned HTTP 200. The direct Heavy health
 endpoint at `http://127.0.0.1:30002/health` also returned HTTP 200. The complete
 guarded operation finished in 307.1 seconds.
 

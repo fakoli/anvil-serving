@@ -90,7 +90,7 @@ Anvil Voice already exposes an OpenAI-Realtime-like WebSocket through `anvil_ser
 - host: `127.0.0.1`
 - port: `8765`
 - path: `/v1/realtime`
-- LLM backend: `http://100.87.34.66:8000/v1`
+- LLM backend: `http://100.64.0.10:8000/v1`
 - model: `fast-local`
 - auth env: `ANVIL_ROUTER_TOKEN`
 
@@ -365,7 +365,7 @@ OpenClaw installation proof:
 
 Route and auth proof:
 
-- Mini validation route probe called `http://100.87.34.66:8000/v1/route` with request model `fast-local`.
+- Mini validation route probe called `http://100.64.0.10:8000/v1/route` with request model `fast-local`.
 - Route response: tier `local`, model `qwen36-27b`, provider `fast-local`, work class `chat-fast`, confidence `0.9`.
 - Missing-token negative probe returned HTTP `401` with `auth_enforced: true`.
 
