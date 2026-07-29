@@ -35,5 +35,5 @@ evidence class, decision boundary, failures, and dated history.
 | [Kokoro](kokoro.md) | `current` | TTS |
 | [Gemma 4 E4B Fast](gemma4-e4b.md) | `no-promotion` | Historical Fast control |
 
-Statuses use the portal's [evidence and decision labels](../index.md#evidence-status).
+Statuses use the portal's [evidence and decision labels](../index.md#how-to-read-the-evidence).
 Failed loads and compatibility-only runs remain visible.

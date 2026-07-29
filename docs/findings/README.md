@@ -19,6 +19,11 @@ These findings remain public as durable evidence under
 supersede a recommendation, but it does not erase the historical observation or move its
 load-bearing evidence into a private repository.
 
+**Address redaction (2026-07-29):** private tailnet addresses in published findings and raw
+evidence files were replaced with the generic placeholder `100.64.0.10`. This is a
+publication-safety edit only — one host, one placeholder, applied uniformly — and changes no
+measurement, configuration, or conclusion.
+
 - Add and index a sanitized dated narrative with the exact revision/configuration, topology,
   method, evidence type, result, failures, and caveats.
 - Keep only the bounded raw JSON/CSV/text needed to audit the claim. Each new raw file must be at

@@ -76,7 +76,7 @@ Design commitments:
   forwards its path to the target verbatim (`tailscale serve --set-path=/v1` appends the mount
   to the MagicDNS base URL and proxies the request through), so `/v1/models` reaches the
   router as `/v1/models`. The router's request path and dialects are never touched. The
-  direct router binding (e.g. `100.87.34.66:8000`) is left as-is.
+  direct router binding (e.g. `100.64.0.10:8000`) is left as-is.
 - **Stdlib-only, no new runtime deps.** `edge.py` renders and applies `tailscale serve`
   invocations via `subprocess` and parses `tailscale serve status --json`; it adds **no proxy
   server in Python**. This keeps the router a pure inference gateway and puts the WS-capable
