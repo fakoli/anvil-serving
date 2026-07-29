@@ -26,12 +26,17 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 - Quality-profile and production changes remain human-gated. A benchmark can recommend a change; it never promotes a model by itself.
 - External benchmark data is an advisory prior, not a local result. See [External benchmarks](EXTERNAL-BENCHMARKS.md) for its import and comparison workflow.
 
-## RTX 5090 Omni choices
+## RTX 5090 Omni choices (as of 2026-07-27)
 
-The routed reference tier remains the exclusive 30B Nemotron Omni serve. A
-second, unpromoted `Qwen/Qwen2.5-Omni-3B` configuration is now locally
-validated as the `omni-voice-stack` choice with dedicated Parakeet STT and
-Kokoro TTS co-resident on the RTX 5090.
+> For the current routed occupant, see the
+> [benchmark portal](benchmarks/index.md) and
+> [RTX 5090 page](benchmarks/hardware/rtx-5090.md). The section below records what was
+> concluded on its date.
+
+At that date the routed reference tier was the exclusive 30B Nemotron Omni serve. A
+second, unpromoted `Qwen/Qwen2.5-Omni-3B` configuration was locally
+validated as the `omni-voice-stack` choice with dedicated STT and
+TTS serves co-resident on the RTX 5090.
 
 The small-Omni capacity probe completed 6/6 requests at concurrency two with a
 2,048-token prompt and 128-token output cap. TTFT p50/p95 was 0.04/0.06
@@ -46,9 +51,12 @@ comparison or router promotion. The
 records exact identities, raw evidence, the noisy Omni audio response, and the
 Gemma 3n license blocker.
 
-## Current Fast-tier result
+## Fast-tier comparison (as of 2026-07-16)
 
-The reference Fast tier on Fakoli Dark's RTX 5090 is **`leon-se/gemma-4-E4B-it-FP8-Dynamic`**, served as `gemma4-e4b-it` with FP8 KV cache and a 32K context limit. The July 16 official-checkpoint/template rerun retained this control: it passed all repeated quality gates, while the new-template E2B, E4B, and 12B Fast candidates each failed the strict timeout-triage check with thinking disabled.
+> This is a dated campaign snapshot, not the current routing state. The
+> [benchmark portal](benchmarks/index.md) is the maintained decision view.
+
+At that date the reference Fast tier on Fakoli Dark's RTX 5090 was **`leon-se/gemma-4-E4B-it-FP8-Dynamic`**, served as `gemma4-e4b-it` with FP8 KV cache and a 32K context limit. The July 16 official-checkpoint/template rerun retained this control: it passed all repeated quality gates, while the new-template E2B, E4B, and 12B Fast candidates each failed the strict timeout-triage check with thinking disabled.
 
 | Candidate / tested configuration | Measured voice total / LLM stage | Loaded-endpoint TTFT / end-to-end | Approx. decode rate | Outcome |
 |---|---:|---:|---:|---|

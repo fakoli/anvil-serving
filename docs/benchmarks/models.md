@@ -1,9 +1,12 @@
 # RTX PRO 6000 model recipes and gotchas
 
-> **Stable compatibility page.** Existing deep links into this guide remain
-> supported. New navigation starts at the
-> [model dossier index](models/index.md), which includes RTX 5090 models and
-> separates current status from dated campaign conclusions.
+> **Stable compatibility page — not the current status view.** Existing deep links
+> into this guide remain supported, which is the only reason it still exists.
+> Start at the [model dossier index](models/index.md) instead: the dossiers cover
+> RTX 5090 models too, and each one separates current status from dated campaign
+> conclusions. Where this page and a dossier disagree, **the dossier wins** — the
+> recipes below are preserved as they were written and are not re-verified against
+> the current topology.
 
 This page turns the [benchmark tables](index.md) into operating guidance for one
 RTX PRO 6000 Blackwell 96 GB. The durable production and experiment recipes
