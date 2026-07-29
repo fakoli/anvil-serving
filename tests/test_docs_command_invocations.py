@@ -172,8 +172,11 @@ def test_documented_invocation_supplies_required_arguments(doc: str, invocation:
     # positional, which argparse rejects) does not.
     optional_positionals = re.findall(r"\[([A-Za-z_][A-Za-z0-9_]*)(?: \.\.\.)?\]", tail)
     lower = len(required_positionals)
-    # `[names ...]` accepts any number, so the upper bound is unbounded.
-    upper = float("inf") if "..." in tail else lower + len(optional_positionals)
+    # A variadic positional (`[names ...]`) accepts any number. Match the bracketed
+    # form specifically so an ellipsis inside an option's metavar cannot silently
+    # disable the upper bound.
+    variadic = re.search(r"\[[A-Za-z_][A-Za-z0-9_]* \.\.\.\]", tail) is not None
+    upper = float("inf") if variadic else lower + len(optional_positionals)
     assert lower <= len(supplied) <= upper, (
         f"{doc}: '{invocation}' supplies {len(supplied)} positional(s); "
         f"{command} accepts {lower}-{upper} "
