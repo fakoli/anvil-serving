@@ -74,7 +74,7 @@ along with c1 admission and the one-image limit.
 | [Agents-A1](models/agents-a1.md) | `challenger` · `no-promotion` | *not recorded* | *not recorded* · c1/c8 | **must be off** | 0.30 / 0.44 s @c1 · 1.38 / 3.53 s @c8 | 85.19 `agg` @c1 · 142 `agg` @c8 | run recorded in release sweep |
 | [Nemotron 3 Super 120B NVFP4](models/nemotron3-super-120b.md) | `no-promotion` | NVFP4 · FP8 KV | 131,072 · 5 seqs | both; 1,024 headroom recommended | 0.62 s @c1 · 2.52 s @c5 · 16.76 s @131K | 33.19 `agg` @c1 · 45.90 `agg` @c5 | `cand-nemotron3-super-120b` |
 | [Mistral Small 4 119B NVFP4](models/mistral-small-4.md) | `no-promotion` | NVFP4 · FP8 KV | 131,072 · 5 seqs | `reasoning_effort`; 2,048 headroom | **0.30 s @c1** · 1.85 s @c5 · 51.90 s @131K | 57.82 `agg` @c1 · 67.04 `agg` @c5 | `cand-mistral-small4-119b-nvfp4` |
-| [ThinkingCap Qwen3.6 27B FP8](models/qwen36-27b.md) | `no-promotion` | compressed-tensors FP8 · FP8 KV | 262,144 · 5 seqs | **on** by default (256 + 4,096 headroom) | 1.01 s @c1 · 4.66 s @c5 · 32.3 s @131K needle | 6.661 `agg` @c1 (45 out tok) · 7.92 `agg` @c5 (42 out tok) | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L3) |
+| [ThinkingCap Qwen3.6 27B FP8](models/qwen36-27b.md) | `no-promotion` | compressed-tensors FP8 · FP8 KV | 262,144 · 5 seqs | **on** by default (256 + 4,096 headroom); rates below captured with it off | 1.01 s @c1 · 4.66 s @c5 · 32.3 s @131K needle | 6.661 `agg` @c1 (45 out tok) · 7.92 `agg` @c5 (42 out tok) | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L3) |
 | Qwen3.6 27B official FP8 | `no-promotion` | FP8 + MTP 3 · FP8 KV | 262,144 · 5 seqs | off for capacity | 1.59 s @c1 · 5.68 s @c5 · 32.9 s @131K | 5.627 `agg` @c1 (55 out tok) · 8.31 `agg` @c5 (53 out tok) | `cand-qwen36-fp8` |
 | Unsloth Qwen3.6 27B NVFP4 | `no-promotion` | NVFP4 + MTP 2 · FP8 KV | 262,144 · 5 seqs | off for capacity | 968.07 ms @c1 (1 req) · 3.68 s @c5 | 10.497 `agg` @c1 — **1 req / 14 out tok; not a decode rate** · 15.21 `agg` @c5 (66 out tok) | `cand-unsloth-qwen36-27b-nvfp4` |
 | [Qwen3.5 122B NVFP4, NGC 26.04](models/qwen35-122b.md) | `no-promotion` | ModelOpt NVFP4 · FP8 KV | 131,072 · c1 | off for gates | 223 ms p50 @8K · ~28 s @100K | 38.8 `agg` @c1 (10 req × 8K) | earlier candidate window |
@@ -139,11 +139,12 @@ Every row here is `historical-invalid` for exact rerun: no pinned checkpoint rev
 still evidence.
 
 Rate cells in this table come from a 10-request, 256-token-cap `agg` harness. Batch shape is
-**not** uniform across the page — other tables use 1, 3, 4, 5, 6, 10, or 128 requests and 128- or
-256-token caps — so compare `agg` values only within a table, and only when the row notes agree.
+**not** uniform across the page: request count, concurrency, and the completion cap all vary by
+campaign. Compare `agg` values only within a table, and only when the row notes agree; follow the
+row's dated finding for its exact shape.
 Both llama.cpp rows additionally ran with a warm prefix cache (~0.87–0.90 hit rate),
-which inflates their aggregates relative to the two vLLM rows in this table, neither of which
-records prefix reuse.
+which inflates their aggregates relative to the two *measured* vLLM rows in this table, neither
+of which records prefix reuse.
 
 | Config | Engine | Served context | Output rate | Warm TTFT @8K | Verdict |
 | --- | --- | --- | --- | --- | --- |
@@ -185,7 +186,7 @@ image level only. STT RTF and isolated per-model VRAM were never measured.
 
 ## Where the recipes live
 
-- **[`configs/serve-recipes.toml`](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml)** — 31 recorded recipes with quantization, context, flags, and environment. **9 of the 31 pin an image by `sha256:` digest; the rest pin a mutable tag** (`vllm/vllm-openai:nightly`, `lmsysorg/sglang:latest`), so those cannot be reproduced exactly. Inspect one locally:
+- **[`configs/serve-recipes.toml`](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml)** — 31 recorded recipes with quantization, context, flags, and environment. **9 of the 31 pin an image by `sha256:` digest; 20 pin a mutable tag** (`vllm/vllm-openai:nightly`, `lmsysorg/sglang:latest`) **and 2 record no image at all**, so those 22 cannot be reproduced exactly. Inspect one locally:
 
     ```bash
     anvil-serving models recipes show <model>
