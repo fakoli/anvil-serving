@@ -606,21 +606,40 @@ def _strip_yaml_comment(line: str) -> str:
     letting a commented-out page satisfy the nav gate.
     """
     quote: str | None = None
-    previous = ""
-    for index, char in enumerate(line):
-        if quote is not None:
-            if char == "\\" and quote == '"':
-                previous = "\\" if previous != "\\" else ""
-                continue
-            if char == quote and previous != "\\":
+    escaped = False
+    # A value starts at the beginning of the line and after a `-`, `:`, `[`, `{`
+    # or `,` separator. Only there can a quote open a scalar.
+    at_value_start = True
+    index = 0
+    while index < len(line):
+        char = line[index]
+        if quote == '"':
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
                 quote = None
-            previous = "" if previous == "\\" else char
-            continue
-        if char in ("'", '"') and (previous == "" or previous in " \t:-[{,"):
+        elif quote == "'":
+            if char == "'":
+                if line[index + 1 : index + 2] == "'":  # YAML escapes '' as one quote
+                    index += 1
+                else:
+                    quote = None
+        elif char in ("'", '"') and at_value_start:
             quote = char
-        elif char == "#" and (previous == "" or previous in " \t"):
+            at_value_start = False
+        elif char == "#" and (index == 0 or line[index - 1] in " \t"):
             return line[:index]
-        previous = char
+        elif char == "-" and not line[:index].strip():
+            at_value_start = True  # sequence indicator, only at line start
+        elif char == ":" and line[index + 1 : index + 2] in ("", " ", "\t"):
+            at_value_start = True  # key separator, only when followed by space
+        elif char in "[{,":
+            at_value_start = True
+        elif not char.isspace():
+            at_value_start = False
+        index += 1
     return line
 
 

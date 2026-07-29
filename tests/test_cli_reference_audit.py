@@ -332,3 +332,20 @@ def test_nav_gate_keeps_a_title_with_an_escaped_quote(tmp_path: Path):
     root = _nav_tree(tmp_path, nav)
 
     assert audit.nav_coverage_gaps(root) == []
+
+
+@pytest.mark.parametrize(
+    "nav_line, expected",
+    [
+        ("  - The '90s guide: index.md  # TODO restore WORKBENCH.md", ["docs/WORKBENCH.md"]),
+        ("  - Notes -'x: index.md  # TODO restore WORKBENCH.md", ["docs/WORKBENCH.md"]),
+        ("  - Home: index.md  # TODO restore WORKBENCH.md", ["docs/WORKBENCH.md"]),
+        ("  - 'It''s #1 guide': WORKBENCH.md", []),
+        ("  - 'Sharp #1 guide': WORKBENCH.md", []),
+    ],
+)
+def test_nav_gate_quote_and_comment_handling(tmp_path: Path, nav_line: str, expected: list[str]):
+    """An unterminated quote must not let a commented-out page satisfy the gate."""
+    root = _nav_tree(tmp_path, nav_line + chr(10))
+
+    assert [gap["page"] for gap in audit.nav_coverage_gaps(root)] == expected
