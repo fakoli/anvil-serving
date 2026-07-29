@@ -597,6 +597,20 @@ def generated_docs_match(root: Path) -> bool:
     return _block(text, INDEX_START, INDEX_END) == render_manifest_index(manifest)
 
 
+def _strip_yaml_comment(line: str) -> str:
+    """Drop a YAML comment, honoring quoted nav titles that may contain '#'."""
+    quote: str | None = None
+    for index, char in enumerate(line):
+        if quote is not None:
+            if char == quote:
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+        elif char == "#":
+            return line[:index]
+    return line
+
+
 def _nav_targets(root: Path) -> set[str] | None:
     """Return mkdocs nav page targets as repo-relative posix paths.
 
@@ -615,7 +629,10 @@ def _nav_targets(root: Path) -> set[str] | None:
             continue
         if line.strip() and not line[0].isspace():
             break
-        body.append(line.split("#", 1)[0] if line.lstrip().startswith("#") else line)
+        # Drop comments wherever they start, not only on comment-only lines: a
+        # trailing "# TODO restore cli/host.md" would otherwise register that
+        # page as navigable and let a genuinely orphaned page pass the gate.
+        body.append(_strip_yaml_comment(line))
     return {
         (DOCS_DIR_REL / match.group(1)).as_posix()
         for line in body

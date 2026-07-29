@@ -1,34 +1,23 @@
-/* Wide benchmark comparison tables.
+/* Let wide tables scroll instead of breaking the page layout.
  *
- * The readthedocs theme wraps table cells aggressively, which turns a
- * many-column measurement table into an unreadable stack. Let these tables
- * scroll horizontally instead and keep each row on one line where possible.
+ * The readthedocs theme wraps the whole article body in a single
+ * `div.section`, so this rule necessarily applies to every top-level table on
+ * every page — there is no per-page hook to scope it more narrowly without
+ * enabling attr_list and annotating each table. That is acceptable here:
+ * `overflow-x: auto` engages only when a table actually overflows its
+ * container, so ordinary narrow tables render exactly as before.
+ *
+ * Deliberately NOT setting `white-space: nowrap`: it would stop wrapping in
+ * every prose table site-wide, which is a worse outcome than a wrapped cell.
  */
 
-.rst-content table.docutils,
-.rst-content table {
-  display: table;
-}
-
-/* The comparison page marks its wide tables by wrapping them in a section
- * that follows an h2/h3; scope the scroll to the content area so ordinary
- * two-column tables elsewhere are unaffected. */
-.rst-content .section > table,
-.rst-content table.benchmark-wide {
+.rst-content .section > table {
   display: block;
   width: 100%;
   overflow-x: auto;
-  white-space: nowrap;
 }
 
-.rst-content .section > table td,
-.rst-content .section > table th {
-  white-space: nowrap;
-  vertical-align: top;
-}
-
-/* Keep the first column (model/config) readable and anchored visually. */
+/* Keep the leading identifier column readable when a wide table does scroll. */
 .rst-content .section > table td:first-child {
-  white-space: normal;
-  min-width: 14rem;
+  min-width: 12rem;
 }
