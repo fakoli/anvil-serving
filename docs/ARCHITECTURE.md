@@ -50,15 +50,17 @@ manifests, and a durable operation-state volume. Host loopback URLs in those
 manifests are rewritten to the explicit `host.docker.internal` alias inside
 the container; ordinary native and router-container behavior is unchanged.
 
-Fakoli Mini owns the client plane. OpenClaw launches `anvil-serving mcp serve`
-as an stdio MCP server, which authenticates to the Dark controller through
-host-owned Tailscale Serve. The controller is published on Dark's Windows
+Fakoli Mini owns the client plane. `anvil-serving mcp serve` is the model-free
+stdio proxy that authenticates to the Dark controller through host-owned
+Tailscale Serve. OpenClaw may launch it once its bundled MCP client supports
+the `2026-07-28` handshake; the saved server remains disabled on older
+initialize-based clients. The controller is published on Dark's Windows
 loopback only, so neither the container port nor Docker socket is directly
 reachable from the tailnet.
 
 ```mermaid
 flowchart LR
-    O["OpenClaw on Fakoli Mini"] --> P["MCP 2026 stdio proxy"]
+    O["MCP 2026 client on Fakoli Mini"] --> P["Anvil stdio proxy"]
     P --> T["Tailscale Serve /anvil-controller on Fakoli Dark"]
     T --> C["controller container on 127.0.0.1:8765"]
     C --> D["Docker Desktop socket"]

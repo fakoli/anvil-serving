@@ -14,8 +14,11 @@ All notable changes to this project are documented here. The format is based on
 - Fakoli Dark can run the restricted controller as a dedicated non-root Linux
   image with Docker-socket and GPU visibility, explicit configuration mounts,
   container-to-host loopback rewriting, durable operation state, and a
-  loopback-only Compose deployment for host-owned Tailscale Serve. OpenClaw on
-  Fakoli Mini connects through its native `mcp.servers` stdio configuration.
+  loopback-only Compose deployment for host-owned Tailscale Serve. Fakoli Mini
+  can connect through the Anvil stdio proxy. OpenClaw's native `mcp.servers`
+  declaration is installed disabled until its bundled client supports the
+  MCP `2026-07-28` handshake; OpenClaw `2026.7.1-2` still sends the removed
+  `initialize` lifecycle.
 - Docs site theme switched from ReadTheDocs to Material for MkDocs (nav tabs,
   dark mode, native wide-table scrolling; `docs/assets/tables.css` removed).
 - The Evidence nav section is now **Benchmarks**, restructured visitor-first:

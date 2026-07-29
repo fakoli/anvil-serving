@@ -37,10 +37,11 @@ Docker socket. Exact `127.0.0.1` endpoints are rewritten inside that container
 to a declared host alias.
 
 Docker publishes the controller only on Dark's Windows loopback. Host-owned
-Tailscale Serve provides the authenticated tailnet path. OpenClaw on Mini runs
-the Anvil MCP stdio proxy against that endpoint. SSH is not an automatic
-fallback and remains available only for operations whose declared runtime is
-native.
+Tailscale Serve provides the authenticated tailnet path. Mini runs the Anvil
+MCP stdio proxy against that endpoint. OpenClaw may own the client process
+after its bundled MCP runtime supports `2026-07-28`; its server declaration
+remains disabled before that gate. SSH is not an automatic fallback and
+remains available only for operations whose declared runtime is native.
 
 The JSON-RPC endpoint is `/mcp`. Each request carries the `2026-07-28`
 protocol version and client capabilities in `_meta`; HTTP metadata must agree
@@ -63,3 +64,7 @@ Responses declare `resultType`, cacheable results declare `ttlMs` and
   filesystem access.
 - Pre-release clients using an older MCP initialization flow must upgrade;
   there is no compatibility mode.
+- A client's new configuration layout is not evidence of wire-protocol
+  support. OpenClaw `2026.7.1-2` was observed with MCP SDK `1.29.0` and the
+  `2025-11-25` initialize lifecycle, so its saved Anvil server is disabled
+  until an MCP SDK v2 client with a `2026-07-28` protocol pin is available.

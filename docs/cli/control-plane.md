@@ -163,10 +163,14 @@ mode accepts only loopback/private/tailnet controller URLs, forwards only
 subset of the local contracts. A controller base URL with no path is resolved
 to `/mcp`.
 
-OpenClaw `2026.7.1-2` and later stores this stdio declaration under its native
-`mcp.servers` configuration. Keep the controller token in the OpenClaw service
-environment and pass only `--auth-env ANVIL_CONTROLLER_TOKEN` in the server
-arguments; do not save the token value in OpenClaw's MCP JSON.
+OpenClaw stores this stdio declaration under its native `mcp.servers`
+configuration. That configuration layout does not prove protocol compatibility.
+As validated on 2026-07-29, OpenClaw `2026.7.1-2` bundles MCP TypeScript SDK
+`1.29.0`, advertises `2025-11-25`, and sends the removed `initialize`
+lifecycle. Save the declaration disabled until OpenClaw uses an MCP SDK v2
+client pinned to `2026-07-28`. Keep the controller token in the OpenClaw
+service environment and pass only `--auth-env ANVIL_CONTROLLER_TOKEN` in the
+server arguments; do not save the token value in OpenClaw's MCP JSON.
 
 ## Controller
 
