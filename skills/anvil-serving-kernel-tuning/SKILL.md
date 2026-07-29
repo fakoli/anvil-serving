@@ -80,8 +80,9 @@ making a skill-local operational script.
 ## Store, activate, and publish
 
 1. Store accepted and rejected artifacts under the canonical path in
-   `references/tune-contract.md`. Preserve the engine-required config filename;
-   do not hand-normalize it.
+   `references/tune-contract.md`. Use a short portable repository filename and
+   record the engine-required config filename separately; preserve the latter
+   byte-for-byte when building or mounting the runtime artifact.
 2. Add `kernel-tune-manifest/v1` identity, hashes, tuner duration, activation
    contract, baseline/tuned evidence links, and the decision.
 3. Make activation explicit in a managed recipe. Supply the config through a

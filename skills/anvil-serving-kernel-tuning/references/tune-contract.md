@@ -7,13 +7,15 @@ Store repository-owned tunes at:
 ```text
 configs/kernel-tunes/<engine>/<engine-revision>/<gpu-slug>/
 ├── manifest.json
-└── configs/
-    └── <exact engine-required filename>
+└── <short portable repository filename>
 ```
 
 Use the immutable engine commit or build revision, not a floating release tag.
 Derive `gpu-slug` from the complete GPU product name and keep the GPU UUID in
 the manifest as run evidence, not as the portability key.
+Keep repository paths below the Windows checkout limit. Record both the short
+repository filename and the exact engine-required runtime filename in the
+manifest; the managed image or mount preparation step maps one to the other.
 
 Store raw logs and default/tuned benchmark output under the dated finding's
 evidence directory. Link them from the manifest instead of copying large logs
@@ -57,14 +59,17 @@ performance lane. A material driver/CUDA transition requires a full retune.
 ## Selection and activation
 
 The runtime-required config filename is part of the lookup contract. Preserve
-it byte-for-byte. Select only an artifact whose manifest matches the active
-compatibility key and whose decision is `accepted`.
+it byte-for-byte in the manifest and at activation, but do not force that
+potentially long name into the repository path. Select only an artifact whose
+manifest matches the active compatibility key and whose decision is
+`accepted`.
 
 Storage is inert. A tune is active only when a managed recipe supplies its
-`configs/` directory through a read-only mount or pinned derived image layer,
-sets the engine-supported config-folder control, and startup logs prove that
-exact artifact was selected. For vLLM, use `VLLM_TUNED_CONFIG_FOLDER` only
-with a runtime version that documents or implements that lookup.
+portable artifact through a read-only mount preparation step or pinned derived
+image layer under the manifest's exact engine-required filename, sets the
+engine-supported config-folder control, and startup logs prove that exact
+artifact was selected. For vLLM, use `VLLM_TUNED_CONFIG_FOLDER` only with a
+runtime version that documents or implements that lookup.
 
 Never copy a tune into a global cache or base image without its manifest and an
 explicit recipe reference. Never silently fall back to a nearby GPU name or
