@@ -1,4 +1,11 @@
 docs/CLI-COMMAND-MANIFEST.json text eol=lf
+# The packaged Node entry point is executed on macOS/Linux and must keep its
+# shebang byte-stable when built or checked out on Windows.
+anvil_serving/_node/*.mjs text eol=lf
+mcp_bridge/*.mjs text eol=lf
+mcp_bridge/*.json text eol=lf
+mcp_bridge/**/*.ts text eol=lf
+mcp_bridge/**/*.mjs text eol=lf
 # POSIX shell scripts must stay LF: a CRLF working copy injects \r that breaks
 # the shebang / `set` lines under Git Bash on Windows.
 *.sh text eol=lf

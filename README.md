@@ -105,10 +105,13 @@ mapping is an exposure decision, not a model promotion claim.
 
 The reference split-host control plane runs the controller in the dedicated
 Linux `controller` image on Fakoli Dark and exposes it through host-owned
-Tailscale Serve. Fakoli Mini runs only the MCP stdio proxy used by OpenClaw.
-The wire contract is MCP `2026-07-28` only: every request carries protocol
-metadata, clients begin with `server/discover`, and the removed
-`initialize`/`initialized` exchange is not supported.
+Tailscale Serve. Fakoli Mini runs only the MCP stdio bridge used by OpenClaw.
+That bridge bundles the official TypeScript MCP SDK and accepts both the
+legacy initialize era through `2025-11-25` and the stateless `2026-07-28`
+era. Its authenticated downstream connection to Dark is pinned to
+`2026-07-28`; the controller itself never exposes a legacy endpoint. Remote
+MCP proxy mode therefore requires Node.js 20+, while the Python router,
+controller, and ordinary CLI remain stdlib-only.
 
 ## Documentation
 

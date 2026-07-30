@@ -51,17 +51,19 @@ manifests are rewritten to the explicit `host.docker.internal` alias inside
 the container; ordinary native and router-container behavior is unchanged.
 
 Fakoli Mini owns the client plane. `anvil-serving mcp serve` is the model-free
-stdio proxy that authenticates to the Dark controller through host-owned
-Tailscale Serve. OpenClaw may launch it once its bundled MCP client supports
-the `2026-07-28` handshake; the saved server remains disabled on older
-initialize-based clients. The controller is published on Dark's Windows
-loopback only, so neither the container port nor Docker socket is directly
-reachable from the tailnet.
+stdio bridge that authenticates to the Dark controller through host-owned
+Tailscale Serve. The packaged bridge uses the official TypeScript MCP SDK:
+its client-facing side negotiates either the initialize era through
+`2025-11-25` or stateless `2026-07-28`, while its downstream client is pinned
+to `2026-07-28`. OpenClaw can therefore launch it with its initialize-based
+SDK without adding a legacy listener to Dark. The controller is published on
+Dark's Windows loopback only, so neither the container port nor Docker socket
+is directly reachable from the tailnet.
 
 ```mermaid
 flowchart LR
-    O["MCP 2026 client on Fakoli Mini"] --> P["Anvil stdio proxy"]
-    P --> T["Tailscale Serve /anvil-controller on Fakoli Dark"]
+    O["Legacy or modern MCP client on Fakoli Mini"] --> P["TypeScript SDK stdio bridge"]
+    P -->|"MCP 2026 only"| T["Tailscale Serve /anvil-controller on Fakoli Dark"]
     T --> C["controller container on 127.0.0.1:8765"]
     C --> D["Docker Desktop socket"]
     C --> H["Dark host endpoints"]
@@ -139,11 +141,15 @@ second path-validation implementation. Controller internals consume the public
 MCP catalog/call surface, while MCP foundations and tool families do not import
 controller internals.
 
-MCP uses the `2026-07-28` stateless request contract exclusively.
-`server/discover`, `tools/list`, and `tools/call` are the only JSON-RPC methods
-served at `/mcp`; `initialize` is intentionally absent. Request metadata and
-the matching `MCP-Protocol-Version`, `Mcp-Method`, and conditional `Mcp-Name`
-HTTP headers are validated before dispatch.
+The Dark controller uses the `2026-07-28` stateless request contract
+exclusively. `server/discover`, `tools/list`, and `tools/call` are the only
+JSON-RPC methods served at `/mcp`; `initialize` is intentionally absent.
+Request metadata and the matching `MCP-Protocol-Version`, `Mcp-Method`, and
+conditional `Mcp-Name` HTTP headers are validated before dispatch. The
+Mini-side bridge is the only dual-era boundary. The SDK pins one era per stdio
+connection, converts both client eras to a modern authenticated controller
+client, validates the controller identity and dynamic tool schemas, and
+returns the result in the caller's negotiated wire format.
 
 ## Deliberate non-components
 

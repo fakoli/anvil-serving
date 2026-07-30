@@ -8,9 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
-- The unreleased MCP/controller surface now implements only MCP `2026-07-28`:
-  stateless per-request metadata, `server/discover`, required result/cache
-  fields, standardized HTTP headers, and no legacy initialize lifecycle.
+- The Fakoli Mini stdio bridge now bundles the official TypeScript MCP SDK
+  `2.0.0` and serves both the initialize-based MCP era through `2025-11-25`
+  and stateless MCP `2026-07-28`. Its authenticated downstream connection is
+  pinned to `2026-07-28`, so the Dark controller remains modern-only.
 - Mini-to-Dark typed CLI operation now accepts declared credential environment
   references, supports `serves down --dry-run`, permits container-backed GPU
   inventory, and includes a deployment runbook plus complete live validation
@@ -19,10 +20,9 @@ All notable changes to this project are documented here. The format is based on
   image with Docker-socket and GPU visibility, explicit configuration mounts,
   container-to-host loopback rewriting, durable operation state, and a
   loopback-only Compose deployment for host-owned Tailscale Serve. Fakoli Mini
-  can connect through the Anvil stdio proxy. OpenClaw's native `mcp.servers`
-  declaration is installed disabled until its bundled client supports the
-  MCP `2026-07-28` handshake; OpenClaw `2026.7.1-2` still sends the removed
-  `initialize` lifecycle.
+  can connect through the Anvil stdio bridge. OpenClaw `2026.7.1-2` and its
+  bundled MCP SDK `1.29.0` are supported through the bridge's legacy-facing
+  side without adding a legacy endpoint to Dark.
 - Docs site theme switched from ReadTheDocs to Material for MkDocs (nav tabs,
   dark mode, native wide-table scrolling; `docs/assets/tables.css` removed).
 - The Evidence nav section is now **Benchmarks**, restructured visitor-first:

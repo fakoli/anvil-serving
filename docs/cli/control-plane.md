@@ -136,10 +136,10 @@ anvil-serving mcp tools --json
 The catalog comes from the same declarations used by the HTTP controller. Tool
 listing does not invoke a tool, read a credential, or contact a remote service.
 
-The only supported wire version is MCP `2026-07-28`. Every request includes
-protocol version, client capabilities, and optional client identity metadata.
-Clients begin with `server/discover`; the old `initialize` and `initialized`
-messages are not accepted. HTTP clients call `/mcp` with matching
+The HTTP controller supports MCP `2026-07-28` only. Every controller request
+includes protocol version, client capabilities, and optional client identity
+metadata. Controller clients begin with `server/discover`; `initialize` and
+`initialized` are not accepted at `/mcp`. HTTP clients send matching
 `MCP-Protocol-Version` and `Mcp-Method` headers, plus `Mcp-Name` for a tool
 call.
 
@@ -158,19 +158,21 @@ anvil-serving mcp serve --controller-url http://100.64.0.10:8765 --auth-env ANVI
 ```
 
 The URL and token environment-variable name must be provided together. Proxy
-mode accepts only loopback/private/tailnet controller URLs, forwards only
-`tools/list` and `tools/call`, and verifies that the remote catalog is a valid
-subset of the local contracts. A controller base URL with no path is resolved
-to `/mcp`.
+mode requires Node.js 20+ and launches the packaged official TypeScript SDK
+bridge. Its stdio side serves initialize-based clients through `2025-11-25`
+and stateless `2026-07-28` clients from the same tool registrations. Its
+downstream client accepts only `2026-07-28`, bearer-authenticates every
+request, verifies the `anvil-serving` controller identity and exact installed
+version, and fetches the controller's restricted catalog before serving a
+client. A controller base URL with no path is resolved to `/mcp`.
 
 OpenClaw stores this stdio declaration under its native `mcp.servers`
-configuration. That configuration layout does not prove protocol compatibility.
-As validated on 2026-07-29, OpenClaw `2026.7.1-2` bundles MCP TypeScript SDK
-`1.29.0`, advertises `2025-11-25`, and sends the removed `initialize`
-lifecycle. Save the declaration disabled until OpenClaw uses an MCP SDK v2
-client pinned to `2026-07-28`. Keep the controller token in the OpenClaw
-service environment and pass only `--auth-env ANVIL_CONTROLLER_TOKEN` in the
-server arguments; do not save the token value in OpenClaw's MCP JSON.
+configuration. OpenClaw `2026.7.1-2` bundles MCP TypeScript SDK `1.29.0`,
+advertises `2025-11-25`, and sends `initialize`; that exact client generation
+is covered by the bridge regression tests. Keep the controller token in the
+OpenClaw service environment and pass only
+`--auth-env ANVIL_CONTROLLER_TOKEN` in the server arguments; do not save the
+token value in OpenClaw's MCP JSON.
 
 ## Controller
 

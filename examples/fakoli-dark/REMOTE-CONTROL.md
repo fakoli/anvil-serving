@@ -2,27 +2,29 @@
 
 This runbook covers the deployed split-host control plane:
 
-- **Fakoli Mini** runs the `anvil-serving` CLI, the MCP stdio proxy, and
+- **Fakoli Mini** runs the `anvil-serving` CLI, the MCP stdio bridge, and
   OpenClaw.
 - **Fakoli Dark** runs the hardened Linux controller container, Docker model
   serves, the router, and both GPUs.
 - **Tailscale Serve** carries controller traffic. Mini never receives Dark's
   Docker socket.
 
-The controller supports MCP `2026-07-28` only. It does not implement the
-removed `initialize` lifecycle.
+The Dark controller supports MCP `2026-07-28` only. The packaged Mini-side
+TypeScript bridge accepts both the initialize-based era through `2025-11-25`
+and stateless `2026-07-28`, then uses `2026-07-28` downstream. Dark does not
+implement the removed `initialize` lifecycle.
 
 ## Current status
 
-The deployment is ready for direct Anvil CLI use from Mini. The OpenClaw
-server declaration is installed but disabled because OpenClaw `2026.7.1-2`
-still bundles an initialize-based MCP client. Do not enable legacy MCP support
-in Anvil to work around that client.
+The deployment is ready for direct Anvil CLI and OpenClaw use from Mini.
+OpenClaw `2026.7.1-2` can use its initialize-based MCP client against the
+Mini-side bridge without exposing a legacy network endpoint on Dark.
 
 ```mermaid
 flowchart LR
     CLI["anvil-serving CLI on Mini"] --> TCP["Tailnet TCP 8766"]
-    MCP["MCP 2026 client on Mini"] --> HTTPS["Tailnet HTTPS /anvil-controller"]
+    MCP["OpenClaw or MCP 2026 client on Mini"] --> B["Packaged stdio bridge"]
+    B --> HTTPS["Tailnet HTTPS /anvil-controller"]
     TCP --> C["Controller container on Dark"]
     HTTPS --> C
     C --> D["Docker socket"]
@@ -131,7 +133,10 @@ sequence is a maintenance action and requires explicit confirmation.
 
 ## MCP client configuration
 
-An MCP `2026-07-28` client can launch the Mini-side stdio proxy:
+OpenClaw's initialize-based client and an MCP `2026-07-28` client can launch
+the same Mini-side stdio bridge. Remote controller mode requires Node.js 20 or
+newer; the bridge is bundled in the Python package and does not require an
+`npm install` on Mini:
 
 ```bash
 anvil-serving mcp serve \
@@ -150,19 +155,17 @@ voice_manage, gpu_inventory
 preflight_probe, benchmark_probe, workflow_packet_validate
 ```
 
-OpenClaw's saved `mcp.servers.anvil-serving` entry uses this command but remains
-disabled until OpenClaw ships an MCP v2 client that can pin `2026-07-28`.
-
-```bash
-openclaw mcp status --json
-```
-
-After that upstream upgrade:
+OpenClaw's saved `mcp.servers.anvil-serving` entry uses this command:
 
 ```bash
 openclaw mcp configure anvil-serving --enable
+openclaw mcp status --json
 openclaw mcp probe anvil-serving
 ```
+
+The OpenClaw gateway service must inherit `ANVIL_CONTROLLER_TOKEN` from its
+owner-only service environment. The token is referenced by environment
+variable name and is never stored in the MCP server arguments.
 
 ## One-time Dark setup
 
@@ -210,7 +213,7 @@ Validated from Mini against the live Dark controller on 2026-07-29:
 | Voice lifecycle preview | Passed |
 | Voice status/logs | Correctly report unavailable while STT/TTS containers are absent |
 | Live lifecycle mutation | Not exercised; human confirmation intentionally withheld |
-| OpenClaw MCP probe | Blocked by OpenClaw's older initialize-based client |
+| OpenClaw MCP probe | Passed through the Mini-side dual-era bridge |
 
 This is not a claim that every command in the entire Anvil Serving CLI is
 remote-capable. Only operations declared in the controller catalog and Mini's
@@ -237,5 +240,7 @@ anvil-serving router status --transport controller --json
   quiesce.
 - Voice status/logs return unavailable: bring up the declared audio profile or
   treat the absent containers as the current expected state.
-- OpenClaw reports `Connection closed`: keep the entry disabled until its
-  bundled MCP client supports `2026-07-28`.
+- OpenClaw reports `Connection closed`: confirm Node.js 20+ is on the gateway
+  service `PATH`, the controller token is present in the owner-only service
+  environment, and the installed Mini package version exactly matches Dark's
+  controller version. Then run `openclaw mcp probe anvil-serving`.

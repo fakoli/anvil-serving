@@ -100,7 +100,11 @@ and caveats.
 
 ## Working rules
 
-1. Use only the standard library in `anvil_serving/` unless explicitly approved.
+1. Use only the Python standard library in `anvil_serving/` unless explicitly
+   approved. The Mini-side remote MCP bridge is the approved exception: its
+   source and lockfile live in `mcp_bridge/`, the official TypeScript MCP SDK is
+   bundled into package data, and it requires Node.js 20+ only when remote MCP
+   proxy mode is launched.
 2. Secrets are environment-variable references only; never commit a literal.
 3. Return dictionaries from library code; CLI wrappers print.
 4. Durable lifecycle, host, routing, voice, and benchmark operations belong in

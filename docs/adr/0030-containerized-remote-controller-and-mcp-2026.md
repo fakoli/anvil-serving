@@ -1,6 +1,6 @@
 # ADR-0030 — Containerized Dark controller and MCP 2026-only remote operation
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0031
 - **Date:** 2026-07-29
 - **Relates to:** ADR-0014; ADR-0019; ADR-0028
 

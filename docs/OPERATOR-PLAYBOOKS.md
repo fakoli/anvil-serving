@@ -91,8 +91,7 @@ tailscale serve status
 
 On Fakoli Mini, install the same Anvil Serving revision and provide the same
 token to the OpenClaw gateway's owner-only service environment. Register the
-stdio proxy through OpenClaw's current `mcp.servers` surface, but initially
-leave it disabled:
+stdio bridge through OpenClaw's current `mcp.servers` surface:
 
 ```bash
 openclaw mcp add anvil-serving \
@@ -102,30 +101,25 @@ openclaw mcp add anvil-serving \
   --arg https://fakoli-dark.<tailnet>.ts.net/anvil-controller/mcp \
   --arg=--auth-env \
   --arg ANVIL_CONTROLLER_TOKEN \
-  --disabled \
   --no-probe
+openclaw mcp probe anvil-serving
 openclaw mcp doctor
 ```
 
-The Mini-side process is a model-free stdio proxy. It performs MCP
-`2026-07-28` discovery and forwards only `tools/list` and `tools/call` to
-Dark's `/mcp` endpoint. There is no legacy initialize exchange.
+The Mini-side process is a model-free stdio bridge using the packaged official
+TypeScript MCP SDK. Its client-facing side accepts the initialize era through
+`2025-11-25` and stateless `2026-07-28`; its controller-facing side is pinned
+to `2026-07-28` and forwards the dynamically registered restricted tool
+catalog to Dark's `/mcp` endpoint.
 Do not put the token in `mcp.servers.*.env` or an HTTP header in
 `openclaw.json`; the child process inherits it from the gateway service
 environment.
 
 The native `mcp.servers` layout and the client's wire protocol are separate
-compatibility gates. As validated on 2026-07-29, OpenClaw `2026.7.1-2`
-bundles `@modelcontextprotocol/sdk` `1.29.0`, advertises MCP `2025-11-25`, and
-sends `initialize`; it cannot consume this MCP `2026-07-28`-only server. Do
-not enable a legacy compatibility mode in Anvil. After an OpenClaw release
-moves its client to MCP SDK v2 and supports a `2026-07-28` protocol pin, enable
-and probe the saved declaration:
-
-```bash
-openclaw mcp configure anvil-serving --enable
-openclaw mcp probe anvil-serving
-```
+compatibility gates. The bridge test suite exercises the exact
+`@modelcontextprotocol/sdk` `1.29.0` generation bundled by OpenClaw
+`2026.7.1-2`, plus a modern SDK `2.0.0` client. Dark remains modern-only in
+both cases.
 
 The example controller includes Docker-compatible router, serve, voice,
 inventory, preflight, benchmark-probe, and workflow-validation tools. It

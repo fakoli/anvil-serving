@@ -41,7 +41,11 @@ JSON/text under `docs/findings/`. Published files use **generic topology values*
 
 ## Code conventions
 
-- **Stdlib-only** in `anvil_serving/` — no new runtime dependencies without explicit sign-off.
+- **Stdlib-only** in `anvil_serving/` — no new Python runtime dependencies
+  without explicit sign-off. The packaged Mini-side MCP bridge is the approved
+  exception: `mcp_bridge/` pins and bundles the official TypeScript MCP SDK,
+  and remote MCP proxy mode requires Node.js 20+. Keep that dependency out of
+  the router and Dark controller runtime.
 - **`127.0.0.1`, never `localhost`** in any URL (config, test fixture, example, docstring).
 - **Loopback is host-relative, and Mini is model-free by default.** In the
   reference OpenClaw voice topology, Fakoli Mini's 16 GB RAM is reserved for
