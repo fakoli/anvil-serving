@@ -259,3 +259,7 @@ anvil-serving router status --transport controller --json
   `${ANVIL_CONTROLLER_TOKEN}` reference, and the installed Mini package
   version exactly matches Dark's controller version. Then run
   `openclaw mcp reload` and `openclaw mcp probe anvil-serving`.
+- OpenClaw `2026.7.1-2` doctor warns that the resolved token reference is a
+  literal sensitive value: this is a version-specific false positive if the
+  raw `openclaw.json` still contains only `${ANVIL_CONTROLLER_TOKEN}` and is
+  mode `0600`. Do not print the resolved value while checking.

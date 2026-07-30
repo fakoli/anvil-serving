@@ -117,6 +117,13 @@ literal reference `${ANVIL_CONTROLLER_TOKEN}` in its `env` map. OpenClaw
 resolves that reference from the gateway service environment when it activates
 the server. Never put the token value itself in `openclaw.json`.
 
+OpenClaw `2026.7.1-2` expands the reference before its `mcp doctor` credential
+heuristic runs, so doctor may warn that the resolved entry contains a literal
+sensitive value even when the raw owner-only JSON still stores only the
+`${ANVIL_CONTROLLER_TOKEN}` reference. Treat that version-specific warning as
+expected only after confirming the raw reference and `0600` file permissions;
+never print the resolved config value while checking it.
+
 The native `mcp.servers` layout and the client's wire protocol are separate
 compatibility gates. The bridge test suite exercises the exact
 `@modelcontextprotocol/sdk` `1.29.0` generation bundled by OpenClaw
