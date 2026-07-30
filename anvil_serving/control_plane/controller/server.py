@@ -122,6 +122,7 @@ def serve(
     allow_public_bind: bool = False,
     allow_unauthenticated_loopback: bool = False,
     allowed_operations: Optional[Sequence[str]] = None,
+    idempotency_db_path: str = DEFAULT_IDEMPOTENCY_DB_PATH,
     server_factory: Callable[..., ThreadingHTTPServer] = make_server,
 ) -> int:
     httpd = server_factory(
@@ -131,6 +132,7 @@ def serve(
         allow_public_bind=allow_public_bind,
         allow_unauthenticated_loopback=allow_unauthenticated_loopback,
         allowed_operations=allowed_operations,
+        idempotency_db_path=idempotency_db_path,
     )
     actual_host, actual_port = httpd.server_address[:2]
     print(

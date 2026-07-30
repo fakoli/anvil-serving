@@ -46,6 +46,7 @@ from .control_plane.mcp.runtime import (
     run_argv as _run_argv,
     run_argv_spooled as _run_argv_spooled,
 )
+from .control_plane.mcp.node_bridge import run_node_bridge as _run_node_bridge
 from .control_plane.mcp.security import (
     redact_error_details as _redact_error_details,
     redact_text as _redact_text,
@@ -113,7 +114,7 @@ from .operator_output import CONTEXT_FIELDS, context_from_plan
 
 
 SERVER_INFO = {"name": "anvil-serving", "version": __version__}
-PROTOCOL_VERSION = "2024-11-05"
+PROTOCOL_VERSION = "2026-07-28"
 
 
 def _fail(code: str, message: str, details: Optional[dict] = None) -> dict:
@@ -242,6 +243,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         safe_controller_url=_safe_controller_url,
         resolve_controller_token=resolve_controller_token,
         serve=serve_stdio,
+        serve_proxy=lambda controller_url, auth_env: _run_node_bridge(
+            controller_url,
+            auth_env,
+            __version__,
+        ),
     )
 
 

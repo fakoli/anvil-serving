@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -10,7 +11,7 @@ import urllib.parse
 import urllib.request
 
 from . import guard
-from .paths import config_path
+from .paths import config_path, runtime_url
 from .serves import docker_state
 from .transports import _is_safe_controller_ip
 
@@ -31,6 +32,7 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _safe_router_url(value):
+    value = runtime_url(value)
     parsed = urllib.parse.urlsplit(value)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         raise ValueError("router_url must be an HTTP(S) URL")
@@ -38,9 +40,25 @@ def _safe_router_url(value):
     try:
         address = ipaddress.ip_address(parsed.hostname)
     except ValueError:
-        raise ValueError("router_url must use a literal private IP address") from None
-    if not _is_safe_controller_ip(address):
-        raise ValueError("router_url must use a loopback, private, or tailnet address")
+        alias = (os.environ.get("ANVIL_SERVING_LOOPBACK_ALIAS") or "").strip()
+        if parsed.hostname != alias:
+            raise ValueError(
+                "router_url must use a literal private IP address or the declared loopback alias"
+            ) from None
+        try:
+            infos = socket.getaddrinfo(parsed.hostname, parsed.port, type=socket.SOCK_STREAM)
+        except OSError:
+            raise ValueError("router_url loopback alias could not be resolved") from None
+        addresses = {
+            ipaddress.ip_address(info[4][0])
+            for info in infos
+            if info[4]
+        }
+        if not addresses or any(not _is_safe_controller_ip(item) for item in addresses):
+            raise ValueError("router_url loopback alias resolved outside private ranges")
+    else:
+        if not _is_safe_controller_ip(address):
+            raise ValueError("router_url must use a loopback, private, or tailnet address")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("router_url must not contain credentials, query, or fragment")
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
@@ -282,8 +300,9 @@ def cmd_logs(container, tail="200", since=None, follow=False, _run=subprocess.ru
 
 
 def _health(_open, port=8000):
+    url = runtime_url("http://127.0.0.1:%s/" % port)
     try:
-        with _open("http://127.0.0.1:%s/" % port, timeout=3) as response:
+        with _open(url, timeout=3) as response:
             return getattr(response, "status", None) or response.getcode()
     except Exception:
         return None
@@ -294,7 +313,7 @@ def status_summary(container, _run=subprocess.run, _open=urllib.request.urlopen,
     running = state == "running"
     return {"container": container, "docker_state": state, "running": running,
             "health_status": _health(_open, port) if running else None,
-            "health_url": "http://127.0.0.1:%s/" % port if running else None,
+            "health_url": runtime_url("http://127.0.0.1:%s/" % port) if running else None,
             "ok": state != "error"}
 
 

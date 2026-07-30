@@ -63,7 +63,8 @@ def build_main_parser() -> argparse.ArgumentParser:
         prog="anvil-serving mcp serve",
         description=(
             "Run the stdio MCP control plane locally, list available tools, "
-            "or proxy MCP tool calls to a token-authenticated controller."
+            "or use the official TypeScript SDK bridge to proxy legacy or "
+            "modern MCP tool calls to a token-authenticated controller."
         ),
     )
     parser.add_argument(
@@ -80,7 +81,7 @@ def build_main_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--controller-url",
         metavar="URL",
-        help="remote controller URL for split-host proxy mode",
+        help="modern remote controller URL for split-host dual-era bridge mode",
     )
     parser.add_argument(
         "--auth-env",
@@ -110,6 +111,7 @@ def main(
     safe_controller_url: Callable[[str], str],
     resolve_controller_token: Callable[[str], str],
     serve: Callable[..., int],
+    serve_proxy: Callable[[str, str], int] | None = None,
 ) -> int:
     try:
         controller_url, auth_env, list_tools_requested = parse_main_args(argv)
@@ -129,6 +131,12 @@ def main(
         except ToolError as exc:
             print(exc.message, file=sys.stderr)
             return 2
+        if serve_proxy is not None:
+            try:
+                return serve_proxy(controller_url, auth_env)
+            except ToolError as exc:
+                print(exc.message, file=sys.stderr)
+                return 2
         return serve(
             controller_url=controller_url,
             controller_token=token,
