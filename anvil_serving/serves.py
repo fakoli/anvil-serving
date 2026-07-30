@@ -78,7 +78,7 @@ import sys
 import urllib.request
 import urllib.error
 
-from .paths import config_path
+from .paths import config_path, runtime_url
 
 try:
     import tomllib  # Python 3.11+
@@ -799,7 +799,9 @@ def _install_router_config(
 def _router_base_url(plan):
     from urllib.parse import urlsplit, urlunsplit
 
-    health_url = str(plan.get("router_health_url", "http://127.0.0.1:8000/healthz"))
+    health_url = runtime_url(
+        str(plan.get("router_health_url", "http://127.0.0.1:8000/healthz"))
+    )
     parsed = urlsplit(health_url)
     return urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
 
@@ -847,7 +849,7 @@ def _serve_identity_ready(serve, *, _open=urllib.request.urlopen, max_bytes=6553
     from urllib.parse import urlunsplit
 
     url = urlunsplit(("http", "127.0.0.1:%s" % serve["port"], "/v1/models", "", ""))
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    request = urllib.request.Request(runtime_url(url), headers={"Accept": "application/json"})
     try:
         with _open(request, timeout=5) as response:
             raw = response.read(max_bytes + 1)
@@ -918,7 +920,7 @@ def _promotion_cli(argv, *, _run=subprocess.run):
 
 def _gateway_status(url, *, _open=urllib.request.urlopen):
     try:
-        with _open(url, timeout=5) as response:
+        with _open(runtime_url(url), timeout=5) as response:
             return getattr(response, "status", None) or response.getcode()
     except urllib.error.HTTPError as exc:
         return exc.code  # auth failures still prove the router is reachable
@@ -1922,7 +1924,7 @@ def _docker_port_occupants(ports, _run=subprocess.run):
 
 
 def _health(port, path, _open=urllib.request.urlopen):
-    url = "http://127.0.0.1:%s%s" % (port, path)
+    url = runtime_url("http://127.0.0.1:%s%s" % (port, path))
     try:
         with _open(url, timeout=3) as resp:
             return getattr(resp, "status", None) or resp.getcode()
@@ -2843,7 +2845,7 @@ def _probe_json(url, payload=None, *, timeout=60, _open=urllib.request.urlopen):
     """Send one bounded JSON request and return its decoded object."""
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
-        url,
+        runtime_url(url),
         data=data,
         headers={
             "Accept": "application/json",

@@ -14,6 +14,7 @@ from .errors import ControllerError
 from .http import DEFAULT_MAX_BODY_BYTES
 from .security import DEFAULT_AUTH_TOKEN_ENV, _json_dumps
 from .server import DEFAULT_HOST, DEFAULT_PORT, serve
+from .store import DEFAULT_IDEMPOTENCY_DB_PATH
 
 
 DEFAULT_STATUS_URL = "http://127.0.0.1:8765"
@@ -43,6 +44,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="append",
         default=None,
         help="restrict the controller to a declared operation (repeatable)",
+    )
+    serve_parser.add_argument(
+        "--state-db",
+        default=DEFAULT_IDEMPOTENCY_DB_PATH,
+        help="durable controller operation-state database path",
     )
     status_parser = subparsers.add_parser("status", help="probe controller health")
     status_parser.add_argument("--url", default=DEFAULT_STATUS_URL)
@@ -180,6 +186,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 allow_public_bind=args.allow_public_bind,
                 allow_unauthenticated_loopback=False,
                 allowed_operations=args.allow_operation,
+                idempotency_db_path=args.state_db,
             )
         except ControllerError as exc:
             print(

@@ -7,7 +7,7 @@
 > **Benchmark and serve local models through one explicit capability gateway.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.17.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.18.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 </div>
@@ -103,6 +103,16 @@ mapping is an exposure decision, not a model promotion claim.
 | `anvil-serving voice` | Operator-owned STT/TTS, bridge, Realtime, and voice benchmark lifecycle. |
 | `anvil-serving mcp serve` / `controller` | Structured same-host or private control-plane access. |
 
+The reference split-host control plane runs the controller in the dedicated
+Linux `controller` image on Fakoli Dark and exposes it through host-owned
+Tailscale Serve. Fakoli Mini runs only the MCP stdio bridge used by OpenClaw.
+That bridge bundles the official TypeScript MCP SDK and accepts both the
+legacy initialize era through `2025-11-25` and the stateless `2026-07-28`
+era. Its authenticated downstream connection to Dark is pinned to
+`2026-07-28`; the controller itself never exposes a legacy endpoint. Remote
+MCP proxy mode therefore requires Node.js 20+, while the Python router,
+controller, and ordinary CLI remain stdlib-only.
+
 ## Documentation
 
 - [Getting started](docs/GETTING-STARTED.md)
@@ -111,6 +121,7 @@ mapping is an exposure decision, not a model promotion claim.
 - [Thin capability gateway](docs/THIN-CAPABILITY-GATEWAY.md)
 - [CLI reference](docs/CLI.md)
 - [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md)
+- [Fakoli Mini to Dark remote control](examples/fakoli-dark/REMOTE-CONTROL.md)
 - [Voice pipeline](docs/VOICE.md)
 - [Benchmarks](docs/benchmarks/index.md)
   - [RTX PRO 6000](docs/benchmarks/hardware/rtx-pro-6000.md)

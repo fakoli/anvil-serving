@@ -136,6 +136,13 @@ anvil-serving mcp tools --json
 The catalog comes from the same declarations used by the HTTP controller. Tool
 listing does not invoke a tool, read a credential, or contact a remote service.
 
+The HTTP controller supports MCP `2026-07-28` only. Every controller request
+includes protocol version, client capabilities, and optional client identity
+metadata. Controller clients begin with `server/discover`; `initialize` and
+`initialized` are not accepted at `/mcp`. HTTP clients send matching
+`MCP-Protocol-Version` and `Mcp-Method` headers, plus `Mcp-Name` for a tool
+call.
+
 For a local operator process, run stdio MCP directly:
 
 ```bash
@@ -151,9 +158,23 @@ anvil-serving mcp serve --controller-url http://100.64.0.10:8765 --auth-env ANVI
 ```
 
 The URL and token environment-variable name must be provided together. Proxy
-mode accepts only loopback/private/tailnet controller URLs, forwards only
-`tools/list` and `tools/call`, and verifies that the remote catalog is a valid
-subset of the local contracts.
+mode requires Node.js 20+ and launches the packaged official TypeScript SDK
+bridge. Its stdio side serves initialize-based clients through `2025-11-25`
+and stateless `2026-07-28` clients from the same tool registrations. Its
+downstream client accepts only `2026-07-28`, bearer-authenticates every
+request, verifies the `anvil-serving` controller identity and exact installed
+version, and fetches the controller's restricted catalog before serving a
+client. A controller base URL with no path is resolved to `/mcp`.
+
+OpenClaw stores this stdio declaration under its native `mcp.servers`
+configuration. OpenClaw `2026.7.1-2` bundles MCP TypeScript SDK `1.29.0`,
+advertises `2025-11-25`, and sends `initialize`; that exact client generation
+is covered by the bridge regression tests. Keep the controller token in the
+OpenClaw service environment. Pass `--auth-env ANVIL_CONTROLLER_TOKEN` in the
+server arguments and set the server environment entry to the literal
+`${ANVIL_CONTROLLER_TOKEN}` reference. OpenClaw filters ambient stdio child
+environments, then resolves that explicit reference during activation. Do not
+save the token value in OpenClaw's MCP JSON.
 
 ## Controller
 
@@ -168,7 +189,9 @@ The default bind is `127.0.0.1:8765`, and all public CLI binds require the token
 named by `--auth-token-env`. Private and tailnet addresses are allowed with
 authentication. A public or wildcard address also requires
 `--allow-public-bind`. `--allow-operation` is repeatable and reduces the served
-catalog to the declared operations.
+catalog to the declared operations. `--state-db` places the durable idempotency
+store at an explicit path, which the controller image maps to its named state
+volume.
 
 Probe identity and capabilities without calling a management tool:
 

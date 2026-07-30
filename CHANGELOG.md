@@ -6,8 +6,42 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-07-30
+
+Anvil Serving 0.18.0 is the remote-controller and MCP interoperability
+release. It lets a model-free Fakoli Mini operate Fakoli Dark through a
+restricted controller, while a dual-era TypeScript bridge keeps current
+OpenClaw clients compatible with the modern MCP contract on Dark.
+
+### Highlights
+
+- **Containerized remote control on Dark.** The controller runs as a dedicated
+  non-root Linux container with explicit Docker-socket, GPU, configuration,
+  state, and Tailscale Serve boundaries.
+- **Dual-era MCP on Mini.** The bundled TypeScript bridge accepts both
+  initialize-based MCP through `2025-11-25` and stateless MCP `2026-07-28`,
+  translating both onto a modern-only authenticated Dark endpoint.
+- **Repeatable OpenClaw operation.** Typed CLI and MCP operations, credential
+  references, dry-run shutdown, GPU inventory, deployment documentation, and
+  live validation boundaries make the Mini-to-Dark topology reproducible.
+
 ### Changed
 
+- The Fakoli Mini stdio bridge now bundles the official TypeScript MCP SDK
+  `2.0.0` and serves both the initialize-based MCP era through `2025-11-25`
+  and stateless MCP `2026-07-28`. Its authenticated downstream connection is
+  pinned to `2026-07-28`, so the Dark controller remains modern-only.
+- Mini-to-Dark typed CLI operation now accepts declared credential environment
+  references, supports `serves down --dry-run`, permits container-backed GPU
+  inventory, and includes a deployment runbook plus complete live validation
+  boundaries.
+- Fakoli Dark can run the restricted controller as a dedicated non-root Linux
+  image with Docker-socket and GPU visibility, explicit configuration mounts,
+  container-to-host loopback rewriting, durable operation state, and a
+  loopback-only Compose deployment for host-owned Tailscale Serve. Fakoli Mini
+  can connect through the Anvil stdio bridge. OpenClaw `2026.7.1-2` and its
+  bundled MCP SDK `1.29.0` are supported through the bridge's legacy-facing
+  side without adding a legacy endpoint to Dark.
 - Docs site theme switched from ReadTheDocs to Material for MkDocs (nav tabs,
   dark mode, native wide-table scrolling; `docs/assets/tables.css` removed).
 - The Evidence nav section is now **Benchmarks**, restructured visitor-first:
@@ -1447,7 +1481,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/fakoli/anvil-serving/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/fakoli/anvil-serving/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/fakoli/anvil-serving/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/fakoli/anvil-serving/compare/v0.15.0...v0.16.0

@@ -45,13 +45,58 @@ def running_controller(**kwargs):
             thread.join(timeout=5)
 
 
-def _request(host, port, method, path, body=None, headers=None, content_type="application/json"):
+def _request(
+    host,
+    port,
+    method,
+    path,
+    body=None,
+    headers=None,
+    content_type="application/json",
+    mcp_defaults=True,
+):
     conn = http.client.HTTPConnection(host, port, timeout=10)
     try:
+        if mcp_defaults and path == "/mcp" and isinstance(body, dict):
+            body = dict(body)
+            params = body.get("params")
+            if params is None:
+                params = {}
+                body["params"] = params
+            if isinstance(params, dict):
+                params = dict(params)
+                metadata = dict(params.get("_meta") or {})
+                metadata.setdefault(
+                    "io.modelcontextprotocol/protocolVersion",
+                    mcp.PROTOCOL_VERSION,
+                )
+                metadata.setdefault(
+                    "io.modelcontextprotocol/clientCapabilities",
+                    {},
+                )
+                metadata.setdefault(
+                    "io.modelcontextprotocol/clientInfo",
+                    {"name": "anvil-controller-tests", "version": "1.0"},
+                )
+                params["_meta"] = metadata
+                body["params"] = params
         payload = None if body is None else json.dumps(body)
         req_headers = {}
         if content_type is not None:
             req_headers["Content-Type"] = content_type
+        if mcp_defaults and path == "/mcp" and isinstance(body, dict):
+            req_headers["Accept"] = "application/json, text/event-stream"
+            req_headers["MCP-Protocol-Version"] = mcp.PROTOCOL_VERSION
+            request_method = body.get("method")
+            if isinstance(request_method, str):
+                req_headers["Mcp-Method"] = request_method
+            params = body.get("params")
+            if (
+                request_method == "tools/call"
+                and isinstance(params, dict)
+                and isinstance(params.get("name"), str)
+            ):
+                req_headers["Mcp-Name"] = params["name"]
         if headers:
             req_headers.update(headers)
         conn.request(method, path, payload, req_headers)
@@ -387,11 +432,14 @@ def test_controller_lists_and_calls_tools_over_jsonrpc_and_rest():
             host,
             port,
             "POST",
-            "/",
+            "/mcp",
             body={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
             headers=auth,
         )
         assert status == 200
+        assert body["result"]["resultType"] == "complete"
+        assert body["result"]["ttlMs"] == 30000
+        assert body["result"]["cacheScope"] == "private"
         assert body["result"]["tools"][0]["name"] == "fake"
         assert TOKEN not in raw.decode("utf-8")
 
@@ -399,7 +447,7 @@ def test_controller_lists_and_calls_tools_over_jsonrpc_and_rest():
             host,
             port,
             "POST",
-            "/",
+            "/mcp",
             body={
                 "jsonrpc": "2.0",
                 "id": 2,
@@ -412,6 +460,8 @@ def test_controller_lists_and_calls_tools_over_jsonrpc_and_rest():
             headers=auth,
         )
         assert status == 200
+        assert body["result"]["resultType"] == "complete"
+        assert body["result"]["_meta"]["io.modelcontextprotocol/serverInfo"] == mcp.SERVER_INFO
         envelope = body["result"]["structuredContent"]
         assert envelope["ok"] is True
         assert envelope["data"]["diagnostic"] == "<redacted>"
@@ -430,9 +480,131 @@ def test_controller_lists_and_calls_tools_over_jsonrpc_and_rest():
         assert body["ok"] is True
         assert body["request_id"] == "req-1"
 
-    assert any(a["operation"] == "root" and a["tool"] == "fake" for a in audits)
+    assert any(a["operation"] == "mcp" and a["tool"] == "fake" for a in audits)
     assert any(a["operation"] == "tools/call" and a["confirm"] is True for a in audits)
     assert TOKEN not in json.dumps(audits)
+
+
+def test_controller_mcp_2026_discovery_is_the_only_supported_lifecycle():
+    with running_controller() as (host, port):
+        status, _, discovered, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body={"jsonrpc": "2.0", "id": "discover", "method": "server/discover"},
+        )
+        assert status == 200
+        assert discovered["result"]["supportedVersions"] == [mcp.PROTOCOL_VERSION]
+        assert discovered["result"]["resultType"] == "complete"
+        assert discovered["result"]["_meta"]["io.modelcontextprotocol/serverInfo"] == (
+            mcp.SERVER_INFO
+        )
+
+        status, _, legacy, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body={"jsonrpc": "2.0", "id": "legacy", "method": "initialize"},
+        )
+        assert status == 404
+        assert legacy["error"] == {"code": -32601, "message": "method not found"}
+
+
+def test_controller_mcp_2026_rejects_missing_mirrored_headers_and_old_versions():
+    metadata = {
+        "io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION,
+        "io.modelcontextprotocol/clientCapabilities": {},
+    }
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/list",
+        "params": {"_meta": metadata},
+    }
+    with running_controller() as (host, port):
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body=request,
+            mcp_defaults=False,
+        )
+        assert status == 400
+        assert body["error"]["code"] == -32020
+
+        old_version = "2025-11-25"
+        request["params"]["_meta"]["io.modelcontextprotocol/protocolVersion"] = old_version
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body=request,
+            headers={
+                "MCP-Protocol-Version": old_version,
+                "Mcp-Method": "tools/list",
+            },
+            mcp_defaults=False,
+        )
+        assert status == 400
+        assert body["error"]["code"] == -32022
+        assert body["error"]["data"] == {
+            "requested": old_version,
+            "supported": [mcp.PROTOCOL_VERSION],
+        }
+
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body=request,
+            headers={
+                "MCP-Protocol-Version": mcp.PROTOCOL_VERSION,
+                "Mcp-Method": "tools/list",
+            },
+            mcp_defaults=False,
+        )
+        assert status == 400
+        assert body["error"]["code"] == -32020
+
+
+def test_controller_mcp_rejects_browser_origins_and_root_jsonrpc():
+    with running_controller() as (host, port):
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            headers={"Origin": "https://example.test"},
+        )
+        assert status == 403
+        assert body["error"]["message"] == "Origin is not allowed by this controller"
+
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body={"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+            headers={"Origin": f"http://127.0.0.1:{port}"},
+        )
+        assert status == 200
+        assert body["result"]["resultType"] == "complete"
+
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/",
+            body={"jsonrpc": "2.0", "id": 3, "method": "tools/list"},
+        )
+        assert status == 404
+        assert body["error"]["code"] == "not_found"
 
 
 def test_controller_redacts_nested_credential_shaped_result_keys():
@@ -566,7 +738,7 @@ def test_controller_dispatches_hyphenated_canonical_catalog_name():
             host,
             port,
             "POST",
-            "/",
+            "/mcp",
             body={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -696,7 +868,7 @@ def test_text_plain_loopback_post_cannot_execute_even_in_unsafe_dev_mode():
             host,
             port,
             "POST",
-            "/",
+            "/mcp",
             body={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -716,7 +888,7 @@ def test_controller_rejects_duplicate_content_length():
         with socket.create_connection((host, port), timeout=2) as sock:
             sock.settimeout(2)
             sock.sendall(
-                b"POST / HTTP/1.1\r\n"
+                b"POST /mcp HTTP/1.1\r\n"
                 b"Host: 127.0.0.1\r\n"
                 b"Content-Type: application/json\r\n"
                 b"Content-Length: 8\r\n"
@@ -745,7 +917,7 @@ def test_controller_partial_body_read_times_out_and_is_audited():
         with socket.create_connection((host, port), timeout=2) as sock:
             sock.settimeout(2)
             sock.sendall(
-                b"POST / HTTP/1.1\r\n"
+                b"POST /mcp HTTP/1.1\r\n"
                 b"Host: 127.0.0.1\r\n"
                 b"Content-Type: application/json\r\n"
                 b"Content-Length: 128\r\n"
@@ -776,7 +948,7 @@ def test_controller_slow_trickle_body_hits_absolute_read_deadline():
         with socket.create_connection((host, port), timeout=2) as sock:
             sock.settimeout(2)
             sock.sendall(
-                b"POST / HTTP/1.1\r\n"
+                b"POST /mcp HTTP/1.1\r\n"
                 b"Host: 127.0.0.1\r\n"
                 b"Content-Type: application/json\r\n"
                 b"Content-Length: " + str(len(body)).encode("ascii") + b"\r\n"
@@ -817,14 +989,14 @@ def test_jsonrpc_notification_does_not_execute_tool_call():
             host,
             port,
             "POST",
-            "/",
+            "/mcp",
             body={
                 "jsonrpc": "2.0",
                 "method": "tools/call",
                 "params": {"name": "fake", "arguments": {"confirm": True}},
             },
         )
-    assert status == 204
+    assert status == 202
     assert body is None
     assert raw == b""
     assert calls == []
@@ -842,7 +1014,7 @@ def test_jsonrpc_id_null_does_not_execute_tool_call():
             host,
             port,
             "POST",
-            "/",
+            "/mcp",
             body={
                 "jsonrpc": "2.0",
                 "id": None,
@@ -876,7 +1048,7 @@ def test_jsonrpc_unknown_tool_is_protocol_error_and_audited():
             host,
             port,
             "POST",
-            "/",
+            "/mcp",
             body={
                 "jsonrpc": "2.0",
                 "id": 9,
@@ -910,7 +1082,7 @@ def test_jsonrpc_falsey_non_object_arguments_are_rejected_and_not_called():
             host,
             port,
             "POST",
-            "/",
+            "/mcp",
             body={
                 "jsonrpc": "2.0",
                 "id": 10,
@@ -943,7 +1115,7 @@ def test_jsonrpc_falsey_non_object_params_are_rejected_and_not_called():
                 host,
                 port,
                 "POST",
-                "/",
+                "/mcp",
                 body={
                     "jsonrpc": "2.0",
                     "id": 11,
@@ -951,9 +1123,8 @@ def test_jsonrpc_falsey_non_object_params_are_rejected_and_not_called():
                     "params": value,
                 },
             )
-            assert status == 200
+            assert status == 400
             assert body["error"]["code"] == -32602
-            assert body["error"]["message"] == "params must be an object"
     assert calls == []
 
 
@@ -1255,9 +1426,13 @@ def test_controller_jsonrpc_idempotency_uses_exact_header_and_route(tmp_path):
             "params": {"name": "fake", "arguments": {"confirm": True}, "context": CONTEXT},
         }
         headers = {"X-Anvil-Idempotency-Key": "jsonrpc-1"}
-        status, _, first, _ = _request(host, port, "POST", "/", body=request, headers=headers)
+        status, _, first, _ = _request(
+            host, port, "POST", "/mcp", body=request, headers=headers
+        )
         assert status == 200
-        status, _, repeated, _ = _request(host, port, "POST", "/", body=request, headers=headers)
+        status, _, repeated, _ = _request(
+            host, port, "POST", "/mcp", body=request, headers=headers
+        )
         assert status == 200
         assert repeated == first
     assert calls == [("fake", {"confirm": True})]

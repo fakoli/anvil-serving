@@ -2,10 +2,14 @@
 from __future__ import annotations
 
 import os
+import re
+import urllib.parse
 
 CONFIG_HOME_ENV = "ANVIL_SERVING_HOME"
+LOOPBACK_ALIAS_ENV = "ANVIL_SERVING_LOOPBACK_ALIAS"
 DEFAULT_CONFIG_HOME = "~/.anvil-serving"
 DEFAULT_TOPOLOGY_NAME = "operator-topology.toml"
+_HOST_ALIAS_RE = re.compile(r"^[A-Za-z0-9.-]+$")
 
 
 def config_home() -> str:
@@ -26,6 +30,29 @@ def config_path(*parts: str) -> str:
 def default_topology_path() -> str:
     """Return the canonical operator topology path."""
     return config_path(DEFAULT_TOPOLOGY_NAME)
+
+
+def runtime_url(value: str, *, environ: dict[str, str] | None = None) -> str:
+    """Resolve host-relative loopback for an explicitly declared container runtime."""
+
+    parsed = urllib.parse.urlsplit(value)
+    if parsed.hostname != "127.0.0.1":
+        return value
+    env = os.environ if environ is None else environ
+    alias = (env.get(LOOPBACK_ALIAS_ENV) or "").strip()
+    if not alias:
+        return value
+    if not _HOST_ALIAS_RE.fullmatch(alias) or alias.lower() == "localhost":
+        raise ValueError(
+            "%s must be a hostname or IP address without a scheme or port"
+            % LOOPBACK_ALIAS_ENV
+        )
+    port = ""
+    if parsed.port is not None:
+        port = ":%s" % parsed.port
+    return urllib.parse.urlunsplit(
+        (parsed.scheme, alias + port, parsed.path, parsed.query, parsed.fragment)
+    )
 
 
 def resolve_topology_path(

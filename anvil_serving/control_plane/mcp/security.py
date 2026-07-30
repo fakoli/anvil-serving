@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from ...operator_output import redact
+from ...paths import runtime_url
 from .errors import ToolError
 
 
@@ -138,7 +139,17 @@ def is_safe_probe_ip(addr: str) -> bool:
     return bool(ip.is_loopback or ip in ipaddress.ip_network("fc00::/7"))
 
 
+def runtime_probe_url(base_url: str) -> str:
+    """Map host-relative loopback to an explicit container-to-host alias."""
+
+    try:
+        return runtime_url(base_url)
+    except ValueError as exc:
+        raise ToolError("bad_loopback_alias", str(exc)) from exc
+
+
 def safe_probe_url(base_url: str) -> str:
+    base_url = runtime_probe_url(base_url)
     parsed = urllib.parse.urlparse(base_url)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         raise ToolError("bad_base_url", "base_url must be an http(s) URL with a host")

@@ -3232,7 +3232,8 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [
-          "keep_container"
+          "keep_container",
+          "dry_run"
         ],
         "confirmed_arguments": {},
         "fixed_arguments": {
@@ -16561,7 +16562,8 @@
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native"
+        "native",
+        "docker"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.gpus:main",

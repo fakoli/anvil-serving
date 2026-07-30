@@ -58,6 +58,23 @@ TOOL_NAMES = [
     "external_bench_report",
     "external_bench_compare",
 ]
+MCP_META = {
+    "io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION,
+    "io.modelcontextprotocol/clientInfo": {
+        "name": "anvil-serving-tests",
+        "version": "1.0",
+    },
+    "io.modelcontextprotocol/clientCapabilities": {},
+}
+
+
+def _request(method: str, request_id=1, **params):
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": method,
+        "params": {**params, "_meta": MCP_META},
+    }
 
 
 def _canonical_sha256(value) -> str:
@@ -295,31 +312,58 @@ def test_mcp_foundations_and_facades_import_without_cycles(imports):
     assert completed.returncode == 0, completed.stderr
 
 
-def test_jsonrpc_initialize_notification_and_unknown_method_are_unchanged():
-    initialized = mcp.handle_request(
-        {"jsonrpc": "2.0", "id": 1, "method": "initialize"}
-    )
-    notification = mcp.handle_request(
-        {"jsonrpc": "2.0", "method": "notifications/initialized"}
-    )
-    unknown = mcp.handle_request(
-        {"jsonrpc": "2.0", "id": 2, "method": "unknown"}
-    )
+def test_jsonrpc_2026_discovery_results_and_legacy_initialize_removal():
+    discovered = mcp.handle_request(_request("server/discover"))
+    initialized = mcp.handle_request(_request("initialize", request_id=2))
 
-    assert initialized == {
+    assert discovered == {
         "jsonrpc": "2.0",
         "id": 1,
         "result": {
-            "protocolVersion": mcp.PROTOCOL_VERSION,
-            "serverInfo": mcp.SERVER_INFO,
+            "resultType": "complete",
+            "supportedVersions": [mcp.PROTOCOL_VERSION],
             "capabilities": {"tools": {}},
+            "instructions": (
+                "Operate Anvil Serving through explicit, bounded tools. "
+                "Mutating tools retain their dry-run, confirmation, and human gates."
+            ),
+            "_meta": {
+                "io.modelcontextprotocol/serverInfo": mcp.SERVER_INFO,
+            },
+            "ttlMs": 30000,
+            "cacheScope": "private",
         },
     }
-    assert notification is None
-    assert unknown == {
+    assert initialized == {
         "jsonrpc": "2.0",
         "id": 2,
         "error": {"code": -32601, "message": "method not found"},
+    }
+
+
+def test_jsonrpc_requires_stateless_2026_metadata():
+    missing = mcp.handle_request(
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+    )
+    old = mcp.handle_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/list",
+            "params": {
+                "_meta": {
+                    **MCP_META,
+                    "io.modelcontextprotocol/protocolVersion": "2025-11-25",
+                }
+            },
+        }
+    )
+
+    assert missing["error"]["code"] == -32602
+    assert old["error"]["code"] == -32022
+    assert old["error"]["data"] == {
+        "requested": "2025-11-25",
+        "supported": [mcp.PROTOCOL_VERSION],
     }
 
 
@@ -329,7 +373,14 @@ def test_stdio_parse_errors_and_notifications_remain_bounded():
     assert mcp.serve_stdio(
         stdin=[
             "{not-json}\n",
-            '{"jsonrpc":"2.0","method":"notifications/initialized"}\n',
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "notifications/cancelled",
+                    "params": {"_meta": MCP_META},
+                }
+            )
+            + "\n",
         ],
         stdout=stdout,
     ) == 0
@@ -340,8 +391,17 @@ def test_stdio_parse_errors_and_notifications_remain_bounded():
 
 
 def test_proxy_uses_explicit_remote_request_seam(monkeypatch):
-    request = {"jsonrpc": "2.0", "id": 7, "method": "tools/list"}
-    response = {"jsonrpc": "2.0", "id": 7, "result": {"tools": mcp.list_tools()}}
+    request = _request("tools/list", request_id=7)
+    response = {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "result": {
+            "resultType": "complete",
+            "tools": mcp.list_tools(),
+            "ttlMs": 30000,
+            "cacheScope": "private",
+        },
+    }
     calls = []
 
     def remote(controller_url, payload, token):
@@ -361,3 +421,43 @@ def test_proxy_uses_explicit_remote_request_seam(monkeypatch):
     assert calls == [
         ("http://127.0.0.1:8765", request, "secret"),
     ]
+
+
+def test_remote_controller_request_uses_2026_http_endpoint_and_headers():
+    request = _request(
+        "tools/call",
+        request_id=9,
+        name="weather_世界",
+        arguments={},
+    )
+    seen = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"jsonrpc":"2.0","id":9,"result":{"resultType":"complete"}}'
+
+    def opener(req, timeout):
+        seen["url"] = req.full_url
+        seen["headers"] = {name.lower(): value for name, value in req.header_items()}
+        seen["timeout"] = timeout
+        return Response()
+
+    result = mcp.remote_controller_request(
+        "http://127.0.0.1:8765",
+        request,
+        "secret",
+        opener=opener,
+    )
+
+    assert result["result"]["resultType"] == "complete"
+    assert seen["url"] == "http://127.0.0.1:8765/mcp"
+    assert seen["headers"]["accept"] == "application/json, text/event-stream"
+    assert seen["headers"]["mcp-protocol-version"] == mcp.PROTOCOL_VERSION
+    assert seen["headers"]["mcp-method"] == "tools/call"
+    assert seen["headers"]["mcp-name"].startswith("=?base64?")

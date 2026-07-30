@@ -72,7 +72,15 @@ def tool_router_status(args: dict) -> dict:
     from .... import router_manage
 
     container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
-    return _ok(router_manage.status_summary(container))
+    return _ok(
+        router_manage.status_summary(
+            container,
+            _open=lambda url, timeout: urllib.request.urlopen(
+                _safe_probe_url(url),
+                timeout=timeout,
+            ),
+        )
+    )
 
 
 def tool_router_logs(args: dict) -> dict:

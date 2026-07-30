@@ -69,6 +69,80 @@ In the reference topology, Fakoli Dark owns LLM, STT, and TTS serves. Fakoli Min
 OpenClaw Gateway and realtime proxy only. Use `voice audio` and `voice proxy` commands with an
 explicit topology file; loopback addresses are host-relative.
 
+## Operate Dark from Mini
+
+Build and start the restricted controller on Fakoli Dark from the repository
+root. Keep the token in the process environment or a host secret manager:
+
+```powershell
+$env:ANVIL_CONTROLLER_TOKEN = '<generated secret>'
+docker compose -f examples/fakoli-dark/docker-compose.controller.yml build controller
+docker compose -f examples/fakoli-dark/docker-compose.controller.yml up -d --wait controller
+anvil-serving controller status --url http://127.0.0.1:8765
+```
+
+The deployment publishes only `127.0.0.1:8765`. Expose that loopback listener
+to the tailnet from the Dark host, not from the container:
+
+```powershell
+tailscale serve --bg --set-path=/anvil-controller http://127.0.0.1:8765
+tailscale serve status
+```
+
+On Fakoli Mini, install the same Anvil Serving revision and provide the same
+token to the OpenClaw gateway's owner-only service environment. Register the
+stdio bridge through OpenClaw's current `mcp.servers` surface:
+
+```bash
+openclaw mcp add anvil-serving \
+  --command /Users/<operator>/.local/bin/anvil-serving \
+  --arg mcp --arg serve \
+  --arg=--controller-url \
+  --arg https://fakoli-dark.<tailnet>.ts.net/anvil-controller/mcp \
+  --arg=--auth-env \
+  --arg ANVIL_CONTROLLER_TOKEN \
+  --env 'ANVIL_CONTROLLER_TOKEN=${ANVIL_CONTROLLER_TOKEN}' \
+  --no-probe
+openclaw mcp probe anvil-serving
+openclaw mcp doctor
+```
+
+The Mini-side process is a model-free stdio bridge using the packaged official
+TypeScript MCP SDK. Its client-facing side accepts the initialize era through
+`2025-11-25` and stateless `2026-07-28`; its controller-facing side is pinned
+to `2026-07-28` and forwards the dynamically registered restricted tool
+catalog to Dark's `/mcp` endpoint. OpenClaw deliberately filters the ambient
+environment of stdio children, so the server declaration must include the
+literal reference `${ANVIL_CONTROLLER_TOKEN}` in its `env` map. OpenClaw
+resolves that reference from the gateway service environment when it activates
+the server. Never put the token value itself in `openclaw.json`.
+
+OpenClaw `2026.7.1-2` expands the reference before its `mcp doctor` credential
+heuristic runs, so doctor may warn that the resolved entry contains a literal
+sensitive value even when the raw owner-only JSON still stores only the
+`${ANVIL_CONTROLLER_TOKEN}` reference. Treat that version-specific warning as
+expected only after confirming the raw reference and `0600` file permissions;
+never print the resolved config value while checking it.
+
+The native `mcp.servers` layout and the client's wire protocol are separate
+compatibility gates. The bridge test suite exercises the exact
+`@modelcontextprotocol/sdk` `1.29.0` generation bundled by OpenClaw
+`2026.7.1-2`, plus a modern SDK `2.0.0` client. Dark remains modern-only in
+both cases.
+
+The example controller includes Docker-compatible router, serve, voice,
+inventory, preflight, benchmark-probe, and workflow-validation tools. It
+excludes native-host management, OpenClaw gateway lifecycle, promotion,
+artifact publication, and experimental manifests that are not mounted.
+SSH remains an explicit break-glass transport for native-only work; it is not
+an automatic fallback from controller errors.
+
+The Docker socket is intentionally writable because lifecycle operations need
+it. Do not mount a user home, `.ssh`, GitHub CLI config, or the whole operator
+configuration directory into this container. Consequently, GitHub- or
+SSH-authenticated actions are unavailable inside it; perform those on an
+operator host or add a separately reviewed, narrowly scoped credential path.
+
 ## OpenClaw sync
 
 Render or apply OpenClaw provider configuration through `harness sync openclaw`. The generated

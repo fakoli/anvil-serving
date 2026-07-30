@@ -62,6 +62,7 @@ _FORBIDDEN_ARGUMENT_KEYS = frozenset(
         "token",
     }
 )
+_CREDENTIAL_REFERENCE_KEYS = frozenset({"api_key_env", "voice_api_key_env"})
 _SECRET_KEY_PARTS = frozenset(
     {"api", "apikey", "authorization", "credential", "password", "secret", "token"}
 )
@@ -862,6 +863,8 @@ def _is_secret_key(key: str) -> bool:
 
 
 def _is_forbidden_argument_key(key: str) -> bool:
+    if key.lower() in _CREDENTIAL_REFERENCE_KEYS:
+        return False
     return key.lower() in _FORBIDDEN_ARGUMENT_KEYS or _is_secret_key(key)
 
 

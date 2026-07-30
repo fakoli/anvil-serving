@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import urllib.request
 from typing import Optional
 
 from ..arguments import (
@@ -20,6 +21,7 @@ from ..runtime import (
     run_argv as _run_argv,
     run_argv_spooled as _run_argv_spooled,
 )
+from ..security import safe_probe_url as _safe_probe_url
 
 
 def tool_serves_status(args: dict) -> dict:
@@ -42,7 +44,16 @@ def tool_serves_status(args: dict) -> dict:
             "could not load serves manifest",
             {"manifest": manifest, "error": str(exc)},
         )
-    return _ok(serves_mod.status_summary(serves, names))
+    return _ok(
+        serves_mod.status_summary(
+            serves,
+            names,
+            _open=lambda url, timeout: urllib.request.urlopen(
+                _safe_probe_url(url),
+                timeout=timeout,
+            ),
+        )
+    )
 
 
 def tool_reservation_status(args: dict) -> dict:
