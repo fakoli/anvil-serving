@@ -34,5 +34,7 @@ downstream protocol metadata, schema validation before dispatch, and tool
 calls.
 
 Commit changes to the TypeScript source, lockfile, and generated asset
-together. Do not put controller tokens in npm configuration, source files,
-arguments, or fixtures.
+together. Do not put controller token values in npm configuration, source
+files, arguments, or fixtures. An OpenClaw `mcp.servers` entry may contain the
+literal `${ANVIL_CONTROLLER_TOKEN}` reference; OpenClaw resolves it from the
+owner-only gateway service environment.

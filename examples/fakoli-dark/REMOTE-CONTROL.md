@@ -164,8 +164,20 @@ openclaw mcp probe anvil-serving
 ```
 
 The OpenClaw gateway service must inherit `ANVIL_CONTROLLER_TOKEN` from its
-owner-only service environment. The token is referenced by environment
-variable name and is never stored in the MCP server arguments.
+owner-only service environment. Because OpenClaw filters ambient stdio child
+environments, the saved server must also map the variable to a literal
+reference:
+
+```json
+{
+  "env": {
+    "ANVIL_CONTROLLER_TOKEN": "${ANVIL_CONTROLLER_TOKEN}"
+  }
+}
+```
+
+The reference is safe to store; the token value is not. The value is never
+stored in the MCP server arguments or `openclaw.json`.
 
 ## One-time Dark setup
 
@@ -214,6 +226,7 @@ Validated from Mini against the live Dark controller on 2026-07-29:
 | Voice status/logs | Correctly report unavailable while STT/TTS containers are absent |
 | Live lifecycle mutation | Not exercised; human confirmation intentionally withheld |
 | OpenClaw MCP probe | Passed through the Mini-side dual-era bridge |
+| OpenClaw SDK tool calls | `router_status` and `gpu_inventory` passed against Dark |
 
 This is not a claim that every command in the entire Anvil Serving CLI is
 remote-capable. Only operations declared in the controller catalog and Mini's
@@ -242,5 +255,7 @@ anvil-serving router status --transport controller --json
   treat the absent containers as the current expected state.
 - OpenClaw reports `Connection closed`: confirm Node.js 20+ is on the gateway
   service `PATH`, the controller token is present in the owner-only service
-  environment, and the installed Mini package version exactly matches Dark's
-  controller version. Then run `openclaw mcp probe anvil-serving`.
+  environment, the server `env` map contains the literal
+  `${ANVIL_CONTROLLER_TOKEN}` reference, and the installed Mini package
+  version exactly matches Dark's controller version. Then run
+  `openclaw mcp reload` and `openclaw mcp probe anvil-serving`.

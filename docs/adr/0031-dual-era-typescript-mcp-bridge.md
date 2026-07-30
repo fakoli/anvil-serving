@@ -44,8 +44,10 @@ client pinned to `2026-07-28`, verifies that the server identity is
 `anvil-serving` at the exact installed version, fetches the restricted remote
 catalog, converts its JSON Schemas with the SDK's supported adapter, and
 registers only those tools. Tool arguments are independently validated before
-dispatch. Tokens remain in the inherited environment and never enter argv,
-configuration, or error output.
+dispatch. Token values remain in the owner-only service environment and never
+enter argv, configuration, or error output. OpenClaw's declaration contains
+only a `${ANVIL_CONTROLLER_TOKEN}` reference because its stdio transport
+filters ambient child environments.
 
 The Dark controller retains its existing modern-only `/mcp` implementation,
 operation allowlist, idempotency store, confirmation gates, loopback bind, and

@@ -170,9 +170,11 @@ OpenClaw stores this stdio declaration under its native `mcp.servers`
 configuration. OpenClaw `2026.7.1-2` bundles MCP TypeScript SDK `1.29.0`,
 advertises `2025-11-25`, and sends `initialize`; that exact client generation
 is covered by the bridge regression tests. Keep the controller token in the
-OpenClaw service environment and pass only
-`--auth-env ANVIL_CONTROLLER_TOKEN` in the server arguments; do not save the
-token value in OpenClaw's MCP JSON.
+OpenClaw service environment. Pass `--auth-env ANVIL_CONTROLLER_TOKEN` in the
+server arguments and set the server environment entry to the literal
+`${ANVIL_CONTROLLER_TOKEN}` reference. OpenClaw filters ambient stdio child
+environments, then resolves that explicit reference during activation. Do not
+save the token value in OpenClaw's MCP JSON.
 
 ## Controller
 

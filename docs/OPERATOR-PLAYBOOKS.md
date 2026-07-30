@@ -101,6 +101,7 @@ openclaw mcp add anvil-serving \
   --arg https://fakoli-dark.<tailnet>.ts.net/anvil-controller/mcp \
   --arg=--auth-env \
   --arg ANVIL_CONTROLLER_TOKEN \
+  --env 'ANVIL_CONTROLLER_TOKEN=${ANVIL_CONTROLLER_TOKEN}' \
   --no-probe
 openclaw mcp probe anvil-serving
 openclaw mcp doctor
@@ -110,10 +111,11 @@ The Mini-side process is a model-free stdio bridge using the packaged official
 TypeScript MCP SDK. Its client-facing side accepts the initialize era through
 `2025-11-25` and stateless `2026-07-28`; its controller-facing side is pinned
 to `2026-07-28` and forwards the dynamically registered restricted tool
-catalog to Dark's `/mcp` endpoint.
-Do not put the token in `mcp.servers.*.env` or an HTTP header in
-`openclaw.json`; the child process inherits it from the gateway service
-environment.
+catalog to Dark's `/mcp` endpoint. OpenClaw deliberately filters the ambient
+environment of stdio children, so the server declaration must include the
+literal reference `${ANVIL_CONTROLLER_TOKEN}` in its `env` map. OpenClaw
+resolves that reference from the gateway service environment when it activates
+the server. Never put the token value itself in `openclaw.json`.
 
 The native `mcp.servers` layout and the client's wire protocol are separate
 compatibility gates. The bridge test suite exercises the exact
