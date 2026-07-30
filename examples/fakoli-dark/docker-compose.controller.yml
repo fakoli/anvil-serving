@@ -10,7 +10,7 @@ services:
     build:
       context: ../..
       target: controller
-    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.17.0}
+    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.18.0}
     container_name: anvil-serving-controller
     restart: unless-stopped
     user: "999:999"

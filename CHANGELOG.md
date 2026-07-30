@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-07-30
+
+Anvil Serving 0.18.0 is the remote-controller and MCP interoperability
+release. It lets a model-free Fakoli Mini operate Fakoli Dark through a
+restricted controller, while a dual-era TypeScript bridge keeps current
+OpenClaw clients compatible with the modern MCP contract on Dark.
+
+### Highlights
+
+- **Containerized remote control on Dark.** The controller runs as a dedicated
+  non-root Linux container with explicit Docker-socket, GPU, configuration,
+  state, and Tailscale Serve boundaries.
+- **Dual-era MCP on Mini.** The bundled TypeScript bridge accepts both
+  initialize-based MCP through `2025-11-25` and stateless MCP `2026-07-28`,
+  translating both onto a modern-only authenticated Dark endpoint.
+- **Repeatable OpenClaw operation.** Typed CLI and MCP operations, credential
+  references, dry-run shutdown, GPU inventory, deployment documentation, and
+  live validation boundaries make the Mini-to-Dark topology reproducible.
+
 ### Changed
 
 - The Fakoli Mini stdio bridge now bundles the official TypeScript MCP SDK
@@ -1462,7 +1481,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/fakoli/anvil-serving/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/fakoli/anvil-serving/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/fakoli/anvil-serving/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/fakoli/anvil-serving/compare/v0.15.0...v0.16.0
