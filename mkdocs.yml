@@ -144,6 +144,8 @@ nav:
       - 'ADR-0027: Public findings are durable evidence': adr/0027-public-findings-are-durable-evidence.md
       - 'ADR-0028: Serving, benchmarks, and a thin capability gateway': adr/0028-serving-benchmarks-and-thin-capability-gateway.md
       - 'ADR-0029: Modular command registry': adr/0029-modular-command-registry.md
+      - 'ADR-0030: Containerized Dark controller and MCP 2026': adr/0030-containerized-remote-controller-and-mcp-2026.md
+      - 'ADR-0031: Dual-era TypeScript MCP bridge': adr/0031-dual-era-typescript-mcp-bridge.md
   - Changelog: changelog.md
 
 markdown_extensions:

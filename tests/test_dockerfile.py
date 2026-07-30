@@ -103,6 +103,22 @@ def test_dockerfile_never_hardcodes_a_secret_looking_literal():
     assert "ANVIL_ROUTER_TOKEN=" not in text.replace(" ", "")
 
 
+def test_dockerfile_has_separate_pinned_controller_target():
+    text = _text()
+
+    assert re.search(
+        r"^ARG DOCKER_CLI_IMAGE=docker:29\.6\.2-cli@sha256:[0-9a-f]{64}$",
+        text,
+        re.MULTILINE,
+    )
+    assert re.search(r"^FROM runtime AS controller$", text, re.MULTILINE)
+    assert "/usr/local/bin/docker /usr/local/bin/docker" in text
+    assert "docker/cli-plugins/docker-compose" in text
+    assert 'ENTRYPOINT ["anvil-serving", "controller", "serve"]' in text
+    assert "ANVIL_SERVING_LOOPBACK_ALIAS=host.docker.internal" in text
+    assert re.search(r"^FROM router AS default$", text, re.MULTILINE)
+
+
 def test_dockerignore_exists_and_excludes_vcs_tests_docs_caches():
     assert DOCKERIGNORE.is_file(), ".dockerignore must exist at repo root"
     text = DOCKERIGNORE.read_text(encoding="utf-8")

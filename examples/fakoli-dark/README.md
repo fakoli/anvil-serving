@@ -1,5 +1,8 @@
 # Primary Node Operator Topology
 
+For deployment, daily commands, safety gates, and current validation coverage,
+see [Companion Node to Dark remote control](REMOTE-CONTROL.md).
+
 `operator-topology.toml` is an offline-only reference for the split OpenClaw
 deployment. Its addresses and GPU UUIDs are synthetic documentation values,
 not a live inventory or deployment file.

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from typing import Any
@@ -87,6 +89,26 @@ def controller_auth_headers(token: str) -> dict[str, str]:
     }
 
 
+def _mcp_endpoint(controller_url: str) -> str:
+    parsed = urllib.parse.urlsplit(controller_url)
+    if parsed.path in ("", "/"):
+        parsed = parsed._replace(path="/mcp")
+    return urllib.parse.urlunsplit(parsed)
+
+
+def _mcp_header_value(value: str) -> str:
+    plain_ascii = (
+        bool(value)
+        and value == value.strip()
+        and all(0x20 <= ord(char) <= 0x7E for char in value)
+        and not (value.startswith("=?base64?") and value.endswith("?="))
+    )
+    if plain_ascii:
+        return value
+    encoded = base64.b64encode(value.encode("utf-8")).decode("ascii")
+    return "=?base64?%s?=" % encoded
+
+
 def remote_controller_request(
     controller_url: str,
     request: dict,
@@ -99,15 +121,34 @@ def remote_controller_request(
 
     if not token:
         raise ToolError("missing_controller_token", "controller token is required")
-    controller_url = safe_controller_url(controller_url)
+    controller_url = _mcp_endpoint(safe_controller_url(controller_url))
     if opener is None:
         opener = urlopen_no_proxy_no_redirect
     body = json.dumps(request, separators=(",", ":")).encode("utf-8")
+    method = request.get("method")
+    params = request.get("params")
+    metadata = params.get("_meta") if isinstance(params, dict) else None
+    protocol_version = (
+        metadata.get("io.modelcontextprotocol/protocolVersion")
+        if isinstance(metadata, dict)
+        else None
+    )
+    if not isinstance(method, str) or not isinstance(protocol_version, str):
+        raise ToolError(
+            "bad_mcp_request",
+            "remote MCP requests require method and protocolVersion metadata",
+        )
     headers = {
-        "Accept": "application/json",
+        "Accept": "application/json, text/event-stream",
         "Content-Type": "application/json",
+        "MCP-Protocol-Version": protocol_version,
+        "Mcp-Method": method,
         **controller_auth_headers(token),
     }
+    if method == "tools/call" and isinstance(params, dict):
+        name = params.get("name")
+        if isinstance(name, str):
+            headers["Mcp-Name"] = _mcp_header_value(name)
     req = urllib.request.Request(
         controller_url,
         data=body,

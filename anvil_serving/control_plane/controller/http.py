@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import base64
 import hmac
 import os
 import socket
 import sys
 import time
+import urllib.parse
 from http.server import BaseHTTPRequestHandler
 from typing import Any, Callable, Optional, Sequence
 
 from ... import mcp
+from ..mcp import protocol as mcp_protocol
 from .catalog import (
     CallToolFunc,
     ListToolsFunc,
@@ -87,11 +90,102 @@ def _response_with_request_id(
 
 
 def _tool_result(envelope: dict) -> dict:
-    return {
-        "content": [{"type": "text", "text": _json_dumps(envelope)}],
-        "structuredContent": envelope,
-        "isError": not envelope.get("ok", False),
-    }
+    return mcp_protocol.tool_result(
+        envelope,
+        server_info=mcp.SERVER_INFO,
+    )
+
+
+def _decode_mcp_header(value: str) -> str:
+    value = value.strip(" \t")
+    if not (value.startswith("=?base64?") and value.endswith("?=")):
+        return value
+    encoded = value[len("=?base64?") : -2]
+    try:
+        decoded = base64.b64decode(encoded, validate=True)
+        return decoded.decode("utf-8")
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise ControllerError(
+            "mcp_header_mismatch",
+            "MCP header contains invalid Base64 sentinel encoding",
+            status=400,
+        ) from exc
+
+
+def _mcp_header_error(headers: Any, body: dict[str, Any]) -> dict | None:
+    metadata_error = mcp_protocol.request_metadata_error(
+        body,
+        protocol_version=mcp.PROTOCOL_VERSION,
+        check_supported_version=False,
+    )
+    if metadata_error is not None:
+        return metadata_error
+    request_id = body.get("id")
+    params = body.get("params")
+    metadata = params.get("_meta") if isinstance(params, dict) else None
+    body_version = (
+        metadata.get(mcp_protocol.PROTOCOL_VERSION_META_KEY)
+        if isinstance(metadata, dict)
+        else None
+    )
+    header_version = headers.get("MCP-Protocol-Version")
+    if not isinstance(header_version, str) or header_version != body_version:
+        return mcp_protocol.jsonrpc_error(
+            request_id,
+            mcp_protocol.HEADER_MISMATCH,
+            "MCP-Protocol-Version header is missing or does not match request metadata",
+        )
+    method = body.get("method")
+    if headers.get("Mcp-Method") != method:
+        return mcp_protocol.jsonrpc_error(
+            request_id,
+            mcp_protocol.HEADER_MISMATCH,
+            "Mcp-Method header is missing or does not match the request method",
+        )
+    if method == "tools/call":
+        name = params.get("name") if isinstance(params, dict) else None
+        header_name = headers.get("Mcp-Name")
+        try:
+            decoded_name = (
+                _decode_mcp_header(header_name)
+                if isinstance(header_name, str)
+                else None
+            )
+        except ControllerError:
+            decoded_name = None
+        if decoded_name != name:
+            return mcp_protocol.jsonrpc_error(
+                request_id,
+                mcp_protocol.HEADER_MISMATCH,
+                "Mcp-Name header is missing or does not match the requested tool",
+            )
+    return mcp_protocol.request_metadata_error(
+        body,
+        protocol_version=mcp.PROTOCOL_VERSION,
+    )
+
+
+def _mcp_origin_allowed(value: str) -> bool:
+    """Accept only explicit loopback browser origins."""
+
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        return False
+    if (
+        parsed.scheme not in ("http", "https")
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in ("", "/")
+    ):
+        return False
+    host = (parsed.hostname or "").lower()
+    return host in {"localhost", "127.0.0.1", "::1"} and (
+        port is None or 0 < port <= 65535
+    )
 
 
 def make_handler(
@@ -168,8 +262,8 @@ def make_handler(
                 except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
                     self.close_connection = True
 
-        def _send_no_content(self, *, request_id: str) -> None:
-            self.send_response(204)
+        def _send_no_content(self, *, request_id: str, status: int = 204) -> None:
+            self.send_response(status)
             self.send_header("Content-Length", "0")
             self.send_header(_REQUEST_ID_HEADER, request_id)
             self.send_header("Cache-Control", "no-store")
@@ -441,27 +535,27 @@ def make_handler(
                     "error": {"code": -32600, "message": "id must not be null"},
                 }
             method = body.get("method")
-            if method == "initialize":
-                result = {
-                    "protocolVersion": mcp.PROTOCOL_VERSION,
-                    "serverInfo": mcp.SERVER_INFO,
-                    "capabilities": {"tools": {}},
-                }
+            if method == "server/discover":
+                result = mcp_protocol.complete_result(
+                    {
+                        "supportedVersions": [mcp.PROTOCOL_VERSION],
+                        "capabilities": {"tools": {}},
+                        "instructions": (
+                            "Operate Anvil Serving through explicit, bounded tools. "
+                            "Mutating tools retain their dry-run, confirmation, and human gates."
+                        ),
+                    },
+                    server_info=mcp.SERVER_INFO,
+                    cacheable=True,
+                )
             elif method == "tools/list":
-                result = {"tools": declared_tools}
+                result = mcp_protocol.complete_result(
+                    {"tools": declared_tools},
+                    server_info=mcp.SERVER_INFO,
+                    cacheable=True,
+                )
             elif method == "tools/call":
-                params = body.get("params", {})
-                if params is None:
-                    params = {}
-                if not isinstance(params, dict):
-                    return {
-                        "jsonrpc": "2.0",
-                        "id": req_id,
-                        "error": {
-                            "code": -32602,
-                            "message": "params must be an object",
-                        },
-                    }
+                params = body["params"]
                 raw_tool_name = params.get("name")
                 normalized_name = (
                     _mcp_tool_name(raw_tool_name) if isinstance(raw_tool_name, str) else None
@@ -513,8 +607,6 @@ def make_handler(
                         },
                     }
                 result = _tool_result(envelope)
-            elif method == "notifications/initialized":
-                return None
             else:
                 return {
                     "jsonrpc": "2.0",
@@ -596,6 +688,17 @@ def make_handler(
                         extra_headers={"Allow": "POST"},
                     )
                     return
+                if route == "/mcp":
+                    status = 405
+                    error_code = "method_not_allowed"
+                    self._send_error_json(
+                        status,
+                        error_code,
+                        "the MCP endpoint only accepts POST requests",
+                        request_id=request_id,
+                        extra_headers={"Allow": "POST"},
+                    )
+                    return
                 status = 404
                 error_code = "not_found"
                 self._send_error_json(
@@ -660,8 +763,46 @@ def make_handler(
                         request_id=request_id,
                     )
                     return
-                if route in ("/", "/mcp"):
+                if route == "/mcp":
                     body = self._read_json_body(request_id=request_id)
+                    origin = self.headers.get("Origin")
+                    if origin is not None and not _mcp_origin_allowed(origin):
+                        status = 403
+                        error_code = "origin_not_allowed"
+                        self._send_json(
+                            status,
+                            mcp_protocol.jsonrpc_error(
+                                body.get("id"),
+                                -32600,
+                                "Origin is not allowed by this controller",
+                            ),
+                            request_id=request_id,
+                        )
+                        return
+                    protocol_error = _mcp_header_error(self.headers, body)
+                    if protocol_error is not None:
+                        error = protocol_error.get("error")
+                        code = error.get("code") if isinstance(error, dict) else None
+                        status = (
+                            404
+                            if code == -32601
+                            else 400
+                        )
+                        error_code = (
+                            "header_mismatch"
+                            if code == mcp_protocol.HEADER_MISMATCH
+                            else "unsupported_protocol_version"
+                            if code == mcp_protocol.UNSUPPORTED_PROTOCOL_VERSION
+                            else "missing_required_client_capability"
+                            if code == mcp_protocol.MISSING_REQUIRED_CLIENT_CAPABILITY
+                            else "invalid_request"
+                        )
+                        self._send_json(
+                            status,
+                            protocol_error,
+                            request_id=request_id,
+                        )
+                        return
                     if "id" in body and body.get("method") == "tools/call":
                         params = body.get("params", {})
                         if params is None:
@@ -697,6 +838,15 @@ def make_handler(
                             ok = False
                             error = response.get("error")
                             data = error.get("data") if isinstance(error, dict) else None
+                            code = error.get("code") if isinstance(error, dict) else None
+                            if code == -32601:
+                                status = 404
+                            elif code in {
+                                mcp_protocol.HEADER_MISMATCH,
+                                mcp_protocol.MISSING_REQUIRED_CLIENT_CAPABILITY,
+                                mcp_protocol.UNSUPPORTED_PROTOCOL_VERSION,
+                            }:
+                                status = 400
                             if isinstance(data, dict) and isinstance(data.get("code"), str):
                                 error_code = data["code"]
                             elif isinstance(error, dict) and isinstance(error.get("message"), str):
@@ -717,8 +867,8 @@ def make_handler(
                     if response is not None:
                         self._send_json(status, response, request_id=request_id)
                     else:
-                        status = 204
-                        self._send_no_content(request_id=request_id)
+                        status = 202
+                        self._send_no_content(request_id=request_id, status=status)
                     return
 
                 if route != "/tools/call":

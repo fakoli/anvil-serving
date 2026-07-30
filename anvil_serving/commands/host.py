@@ -35,7 +35,7 @@ def commands() -> tuple[CommandNode, ...]:
                     role="host",
                     argv_prefix=(),
                     remote_operation=_remote("gpu_inventory"),
-                    execution_runtime_roles=("native",),
+                    execution_runtime_roles=("native", "docker"),
                     docs_anchor="docs/cli/host.md#inspect-the-host",
                 ),
                 _node(

@@ -48,7 +48,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "serves_manage",
                     fixed=(("action", "down"),),
-                    allowed=("keep_container",),
+                    allowed=("keep_container", "dry_run"),
                     positionals=("names",),
                 ),
             ),
