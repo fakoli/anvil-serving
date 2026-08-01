@@ -99,6 +99,7 @@ from .control_plane.mcp.tools.serves import (
     tool_reservation_status,
     tool_serves_logs,
     tool_serves_manage,
+    tool_serves_mode,
     tool_serves_promote,
     tool_serves_status,
 )

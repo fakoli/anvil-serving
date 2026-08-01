@@ -121,6 +121,9 @@ def commands() -> CommandNode:
                         role="model-serve",
                         gpu=True,
                         argv_prefix=("mode", "status"),
+                        remote_operation=_remote(
+                            "serves_mode", fixed=(("action", "status"),)
+                        ),
                     ),
                     _resource_node(
                         "preview",
@@ -136,6 +139,12 @@ def commands() -> CommandNode:
                         ),
                         gpu=True,
                         argv_prefix=("mode", "preview"),
+                        remote_operation=_remote(
+                            "serves_mode",
+                            fixed=(("action", "preview"),),
+                            allowed=("manifest", "restore_group"),
+                            positionals=("target",),
+                        ),
                     ),
                     *(
                         _resource_node(
@@ -164,6 +173,16 @@ def commands() -> CommandNode:
                             mutation="mutate",
                             gpu=True,
                             argv_prefix=("mode", action),
+                            remote_operation=_remote(
+                                "serves_mode",
+                                fixed=(("action", action),),
+                                confirmed=(("human_approved", True),),
+                                allowed=(
+                                    "manifest", "restore_group", "drain_timeout",
+                                    "dry_run", "timeout_seconds",
+                                ),
+                                positionals=("target",),
+                            ),
                         )
                         for action, summary in (("enter", "Enter"), ("leave", "Leave"))
                     ),

@@ -4184,11 +4184,21 @@
       "output_policy": "bounded",
       "path": "serves mode status",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "status"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "serves_mode"
+      },
       "resource_role": "model-serve",
       "summary": "Show the active split or exclusive TP=2 mode.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
@@ -4327,11 +4337,26 @@
       "output_policy": "bounded",
       "path": "serves mode preview",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "manifest",
+          "restore_group"
+        ],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "preview"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "target"
+        ],
+        "tool": "serves_mode"
+      },
       "resource_role": "model-serve",
       "summary": "Preview exclusive entry without mutating GPU workloads.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
@@ -4506,11 +4531,31 @@
       "output_policy": "bounded",
       "path": "serves mode enter",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "manifest",
+          "restore_group",
+          "drain_timeout",
+          "dry_run",
+          "timeout_seconds"
+        ],
+        "confirmed_arguments": {
+          "human_approved": true
+        },
+        "fixed_arguments": {
+          "action": "enter"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "target"
+        ],
+        "tool": "serves_mode"
+      },
       "resource_role": "model-serve",
       "summary": "Enter exclusive TP=2 mode transactionally.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
@@ -4685,11 +4730,31 @@
       "output_policy": "bounded",
       "path": "serves mode leave",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "manifest",
+          "restore_group",
+          "drain_timeout",
+          "dry_run",
+          "timeout_seconds"
+        ],
+        "confirmed_arguments": {
+          "human_approved": true
+        },
+        "fixed_arguments": {
+          "action": "leave"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "target"
+        ],
+        "tool": "serves_mode"
+      },
       "resource_role": "model-serve",
       "summary": "Leave exclusive TP=2 mode transactionally.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
