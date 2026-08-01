@@ -240,12 +240,25 @@ def reservation_of(serve: dict) -> Optional[GpuReservation]:
 
 
 def budgets_of(serves: Iterable[dict]) -> dict[str, GpuRoleBudget]:
-    """The manifest's capacity table as attached by serves.load_manifest."""
+    """Merge capacity tables attached across a multi-manifest serve set.
+
+    Separate lifecycle manifests may own different GPU roles.  Equal repeated
+    declarations are harmless mirrors; conflicting declarations fail closed.
+    """
+    budgets: dict[str, GpuRoleBudget] = {}
     for serve in serves:
         table = serve.get(GPU_ROLES_KEY)
-        if table:
-            return table
-    return {}
+        if not table:
+            continue
+        for role, budget in table.items():
+            incumbent = budgets.get(role)
+            if incumbent is not None and incumbent != budget:
+                raise ValueError(
+                    "conflicting gpu_roles capacity for %r across manifest set"
+                    % role
+                )
+            budgets[role] = budget
+    return budgets
 
 
 def is_exclusive(serve: dict) -> bool:

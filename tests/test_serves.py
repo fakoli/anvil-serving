@@ -1807,6 +1807,90 @@ def test_status_summary_reports_the_ledger_structurally(tmp_path):
     assert by_serve["stt"]["committed"] is False
 
 
+def test_status_human_and_structured_outputs_agree_on_exclusive_mode(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, """
+        [[gpu_roles]]
+        id = "dark-compute-a"
+        vram_mib = 97887
+
+        [[gpu_roles]]
+        id = "dark-compute-b"
+        vram_mib = 97887
+
+        [[serve]]
+        name = "split-a"
+        container = "split-a"
+        port = 30001
+        model = "split-a-local"
+        engine = "vllm"
+        gpu_role = "dark-compute-a"
+        vram_mib = 80000
+
+        [[serve]]
+        name = "split-b"
+        container = "split-b"
+        port = 30002
+        model = "split-b-local"
+        engine = "vllm"
+        gpu_role = "dark-compute-b"
+        vram_mib = 80000
+
+        [[serve]]
+        name = "tp2"
+        container = "tp2"
+        port = 30003
+        model = "candidate-local"
+        engine = "vllm"
+        gpu_roles = ["dark-compute-a", "dark-compute-b"]
+        vram_mib = 90000
+        operating_mode = "dual-gpu-exclusive"
+        tensor_parallel_size = 2
+    """))
+    run = _status_states_run({"split-a": "absent", "split-b": "absent", "tp2": "running"})
+    data = serves.status_summary(loaded, _run=run, _open=_open_down)
+    mode = data["operating_mode"]
+    assert mode == {
+        "mode": "dual-gpu-exclusive",
+        "exclusive_owner": "tp2",
+        "gpu_roles": ["dark-compute-a", "dark-compute-b"],
+        "gpu_ownership": [
+            {"gpu_role": "dark-compute-a", "owners": ["tp2"]},
+            {"gpu_role": "dark-compute-b", "owners": ["tp2"]},
+        ],
+        "tensor_parallel_size": 2,
+        "blocked_workloads": ["split-a", "split-b"],
+        "unresolved": [],
+    }
+    assert serves.cmd_status(loaded, _run=run, _open=_open_down) == 0
+    out = capsys.readouterr().out
+    assert "Operating mode: dual-gpu-exclusive" in out
+    assert "exclusive owner: tp2 (TP=2)" in out
+    assert "gpu roles: dark-compute-a, dark-compute-b" in out
+    assert "blocked workloads: split-a, split-b" in out
+
+
+def test_operating_mode_reports_unreachable_docker_as_unresolved(tmp_path):
+    loaded = serves.load_manifest(_manifest(tmp_path, """
+        [[gpu_roles]]
+        id = "dark-compute-a"
+        vram_mib = 97887
+
+        [[serve]]
+        name = "split-a"
+        container = "split-a"
+        port = 30001
+        model = "split-a-local"
+        engine = "vllm"
+        gpu_role = "dark-compute-a"
+        vram_mib = 80000
+    """))
+    summary = serves.operating_mode_summary(loaded, lambda _container: "error")
+    assert summary["mode"] == "unresolved"
+    assert summary["unresolved"] == [{"serve": "split-a", "state": "error"}]
+
+
 def test_status_summary_ledger_spans_the_whole_manifest_despite_names(tmp_path):
     """A name-filtered status still reports role-wide commitments — a ledger
     filtered to the selection would misreport `free`."""

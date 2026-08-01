@@ -2018,6 +2018,62 @@ def reservation_summary(serves, _run=subprocess.run, _states=None):
     return reservations.ledger_summary(ledger)
 
 
+def operating_mode_summary(serves, state_of):
+    """Structured split/exclusive mode and per-role ownership snapshot."""
+    exclusive = [serve for serve in serves if reservations.is_exclusive(serve)]
+    active = []
+    unresolved = []
+    for serve in exclusive:
+        state = state_of(serve["container"])
+        if state in reservations.RESERVED_STATES:
+            active.append(serve)
+        elif state in {"error", "unknown", "removing"}:
+            unresolved.append({"serve": serve["name"], "state": state})
+    owner = active[0] if len(active) == 1 else None
+    ledger = reservations.build_ledger(serves, state_of)
+    unresolved_by_serve = {
+        item["serve"]: item for item in unresolved
+    }
+    for role_ledger in ledger.values():
+        for reservation in role_ledger.reservations:
+            if reservation.state in {"error", "unknown", "removing"}:
+                unresolved_by_serve.setdefault(
+                    reservation.serve,
+                    {"serve": reservation.serve, "state": reservation.state},
+                )
+    unresolved = list(unresolved_by_serve.values())
+    mode = (
+        DUAL_GPU_EXCLUSIVE_MODE if len(active) == 1 and not unresolved
+        else "unresolved" if unresolved or len(active) > 1
+        else "split"
+    )
+    role_ownership = []
+    for role, role_ledger in sorted(ledger.items()):
+        committed = sorted({
+            reservation.serve for reservation in role_ledger.reservations
+            if reservation.committed
+        })
+        role_ownership.append({"gpu_role": role, "owners": committed})
+    return {
+        "mode": mode,
+        "exclusive_owner": owner["name"] if owner else None,
+        "gpu_roles": (
+            [r.gpu_role for r in reservations.reservations_of(owner)] if owner else []
+        ),
+        "gpu_ownership": role_ownership,
+        "tensor_parallel_size": owner.get("tensor_parallel_size") if owner else None,
+        "blocked_workloads": (
+            [
+                serve["name"] for serve in serves
+                if serve["name"] != owner["name"]
+                and reservations.reservations_of(serve)
+            ]
+            if owner else []
+        ),
+        "unresolved": unresolved,
+    }
+
+
 def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request.urlopen):
     """Machine-readable serve status for MCP/automation.
 
@@ -2028,10 +2084,15 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
     status_scope = _serving_path_scope(serves, selected)
     rows = []
     states = {}
+
+    def state_of(container):
+        if container not in states:
+            states[container] = docker_state(container, _run=_run)
+        return states[container]
+
     occupants = _docker_port_occupants((s["port"] for s in selected), _run=_run)
     for s in selected:
-        st = docker_state(s["container"], _run=_run)
-        states[s["container"]] = st
+        st = state_of(s["container"])
         health = _health(s["port"], s.get("health", "/health"), _open=_open) if st == "running" else None
         up = s.get("up")
         expected_project = _expected_compose_project(s) if _is_compose_up(up) else None
@@ -2072,6 +2133,7 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
         "reservations": reservation_summary(
             status_scope, _run=_run, _states=states
         ),
+        "operating_mode": operating_mode_summary(serves, state_of),
     }
 
 
@@ -2161,6 +2223,24 @@ def cmd_status(
             print("  " + role_ledger.describe())
             for r in role_ledger.reservations:
                 print("    %s%s" % (r.describe(), "" if r.committed else " [not committed]"))
+        mode = operating_mode_summary(ledger_source, state_of)
+        print("\nOperating mode: %s" % mode["mode"])
+        if mode["exclusive_owner"]:
+            print("  exclusive owner: %s (TP=%s)" % (
+                mode["exclusive_owner"], mode["tensor_parallel_size"],
+            ))
+            print("  gpu roles: %s" % ", ".join(mode["gpu_roles"]))
+            print("  blocked workloads: %s" % (
+                ", ".join(mode["blocked_workloads"]) or "none",
+            ))
+        for ownership in mode["gpu_ownership"]:
+            print("  %s owners: %s" % (
+                ownership["gpu_role"], ", ".join(ownership["owners"]) or "none",
+            ))
+        for unresolved in mode["unresolved"]:
+            print("  UNRESOLVED: %s state %s" % (
+                unresolved["serve"], unresolved["state"],
+            ))
     return 0
 
 
@@ -2880,29 +2960,7 @@ def cmd_mode(
         return states[container]
 
     if action == "status":
-        exclusive = [s for s in serves if reservations.is_exclusive(s)]
-        unresolved = []
-        active = []
-        for serve in exclusive:
-            state = state_of(serve["container"])
-            if state in reservations.RESERVED_STATES:
-                active.append(serve)
-            elif state in {"error", "unknown", "removing"}:
-                unresolved.append({"serve": serve["name"], "state": state})
-        summary = {
-            "mode": (
-                DUAL_GPU_EXCLUSIVE_MODE if len(active) == 1 and not unresolved
-                else "unresolved" if unresolved or len(active) > 1
-                else "split"
-            ),
-            "exclusive_owner": active[0]["name"] if len(active) == 1 else None,
-            "gpu_roles": (
-                [r.gpu_role for r in reservations.reservations_of(active[0])]
-                if len(active) == 1 else []
-            ),
-            "tensor_parallel_size": active[0].get("tensor_parallel_size") if len(active) == 1 else None,
-            "unresolved": unresolved,
-        }
+        summary = operating_mode_summary(serves, state_of)
         print(json.dumps(summary, indent=2, sort_keys=True))
         return 0 if summary["mode"] != "unresolved" else 1
 
