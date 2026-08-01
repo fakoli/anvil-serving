@@ -704,3 +704,78 @@ def test_vram_types_are_reservations_never_lease():
     assert not [name for name in dir(reservations) if "Lease" in name]
     assert not [name for name in dir(serves) if "Lease" in name]
     assert reservations.GpuReservation.__name__ == "GpuReservation"
+
+
+def test_dual_gpu_exclusive_reservation_is_accounted_on_both_roles(tmp_path):
+    loaded = serves.load_manifest(_manifest(tmp_path, """
+        [[gpu_roles]]
+        id = "dark-compute-a"
+        vram_mib = 97887
+        reserve_mib = 3072
+
+        [[gpu_roles]]
+        id = "dark-compute-b"
+        vram_mib = 97887
+        reserve_mib = 3072
+
+        [[serve]]
+        name = "tp2"
+        container = "vllm-tp2"
+        port = 30000
+        model = "candidate-local"
+        engine = "vllm"
+        gpu_roles = ["dark-compute-a", "dark-compute-b"]
+        vram_mib = 90000
+        residency = "on-demand"
+        operating_mode = "dual-gpu-exclusive"
+        tensor_parallel_size = 2
+    """))
+    ledger = reservations.build_ledger(
+        loaded, lambda container: "running" if container == "vllm-tp2" else "absent"
+    )
+    assert list(ledger) == ["dark-compute-a", "dark-compute-b"]
+    assert ledger["dark-compute-a"].committed_mib == 90000
+    assert ledger["dark-compute-b"].committed_mib == 90000
+    assert [r.gpu_role for r in reservations.reservations_of(loaded[0])] == [
+        "dark-compute-a", "dark-compute-b",
+    ]
+    assert reservations.reservation_of(loaded[0]) is None
+
+
+@pytest.mark.parametrize(
+    "body, message",
+    [
+        (
+            'gpu_roles = ["dark-compute-a", "dark-compute-a"]\n'
+            'operating_mode = "dual-gpu-exclusive"\n'
+            'tensor_parallel_size = 2',
+            "must be distinct",
+        ),
+        (
+            'gpu_roles = ["dark-compute-a", "dark-compute-b"]\n'
+            'operating_mode = "dual-gpu-exclusive"\n'
+            'tensor_parallel_size = 1',
+            "tensor_parallel_size = 2",
+        ),
+    ],
+)
+def test_dual_gpu_exclusive_manifest_fails_closed(tmp_path, body, message):
+    with pytest.raises(ValueError, match=message):
+        serves.load_manifest(_manifest(tmp_path, f"""
+            [[gpu_roles]]
+            id = "dark-compute-a"
+            vram_mib = 97887
+
+            [[gpu_roles]]
+            id = "dark-compute-b"
+            vram_mib = 97887
+
+            [[serve]]
+            name = "tp2"
+            container = "vllm-tp2"
+            port = 30000
+            model = "candidate-local"
+            engine = "vllm"
+            vram_mib = 90000
+            {body}
+        """))

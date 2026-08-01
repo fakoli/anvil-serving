@@ -6,8 +6,8 @@
 # scripts had. DO NOT manage these serves with raw `docker`/`docker compose` — go through
 # `anvil-serving serves` so the management experience stays consistent.
 #
-#   heavy  -> service `primary`  (Agents-A1 official FP8, :30002, RTX PRO 6000 96GB / GPU 1)
-#   omni   -> service `omni` (Nemotron 3 Nano Omni, :30003, RTX 5090 / GPU 0)
+#   primary -> service `primary` (Agents-A1 official FP8, :30002, Compute A)
+#   omni    -> service `omni` (Nemotron 3 Nano Omni, :30003, Compute B)
 #   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
 # 2026-07-29 Primary promotion: Agents-A1 official FP8 replaces Qwen3.5 122B
@@ -16,8 +16,8 @@
 # immediate rollback; Laguna and GPT-OSS Puzzle remain additional recovery
 # options.
 # 2026-07-27 Omni consolidation: one Nemotron 3 Nano Omni serve replaces the
-# former auxiliary LLM, OCR, and general-vision services. It consumes the 5090
-# exclusively; embeddings and reranking remain a separate lifecycle stack.
+# former auxiliary LLM, OCR, and general-vision services. It now reserves
+# Compute B; embeddings and reranking remain a separate lifecycle stack.
 # These replaced the agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live
 # in git history. The convention also shifted: weights now resolve as HF REPO-IDS from the
 # `vllm-hfcache` docker volume (the `anvil-serving models pull` path) — NOT `/models/<dir>`
@@ -29,8 +29,8 @@
 # config volume; see the anvil-router-cfg volume, edited via `anvil-serving`).
 #
 # GPU UUIDs (env-overridable; default to THIS box so the file runs unchanged):
-#   PRIMARY_GPU_UUID  default GPU-d0f446cf-1771-414c-e116-a39138798a8c (RTX PRO 6000 96GB)
-#   AUXILIARY_GPU_UUID   default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
+#   COMPUTE_A_GPU_UUID default GPU-d0f446cf-1771-414c-e116-a39138798a8c (PRO 6000 Max-Q)
+#   COMPUTE_B_GPU_UUID default GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490 (PRO 6000 Max-Q)
 # Find yours with `nvidia-smi --query-gpu=index,uuid --format=csv` (or `anvil-serving doctor`).
 name: anvil-serving
 
@@ -51,7 +51,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -60,7 +60,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     ulimits:
       memlock: -1
@@ -107,7 +107,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     ulimits:
       memlock: -1
@@ -149,7 +149,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -160,7 +160,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     ulimits:
       memlock: -1
@@ -202,7 +202,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -212,7 +212,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -238,8 +238,8 @@ services:
 
   # Exclusive Omni tier: auxiliary text, general vision, and OCR through one
   # OpenAI-compatible endpoint. Live qualification on 2026-07-27 pinned the
-  # image/checkpoint below and measured 27674 MiB steady-state on the RTX 5090.
-  # The 0.88 engine target intentionally consumes the whole 27999 MiB operating
+  # image/checkpoint below and measured 27674 MiB steady-state on the former 5090.
+  # The 0.2860 engine target preserves the qualified 27999 MiB operating
   # budget; the reservation ledger prevents purpose-model co-residency.
   omni:
     image: ${OMNI_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
@@ -253,7 +253,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -263,7 +263,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -278,13 +278,13 @@ services:
       --mamba-ssm-cache-dtype float16
       --max-model-len 65536
       --max-num-seqs 2
-      --gpu-memory-utilization 0.88
+      --gpu-memory-utilization 0.2860
       --host 0.0.0.0 --port 30003
       ${OMNI_EXTRA_ARGS:-}
 
   # Smaller Omni candidate that can coexist with the dedicated STT/TTS stack.
   # vLLM serves Qwen2.5-Omni's Thinker (text/image/audio -> text); it does not
-  # replace Kokoro TTS. Its 0.72 engine cap plus measured runtime overhead fits
+  # replace Kokoro TTS. Its 0.2511 engine cap plus measured runtime overhead fits
   # the 24576 MiB reservation.
   omni-small:
     profiles: ["omni-small"]
@@ -304,7 +304,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -313,7 +313,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -322,20 +322,20 @@ services:
       --served-model-name qwen25-omni-3b
       --max-model-len 32768
       --max-num-seqs 2
-      --gpu-memory-utilization 0.72
+      --gpu-memory-utilization 0.2511
       --host 0.0.0.0 --port 30013
       ${OMNI_SMALL_EXTRA_ARGS:-}
 
   # ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
-  # Mutually exclusive text-embedding + reranker stack for the RTX 5090. Both
+  # Text-embedding + reranker stack on Compute B. Both
   # are 0.6B bf16 checkpoints on the SAME pinned vLLM
   # image as `primary` (a standard image, so the UUID pin applies — gotcha #13; the index-pin
   # exception is gemma4-unified-specific, gotcha #21).
   #
-  # ADR-0017 reservations: serves.toml declares gpu_role "dark-auxiliary" / residency "resident"
+  # ADR-0017 reservations: serves.toml declares gpu_role "dark-compute-b" / residency "resident"
   # with vram_mib 3200 (embeddings) and 3456 (reranker). --gpu-memory-utilization below is
-  # vram_mib / 32607 CAPACITY (fraction of TOTAL device memory — see the `auxiliary` deviation
-  # note above): 0.0981 = 3200/32607 and 0.1060 = 3456/32607. Keep vram_mib and the
+  # vram_mib / 97887 CAPACITY (fraction of TOTAL device memory):
+  # 0.0327 = 3200/97887 and 0.0353 = 3456/97887. Keep vram_mib and the
   # fraction in lockstep.
   #
   # HONEST-MEASURED floor (2026-07-13, single-instance): each engine reports
@@ -363,7 +363,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -374,7 +374,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # --runner pooling --convert embed: this vLLM (0.23) replaced the old `--task embed`
@@ -391,7 +391,7 @@ services:
       --max-num-batched-tokens 2048
       --max-num-seqs 16
       --enforce-eager
-      --gpu-memory-utilization 0.0981
+      --gpu-memory-utilization 0.0327
       --host 0.0.0.0 --port 30005
 
   reranker:
@@ -405,7 +405,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -415,7 +415,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # The upstream vLLM recipe for the original Qwen3-Reranker checkpoints: override the
@@ -432,19 +432,19 @@ services:
       --max-num-batched-tokens 2048
       --max-num-seqs 8
       --enforce-eager
-      --gpu-memory-utilization 0.1060
+      --gpu-memory-utilization 0.0353
       --host 0.0.0.0 --port 30006
 
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
-  # host.docker.internal:<port>. Pinned to the locally built release image anvil-serving:0.18.0
+  # host.docker.internal:<port>. Pinned to the locally built release image anvil-serving:0.19.0
   # and a config VOLUME (anvil-router-cfg). Build that image with the repository Dockerfile; do
   # not use `build:` here, so `up` runs the exact configured runtime tag.
   # Bump this tag with the package version on each router release.
   # ROUTER_IMAGE is a per-invocation CANDIDATE override for pre-release router verification
-  # (e.g. `ROUTER_IMAGE=anvil-serving:0.18.0rc1 anvil-serving router up`); a bare `up` always
+  # (e.g. `ROUTER_IMAGE=anvil-serving:0.19.0rc1 anvil-serving router up`); a bare `up` always
   # reproduces the pinned release.
   router:
-    image: ${ROUTER_IMAGE:-anvil-serving:0.18.0}
+    image: ${ROUTER_IMAGE:-anvil-serving:0.19.0}
     container_name: anvil-router
     restart: unless-stopped
     ports:

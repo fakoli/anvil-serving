@@ -15,6 +15,7 @@ neither selects a model at request time.
    anvil-serving doctor --config <router.toml>
    anvil-serving router status
    anvil-serving serves status --manifest <serves.toml>
+   anvil-serving serves mode status --manifest <serves.toml>
    anvil-serving serves logs <serve-name> --manifest <serves.toml> --tail 200
    ```
 
@@ -23,7 +24,7 @@ neither selects a model at request time.
    diagnosing discovery or request metadata.
 
 The MCP equivalents are `doctor_summary`, `router_status`, `serves_status`,
-`reservation_status`, and `decision_summary`.
+`reservation_status`, `serves_mode`, and `decision_summary`.
 
 ## Start, validate, and benchmark a serve
 
@@ -55,6 +56,38 @@ The MCP equivalents are `doctor_summary`, `router_status`, `serves_status`,
 
 Use the transition commands to quiesce and drain a local tier before an operator-approved
 serving change.
+
+## Enter or leave exclusive TP=2 mode
+
+The candidate must already be declared with both GPU roles,
+`operating_mode = "dual-gpu-exclusive"`, and `tensor_parallel_size = 2`.
+Preview the full blast radius first:
+
+```bash
+anvil-serving serves mode preview <tp2-serve> \
+  --restore-group split-stack --manifest <serves.toml>
+anvil-serving serves mode enter <tp2-serve> \
+  --restore-group split-stack --manifest <serves.toml> --confirm
+```
+
+Entry quiesces and drains routed competitors, stops all active GPU inference,
+rechecks both role ledgers, and only then starts the TP=2 owner. A failed start
+restores the named split group in manifest order. While exclusive mode is
+active, ordinary serve starts and ad-hoc Compose experiments fail before a
+container command. Capability aliases whose normal backing serves are offline
+return unavailable; they never fall back to the TP=2 serve.
+
+Leave in the reverse order:
+
+```bash
+anvil-serving serves mode leave <tp2-serve> \
+  --restore-group split-stack --manifest <serves.toml> --confirm
+```
+
+The `serves_mode` controller tool returns a structured plan. Live `enter` or
+`leave` additionally requires `confirm=true`, `dry_run=false`, and
+`human_approved=true`. Selecting or qualifying the first TP=2 model is a
+separate benchmark and promotion decision.
 
 ## Direct aliases
 

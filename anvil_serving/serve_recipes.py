@@ -332,6 +332,40 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
     port = serve.get("port")
     if port is not None and (isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535):
         raise RecipeError("recipe.serve.port must be an integer from 1 to 65535")
+    startup_timeout = serve.get("startup_timeout_seconds")
+    if startup_timeout is not None and (
+        isinstance(startup_timeout, bool)
+        or not isinstance(startup_timeout, int)
+        or not 1 <= startup_timeout <= 86400
+    ):
+        raise RecipeError(
+            "recipe.serve.startup_timeout_seconds must be an integer from 1 to 86400"
+        )
+    download = recipe.get("download") or {}
+    require_complete_cache = download.get("require_complete_cache")
+    if require_complete_cache is not None and not isinstance(
+        require_complete_cache, bool
+    ):
+        raise RecipeError(
+            "recipe.download.require_complete_cache must be a boolean"
+        )
+    if require_complete_cache:
+        for key in ("repo", "revision"):
+            value = download.get(key)
+            if not isinstance(value, str) or not value or value.startswith("-"):
+                raise RecipeError(
+                    "recipe.download.%s is required for complete-cache loads" % key
+                )
+        volume = download.get("volume", "vllm-hfcache")
+        if (
+            not isinstance(volume, str)
+            or not volume
+            or volume.startswith("-")
+            or any(separator in volume for separator in ("/", "\\", ":"))
+        ):
+            raise RecipeError(
+                "recipe.download.volume must be a named Docker volume for complete-cache loads"
+            )
     for key in ("env", "flags"):
         value = serve.get(key, [])
         if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
@@ -484,8 +518,13 @@ def docker_run_argv(
         or gpu_device.startswith("-")
         or "\x00" in gpu_device
         or any(character.isspace() for character in gpu_device)
+        or any(not item or item.startswith("-") for item in gpu_device.split(","))
+        or len(set(gpu_device.split(","))) != len(gpu_device.split(","))
     ):
-        raise RecipeError("gpu_device must be one UUID or index without whitespace")
+        raise RecipeError(
+            "gpu_device must be one or more distinct comma-separated UUIDs or "
+            "indices without whitespace"
+        )
     serve = recipe["serve"]
     hw = recipe.get("hardware") or {}
     argv = ["docker", "run", "-d"]
@@ -494,7 +533,16 @@ def docker_run_argv(
     gpu_uuid = gpu_device or hw.get("gpu_uuid")
     if gpu_uuid is not None and (not isinstance(gpu_uuid, str) or "\x00" in gpu_uuid):
         raise RecipeError("recipe.hardware.gpu_uuid must be a string without NUL bytes")
-    argv += ["--gpus", "device=%s" % gpu_uuid if gpu_uuid else "all"]
+    if gpu_uuid:
+        gpu_request = "device=%s" % gpu_uuid
+        # Docker's --gpus option parses a CSV capability request. A multi-device
+        # value therefore needs literal inner quotes even when subprocess passes
+        # argv directly; shell-only quotes are stripped too early.
+        if "," in gpu_uuid:
+            gpu_request = '"%s"' % gpu_request
+    else:
+        gpu_request = "all"
+    argv += ["--gpus", gpu_request]
     argv += [
         "--label",
         "io.anvil-serving.managed-by=models-recipes",
@@ -507,20 +555,62 @@ def docker_run_argv(
             "--label",
             "io.anvil-serving.recipe.revision=%s" % revision,
         ]
+    declared_serve_env = list(serve.get("env", []))
+    download = recipe.get("download") or {}
+    if download.get("require_complete_cache") is True:
+        for name in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
+            matches = [env for env in declared_serve_env if env.startswith(name + "=")]
+            if matches and matches != [name + "=1"]:
+                raise RecipeError(
+                    "recipe.serve.env %s must be 1 for complete-cache loads" % name
+                )
+            if not matches:
+                declared_serve_env.append(name + "=1")
+    declared_visible_devices = [
+        env.split("=", 1)[1]
+        for env in declared_serve_env
+        if isinstance(env, str) and env.startswith("CUDA_VISIBLE_DEVICES=")
+    ]
+    selected_devices = gpu_uuid.split(",") if gpu_uuid else []
+    visible_device_indices = (
+        declared_visible_devices[0].split(",")
+        if len(declared_visible_devices) == 1
+        else []
+    )
+    valid_index_pin = (
+        serve.get("allow_cuda_visible_devices_index") is True
+        and bool(visible_device_indices)
+        and all(item.isdigit() for item in visible_device_indices)
+        and len(set(visible_device_indices)) == len(visible_device_indices)
+    )
+    allow_index_pin = valid_index_pin and (
+        (bool(selected_devices) and len(visible_device_indices) == len(selected_devices))
+        # Recipe inspection reconstructs the portable container-relative
+        # declaration before a host GPU selection exists. A real load supplies
+        # a container name and must still provide an exact matching device set.
+        or (not selected_devices and container is None)
+    )
+    if (
+        serve.get("allow_cuda_visible_devices_index") is True
+        and declared_visible_devices
+        and not allow_index_pin
+    ):
+        raise RecipeError(
+            "recipe.serve.env CUDA_VISIBLE_DEVICES numeric index count must match "
+            "the selected GPU count"
+        )
     serve_env = [
-        env for env in serve.get("env", [])
-        if gpu_device is None or not env.startswith("CUDA_VISIBLE_DEVICES=")
+        env
+        for env in declared_serve_env
+        if gpu_device is None
+        or allow_index_pin
+        or not env.startswith("CUDA_VISIBLE_DEVICES=")
     ]
     visible_devices = [
         env.split("=", 1)[1]
         for env in serve_env
         if isinstance(env, str) and env.startswith("CUDA_VISIBLE_DEVICES=")
     ]
-    allow_index_pin = (
-        serve.get("allow_cuda_visible_devices_index") is True
-        and len(visible_devices) == 1
-        and visible_devices[0].isdigit()
-    )
     if gpu_uuid and visible_devices and visible_devices != [gpu_uuid] and not allow_index_pin:
         raise RecipeError(
             "recipe.serve.env CUDA_VISIBLE_DEVICES must match recipe.hardware.gpu_uuid"
@@ -531,7 +621,8 @@ def docker_run_argv(
         if not _ENV_NAME_RE.match(env) or "\n" in env or "\r" in env or "\x00" in env:
             raise RecipeError("recipe.serve.env entries must be NAME=value without newlines")
         argv += ["-e", env]
-    argv += ["-v", "vllm-hfcache:/root/.cache/huggingface"]
+    cache_volume = download.get("volume", "vllm-hfcache")
+    argv += ["-v", "%s:/root/.cache/huggingface" % cache_volume]
     port = serve.get("port")
     if port is not None:
         argv += ["-p", "127.0.0.1:%s:%s" % (port, port)]

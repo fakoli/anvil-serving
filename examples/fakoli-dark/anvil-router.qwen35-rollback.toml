@@ -24,7 +24,7 @@ model_identity = true
 
 [router.tiers.params.capacity]
 gpu_role = "primary"
-gpu_name = "NVIDIA RTX PRO 6000 Blackwell Workstation Edition"
+gpu_name = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
 gpu_memory_total_mib = 97887
 model_memory_gib = 73.22
 kv_cache_capacity_tokens = 571950

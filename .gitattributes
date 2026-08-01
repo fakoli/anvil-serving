@@ -16,6 +16,10 @@ docs/findings/*-evidence/** -text
 # Kernel tune artifacts are byte-bound by their manifests. Disable checkout
 # conversion so a fresh core.autocrlf=true Windows clone retains their SHA-256.
 configs/kernel-tunes/** -text
+# Unified-diff context lines may consist of the required single prefix space.
+# Keep runtime patch assets LF-stable and exempt their syntax from whitespace
+# linting; the derived-image build independently proves that each patch applies.
+configs/runtime-patches/**/*.patch text eol=lf -whitespace
 # This published historical bundle uses byte hashes as evidence bindings. Keep
 # every text artifact LF-stable so the verifier behaves identically on Windows.
 docs/findings/eval-data/2026-06-28-planning-capability/** text eol=lf

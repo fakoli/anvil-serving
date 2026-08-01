@@ -449,6 +449,107 @@ def tool_serves_promote(args: dict) -> dict:
     )
 
 
+def tool_serves_mode(args: dict) -> dict:
+    """Structured status/preview plus separately gated mode mutation."""
+    from .... import serves as serves_mod
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"status", "preview", "enter", "leave"}:
+        raise ToolError(
+            "bad_action",
+            "action must be one of: status, preview, enter, leave",
+            {"action": action},
+        )
+    manifest_arg = _str_arg(args, "manifest", "")
+    manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
+    manifest_serves = _load_serves_for_tool(manifest)
+    if action == "status":
+        if args.get("target") or args.get("restore_group"):
+            raise ToolError(
+                "bad_argument", "status does not accept target or restore_group"
+            )
+        states = {}
+
+        def state_of(container):
+            if container not in states:
+                states[container] = serves_mod.docker_state(container)
+            return states[container]
+
+        return _ok({
+            "operating_mode": serves_mod.operating_mode_summary(
+                manifest_serves, state_of
+            ),
+            "reservations": serves_mod.reservation_summary(
+                manifest_serves, _states=states
+            ),
+        })
+
+    target = _str_arg(args, "target", required=True)
+    restore_group = _str_arg(args, "restore_group", required=True)
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    human_approved = _arg_bool(
+        args.get("human_approved"), False, name="human_approved"
+    )
+    timeout_seconds = _bounded_int_arg(
+        args, "timeout_seconds", 1800, min_value=1, max_value=7200
+    )
+    drain_timeout = _bounded_int_arg(
+        args, "drain_timeout", 120, min_value=1, max_value=3600
+    )
+    try:
+        plan = serves_mod.operating_mode_plan(
+            manifest_serves,
+            target,
+            restore_group,
+            lambda container: serves_mod.docker_state(container),
+        )
+    except ValueError as exc:
+        raise ToolError("mode_plan_refused", str(exc))
+
+    apply_requested = action in {"enter", "leave"} and confirm and not dry_run
+    if apply_requested and not human_approved:
+        raise ToolError(
+            "human_approval_required",
+            "live mode mutation requires confirm=true, dry_run=false, and "
+            "human_approved=true",
+        )
+    if action == "preview" or not apply_requested:
+        return _ok({
+            "applied": False,
+            "dry_run": True,
+            "human_gate_required": action in {"enter", "leave"},
+            "manifest": manifest,
+            "plan": plan,
+        })
+
+    argv = [
+        sys.executable,
+        "-m",
+        "anvil_serving.cli",
+        "serves",
+        "mode",
+        action,
+        target,
+        "--manifest",
+        manifest,
+        "--restore-group",
+        restore_group,
+        "--drain-timeout",
+        str(drain_timeout),
+        "--confirm",
+    ]
+    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    return _ok({
+        "applied": True,
+        "dry_run": False,
+        "human_approved": True,
+        "manifest": manifest,
+        "plan": plan,
+        **result,
+    })
+
+
 def tool_serves_logs(args: dict) -> dict:
     from .... import serves as serves_mod
 
@@ -542,6 +643,24 @@ FAMILY = ToolFamily(
                 required=["plan"],
             ),
             "handler": tool_serves_promote,
+        },
+        "serves_mode": {
+            "description": "Report, preview, or execute the exclusive TP=2 operating-mode transaction.",
+            "inputSchema": _schema(
+                {
+                    "action": {"type": "string"},
+                    "manifest": {"type": "string"},
+                    "target": {"type": "string"},
+                    "restore_group": {"type": "string"},
+                    "drain_timeout": _bounded_integer_schema(1, 3600, 120),
+                    "dry_run": {"type": "boolean"},
+                    "confirm": {"type": "boolean"},
+                    "human_approved": {"type": "boolean"},
+                    "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
+                },
+                required=["action"],
+            ),
+            "handler": tool_serves_mode,
         },
         "serves_logs": {
             "description": "Read bounded docker logs for one manifest serve; follow mode is not allowed.",

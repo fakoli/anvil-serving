@@ -45,6 +45,97 @@ def _inspect_returning(state, op_rc=0, op_err=""):
     return run
 
 
+DUAL_MODE_MANIFEST = """
+    [[gpu_roles]]
+    id = "dark-compute-a"
+    vram_mib = 97887
+    reserve_mib = 3072
+
+    [[gpu_roles]]
+    id = "dark-compute-b"
+    vram_mib = 97887
+    reserve_mib = 3072
+
+    [[serve]]
+    name = "split-a"
+    container = "split-a"
+    port = 30001
+    model = "split-a-local"
+    engine = "vllm"
+    gpu_role = "dark-compute-a"
+    vram_mib = 80000
+    residency = "resident"
+    router_tier = "llm-a"
+    groups = ["split-stack"]
+    up = "docker compose -f {dir}/compose.yml up -d split-a"
+
+    [[serve]]
+    name = "split-b"
+    container = "split-b"
+    port = 30002
+    model = "split-b-local"
+    engine = "vllm"
+    gpu_role = "dark-compute-b"
+    vram_mib = 80000
+    residency = "resident"
+    groups = ["split-stack"]
+    up = "docker compose -f {dir}/compose.yml up -d split-b"
+
+    [[serve]]
+    name = "tp2"
+    container = "tp2"
+    port = 30003
+    model = "candidate-local"
+    engine = "vllm"
+    gpu_roles = ["dark-compute-a", "dark-compute-b"]
+    vram_mib = 90000
+    residency = "on-demand"
+    operating_mode = "dual-gpu-exclusive"
+    tensor_parallel_size = 2
+    up = "docker compose -f {dir}/compose.yml up -d tp2"
+"""
+
+
+def _mode_run(states, fail_service=None):
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            state = states.get(argv[-1], "absent")
+            if state == "absent":
+                return proc(1, err="Error: No such object")
+            if state == "error":
+                return proc(1, err="Cannot connect to the Docker daemon")
+            return proc(0, state + "\n")
+        if argv[:2] == ["docker", "stop"]:
+            states[argv[-1]] = "exited"
+        elif argv[:3] == ["docker", "rm", "-f"]:
+            states[argv[-1]] = "absent"
+        elif argv[:2] == ["docker", "compose"]:
+            service = argv[-1]
+            if service == fail_service:
+                return proc(1, err="synthetic start failure")
+            states[service] = "running"
+        return proc(0)
+
+    run.calls = calls
+    return run
+
+
+class _HealthyResponse:
+    status = 200
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def getcode(self):
+        return 200
+
+
 # ---- rm ---------------------------------------------------------------------
 
 def test_cmd_rm_removes_manifest_serve_by_name():
@@ -211,6 +302,227 @@ def test_cmd_up_compose_dry_run_runs_nothing(capsys):
     assert serves.cmd_up_compose("/x/experiment.yml", ["svc"], dry_run=True, _run=run) == 0
     assert calls == []  # nothing executed
     assert "/x/experiment.yml" in capsys.readouterr().out  # printed the plan
+
+
+# ---- explicit dual-GPU operating mode ---------------------------------------
+
+def test_mode_preview_lists_roles_competitors_and_rollback_without_mutation(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    run = _mode_run({"split-a": "running", "split-b": "running", "tp2": "absent"})
+    assert serves.cmd_mode(
+        loaded,
+        "preview",
+        "tp2",
+        "split-stack",
+        _run=run,
+    ) == 0
+    out = capsys.readouterr().out
+    assert "dark-compute-a, dark-compute-b" in out
+    assert "drain split-a via router tier llm-a" in out
+    assert "stop: split-a, split-b" in out
+    assert "rollback group split-stack: split-a, split-b" in out
+    assert not any(call[:2] in (["docker", "stop"], ["docker", "compose"])
+                   for call in run.calls)
+
+
+def test_ordinary_up_cannot_start_exclusive_target(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    run = _mode_run({"split-a": "absent", "split-b": "absent", "tp2": "absent"})
+    assert serves.cmd_up(loaded, ["tp2"], ledger_serves=loaded, _run=run) == 1
+    assert "must be started with `serves mode enter" in capsys.readouterr().out
+    assert not any(call[:2] == ["docker", "compose"] for call in run.calls)
+
+
+def test_active_exclusive_owner_blocks_split_start_before_container_command(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    run = _mode_run({"split-a": "absent", "split-b": "absent", "tp2": "running"})
+    assert serves.cmd_up(loaded, ["split-a"], ledger_serves=loaded, _run=run) == 1
+    out = capsys.readouterr().out
+    assert "tp2 owns both GPU roles; blocked: split-a" in out
+    assert "no container command was run" in out
+    assert not any(call[:2] == ["docker", "compose"] for call in run.calls)
+
+
+def test_exclusive_mode_covers_legacy_unreserved_experiment_but_not_cpu_sidecar(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST + """
+        [[serve]]
+        name = "legacy-experiment"
+        container = "legacy-experiment"
+        port = 39000
+        model = "legacy-local"
+        engine = "vllm"
+        up = "docker compose -f {dir}/compose.yml up -d legacy-experiment"
+
+        [[serve]]
+        name = "realtime-proxy"
+        container = "realtime-proxy"
+        port = 8765
+        model = "realtime-proxy"
+        engine = "audio"
+        gpu_inference = false
+        up = "docker compose -f {dir}/compose.yml up -d realtime-proxy"
+    """))
+    states = {
+        "split-a": "absent",
+        "split-b": "absent",
+        "tp2": "absent",
+        "legacy-experiment": "running",
+        "realtime-proxy": "running",
+    }
+    plan = serves.operating_mode_plan(
+        loaded,
+        "tp2",
+        "split-stack",
+        lambda container: states.get(container, "absent"),
+    )
+    assert plan["stop"] == ["legacy-experiment"]
+    assert "legacy-experiment" in plan["blocked"]
+    assert "realtime-proxy" not in plan["blocked"]
+
+    states["legacy-experiment"] = "absent"
+    states["tp2"] = "running"
+    run = _mode_run(states)
+    assert serves.cmd_up(
+        loaded, ["legacy-experiment"], ledger_serves=loaded, _run=run
+    ) == 1
+    assert "blocked: legacy-experiment" in capsys.readouterr().out
+    assert not any(call[:2] == ["docker", "compose"] for call in run.calls)
+
+
+@pytest.mark.parametrize("owner_state", ["running", "error", "unknown"])
+def test_ad_hoc_compose_cannot_bypass_active_or_unresolved_exclusive_owner(
+    tmp_path, owner_state,
+):
+    manifest = _manifest(tmp_path, DUAL_MODE_MANIFEST)
+    run = _mode_run({"split-a": "absent", "split-b": "absent", "tp2": owner_state})
+    denial = serves.deny_ad_hoc_compose_during_exclusive(manifest, _run=run)
+    assert denial
+    assert "no container command was run" in denial
+    assert not any(call[:2] == ["docker", "compose"] for call in run.calls)
+
+
+def test_mode_entry_refuses_unresolved_competitor_before_mutation(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    run = _mode_run({"split-a": "error", "split-b": "running", "tp2": "absent"})
+    assert serves.cmd_mode(
+        loaded,
+        "enter",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        _run=run,
+    ) == 1
+    assert "UNRESOLVED: split-a state error" in capsys.readouterr().out
+    assert not any(call[:2] in (["docker", "stop"], ["docker", "compose"])
+                   for call in run.calls)
+
+
+def test_failed_mode_entry_restores_split_stack_in_transaction_order(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    states = {"split-a": "running", "split-b": "running", "tp2": "absent"}
+    run = _mode_run(states, fail_service="tp2")
+    transitions = []
+
+    def transition(action, tier, timeout=None):
+        transitions.append((action, tier, timeout))
+        return 0
+
+    assert serves.cmd_mode(
+        loaded,
+        "enter",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        _transition=transition,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 1
+    mutations = [
+        call for call in run.calls
+        if call[:2] in (["docker", "stop"], ["docker", "compose"])
+    ]
+    stop_a = mutations.index(["docker", "stop", "split-a"])
+    stop_b = mutations.index(["docker", "stop", "split-b"])
+    tp_start = next(i for i, call in enumerate(mutations) if call[-1] == "tp2")
+    restore_a = max(i for i, call in enumerate(mutations) if call[-1] == "split-a")
+    restore_b = max(i for i, call in enumerate(mutations) if call[-1] == "split-b")
+    assert stop_a < stop_b < tp_start < restore_a < restore_b
+    assert transitions[:2] == [("quiesce", "llm-a", None), ("drain", "llm-a", 120)]
+    assert transitions[-1] == ("readmit", "llm-a", None)
+    assert states["split-a"] == states["split-b"] == "running"
+    assert "restoring split stack" in capsys.readouterr().out
+
+
+def test_mode_leave_force_releases_exclusive_owner_before_split_restore(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    states = {"split-a": "absent", "split-b": "absent", "tp2": "running"}
+    run = _mode_run(states)
+
+    assert serves.cmd_mode(
+        loaded,
+        "leave",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        _transition=lambda *args, **kwargs: 0,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 0
+    mutations = [
+        call for call in run.calls
+        if call[:3] == ["docker", "rm", "-f"] or call[:2] == ["docker", "compose"]
+    ]
+    release = mutations.index(["docker", "rm", "-f", "tp2"])
+    restore_a = next(i for i, call in enumerate(mutations) if call[-1] == "split-a")
+    restore_b = next(i for i, call in enumerate(mutations) if call[-1] == "split-b")
+    assert release < restore_a < restore_b
+    assert states["tp2"] == "absent"
+    assert states["split-a"] == states["split-b"] == "running"
+    assert "mode left: restored split group split-stack" in capsys.readouterr().out
+
+
+def test_split_restore_skips_readmit_when_default_router_is_stopped(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    states = {
+        "split-a": "absent",
+        "split-b": "absent",
+        "tp2": "absent",
+        serves.DEFAULT_ROUTER_CONTAINER: "exited",
+    }
+    run = _mode_run(states)
+    transitions = []
+    plan = serves.operating_mode_plan(
+        loaded,
+        "tp2",
+        "split-stack",
+        lambda container: states.get(container, "absent"),
+    )
+
+    assert serves._restore_split_stack(
+        loaded,
+        plan,
+        transition=lambda *args: transitions.append(args) or 0,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+        skip_readmit_when_router_stopped=True,
+    ) == 0
+    assert transitions == []
+    assert "need no live readmit" in capsys.readouterr().out
 
 
 # ---- main() dispatch --------------------------------------------------------
