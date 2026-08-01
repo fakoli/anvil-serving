@@ -1,0 +1,593 @@
+{
+  "context": {
+    "cap_tokens": 27136,
+    "max_model_len": 32768,
+    "targets": [
+      {
+        "attempted_context_tokens": 16000,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 16000,
+        "e2e_ms": 3703.6812999976974,
+        "estimated_prompt_tokens": 16000,
+        "output_tokens": 155,
+        "status": "passed",
+        "target_tokens": 16000,
+        "ttft_ms": 3135.0894999995944,
+        "usage": {
+          "completion_tokens": 155,
+          "prompt_tokens": 11601,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 110,
+          "total_tokens": 11756
+        }
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 4096,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 512
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:39051/v1",
+    "candidate_id": "thinkingmachines/Inkling-Small-NVFP4@b6a99534467840620d411e4cd4ad5819b2610d9c",
+    "config_id": "inkling-small-nvfp4-tp2-bf16kv-sm120-compat",
+    "engine": "sglang-b7252cc6b-sm120-compat",
+    "gpu": "2x RTX PRO 6000 Blackwell Max-Q TP2",
+    "model": "inkling-small-nvfp4-tp2",
+    "started_at": "2026-08-01T16:01:53Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 928.3534000023792,
+            "reasoning_chars": 110,
+            "reasoning_excerpt": "We need output unified diff. Original lines: timeout = 30, retries = 2. Change timeout to 45. Use diff format.",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 73,
+              "prompt_tokens": 50,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 32,
+              "total_tokens": 123
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 935.2418000016769,
+            "reasoning_chars": 113,
+            "reasoning_excerpt": "We need output unified diff. Original file lines: timeout = 30, retries = 2. Change first to 45. Use diff format.",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 74,
+              "prompt_tokens": 50,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 33,
+              "total_tokens": 124
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 928.617800000211,
+            "reasoning_chars": 113,
+            "reasoning_excerpt": "We need output unified diff. Original file lines: timeout = 30, retries = 2. Change first to 45. Use diff format.",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 74,
+              "prompt_tokens": 50,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 33,
+              "total_tokens": 124
+            }
+          }
+        ],
+        "id": "unified_diff_timeout_edit",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "The pipeline\u2019s 3,000 ms total exceeds the 2,500 ms budget, mainly due to the 1,800 ms LLM; fix by switching to a smaller/faster LLM with streaming and starting TTS on partial outputs to cut perceived latency.",
+            "content_excerpt": "The pipeline\u2019s 3,000 ms total exceeds the 2,500 ms budget, mainly due to the 1,800 ms LLM; fix by switching to a smaller/faster LLM with streaming and starting TTS on partial outputs to cut perceived ",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 1536.4348999974027,
+            "reasoning_chars": 251,
+            "reasoning_excerpt": "We need answer: total latency 3000 ms exceeds 2500 ms timeout. Problem: cumulative latency too high, mainly LLM. Fix: use faster LLM (smaller model/streaming) or parallelize/cut steps, e.g., streaming",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 125,
+              "prompt_tokens": 73,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 67,
+              "total_tokens": 198
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "The pipeline\u2019s 3,000 ms total exceeds the 2,500 ms budget, mainly due to the 1,800 ms LLM; fix by switching to a faster/streaming LLM and beginning TTS generation on partial outputs to cut perceived latency.",
+            "content_excerpt": "The pipeline\u2019s 3,000 ms total exceeds the 2,500 ms budget, mainly due to the 1,800 ms LLM; fix by switching to a faster/streaming LLM and beginning TTS generation on partial outputs to cut perceived l",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 1538.5051000012027,
+            "reasoning_chars": 251,
+            "reasoning_excerpt": "We need answer: total latency 3000 ms exceeds 2500 ms timeout. Problem: cumulative latency too high, mainly LLM. Fix: use faster LLM (smaller model/streaming) or parallelize/cut steps, e.g., streaming",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 125,
+              "prompt_tokens": 73,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 67,
+              "total_tokens": 198
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "The pipeline\u2019s 3,000 ms total exceeds the 2,500 ms budget, mainly due to the 1,800 ms LLM; fix by switching to a faster/streaming LLM (or smaller model) and beginning TTS streaming before the LLM fully finishes.",
+            "content_excerpt": "The pipeline\u2019s 3,000 ms total exceeds the 2,500 ms budget, mainly due to the 1,800 ms LLM; fix by switching to a faster/streaming LLM (or smaller model) and beginning TTS streaming before the LLM full",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 1679.2617999999493,
+            "reasoning_chars": 264,
+            "reasoning_excerpt": "We need answer: total latency 3000 ms exceeds 2500 ms timeout. Problem: cumulative latency too high, mainly LLM. Fix: use faster LLM (smaller model/streaming) or parallelize/cut steps, e.g., stream LL",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 137,
+              "prompt_tokens": 73,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 75,
+              "total_tokens": 210
+            }
+          }
+        ],
+        "id": "parallel_timeout_triage",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260801T160153Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 3703.6812999976974,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "default",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 3135.0894999995944,
+    "usable_context_tokens": 16000,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      16000
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "intelligence",
+      "session",
+      "tool"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 1177.5336999999126,
+            "reasoning_chars": 269,
+            "reasoning_excerpt": "The user asks \"What session code should be used? Reply with only the code.\" Earlier in the session, the user said \"Remember this session code: RIVER-918. Reply with ok.\" I acknowledged with \"ok\". So t",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 77,
+              "prompt_tokens": 49,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 69,
+              "total_tokens": 126
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 977.6114000014786,
+            "reasoning_chars": 272,
+            "reasoning_excerpt": "The user asks \"What session code should be used? Reply with only the code.\" Earlier in the session, the user said \"Remember this session code: RIVER-918. Reply with ok.\" I acknowledged with \"ok\". So t",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 78,
+              "prompt_tokens": 49,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 70,
+              "total_tokens": 127
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 937.4363000024459,
+            "reasoning_chars": 257,
+            "reasoning_excerpt": "The user asks: \"What session code should be used? Reply with only the code.\" Earlier they said \"Remember this session code: RIVER-918. Reply with ok.\" I acknowledged with \"ok\". Now they ask for the se",
+            "reasoning_field": "reasoning_content",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 74,
+              "prompt_tokens": 49,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 66,
+              "total_tokens": 123
+            }
+          }
+        ],
+        "name": "single_request_multiturn_recall",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": "configs/tp2-model-campaign-recipes.toml",
+    "serve_command": "models recipes load thinkingmachines/Inkling-Small-NVFP4 --gpu-device <two-device-selection> --confirm"
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": "docs/findings/2026-08-01-dual-pro-tp2-campaign-evidence/inkling-reasoning-low-control.json",
+    "control_evidence_sha256": "9585316f9b402c7ce33e4bc892ebef006a5abd8be4298ad5dbaa15f53af9bc76",
+    "control_mechanism": "reasoning_effort",
+    "control_requested": "low",
+    "control_status": "verified",
+    "mode": "default",
+    "reasoning_effort": "low",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "content_chunks": 41,
+      "decode_tok_s_p50": 76.8764595295246,
+      "decode_tok_s_p95": 76.8764595295246,
+      "e2e_p50_ms": 3703.6812999976974,
+      "e2e_p95_ms": 3703.6812999976974,
+      "effective_prefill_tok_s_p50": 6822.242333044419,
+      "effective_prefill_tok_s_p95": 6822.242333044419,
+      "generation_p50_ms": 2003.2140000002983,
+      "generation_p95_ms": 2003.2140000002983,
+      "mean_inter_token_latency_ms_p50": 13.007883116885054,
+      "mean_inter_token_latency_ms_p95": 13.007883116885054,
+      "output_tokens": 155,
+      "prompt_token_samples": 1,
+      "prompt_tokens": 11601,
+      "prompt_tokens_p50": 11601.0,
+      "prompt_tokens_p95": 11601.0,
+      "reasoning_chunks": 107,
+      "time_to_first_output_p50_ms": 1700.467299997399,
+      "time_to_first_output_p95_ms": 1700.467299997399,
+      "ttft_p50_ms": 3135.0894999995944,
+      "ttft_p95_ms": 3135.0894999995944,
+      "ttft_samples": 1
+    },
+    "wall_ms": 15291.642899999715
+  },
+  "tool": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 314.2857999991975,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 21,
+              "prompt_tokens": 77,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 20,
+              "total_tokens": 98
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 309.58839999948395,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 21,
+              "prompt_tokens": 77,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 20,
+              "total_tokens": 98
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 4608,
+              "reasoning_headroom_tokens": 4096,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 303.5063999996055,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 21,
+              "prompt_tokens": 77,
+              "prompt_tokens_details": null,
+              "reasoning_tokens": 20,
+              "total_tokens": 98
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          }
+        ],
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "name": "openai_tool_call_smoke",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

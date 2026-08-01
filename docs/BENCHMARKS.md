@@ -8,17 +8,19 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained 2026-07-29 LLM chain is Agents-A1 official FP8 (`current`,
+The maintained production-alias chain remains Agents-A1 official FP8 (`current`,
 thinking disabled), Qwen3.5 122B NVFP4 (immediate managed `rollback`),
 Laguna S 2.1 NVFP4 and GPT-OSS Puzzle 88B (additional `rollback` profiles; Puzzle
 retains the strict unified-diff caveat), and Gemma 4 and ThinkingCap
-(historical controls). Nemotron
-3.5 ASR and Qwen3-ASR were measured on the RTX 5090 while the PRO 6000 was
-protected. Older sections below preserve what was concluded at their dates.
+(historical controls). Fakoli Dark now has two equal RTX PRO 6000 cards. The
+2026-08-01 campaign added exclusive TP=2 evidence without promoting any
+candidate. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
+now-removed RTX 5090 while the PRO 6000 was protected. Older sections below
+preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-29**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-01**.
 
 ## Read these results correctly
 
@@ -26,6 +28,31 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 - Compare rows only when their workload and topology are comparable. A faster inference run does not establish coding quality, tool reliability, or routing eligibility.
 - Quality-profile and production changes remain human-gated. A benchmark can recommend a change; it never promotes a model by itself.
 - External benchmark data is an advisory prior, not a local result. See [External benchmarks](EXTERNAL-BENCHMARKS.md) for its import and comparison workflow.
+
+## Dual-PRO exclusive TP=2 campaign (2026-08-01)
+
+Fakoli Dark's two RTX PRO 6000 Blackwell Max-Q cards were assigned together to
+one model at a time over PCIe without NVLink. All other inference was offline.
+The table uses c1 and requested 32K prompts; actual prompt depth is shown in the
+[dated finding](findings/2026-08-01-dual-pro-tp2-model-campaign.md).
+
+| Candidate / exact lane | Completion | First-output latency p50 | Effective prefill p50 | Decode p50 | Repeated quality | Outcome |
+|---|---:|---:|---:|---:|---|---|
+| Qwen3.5 122B A10B NVFP4, thinking off | 12/12 | 2.32 s TTFT | 12,821 tok/s | 67.5 tok/s | intelligence 6/6, session 3/3, tools 3/3 | TP=2 `no-promotion`; single-card rollback unchanged |
+| Nemotron 3 Super 120B NVFP4, TP=2 + EP=2, thinking off | 12/12 | 2.84 s TTFT | 10,025 tok/s | 59.5 tok/s | intelligence 6/6, session 3/3, tools 3/3 | `no-promotion` |
+| Laguna S 2.1 NVFP4, thinking off | 12/12 | **1.97 s TTFT** | **15,134 tok/s** | **70.9 tok/s** | intelligence 6/6, session 3/3, tools 3/3 | TP=2 `no-promotion`; single-card rollback unchanged |
+| DeepSeek V4 Flash 0731, `reasoning_effort=low` | 11/12 | 2.70 s TTFO; 29.11 s first-visible TTFT | 7,818 tok/s from TTFO | 11.5 tok/s combined reasoning/visible | intelligence 6/6, session 3/3, tools 3/3 | `challenger`, `no-promotion`; one reasoning-only exhaustion |
+| Inkling Small NVFP4, `reasoning_effort=low` | 12/12 | 2.79 s TTFO; 4.63 s first-visible TTFT | 7,844 tok/s from TTFO | 73.5 tok/s combined reasoning/visible | intelligence 6/6, session 3/3, tools 3/3 | `no-promotion`; reasoning-off Responses caveat retained |
+
+The three thinking-disabled comparison rows use `capacity-v3`. DeepSeek and
+Inkling use the new `capacity-v4-reasoning` contract, so their prefill boundary
+is first reasoning or visible output and their decode count includes reasoning
+tokens. Inkling also completed a separate reasoning-off 12/12 capacity lane at
+2.84-second TTFT and 74.6 tok/s visible decode. This campaign
+also found no genuine NVFP8-labeled DeepSeek or Inkling artifact; it tested the
+official fitting quantization instead. Exact revisions, images, longer-context
+lanes, raw JSON, and runtime fixes are in the
+[complete campaign record](findings/2026-08-01-dual-pro-tp2-model-campaign.md).
 
 ## RTX 5090 Omni choices (as of 2026-07-27)
 

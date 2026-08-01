@@ -1,23 +1,24 @@
 # RTX PRO 6000 benchmark view
 
-**Hardware:** NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 96 GB,
-sm_120. **Host:** Fakoli Dark, Windows 11 with Docker Desktop/WSL2.
-**Reviewed:** 2026-07-29.
+**Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
+96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark, Windows 11 with
+Docker Desktop/WSL2. **Reviewed:** 2026-08-01.
 
 > Side-by-side speed and recipe links for every configuration measured on this
-> card: [model comparison table](../comparison.md#rtx-pro-6000-blackwell-max-q-96-gb-sm_120-300-w).
+> card or both cards in TP=2: [model comparison table](../comparison.md).
 
-This page contains only measurements made on the PRO 6000. Tests that merely
-kept this card running or described its topology belong in the
+This page contains only measurements made on one or both PRO 6000 cards. Tests
+that merely kept a card running or described its topology belong in the
 [mention audit](../rtx-pro-6000-audit.md), not the result tables.
 
 ## Current topology and services
 
-The card owns the router-adjacent Primary LLM serve. The current Primary is
-Agents-A1 official FP8 at `http://127.0.0.1:30002/v1`, served as
-`agents-a1-fp8-mm-262k`, with FP8 KV, a 262,144-token window, one admitted
-sequence, four images and one video per request, and thinking hard-disabled by
-the router. Fakoli Mini does not host a model.
+The two GPU roles are symmetric. Split mode can place independent workloads on
+the cards. Exclusive TP=2 mode assigns both roles to one declared owner and
+blocks every other inference workload until the mode is left; the cards are
+connected over PCIe without NVLink, so 192 GB is aggregate rather than unified
+memory. The production aliases and rollback chain below are unchanged by the
+2026-08-01 TP=2 qualification campaign. Fakoli Mini does not host a model.
 
 ## Current, rollback, and challenger state
 
@@ -30,6 +31,23 @@ the router. Fakoli Mini does not host a model.
 | 5 | [Gemma 4](../models/gemma-4.md) / [ThinkingCap](../models/qwen36-27b.md) | `no-promotion` | Historical strict-quality controls |
 
 ## Comparable quality and context
+
+### Exclusive dual-card TP=2, 2026-08-01
+
+| Candidate | Repeated quality | Capacity and context evidence | Decision |
+|---|---|---|---|
+| Qwen3.5 122B NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.32 s TTFT and 67.5 tok/s decode; 128K 4/4 at 14.59 s and 65.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
+| Nemotron 3 Super 120B NVFP4, TP=2 + EP=2 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.84 s and 59.5 tok/s; 60K 4/4 at 5.58 s and 60.0 tok/s | `no-promotion` |
+| Laguna S 2.1 NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 1.97 s and 70.9 tok/s; 240K 4/4 at 31.85 s and 66.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
+| DeepSeek V4 Flash 0731 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | `challenger`, `no-promotion`; one reasoning-only exhaustion |
+| Inkling Small NVFP4 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 12/12; 2.79 s TTFO, 4.63 s first-visible TTFT, 73.5 tok/s combined reasoning/visible decode; reasoning-off lane also 12/12 | `no-promotion`; reasoning-off Responses caveat retained |
+
+All rows used both physical cards as measured hardware, exclusive ownership,
+one admitted request, and no co-resident inference. See the
+[dated campaign](../../findings/2026-08-01-dual-pro-tp2-model-campaign.md) for
+exact revisions, raw artifacts, protocol differences, and failure records.
+
+### Single-card and historical profiles
 
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
@@ -55,6 +73,9 @@ the router. Fakoli Mini does not host a model.
 
 ## Recent changes
 
+- 2026-08-01: the hardware became a symmetric two-PRO topology. The exclusive
+  TP=2 campaign qualified Qwen3.5, Nemotron 3 Super, Laguna S, DeepSeek V4
+  Flash 0731, and Inkling Small without changing production aliases.
 - 2026-07-29: Agents-A1 official FP8 passed the missing three-repetition
   protocol-v3 suite at the 262K profile and was promoted through the managed
   transaction. Qwen3.5 is now the immediate rollback.

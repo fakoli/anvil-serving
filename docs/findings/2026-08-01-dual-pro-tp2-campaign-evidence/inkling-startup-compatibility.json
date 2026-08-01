@@ -1,0 +1,41 @@
+{
+  "schema": "anvil-serving.compatibility/v1",
+  "captured": "2026-08-01",
+  "candidate": "thinkingmachines/Inkling-Small-NVFP4",
+  "revision": "b6a99534467840620d411e4cd4ad5819b2610d9c",
+  "served_model": "inkling-small-nvfp4-tp2",
+  "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q, exclusive TP=2 over PCIe without NVLink",
+  "engine_revision": "sglang-b7252cc6b",
+  "base_image": "lmsysorg/sglang@sha256:b90c0d760a65bc4dbbe4520bea966c437cc40391dcb7cca2a74922985dc1abeb",
+  "final_image": "anvil-sglang@sha256:6a8afc5ca0036c1be8810443636d6f835702d1e2ae5a1d717990b0baf8e70a2f",
+  "failures_and_fixes": [
+    {
+      "failure": "ModelOpt import required accelerate",
+      "fix": "install accelerate==1.14.0 in the pinned derived image"
+    },
+    {
+      "failure": "ModelOpt cache and quantization-config lookups ignored the pinned checkpoint revision",
+      "fix": "forward the configured revision through both lookups"
+    },
+    {
+      "failure": "SM120 grouped GEMM requested 110592 bytes of shared memory against a 101376-byte hardware limit",
+      "fix": "use the existing two-stage schedule for the affected SM120 grouped GEMMs"
+    },
+    {
+      "failure": "the image did not ship silu_and_mul_interleaved_sm_120.json for the Helion activation path",
+      "fix": "select SGLang's existing two-stage Triton SiLU/multiply fallback only for SM120 interleaved activations"
+    },
+    {
+      "failure": "WSL2 symmetric-memory logits gather raised SIGFPE",
+      "fix": "disable only the incompatible logits optimization and preserve NCCL fallback"
+    }
+  ],
+  "final_result": {
+    "status": "healthy",
+    "native_quantization": "ModelOpt NVFP4",
+    "weight_load_gib_per_rank": [85.93, 86.90],
+    "bf16_kv_swa_gib_per_rank": 3.14,
+    "decode_graph_capture": "passed with NCCL fallback",
+    "kernel_tune_claim": false
+  }
+}

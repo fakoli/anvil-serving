@@ -6,6 +6,74 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-08-01
+
+Anvil Serving 0.19.0 is the symmetric dual-GPU and TP=2 qualification
+release. It replaces the former mixed RTX PRO 6000/RTX 5090 topology with two
+equal RTX PRO 6000 compute roles, adds an exclusive tensor-parallel operating
+mode, and publishes reproducible five-model benchmark evidence without
+changing production aliases.
+
+### Highlights
+
+- **Explicit dual-GPU operating modes.** Split mode and exclusive TP=2 mode
+  now have declared ownership, admission, rollback, and status contracts. A
+  TP=2 serve owns both GPU roles while every competing inference workload is
+  offline; leaving the mode restores the saved split group transactionally.
+- **Five fresh TP=2 qualifications.** Qwen3.5 122B, Nemotron 3 Super 120B,
+  Laguna S 2.1, DeepSeek V4 Flash 0731, and Inkling Small were measured on the
+  same two-card host with pinned revisions, engines, quantization, context,
+  functional gates, capacity data, repeated quality checks, and retained
+  failures. Every result remains `no-promotion`.
+- **Portable managed recipes and public evidence.** Exact-revision cache
+  verification, offline serving, portable container-relative GPU selection,
+  reasoning-aware timing, model dossiers, hardware-first comparisons, and raw
+  artifacts make the campaign reproducible without publishing host-private
+  topology values.
+
+### Added
+
+- A machine-readable TP=2 recipe registry for all five candidates, including
+  pinned derived SGLang images for the WSL2-safe DeepSeek and Inkling paths.
+- `capacity-v4-reasoning`, which records time to first reasoning-or-visible
+  output separately from first-visible TTFT and measures generation from the
+  correct reasoning boundary.
+- Exact cache-completeness preflight before GPU allocation, plus enforced
+  Hugging Face and Transformers offline mode after verification.
+- Hardware-first Inkling Small and DeepSeek V4 Flash dossiers, a current
+  source registry, dated narrative findings, and bounded raw evidence for the
+  full campaign.
+
+### Changed
+
+- Model recipe loading now fails fast when an owned container exits before
+  readiness and supports recipe-specific startup timeouts.
+- Quality context budgeting now preserves both visible-answer and reasoning
+  headroom, while control-evidence references remain portable in published
+  artifacts.
+- Exclusive-mode release uses a bounded force-remove path so an unresponsive
+  Docker Desktop stop cannot trap the transaction. Split restoration skips
+  readmission only when the default router is intentionally stopped; live or
+  explicitly addressed routers still require a successful transition.
+- Inkling's pinned runtime adds its required ModelOpt dependency, forwards the
+  exact checkpoint revision through cache/config lookup, and uses narrowly
+  gated SM120 compatibility fallbacks for grouped GEMM and activation kernels.
+  These are compatibility fixes, not claimed kernel speedups.
+
+### Evidence and caveats
+
+- DeepSeek completed 11/12 final capacity requests; one request exhausted its
+  2,048-token allowance entirely in reasoning without a visible answer.
+- Inkling's low-reasoning functional, capacity, and repeated quality gates
+  passed, but the extended Responses subset still exposed internal reasoning
+  with `reasoning_effort=none` and remains a published failure.
+- No genuine NVFP8-labeled DeepSeek or Inkling artifact was found in the
+  current catalogs. The release records the exact publisher quantizations
+  tested instead of relabeling them.
+- The campaign establishes compatibility and bounded performance for each
+  exact TP=2 recipe. It is not a topology-only speed A/B and authorizes no
+  model promotion.
+
 ## [0.18.0] - 2026-07-30
 
 Anvil Serving 0.18.0 is the remote-controller and MCP interoperability
@@ -1481,7 +1549,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/fakoli/anvil-serving/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/fakoli/anvil-serving/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/fakoli/anvil-serving/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/fakoli/anvil-serving/compare/v0.16.0...v0.16.1

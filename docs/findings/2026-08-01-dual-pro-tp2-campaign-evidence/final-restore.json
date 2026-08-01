@@ -1,0 +1,18 @@
+{
+  "schema": "anvil-serving.final-state/v1",
+  "captured": "2026-08-01",
+  "mode": "split",
+  "exclusive_owner": null,
+  "unresolved": [],
+  "gpu_ownership": {
+    "dark-compute-a": [],
+    "dark-compute-b": ["omni"]
+  },
+  "serves": {
+    "primary": {"docker": "absent", "health": null},
+    "omni": {"docker": "running", "health": 200},
+    "tp2-inkling-small": {"docker": "absent", "health": null},
+    "router": {"docker": "exited", "exit_code": 137}
+  },
+  "blocked_workloads": []
+}

@@ -1,0 +1,128 @@
+{
+  "base_url": "http://127.0.0.1:39050/v1",
+  "completed": 1,
+  "concurrency": 1,
+  "context_distribution": {
+    "31488": 12
+  },
+  "context_seed": 0,
+  "context_tokens": 32768,
+  "engine": "sglang-v0.5.16-wsl2-nomultimem",
+  "failed": 11,
+  "failures": [
+    {
+      "error_type": "ValueError",
+      "request_index": 0
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 1
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 2
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 3
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 4
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 5
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 6
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 7
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 8
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 10
+    },
+    {
+      "error_type": "ValueError",
+      "request_index": 11
+    }
+  ],
+  "finished_at": "2026-08-01T13:54:42Z",
+  "gpu": "dual-rtx-pro-6000-blackwell-max-q-tp2-pcie",
+  "manifest": null,
+  "max_context_tokens": 32768,
+  "max_tokens": 256,
+  "measurement_protocol": "capacity-v3",
+  "metrics": {
+    "content_chunks": 33,
+    "content_chunks_s": null,
+    "decode_tok_s_p50": 70.17044885968436,
+    "decode_tok_s_p95": 70.17044885968436,
+    "e2e_p50_ms": 20509.327299998404,
+    "e2e_p95_ms": 20509.327299998404,
+    "effective_prefill_tok_s_p50": 1272.282426194888,
+    "effective_prefill_tok_s_p95": 1272.282426194888,
+    "generation_p50_ms": 2892.955699997401,
+    "generation_p95_ms": 2892.955699997401,
+    "mean_inter_token_latency_ms_p50": 14.251013300479809,
+    "mean_inter_token_latency_ms_p95": 14.251013300479809,
+    "output_token_sources": {
+      "usage": 1
+    },
+    "output_tokens": 204,
+    "prefix_cache_hit_avg": null,
+    "prompt_token_samples": 1,
+    "prompt_tokens": 22413,
+    "prompt_tokens_p50": 22413.0,
+    "prompt_tokens_p95": 22413.0,
+    "throughput_tok_s": 0.6845700741225029,
+    "ttft_p50_ms": 17616.371600001003,
+    "ttft_p95_ms": 17616.371600001003,
+    "ttft_samples": 1
+  },
+  "model": "deepseek-v4-flash-0731-tp2",
+  "request_timings": [
+    {
+      "decode_tok_s": 70.17044885968436,
+      "e2e_ms": 20509.327299998404,
+      "effective_prefill_tok_s": 1272.282426194888,
+      "generation_ms": 2892.955699997401,
+      "mean_inter_token_latency_ms": 14.251013300479809,
+      "output_token_source": "usage",
+      "output_tokens": 204,
+      "planned_context_tokens": 31488,
+      "prompt_tokens": 22413,
+      "request_index": 9,
+      "ttft_ms": 17616.371600001003
+    }
+  ],
+  "requests": 12,
+  "run_id": "benchmark-20260801T134944Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": "low",
+    "shared_prefix_burst": false,
+    "thinking_mode": "default"
+  },
+  "source_recipe": null,
+  "started_at": "2026-08-01T13:49:44Z",
+  "tier": null,
+  "timing_methodology": {
+    "clock": "client time.perf_counter",
+    "decode": "usage completion tokens after the first token divided by client-observed generation time",
+    "effective_prefill": "usage.prompt_tokens divided by client-observed TTFT; includes queueing, scheduling, prefill, and first-token work",
+    "generation": "client-observed E2E minus TTFT",
+    "mean_inter_token_latency": "client-observed generation time divided by completion tokens after the first token; not a raw per-token timestamp trace",
+    "ttft": "request start through the first non-empty streamed content delta"
+  },
+  "wall_clock_ms": 297997.2506999984
+}

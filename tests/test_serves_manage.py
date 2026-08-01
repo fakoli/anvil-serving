@@ -462,6 +462,69 @@ def test_failed_mode_entry_restores_split_stack_in_transaction_order(
     assert "restoring split stack" in capsys.readouterr().out
 
 
+def test_mode_leave_force_releases_exclusive_owner_before_split_restore(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    states = {"split-a": "absent", "split-b": "absent", "tp2": "running"}
+    run = _mode_run(states)
+
+    assert serves.cmd_mode(
+        loaded,
+        "leave",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        _transition=lambda *args, **kwargs: 0,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 0
+    mutations = [
+        call for call in run.calls
+        if call[:3] == ["docker", "rm", "-f"] or call[:2] == ["docker", "compose"]
+    ]
+    release = mutations.index(["docker", "rm", "-f", "tp2"])
+    restore_a = next(i for i, call in enumerate(mutations) if call[-1] == "split-a")
+    restore_b = next(i for i, call in enumerate(mutations) if call[-1] == "split-b")
+    assert release < restore_a < restore_b
+    assert states["tp2"] == "absent"
+    assert states["split-a"] == states["split-b"] == "running"
+    assert "mode left: restored split group split-stack" in capsys.readouterr().out
+
+
+def test_split_restore_skips_readmit_when_default_router_is_stopped(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    states = {
+        "split-a": "absent",
+        "split-b": "absent",
+        "tp2": "absent",
+        serves.DEFAULT_ROUTER_CONTAINER: "exited",
+    }
+    run = _mode_run(states)
+    transitions = []
+    plan = serves.operating_mode_plan(
+        loaded,
+        "tp2",
+        "split-stack",
+        lambda container: states.get(container, "absent"),
+    )
+
+    assert serves._restore_split_stack(
+        loaded,
+        plan,
+        transition=lambda *args: transitions.append(args) or 0,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+        skip_readmit_when_router_stopped=True,
+    ) == 0
+    assert transitions == []
+    assert "need no live readmit" in capsys.readouterr().out
+
+
 # ---- main() dispatch --------------------------------------------------------
 #
 # The cmd_* functions capture `_run=subprocess.run` as a def-time default, so these
