@@ -1,0 +1,16 @@
+diff --git a/python/sglang/srt/layers/logits_processor.py b/python/sglang/srt/layers/logits_processor.py
+--- a/python/sglang/srt/layers/logits_processor.py
++++ b/python/sglang/srt/layers/logits_processor.py
+@@ -376,7 +376,10 @@ class LogitsProcessor(nn.Module):
+         self._logits_gatherer = triton_symm_mem_ag.MultimemAllGatherer(
+             max_tokens=triton_symm_mem_ag.recommended_max_tokens(
+                 include_prefill=False, floor=128
+             ),
+-            enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,
++            # PyTorch symmetric-memory rendezvous raises SIGFPE through the
++            # WSL2/Docker CUDA proxy. MultimemAllGatherer(None) retains the
++            # existing tensor_model_parallel_all_gather NCCL fallback.
++            enabled=False,
+             skip_entry_sync=True,
+         )
+

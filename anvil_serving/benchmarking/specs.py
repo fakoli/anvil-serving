@@ -368,7 +368,8 @@ def load_suite_spec(path):
 
 def load_control_evidence(path, *, status, mechanism):
     """Load and bind a bounded, structured local control proof."""
-    resolved = os.path.abspath(os.path.expanduser(path))
+    supplied = os.fspath(path)
+    resolved = os.path.abspath(os.path.expanduser(supplied))
     try:
         with open(resolved, "rb") as handle:
             raw = handle.read(_MAX_CONTROL_EVIDENCE_BYTES + 1)
@@ -395,7 +396,11 @@ def load_control_evidence(path, *, status, mechanism):
     for key in ("source", "observed_at"):
         if not isinstance(evidence.get(key), str) or not evidence[key].strip():
             raise ValueError("control evidence requires a non-empty %s" % key)
-    return resolved, hashlib.sha256(raw).hexdigest()
+    # Resolve the supplied path only for I/O. Evidence should retain the
+    # operator's portable relative reference instead of leaking the absolute
+    # path of the workstation that produced it.
+    evidence_reference = supplied.replace("\\", "/")
+    return evidence_reference, hashlib.sha256(raw).hexdigest()
 
 def evaluate_text_checks(content, checks):
     """Deterministic text checks; this never asks the candidate to grade itself."""

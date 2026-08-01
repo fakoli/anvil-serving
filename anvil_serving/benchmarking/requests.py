@@ -260,8 +260,10 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
         headers["Authorization"] = "Bearer " + key
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
     t0 = time.perf_counter()
+    time_to_first_output = None
     ttft = None
     content_chunks = 0
+    reasoning_chunks = 0
     usage = None
     with urllib.request.urlopen(req, timeout=timeout) as response:
         for raw in response:
@@ -279,7 +281,14 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
                 usage = chunk["usage"]
             for choice in chunk.get("choices", []):
                 delta = choice.get("delta", {})
+                reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                if reasoning:
+                    if time_to_first_output is None:
+                        time_to_first_output = time.perf_counter() - t0
+                    reasoning_chunks += 1
                 if delta.get("content"):
+                    if time_to_first_output is None:
+                        time_to_first_output = time.perf_counter() - t0
                     if ttft is None:
                         ttft = time.perf_counter() - t0
                     content_chunks += 1
@@ -293,11 +302,13 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
         and completion_tokens >= 0
     )
     return {
+        "time_to_first_output": time_to_first_output,
         "ttft": ttft,
         "e2e": e2e,
         "out_toks": completion_tokens if has_usage_tokens else content_chunks,
         "output_token_source": "usage" if has_usage_tokens else "content_chunks",
         "content_chunks": content_chunks,
+        "reasoning_chunks": reasoning_chunks,
         "usage": usage,
     }
 
