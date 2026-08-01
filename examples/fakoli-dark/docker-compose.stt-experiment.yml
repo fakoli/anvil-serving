@@ -1,4 +1,4 @@
-# Sequential, loopback-only STT qualification serves for Fakoli Dark's RTX 5090.
+# Sequential, loopback-only STT qualification serves for Fakoli Dark Compute B.
 # Manage these through examples/fakoli-dark/serves.stt-experiment.toml. They do
 # not replace the live Parakeet endpoint on 30010 or change the router audio route.
 name: anvil-stt-experiment
@@ -23,14 +23,14 @@ services:
       - "nemotron35-model:/models"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      NVIDIA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      NVIDIA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     entrypoint: ["/bin/bash", "-lc"]
     command:
@@ -61,14 +61,14 @@ services:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       # This pinned vLLM build parses CUDA_VISIBLE_DEVICES as an integer.
       # NVIDIA_VISIBLE_DEVICES and the reservation retain the host UUID boundary.
-      NVIDIA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      NVIDIA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       CUDA_VISIBLE_DEVICES: "0"
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     # Import the official qwen-asr package before vLLM so its Transformers
     # architecture registration is present in this pinned runtime.

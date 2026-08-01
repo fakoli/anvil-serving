@@ -371,8 +371,8 @@ def test_scaffold_home_writes_placeholders_not_real_host_values(tmp_path):
     # The placeholders the operator is told to edit are actually present.
     compose = (tmp_path / "docker-compose.yml").read_text(encoding="utf-8")
     assert "\nname: anvil-serving\n" in compose
-    assert "GPU-REPLACE-WITH-PRIMARY-GPU-UUID" in compose
-    assert "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID" in compose
+    assert "GPU-REPLACE-WITH-COMPUTE-A-UUID" in compose
+    assert "GPU-REPLACE-WITH-COMPUTE-B-UUID" in compose
 
 
 def test_scaffold_home_contains_no_legacy_hardware_or_live_role_names(tmp_path):
@@ -406,7 +406,7 @@ def test_scaffold_home_never_writes_secrets_only_env_example(tmp_path):
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
-        if key in {"PRIMARY_GPU_UUID", "AUXILIARY_GPU_UUID"}:
+        if key in {"COMPUTE_A_GPU_UUID", "COMPUTE_B_GPU_UUID"}:
             assert value.startswith("GPU-REPLACE-WITH-")
         else:
             assert value.strip() == "", f".env.example ships a non-empty secret: {line}"
@@ -475,39 +475,49 @@ def test_scaffold_home_is_idempotent_no_backup_on_first_run(tmp_path):
     assert result["backed_up"] == []  # clean target: nothing to back up
 
 
-def test_discover_host_assigns_primary_and_auxiliary_by_vram():
+def test_discover_host_assigns_compute_roles_by_vram():
     discovery = init.discover_host(
         _gpu_run=_run_capacity,
         _tailscale_run=_run_tailnet,
     )
 
-    assert discovery["primary_gpu"]["uuid"] == _REAL_HOST_VALUES[0]
-    assert discovery["primary_gpu"]["memory_total_mib"] == 97887
-    assert discovery["auxiliary_gpu"]["uuid"] == _REAL_HOST_VALUES[1]
-    assert discovery["auxiliary_gpu"]["memory_total_mib"] == 32607
+    assert discovery["compute_a_gpu"]["uuid"] == _REAL_HOST_VALUES[0]
+    assert discovery["compute_a_gpu"]["memory_total_mib"] == 97887
+    assert discovery["compute_b_gpu"]["uuid"] == _REAL_HOST_VALUES[1]
+    assert discovery["compute_b_gpu"]["memory_total_mib"] == 32607
     assert discovery["tailnet_ip"] == _REAL_HOST_VALUES[2]
 
 
-def test_discover_host_equal_vram_uses_lower_index_as_primary():
+def test_discover_host_equal_vram_uses_uuid_order_across_index_reordering():
     equal_capacity = (
         "1, GPU-11111111-2222-3333-4444-555555555555, Card B, 49140\n"
         "0, GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee, Card A, 49140\n"
     )
 
+    reordered = (
+        "0, GPU-11111111-2222-3333-4444-555555555555, Card B, 49140\n"
+        "1, GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee, Card A, 49140\n"
+    )
     discovery = init.discover_host(
         _gpu_run=lambda *a, **k: equal_capacity,
         _tailscale_run=_run_missing,
     )
-
-    assert discovery["primary_gpu"]["uuid"] == (
-        "GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    rediscovery = init.discover_host(
+        _gpu_run=lambda *a, **k: reordered,
+        _tailscale_run=_run_missing,
     )
-    assert discovery["auxiliary_gpu"]["uuid"] == (
+
+    assert discovery["compute_a_gpu"]["uuid"] == (
         "GPU-11111111-2222-3333-4444-555555555555"
     )
+    assert discovery["compute_b_gpu"]["uuid"] == (
+        "GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    )
+    assert rediscovery["compute_a_gpu"]["uuid"] == discovery["compute_a_gpu"]["uuid"]
+    assert rediscovery["compute_b_gpu"]["uuid"] == discovery["compute_b_gpu"]["uuid"]
 
 
-def test_discover_host_uses_smallest_of_three_gpus_as_auxiliary():
+def test_discover_host_uses_smallest_of_three_gpus_as_compute_b():
     capacities = (
         "0, GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee, Large, 97887\n"
         "1, GPU-11111111-2222-3333-4444-555555555555, Medium, 49140\n"
@@ -519,18 +529,18 @@ def test_discover_host_uses_smallest_of_three_gpus_as_auxiliary():
         _tailscale_run=_run_missing,
     )
 
-    assert discovery["primary_gpu"]["name"] == "Large"
-    assert discovery["auxiliary_gpu"]["name"] == "Small"
+    assert discovery["compute_a_gpu"]["name"] == "Large"
+    assert discovery["compute_b_gpu"]["name"] == "Small"
 
 
-def test_discover_host_single_gpu_leaves_auxiliary_unresolved():
+def test_discover_host_single_gpu_leaves_compute_b_unresolved():
     discovery = init.discover_host(
         _gpu_run=lambda *a, **k: CAPACITY_CSV.splitlines()[1] + "\n",
         _tailscale_run=_run_missing,
     )
 
-    assert discovery["primary_gpu"]["uuid"] == _REAL_HOST_VALUES[0]
-    assert discovery["auxiliary_gpu"] is None
+    assert discovery["compute_a_gpu"]["uuid"] == _REAL_HOST_VALUES[0]
+    assert discovery["compute_b_gpu"] is None
     assert discovery["tailnet_ip"] is None
 
 
@@ -541,7 +551,7 @@ def test_scaffold_home_injects_detected_host_values(tmp_path):
         _tailscale_run=_run_tailnet,
     )
 
-    assert result["discovery"]["primary_gpu"]["source"] == "detected"
+    assert result["discovery"]["compute_a_gpu"]["source"] == "detected"
     compose = (tmp_path / "docker-compose.yml").read_text(encoding="utf-8")
     voice = (tmp_path / "docker-compose.voice-audio.yml").read_text(encoding="utf-8")
     assert _REAL_HOST_VALUES[0] in compose
@@ -551,7 +561,7 @@ def test_scaffold_home_injects_detected_host_values(tmp_path):
     assert "REPLACE-WITH-YOUR-TAILNET-IP" not in voice
 
 
-def test_scaffold_maps_primary_llm_and_auxiliary_workloads_to_gpu_roles(tmp_path):
+def test_scaffold_maps_capability_workloads_to_compute_roles(tmp_path):
     init.scaffold_home(
         out_dir=str(tmp_path),
         _gpu_run=_run_capacity,
@@ -571,40 +581,40 @@ def test_scaffold_maps_primary_llm_and_auxiliary_workloads_to_gpu_roles(tmp_path
         assert match is not None
         return match.group(1)
 
-    assert "PRIMARY_GPU_UUID" in service_block(compose, "primary")
+    assert "COMPUTE_A_GPU_UUID" in service_block(compose, "primary")
     for service in ("omni", "omni-small", "embeddings", "reranker"):
         block = service_block(compose, service)
-        assert "AUXILIARY_GPU_UUID" in block
-        assert "PRIMARY_GPU_UUID" not in block
+        assert "COMPUTE_B_GPU_UUID" in block
+        assert "COMPUTE_A_GPU_UUID" not in block
     for service in ("stt", "tts"):
-        assert "AUXILIARY_GPU_UUID" in service_block(voice, service)
-    assert "AUXILIARY_GPU_UUID" in service_block(comfy, "comfyui")
+        assert "COMPUTE_B_GPU_UUID" in service_block(voice, service)
+    assert "COMPUTE_B_GPU_UUID" in service_block(comfy, "comfyui")
 
     topology = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
     serves_manifest = (tmp_path / "serves.toml").read_text(encoding="utf-8")
-    assert 'id = "dark-primary"' in topology
-    assert 'id = "dark-auxiliary"' in topology
-    assert 'gpu_role = "dark-auxiliary"' in serves_manifest
+    assert 'id = "dark-compute-a"' in topology
+    assert 'id = "dark-compute-b"' in topology
+    assert 'gpu_role = "dark-compute-b"' in serves_manifest
 
 
 def test_discover_host_overrides_take_precedence():
     primary = "GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     auxiliary = "GPU-11111111-2222-3333-4444-555555555555"
     discovery = init.discover_host(
-        primary_gpu_uuid=primary,
-        auxiliary_gpu_uuid=auxiliary,
+        compute_a_gpu_uuid=primary,
+        compute_b_gpu_uuid=auxiliary,
         tailnet_ip="100.100.100.100",
         probe=False,
         _tailscale_run=_run_missing,
     )
 
-    assert discovery["primary_gpu"] == {
+    assert discovery["compute_a_gpu"] == {
         "uuid": primary,
         "name": None,
         "memory_total_mib": None,
         "source": "override",
     }
-    assert discovery["auxiliary_gpu"]["uuid"] == auxiliary
+    assert discovery["compute_b_gpu"]["uuid"] == auxiliary
     assert discovery["tailnet_ip"] == "100.100.100.100"
     assert discovery["tailnet_source"] == "override"
 
@@ -614,15 +624,15 @@ def test_no_detect_host_still_applies_explicit_overrides(tmp_path):
     result = init.scaffold_home(
         out_dir=str(tmp_path),
         detect_host=False,
-        primary_gpu_uuid=primary,
+        compute_a_gpu_uuid=primary,
         tailnet_ip="100.100.100.100",
     )
 
-    assert result["discovery"]["primary_gpu"]["source"] == "override"
-    assert result["discovery"]["auxiliary_gpu"] is None
+    assert result["discovery"]["compute_a_gpu"]["source"] == "override"
+    assert result["discovery"]["compute_b_gpu"] is None
     compose = (tmp_path / "docker-compose.yml").read_text(encoding="utf-8")
     assert primary in compose
-    assert "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID" in compose
+    assert "GPU-REPLACE-WITH-COMPUTE-B-UUID" in compose
 
 
 def test_discover_host_rejects_duplicate_role_overrides():
@@ -630,8 +640,8 @@ def test_discover_host_rejects_duplicate_role_overrides():
 
     with pytest.raises(init.InitError, match="distinct GPUs"):
         init.discover_host(
-            primary_gpu_uuid=uuid,
-            auxiliary_gpu_uuid=uuid,
+            compute_a_gpu_uuid=uuid,
+            compute_b_gpu_uuid=uuid,
             probe=False,
         )
 
@@ -639,20 +649,34 @@ def test_discover_host_rejects_duplicate_role_overrides():
 def test_discover_host_rejects_override_not_reported_by_detected_host():
     with pytest.raises(init.InitError, match="was not reported by nvidia-smi"):
         init.discover_host(
-            primary_gpu_uuid="GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            compute_a_gpu_uuid="GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
             _gpu_run=_run_capacity,
             _tailscale_run=_run_missing,
         )
 
 
-def test_discover_host_rejects_inverted_detected_role_overrides():
-    with pytest.raises(init.InitError, match="at least as much VRAM"):
-        init.discover_host(
-            primary_gpu_uuid=_REAL_HOST_VALUES[1],
-            auxiliary_gpu_uuid=_REAL_HOST_VALUES[0],
-            _gpu_run=_run_capacity,
-            _tailscale_run=_run_missing,
-        )
+def test_discover_host_accepts_explicit_compute_roles_regardless_of_vram_order():
+    discovery = init.discover_host(
+        compute_a_gpu_uuid=_REAL_HOST_VALUES[1],
+        compute_b_gpu_uuid=_REAL_HOST_VALUES[0],
+        _gpu_run=_run_capacity,
+        _tailscale_run=_run_missing,
+    )
+
+    assert discovery["compute_a_gpu"]["uuid"] == _REAL_HOST_VALUES[1]
+    assert discovery["compute_b_gpu"]["uuid"] == _REAL_HOST_VALUES[0]
+
+
+def test_discover_host_accepts_legacy_role_override_aliases():
+    discovery = init.discover_host(
+        primary_gpu_uuid=_REAL_HOST_VALUES[0],
+        auxiliary_gpu_uuid=_REAL_HOST_VALUES[1],
+        _gpu_run=_run_capacity,
+        _tailscale_run=_run_missing,
+    )
+
+    assert discovery["compute_a_gpu"]["uuid"] == _REAL_HOST_VALUES[0]
+    assert discovery["compute_b_gpu"]["uuid"] == _REAL_HOST_VALUES[1]
 
 
 def test_discover_host_rejects_non_tailnet_ip_override():
