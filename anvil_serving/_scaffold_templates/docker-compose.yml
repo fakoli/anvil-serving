@@ -16,8 +16,8 @@
 # immediate rollback; Laguna and GPT-OSS Puzzle remain additional recovery
 # options.
 # 2026-07-27 Omni consolidation: one Nemotron 3 Nano Omni serve replaces the
-# former auxiliary LLM, OCR, and general-vision services. It consumes the 5090
-# exclusively; embeddings and reranking remain a separate lifecycle stack.
+# former auxiliary LLM, OCR, and general-vision services. It now reserves
+# Compute B; embeddings and reranking remain a separate lifecycle stack.
 # These replaced the agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live
 # in git history. The convention also shifted: weights now resolve as HF REPO-IDS from the
 # `vllm-hfcache` docker volume (the `anvil-serving models pull` path) — NOT `/models/<dir>`
