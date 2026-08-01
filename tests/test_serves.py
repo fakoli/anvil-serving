@@ -560,15 +560,14 @@ def test_shipped_fakoli_manifest_is_valid():
 
 def test_shipped_fakoli_manifest_purpose_model_serves():
     # gpu-reservations:T009 — the embeddings/reranker serves are resident
-    # ADR-0017 reservations on the multi-tenant 5090 with truthful engine
-    # labels, and this separate stack fits the dark-auxiliary budget.
+    # ADR-0017 reservations on Compute B with truthful engine labels.
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
     emb, rr = by_name["embeddings"], by_name["reranker"]
     assert emb["engine"] == "embedding"
     assert rr["engine"] == "reranker"
     for s in (emb, rr):
-        assert s["gpu_role"] == "dark-auxiliary"
+        assert s["gpu_role"] == "dark-compute-b"
         assert s["residency"] == "resident"
         assert s["health"] == "/health"
     # HONEST-MEASURED budgets (see the manifest comments): weights + the fixed
@@ -578,29 +577,28 @@ def test_shipped_fakoli_manifest_purpose_model_serves():
     assert emb["port"] == 30005 and emb["model"] == "qwen3-embedding-0.6b"
     assert rr["port"] == 30006 and rr["model"] == "qwen3-reranker-0.6b"
     # The purpose-model stack must fit without the mutually exclusive Omni tier.
-    budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
+    budget = reservations.budgets_of(serves_list)["dark-compute-b"].budget_mib
     purpose_stack = emb["vram_mib"] + rr["vram_mib"]
     assert purpose_stack <= budget, (purpose_stack, budget)
 
 
 def test_shipped_fakoli_manifest_omni_serve():
     # The large evictable Omni tier replaces the old auxiliary, OCR, and vision
-    # containers. Its declaration plus either voice sidecar exceeds the usable
-    # RTX 5090 budget, keeping that operational choice exclusive.
+    # containers. Compute B now has enough capacity for it and voice sidecars.
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
     omni = by_name["omni"]
     assert omni["engine"] == "vllm"
-    assert omni["gpu_role"] == "dark-auxiliary"
+    assert omni["gpu_role"] == "dark-compute-b"
     assert omni["residency"] == "evictable"
     assert omni["health"] == "/health"
     assert omni["router_tier"] == "omni-local"
     assert omni["vram_mib"] == 27999
     assert omni["port"] == 30003
     assert omni["model"] == "nemotron3-omni-30b-a3b-nvfp4"
-    budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
+    budget = reservations.budgets_of(serves_list)["dark-compute-b"].budget_mib
     assert omni["vram_mib"] <= budget
-    assert omni["vram_mib"] + 2048 > budget
+    assert omni["vram_mib"] + 4096 <= budget
 
 
 def test_shipped_fakoli_manifest_small_omni_fits_with_voice():
@@ -608,12 +606,12 @@ def test_shipped_fakoli_manifest_small_omni_fits_with_voice():
     by_name = {s["name"]: s for s in serves_set}
     small = by_name["omni-small"]
     assert small["engine"] == "vllm"
-    assert small["gpu_role"] == "dark-auxiliary"
+    assert small["gpu_role"] == "dark-compute-b"
     assert small["residency"] == "evictable"
     assert small["vram_mib"] == 24576
     assert small["port"] == 30013
     assert small["model"] == "qwen25-omni-3b"
-    budget = reservations.budgets_of(serves_set)["dark-auxiliary"].budget_mib
+    budget = reservations.budgets_of(serves_set)["dark-compute-b"].budget_mib
     voice = by_name["stt"]["vram_mib"] + by_name["tts"]["vram_mib"]
     assert small["vram_mib"] + voice <= budget
 
@@ -645,7 +643,7 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
     by_name = {s["name"]: s for s in serves_list}
     comfyui = by_name["comfyui"]
     assert comfyui["engine"] == "image"
-    assert comfyui["gpu_role"] == "dark-auxiliary"
+    assert comfyui["gpu_role"] == "dark-compute-b"
     assert comfyui["residency"] == "on-demand"
     assert comfyui["health"] == "/system_stats"
     assert comfyui["port"] == 8188
@@ -664,7 +662,7 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
 
 
 def test_shipped_comfyui_manifest_mirrors_main_manifest():
-    # The comfyui manifest re-declares the dark-auxiliary ledger (capacity row +
+    # The comfyui manifest re-declares the dark-compute-b ledger (capacity row +
     # reservation mirrors) because ADR-0017 ledgers are derived per manifest.
     # This pin turns the KEEP IN SYNC comment into a checked invariant: a
     # rebalance of serves.toml that forgets the mirrors fails here instead of
@@ -673,16 +671,16 @@ def test_shipped_comfyui_manifest_mirrors_main_manifest():
     main = {s["name"]: s for s in main_list}
     comfy_list = serves.load_manifest(COMFYUI_MANIFEST)
     comfy = {s["name"]: s for s in comfy_list}
-    main_budget = reservations.budgets_of(main_list)["dark-auxiliary"]
-    comfy_budget = reservations.budgets_of(comfy_list)["dark-auxiliary"]
+    main_budget = reservations.budgets_of(main_list)["dark-compute-b"]
+    comfy_budget = reservations.budgets_of(comfy_list)["dark-compute-b"]
     assert (comfy_budget.vram_mib, comfy_budget.reserve_mib) == (
         main_budget.vram_mib, main_budget.reserve_mib)
     mirrors = [n for n in comfy if n != "comfyui"]
-    # Every serves.toml dark-auxiliary reservation must be mirrored — a missing
+    # Every serves.toml dark-compute-b reservation must be mirrored — a missing
     # mirror makes comfyui admission blind to that serve's committed VRAM.
     main_reserved = {
         n for n, s in main.items()
-        if s.get("gpu_role") == "dark-auxiliary"
+        if s.get("gpu_role") == "dark-compute-b"
         and isinstance(s.get("vram_mib"), int)
     }
     assert set(mirrors) == main_reserved, (sorted(mirrors), sorted(main_reserved))
