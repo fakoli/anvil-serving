@@ -76,6 +76,8 @@ services:
       - --allow-operation
       - serves_manage
       - --allow-operation
+      - serves_mode
+      - --allow-operation
       - serves_logs
       - --allow-operation
       - voice_manage

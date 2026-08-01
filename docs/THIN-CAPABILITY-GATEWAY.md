@@ -99,10 +99,12 @@ configuration edit is not a promotion claim.
 
 ## Operational shape
 
-The reference deployment puts primary LLM serving on the RTX PRO 6000. The RTX
-5090 serves the low-latency voice LLM, STT/TTS, embeddings, reranking, and
-on-demand ComfyUI. The gateway provides one stable endpoint across those
-separate services without pretending they are interchangeable.
+The reference deployment exposes two equivalent RTX PRO 6000 Max-Q cards as
+Compute A and Compute B. Split-mode serves reserve either role independently;
+one explicitly declared `dual-gpu-exclusive` TP=2 serve may transactionally
+reserve both while other GPU inference is offline. The gateway provides one
+stable endpoint across those services without pretending capabilities or VRAM
+heaps are interchangeable.
 
 See [Configuration](CONFIGURATION.md), [Architecture](ARCHITECTURE.md), and
 [ADR-0028](adr/0028-serving-benchmarks-and-thin-capability-gateway.md).
