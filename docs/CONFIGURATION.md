@@ -22,14 +22,14 @@ Content-identical files are left untouched, so repeated runs do not create
 redundant backups, including for `.env.example`.
 
 By default, `init` asks `nvidia-smi` for stable GPU UUIDs and total memory, then
-assigns the largest card to Primary and the smallest distinct card to Auxiliary.
-If both cards have the same capacity, the lower runtime index is Primary. The
-Primary role hosts the primary LLM; Auxiliary hosts the smaller LLM, STT, TTS,
-OCR, embeddings, reranking, vision, and optional ComfyUI workloads. It asks
+assigns the two largest distinct cards to Compute A and Compute B. Equal-VRAM
+cards use canonical UUID ordering, not runtime index, so a reboot cannot swap
+their stable roles. Workload capability is independent of A/B placement. It asks
 `tailscale ip -4` for this node's tailnet address. Detected values replace the
 corresponding template placeholders; unavailable values remain visibly
-unconfigured. `--primary-gpu-uuid`, `--auxiliary-gpu-uuid`, and `--tailnet-ip`
-override individual values. `--no-detect-host` leaves all host placeholders in
+unconfigured. `--compute-a-gpu-uuid`, `--compute-b-gpu-uuid`, and `--tailnet-ip`
+override individual values. Hidden Primary/Auxiliary flags remain temporary
+input compatibility aliases only. `--no-detect-host` leaves all host placeholders in
 place. A one-GPU machine does not silently assign both concurrent roles to the
 same card.
 
@@ -43,7 +43,7 @@ An explicit path wins. MCP voice tools preserve their existing
 default. Deployment overlays remain explicit through `--topology-overlay`.
 
 `init` writes the topology beside the other operator configuration. On the
-reference GPU host it binds the detected Primary and Auxiliary GPU UUIDs,
+reference GPU host it binds the detected Compute A and Compute B GPU UUIDs,
 tailnet address, and local command-host identity into that file. On the
 model-free Mini it can bind the Mini address when the host is identifiable as
 macOS. Values for another host are kept as visible placeholders rather than
@@ -58,6 +58,39 @@ config home (`$ANVIL_SERVING_HOME/host.toml`, default
 `~/.anvil-serving/host.toml`). A missing file or `[cache_reclaim]` table is a
 valid disabled policy. Once configured, its fields are validated strictly before
 a lifecycle command can start a model operation.
+
+## GPU reservations and operating modes (`serves*.toml`)
+
+Split-mode serves reserve one stable role:
+
+```toml
+gpu_role = "dark-compute-a"
+vram_mib = 80000
+residency = "resident"
+groups = ["split-stack"]
+```
+
+An exclusive tensor-parallel candidate reserves both roles. `vram_mib` is the
+per-role reservation, not pooled memory:
+
+```toml
+gpu_roles = ["dark-compute-a", "dark-compute-b"]
+vram_mib = 90000
+residency = "on-demand"
+operating_mode = "dual-gpu-exclusive"
+tensor_parallel_size = 2
+```
+
+The exclusive entry is inert until a separately qualified model recipe adds
+it to the private manifest. Ordinary `serves up` refuses to start it. Use
+`serves mode preview|enter|leave`, naming an explicit split restore group.
+Entry drains and stops every active GPU inference competitor before start;
+leaving stops the TP=2 owner before restoring the selected group. Active or
+unresolved exclusive ownership blocks manifest and ad-hoc Compose starts before
+container mutation. Pre-reservation model experiments are treated as GPU
+inference by default so they cannot bypass exclusivity. A genuine CPU-only
+sidecar may declare `gpu_inference = false`. The two cards remain separate VRAM
+heaps without NVLink or transparent 192 GB pooling.
 
 ## Minimal direct gateway
 
@@ -134,7 +167,7 @@ from the serving engine:
 engine = "vllm"
 quantization = "nvfp4"
 max_concurrency = 1
-params = { capacity = { gpu_role = "primary", gpu_name = "NVIDIA RTX PRO 6000 Blackwell Workstation Edition", gpu_memory_total_mib = 97887, model_memory_gib = 73.22, kv_cache_capacity_tokens = 571950, scheduler_max_num_seqs = 1, image_limit = 1, video_limit = 0 } }
+params = { capacity = { gpu_role = "dark-compute-a", gpu_name = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition", gpu_memory_total_mib = 97887, model_memory_gib = 73.22, kv_cache_capacity_tokens = 571950, scheduler_max_num_seqs = 1, image_limit = 1, video_limit = 0 } }
 ```
 
 The allowlisted capacity keys are `gpu_role`, `gpu_name`,

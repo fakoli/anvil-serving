@@ -22,10 +22,13 @@ routing calibration loop.
 
 ## Reference topology
 
-- **Primary Node / RTX PRO 6000:** primary LLM candidates and the router.
-- **Primary Node / RTX 5090:** choose the exclusive 30B Omni stack, or the
-  smaller Omni stack co-resident with dedicated STT/TTS. Embeddings/reranking
-  and ComfyUI remain optional separate stacks admitted by the same ledger.
+- **Primary Node / two equivalent RTX PRO 6000 Max-Q GPUs:** split mode admits
+  compatible workloads independently on UUID-backed `dark-compute-a` and
+  `dark-compute-b`. `dual-gpu-exclusive` mode admits exactly one declared TP=2
+  serve on both cards and blocks every other GPU inference start.
+- **Capability placement:** `llm.primary`, `llm.voice`, and `vision.*` remain
+  direct aliases, not physical GPU classes. An unavailable backing serve never
+  falls back to the exclusive model or another tier.
 - **Companion Node:** OpenClaw Gateway and voice Realtime/proxy only. It is
   model-free in the reference topology. Mini loopback audio proxy ports forward
   to Dark; they do not host models.

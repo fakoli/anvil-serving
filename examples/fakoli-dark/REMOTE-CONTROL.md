@@ -64,6 +64,7 @@ anvil-serving router transition-status --transport controller
 anvil-serving router logs --tail 50 --transport controller
 
 anvil-serving serves status --transport controller
+anvil-serving serves mode status --transport controller
 anvil-serving serves logs primary --tail 50 --transport controller
 
 anvil-serving host gpus \
@@ -83,6 +84,9 @@ operation first:
 anvil-serving router restart --dry-run --transport controller
 anvil-serving serves up primary --dry-run --transport controller
 anvil-serving serves down primary --dry-run --transport controller
+anvil-serving serves mode preview <tp2-serve> \
+  --restore-group split-stack \
+  --transport controller
 
 anvil-serving voice audio up \
   --config /etc/anvil/voice.toml \
@@ -109,7 +113,9 @@ anvil-serving router restart --confirm --transport controller
 anvil-serving serves up primary --confirm --transport controller
 ```
 
-Do not use `--confirm` speculatively. Promotion, native Windows repair,
+Live `serves mode enter|leave` additionally requires the controller tool's
+`human_approved=true` gate after the structured preview. Do not use
+`--confirm` speculatively. Promotion, native Windows repair,
 Docker/WSL restart, cache deletion, GitHub publication, and SSH-authenticated
 work remain outside this controller.
 
@@ -145,12 +151,12 @@ anvil-serving mcp serve \
   --auth-env ANVIL_CONTROLLER_TOKEN
 ```
 
-The proxy exposes 15 restricted tools:
+The rebuilt dual-PRO reference controller exposes 16 restricted tools:
 
 ```text
 operation_contracts
 router_status, router_logs, router_manage, router_transition, decision_summary
-serves_status, reservation_status, serves_manage, serves_logs
+serves_status, reservation_status, serves_manage, serves_mode, serves_logs
 voice_manage, gpu_inventory
 preflight_probe, benchmark_probe, workflow_packet_validate
 ```
@@ -210,11 +216,13 @@ Docker socket, and durable operation state. It does not mount a user home,
 
 ## Validation coverage
 
-Validated from Mini against the live Dark controller on 2026-07-29:
+The table below is the pre-upgrade live record from Mini on 2026-07-29. It
+predates `serves_mode`; rebuilding and revalidating the controller is a
+separate live mutation and is not claimed by this topology change.
 
 | Surface | Result |
 | --- | --- |
-| Controller discovery | Healthy; 15 restricted tools |
+| Controller discovery | Healthy; 15 restricted tools (pre-dual-PRO build) |
 | MCP `server/discover` and `tools/list` | Passed with `2026-07-28` |
 | All 15 controller tools | Exercised successfully as a live read or non-mutating preview |
 | Direct typed CLI matrix | 19 passed; 3 state-dependent refusals described below |

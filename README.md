@@ -18,12 +18,14 @@ gateway: a caller chooses a configured `model` alias, and that alias maps to
 one local tier. There is no request classifier, quality-profile router,
 semantic fallback, cloud escalation, or hidden substitute model.
 
-The reference topology serves primary LLM work on the RTX PRO 6000. The RTX
-5090 offers either an exclusive 30B Omni stack for auxiliary text, general
-vision, and OCR, or a smaller Omni stack co-resident with dedicated STT/TTS.
-Embeddings/reranking and on-demand ComfyUI remain optional separate stacks. The
-gateway keeps authentication, dialect translation, streaming, readiness,
-admission, and decision evidence consistent across those capabilities.
+The reference topology has two equivalent RTX PRO 6000 Blackwell Max-Q GPUs.
+In split mode, compatible LLM, Omni, voice, purpose-model, and ComfyUI workloads
+reserve Compute A or Compute B independently. In `dual-gpu-exclusive` mode,
+one explicitly declared TP=2 serve owns both cards and every other GPU
+inference workload is offline. Capability aliases remain independent of that
+placement. The gateway keeps authentication, dialect translation, streaming,
+readiness, admission, and decision evidence consistent across those
+capabilities.
 
 ## Direct capability contract
 
@@ -63,14 +65,16 @@ anvil-serving init
 anvil-serving serves groups
 anvil-serving serves up SERVE_NAME --dry-run
 anvil-serving serves up SERVE_NAME --confirm
+anvil-serving serves mode status
 anvil-serving router run
 ```
 
 `init` writes the packaged operational manifests to `~/.anvil-serving`. It
-detects NVIDIA GPU UUIDs with `nvidia-smi`, assigns the highest-VRAM card to
-Primary and the lowest-VRAM card to Auxiliary, and resolves the host's Tailscale IPv4
-address. Equal-VRAM cards are assigned deterministically by runtime index.
-Use explicit host-value flags to override discovery, `--no-detect-host` to keep
+detects NVIDIA GPU UUIDs with `nvidia-smi`, assigns stable Compute A and Compute
+B roles, and resolves the host's Tailscale IPv4 address. Capacity is sorted
+largest-first; equal-capacity cards use canonical UUID ordering so runtime-index
+changes cannot swap the roles. Use `--compute-a-gpu-uuid` and
+`--compute-b-gpu-uuid` to override discovery, `--no-detect-host` to keep
 placeholders, `--out-dir` to choose another location, or `--single-model` for a
 focused one-model scaffold. `serves up` is the canonical bring-up path for
 models and other manifest-owned resources. Rerunning `init` leaves
@@ -96,7 +100,7 @@ mapping is an exposure decision, not a model promotion claim.
 | Surface | Purpose |
 |---|---|
 | `anvil-serving router run` | Authenticated Anthropic/OpenAI-compatible capability gateway. |
-| `anvil-serving serves` | Compose-backed model lifecycle, GPU reservation, and switching tools. |
+| `anvil-serving serves` | Compose-backed lifecycle, GPU reservations, and split/exclusive TP=2 mode transactions. |
 | `anvil-serving eval preflight` | Functional qualification of a concrete endpoint. |
 | `anvil-serving eval benchmark` | Capacity and quality evidence collection. |
 | `anvil-serving models` | Model cache, source, and serve-recipe management. |
@@ -125,7 +129,7 @@ controller, and ordinary CLI remain stdlib-only.
 - [Voice pipeline](docs/VOICE.md)
 - [Benchmarks](docs/benchmarks/index.md)
   - [RTX PRO 6000](docs/benchmarks/hardware/rtx-pro-6000.md)
-  - [RTX 5090](docs/benchmarks/hardware/rtx-5090.md)
+  - [RTX 5090 historical measurements](docs/benchmarks/hardware/rtx-5090.md)
 - [Benchmark run catalog](docs/benchmarks/runs.md)
 - [OpenClaw integration](docs/OPENCLAW-INTEGRATION-SPEC.md)
 - [ADRs](docs/adr/README.md)

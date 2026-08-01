@@ -78,7 +78,8 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `topology-only`
 
-`README.md`; `CLAUDE.md`; `docs/ARCHITECTURE.md`; `docs/CONFIGURATION.md`;
+`README.md`; `CLAUDE.md`; `docs/ARCHITECTURE.md`;
+`docs/COMFYUI-MIGRATION-RUNBOOK.md`; `docs/CONFIGURATION.md`;
 `docs/EXTERNAL-BENCHMARKS.md`; `docs/THIN-CAPABILITY-GATEWAY.md`;
 `docs/TROUBLESHOOTING.md`; `docs/adr/0010-specialized-engine-tier.md`;
 `docs/adr/0011-two-mode-operation.md`;
