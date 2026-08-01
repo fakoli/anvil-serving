@@ -55,7 +55,7 @@ def test_stt_experiment_serves_are_loopback_only_and_pinned():
     assert "transformers serve" in text
     assert "qwenllm/qwen3-asr@sha256:" in text
     assert "--max-model-len 16384" in text
-    assert text.count("NVIDIA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID") == 2
+    assert text.count("NVIDIA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID") == 2
     assert "HF_TOKEN" not in text
     entries = serves.load_manifest(str(MANIFEST))
     assert [(item["name"], item["port"], item["engine"]) for item in entries] == [

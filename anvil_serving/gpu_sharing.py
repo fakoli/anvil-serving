@@ -657,7 +657,7 @@ def probe_gpu_sharing(
         raise ValueError("docker executable is unavailable")
 
     environment = os.environ.copy()
-    environment["AUXILIARY_GPU_UUID"] = gpu_uuid
+    environment["COMPUTE_B_GPU_UUID"] = gpu_uuid
     config_command = [
         docker,
         "compose",

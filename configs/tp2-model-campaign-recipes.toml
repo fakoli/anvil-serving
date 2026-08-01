@@ -1,0 +1,404 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "deepseek-ai/DeepSeek-V4-Flash-0731"
+status = "qualification-candidate"
+source = "2026-08-01 dual RTX PRO 6000 exact-release TP2 campaign"
+family = "deepseek-v4"
+total_params_b = 304
+active_params_b = 13
+
+[recipe.download]
+repo = "deepseek-ai/DeepSeek-V4-Flash-0731"
+revision = "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink; exclusive TP2 only. Pass both GPU UUIDs through --gpu-device at load time."
+
+[recipe.serve]
+engine = "sglang"
+allow_cuda_visible_devices_index = true
+image = "anvil-sglang@sha256:0aa5324c4f38bc66f4b55e1e12efab821ef614b1a8629259b2810ff72a6570e6"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+quantization = "publisher hybrid: FP4 experts and FP8 quantization"
+context_tokens = 32768
+port = 39050
+startup_timeout_seconds = 1800
+served_model_name = "deepseek-v4-flash-0731-tp2"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+]
+flags = [
+  "--revision 7872f01b1d1fe23eabc4c98b48bffcef5a386062",
+  "--served-model-name deepseek-v4-flash-0731-tp2",
+  "--trust-remote-code",
+  "--tp 2",
+  "--moe-runner-backend flashinfer_mxfp4",
+  "--kv-cache-dtype fp8_e4m3",
+  "--disable-cuda-graph",
+  "--disable-custom-all-reduce",
+  "--chunked-prefill-size 8192",
+  "--max-prefill-tokens 8192",
+  "--context-length 32768",
+  "--max-running-requests 1",
+  "--mem-fraction-static 0.94",
+  "--reasoning-parser deepseek-v4",
+  "--tool-call-parser deepseekv4",
+  "--host 0.0.0.0",
+  "--port 39050",
+]
+note = "Exact-0731 TP2 lane. Derived from SGLang sha256:984699c2... with only the WSL2-incompatible symmetric-memory logits optimization disabled in favor of its NCCL fallback. The pinned CUDA DeepSeek V4 memory pool requires FP8 E4M3 KV storage and reports missing checkpoint scaling factors; treat this as an accuracy caveat. No speculative decoding, HiSparse, or third-party conversion is enabled."
+
+[recipe.fit]
+suited = ["qualification", "agentic", "coding", "reasoning", "tool-use"]
+rationale = "Tests the newest publisher checkpoint on the workstation's symmetric exclusive TP2 topology."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731",
+  "https://docs.sglang.io/cookbook/autoregressive/DeepSeek/DeepSeek-V4.html",
+  "https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4",
+]
+
+[[recipe]]
+model = "thinkingmachines/Inkling-Small-NVFP4"
+status = "qualification-candidate"
+source = "2026-08-01 dual RTX PRO 6000 TP2 campaign; Marlin/Triton correctness baseline"
+family = "inkling"
+total_params_b = 276
+active_params_b = 12
+
+[recipe.download]
+repo = "thinkingmachines/Inkling-Small-NVFP4"
+revision = "b6a99534467840620d411e4cd4ad5819b2610d9c"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink; exclusive TP2 only. Pass both GPU UUIDs through --gpu-device at load time."
+
+[recipe.serve]
+engine = "sglang"
+allow_cuda_visible_devices_index = true
+image = "anvil-sglang@sha256:6a8afc5ca0036c1be8810443636d6f835702d1e2ae5a1d717990b0baf8e70a2f"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+quantization = "native NVFP4 with Marlin MoE baseline"
+context_tokens = 32768
+port = 39051
+startup_timeout_seconds = 1800
+served_model_name = "inkling-small-nvfp4-tp2"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "NCCL_PROTO=LL,LL128,Simple",
+  "TORCH_CUDA_ARCH_LIST=12.0a",
+  "SGLANG_ENABLE_UNIFIED_RADIX_TREE=1",
+  "SGLANG_INKLING_KEEP_PACKED_TOPK=1",
+]
+flags = [
+  "--revision b6a99534467840620d411e4cd4ad5819b2610d9c",
+  "--served-model-name inkling-small-nvfp4-tp2",
+  "--trust-remote-code",
+  "--tp 2",
+  "--quantization modelopt_fp4",
+  "--moe-runner-backend marlin",
+  "--attention-backend triton",
+  "--page-size 128",
+  "--fp4-gemm-backend marlin",
+  "--mamba-radix-cache-strategy extra_buffer",
+  "--swa-full-tokens-ratio 0.1",
+  "--mamba-full-memory-ratio 0.1",
+  "--disable-prefill-cuda-graph",
+  "--disable-custom-all-reduce",
+  "--chunked-prefill-size 8192",
+  "--context-length 32768",
+  "--max-running-requests 1",
+  "--mem-fraction-static 0.965",
+  "--reasoning-parser inkling",
+  "--tool-call-parser inkling",
+  "--host 0.0.0.0",
+  "--port 39051",
+]
+note = "Text-only TP2 correctness baseline derived from SGLang's verified two-DGX-Spark Marlin/Triton recipe, with WSL2-safe NCCL and custom-all-reduce controls. The derived image changes only the pinned base by adding accelerate==1.14.0, which the base omits even though the ModelOpt loader requires it. Balanced BF16 KV is retained; MXFP8 KV is a separate long-context lane. CUTLASS is intentionally excluded because same-hardware reports describe silent repeated-output corruption."
+
+[recipe.fit]
+suited = ["qualification", "agentic", "multimodal", "reasoning", "tool-use"]
+rationale = "Tests the requested Inkling Small checkpoint in the minimum supported aggregate-VRAM topology."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/thinkingmachines/Inkling-Small-NVFP4",
+  "https://docs.sglang.io/cookbook/autoregressive/ThinkingMachines/Inkling-Small.html",
+  "https://recipes.vllm.ai/thinkingmachines/Inkling-Small",
+]
+community = [
+  "https://www.reddit.com/r/LocalLLM/comments/1vc7x3h/running_inklingsmall_on_rtx_pro_6000_blackwell_sm/",
+]
+
+[[recipe]]
+model = "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4"
+status = "qualification-candidate"
+source = "2026-08-01 dual RTX PRO 6000 TP2 plus expert-parallel campaign"
+family = "nemotron-3-super"
+total_params_b = 120
+active_params_b = 12
+
+[recipe.download]
+repo = "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4"
+revision = "4f0cf9daaeb7a4d5e23f80a00e7ed15f0e03caf6"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink; exclusive TP2/EP2. Pass both GPU UUIDs through --gpu-device at load time."
+
+[recipe.serve]
+engine = "vllm"
+allow_cuda_visible_devices_index = true
+image = "nvcr.io/nvidia/vllm@sha256:bebcf9576b1720214319ee5c7ee4f7661954cbbf59ed3fcd188cd79a67f1967e"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+quantization = "native NVIDIA ModelOpt NVFP4"
+context_tokens = 65536
+port = 39052
+startup_timeout_seconds = 1800
+served_model_name = "nemotron3-super-120b-a12b-nvfp4-tp2"
+ipc = "host"
+shm_size = "32gb"
+ulimits = ["memlock=-1", "stack=67108864"]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "VLLM_USE_V2_MODEL_RUNNER=0",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "VLLM_FLASHINFER_MOE_BACKEND=latency",
+  "VLLM_USE_FLASHINFER_MOE_FP4=1",
+  "VLLM_USE_FLASHINFER_MOE_FP8=1",
+  "VLLM_FLASHINFER_ALLREDUCE_BACKEND=trtllm",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+]
+flags = [
+  "--revision 4f0cf9daaeb7a4d5e23f80a00e7ed15f0e03caf6",
+  "--tokenizer-revision 4f0cf9daaeb7a4d5e23f80a00e7ed15f0e03caf6",
+  "--served-model-name nemotron3-super-120b-a12b-nvfp4-tp2",
+  "--trust-remote-code",
+  "--language-model-only",
+  "--tensor-parallel-size 2",
+  "--enable-expert-parallel",
+  "--kv-cache-dtype fp8",
+  "--mamba-ssm-cache-dtype float32",
+  "--reasoning-parser nemotron_v3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--no-enable-prefix-caching",
+  "--max-num-batched-tokens 8192",
+  "--max-model-len 65536",
+  "--max-num-seqs 1",
+  "--gpu-memory-utilization 0.90",
+  "--host 0.0.0.0",
+  "--port 39052",
+]
+note = "Current official expert-parallel baseline without MTP. Uses the built-in nemotron_v3 parser in the pinned NVIDIA vLLM image."
+
+[recipe.fit]
+suited = ["qualification", "agentic", "coding", "reasoning", "tool-use"]
+rationale = "Refreshes the existing TP1 qualification on the new symmetric TP2 topology."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+  "https://docs.nvidia.com/nemotron/latest/usage-cookbook/Nemotron-3-Super/AdvancedDeploymentGuide/README.html",
+]
+local = ["docs/findings/2026-07-12-heavy-intelligence-challengers.md"]
+
+[[recipe]]
+model = "nvidia/Qwen3.5-122B-A10B-NVFP4"
+status = "qualification-candidate"
+source = "2026-08-01 matched no-MTP TP2 rerun of the qualified TP1 Primary checkpoint"
+family = "qwen3.5-moe-vl"
+total_params_b = 122
+active_params_b = 10
+
+[recipe.download]
+repo = "nvidia/Qwen3.5-122B-A10B-NVFP4"
+revision = "98915d837c4e7c87ac8296d02e89de19b3207e6d"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink; exclusive TP2 only. Pass both GPU UUIDs through --gpu-device at load time."
+
+[recipe.serve]
+engine = "vllm"
+allow_cuda_visible_devices_index = true
+image = "nvcr.io/nvidia/vllm@sha256:bebcf9576b1720214319ee5c7ee4f7661954cbbf59ed3fcd188cd79a67f1967e"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+quantization = "native NVIDIA ModelOpt NVFP4"
+context_tokens = 262144
+port = 39053
+startup_timeout_seconds = 1800
+served_model_name = "qwen35-122b-a10b-nvfp4-tp2"
+ipc = "host"
+shm_size = "32gb"
+ulimits = ["memlock=-1", "stack=67108864"]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "VLLM_USE_V2_MODEL_RUNNER=0",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+]
+flags = [
+  "--revision 98915d837c4e7c87ac8296d02e89de19b3207e6d",
+  "--tokenizer-revision 98915d837c4e7c87ac8296d02e89de19b3207e6d",
+  "--served-model-name qwen35-122b-a10b-nvfp4-tp2",
+  "--trust-remote-code",
+  "--quantization modelopt_fp4",
+  "--kv-cache-dtype bfloat16",
+  "--tensor-parallel-size 2",
+  "--disable-custom-all-reduce",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--reasoning-parser qwen3",
+  "--limit-mm-per-prompt '{\"image\":1,\"video\":0}'",
+  "--enable-prefix-caching",
+  "--enable-chunked-prefill",
+  "--max-num-batched-tokens 8192",
+  "--gpu-memory-utilization 0.90",
+  "--max-num-seqs 1",
+  "--max-model-len 262144",
+  "--host 0.0.0.0",
+  "--port 39053",
+]
+note = "Matched no-MTP TP2 lane derived from the exact qualified TP1 checkpoint and NVIDIA vLLM image."
+
+[recipe.fit]
+suited = ["qualification", "agentic", "long-context", "planning", "review", "vision", "ocr"]
+rationale = "Produces a fresh TP2 comparison against the existing same-checkpoint TP1 record."
+
+[recipe.sources]
+official = ["https://huggingface.co/nvidia/Qwen3.5-122B-A10B-NVFP4"]
+local = ["docs/findings/2026-07-28-qwen35-122b-primary-qualification.md"]
+
+[[recipe]]
+model = "poolside/Laguna-S-2.1-NVFP4"
+status = "qualification-candidate"
+source = "2026-08-01 matched no-speculation TP2 rerun of the qualified TP1 checkpoint"
+family = "laguna-s-2.1"
+total_params_b = 117.6
+active_params_b = 8.5
+
+[recipe.download]
+repo = "poolside/Laguna-S-2.1-NVFP4"
+revision = "07614121b31898586430f189d27a25a0be310843"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink; exclusive TP2 only. Pass both GPU UUIDs through --gpu-device at load time."
+
+[recipe.serve]
+engine = "vllm"
+allow_cuda_visible_devices_index = true
+image = "vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089"
+quantization = "compressed-tensors NVFP4; auto-detected"
+context_tokens = 262144
+port = 39054
+startup_timeout_seconds = 1800
+served_model_name = "laguna-s-2.1-nvfp4-tp2"
+ipc = "host"
+shm_size = "32gb"
+ulimits = ["memlock=-1", "stack=67108864"]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "VLLM_USE_V2_MODEL_RUNNER=0",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+]
+flags = [
+  "--revision 07614121b31898586430f189d27a25a0be310843",
+  "--tokenizer-revision 07614121b31898586430f189d27a25a0be310843",
+  "--served-model-name laguna-s-2.1-nvfp4-tp2",
+  "--trust-remote-code",
+  "--language-model-only",
+  "--tensor-parallel-size 2",
+  "--disable-custom-all-reduce",
+  "--kv-cache-dtype fp8",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser poolside_v1",
+  "--reasoning-parser poolside_v1",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--generation-config auto",
+  "--enable-prefix-caching",
+  "--enable-chunked-prefill",
+  "--max-num-batched-tokens 8192",
+  "--gpu-memory-utilization 0.90",
+  "--max-num-seqs 1",
+  "--max-model-len 262144",
+  "--host 0.0.0.0",
+  "--port 39054",
+]
+note = "Baseline uses checkpoint sampling defaults and no DFlash. Speculative decoding is a separate optional lane after functional qualification."
+
+[recipe.fit]
+suited = ["qualification", "agentic", "coding", "long-context", "planning", "review"]
+rationale = "Produces a fresh TP2 control for the existing same-checkpoint TP1 evidence."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/poolside/Laguna-S-2.1-NVFP4",
+  "https://recipes.vllm.ai/poolside/Laguna-S-2.1",
+]
+community = ["https://huggingface.co/poolside/Laguna-S-2.1-NVFP4/discussions/3"]
+local = ["docs/findings/2026-07-26-laguna-s-heavy-qualification.md"]

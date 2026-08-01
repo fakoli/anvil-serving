@@ -13,17 +13,17 @@
 # ALWAYS name `comfyui` on up/down. The other [[serve]] rows below are LEDGER MIRRORS,
 # not lifecycle targets (see below).
 #
-# ── ADR-0017 ledger: same dark-auxiliary budget as serves.toml — KEEP IN SYNC ──
+# ── ADR-0017 ledger: same dark-compute-b budget as serves.toml — KEEP IN SYNC ──
 # The reservation ledger is derived per manifest, so this manifest re-declares the
-# dark-auxiliary capacity row AND mirrors the serves.toml reservations that live on the same
+# dark-compute-b capacity row AND mirrors the serves.toml reservations that live on the same
 # physical card. Without the mirrors this manifest's ledger would see an empty card and
-# admit ComfyUI while the 5090 is actually full — the mirrors make `serves up comfyui`
+# admit ComfyUI while Compute B is actually full — the mirrors make `serves up comfyui`
 # admission HONEST: committed VRAM is derived from the mirrors' live docker container
 # state, exactly like in serves.toml. tests/test_serves.py asserts these rows stay in
 # sync with serves.toml (capacity, containers, vram_mib, residency).
 [[gpu_roles]]
-id = "dark-auxiliary"
-vram_mib = 32607
+id = "dark-compute-b"
+vram_mib = 97887
 reserve_mib = 3072
 
 # ── The tenant ──
@@ -33,8 +33,8 @@ reserve_mib = 3072
 # the only residency class allowed to evict — `serves up comfyui --evict` drains and
 # stops the exclusive `omni` tier via the T005/ADR-0018 transition when the ledger is
 # short. vram_mib 12288 is the F006 design budget for the tenant;
-# docker-compose.comfyui.yml enforces it engine-side with `--reserve-vram 19.84`
-# (= (32607 - 12288) MiB in GB) — change them together.
+# docker-compose.comfyui.yml enforces it engine-side with a matching reserve;
+# change the declared and engine budgets together.
 #
 # engine "image" is the truthful non-chat-LLM label (the audio/embedding/reranker
 # precedent, ADR-0017 §7): ComfyUI serves an image/video-generation graph UI + API,
@@ -49,7 +49,7 @@ port = 8188
 model = "comfyui-v0.27.1"      # UI/API tenant, not a served-model-name; label = pinned app version
 engine = "image"
 health = "/system_stats"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 12288
 residency = "on-demand"
 groups = ["comfy"]             # serve groups (serves up/down/status --group)
@@ -70,7 +70,7 @@ port = 30003
 model = "nemotron3-omni-30b-a3b-nvfp4"
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 27999
 residency = "evictable"
 router_tier = "omni-local"
@@ -83,7 +83,7 @@ port = 30013
 model = "qwen25-omni-3b"
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 24576
 residency = "evictable"
 
@@ -95,7 +95,7 @@ port = 30005
 model = "qwen3-embedding-0.6b"
 engine = "embedding"
 health = "/health"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 3200
 residency = "resident"
 
@@ -107,7 +107,7 @@ port = 30006
 model = "qwen3-reranker-0.6b"
 engine = "reranker"
 health = "/health"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 3456
 residency = "resident"
 

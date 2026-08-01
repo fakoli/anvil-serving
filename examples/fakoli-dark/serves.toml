@@ -8,28 +8,31 @@
 # with four-image/one-video input and thinking hard-disabled by the router
 # (:30002, PRO 6000). Qwen3.5 122B is the immediate rollback; Laguna S 2.1 and
 # GPT-OSS Puzzle remain additional recovery options.
-# 2026-07-27 Omni consolidation: Nemotron 3 Nano Omni owns the RTX 5090
-# exclusively and backs auxiliary text, general vision, and OCR through one
+# 2026-08-01 symmetric topology: Nemotron 3 Nano Omni occupies Compute B
+# and backs voice text, general vision, and OCR through one
 # router tier on :30003. Embeddings and reranking remain a separate,
 # mutually-exclusive auxiliary stack. `{dir}` resolves to this file's dir.
 #
-# BOTH serves are Docker-Compose-defined (docker-compose.yml holds a service per tier) — see
+# Both capability serves are Docker-Compose-defined — see
 # docs/adr/0002-serves-are-compose-defined.md. Each `up` targets its own compose service by
-# name, so `serves up heavy` and `serves up fast` stay independent. `docker compose up -d` is
+# name, so `serves up primary` and `serves up omni` stay independent. `docker compose up -d` is
 # drift-safe (natively recreates a service whose config changed). Use `serves up --recreate
 # <name>` to force a fresh container.
 
-# ADR-0017 GPU reservations for the RTX 5090 ("dark-auxiliary").
+# ADR-0017 GPU reservations for two equivalent RTX PRO 6000 Max-Q cards.
 # `serves up` admits before running a container command and `serves status`
-# reports the derived ledger. Capacity is 32607 MiB; 3072 MiB remains reserved
-# for Windows display/driver overhead. STT/TTS now declare their own reservations
+# reports the derived ledger. Each card exposes 97887 MiB; 3072 MiB remains
+# reserved for Windows/driver overhead. STT/TTS declare their own reservations
 # in serves.voice.toml, so admission can distinguish the exclusive 30B Omni from
 # the smaller Omni + voice stack instead of hiding voice inside this reserve.
-# The dark-primary PRO 6000 is single-tenant (heavy tier only) and stays outside the ledger for
-# now — adoption is incremental (ADR-0017 consequences).
 [[gpu_roles]]
-id = "dark-auxiliary"
-vram_mib = 32607
+id = "dark-compute-a"
+vram_mib = 97887
+reserve_mib = 3072
+
+[[gpu_roles]]
+id = "dark-compute-b"
+vram_mib = 97887
 reserve_mib = 3072
 
 [[serve]]
@@ -40,6 +43,10 @@ port = 30002
 model = "agents-a1-fp8-mm-262k" # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
+gpu_role = "dark-compute-a"
+vram_mib = 92000
+residency = "resident"
+router_tier = "primary-local"
 groups = ["primary-only", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d primary"
 
@@ -51,6 +58,10 @@ port = 30002
 model = "qwen35-122b-a10b-nvfp4"
 engine = "vllm"
 health = "/health"
+gpu_role = "dark-compute-a"
+vram_mib = 92000
+residency = "resident"
+router_tier = "primary-local"
 up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d primary-qwen35-rollback"
 
 [[serve]]
@@ -61,6 +72,10 @@ port = 30002
 model = "laguna-s-2.1-nvfp4"
 engine = "vllm"
 health = "/health"
+gpu_role = "dark-compute-a"
+vram_mib = 88000
+residency = "resident"
+router_tier = "primary-local"
 up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d primary-laguna-rollback"
 
 [[serve]]
@@ -71,6 +86,10 @@ port = 30002
 model = "gpt-oss-puzzle-88b"
 engine = "vllm"
 health = "/health"
+gpu_role = "dark-compute-a"
+vram_mib = 93000
+residency = "resident"
+router_tier = "primary-local"
 up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d primary-gptoss-puzzle-rollback"
 
 # One Omni tier replaces the former Gemma auxiliary LLM, PaddleOCR-VL OCR
@@ -86,7 +105,7 @@ port = 30003
 model = "nemotron3-omni-30b-a3b-nvfp4"
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 27999
 residency = "evictable"
 router_tier = "omni-local"
@@ -104,14 +123,14 @@ port = 30013
 model = "qwen25-omni-3b"
 engine = "vllm"
 health = "/health"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 24576
 residency = "evictable"
 groups = ["omni-small-stack", "omni-voice-stack"]
 up = "docker compose -f {dir}/docker-compose.yml --profile omni-small up -d omni-small"
 
 # ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
-# Always-on text-embedding + reranker serves on the multi-tenant 5090, riding the same
+# Always-on text-embedding + reranker serves on Compute B, riding the same
 # [[serve]] rails as the LLM tiers: declared `resident` reservations admitted by `serves up`,
 # loopback-only publish by default (set EMBEDDINGS_PUBLISH / RERANKER_PUBLISH to this host's
 # tailnet address for cross-host access). Engine labels are the truthful purpose-model
@@ -121,31 +140,31 @@ up = "docker compose -f {dir}/docker-compose.yml --profile omni-small up -d omni
 # weights + a ~1.7 GiB fixed vLLM/WSL2 runtime floor before any KV, so 3200 MiB (embeddings,
 # 2048-token window) and 3456 MiB (reranker, 4096-token window) are the smallest budgets that
 # load with margin. docker-compose.yml enforces them with --gpu-memory-utilization
-# vram_mib / 32607 capacity (0.0981 / 0.1060 — fraction of TOTAL capacity, per the T006
+# vram_mib / 97887 capacity (0.0327 / 0.0353 — fraction of TOTAL capacity, per the T006
 # deviation note there) — change them together.
 [[serve]]
-name = "embeddings"            # Qwen3-Embedding-0.6B (vLLM pooling runner, RTX 5090)
+name = "embeddings"            # Qwen3-Embedding-0.6B (vLLM pooling runner, Compute B)
 stack = "auxiliary"
 container = "vllm-qwen3-embedding"
 port = 30005
 model = "qwen3-embedding-0.6b" # served-model-name (what /v1/embeddings callers send)
 engine = "embedding"
 health = "/health"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 3200
 residency = "resident"
 groups = ["embedding", "auxiliary-stack"]
 up = "docker compose -f {dir}/docker-compose.yml up -d embeddings"
 
 [[serve]]
-name = "reranker"              # Qwen3-Reranker-0.6B (vLLM sequence-classification, RTX 5090)
+name = "reranker"              # Qwen3-Reranker-0.6B (vLLM sequence-classification, Compute B)
 stack = "auxiliary"
 container = "vllm-qwen3-reranker"
 port = 30006
 model = "qwen3-reranker-0.6b"  # served-model-name (what /rerank callers send)
 engine = "reranker"
 health = "/health"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 3456
 residency = "resident"
 groups = ["embedding", "auxiliary-stack"]
@@ -261,7 +280,7 @@ health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d tts-gepard-fast"
 
 # Fast-tier LLM bakeoff candidates. These are source-backed experiment serves
-# from fast-tier-llm-bakeoff-2026-07. They default to the RTX 5090 path and
+# from fast-tier-llm-bakeoff-2026-07. They now default to Compute B and
 # must be dry-run / started through `anvil-serving serves`, never as raw docker
 # commands:
 #
@@ -348,8 +367,8 @@ up = "docker compose -f {dir}/docker-compose.experiment.yml up -d heavy-qwen35-1
 
 # Single-PRO-6000 MXFP4/Marlin comparison candidate. This is the previously proven
 # flexibility-mode checkpoint expanded to 131K for a local throughput + deterministic
-# session-eval A/B. It shares the Primary GPU and is never started with `heavy` or another
-# PRO-6000 candidate resident.
+# session-eval A/B. It shares Compute A and is never started with another
+# Compute-A candidate resident.
 [[serve]]
 name = "heavy-qwen35-122b-mxfp4"
 container = "vllm-qwen35-122b"

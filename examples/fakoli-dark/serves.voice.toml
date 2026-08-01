@@ -7,27 +7,27 @@
 # Published on Dark loopback (30010/30011) and the tailnet bridge ports
 # (100.87.34.66:30110/30111) that Mini's realtime proxy targets.
 [[serve]]
-name = "stt"                   # parakeet.cpp tdt-0.6b-v3 (RTX 5090)
+name = "stt"                   # parakeet.cpp tdt-0.6b-v3 (Compute B)
 stack = "voice-audio"
 container = "anvil-voice-stt"
 port = 30010
 model = "tdt-0.6b-v3"
 engine = "audio"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 2048
 residency = "resident"
 groups = ["voice", "omni-voice-stack"]
 up = "docker compose --project-name anvil-voice-audio -f {dir}/docker-compose.voice-audio.yml up -d stt"
 
 [[serve]]
-name = "tts"                   # kokoro-fastapi (RTX 5090)
+name = "tts"                   # kokoro-fastapi (Compute B)
 stack = "voice-audio"
 container = "anvil-voice-tts"
 port = 30011
 model = "kokoro"
 engine = "audio"
 health = "/health"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 vram_mib = 2048
 residency = "resident"
 groups = ["voice", "omni-voice-stack"]
@@ -40,6 +40,7 @@ up = "docker compose --project-name anvil-voice-audio -f {dir}/docker-compose.vo
 # (managed lifecycle), after the audio serves (`anvil-serving voice audio up`).
 [[serve]]
 name = "realtime-proxy"
+gpu_inference = false
 stack = "voice-proxy"
 container = "anvil-voice-proxy"
 port = 8765

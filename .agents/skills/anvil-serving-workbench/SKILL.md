@@ -48,7 +48,7 @@ narration.
 - Gateway: `router_status`, `router_logs`, `router_manage`,
   `router_transition`, and `decision_summary`.
 - Serves and residency: `serves_status`, `reservation_status`,
-  `serves_manage`, `serves_logs`, and `serves_promote`.
+  `serves_manage`, `serves_mode`, `serves_logs`, and `serves_promote`.
 - Voice: `voice_manage` and `voice_proxy_manage`.
 - Host, models, and telemetry: `doctor_summary`, `host_summary`,
   `gpu_inventory`, `observability_collect`, `host_manage`,
@@ -72,8 +72,8 @@ Stop for a human gate before changing the active direct alias, applying a serve
 promotion, destructive cache pruning, host repair, Docker/WSL restart, public
 or non-loopback bind, or any operation that would persist a new serving target.
 
-`serves_promote` has the same three-part live gate: `confirm=true`,
-`dry_run=false`, and `human_approved=true`. `host_manage` and mutating
+`serves_promote` and live `serves_mode` enter/leave have the same three-part
+gate: `confirm=true`, `dry_run=false`, and `human_approved=true`. `host_manage` and mutating
 `router_transition` actions remain human-gated even though their MCP schemas
 support preview and confirmation.
 
@@ -100,7 +100,8 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   `models recipes delete` only for an exact reviewed registry entry. Run
   `models pull` only after an explicit network, disk, and target-volume gate.
 - Serve swap: inspect `reservation_status`, then preview lifecycle work with
-  `serves_manage` or a named transaction with `serves_promote`. The newer
+  `serves_manage`, an exclusive TP=2 transaction with `serves_mode`, or a
+  named transaction with `serves_promote`. The newer
   role-based recipe flow is `anvil-serving serves switch ROLE [MODEL]`; it is
   CLI-only, so return its preview and name the missing MCP wrapper. Require an
   exact target and the documented confirmation gate before apply, then run

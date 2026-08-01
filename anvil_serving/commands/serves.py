@@ -110,6 +110,84 @@ def commands() -> CommandNode:
                     positionals=("plan",),
                 ),
             ),
+            _node(
+                "mode",
+                "Preview or transact split and exclusive TP=2 operating modes.",
+                children=(
+                    _resource_node(
+                        "status",
+                        "Show the active split or exclusive TP=2 mode.",
+                        "anvil_serving.serves",
+                        role="model-serve",
+                        gpu=True,
+                        argv_prefix=("mode", "status"),
+                        remote_operation=_remote(
+                            "serves_mode", fixed=(("action", "status"),)
+                        ),
+                    ),
+                    _resource_node(
+                        "preview",
+                        "Preview exclusive entry without mutating GPU workloads.",
+                        "anvil_serving.serves",
+                        role="model-serve",
+                        options=(
+                            _option(
+                                "--restore-group",
+                                summary="Split group restored on entry failure.",
+                                value_name="NAME",
+                            ),
+                        ),
+                        gpu=True,
+                        argv_prefix=("mode", "preview"),
+                        remote_operation=_remote(
+                            "serves_mode",
+                            fixed=(("action", "preview"),),
+                            allowed=("manifest", "restore_group"),
+                            positionals=("target",),
+                        ),
+                    ),
+                    *(
+                        _resource_node(
+                            action,
+                            "%s exclusive TP=2 mode transactionally." % summary,
+                            "anvil_serving.serves",
+                            role="model-serve",
+                            options=CONFIRM_OPTIONS
+                            + (
+                                _option(
+                                    "--restore-group",
+                                    summary="Split group restored on leave or failure.",
+                                    value_name="NAME",
+                                ),
+                                _option(
+                                    "--drain-timeout",
+                                    summary="Bounded router drain wait.",
+                                    value_name="SECONDS",
+                                ),
+                                _option(
+                                    "--router-url",
+                                    summary="Router transition base URL.",
+                                    value_name="URL",
+                                ),
+                            ),
+                            mutation="mutate",
+                            gpu=True,
+                            argv_prefix=("mode", action),
+                            remote_operation=_remote(
+                                "serves_mode",
+                                fixed=(("action", action),),
+                                confirmed=(("human_approved", True),),
+                                allowed=(
+                                    "manifest", "restore_group", "drain_timeout",
+                                    "dry_run", "timeout_seconds",
+                                ),
+                                positionals=("target",),
+                            ),
+                        )
+                        for action, summary in (("enter", "Enter"), ("leave", "Leave"))
+                    ),
+                ),
+            ),
             _resource_node(
                 "status",
                 "Show model serve status.",

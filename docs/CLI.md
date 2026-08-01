@@ -119,6 +119,11 @@ required operands, choices, and defaults.
 | `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves switch` | Switch a deployment role to an activation-ready recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--registry`<br>`--recipe` |
 | `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `serves mode` | Preview or transact split and exclusive TP=2 operating modes. | `read` / `bounded` | - |
+| `serves mode status` | Show the active split or exclusive TP=2 mode. | `read` / `bounded` | - |
+| `serves mode preview` | Preview exclusive entry without mutating GPU workloads. | `read` / `bounded` | `--restore-group` |
+| `serves mode enter` | Enter exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url` |
+| `serves mode leave` | Leave exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url` |
 | `serves status` | Show model serve status. | `read` / `bounded` | - |
 | `serves probe` | Run an engine-aware functional serve probe. | `read` / `bounded` | - |
 | `serves groups` | List serve groups across the manifest set and their members. | `read` / `bounded` | - |

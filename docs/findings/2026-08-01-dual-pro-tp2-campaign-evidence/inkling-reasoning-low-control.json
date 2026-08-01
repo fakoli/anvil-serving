@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "reasoning_effort",
+  "source": "inkling-functional-low.json: reasoning_effort=low TP2 preflight passed smoke, structured JSON, 30000-token retrieval, and 20/20 tool calls with required reasoning evidence; sha256=8a0022b63579a09aa5f67e1559f1bf68c092bfffd6601cd635fdc01cbb252686",
+  "observed_at": "2026-08-01T15:59:34Z"
+}

@@ -1630,8 +1630,6 @@ def test_recipe_container_operations_refuse_unlabeled_container():
 
 
 def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys):
-    from anvil_serving import serves
-
     seen = {}
 
     def fake_load(recipe, container):
@@ -1640,7 +1638,11 @@ def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys)
         return ["docker", "run"], 0
 
     monkeypatch.setattr(models.serve_recipes, "load_recipe", fake_load)
-    monkeypatch.setattr(serves, "_await_healthy", lambda *_args: True)
+    monkeypatch.setattr(
+        models,
+        "_await_recipe_container_healthy",
+        lambda *_args: (True, "running"),
+    )
     rc = models.main([
         "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
         "--registry", _registry(request), "--confirm",
@@ -1648,6 +1650,124 @@ def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys)
     assert rc == 0
     assert seen == {"model": "openai/gpt-oss-120b", "container": "recipe-heavy"}
     assert "preflight before trusting" in capsys.readouterr().out
+
+
+def test_recipe_load_strict_cache_failure_precedes_gpu_allocation(
+        request, monkeypatch, capsys):
+    recipe = {
+        "model": "org/model",
+        "download": {
+            "repo": "org/model",
+            "revision": "a" * 40,
+            "volume": "campaign-cache",
+            "require_complete_cache": True,
+        },
+        "serve": {
+            "image": "example/image:pinned",
+            "port": 30123,
+            "startup_timeout_seconds": 1800,
+        },
+    }
+    loaded = []
+    monkeypatch.setattr(models.serve_recipes, "find_recipe", lambda *_args: recipe)
+    monkeypatch.setattr(
+        models,
+        "verify_pull",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            ValueError("2 incomplete cache file(s) remain")
+        ),
+    )
+    monkeypatch.setattr(
+        models.serve_recipes,
+        "load_recipe",
+        lambda *_args, **_kwargs: loaded.append(True) or (["docker", "run"], 0),
+    )
+
+    rc = models.main([
+        "recipe", "load", "org/model", "--container", "candidate",
+        "--registry", _registry(request), "--confirm",
+    ])
+
+    assert rc == 1
+    assert loaded == []
+    err = capsys.readouterr().err
+    assert "cache preflight failed before GPU allocation" in err
+    assert "models pull org/model --revision" in err
+
+
+def test_recipe_load_uses_recipe_specific_startup_timeout(
+        request, monkeypatch):
+    recipe = {
+        "model": "org/model",
+        "serve": {
+            "image": "example/image:pinned",
+            "port": 30123,
+            "startup_timeout_seconds": 1800,
+        },
+    }
+    observed = []
+    monkeypatch.setattr(models.serve_recipes, "find_recipe", lambda *_args: recipe)
+    monkeypatch.setattr(
+        models.serve_recipes,
+        "load_recipe",
+        lambda *_args, **_kwargs: (["docker", "run"], 0),
+    )
+    monkeypatch.setattr(
+        models,
+        "_await_recipe_container_healthy",
+        lambda _recipe, _container, _target, timeout, _poll: (
+            observed.append(timeout) or (True, "running")
+        ),
+    )
+
+    assert models.main([
+        "recipe", "load", "org/model", "--container", "candidate",
+        "--registry", _registry(request), "--confirm",
+    ]) == 0
+    assert observed == [1800]
+
+
+@pytest.mark.parametrize("terminal_state", ["exited", "dead"])
+def test_recipe_readiness_fails_before_sleep_after_container_exit(terminal_state):
+    sleeps = []
+
+    ready, state = models._await_recipe_container_healthy(
+        _recipe_identity(),
+        "recipe-heavy",
+        {"port": 30002, "health": "/health"},
+        600,
+        2,
+        _identity=lambda *_args: {"state": terminal_state},
+        _health=lambda *_args: None,
+        _sleep=sleeps.append,
+        _monotonic=lambda: 0,
+    )
+
+    assert ready is False
+    assert state == terminal_state
+    assert sleeps == []
+
+
+def test_recipe_readiness_polls_loading_states_until_healthy():
+    states = iter(["created", "restarting", "running"])
+    sleeps = []
+    clock = iter([0, 0, 1, 2])
+
+    ready, state = models._await_recipe_container_healthy(
+        _recipe_identity(),
+        "recipe-heavy",
+        {"port": 30002, "health": "/health"},
+        600,
+        2,
+        _identity=lambda *_args: {"state": next(states)},
+        _health=lambda *_args: 200 if len(sleeps) == 2 else None,
+        _sleep=sleeps.append,
+        _monotonic=lambda: next(clock),
+    )
+
+    assert ready is True
+    assert state == "running"
+    assert sleeps == [2, 2]
 
 
 def _enabled_cache_policy():
@@ -1757,8 +1877,6 @@ def test_pull_failure_and_dry_run_never_reclaim(monkeypatch, capsys):
 
 def test_recipe_load_waits_for_health_then_reclaims_once(
         request, monkeypatch):
-    from anvil_serving import serves
-
     policy = _enabled_cache_policy()
     before = {"cached_gb": 10.0}
     events = []
@@ -1769,10 +1887,10 @@ def test_recipe_load_waits_for_health_then_reclaims_once(
         lambda *_args, **_kwargs: (events.append("load") or (["docker", "run"], 0)),
     )
     monkeypatch.setattr(
-        serves, "_await_healthy",
-        lambda target, timeout, poll: events.append(
-            ("health", target, timeout, poll)
-        ) or True,
+        models, "_await_recipe_container_healthy",
+        lambda recipe, container, target, timeout, poll: events.append(
+            ("health", recipe["model"], container, target, timeout, poll)
+        ) or (True, "running"),
     )
     monkeypatch.setattr(
         models.host_ops, "automatic_cache_reclaim",
@@ -1787,15 +1905,14 @@ def test_recipe_load_waits_for_health_then_reclaims_once(
     ]) == 0
     assert events[0] == "load"
     assert events[1][0] == "health"
-    assert events[1][1] == {"port": 30002, "health": "/health"}
-    assert events[1][2:] == (600, 2)
+    assert events[1][1:3] == ("openai/gpt-oss-120b", "recipe-heavy")
+    assert events[1][3] == {"port": 30002, "health": "/health"}
+    assert events[1][4:] == (600, 2)
     assert events[2][0] == "reclaim"
     assert events[2][3]["readiness"] is True
 
 
 def test_recipe_load_readiness_timeout_fails_closed(request, monkeypatch):
-    from anvil_serving import serves
-
     policy = _enabled_cache_policy()
     seen = []
     monkeypatch.setattr(models.host_ops, "load_cache_reclaim_policy", lambda: policy)
@@ -1805,7 +1922,11 @@ def test_recipe_load_readiness_timeout_fails_closed(request, monkeypatch):
     monkeypatch.setattr(
         models.serve_recipes, "load_recipe", lambda *_args: (["docker", "run"], 0)
     )
-    monkeypatch.setattr(serves, "_await_healthy", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(
+        models,
+        "_await_recipe_container_healthy",
+        lambda *_args, **_kwargs: (False, "running"),
+    )
     monkeypatch.setattr(
         models.host_ops, "automatic_cache_reclaim",
         lambda _policy, _before, **kwargs: seen.append(kwargs) or {
@@ -1822,8 +1943,6 @@ def test_recipe_load_readiness_timeout_fails_closed(request, monkeypatch):
 
 def test_recipe_load_waits_for_health_when_cache_reclaim_is_disabled(
         request, monkeypatch, capsys):
-    from anvil_serving import serves
-
     policy = {
         **_enabled_cache_policy(),
         "enabled": False,
@@ -1835,14 +1954,18 @@ def test_recipe_load_waits_for_health_when_cache_reclaim_is_disabled(
         models.serve_recipes, "load_recipe", lambda *_args: (["docker", "run"], 0)
     )
     monkeypatch.setattr(
-        serves, "_await_healthy",
-        lambda target, timeout, poll: health.append((target, timeout, poll)) or True,
+        models, "_await_recipe_container_healthy",
+        lambda recipe, container, target, timeout, poll: health.append(
+            (recipe["model"], container, target, timeout, poll)
+        ) or (True, "running"),
     )
     assert models.main([
         "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
         "--registry", _registry(request), "--confirm",
     ]) == 0
     assert health == [(
+        "openai/gpt-oss-120b",
+        "recipe-heavy",
         {"port": 30002, "health": "/health"},
         600,
         2,
