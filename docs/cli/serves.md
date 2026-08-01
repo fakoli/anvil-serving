@@ -26,6 +26,7 @@ called. Entries that omit `stack` retain the `serving` default.
 | `serves adopt` | Adopt an existing serve into manifest ownership. |
 | `serves switch` | Switch a deployment role to an activation-ready recipe. |
 | `serves promote` | Preflight and promote a staged recipe with rollback. |
+| `serves mode status|preview|enter|leave` | Inspect or transact exclusive TP=2 ownership. |
 | `serves status` | Show bounded serve status. |
 | `serves probe` | Run one engine-aware functional request. |
 | `serves groups` | List serve groups and their members. |
@@ -86,6 +87,30 @@ Use `--keep-container` when retaining the stopped container and its logs is inte
 `serves up` returns only after the selected serve's declared health endpoint is
 ready. A failed or timed-out readiness check fails the command instead of
 reporting a successful start.
+
+## Split and exclusive TP=2 modes
+
+Ordinary split-mode entries reserve one `gpu_role`. An exclusive candidate
+declares exactly two `gpu_roles`, `operating_mode = "dual-gpu-exclusive"`, and
+`tensor_parallel_size = 2`. It cannot be started with ordinary `serves up`.
+
+```bash
+anvil-serving serves mode status --manifest ./serves.toml
+anvil-serving serves mode preview TP2_SERVE \
+  --restore-group split-stack --manifest ./serves.toml
+anvil-serving serves mode enter TP2_SERVE \
+  --restore-group split-stack --manifest ./serves.toml --confirm
+anvil-serving serves mode leave TP2_SERVE \
+  --restore-group split-stack --manifest ./serves.toml --confirm
+```
+
+Preview reports both stable GPU roles, the TP size, active workloads to drain
+and stop, workloads blocked while exclusive, and the explicit rollback group.
+Entry fails closed on unresolved Docker state, drains routed competitors,
+stops all GPU inference, rechecks both roles, then starts the exclusive owner.
+Failure restores the split group. Leave stops the owner before restoring that
+group. The `serves_mode` MCP tool exposes the same structured plan; live remote
+entry/leave requires its separate human-approval gate.
 
 ## Functional probes
 

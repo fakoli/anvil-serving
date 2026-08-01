@@ -15,8 +15,8 @@ Realtime client
 
 The voice loop stays local while anvil-serving's gateway handles the LLM turn.
 STT and TTS remain replaceable out-of-process serves; the LLM request selects a
-configured direct alias such as `llm.voice`, normally backed by the low-latency
-model on the RTX 5090.
+configured direct alias such as `llm.voice`. Its physical Compute A/B placement
+is independent of the capability name.
 
 The voice pipeline is different from `voice sidecar`. `voice sidecar` renders
 commands or compose manifests for Hugging Face's `speech-to-speech` project,
@@ -104,7 +104,7 @@ against the voice manifest's own directory, so a host-level
 `--candidate <label>` so live A/B tests can compose one audio topology with one
 LLM candidate without copying manifests.
 `benchmark` additionally accepts `--candidate-base-url`,
-`--candidate-model`, and `--candidate-api-key-env` for a Fast candidate that is
+`--candidate-model`, and `--candidate-api-key-env` for a voice candidate that is
 already loaded on a direct OpenAI-compatible endpoint. Those flags create an
 in-memory LLM overlay for that benchmark run only; they do not write the voice
 manifest, gateway config, or active direct alias.
@@ -348,7 +348,7 @@ do not overlay or weaken the checked-in production topology.
 
 OpenClaw can use Anvil Voice as a speech-to-speech realtime provider. In that
 topology the OpenClaw Gateway owns the browser or call audio relay, while
-Anvil Voice owns STT, the fast-tier LLM turn, and TTS:
+Anvil Voice owns STT, the direct `llm.voice` turn, and TTS:
 
 ```text
 OpenClaw Talk or Voice Call
@@ -465,8 +465,8 @@ starts an internal `gepard-postgres` container with the required `voices`
 table initialized. Set `GEPARD_DATABASE_URL` only when you want to use an
 external Postgres instead of the managed local store. The checked-in Gepard
 defaults (`TTS_GPU_MEMORY_UTILIZATION=0.12`, `TTS_MAX_NUM_SEQS=4`) are a
-co-residency profile for trying TTS beside the Fast LLM; raise them via env
-vars only when the 5090 has enough free VRAM.
+co-residency profile for trying TTS beside another Compute B workload; raise
+them via env vars only when the reservation ledger shows enough free VRAM.
 
 On Fakoli Dark, leave `VOICE_TTS_CANDIDATE_PUBLISH` unset for Dark-local
 benchmark loops:
@@ -748,7 +748,7 @@ voice alias, or make OpenClaw use the candidate outside this explicit run.
 For voice-LLM bakeoffs, pair `voice benchmark` with
 `anvil-serving eval benchmark quality` against the same loaded endpoint and record
 the final `anvil-serving serves status --manifest
-examples/fakoli-dark/serves.toml` after restoring production Fast. Voice benchmark JSON is stage-latency
+examples/fakoli-dark/serves.toml` after restoring the declared split stack. Voice benchmark JSON is stage-latency
 evidence unless the STT hypothesis and WER prove semantic transcription quality
 for the prompt; do not treat first-audio timing alone as a model-promotion
 gate.

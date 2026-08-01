@@ -7,7 +7,7 @@
 # Usage — MODEL, GPU_UUID, SERVED_NAME, PORT, and EXTRA_ARGS can be overridden:
 #
 #   MODEL=RedHatAI/Qwen3-32B-NVFP4 \
-#   GPU_UUID=GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 \
+#   GPU_UUID=GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490 \
 #   PORT=30002 SERVED_NAME=qwen3-32b-nvfp4 \
 #     docker compose -f examples/fakoli-dark/docker-compose.experiment.yml up -d
 #
@@ -109,7 +109,7 @@ services:
       # WSL2 ignores compose device_ids isolation (gotcha #13) -> container sees BOTH GPUs, so we
       # still pin the PRO 6000 via CUDA_VISIBLE_DEVICES. FALLBACK vs the UUID convention: the NGC
       # vllm NGC image's device_id_to_physical_device_id does int(<visible>), which ValueErrors on
-      # a UUID string. Pin by PCI_BUS_ID index instead — verified GPU0=RTX 5090, GPU1=PRO 6000.
+      # a UUID string. Pin by PCI_BUS_ID index instead — GPU0=Compute B, GPU1=Compute A.
       CUDA_VISIBLE_DEVICES: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -120,7 +120,7 @@ services:
           devices:
             - driver: nvidia
               device_ids:
-                - "${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"
+                - "${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -162,7 +162,7 @@ services:
       # Docker-Desktop/WSL2 does NOT honor Compose `device_ids` GPU isolation (gotcha #13),
       # so also select the target card via CUDA_VISIBLE_DEVICES=<UUID>. Belt-and-suspenders
       # with the device_ids reservation below.
-      CUDA_VISIBLE_DEVICES: ${GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
     deploy:
@@ -170,7 +170,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     # Pin the entrypoint: upstream flipped the image default from `vllm` to `vllm serve`,
     # which made the leading `serve` below double up and break arg parsing (hit live
@@ -210,13 +210,13 @@ services:
     working_dir: /opt/anvil-gpu-sharing
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     entrypoint: ["/bin/bash", "-lc"]
     command:
@@ -240,13 +240,13 @@ services:
       - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39000:39000"
     environment:
       <<: *voice-candidate-env
-      CUDA_VISIBLE_DEVICES: ${VOICE_QWEN3_32B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${VOICE_QWEN3_32B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${VOICE_QWEN3_32B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${VOICE_QWEN3_32B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       serve nvidia/Qwen3-32B-NVFP4
@@ -266,7 +266,7 @@ services:
   # CUDA_VISIBLE_DEVICES at import (vllm/kernels/oink_ops.py) and crashes on a UUID value
   # (CLAUDE.md gotcha #21; this is why the 2026-07-08 voice A/B gemma4 candidates
   # "failed before STT"). CUDA_DEVICE_ORDER=PCI_BUS_ID (from the env anchor) makes
-  # index 0 deterministically the RTX 5090 (bus 01:00.0 < 03:00.0).
+  # index 0 currently resolves to Compute B (bus 01:00.0 < 03:00.0).
   voice-gemma4-12b:
     <<: *voice-candidate-common
     image: ${VOICE_GEMMA4_IMAGE:-vllm/vllm-openai:gemma4-unified}
@@ -281,7 +281,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${VOICE_GEMMA4_12B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${VOICE_GEMMA4_12B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       serve google/gemma-4-12B-it
@@ -309,7 +309,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${VOICE_GEMMA4_E4B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${VOICE_GEMMA4_E4B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       serve google/gemma-4-E4B-it
@@ -340,7 +340,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${GEMMA4_AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${GEMMA4_COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       # vLLM 0.25.1's WSL2 pinned-memory path is opt-in. V2 remains an explicit
       # experiment for Gemma 4 because hybrid attention is excluded from the
       # engine's automatic V2 default.
@@ -352,7 +352,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${GEMMA4_AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${GEMMA4_COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -384,7 +384,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${GEMMA4_PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${GEMMA4_COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
       VLLM_WSL2_ENABLE_PIN_MEMORY: ${GEMMA4_WSL2_ENABLE_PIN_MEMORY:-1}
       VLLM_USE_V2_MODEL_RUNNER: ${GEMMA4_HEAVY_USE_V2_MODEL_RUNNER:-0}
       HF_TOKEN: ${HF_TOKEN:-}
@@ -393,7 +393,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${GEMMA4_PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${GEMMA4_COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -467,12 +467,12 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${GEPARD_TTS_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${GEPARD_TTS_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
 
   # Fast-tier LLM bakeoff candidates. These are source-backed experiment
   # services only: no restart policy, no production tier replacement, and no
-  # Heavy-card default. `AUXILIARY_CANDIDATE_GPU_UUID` defaults to the RTX 5090.
+  # Compute-B default. `COMPUTE_B_CANDIDATE_GPU_UUID` defaults to the second PRO.
   fast-qwen36-35b-a3b:
     <<: *fast-vllm-common
     container_name: vllm-fast-qwen36-35b-a3b
@@ -480,13 +480,13 @@ services:
       - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39010:39010"
     environment:
       <<: *fast-candidate-env
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       serve nvidia/Qwen3.6-35B-A3B-NVFP4
@@ -512,8 +512,8 @@ services:
       <<: *fast-candidate-env
       # The Gemma 4 support image's model-inspection subprocess currently
       # parses NVIDIA/CUDA-visible device ids as integers, so this one service
-      # uses device 0. On fakoli-dark, status evidence shows GPU 0 is the RTX
-      # 5090; other candidates keep UUID pinning.
+      # uses device 0. On Fakoli-Dark, GPU 0 currently resolves to Compute B;
+      # other candidates keep UUID pinning.
       CUDA_VISIBLE_DEVICES: ${FAST_GEMMA4_CUDA_VISIBLE_DEVICES:-0}
     deploy:
       resources:
@@ -545,13 +545,13 @@ services:
       - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39012:39012"
     environment:
       <<: *fast-candidate-env
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       python3 -m sglang.launch_server
@@ -571,13 +571,13 @@ services:
     ports:
       - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39013:39013"
     environment:
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       -m ${FAST_GLM47_FLASH_GGUF_PATH:-/root/.cache/llama.cpp/hub/models--unsloth--GLM-4.7-Flash-GGUF/snapshots/0d32489ecb9db6d2a4fc93bd27ef01519f95474d/GLM-4.7-Flash-UD-Q4_K_XL.gguf}
@@ -597,13 +597,13 @@ services:
       - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39014:39014"
     environment:
       <<: *fast-candidate-env
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       serve mistralai/Devstral-Small-2-24B-Instruct-2512
@@ -622,13 +622,13 @@ services:
     ports:
       - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39015:39015"
     environment:
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       -hf ${FAST_DEVSTRAL_SMALL2_GGUF:-bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF}
@@ -644,13 +644,13 @@ services:
       - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39016:39016"
     environment:
       <<: *fast-candidate-env
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       serve Qwen/Qwen3-30B-A3B-Instruct-2507
@@ -671,7 +671,7 @@ services:
   # the card with GPT-OSS heavy — bring `heavy` DOWN first. All are managed via
   # `anvil-serving serves up/down <name>` and publish loopback-only.
   # NGC vllm images int-parse CUDA_VISIBLE_DEVICES (see heavy-qwen35-122b note),
-  # so these pin by PCI_BUS_ID index: GPU0 = RTX 5090, GPU1 = RTX PRO 6000.
+  # so these pin by PCI_BUS_ID index: GPU0 = Compute B, GPU1 = Compute A.
   cand-nemotron3-nano-30b:
     image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
     container_name: vllm-cand-nemotron3-nano-30b
@@ -696,7 +696,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -741,7 +741,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -769,14 +769,14 @@ services:
     ports:
       - "127.0.0.1:39025:39025"
     environment:
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       -hf ${CAND_GEMMA4_GGUF:-google/gemma-4-31B-it-qat-q4_0-gguf}
@@ -807,7 +807,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -844,7 +844,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -880,7 +880,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -895,7 +895,7 @@ services:
       --host 0.0.0.0 --port 39024
 
   # ── 2026-07-11 bakeoff extension: llama.cpp Q4_K_M fast-tier candidates ──
-  # Both run on the RTX 5090 (stop `fast` first). llama.cpp pulls the GGUF into
+  # Both run on Compute B (stop its resident stack first). llama.cpp pulls the GGUF into
   # the llamacpp-cache volume on first start via -hf repo:quant.
   cand-qwen35-35b-llamacpp:
     <<: *fast-llamacpp-common
@@ -903,14 +903,14 @@ services:
     ports:
       - "127.0.0.1:39028:39028"
     environment:
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       -hf ${CAND_QWEN35_GGUF:-unsloth/Qwen3.5-35B-A3B-GGUF:Q4_K_M}
@@ -928,14 +928,14 @@ services:
     ports:
       - "127.0.0.1:39029:39029"
     environment:
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${COMPUTE_B_CANDIDATE_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
     command: >
       -hf ${CAND_GEMMA4_E4B_GGUF:-unsloth/gemma-4-E4B-it-qat-GGUF:UD-Q4_K_XL}
@@ -971,7 +971,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # Flags per the official model card (With MTP variant); MTP tokens tunable.
@@ -1013,7 +1013,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # "Highest-interest Qwen 3.6" heavy experiment: the 27B dense the community
@@ -1068,7 +1068,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -1112,7 +1112,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -1158,7 +1158,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -1203,7 +1203,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -1251,7 +1251,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -1295,7 +1295,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     command: >
       python3 -m sglang.launch_server
@@ -1338,7 +1338,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -1375,7 +1375,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -1385,7 +1385,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${PRIMARY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >

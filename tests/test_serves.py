@@ -4,6 +4,7 @@ Docker + nvidia-smi + HTTP are injected (the module exposes `_run`/`_open`
 seams), so these run with no docker, no GPU, and no network.
 """
 import os
+import subprocess
 import textwrap
 import types
 import json
@@ -560,15 +561,14 @@ def test_shipped_fakoli_manifest_is_valid():
 
 def test_shipped_fakoli_manifest_purpose_model_serves():
     # gpu-reservations:T009 — the embeddings/reranker serves are resident
-    # ADR-0017 reservations on the multi-tenant 5090 with truthful engine
-    # labels, and this separate stack fits the dark-auxiliary budget.
+    # ADR-0017 reservations on Compute B with truthful engine labels.
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
     emb, rr = by_name["embeddings"], by_name["reranker"]
     assert emb["engine"] == "embedding"
     assert rr["engine"] == "reranker"
     for s in (emb, rr):
-        assert s["gpu_role"] == "dark-auxiliary"
+        assert s["gpu_role"] == "dark-compute-b"
         assert s["residency"] == "resident"
         assert s["health"] == "/health"
     # HONEST-MEASURED budgets (see the manifest comments): weights + the fixed
@@ -578,29 +578,28 @@ def test_shipped_fakoli_manifest_purpose_model_serves():
     assert emb["port"] == 30005 and emb["model"] == "qwen3-embedding-0.6b"
     assert rr["port"] == 30006 and rr["model"] == "qwen3-reranker-0.6b"
     # The purpose-model stack must fit without the mutually exclusive Omni tier.
-    budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
+    budget = reservations.budgets_of(serves_list)["dark-compute-b"].budget_mib
     purpose_stack = emb["vram_mib"] + rr["vram_mib"]
     assert purpose_stack <= budget, (purpose_stack, budget)
 
 
 def test_shipped_fakoli_manifest_omni_serve():
     # The large evictable Omni tier replaces the old auxiliary, OCR, and vision
-    # containers. Its declaration plus either voice sidecar exceeds the usable
-    # RTX 5090 budget, keeping that operational choice exclusive.
+    # containers. Compute B now has enough capacity for it and voice sidecars.
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
     omni = by_name["omni"]
     assert omni["engine"] == "vllm"
-    assert omni["gpu_role"] == "dark-auxiliary"
+    assert omni["gpu_role"] == "dark-compute-b"
     assert omni["residency"] == "evictable"
     assert omni["health"] == "/health"
     assert omni["router_tier"] == "omni-local"
     assert omni["vram_mib"] == 27999
     assert omni["port"] == 30003
     assert omni["model"] == "nemotron3-omni-30b-a3b-nvfp4"
-    budget = reservations.budgets_of(serves_list)["dark-auxiliary"].budget_mib
+    budget = reservations.budgets_of(serves_list)["dark-compute-b"].budget_mib
     assert omni["vram_mib"] <= budget
-    assert omni["vram_mib"] + 2048 > budget
+    assert omni["vram_mib"] + 4096 <= budget
 
 
 def test_shipped_fakoli_manifest_small_omni_fits_with_voice():
@@ -608,12 +607,12 @@ def test_shipped_fakoli_manifest_small_omni_fits_with_voice():
     by_name = {s["name"]: s for s in serves_set}
     small = by_name["omni-small"]
     assert small["engine"] == "vllm"
-    assert small["gpu_role"] == "dark-auxiliary"
+    assert small["gpu_role"] == "dark-compute-b"
     assert small["residency"] == "evictable"
     assert small["vram_mib"] == 24576
     assert small["port"] == 30013
     assert small["model"] == "qwen25-omni-3b"
-    budget = reservations.budgets_of(serves_set)["dark-auxiliary"].budget_mib
+    budget = reservations.budgets_of(serves_set)["dark-compute-b"].budget_mib
     voice = by_name["stt"]["vram_mib"] + by_name["tts"]["vram_mib"]
     assert small["vram_mib"] + voice <= budget
 
@@ -645,7 +644,7 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
     by_name = {s["name"]: s for s in serves_list}
     comfyui = by_name["comfyui"]
     assert comfyui["engine"] == "image"
-    assert comfyui["gpu_role"] == "dark-auxiliary"
+    assert comfyui["gpu_role"] == "dark-compute-b"
     assert comfyui["residency"] == "on-demand"
     assert comfyui["health"] == "/system_stats"
     assert comfyui["port"] == 8188
@@ -664,7 +663,7 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
 
 
 def test_shipped_comfyui_manifest_mirrors_main_manifest():
-    # The comfyui manifest re-declares the dark-auxiliary ledger (capacity row +
+    # The comfyui manifest re-declares the dark-compute-b ledger (capacity row +
     # reservation mirrors) because ADR-0017 ledgers are derived per manifest.
     # This pin turns the KEEP IN SYNC comment into a checked invariant: a
     # rebalance of serves.toml that forgets the mirrors fails here instead of
@@ -673,16 +672,16 @@ def test_shipped_comfyui_manifest_mirrors_main_manifest():
     main = {s["name"]: s for s in main_list}
     comfy_list = serves.load_manifest(COMFYUI_MANIFEST)
     comfy = {s["name"]: s for s in comfy_list}
-    main_budget = reservations.budgets_of(main_list)["dark-auxiliary"]
-    comfy_budget = reservations.budgets_of(comfy_list)["dark-auxiliary"]
+    main_budget = reservations.budgets_of(main_list)["dark-compute-b"]
+    comfy_budget = reservations.budgets_of(comfy_list)["dark-compute-b"]
     assert (comfy_budget.vram_mib, comfy_budget.reserve_mib) == (
         main_budget.vram_mib, main_budget.reserve_mib)
     mirrors = [n for n in comfy if n != "comfyui"]
-    # Every serves.toml dark-auxiliary reservation must be mirrored — a missing
+    # Every serves.toml dark-compute-b reservation must be mirrored — a missing
     # mirror makes comfyui admission blind to that serve's committed VRAM.
     main_reserved = {
         n for n, s in main.items()
-        if s.get("gpu_role") == "dark-auxiliary"
+        if s.get("gpu_role") == "dark-compute-b"
         and isinstance(s.get("vram_mib"), int)
     }
     assert set(mirrors) == main_reserved, (sorted(mirrors), sorted(main_reserved))
@@ -1003,6 +1002,45 @@ def test_cmd_down_reports_stop_failure():
     serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running", stop_rc=1, stop_err="boom")
     assert serves.cmd_down(serv, [], _run=run) == 1
+
+
+def test_cmd_down_force_removes_after_stop_timeout():
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs.get("timeout")))
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        if argv[:2] == ["docker", "stop"]:
+            raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+        return proc(0)
+
+    assert serves.cmd_down(serv, [], _run=run) == 0
+    assert (["docker", "rm", "-f", "sglang"], serves.DOCKER_STOP_COMMAND_TIMEOUT_SECONDS) in calls
+
+
+def test_cmd_down_stop_timeout_keeps_diagnostic_container_when_requested():
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    assert serves.cmd_down(serv, [], keep_container=True, _run=run) == 1
+    assert ["docker", "rm", "-f", "sglang"] not in calls
+
+
+def test_cmd_down_force_remove_skips_graceful_stop():
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running")
+
+    assert serves.cmd_down(serv, [], force_remove=True, _run=run) == 0
+    assert ["docker", "stop", "sglang"] not in run.calls
+    assert ["docker", "rm", "-f", "sglang"] in run.calls
 
 
 def test_cmd_down_reports_remove_failure_after_stop():
@@ -1807,6 +1845,90 @@ def test_status_summary_reports_the_ledger_structurally(tmp_path):
     }
     assert by_serve["stt"]["state"] == "exited"
     assert by_serve["stt"]["committed"] is False
+
+
+def test_status_human_and_structured_outputs_agree_on_exclusive_mode(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, """
+        [[gpu_roles]]
+        id = "dark-compute-a"
+        vram_mib = 97887
+
+        [[gpu_roles]]
+        id = "dark-compute-b"
+        vram_mib = 97887
+
+        [[serve]]
+        name = "split-a"
+        container = "split-a"
+        port = 30001
+        model = "split-a-local"
+        engine = "vllm"
+        gpu_role = "dark-compute-a"
+        vram_mib = 80000
+
+        [[serve]]
+        name = "split-b"
+        container = "split-b"
+        port = 30002
+        model = "split-b-local"
+        engine = "vllm"
+        gpu_role = "dark-compute-b"
+        vram_mib = 80000
+
+        [[serve]]
+        name = "tp2"
+        container = "tp2"
+        port = 30003
+        model = "candidate-local"
+        engine = "vllm"
+        gpu_roles = ["dark-compute-a", "dark-compute-b"]
+        vram_mib = 90000
+        operating_mode = "dual-gpu-exclusive"
+        tensor_parallel_size = 2
+    """))
+    run = _status_states_run({"split-a": "absent", "split-b": "absent", "tp2": "running"})
+    data = serves.status_summary(loaded, _run=run, _open=_open_down)
+    mode = data["operating_mode"]
+    assert mode == {
+        "mode": "dual-gpu-exclusive",
+        "exclusive_owner": "tp2",
+        "gpu_roles": ["dark-compute-a", "dark-compute-b"],
+        "gpu_ownership": [
+            {"gpu_role": "dark-compute-a", "owners": ["tp2"]},
+            {"gpu_role": "dark-compute-b", "owners": ["tp2"]},
+        ],
+        "tensor_parallel_size": 2,
+        "blocked_workloads": ["split-a", "split-b"],
+        "unresolved": [],
+    }
+    assert serves.cmd_status(loaded, _run=run, _open=_open_down) == 0
+    out = capsys.readouterr().out
+    assert "Operating mode: dual-gpu-exclusive" in out
+    assert "exclusive owner: tp2 (TP=2)" in out
+    assert "gpu roles: dark-compute-a, dark-compute-b" in out
+    assert "blocked workloads: split-a, split-b" in out
+
+
+def test_operating_mode_reports_unreachable_docker_as_unresolved(tmp_path):
+    loaded = serves.load_manifest(_manifest(tmp_path, """
+        [[gpu_roles]]
+        id = "dark-compute-a"
+        vram_mib = 97887
+
+        [[serve]]
+        name = "split-a"
+        container = "split-a"
+        port = 30001
+        model = "split-a-local"
+        engine = "vllm"
+        gpu_role = "dark-compute-a"
+        vram_mib = 80000
+    """))
+    summary = serves.operating_mode_summary(loaded, lambda _container: "error")
+    assert summary["mode"] == "unresolved"
+    assert summary["unresolved"] == [{"serve": "split-a", "state": "error"}]
 
 
 def test_status_summary_ledger_spans_the_whole_manifest_despite_names(tmp_path):

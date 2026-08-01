@@ -1,4 +1,4 @@
-# ComfyUI on-demand tenant on the multi-tenant RTX 5090 (gpu-reservations:T012, F006).
+# ComfyUI on-demand tenant on Compute B (gpu-reservations:T012, F006).
 #
 # OWN compose project on purpose (`name: comfyui`, like `anvil-voice-audio`): ComfyUI is
 # an on-demand image/video-generation tenant, not an LLM tier, so it must never be
@@ -10,7 +10,7 @@
 # Manage ONLY through the product surface (never raw `docker`):
 #   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml up comfyui
 #   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml down comfyui
-# `serves up` admits the declared ADR-0017 `on-demand` reservation against the dark-auxiliary
+# `serves up` admits the declared ADR-0017 `on-demand` reservation against the dark-compute-b
 # ledger BEFORE any container command runs; `serves down` stops the container, which IS
 # the reservation release (the ledger is derived from docker state).
 #
@@ -30,13 +30,13 @@
 # named volume `comfyui-user` (subpath mounts). Both are `external: true` so
 # `docker compose down -v` can never delete them; the runbook creates them.
 #
-# VRAM (ADR-0017): serves.comfyui.toml declares gpu_role "dark-auxiliary" /
+# VRAM (ADR-0017): serves.comfyui.toml declares gpu_role "dark-compute-b" /
 # vram_mib 12288 / residency "on-demand". The exclusive Omni tier is
 # evictable; `serves up comfyui --evict` drains and stops it through the
 # T005/ADR-0018 flow. The tenant budget is enforced
-# engine-side with `--reserve-vram 19.84`: ComfyUI subtracts that many GB from the
-# card's 31.84 GB total before sizing model loads, so its working set stays inside the
-# admitted 12288 MiB (32607 - 12288 = 20319 MiB = 19.84 GB reserved for everything
+# engine-side with `--reserve-vram 83.59`: ComfyUI subtracts that many GiB from the
+# card's 95.59 GiB total before sizing model loads, so its working set stays inside the
+# admitted 12288 MiB (97887 - 12288 = 85599 MiB = 83.59 GiB reserved for everything
 # else). Wan2.2-14B video workflows will lean on ComfyUI's smart offload at this
 # budget; free residents first (serves.toml) for full-speed runs and override
 # COMFYUI_EXTRA_ARGS only together with a matching vram_mib change in the manifest.
@@ -74,20 +74,20 @@ services:
           subpath: input
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      # Pin the RTX 5090 by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
-      CUDA_VISIBLE_DEVICES: ${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      # Pin Compute B by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
       # Bind 0.0.0.0 INSIDE the container namespace; the host publish line above is the
       # only exposure control (loopback by default).
       COMFYUI_ADDRESS: "0.0.0.0"
       COMFYUI_PORT: "8188"
       # ADR-0017 engine-side budget enforcement — see the VRAM note in the header.
-      COMFYUI_EXTRA_ARGS: ${COMFYUI_EXTRA_ARGS:---reserve-vram 19.84}
+      COMFYUI_EXTRA_ARGS: ${COMFYUI_EXTRA_ARGS:---reserve-vram 83.59}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${AUXILIARY_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
               capabilities: [gpu]
 
 volumes:

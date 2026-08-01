@@ -27,7 +27,7 @@ extra_body = { chat_template_kwargs = { enable_thinking = false } }
 
 [router.tiers.params.capacity]
 gpu_role = "primary"
-gpu_name = "NVIDIA RTX PRO 6000 Blackwell Workstation Edition"
+gpu_name = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
 gpu_memory_total_mib = 97887
 model_memory_gib = 35.31
 kv_cache_capacity_tokens = 5277426
@@ -45,7 +45,7 @@ video_per_request = 1
 model_revision = "4d7d59380f327b76e73bc71f40e0c589ad0ca1d5"
 engine_version = "vllm-0.23.1rc1.dev1327-gf25953cc5"
 
-# RTX 5090: one exclusive Omni tier for auxiliary text, general vision, and OCR.
+# Compute B: one Omni tier for voice text, general vision, and OCR.
 [[router.tiers]]
 id = "omni-local"
 base_url = "http://host.docker.internal:30003/v1"

@@ -9,8 +9,8 @@ flowchart LR
     C["client or harness"] --> A["authenticated front door"]
     A --> D["dialect translation"]
     D --> R{"explicit model alias"}
-    R -->|"llm.primary"| H["RTX PRO 6000 / primary-local"]
-    R -->|"llm.voice"| F["RTX 5090 / auxiliary-local"]
+    R -->|"llm.primary"| H["configured primary-local tier"]
+    R -->|"llm.voice"| F["configured voice tier"]
     R -->|"unknown"| X["404"]
     H --> S["SSE / normalized response"]
     F --> S
@@ -31,10 +31,14 @@ operator-configured route tables and never join the chat route vocabulary.
 
 ## Capability topology
 
-The reference split assigns primary LLM candidates to the RTX PRO 6000 and
-low-latency voice LLM, STT/TTS, embeddings, reranking, and optional ComfyUI to
-the RTX 5090. Fakoli Mini remains model-free in the reference voice topology;
-its loopback audio proxies forward to Dark rather than hosting a model.
+Fakoli Dark exposes two equal RTX PRO 6000 Max-Q cards as stable UUID-backed
+`dark-compute-a` and `dark-compute-b` resources. Split mode admits compatible
+workloads independently on either role. `dual-gpu-exclusive` mode drains and
+stops every GPU inference competitor, then grants both roles to one explicitly
+configured TP=2 serve. The router and controller may remain online, but an
+alias whose backing serve is offline returns unavailable and never substitutes
+the TP=2 model. Fakoli Mini remains model-free; its loopback audio proxies
+forward to Dark rather than hosting a model.
 
 `serves` manages compose-backed model lifecycle and GPU reservations.
 `eval preflight` and benchmark commands qualify a concrete endpoint. The

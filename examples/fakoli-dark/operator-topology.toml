@@ -43,16 +43,20 @@ host = "fakoli-dark"
 role = "docker"
 
 [[gpu_roles]]
-id = "dark-auxiliary"
-host = "fakoli-dark"
-runtime = "dark-docker"
-uuid = "GPU-00000000-0000-0000-0000-000000000001"
-
-[[gpu_roles]]
-id = "dark-primary"
+id = "dark-compute-a"
 host = "fakoli-dark"
 runtime = "dark-docker"
 uuid = "GPU-00000000-0000-0000-0000-000000000002"
+vram_mib = 97887
+reserve_mib = 3072
+
+[[gpu_roles]]
+id = "dark-compute-b"
+host = "fakoli-dark"
+runtime = "dark-docker"
+uuid = "GPU-00000000-0000-0000-0000-000000000001"
+vram_mib = 97887
+reserve_mib = 3072
 
 # Mini runs gateway and proxy services only. It has no GPU role or model workload.
 [[resources]]
@@ -131,7 +135,7 @@ id = "omni"
 role = "omni-serve"
 host = "fakoli-dark"
 runtime = "dark-docker"
-gpu_role = "dark-auxiliary"
+gpu_role = "dark-compute-b"
 workload = "llm"
 
 [[resources]]
@@ -139,7 +143,7 @@ id = "primary-llm"
 role = "primary-llm-serve"
 host = "fakoli-dark"
 runtime = "dark-docker"
-gpu_role = "dark-primary"
+gpu_role = "dark-compute-a"
 workload = "llm"
 
 [[resources]]
@@ -147,7 +151,7 @@ id = "dark-model-operator"
 role = "model-serve"
 host = "fakoli-dark"
 runtime = "dark-docker"
-gpu_role = "dark-primary"
+gpu_role = "dark-compute-a"
 workload = "llm"
 
 [[resources]]
@@ -162,6 +166,7 @@ id = "dark-stt"
 role = "stt-serve"
 host = "fakoli-dark"
 runtime = "dark-docker"
+gpu_role = "dark-compute-b"
 endpoint = "http://127.0.0.1:30010/v1"
 endpoint_kind = "host-relative-loopback"
 workload = "stt"
@@ -171,6 +176,7 @@ id = "dark-tts"
 role = "tts-serve"
 host = "fakoli-dark"
 runtime = "dark-docker"
+gpu_role = "dark-compute-b"
 endpoint = "http://127.0.0.1:30011/v1"
 endpoint_kind = "host-relative-loopback"
 workload = "tts"
@@ -216,6 +222,10 @@ allowed_operations = [
   "serves-rm",
   "serves-adopt",
   "serves-status",
+  "serves-mode-status",
+  "serves-mode-preview",
+  "serves-mode-enter",
+  "serves-mode-leave",
   "serves-logs",
   "eval-preflight",
   "voice-status",

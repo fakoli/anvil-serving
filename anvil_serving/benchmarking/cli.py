@@ -603,6 +603,14 @@ def main(
         token_sources[source] = token_sources.get(source, 0) + 1
     print("-"*60)
     print(f"completed:        {len(results)}/{n} in {wall:.1f}s")
+    if metrics["reasoning_chunks"]:
+        print(
+            "TTFO  p50/p95:    %.2fs / %.2fs (reasoning or visible)"
+            % (
+                metrics["time_to_first_output_p50_ms"] / 1000.0,
+                metrics["time_to_first_output_p95_ms"] / 1000.0,
+            )
+        )
     print(
         "TTFT  p50/p95:    %.2fs / %.2fs"
         % (metrics["ttft_p50_ms"] / 1000.0, metrics["ttft_p95_ms"] / 1000.0)
@@ -637,7 +645,9 @@ def main(
         print("throughput:       unavailable (endpoint omitted exact token usage)")
     summary = {
         "schema": "anvil-serving.benchmark/v1",
-        "measurement_protocol": "capacity-v3",
+        "measurement_protocol": (
+            "capacity-v4-reasoning" if metrics["reasoning_chunks"] else "capacity-v3"
+        ),
         "run_id": time.strftime("benchmark-%Y%m%dT%H%M%SZ", time.gmtime(started_at)),
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
         "finished_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(finished_at)),
@@ -670,14 +680,19 @@ def main(
             "ttft": (
                 "request start through the first non-empty streamed content delta"
             ),
-            "effective_prefill": (
-                "usage.prompt_tokens divided by client-observed TTFT; includes "
-                "queueing, scheduling, prefill, and first-token work"
+            "time_to_first_output": (
+                "request start through the first non-empty streamed reasoning or "
+                "content delta"
             ),
-            "generation": "client-observed E2E minus TTFT",
+            "effective_prefill": (
+                "usage.prompt_tokens divided by client-observed time to first "
+                "output; includes queueing, scheduling, prefill, and first-token work"
+            ),
+            "generation": "client-observed E2E minus time to first output",
             "decode": (
                 "usage completion tokens after the first token divided by "
-                "client-observed generation time"
+                "client-observed generation time; completion tokens may include "
+                "reasoning tokens"
             ),
             "mean_inter_token_latency": (
                 "client-observed generation time divided by completion tokens "

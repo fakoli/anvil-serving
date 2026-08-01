@@ -1,0 +1,213 @@
+{
+  "schema": "source-registry/v1",
+  "observed_date": "2026-08-01",
+  "sources": [
+    {
+      "id": "deepseek-v4-flash-0731-official",
+      "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731",
+      "published_or_updated": "2026-08-01",
+      "age_class": "current",
+      "evidence_class": "official-model-card-and-checkpoint",
+      "hardware_relevance": "Pins the exact 0731 checkpoint. Its config declares FP4 experts with FP8 quantization; local TP2 behavior on two RTX PRO 6000 GPUs remains unproven before this campaign.",
+      "decision_impact": "Selected as the primary DeepSeek lane because it is the publisher checkpoint and already has the hybrid FP4-expert/FP8 representation needed to fit TP2."
+    },
+    {
+      "id": "deepseek-v4-vllm-recipe",
+      "url": "https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "official-runtime-recipe",
+      "hardware_relevance": "The exact 0731 checkpoint is verified on server accelerators; the earlier Flash checkpoint, not 0731, is listed for RTX PRO 6000 TP2.",
+      "decision_impact": "Requires a local RTX PRO 6000 functional gate and prevents treating the earlier same-hardware recipe as exact-0731 proof."
+    },
+    {
+      "id": "deepseek-v4-sglang-cookbook",
+      "url": "https://docs.sglang.io/cookbook/autoregressive/DeepSeek/DeepSeek-V4.html",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "official-runtime-cookbook",
+      "hardware_relevance": "Provides the supported MXFP4 MoE launch surface and earlier RTX PRO 6000 TP2 prior.",
+      "decision_impact": "Selects a current pinned SGLang image and MXFP4 MoE runner for the first exact-0731 attempt."
+    },
+    {
+      "id": "deepseek-0731-quant-catalog",
+      "url": "https://huggingface.co/models?search=DeepSeek-V4-Flash-0731-NVFP8",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current-catalog-snapshot",
+      "evidence_class": "artifact-catalog-search",
+      "hardware_relevance": "No checkpoint using the NVFP8 label was present. New NVFP4 conversions were larger and much less established than the publisher artifact.",
+      "decision_impact": "Rejects a nonexistent NVFP8 lane and keeps the publisher hybrid checkpoint rather than substituting a low-evidence conversion."
+    },
+    {
+      "id": "inkling-small-nvfp4-official",
+      "url": "https://huggingface.co/thinkingmachines/Inkling-Small-NVFP4",
+      "published_or_updated": "2026-07-30",
+      "age_class": "current",
+      "evidence_class": "official-model-card-and-checkpoint",
+      "hardware_relevance": "The checkpoint needs at least 180 GB aggregate VRAM; the target has 192 GB aggregate but no NVLink.",
+      "decision_impact": "Selects the exact NVFP4 checkpoint and forces exclusive TP2 with a low-concurrency baseline."
+    },
+    {
+      "id": "inkling-small-release",
+      "url": "https://thinkingmachines.ai/news/inkling-small/",
+      "published_or_updated": "2026-07-30",
+      "age_class": "current",
+      "evidence_class": "official-release-and-benchmark-method",
+      "hardware_relevance": "Confirms the released 276B-total, 12B-active model, 1M maximum context, variable reasoning effort, and open-weight availability.",
+      "decision_impact": "Replaces the earlier preview-only status and makes the exact released checkpoint eligible for local qualification."
+    },
+    {
+      "id": "inkling-small-quant-catalog",
+      "url": "https://huggingface.co/models?other=base_model%3Aquantized%3Athinkingmachines%2FInkling-Small",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current-catalog-snapshot",
+      "evidence_class": "artifact-catalog-search",
+      "hardware_relevance": "The catalog exposed the publisher NVFP4 checkpoint and an ordinary 266B-parameter dynamic FP8 conversion, but no artifact using an NVFP8 format or label.",
+      "decision_impact": "Rejects a nonexistent NVFP8 lane. The ordinary FP8 conversion exceeds the workstation's 192 GB aggregate VRAM, so the publisher NVFP4 checkpoint remains the only native Blackwell quantization selected for TP2."
+    },
+    {
+      "id": "inkling-small-vllm-recipe",
+      "url": "https://recipes.vllm.ai/thinkingmachines/Inkling-Small",
+      "published_or_updated": "2026-07-30",
+      "age_class": "current",
+      "evidence_class": "official-runtime-recipe",
+      "hardware_relevance": "Lists NVFP4 TP2 on server accelerators, not RTX PRO 6000 sm_120.",
+      "decision_impact": "Treats the recipe as an engine prior only and requires independent local output-coherence testing."
+    },
+    {
+      "id": "inkling-small-sglang-cookbook",
+      "url": "https://docs.sglang.io/cookbook/autoregressive/ThinkingMachines/Inkling-Small.html",
+      "published_or_updated": "2026-07-31",
+      "age_class": "current",
+      "evidence_class": "official-runtime-cookbook",
+      "hardware_relevance": "Documents a coherent TP2 path using Triton attention and Marlin FP4/MoE on two DGX Spark nodes.",
+      "decision_impact": "Selects the conservative Marlin/Triton baseline and disables prefill CUDA graphs before any performance tuning."
+    },
+    {
+      "id": "inkling-small-sglang-command-source",
+      "url": "https://github.com/sgl-project/sglang/blob/main/docs_new/src/snippets/configs/thinkingmachines/inkling-small.jsx",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "official-runtime-command-generator-source",
+      "hardware_relevance": "The verified two-DGX-Spark TP2 cell pins ModelOpt FP4, Marlin FP4 and MoE, Triton attention, page size 128, unified radix state, extra-buffer Mamba state, and balanced BF16 KV.",
+      "decision_impact": "Aligns the workstation baseline with the closest current TP2 recipe while retaining the campaign's WSL2-safe NCCL and custom-all-reduce controls. MXFP8 KV remains a separate long-context experiment rather than part of the correctness baseline."
+    },
+    {
+      "id": "inkling-small-rtx-pro-community",
+      "url": "https://www.reddit.com/r/LocalLLM/comments/1vc7x3h/running_inklingsmall_on_rtx_pro_6000_blackwell_sm/",
+      "published_or_updated": "2026-08-01",
+      "age_class": "current",
+      "evidence_class": "same-hardware-community-recipe-lead",
+      "hardware_relevance": "Reports silent repeated-output corruption with CUTLASS and coherent output with Marlin on two RTX PRO 6000 Max-Q cards.",
+      "decision_impact": "CUTLASS is excluded from the baseline; the campaign must fail closed on output coherence before timing the model."
+    },
+    {
+      "id": "sglang-sm120-shared-memory-report",
+      "url": "https://github.com/sgl-project/sglang/issues/16816",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "upstream-runtime-issue",
+      "hardware_relevance": "Records the RTX PRO 6000 sm_120 101376-byte shared-memory ceiling and related Triton kernel failures.",
+      "decision_impact": "Supports an architecture-gated reduction in Inkling grouped-GEMM staging while requiring local functional and capacity requalification."
+    },
+    {
+      "id": "sglang-sm120-moe-tuning-report",
+      "url": "https://github.com/sgl-project/sglang/issues/18870",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "upstream-runtime-issue",
+      "hardware_relevance": "Shows that SM120 MoE kernel configuration is geometry- and runtime-specific rather than safely portable from another accelerator.",
+      "decision_impact": "Prevents fabricating or reusing a Helion tune and keeps the existing two-stage Triton activation path as a compatibility fallback only."
+    },
+    {
+      "id": "accelerate-1140-release",
+      "url": "https://pypi.org/project/accelerate/1.14.0/",
+      "published_or_updated": "2026-06-11",
+      "age_class": "current",
+      "evidence_class": "official-package-release",
+      "hardware_relevance": "Pins the loader dependency missing from the selected SGLang base image.",
+      "decision_impact": "Installs accelerate 1.14.0 only in the reproducible derived Inkling image instead of mutating a live container."
+    },
+    {
+      "id": "nemotron-super-nvfp4-official",
+      "url": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "official-quant-model-card",
+      "hardware_relevance": "Pins the NVIDIA NVFP4 checkpoint selected for a fresh TP2 run.",
+      "decision_impact": "Selects the exact cached checkpoint and preserves the publisher parser and serving parameters."
+    },
+    {
+      "id": "nemotron-super-advanced-deployment",
+      "url": "https://docs.nvidia.com/nemotron/latest/usage-cookbook/Nemotron-3-Super/AdvancedDeploymentGuide/README.html",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "official-deployment-guide",
+      "hardware_relevance": "Documents TP2 NVFP4 and expert-parallel launch controls; its validation hardware is not this workstation pair.",
+      "decision_impact": "Selects expert parallelism and current FlashInfer FP4 controls while keeping MTP out of the baseline."
+    },
+    {
+      "id": "qwen35-122b-nvfp4-official",
+      "url": "https://huggingface.co/nvidia/Qwen3.5-122B-A10B-NVFP4",
+      "published_or_updated": "2026-06-01",
+      "age_class": "current",
+      "evidence_class": "official-quant-model-card",
+      "hardware_relevance": "Pins the NVFP4 checkpoint already proven locally at TP1 on one matching GPU.",
+      "decision_impact": "Uses a matched no-MTP TP2 recipe so the new result can be compared with the existing TP1 evidence."
+    },
+    {
+      "id": "qwen35-local-tp1-qualification",
+      "url": "docs/findings/2026-07-28-qwen35-122b-primary-qualification.md",
+      "published_or_updated": "2026-07-28",
+      "age_class": "current",
+      "evidence_class": "local-functional-capacity-quality",
+      "hardware_relevance": "Same GPU product and exact checkpoint at TP1 with the pinned NVIDIA vLLM container.",
+      "decision_impact": "Provides the control configuration and comparison boundary for the TP2 rerun."
+    },
+    {
+      "id": "laguna-s-21-nvfp4-official",
+      "url": "https://huggingface.co/poolside/Laguna-S-2.1-NVFP4",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "official-model-card-and-checkpoint",
+      "hardware_relevance": "Requires vLLM 0.25.0 or newer and documents native NVFP4 serving controls.",
+      "decision_impact": "Selects a current pinned vLLM baseline without speculative decoding."
+    },
+    {
+      "id": "laguna-s-21-rtx-pro-discussion",
+      "url": "https://huggingface.co/poolside/Laguna-S-2.1-NVFP4/discussions/3",
+      "published_or_updated": "2026-07-31",
+      "age_class": "current",
+      "evidence_class": "same-hardware-community-recipe-lead",
+      "hardware_relevance": "Reports a working single-RTX-PRO-6000 path on vLLM 0.25.1 and FlashInfer 0.6.13.",
+      "decision_impact": "Pins the stable runtime family but does not count as TP2 evidence."
+    },
+    {
+      "id": "nvidia-nccl-2303-environment",
+      "url": "https://docs.nvidia.com/deeplearning/nccl/archives/nccl_2303/user-guide/docs/env.html",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current-runtime-matched",
+      "evidence_class": "official-runtime-documentation",
+      "hardware_relevance": "NCCL 2.30 documents direct P2P disablement and shared-memory fallback for systems where PCIe peer access cannot initialize.",
+      "decision_impact": "Replaces the failed forced-SYS P2P baseline with NCCL_P2P_DISABLE=1 and retains SHM transport for the next local TP2 attempt."
+    },
+    {
+      "id": "nvidia-cuda-wsl-133-limitations",
+      "url": "https://docs.nvidia.com/cuda/pdf/CUDA_on_WSL_User_Guide.pdf",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "official-platform-documentation",
+      "hardware_relevance": "The CUDA on WSL guide documents limited pinned host memory and multi-GPU container-device filtering constraints.",
+      "decision_impact": "Makes NCCL initialization a campaign hard gate and prevents treating accepted Docker GPU syntax as proof of a usable distributed transport."
+    },
+    {
+      "id": "pytorch-cuda-allocator-semantics",
+      "url": "https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-alloc-conf",
+      "published_or_updated": "observed-2026-08-01",
+      "age_class": "current",
+      "evidence_class": "official-runtime-documentation",
+      "hardware_relevance": "PyTorch documents expandable segments as experimental, disabled by default, and implemented through CUDA virtual-memory allocation and mapping.",
+      "decision_impact": "Removes the campaign's expandable-segment opt-in after the WSL2 TP2 workers failed at their first torch allocation; the recipe returns to PyTorch's native default allocator."
+    }
+  ]
+}

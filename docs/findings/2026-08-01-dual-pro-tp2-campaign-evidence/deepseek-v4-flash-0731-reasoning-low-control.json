@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "reasoning_effort",
+  "source": "deepseek-v4-flash-0731-preflight-reasoning-low.json: reasoning_effort=low TP2 preflight passed smoke, structured JSON, 30000-token retrieval, and 20/20 tool calls with required reasoning evidence",
+  "observed_at": "2026-08-01T13:49:10Z"
+}

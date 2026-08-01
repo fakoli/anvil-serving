@@ -46,6 +46,30 @@ dated finding before treating a row as a single experiment. Full rules:
 
 ---
 
+## Dual RTX PRO 6000 Blackwell Max-Q — 192 GB aggregate, exclusive TP=2
+
+These rows used both 96 GB cards over PCIe without NVLink. Each candidate was
+the sole inference owner; ordinary split-mode, Omni, voice, router, and other
+model workloads were offline. The campaign changed no production alias.
+
+| Model / config | Status | Quant · KV | Served · validated context | Reasoning contract | First-output latency | Effective prefill | Completion rate · decode | Recipe |
+| --- | --- | --- | --- | --- | --- | ---: | --- | --- |
+| [Qwen3.5 122B A10B NVFP4](models/qwen35-122b.md) | `no-promotion` TP=2; single-card profile remains `rollback` | ModelOpt NVFP4 · BF16 KV | 262,144 · 128K | off for matched gates | 2.32 s TTFT @29,804 tok; 14.59 s @125,444 tok | 12,821 / 8,570 tok/s | 12/12 @32K · 67.5 tok/s; 4/4 @128K · 65.0 tok/s | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
+| [Nemotron 3 Super 120B NVFP4](models/nemotron3-super-120b.md) | `no-promotion` | NVFP4 · FP8 KV · EP=2 | 65,536 · 60K | off for matched gates | 2.84 s TTFT @28,438 tok; 5.58 s @53,820 tok | 10,025 / 9,646 tok/s | 12/12 @32K · 59.5 tok/s; 4/4 @60K · 60.0 tok/s | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
+| [Laguna S 2.1 NVFP4](models/laguna-s-2.1.md) | `no-promotion` TP=2; single-card profile remains `rollback` | NVFP4 · FP8 KV | 262,144 · 240K | **must be off** | 1.97 s TTFT @29,834 tok; 31.85 s @231,457 tok | **15,134 / 7,252 tok/s** | 12/12 @32K · **70.9 tok/s**; 4/4 @240K · 66.0 tok/s | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
+| [DeepSeek V4 Flash 0731](models/deepseek-v4-flash.md) | `challenger`, `no-promotion` | publisher FP4 experts / FP8 · FP8 E4M3 KV | 32,768 · 30K | `reasoning_effort=low` | 2.70 s TTFO; 29.11 s first-visible TTFT @21,144 tok | 7,818 tok/s from TTFO | 11/12 · 11.5 tok/s combined reasoning/visible | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
+| [Inkling Small NVFP4](models/inkling-small.md) | `no-promotion` | ModelOpt NVFP4 · BF16 KV/SWA | 32,768 · 30K | `reasoning_effort=low` | 2.79 s TTFO; 4.63 s first-visible TTFT @21,879 tok | 7,844 tok/s from TTFO | 12/12 · 73.5 tok/s combined reasoning/visible | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
+
+The three thinking-disabled rows use `capacity-v3`. DeepSeek and Inkling use
+`capacity-v4-reasoning`, whose generation interval begins at the first
+reasoning or visible delta. Their decode values include reasoning tokens and
+are not visible-only rates. Inkling's separate reasoning-off 32K lane completed
+12/12 at 2.84-second TTFT, 7,887 tok/s effective prefill, and 74.6 tok/s
+visible decode. The one failed DeepSeek request exhausted 2,048 completion
+tokens in reasoning without producing a visible answer.
+
+---
+
 ## RTX PRO 6000 Blackwell Max-Q — 96 GB, sm_120, 300 W
 
 The card is **power-limited to 300 W (Max-Q)**; treat external reports from higher-TDP cards as
@@ -111,7 +135,7 @@ Under 128 concurrent requests the ranking inverts — NVFP4 wins on density wher
 | Config | Outcome |
 | --- | --- |
 | [Laguna XS 2.1 NVFP4](models/laguna-s-2.1.md) | `rejected` — corrupted text and 0/20 tools with FP8 KV; stalled without it; SGLang path returned empty 131K needle. **No trustworthy numbers.** |
-| [DeepSeek V4 Flash NVFP4](models/deepseek-v4-flash.md) | `rejected` — NGC vLLM 0.19 rejected the architecture; nightly load aborted at shard 18/46. **Nothing measured.** |
+| [DeepSeek V4 Flash NVFP4, 2026-07-10 single-card attempt](models/deepseek-v4-flash.md) | historical `rejected` — NGC vLLM 0.19 rejected the architecture; nightly load aborted at shard 18/46. **Nothing measured in that lane; the 0731 TP=2 result above supersedes it for current compatibility.** |
 | Gemma 4 31B native MTP | Incompatible — assistant projection dims 6400 vs 10752. |
 
 ---
@@ -208,8 +232,9 @@ controlled long-generation decode was never captured for the Qwen3.5 122B rollba
 STT real-time factor was never measured for any ASR model.
 
 Several configurations lack a pinned checkpoint revision and therefore cannot be re-run exactly —
-MiniMax M2.7 REAP, Ornith 1.0 35B, DeepSeek V4 Flash, Parakeet, Kokoro, and the whole
-2026-07-10/11 bakeoff set. They are kept because a negative or partial result is still evidence,
+MiniMax M2.7 REAP, Ornith 1.0 35B, the historical 2026-07-10 DeepSeek V4 Flash
+attempt, Parakeet, Kokoro, and the whole 2026-07-10/11 bakeoff set. They are
+kept because a negative or partial result is still evidence,
 but they cannot ground a new equivalence claim.
 
 Three 2026-07-12 deterministic planning scores (Qwen 1/5, Nemotron 0/5, GPT-OSS 0/5) are retained

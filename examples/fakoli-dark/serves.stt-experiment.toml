@@ -1,4 +1,4 @@
-# Opt-in STT candidate serves. Run one at a time on the RTX 5090. Neither
+# Opt-in STT candidate serves. Run one at a time on Compute B. Neither
 # declaration changes the live Parakeet endpoint or the router audio route.
 
 [[serve]]

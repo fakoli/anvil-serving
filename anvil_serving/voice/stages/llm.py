@@ -21,8 +21,8 @@ Wire contract (non-negotiable):
 * The bearer token, if configured, comes from an ENV VAR NAME
   (``api_key_env``), never a literal -- resolved at call time via
   ``os.environ``, mirroring ``voice/config.py``'s secret-hygiene contract.
-* ``model`` defaults to the ``"llm.voice"`` direct alias. The reference
-  topology maps that alias to the low-latency voice LLM on the RTX 5090.
+* ``model`` defaults to the ``"llm.voice"`` direct alias. Physical placement
+  is configured independently on one of Dark's symmetric compute roles.
 
 Stdlib-only: ``json``, ``os``, ``re``, ``urllib.request``/``urllib.error``.
 """

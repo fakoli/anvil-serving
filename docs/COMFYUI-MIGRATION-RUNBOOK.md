@@ -1,12 +1,12 @@
 # ComfyUI tenant — one-time volume migration runbook (gpu-reservations:T012)
 
-ComfyUI runs on fakoli-dark as an **on-demand image/video-generation tenant** of the
-multi-tenant RTX 5090 — its own compose project
+ComfyUI runs on fakoli-dark as an **on-demand image/video-generation tenant** of
+the `dark-compute-b` RTX PRO 6000 role — its own compose project
 ([`examples/fakoli-dark/docker-compose.comfyui.yml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/docker-compose.comfyui.yml)),
 its own serves manifest
 ([`examples/fakoli-dark/serves.comfyui.toml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/serves.comfyui.toml),
 the [docs/VOICE.md](VOICE.md) isolation rule), and an ADR-0017 `on-demand` reservation
-(12288 MiB on `dark-fast`).
+(12288 MiB on `dark-compute-b`).
 
 This runbook covers the **one-time migration** of the model library from the retired
 Windows portable install into the named volume the tenant serves from, and the standard
@@ -85,7 +85,7 @@ This is a **copy**, not a move — see "Portable install retirement" below.
 Always through the product surface, never raw `docker` (ADR-0002 / CLAUDE.md):
 
 ```bash
-# Admission first: the manifest mirrors the serves.toml dark-fast reservations, so
+# Admission first: the manifest mirrors the serves.toml dark-compute-b reservations, so
 # `up` is denied with the honest ledger when the card is committed. Free residents
 # via the MAIN manifest (or evict the vision slot, below) until 12288 MiB is free.
 anvil-serving serves up comfyui --manifest examples/fakoli-dark/serves.comfyui.toml

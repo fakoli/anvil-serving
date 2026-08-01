@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-07-29.**
+**Last evidence review: 2026-08-01.**
 
 ## Start with the numbers
 
@@ -18,12 +18,15 @@ what runs on it and how well, start there.
 
 | Hardware | Current role | Start here |
 |---|---|---|
-| NVIDIA RTX PRO 6000 Blackwell Max-Q, 96 GB, sm_120 | Primary LLM evaluation and serving | [RTX PRO 6000](hardware/rtx-pro-6000.md) |
-| NVIDIA GeForce RTX 5090, 32 GB, sm_120 | Omni/vision and co-resident STT/TTS evaluation | [RTX 5090](hardware/rtx-5090.md) |
+| 2× NVIDIA RTX PRO 6000 Blackwell Max-Q, 192 GB aggregate, sm_120 | Current Fakoli Dark topology; split workloads or exclusive TP=2 | [RTX PRO 6000](hardware/rtx-pro-6000.md) |
+| NVIDIA GeForce RTX 5090, 32 GB, sm_120 | Historical Fakoli Dark results; card removed before the TP=2 campaign | [RTX 5090](hardware/rtx-5090.md) |
 
-Both cards are installed in Fakoli Dark. Fakoli Mini is model-free in the
-reference topology. Cross-card tests must say which card was measured and which
-was merely protected or co-resident.
+Fakoli Dark now has two equal PRO 6000 cards. Aggregate VRAM is not unified
+memory, and the cards communicate over PCIe without NVLink. Exclusive TP=2
+runs must prove that both devices were selected and all other inference was
+offline. Fakoli Mini remains model-free in the reference topology. Historical
+mixed-card tests still say which card was measured and which was merely
+protected or co-resident.
 
 ## Browse by model
 
@@ -31,7 +34,7 @@ Each **[model dossier](models/index.md)** is a stable, model-centered summary:
 current status, every measured configuration, working recipes, and links to the
 dated findings behind each conclusion.
 
-## What is serving today
+## Production aliases and recent controls
 
 1. **Agents-A1 official FP8** — `current` multimodal Primary with thinking
    disabled.
@@ -41,8 +44,11 @@ dated findings behind each conclusion.
    unified-diff formatting passed only 2/3.
 5. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
    controls, not the current rollback order.
-6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — measured on the RTX 5090.
-   The RTX PRO 6000 was protected, not benchmarked.
+6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
+   measurements. The RTX PRO 6000 was protected, not benchmarked.
+
+The 2026-08-01 dual-PRO campaign did not promote or reroute any of these
+aliases. It restored the pre-campaign service state after exclusive TP=2.
 
 ## How to read the evidence
 

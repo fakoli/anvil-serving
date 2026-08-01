@@ -81,17 +81,20 @@ _TEMPLATES_PACKAGE = "anvil_serving._scaffold_templates"
 # (real value in the reference instance, clearly-marked placeholder). Applied to
 # every scaffolded file so one machine's identity never rides onto a fresh host.
 _SANITIZE = (
-    ("GPU-d0f446cf-1771-414c-e116-a39138798a8c", "GPU-REPLACE-WITH-PRIMARY-GPU-UUID"),
-    ("GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1", "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID"),
-    ("GPU-00000000-0000-0000-0000-000000000002", "GPU-REPLACE-WITH-PRIMARY-GPU-UUID"),
-    ("GPU-00000000-0000-0000-0000-000000000001", "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID"),
+    ("GPU-d0f446cf-1771-414c-e116-a39138798a8c", "GPU-REPLACE-WITH-COMPUTE-A-UUID"),
+    ("GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490", "GPU-REPLACE-WITH-COMPUTE-B-UUID"),
+    # Sanitize the removed RTX 5090 identity in operator files produced by an
+    # older reference scaffold. It must never ride onto a fresh host.
+    ("GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1", "GPU-REPLACE-WITH-COMPUTE-B-UUID"),
+    ("GPU-00000000-0000-0000-0000-000000000002", "GPU-REPLACE-WITH-COMPUTE-A-UUID"),
+    ("GPU-00000000-0000-0000-0000-000000000001", "GPU-REPLACE-WITH-COMPUTE-B-UUID"),
     ("100.87.34.66", "REPLACE-WITH-YOUR-TAILNET-IP"),
     ("192.0.2.20", "REPLACE-WITH-YOUR-TAILNET-IP"),
     ("192.0.2.10", "REPLACE-WITH-YOUR-MINI-TAILNET-IP"),
 )
 
-_PRIMARY_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-PRIMARY-GPU-UUID"
-_AUXILIARY_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-AUXILIARY-GPU-UUID"
+_COMPUTE_A_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-COMPUTE-A-UUID"
+_COMPUTE_B_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-COMPUTE-B-UUID"
 _TAILNET_IP_PLACEHOLDER = "REPLACE-WITH-YOUR-TAILNET-IP"
 _MINI_TAILNET_IP_PLACEHOLDER = "REPLACE-WITH-YOUR-MINI-TAILNET-IP"
 _TAILNET_IPV4 = ipaddress.ip_network("100.64.0.0/10")
@@ -178,8 +181,8 @@ def render_edge_config():
 
 def _empty_host_discovery():
     return {
-        "primary_gpu": None,
-        "auxiliary_gpu": None,
+        "compute_a_gpu": None,
+        "compute_b_gpu": None,
         "tailnet_ip": None,
         "tailnet_source": None,
         "topology_host": None,
@@ -219,6 +222,8 @@ def _detect_tailnet_ipv4(_run=subprocess.check_output):
 
 def discover_host(
     *,
+    compute_a_gpu_uuid=None,
+    compute_b_gpu_uuid=None,
     primary_gpu_uuid=None,
     auxiliary_gpu_uuid=None,
     tailnet_ip=None,
@@ -228,26 +233,36 @@ def discover_host(
 ):
     """Discover stable host values used by the full operator scaffold.
 
-    Explicit values win. Otherwise the largest observed card is Primary and
-    the smallest observed card is Auxiliary. Equal-VRAM cards are ordered by
-    their runtime index, so the lower index is Primary. A single-GPU host fills
-    Primary only rather than silently scheduling both concurrent roles onto
-    one device.
+    Explicit values win. Otherwise Compute A receives the largest observed
+    card and Compute B the smallest. Equal-VRAM cards are ordered by canonical
+    UUID, never volatile runtime index, so their persisted role identity stays
+    stable across reboots. A single-GPU host fills Compute A only rather than
+    silently scheduling two concurrent roles onto one device.
+
+    ``primary_gpu_uuid`` and ``auxiliary_gpu_uuid`` are compatibility aliases
+    for pre-symmetric callers. New code and generated configuration use the
+    compute-role vocabulary.
     """
+    if compute_a_gpu_uuid and primary_gpu_uuid and compute_a_gpu_uuid != primary_gpu_uuid:
+        raise InitError("Compute A and legacy Primary GPU overrides disagree")
+    if compute_b_gpu_uuid and auxiliary_gpu_uuid and compute_b_gpu_uuid != auxiliary_gpu_uuid:
+        raise InitError("Compute B and legacy Auxiliary GPU overrides disagree")
+    compute_a_gpu_uuid = compute_a_gpu_uuid or primary_gpu_uuid
+    compute_b_gpu_uuid = compute_b_gpu_uuid or auxiliary_gpu_uuid
     try:
-        explicit_primary = (
-            _gpus.canonical_gpu_uuid(primary_gpu_uuid) if primary_gpu_uuid else None
+        explicit_compute_a = (
+            _gpus.canonical_gpu_uuid(compute_a_gpu_uuid) if compute_a_gpu_uuid else None
         )
-        explicit_auxiliary = (
-            _gpus.canonical_gpu_uuid(auxiliary_gpu_uuid)
-            if auxiliary_gpu_uuid
+        explicit_compute_b = (
+            _gpus.canonical_gpu_uuid(compute_b_gpu_uuid)
+            if compute_b_gpu_uuid
             else None
         )
     except _gpus.GpuRoleResolutionError as exc:
         raise InitError(str(exc)) from exc
-    if explicit_primary and explicit_primary == explicit_auxiliary:
+    if explicit_compute_a and explicit_compute_a == explicit_compute_b:
         raise InitError(
-            "Primary and Auxiliary GPU UUID overrides must identify distinct GPUs"
+            "Compute A and Compute B GPU UUID overrides must identify distinct GPUs"
         )
 
     observed = []
@@ -263,10 +278,10 @@ def discover_host(
         observed_uuids.add(uuid)
         observed.append({**row, "uuid": uuid})
     observed.sort(
-        key=lambda row: (-row["memory_total_mib"], row["index"]),
+        key=lambda row: (-row["memory_total_mib"], row["uuid"]),
     )
     observed_by_uuid = {row["uuid"]: row for row in observed}
-    selected = {uuid for uuid in (explicit_primary, explicit_auxiliary) if uuid}
+    selected = {uuid for uuid in (explicit_compute_a, explicit_compute_b) if uuid}
 
     def role_value(explicit, candidates):
         if explicit:
@@ -284,29 +299,17 @@ def discover_host(
             return {**row, "source": "detected"}
         return None
 
-    primary_gpu = role_value(explicit_primary, observed)
-    auxiliary_gpu = role_value(explicit_auxiliary, reversed(observed))
+    compute_a_gpu = role_value(explicit_compute_a, observed)
+    compute_b_gpu = role_value(explicit_compute_b, reversed(observed))
     if observed:
         for label, explicit in (
-            ("Primary", explicit_primary),
-            ("Auxiliary", explicit_auxiliary),
+            ("Compute A", explicit_compute_a),
+            ("Compute B", explicit_compute_b),
         ):
             if explicit and explicit not in observed_by_uuid:
                 raise InitError(
                     f"{label} GPU override {explicit!r} was not reported by nvidia-smi"
                 )
-    if (
-        primary_gpu
-        and auxiliary_gpu
-        and primary_gpu.get("memory_total_mib") is not None
-        and auxiliary_gpu.get("memory_total_mib") is not None
-        and primary_gpu["memory_total_mib"] < auxiliary_gpu["memory_total_mib"]
-    ):
-        raise InitError(
-            "Primary GPU must have at least as much VRAM as Auxiliary "
-            f"({primary_gpu['memory_total_mib']} < "
-            f"{auxiliary_gpu['memory_total_mib']} MiB)"
-        )
     if tailnet_ip:
         resolved_tailnet_ip = _canonical_tailnet_ipv4(tailnet_ip)
         tailnet_source = "override"
@@ -317,13 +320,13 @@ def discover_host(
         resolved_tailnet_ip = None
         tailnet_source = None
     topology_host = None
-    if primary_gpu or auxiliary_gpu:
+    if compute_a_gpu or compute_b_gpu:
         topology_host = "fakoli-dark"
     elif sys.platform == "darwin":
         topology_host = "fakoli-mini"
     return {
-        "primary_gpu": primary_gpu,
-        "auxiliary_gpu": auxiliary_gpu,
+        "compute_a_gpu": compute_a_gpu,
+        "compute_b_gpu": compute_b_gpu,
         "tailnet_ip": resolved_tailnet_ip,
         "tailnet_source": tailnet_source,
         "topology_host": topology_host,
@@ -332,10 +335,10 @@ def discover_host(
 
 def _personalize_home_text(text, discovery):
     replacements = [
-        (_PRIMARY_GPU_PLACEHOLDER,
-         discovery["primary_gpu"]["uuid"] if discovery["primary_gpu"] else None),
-        (_AUXILIARY_GPU_PLACEHOLDER,
-         discovery["auxiliary_gpu"]["uuid"] if discovery["auxiliary_gpu"] else None),
+        (_COMPUTE_A_GPU_PLACEHOLDER,
+         discovery["compute_a_gpu"]["uuid"] if discovery["compute_a_gpu"] else None),
+        (_COMPUTE_B_GPU_PLACEHOLDER,
+         discovery["compute_b_gpu"]["uuid"] if discovery["compute_b_gpu"] else None),
     ]
     if discovery["topology_host"] == "fakoli-dark":
         replacements.append((_TAILNET_IP_PLACEHOLDER, discovery["tailnet_ip"]))
@@ -456,6 +459,8 @@ def scaffold_home(
     out_dir=None,
     *,
     detect_host=True,
+    compute_a_gpu_uuid=None,
+    compute_b_gpu_uuid=None,
     primary_gpu_uuid=None,
     auxiliary_gpu_uuid=None,
     tailnet_ip=None,
@@ -476,6 +481,8 @@ def scaffold_home(
     describing what was written for the CLI to report and tests to assert on.
     """
     discovery = discover_host(
+        compute_a_gpu_uuid=compute_a_gpu_uuid,
+        compute_b_gpu_uuid=compute_b_gpu_uuid,
         primary_gpu_uuid=primary_gpu_uuid,
         auxiliary_gpu_uuid=auxiliary_gpu_uuid,
         tailnet_ip=tailnet_ip,
@@ -746,15 +753,17 @@ def main(argv):
                     help="where to write the files (default: the config home "
                          "with --single-model, the CWD)")
     ap.add_argument(
-        "--primary-gpu-uuid",
+        "--compute-a-gpu-uuid",
         default=None,
-        help="Primary GPU UUID (default: highest-VRAM GPU reported by nvidia-smi)",
+        help="Compute A GPU UUID (default: highest-VRAM GPU; UUID breaks equal-VRAM ties)",
     )
     ap.add_argument(
-        "--auxiliary-gpu-uuid",
+        "--compute-b-gpu-uuid",
         default=None,
-        help="Auxiliary GPU UUID (default: next distinct GPU reported by nvidia-smi)",
+        help="Compute B GPU UUID (default: next distinct GPU; UUID breaks equal-VRAM ties)",
     )
+    ap.add_argument("--primary-gpu-uuid", default=None, help=argparse.SUPPRESS)
+    ap.add_argument("--auxiliary-gpu-uuid", default=None, help=argparse.SUPPRESS)
     ap.add_argument(
         "--tailnet-ip",
         default=None,
@@ -814,6 +823,8 @@ def _main_home(a):
         result = scaffold_home(
             out_dir=a.out_dir,
             detect_host=not a.no_detect_host,
+            compute_a_gpu_uuid=a.compute_a_gpu_uuid,
+            compute_b_gpu_uuid=a.compute_b_gpu_uuid,
             primary_gpu_uuid=a.primary_gpu_uuid,
             auxiliary_gpu_uuid=a.auxiliary_gpu_uuid,
             tailnet_ip=a.tailnet_ip,
@@ -842,8 +853,8 @@ def _main_home(a):
     print()
     print("Host discovery:")
     for label, key in (
-        ("Primary GPU", "primary_gpu"),
-        ("Auxiliary GPU", "auxiliary_gpu"),
+        ("Compute A GPU", "compute_a_gpu"),
+        ("Compute B GPU", "compute_b_gpu"),
     ):
         gpu = discovery[key]
         if gpu:

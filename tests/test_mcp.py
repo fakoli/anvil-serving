@@ -2,8 +2,51 @@ from pathlib import Path
 
 import pytest
 
-from anvil_serving import mcp
+from anvil_serving import mcp, serves
 from anvil_serving.control_plane.mcp.tools import router as router_tools
+from anvil_serving.control_plane.mcp.tools import serves as serves_tools
+
+
+MODE_MANIFEST = """
+[[gpu_roles]]
+id = "dark-compute-a"
+vram_mib = 97887
+
+[[gpu_roles]]
+id = "dark-compute-b"
+vram_mib = 97887
+
+[[serve]]
+name = "split-a"
+container = "split-a"
+port = 30001
+model = "split-a-local"
+engine = "vllm"
+gpu_role = "dark-compute-a"
+vram_mib = 80000
+groups = ["split-stack"]
+
+[[serve]]
+name = "split-b"
+container = "split-b"
+port = 30002
+model = "split-b-local"
+engine = "vllm"
+gpu_role = "dark-compute-b"
+vram_mib = 80000
+groups = ["split-stack"]
+
+[[serve]]
+name = "tp2"
+container = "tp2"
+port = 30003
+model = "candidate-local"
+engine = "vllm"
+gpu_roles = ["dark-compute-a", "dark-compute-b"]
+vram_mib = 90000
+operating_mode = "dual-gpu-exclusive"
+tensor_parallel_size = 2
+"""
 
 
 def test_tools_expose_direct_serving_operations_without_legacy_router_controls():
@@ -31,6 +74,70 @@ def test_voice_manage_schema_exposes_topology_dispatch_context():
         "transport",
         "experimental_model_workload",
     }.issubset(properties)
+
+
+def test_serves_mode_status_reports_structured_exclusive_ownership(
+    tmp_path, monkeypatch,
+):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(MODE_MANIFEST, encoding="utf-8")
+    monkeypatch.setattr(
+        serves,
+        "docker_state",
+        lambda container, **kwargs: "running" if container == "tp2" else "absent",
+    )
+    result = mcp.tool_serves_mode({"action": "status", "manifest": str(manifest)})
+    assert result["ok"]
+    mode = result["data"]["operating_mode"]
+    assert mode["mode"] == "dual-gpu-exclusive"
+    assert mode["exclusive_owner"] == "tp2"
+    assert mode["gpu_roles"] == ["dark-compute-a", "dark-compute-b"]
+    assert mode["tensor_parallel_size"] == 2
+    assert mode["blocked_workloads"] == ["split-a", "split-b"]
+    assert mode["gpu_ownership"] == [
+        {"gpu_role": "dark-compute-a", "owners": ["tp2"]},
+        {"gpu_role": "dark-compute-b", "owners": ["tp2"]},
+    ]
+
+
+def test_serves_mode_preview_is_structured_and_side_effect_free(tmp_path, monkeypatch):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(MODE_MANIFEST, encoding="utf-8")
+    monkeypatch.setattr(
+        serves,
+        "docker_state",
+        lambda container, **kwargs: "running" if container.startswith("split-") else "absent",
+    )
+    monkeypatch.setattr(
+        serves_tools,
+        "_run_argv",
+        lambda *_args, **_kwargs: pytest.fail("preview spawned lifecycle command"),
+    )
+    result = mcp.tool_serves_mode({
+        "action": "preview",
+        "manifest": str(manifest),
+        "target": "tp2",
+        "restore_group": "split-stack",
+    })
+    assert result["ok"]
+    assert result["data"]["applied"] is False
+    assert result["data"]["plan"]["stop"] == ["split-a", "split-b"]
+
+
+def test_serves_mode_live_apply_requires_separate_human_gate(tmp_path, monkeypatch):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(MODE_MANIFEST, encoding="utf-8")
+    monkeypatch.setattr(serves, "docker_state", lambda *args, **kwargs: "absent")
+    with pytest.raises(mcp.ToolError) as refused:
+        mcp.tool_serves_mode({
+            "action": "enter",
+            "manifest": str(manifest),
+            "target": "tp2",
+            "restore_group": "split-stack",
+            "dry_run": False,
+            "confirm": True,
+        })
+    assert refused.value.code == "human_approval_required"
 
 
 def test_openclaw_sync_apply_writes_direct_alias_provider(tmp_path):

@@ -1,0 +1,122 @@
+{
+  "base_url": "http://127.0.0.1:39053/v1",
+  "completed": 4,
+  "concurrency": 1,
+  "context_distribution": {
+    "131072": 4
+  },
+  "context_seed": 0,
+  "context_tokens": 131072,
+  "engine": "vllm",
+  "failed": 0,
+  "failures": [],
+  "finished_at": "2026-08-01T12:07:29Z",
+  "gpu": "dual-rtx-pro-6000-blackwell-max-q-tp2",
+  "manifest": null,
+  "max_context_tokens": 262144,
+  "max_tokens": 128,
+  "measurement_protocol": "capacity-v3",
+  "metrics": {
+    "content_chunks": 222,
+    "content_chunks_s": null,
+    "decode_tok_s_p50": 64.96274329680224,
+    "decode_tok_s_p95": 66.19334989240683,
+    "e2e_p50_ms": 15371.504900000218,
+    "e2e_p95_ms": 15751.761199999237,
+    "effective_prefill_tok_s_p50": 8570.368793121388,
+    "effective_prefill_tok_s_p95": 8618.176684232738,
+    "generation_p50_ms": 778.3833000012237,
+    "generation_p95_ms": 1078.9484999986598,
+    "mean_inter_token_latency_ms_p50": 15.262417647082817,
+    "mean_inter_token_latency_ms_p95": 15.413549999980855,
+    "output_token_sources": {
+      "usage": 4
+    },
+    "output_tokens": 227,
+    "prefix_cache_hit_avg": null,
+    "prompt_token_samples": 4,
+    "prompt_tokens": 501783,
+    "prompt_tokens_p50": 125444.0,
+    "prompt_tokens_p95": 125450.0,
+    "throughput_tok_s": 3.6681812376924667,
+    "ttft_p50_ms": 14593.121599998994,
+    "ttft_p95_ms": 14672.812700000577,
+    "ttft_samples": 4
+  },
+  "model": "qwen35-122b-a10b-nvfp4-tp2",
+  "request_timings": [
+    {
+      "decode_tok_s": 66.19334989240683,
+      "e2e_ms": 15235.341600000538,
+      "effective_prefill_tok_s": 8618.176684232738,
+      "generation_ms": 679.8266000005242,
+      "mean_inter_token_latency_ms": 15.107257777789426,
+      "output_token_source": "usage",
+      "output_tokens": 46,
+      "planned_context_tokens": 131072,
+      "prompt_tokens": 125442,
+      "request_index": 0,
+      "ttft_ms": 14555.515000000014
+    },
+    {
+      "decode_tok_s": 65.52041905308069,
+      "e2e_ms": 15371.504900000218,
+      "effective_prefill_tok_s": 8596.104619590687,
+      "generation_ms": 778.3833000012237,
+      "mean_inter_token_latency_ms": 15.262417647082817,
+      "output_token_source": "usage",
+      "output_tokens": 52,
+      "planned_context_tokens": 131072,
+      "prompt_tokens": 125444,
+      "request_index": 1,
+      "ttft_ms": 14593.121599998994
+    },
+    {
+      "decode_tok_s": 64.96274329680224,
+      "e2e_ms": 15514.719099999638,
+      "effective_prefill_tok_s": 8570.368793121388,
+      "generation_ms": 877.4260000009235,
+      "mean_inter_token_latency_ms": 15.39343859650743,
+      "output_token_source": "usage",
+      "output_tokens": 58,
+      "planned_context_tokens": 131072,
+      "prompt_tokens": 125447,
+      "request_index": 2,
+      "ttft_ms": 14637.293099998715
+    },
+    {
+      "decode_tok_s": 64.8779807378081,
+      "e2e_ms": 15751.761199999237,
+      "effective_prefill_tok_s": 8549.826305626804,
+      "generation_ms": 1078.9484999986598,
+      "mean_inter_token_latency_ms": 15.413549999980855,
+      "output_token_source": "usage",
+      "output_tokens": 71,
+      "planned_context_tokens": 131072,
+      "prompt_tokens": 125450,
+      "request_index": 3,
+      "ttft_ms": 14672.812700000577
+    }
+  ],
+  "requests": 4,
+  "run_id": "benchmark-20260801T120627Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": null,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  },
+  "source_recipe": null,
+  "started_at": "2026-08-01T12:06:27Z",
+  "tier": null,
+  "timing_methodology": {
+    "clock": "client time.perf_counter",
+    "decode": "usage completion tokens after the first token divided by client-observed generation time",
+    "effective_prefill": "usage.prompt_tokens divided by client-observed TTFT; includes queueing, scheduling, prefill, and first-token work",
+    "generation": "client-observed E2E minus TTFT",
+    "mean_inter_token_latency": "client-observed generation time divided by completion tokens after the first token; not a raw per-token timestamp trace",
+    "ttft": "request start through the first non-empty streamed content delta"
+  },
+  "wall_clock_ms": 61883.529000000635
+}

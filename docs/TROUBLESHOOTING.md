@@ -265,7 +265,9 @@ Correct either the serve's `--served-model-name` or the reviewed router config; 
 bypassing the guard. The identity check does not prove weights, revision, quantization, or engine
 flags—use promotion fingerprints and preflight evidence for those properties.
 
-The reference two-GPU transition leaves Fast resident on the RTX 5090 while Heavy changes on the
-RTX PRO 6000. The accepted final router restart can briefly interrupt Fast connections, but it must
-not stop or recreate the Fast model container. Any live Fakoli Dark promotion remains a separate
-explicit human-gated operation.
+The current dual-PRO reference keeps capability aliases independent of Compute
+A/B placement. Entering `dual-gpu-exclusive` is a separate transaction: preview
+it with `serves mode preview`, drain and stop every GPU inference competitor,
+then grant both roles to one TP=2 owner. An unavailable alias remains
+unavailable; it must never fall back to that exclusive model. Any live Fakoli
+Dark promotion or mode entry remains a separate explicit human-gated operation.

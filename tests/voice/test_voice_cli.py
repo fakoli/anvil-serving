@@ -67,7 +67,7 @@ def _use_native_dark_audio_topology(monkeypatch):
     topology = replace(
         topology,
         resources=tuple(
-            replace(resource, runtime="dark-native")
+            replace(resource, runtime="dark-native", gpu_role=None)
             if resource.role in {"stt-serve", "tts-serve"}
             else resource
             for resource in topology.resources
