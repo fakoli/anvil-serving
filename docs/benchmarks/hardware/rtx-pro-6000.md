@@ -39,13 +39,31 @@ memory. The production aliases and rollback chain below are unchanged by the
 | Qwen3.5 122B NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.32 s TTFT and 67.5 tok/s decode; 128K 4/4 at 14.59 s and 65.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
 | Nemotron 3 Super 120B NVFP4, TP=2 + EP=2 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.84 s and 59.5 tok/s; 60K 4/4 at 5.58 s and 60.0 tok/s | `no-promotion` |
 | Laguna S 2.1 NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 1.97 s and 70.9 tok/s; 240K 4/4 at 31.85 s and 66.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
-| DeepSeek V4 Flash 0731 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | `challenger`, `no-promotion`; one reasoning-only exhaustion |
+| DeepSeek V4 Flash 0731 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | priority intelligence `challenger`, `no-promotion`; one reasoning-only exhaustion; high/max, DSpark, and 0731 NVFP4 unqualified |
 | Inkling Small NVFP4 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 12/12; 2.79 s TTFO, 4.63 s first-visible TTFT, 73.5 tok/s combined reasoning/visible decode; reasoning-off lane also 12/12 | `no-promotion`; reasoning-off Responses caveat retained |
 
 All rows used both physical cards as measured hardware, exclusive ownership,
 one admitted request, and no co-resident inference. See the
 [dated campaign](../../findings/2026-08-01-dual-pro-tp2-model-campaign.md) for
 exact revisions, raw artifacts, protocol differences, and failure records.
+
+#### DeepSeek 0731 research priority
+
+DeepSeek identifies 0731 as a re-post-trained official Flash generation with
+the same 284B/13B-active target architecture as Preview and a bundled DSpark
+draft module. Artificial Analysis independently scores the max-effort model at
+50, number 3 of 101 comparable models, but reports 210 million evaluation
+output tokens. That verbosity signal is consistent with the local 11/12 run's
+reasoning-only exhaustion and makes reasoning-budget policy a first-class
+capacity gate.
+
+Current 0731-specific NVFP4 conversions are community artifacts. The strongest
+conversion receipt reports TP=2 generation on two DGX Spark systems; the
+strongest RTX PRO performance report uses four cards and an out-of-tree DSpark
+path. Neither proves fit, quality, or speed on this two-card topology. See the
+[research update](../../findings/2026-08-01-deepseek-v4-flash-0731-research-update.md)
+for pinned identities, benchmark deltas, conversion recipes, GGUF sizes, and
+the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ### Single-card and historical profiles
 
@@ -73,6 +91,10 @@ exact revisions, raw artifacts, protocol differences, and failure records.
 
 ## Recent changes
 
+- 2026-08-01: DeepSeek V4 Flash 0731 became the priority intelligence
+  challenger after official and independent research was reconciled with its
+  exact local low-reasoning TP=2 evidence. The decision remains
+  `no-promotion`; no new GPU run or route change occurred in the research pass.
 - 2026-08-01: the hardware became a symmetric two-PRO topology. The exclusive
   TP=2 campaign qualified Qwen3.5, Nemotron 3 Super, Laguna S, DeepSeek V4
   Flash 0731, and Inkling Small without changing production aliases.

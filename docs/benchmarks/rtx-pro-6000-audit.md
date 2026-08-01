@@ -56,6 +56,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-07-29-agents-a1-primary-promotion.md`;
 `docs/findings/2026-07-29-agents-a1-qwen-262k-head-to-head.md`;
 `docs/findings/2026-07-29-agents-a1-qwen-262k-head-to-head-evidence/README.md`;
+`docs/findings/2026-08-01-deepseek-v4-flash-0731-research-update.md`;
 `docs/findings/2026-08-01-dual-pro-tp2-model-campaign.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/2026-07-27-release-sweep-fixes.md`;
