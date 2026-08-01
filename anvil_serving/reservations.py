@@ -55,6 +55,7 @@ RESERVED_STATES = ("running", "paused", "restarting")
 # the manifest actually declares [[gpu_roles]] — pre-reservation manifests
 # keep parsing byte-for-byte unchanged (T001 contract).
 GPU_ROLES_KEY = "_gpu_roles"
+DUAL_GPU_EXCLUSIVE_MODE = "dual-gpu-exclusive"
 
 
 @dataclass(frozen=True)
@@ -200,25 +201,42 @@ def derive_gpu_memory_utilization(vram_mib: int, budget: GpuRoleBudget) -> float
     return round(vram_mib / budget.budget_mib, 4)
 
 
-def reservation_of(serve: dict) -> Optional[GpuReservation]:
-    """The serve's declared reservation, or None if it doesn't participate.
+def reservations_of(serve: dict) -> tuple[GpuReservation, ...]:
+    """The serve's declared reservations, one per GPU role.
 
-    Participation needs BOTH `gpu_role` (which ledger) and `vram_mib` (how
-    much); a serve declaring neither — or only one — stays outside the ledger,
-    so pre-reservation manifests keep their exact behavior (ADR-0017: adoption
-    is incremental).
+    Ordinary split-mode serves declare one ``gpu_role``.  An explicit
+    ``dual-gpu-exclusive`` serve declares ``gpu_roles`` and reserves the same
+    per-role ``vram_mib`` on both cards.  Participation still needs a role and
+    an integer reservation, so pre-reservation manifests retain their exact
+    behavior.
     """
-    gpu_role = serve.get("gpu_role")
     vram_mib = serve.get("vram_mib")
-    if not gpu_role or not isinstance(vram_mib, int):
-        return None
-    return GpuReservation(
-        serve=serve["name"],
-        container=serve["container"],
-        gpu_role=gpu_role,
-        vram_mib=vram_mib,
-        residency=serve.get("residency"),
+    if not isinstance(vram_mib, int):
+        return ()
+    roles = serve.get("gpu_roles") or (
+        [serve["gpu_role"]] if serve.get("gpu_role") else []
     )
+    return tuple(
+        GpuReservation(
+            serve=serve["name"],
+            container=serve["container"],
+            gpu_role=role,
+            vram_mib=vram_mib,
+            residency=serve.get("residency"),
+        )
+        for role in roles
+    )
+
+
+def reservation_of(serve: dict) -> Optional[GpuReservation]:
+    """Compatibility accessor for a single-role reservation.
+
+    Multi-role exclusive serves deliberately return ``None``: callers that
+    arbitrate capacity must use :func:`reservations_of` and cannot silently
+    account for only half of a TP=2 serve.
+    """
+    declared = reservations_of(serve)
+    return declared[0] if len(declared) == 1 else None
 
 
 def budgets_of(serves: Iterable[dict]) -> dict[str, GpuRoleBudget]:
@@ -230,6 +248,81 @@ def budgets_of(serves: Iterable[dict]) -> dict[str, GpuRoleBudget]:
     return {}
 
 
+def is_exclusive(serve: dict) -> bool:
+    """Whether a serve is the explicit two-role TP=2 owner."""
+    return serve.get("operating_mode") == DUAL_GPU_EXCLUSIVE_MODE
+
+
+def deny_exclusive_conflict(
+    serves: list[dict],
+    targets: list[dict],
+    state_of: Callable[[str], str],
+    *,
+    allow_exclusive_target: bool = False,
+) -> Optional[list[str]]:
+    """Fail closed when an ordinary lifecycle call conflicts with TP=2 mode.
+
+    Exclusive targets may only be started by the managed mode transaction.
+    Once an exclusive container is committed, every other GPU-reserved target
+    is rejected before a container command runs.  An indeterminate exclusive
+    container state is also a denial: uncertainty must not permit a competing
+    inference start.
+    """
+    target_exclusive = [target for target in targets if is_exclusive(target)]
+    if target_exclusive and not allow_exclusive_target:
+        return [
+            "exclusive admission denied: %s must be started with "
+            "`serves mode enter %s --restore-group <group> --confirm`"
+            % (target_exclusive[0]["name"], target_exclusive[0]["name"]),
+            "no container command was run",
+        ]
+    if target_exclusive and len(targets) != 1:
+        return [
+            "exclusive admission denied: a dual-gpu-exclusive target must be "
+            "the only target in the transaction",
+            "no container command was run",
+        ]
+
+    active = []
+    unresolved = []
+    for serve in serves:
+        if not is_exclusive(serve):
+            continue
+        state = state_of(serve["container"])
+        if state in RESERVED_STATES:
+            active.append(serve)
+        elif state in {"error", "unknown", "removing"}:
+            unresolved.append((serve, state))
+    if unresolved:
+        owner, state = unresolved[0]
+        return [
+            "exclusive admission denied: cannot resolve exclusive owner %s "
+            "(container %s state %s)" % (
+                owner["name"], owner["container"], state,
+            ),
+            "no container command was run",
+        ]
+    if len(active) > 1:
+        return [
+            "exclusive admission denied: multiple exclusive owners are active: %s"
+            % ", ".join(sorted(serve["name"] for serve in active)),
+            "no container command was run",
+        ]
+    if active:
+        owner = active[0]
+        competing = [
+            target for target in targets
+            if target["name"] != owner["name"] and reservations_of(target)
+        ]
+        if competing:
+            return [
+                "exclusive admission denied: %s owns both GPU roles; blocked: %s"
+                % (owner["name"], ", ".join(t["name"] for t in competing)),
+                "no container command was run",
+            ]
+    return None
+
+
 def build_ledger(
     serves: Iterable[dict],
     state_of: Callable[[str], str],
@@ -237,8 +330,9 @@ def build_ledger(
 ) -> dict[str, RoleLedger]:
     """Derive the per-role ledger from declared fields + observed docker state.
 
-    One `state_of` probe per reservation-declaring serve; serves without a
-    reservation (or on a role with no declared capacity) are never probed.
+    One `state_of` probe per reservation-declaring serve, even when that serve
+    owns multiple roles; serves without a reservation (or on no declared
+    role) are never probed.
     """
     if budgets is None:
         budgets = budgets_of(serves)
@@ -248,18 +342,23 @@ def build_ledger(
         if serve["name"] in seen:
             continue
         seen.add(serve["name"])
-        reservation = reservation_of(serve)
-        if reservation is None or reservation.gpu_role not in budgets:
+        declared = [
+            reservation for reservation in reservations_of(serve)
+            if reservation.gpu_role in budgets
+        ]
+        if not declared:
             continue
-        snapshot = GpuReservation(
-            serve=reservation.serve,
-            container=reservation.container,
-            gpu_role=reservation.gpu_role,
-            vram_mib=reservation.vram_mib,
-            residency=reservation.residency,
-            state=state_of(reservation.container),
-        )
-        per_role[snapshot.gpu_role].append(snapshot)
+        state = state_of(declared[0].container)
+        for reservation in declared:
+            snapshot = GpuReservation(
+                serve=reservation.serve,
+                container=reservation.container,
+                gpu_role=reservation.gpu_role,
+                vram_mib=reservation.vram_mib,
+                residency=reservation.residency,
+                state=state,
+            )
+            per_role[snapshot.gpu_role].append(snapshot)
     return {
         role: RoleLedger(budget=budgets[role], reservations=tuple(rows))
         for role, rows in per_role.items()
@@ -322,7 +421,7 @@ def deny_over_budget(
         return None
     requesting = [
         t for t in targets
-        if (r := reservation_of(t)) is not None and r.gpu_role in budgets
+        if any(r.gpu_role in budgets for r in reservations_of(t))
     ]
     if not requesting:
         return None
@@ -395,7 +494,7 @@ def plan_eviction(
         return [], []
     requesting = [
         t for t in targets
-        if (r := reservation_of(t)) is not None and r.gpu_role in budgets
+        if any(r.gpu_role in budgets for r in reservations_of(t))
     ]
     if not requesting:
         return [], []
