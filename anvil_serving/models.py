@@ -26,6 +26,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import time
 import tomllib
 import sys
 import urllib.parse
@@ -1414,6 +1415,37 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
     }
 
 
+def _await_recipe_container_healthy(
+    recipe,
+    container,
+    serve,
+    timeout,
+    poll_interval,
+    *,
+    _identity=_recipe_container_identity,
+    _health=None,
+    _sleep=time.sleep,
+    _monotonic=time.monotonic,
+):
+    """Wait for HTTP readiness, failing early after an owned container exits."""
+    if _health is None:
+        from . import serves
+        _health = serves._health
+    deadline = _monotonic() + timeout
+    last_state = None
+    while True:
+        identity = _identity(recipe, container)
+        last_state = identity.get("state")
+        if last_state not in {"created", "restarting", "running"}:
+            return False, last_state
+        if _health(serve["port"], serve.get("health", "/health")) == 200:
+            return True, last_state
+        now = _monotonic()
+        if now >= deadline:
+            return False, last_state
+        _sleep(min(poll_interval, max(0, deadline - now)))
+
+
 def _recipe_container_logs(
     recipe,
     container,
@@ -1827,6 +1859,14 @@ def _recipe_main(argv):
             print(str(exc), file=sys.stderr)
             return 1
         printable = shlex.join(command)
+        recipe_serve = recipe.get("serve", {})
+        recipe_download = recipe.get("download", {})
+        readiness_timeout = recipe_serve.get(
+            "startup_timeout_seconds", LIFECYCLE_READINESS_TIMEOUT_SECONDS
+        )
+        require_complete_cache = (
+            recipe_download.get("require_complete_cache") is True
+        )
         if a.dry_run:
             print("RECIPE LOAD PLAN")
             print("registry: %s" % os.path.abspath(registry_path))
@@ -1848,12 +1888,54 @@ def _recipe_main(argv):
             )
             print("ownership condition: never remove a container that existed before apply")
             print("deferred until apply: confirmation and Docker start")
-            print("postcondition: wait up to 600s for declared HTTP health before automatic cache reclaim")
+            if require_complete_cache:
+                print(
+                    "precondition on apply: independently verify the exact cached "
+                    "repository revision before Docker start"
+                )
+            print(
+                "postcondition: wait up to %ss for declared HTTP health before "
+                "automatic cache reclaim" % readiness_timeout
+            )
             print("not performed by load: eval preflight; run it next")
             host_ops.render_cache_reclaim_plan(cache_policy, "models recipes load")
             return 0
         if not _confirm_recipe_mutation("load", recipe["model"], confirm=a.confirm, dry_run=False):
             return 3
+        if require_complete_cache:
+            try:
+                verification = verify_pull(
+                    recipe_download["repo"],
+                    recipe_download["revision"],
+                    volume=recipe_download.get("volume", DEFAULT_PULL_VOLUME),
+                )
+            except (OSError, ValueError) as exc:
+                print(
+                    "recipe cache preflight failed before GPU allocation: %s" % exc,
+                    file=sys.stderr,
+                )
+                print(
+                    "recovery: anvil-serving models pull %s --revision %s "
+                    "--volume %s --confirm"
+                    % (
+                        shlex.quote(recipe_download["repo"]),
+                        shlex.quote(recipe_download["revision"]),
+                        shlex.quote(
+                            recipe_download.get("volume", DEFAULT_PULL_VOLUME)
+                        ),
+                    ),
+                    file=sys.stderr,
+                )
+                return 1
+            print(
+                "verified complete cached snapshot %s@%s (%s bytes)"
+                % (
+                    recipe_download["repo"],
+                    verification.get("snapshot")
+                    or recipe_download["revision"],
+                    verification.get("repo_bytes", "unknown"),
+                )
+            )
         before = host_ops.capture_cache_before(cache_policy)
         print("loading recipe %r as container %r" % (recipe["model"], a.container))
         print("$ " + printable)
@@ -1866,20 +1948,22 @@ def _recipe_main(argv):
         if rc:
             print("recipe load failed with docker exit code %s" % rc, file=sys.stderr)
             return rc
-        recipe_serve = recipe.get("serve", {})
         port = recipe_serve.get("port")
         readiness = True
         if port:
-            from . import serves
-            readiness = serves._await_healthy(
+            readiness, observed_state = _await_recipe_container_healthy(
+                recipe,
+                a.container,
                 {"port": port, "health": recipe_serve.get("health", "/health")},
-                LIFECYCLE_READINESS_TIMEOUT_SECONDS,
+                readiness_timeout,
                 LIFECYCLE_READINESS_POLL_SECONDS,
             )
+        else:
+            observed_state = None
         if not readiness:
             print(
-                "recipe container started but did not become healthy within %ss"
-                % LIFECYCLE_READINESS_TIMEOUT_SECONDS,
+                "recipe container did not become healthy (state=%s; timeout=%ss)"
+                % (observed_state or "unknown", readiness_timeout),
                 file=sys.stderr,
             )
             print(

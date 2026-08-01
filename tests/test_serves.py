@@ -4,6 +4,7 @@ Docker + nvidia-smi + HTTP are injected (the module exposes `_run`/`_open`
 seams), so these run with no docker, no GPU, and no network.
 """
 import os
+import subprocess
 import textwrap
 import types
 import json
@@ -1001,6 +1002,45 @@ def test_cmd_down_reports_stop_failure():
     serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running", stop_rc=1, stop_err="boom")
     assert serves.cmd_down(serv, [], _run=run) == 1
+
+
+def test_cmd_down_force_removes_after_stop_timeout():
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs.get("timeout")))
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        if argv[:2] == ["docker", "stop"]:
+            raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+        return proc(0)
+
+    assert serves.cmd_down(serv, [], _run=run) == 0
+    assert (["docker", "rm", "-f", "sglang"], serves.DOCKER_STOP_COMMAND_TIMEOUT_SECONDS) in calls
+
+
+def test_cmd_down_stop_timeout_keeps_diagnostic_container_when_requested():
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    assert serves.cmd_down(serv, [], keep_container=True, _run=run) == 1
+    assert ["docker", "rm", "-f", "sglang"] not in calls
+
+
+def test_cmd_down_force_remove_skips_graceful_stop():
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running")
+
+    assert serves.cmd_down(serv, [], force_remove=True, _run=run) == 0
+    assert ["docker", "stop", "sglang"] not in run.calls
+    assert ["docker", "rm", "-f", "sglang"] in run.calls
 
 
 def test_cmd_down_reports_remove_failure_after_stop():

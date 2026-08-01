@@ -90,14 +90,21 @@ def result_timing(result, fallback_index=None):
     """Return one publication-safe request timing row.
 
     Effective prefill throughput uses prompt tokens divided by client-observed
-    TTFT, so it includes queueing, scheduling, prefill, and first-token work.
-    Decode throughput excludes the first token and uses the interval after TTFT.
+    time to first output. For ordinary models that is TTFT. For reasoning models
+    it is the first reasoning delta, so hidden reasoning is not misclassified as
+    prefill. Decode throughput excludes the first completion token and uses the
+    interval after first output; usage completion tokens may include reasoning.
     """
     if not isinstance(result, dict):
         return None
     ttft = _finite_number(result.get("ttft"))
     e2e = _finite_number(result.get("e2e"))
     if ttft is None or e2e is None or ttft < 0 or e2e < ttft:
+        return None
+    time_to_first_output = _finite_number(result.get("time_to_first_output"))
+    if time_to_first_output is None:
+        time_to_first_output = ttft
+    if time_to_first_output < 0 or time_to_first_output > ttft:
         return None
     usage = result.get("usage")
     prompt_tokens = _usage_token_count(usage, "prompt_tokens")
@@ -110,7 +117,8 @@ def result_timing(result, fallback_index=None):
         output_tokens = None
     source = result.get("output_token_source")
     exact_output_tokens = source in (None, "usage")
-    generation = e2e - ttft
+    generation = e2e - time_to_first_output
+    visible_generation = e2e - ttft
     decode_tokens = (
         max(output_tokens - 1, 0)
         if exact_output_tokens and output_tokens is not None else None
@@ -121,11 +129,15 @@ def result_timing(result, fallback_index=None):
         "prompt_tokens": prompt_tokens,
         "output_tokens": output_tokens if exact_output_tokens else None,
         "output_token_source": source or "unknown",
+        "time_to_first_output_ms": time_to_first_output * 1000.0,
         "ttft_ms": ttft * 1000.0,
         "generation_ms": generation * 1000.0,
+        "visible_generation_ms": visible_generation * 1000.0,
         "e2e_ms": e2e * 1000.0,
         "effective_prefill_tok_s": (
-            prompt_tokens / ttft if prompt_tokens is not None and ttft > 0 else None
+            prompt_tokens / time_to_first_output
+            if prompt_tokens is not None and time_to_first_output > 0
+            else None
         ),
         "decode_tok_s": (
             decode_tokens / generation
@@ -137,6 +149,8 @@ def result_timing(result, fallback_index=None):
             if decode_tokens is not None and decode_tokens > 0 and generation > 0
             else None
         ),
+        "reasoning_chunks": result.get("reasoning_chunks", 0),
+        "content_chunks": result.get("content_chunks", 0),
     }
     return row
 
@@ -166,6 +180,9 @@ def _timing_percentiles(rows, key, *, scale=1.0):
 
 def result_metrics(results):
     timing_rows = result_timings(results)
+    first_output_p50, first_output_p95 = _timing_percentiles(
+        timing_rows, "time_to_first_output_ms"
+    )
     ttft_p50, ttft_p95 = _timing_percentiles(timing_rows, "ttft_ms")
     e2e_p50, e2e_p95 = _timing_percentiles(timing_rows, "e2e_ms")
     generation_p50, generation_p95 = _timing_percentiles(
@@ -195,12 +212,19 @@ def result_metrics(results):
         for result in results
         if isinstance(result, dict)
     )
+    reasoning_chunks = sum(
+        result.get("reasoning_chunks") or 0
+        for result in results
+        if isinstance(result, dict)
+    )
     prompt_tokens = [
         row["prompt_tokens"]
         for row in timing_rows
         if row["prompt_tokens"] is not None
     ]
     return {
+        "time_to_first_output_p50_ms": first_output_p50,
+        "time_to_first_output_p95_ms": first_output_p95,
         "ttft_p50_ms": ttft_p50,
         "ttft_p95_ms": ttft_p95,
         "ttft_samples": len(timing_rows),
@@ -220,6 +244,7 @@ def result_metrics(results):
         "prompt_tokens_p95": prompt_p95,
         "output_tokens": raw_output_units if exact_output_tokens else None,
         "content_chunks": content_chunks,
+        "reasoning_chunks": reasoning_chunks,
     }
 
 BAKEOFF_TOOL = {
@@ -388,7 +413,9 @@ def run_bakeoff(
     max_model_len = a.max_model_len or detect_context_limit(
         a.base_url, a.model, api_key
     )
-    cap = ctx_cap(max_model_len, a.max_tokens, a.margin)
+    quality_budget = eval_budget({}, a)
+    completion_cap = quality_budget["max_completion_tokens"]
+    cap = ctx_cap(max_model_len, completion_cap, a.margin)
     ctk, reasoning_effort, thinking_section = resolve_thinking_settings(a)
     control_kwargs = _request_control_kwargs(ctk, reasoning_effort)
     failures = []
@@ -418,7 +445,7 @@ def run_bakeoff(
             }
             try:
                 result = validate_stream_result(stream_request(
-                    a.base_url, a.model, prompt, api_key, a.max_tokens,
+                    a.base_url, a.model, prompt, api_key, completion_cap,
                     timeout=a.timeout, **control_kwargs,
                 ))
                 row.update({

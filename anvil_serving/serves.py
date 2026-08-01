@@ -143,6 +143,7 @@ _ROUTER_CFG_SIDE_MOUNT = "/cfg"
 _ROUTER_CFG_PATH = "/cfg/config.toml"
 LIFECYCLE_READINESS_TIMEOUT_SECONDS = 600
 LIFECYCLE_READINESS_POLL_SECONDS = 2
+DOCKER_STOP_COMMAND_TIMEOUT_SECONDS = 45
 _DOCKER_STATES = {
     "absent", "created", "dead", "error", "exited", "paused", "removing",
     "restarting", "running", "unknown",
@@ -2271,7 +2272,12 @@ def cmd_groups(serves, as_json=False):
 
 
 def cmd_down(
-    serves, names, dry_run=False, keep_container=False, _run=subprocess.run
+    serves,
+    names,
+    dry_run=False,
+    keep_container=False,
+    force_remove=False,
+    _run=subprocess.run,
 ):
     """Stop selected serves and remove their containers by default.
 
@@ -2326,7 +2332,73 @@ def cmd_down(
             if not keep_container:
                 print("  rm -f %s" % s["container"])
             continue
-        r = _run(["docker", "stop", s["container"]], capture_output=True, text=True)
+        if force_remove and not keep_container:
+            print("  rm -f %s (forced lifecycle release)" % s["container"])
+            try:
+                removed = _run(
+                    ["docker", "rm", "-f", s["container"]],
+                    capture_output=True,
+                    text=True,
+                    timeout=DOCKER_STOP_COMMAND_TIMEOUT_SECONDS,
+                )
+            except subprocess.TimeoutExpired:
+                print(
+                    "  FAILED to force-remove %s within %ss"
+                    % (s["container"], DOCKER_STOP_COMMAND_TIMEOUT_SECONDS)
+                )
+                rc = 1
+                continue
+            if removed.returncode == 0:
+                print("  force-removed %s" % s["container"])
+            else:
+                print(
+                    "  FAILED to force-remove %s: %s"
+                    % (s["container"], (removed.stderr or "").strip())
+                )
+                rc = 1
+            continue
+        try:
+            r = _run(
+                ["docker", "stop", s["container"]],
+                capture_output=True,
+                text=True,
+                timeout=DOCKER_STOP_COMMAND_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            if keep_container:
+                print(
+                    "  FAILED to stop %s within %ss; container kept for diagnostics"
+                    % (s["container"], DOCKER_STOP_COMMAND_TIMEOUT_SECONDS)
+                )
+                rc = 1
+                continue
+            print(
+                "  stop timed out after %ss; force-removing %s"
+                % (DOCKER_STOP_COMMAND_TIMEOUT_SECONDS, s["container"])
+            )
+            try:
+                removed = _run(
+                    ["docker", "rm", "-f", s["container"]],
+                    capture_output=True,
+                    text=True,
+                    timeout=DOCKER_STOP_COMMAND_TIMEOUT_SECONDS,
+                )
+            except subprocess.TimeoutExpired:
+                print(
+                    "  FAILED to force-remove %s within %ss"
+                    % (s["container"], DOCKER_STOP_COMMAND_TIMEOUT_SECONDS)
+                )
+                rc = 1
+                continue
+            if removed.returncode == 0:
+                print("  force-removed %s after stop timeout" % s["container"])
+            else:
+                print(
+                    "  FAILED to force-remove %s after stop timeout: %s"
+                    % (s["container"], (removed.stderr or "").strip())
+                )
+                rc = 1
+            continue
         if r.returncode == 0:
             if keep_container:
                 # Verify the stop STUCK: a `restart: always` policy revives the
@@ -2914,6 +2986,7 @@ def _restore_split_stack(
     _run,
     _open,
     _sleep,
+    skip_readmit_when_router_stopped=False,
 ):
     names = plan["rollback"]["serves"]
     rc = cmd_up(
@@ -2931,6 +3004,14 @@ def _restore_split_stack(
         serve.get("router_tier") for serve in _select(serves, names)
         if serve.get("router_tier")
     ]
+    if tiers and skip_readmit_when_router_stopped:
+        router_state = docker_state(DEFAULT_ROUTER_CONTAINER, _run=_run)
+        if router_state == "absent" or router_state in _STOPPED:
+            print(
+                "  router %s is %s; restored serves need no live readmit"
+                % (DEFAULT_ROUTER_CONTAINER, router_state)
+            )
+            return 0
     failed = [tier for tier in dict.fromkeys(tiers) if transition("readmit", tier) != 0]
     if failed:
         print("  split restore remains quiesced for: %s" % ", ".join(failed))
@@ -2990,6 +3071,7 @@ def cmd_mode(
             _run=_run,
         )
     )
+    skip_offline_router_readmit = router_url is None and _transition is None
     target = _select(serves, [target_name])[0]
 
     if action == "enter":
@@ -3018,6 +3100,7 @@ def cmd_mode(
             _restore_split_stack(
                 serves, plan, transition=transition, _run=_run,
                 _open=_open, _sleep=_sleep,
+                skip_readmit_when_router_stopped=skip_offline_router_readmit,
             )
             return 1
         states.clear()
@@ -3033,6 +3116,7 @@ def cmd_mode(
             _restore_split_stack(
                 serves, plan, transition=transition, _run=_run,
                 _open=_open, _sleep=_sleep,
+                skip_readmit_when_router_stopped=skip_offline_router_readmit,
             )
             return 1
         rc = cmd_up(
@@ -3055,6 +3139,7 @@ def cmd_mode(
         _restore_split_stack(
             serves, plan, transition=transition, _run=_run,
             _open=_open, _sleep=_sleep,
+            skip_readmit_when_router_stopped=skip_offline_router_readmit,
         )
         return 1
 
@@ -3062,12 +3147,13 @@ def cmd_mode(
         if state_of(target["container"]) not in reservations.RESERVED_STATES:
             print("mode leave refused: %s is not the active exclusive owner" % target_name)
             return 1
-        if cmd_down(serves, [target_name], _run=_run) != 0:
+        if cmd_down(serves, [target_name], force_remove=True, _run=_run) != 0:
             print("mode leave failed: exclusive owner did not stop")
             return 1
         if _restore_split_stack(
             serves, plan, transition=transition, _run=_run,
             _open=_open, _sleep=_sleep,
+            skip_readmit_when_router_stopped=skip_offline_router_readmit,
         ) == 0:
             print("mode left: restored split group %s" % restore_group)
             return 0

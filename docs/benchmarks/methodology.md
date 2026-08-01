@@ -34,9 +34,16 @@ should be ranked directly.
 
 ## Metric dictionary
 
-**Time to first token (TTFT).** Time from request start until the first streamed
-output token. It includes queueing and prefill. Under concurrency it therefore
-shows both engine scheduling and prompt processing.
+**Time to first visible token (TTFT).** Time from request start until the first
+non-empty streamed content delta. For a model without a separate reasoning
+channel, it includes queueing, prefill, and first-token work. For a reasoning
+model, hidden reasoning can occur before this point, so TTFT is a user-visible
+latency measure and must not be treated as a prefill boundary.
+
+**Time to first output (TTFO).** Time from request start until the first
+non-empty streamed reasoning or content delta. `capacity-v4-reasoning` records
+TTFO separately from TTFT so hidden reasoning is not mislabeled as prefill.
+For a non-reasoning response, TTFO and TTFT are the same event.
 
 **End-to-end latency (E2E).** Time from request start until the response
 finishes. Always publish output-token counts or workload identity beside it.
@@ -47,14 +54,19 @@ queueing and first-token components. When that evidence is absent, publish the
 long-context TTFT as a labeled prefill-latency proxy and leave prefill tok/s
 blank.
 
-**Effective client-observed prefill rate.** Prompt tokens divided by TTFT. This
-includes queueing, scheduling, prompt processing, and first-token work, so it
-is useful for matched end-to-end A/Bs but is not standalone or kernel-only
-prefill throughput. `capacity-v3` labels this field
-`effective_prefill_tok_s`.
+**Effective client-observed prefill rate.** Prompt tokens divided by the
+protocol's first-output boundary: TTFT in `capacity-v3`, TTFO in
+`capacity-v4-reasoning`. This includes queueing, scheduling, prompt processing,
+and first-output work, so it is useful for matched end-to-end A/Bs but is not
+standalone or kernel-only prefill throughput. Both protocols label the field
+`effective_prefill_tok_s`; the protocol identity is therefore required before
+comparison.
 
-**Generation duration.** Client-observed E2E minus TTFT. It begins at the first
-non-empty streamed content delta and ends when the response stream completes.
+**Generation duration.** Client-observed E2E minus the protocol's first-output
+boundary. In `capacity-v3` that is TTFT. In `capacity-v4-reasoning` it is TTFO,
+so the interval includes reasoning and visible generation. The reasoning-aware
+protocol also retains `visible_generation_ms` from first visible content to the
+end of the response.
 
 **Controlled decode rate.** For a long-generation workload, approximately:
 
@@ -64,6 +76,9 @@ non-empty streamed content delta and ends when the response stream completes.
 
 The harness should retain its direct timing fields and token counts. Avoid this
 derived rate for very short outputs, where timer and scheduling overhead dominate.
+When usage completion tokens include reasoning tokens, the reasoning-aware
+protocol's rate describes the combined completion stream, not visible-only
+decode.
 
 **Mean inter-token latency.** Generation duration divided by
 `output tokens - 1`. This is a per-request mean interval, not a raw timestamp
@@ -80,7 +95,10 @@ chunks are retained only as a diagnostic rate. Each successful request retains
 its planned context, request index, prompt/output token counts, TTFT, generation
 duration, E2E, effective prefill, decode rate, and mean inter-token latency.
 Comparison tooling treats different capacity measurement protocols as a
-workload mismatch.
+workload mismatch. `capacity-v4-reasoning` additionally retains TTFO,
+first-visible TTFT, reasoning-chunk count, and a generation interval beginning
+at first output. Failed reasoning-only completions remain failures rather than
+being silently converted into visible latency samples.
 
 **Percentiles.** Capacity summaries use the nearest-rank method over successful
 samples. Sort the values, compute `ceil(percentile * sample_count / 100)`, and

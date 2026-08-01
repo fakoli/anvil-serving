@@ -21,9 +21,33 @@ from anvil_serving import benchmark as bm
 from anvil_serving.benchmarking import artifacts as benchmark_artifacts
 from anvil_serving.benchmarking import requests as benchmark_requests
 from anvil_serving.benchmarking import runner as benchmark_runner
+from anvil_serving.benchmarking import specs as benchmark_specs
 
 
 # ---- BUG 1: context clamp keeps prompts under a small serve's max_model_len -------
+
+
+def test_control_evidence_retains_portable_relative_reference(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    evidence_path = Path("docs/control-proof.json")
+    evidence_path.parent.mkdir()
+    raw = json.dumps({
+        "schema": "anvil-serving.control-evidence/v1",
+        "status": "verified",
+        "control_mechanism": "reasoning_effort",
+        "source": "preflight",
+        "observed_at": "2026-08-01T00:00:00Z",
+    }).encode("utf-8")
+    evidence_path.write_bytes(raw)
+
+    reference, digest = benchmark_specs.load_control_evidence(
+        str(evidence_path),
+        status="verified",
+        mechanism="reasoning_effort",
+    )
+
+    assert reference == "docs/control-proof.json"
+    assert digest == hashlib.sha256(raw).hexdigest()
 
 def test_ctx_cap_leaves_headroom_below_max_model_len():
     cap = bm.ctx_cap(16384, 64, bm.DEFAULT_CTX_MARGIN)
@@ -294,6 +318,30 @@ def test_stream_result_without_visible_content_is_not_a_completion():
         benchmark_requests.validate_stream_result({"ttft": None, "e2e": 0.1})
 
 
+def test_stream_chat_records_reasoning_before_visible_content(monkeypatch):
+    payload = (
+        b'data: {"choices":[{"delta":{"reasoning_content":"think"}}]}\n\n'
+        b'data: {"choices":[{"delta":{"content":"answer"}}]}\n\n'
+        b'data: {"choices":[],"usage":{"completion_tokens":3}}\n\n'
+        b"data: [DONE]\n\n"
+    )
+
+    class _Stream:
+        def __enter__(self):
+            return iter(payload.splitlines(keepends=True))
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(bm.urllib.request, "urlopen", lambda *args, **kwargs: _Stream())
+    result = bm.stream_chat("http://127.0.0.1:30002/v1", "model", "prompt", None, 16)
+
+    assert result["reasoning_chunks"] == 1
+    assert result["content_chunks"] == 1
+    assert result["time_to_first_output"] is not None
+    assert result["time_to_first_output"] <= result["ttft"]
+
+
 def test_nearest_rank_percentile_matches_documented_method():
     assert benchmark_runner.percentile([1, 2, 3, 4], 50) == 2
     with pytest.raises(ValueError, match="0 through 100"):
@@ -362,6 +410,29 @@ def test_result_metrics_record_prefill_generation_decode_and_inter_token_latency
             "usage": {"prompt_tokens": 200},
         },
     ])] == [0, 1]
+
+
+def test_reasoning_timing_starts_decode_at_first_reasoning_output():
+    metrics = benchmark_runner.result_metrics([
+        {
+            "request_index": 0,
+            "time_to_first_output": 0.1,
+            "ttft": 0.4,
+            "e2e": 0.5,
+            "out_toks": 9,
+            "content_chunks": 2,
+            "reasoning_chunks": 6,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 9},
+        }
+    ])
+
+    assert metrics["time_to_first_output_p50_ms"] == pytest.approx(100)
+    assert metrics["ttft_p50_ms"] == pytest.approx(400)
+    assert metrics["generation_p50_ms"] == pytest.approx(400)
+    assert metrics["effective_prefill_tok_s_p50"] == pytest.approx(1000)
+    assert metrics["decode_tok_s_p50"] == pytest.approx(20)
+    assert metrics["reasoning_chunks"] == 6
 
 
 def test_atomic_json_rejects_non_finite_numbers_without_replacing_target(tmp_path):
@@ -630,6 +701,42 @@ def test_bakeoff_evidence_records_identity_context_score_and_failures(monkeypatc
         "target_tokens": 2048,
         "error": "second context failed",
     }]
+
+
+def test_bakeoff_context_probe_includes_reasoning_headroom(monkeypatch, tmp_path):
+    completion_caps = []
+
+    def fake_stream_chat(_base, _model, _prompt, _key, max_tokens, **_kwargs):
+        completion_caps.append(max_tokens)
+        return dict(
+            time_to_first_output=0.01,
+            ttft=0.02,
+            e2e=0.03,
+            out_toks=3,
+            content_chunks=1,
+            reasoning_chunks=1,
+            output_token_source="usage",
+            usage={"prompt_tokens": 100, "completion_tokens": 3},
+        )
+
+    monkeypatch.setattr(bm, "stream_chat", fake_stream_chat)
+    out = tmp_path / "reasoning-bakeoff.json"
+
+    bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39010/v1",
+        "--model", "reasoner",
+        "--candidate-id", "reasoner",
+        "--config-id", "reasoning-low",
+        "--context-targets", "1024",
+        "--suite", "chat,context",
+        "--max-model-len", "4096",
+        "--visible-answer-tokens", "128",
+        "--reasoning-headroom-tokens", "512",
+        "--evidence-out", str(out),
+    ])
+
+    assert completion_caps == [640]
 
 
 def test_bakeoff_context_rows_calibrate_from_usage_and_hit_targets(monkeypatch, tmp_path):
