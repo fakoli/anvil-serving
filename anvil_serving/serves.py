@@ -123,6 +123,7 @@ _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # "evictable" serves. (The VRAM types are reservations, never *Lease —
 # AdmissionLease in router/admission.py is the request-admission layer.)
 _RESIDENCIES = ("resident", "evictable", "on-demand")
+DUAL_GPU_EXCLUSIVE_MODE = "dual-gpu-exclusive"
 # serve groups (serve-groups): a serve may be tagged into any number of named
 # groups so `serves up/down/status --group NAME` can act on the whole set at
 # once. "all" is the RESERVED implicit group (every serve in the manifest set);
@@ -406,11 +407,55 @@ def _normalize_reservation(s, raw):
     of them is left untouched (no keys are added), so pre-reservation manifests
     parse byte-for-byte the same as before.
     """
+    if "gpu_role" in s and "gpu_roles" in s:
+        raise ValueError(
+            "serve entry must declare either gpu_role or gpu_roles, not both: "
+            f"{raw!r}"
+        )
     if "gpu_role" in s:
         gpu_role = s.get("gpu_role")
         if not isinstance(gpu_role, str) or not gpu_role.strip():
             raise ValueError(f"serve entry gpu_role must be a non-empty string: {raw!r}")
         s["gpu_role"] = gpu_role.strip()
+    if "gpu_roles" in s:
+        gpu_roles = s.get("gpu_roles")
+        if (
+            not isinstance(gpu_roles, list)
+            or len(gpu_roles) != 2
+            or any(not isinstance(role, str) or not role.strip() for role in gpu_roles)
+        ):
+            raise ValueError(
+                "serve entry gpu_roles must contain exactly two non-empty strings: "
+                f"{raw!r}"
+            )
+        normalized_roles = [role.strip() for role in gpu_roles]
+        if len(set(normalized_roles)) != 2:
+            raise ValueError(
+                f"serve entry gpu_roles must be distinct: {raw!r}"
+            )
+        s["gpu_roles"] = normalized_roles
+    mode = s.get("operating_mode")
+    if mode is not None:
+        if mode != DUAL_GPU_EXCLUSIVE_MODE:
+            raise ValueError(
+                "serve entry operating_mode must be "
+                f"{DUAL_GPU_EXCLUSIVE_MODE!r}: {raw!r}"
+            )
+        if "gpu_roles" not in s:
+            raise ValueError(
+                "dual-gpu-exclusive serve must declare gpu_roles: "
+                f"{raw!r}"
+            )
+        if s.get("tensor_parallel_size") != 2:
+            raise ValueError(
+                "dual-gpu-exclusive serve must declare tensor_parallel_size = 2: "
+                f"{raw!r}"
+            )
+    elif "gpu_roles" in s or "tensor_parallel_size" in s:
+        raise ValueError(
+            "multi-role/tensor-parallel serve must declare operating_mode = "
+            f"{DUAL_GPU_EXCLUSIVE_MODE!r}: {raw!r}"
+        )
     if "router_tier" in s:
         # The serve's router tier id, for the ADR-0018 quiesce/drain transition
         # that eviction (gpu-reservations:T005) runs before stopping it. Like
@@ -535,6 +580,17 @@ def load_manifest(path):
                 )
         s["engine"] = _normalize_engine(s, up)
         _normalize_reservation(s, raw)
+        declared_roles = [
+            reservation.gpu_role for reservation in reservations.reservations_of(s)
+        ]
+        unknown_roles = [
+            role for role in declared_roles if role not in gpu_role_budgets
+        ]
+        if reservations.is_exclusive(s) and unknown_roles:
+            raise ValueError(
+                "serve entry references undeclared gpu role(s) "
+                f"{unknown_roles}: {raw!r}"
+            )
         _normalize_groups(s, raw)
         if gpu_role_budgets:
             s[reservations.GPU_ROLES_KEY] = gpu_role_budgets
@@ -2483,7 +2539,8 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
            _transition=None, wait_for_readiness=False,
            readiness_timeout=LIFECYCLE_READINESS_TIMEOUT_SECONDS,
            readiness_poll=LIFECYCLE_READINESS_POLL_SECONDS, ledger_serves=None,
-           _open=urllib.request.urlopen, _sleep=time.sleep):
+           _open=urllib.request.urlopen, _sleep=time.sleep,
+           _allow_exclusive_target=False):
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
@@ -2505,6 +2562,16 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
     # --dry-run (the preview should show the same refusal the real run hits).
     # Serves/manifests without reservation fields skip this entirely.
     reservation_scope = ledger_serves if ledger_serves is not None else serves
+    exclusive_denial = reservations.deny_exclusive_conflict(
+        reservation_scope,
+        targets,
+        state_of,
+        allow_exclusive_target=_allow_exclusive_target,
+    )
+    if exclusive_denial:
+        for line in exclusive_denial:
+            print("  " + line)
+        return 1
     denial = reservations.deny_over_budget(reservation_scope, targets, state_of)
     if denial and evict:
         # ADR-0017 §5 eviction (gpu-reservations:T005): an over-budget
@@ -2677,6 +2744,281 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
     return rc
 
 
+def operating_mode_plan(serves, target_name, restore_group, state_of):
+    """Return a structured, side-effect-free TP=2 transition plan."""
+    matched = _select(serves, [target_name])
+    if len(matched) != 1 or matched[0]["name"] != target_name:
+        raise ValueError("exclusive mode target must name exactly one manifest serve")
+    target = matched[0]
+    if not reservations.is_exclusive(target):
+        raise ValueError(
+            "%s is not declared operating_mode = %r"
+            % (target_name, DUAL_GPU_EXCLUSIVE_MODE)
+        )
+    roles = [r.gpu_role for r in reservations.reservations_of(target)]
+    if len(roles) != 2 or target.get("tensor_parallel_size") != 2:
+        raise ValueError("exclusive target must reserve two GPU roles with TP size 2")
+    rollback = resolve_group(serves, restore_group)
+    if not rollback:
+        raise ValueError("restore group %r has no serves" % restore_group)
+    if any(s["name"] == target_name for s in rollback):
+        raise ValueError("restore group must not include the exclusive target")
+
+    states = {}
+    for serve in serves:
+        if reservations.reservations_of(serve):
+            states[serve["name"]] = state_of(serve["container"])
+    unresolved = [
+        {"serve": name, "state": state}
+        for name, state in states.items()
+        if state in {"error", "unknown", "removing"}
+    ]
+    competitors = [
+        serve for serve in serves
+        if serve["name"] != target_name
+        and reservations.reservations_of(serve)
+        and states.get(serve["name"]) in reservations.RESERVED_STATES
+    ]
+    return {
+        "mode": DUAL_GPU_EXCLUSIVE_MODE,
+        "target": target_name,
+        "gpu_roles": roles,
+        "tensor_parallel_size": 2,
+        "drain": [
+            {"serve": serve["name"], "router_tier": serve.get("router_tier")}
+            for serve in competitors
+        ],
+        "stop": [serve["name"] for serve in competitors],
+        "blocked": [
+            serve["name"] for serve in serves
+            if serve["name"] != target_name and reservations.reservations_of(serve)
+        ],
+        "unresolved": unresolved,
+        "rollback": {
+            "group": restore_group,
+            "serves": [serve["name"] for serve in rollback],
+        },
+    }
+
+
+def _print_operating_mode_plan(plan):
+    print("mode: %s" % plan["mode"])
+    print("target: %s (TP=%s)" % (plan["target"], plan["tensor_parallel_size"]))
+    print("gpu roles: %s" % ", ".join(plan["gpu_roles"]))
+    if plan["drain"]:
+        for item in plan["drain"]:
+            if item["router_tier"]:
+                print("  drain %s via router tier %s" % (
+                    item["serve"], item["router_tier"],
+                ))
+            else:
+                print("  drain %s: no router tier declared" % item["serve"])
+    else:
+        print("  drain: none")
+    print("stop: %s" % (", ".join(plan["stop"]) or "none"))
+    print("blocked while active: %s" % (", ".join(plan["blocked"]) or "none"))
+    print("rollback group %s: %s" % (
+        plan["rollback"]["group"], ", ".join(plan["rollback"]["serves"]),
+    ))
+    for item in plan["unresolved"]:
+        print("UNRESOLVED: %s state %s" % (item["serve"], item["state"]))
+
+
+def _restore_split_stack(
+    serves,
+    plan,
+    *,
+    transition,
+    _run,
+    _open,
+    _sleep,
+):
+    names = plan["rollback"]["serves"]
+    rc = cmd_up(
+        serves,
+        names,
+        ledger_serves=serves,
+        wait_for_readiness=True,
+        _run=_run,
+        _open=_open,
+        _sleep=_sleep,
+    )
+    if rc != 0:
+        return rc
+    tiers = [
+        serve.get("router_tier") for serve in _select(serves, names)
+        if serve.get("router_tier")
+    ]
+    failed = [tier for tier in dict.fromkeys(tiers) if transition("readmit", tier) != 0]
+    if failed:
+        print("  split restore remains quiesced for: %s" % ", ".join(failed))
+        return 2
+    return 0
+
+
+def cmd_mode(
+    serves,
+    action,
+    target_name,
+    restore_group,
+    *,
+    confirm=False,
+    dry_run=False,
+    drain_timeout=EVICTION_DRAIN_TIMEOUT,
+    router_url=None,
+    _transition=None,
+    _run=subprocess.run,
+    _open=urllib.request.urlopen,
+    _sleep=time.sleep,
+):
+    """Preview, enter, leave, or report the exclusive TP=2 operating mode."""
+    states = {}
+
+    def state_of(container):
+        if container not in states:
+            states[container] = docker_state(container, _run=_run)
+        return states[container]
+
+    if action == "status":
+        exclusive = [s for s in serves if reservations.is_exclusive(s)]
+        unresolved = []
+        active = []
+        for serve in exclusive:
+            state = state_of(serve["container"])
+            if state in reservations.RESERVED_STATES:
+                active.append(serve)
+            elif state in {"error", "unknown", "removing"}:
+                unresolved.append({"serve": serve["name"], "state": state})
+        summary = {
+            "mode": (
+                DUAL_GPU_EXCLUSIVE_MODE if len(active) == 1 and not unresolved
+                else "unresolved" if unresolved or len(active) > 1
+                else "split"
+            ),
+            "exclusive_owner": active[0]["name"] if len(active) == 1 else None,
+            "gpu_roles": (
+                [r.gpu_role for r in reservations.reservations_of(active[0])]
+                if len(active) == 1 else []
+            ),
+            "tensor_parallel_size": active[0].get("tensor_parallel_size") if len(active) == 1 else None,
+            "unresolved": unresolved,
+        }
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 0 if summary["mode"] != "unresolved" else 1
+
+    try:
+        plan = operating_mode_plan(serves, target_name, restore_group, state_of)
+    except ValueError as exc:
+        print("mode transition refused: %s" % exc, file=sys.stderr)
+        return 2
+    _print_operating_mode_plan(plan)
+    if plan["unresolved"]:
+        print("mode transition refused before container mutation: unresolved GPU workload")
+        return 1
+    if action == "preview" or dry_run:
+        return 0
+    if not confirm:
+        print("mode transition not applied; rerun with --confirm")
+        return 2
+
+    transition = _transition or (
+        lambda transition_action, tier_id, timeout=None: _transition_cli(
+            router_url or DEFAULT_ROUTER_URL,
+            transition_action,
+            tier_id,
+            timeout=timeout,
+            _run=_run,
+        )
+    )
+    target = _select(serves, [target_name])[0]
+
+    if action == "enter":
+        victims = []
+        for name in plan["stop"]:
+            serve = _select(serves, [name])[0]
+            victims.append(reservations.reservations_of(serve)[0])
+        if victims and _evict_victims(
+            serves,
+            victims,
+            drain_timeout=drain_timeout,
+            transition=transition,
+            _run=_run,
+        ) != 0:
+            print("mode entry failed while draining; restoring split stack")
+            _restore_split_stack(
+                serves, plan, transition=transition, _run=_run,
+                _open=_open, _sleep=_sleep,
+            )
+            return 1
+        states.clear()
+        remaining = []
+        for serve in serves:
+            if serve["name"] == target_name or not reservations.reservations_of(serve):
+                continue
+            state = state_of(serve["container"])
+            if state in reservations.RESERVED_STATES or state in {"error", "unknown", "removing"}:
+                remaining.append("%s=%s" % (serve["name"], state))
+        if remaining:
+            print("mode entry refused: GPU workloads remain: %s" % ", ".join(remaining))
+            _restore_split_stack(
+                serves, plan, transition=transition, _run=_run,
+                _open=_open, _sleep=_sleep,
+            )
+            return 1
+        rc = cmd_up(
+            serves,
+            [target_name],
+            ledger_serves=serves,
+            wait_for_readiness=True,
+            _allow_exclusive_target=True,
+            _run=_run,
+            _open=_open,
+            _sleep=_sleep,
+        )
+        if rc == 0:
+            print("mode entered: %s owns %s" % (
+                target_name, ", ".join(plan["gpu_roles"]),
+            ))
+            return 0
+        print("mode entry failed while starting target; restoring split stack")
+        cmd_down(serves, [target_name], _run=_run)
+        _restore_split_stack(
+            serves, plan, transition=transition, _run=_run,
+            _open=_open, _sleep=_sleep,
+        )
+        return 1
+
+    if action == "leave":
+        if state_of(target["container"]) not in reservations.RESERVED_STATES:
+            print("mode leave refused: %s is not the active exclusive owner" % target_name)
+            return 1
+        if cmd_down(serves, [target_name], _run=_run) != 0:
+            print("mode leave failed: exclusive owner did not stop")
+            return 1
+        if _restore_split_stack(
+            serves, plan, transition=transition, _run=_run,
+            _open=_open, _sleep=_sleep,
+        ) == 0:
+            print("mode left: restored split group %s" % restore_group)
+            return 0
+        print("mode leave rollback: split restore failed; returning to exclusive owner")
+        cmd_down(serves, plan["rollback"]["serves"], _run=_run)
+        cmd_up(
+            serves,
+            [target_name],
+            ledger_serves=serves,
+            wait_for_readiness=True,
+            _allow_exclusive_target=True,
+            _run=_run,
+            _open=_open,
+            _sleep=_sleep,
+        )
+        return 1
+
+    print("unknown mode action %r" % action, file=sys.stderr)
+    return 2
+
+
 def cmd_rm(serves, names, dry_run=False, assume_yes=False, _run=subprocess.run,
            _input=input):
     """Force-remove serve container(s) — `docker rm -f <container>`.
@@ -2839,6 +3181,40 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
     # the active Windows console cannot represent a progress-bar glyph.
     _write_console_safe(sys.stderr, r.stderr)
     return r.returncode
+
+
+def deny_ad_hoc_compose_during_exclusive(manifest_path, _run=subprocess.run):
+    """Guard the legacy ad-hoc Compose path against exclusive-mode bypass.
+
+    A missing manifest preserves the intentionally independent experiment
+    workflow.  Once a manifest declares an exclusive owner, however, active or
+    unresolved ownership must block an unreserved GPU experiment before any
+    container command runs.
+    """
+    path = os.path.expanduser(manifest_path)
+    if not os.path.isfile(path):
+        return None
+    try:
+        scope = load_manifest_set(path)
+    except Exception as exc:
+        return [
+            "ad-hoc compose denied: cannot resolve operating mode from %s: %s"
+            % (path, exc),
+            "no container command was run",
+        ]
+    if not any(reservations.is_exclusive(serve) for serve in scope):
+        return None
+    synthetic = {
+        "name": "ad-hoc-compose",
+        "container": "<ad-hoc-compose>",
+        "gpu_role": "<unmanaged>",
+        "vram_mib": 1,
+    }
+    return reservations.deny_exclusive_conflict(
+        scope,
+        [synthetic],
+        lambda container: docker_state(container, _run=_run),
+    )
 
 
 def _probe_json(url, payload=None, *, timeout=60, _open=urllib.request.urlopen):
@@ -3016,7 +3392,7 @@ def cmd_probe(serves, names, *, text, image_path, timeout, _open=urllib.request.
 
 _ACTIONS = (
     "status", "probe", "up", "down", "rm", "adopt", "logs", "groups", "switch",
-    "promote", "render",
+    "promote", "mode", "render",
 )
 # Actions that accept `--group NAME` (repeatable) — they act across the whole
 # manifest set (serves*.toml in the manifest's dir), not just one file.
@@ -3033,6 +3409,7 @@ _ACTION_DESCRIPTIONS = {
     "groups": "List serve groups across the manifest set and their members.",
     "switch": "Switch a deployment role to an activation-ready recipe.",
     "promote": "Promote a staged model recipe with preflight and full rollback.",
+    "mode": "Preview or transact split and exclusive TP=2 operating modes.",
     "render": "Render tuned compose, manifest, and router-tier configuration.",
 }
 
@@ -3064,7 +3441,20 @@ def _build_action_parser(action):
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    if action == "promote":
+    if action == "mode":
+        p.add_argument(
+            "mode_action",
+            choices=("status", "preview", "enter", "leave"),
+            help="mode operation to perform",
+        )
+        p.add_argument(
+            "target",
+            nargs="?",
+            metavar="TARGET",
+            help="exclusive TP=2 serve (required except for status)",
+        )
+        p.set_defaults(names=[])
+    elif action == "promote":
         p.add_argument("names", nargs=1, metavar="PLAN",
                        help="the [[promotion]] plan name from the manifest")
     elif action == "switch":
@@ -3094,7 +3484,7 @@ def _build_action_parser(action):
                        help="emit the group catalog as JSON for tooling.")
     else:
         p.set_defaults(json_out=False)
-    if action in {"up", "down", "rm", "adopt", "switch", "promote"}:
+    if action in {"up", "down", "rm", "adopt", "switch", "promote", "mode"}:
         p.add_argument("--dry-run", action="store_true",
                        help="print what would run without touching any container.")
     else:
@@ -3137,6 +3527,27 @@ def _build_action_parser(action):
         p.set_defaults(compose=None, recreate=False, evict=False,
                        drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
                        no_router=False)
+    if action == "mode":
+        p.add_argument(
+            "--restore-group",
+            metavar="NAME",
+            help="explicit split-mode group restored on leave or entry failure",
+        )
+        p.add_argument(
+            "--confirm",
+            action="store_true",
+            help="apply enter/leave after reviewing the printed transaction plan",
+        )
+        p.add_argument(
+            "--drain-timeout",
+            type=float,
+            default=EVICTION_DRAIN_TIMEOUT,
+            metavar="SECONDS",
+            help="bounded router drain wait before stopping competing serves",
+        )
+        p.add_argument("--router-url", metavar="URL", help="router transition base URL")
+    else:
+        p.set_defaults(confirm=False, restore_group=None)
     if action == "logs":
         p.add_argument("--tail", default="200",
                        help="trailing lines to show (default: %(default)s; 'all').")
@@ -3235,6 +3646,8 @@ def main(argv=None):
         cache_operation = "serves promote --rollback" if a.rollback else "serves promote"
     elif a.action == "switch" and (a.recipe_selector or a.recipe):
         cache_operation = "serves switch"
+    elif a.action == "mode" and a.mode_action in {"enter", "leave"}:
+        cache_operation = "serves mode %s" % a.mode_action
     cache_policy = None
     cache_before = None
     if cache_operation is not None:
@@ -3247,6 +3660,18 @@ def main(argv=None):
             host_ops.render_cache_reclaim_plan(cache_policy, cache_operation)
         else:
             cache_before = host_ops.capture_cache_before(cache_policy)
+
+    # The legacy ad-hoc Compose path has no reservation row of its own.  It must
+    # still consult an operator manifest that declares exclusive mode, before
+    # even the router ensure can issue a container command.
+    if a.action == "up" and a.compose:
+        mode_denial = deny_ad_hoc_compose_during_exclusive(
+            resolve_manifest_path(a.manifest)
+        )
+        if mode_denial:
+            for line in mode_denial:
+                print("  " + line)
+            return 1
 
     # `serves up` ensures the DEPLOYED router is healthy FIRST — serves are only
     # reachable behind it. Reuses the `router` verb's own status/up code paths;
@@ -3282,8 +3707,10 @@ def main(argv=None):
     # manifest SET. Plain positional-name operations keep selection scoped to
     # the named manifest, but admission/status still use the complete set so a
     # separate voice or ComfyUI manifest cannot become invisible GPU occupancy.
-    use_set = bool(a.groups) or a.action == "groups"
+    use_set = bool(a.groups) or a.action in {"groups", "mode"}
     try:
+        if a.action == "mode" and not os.path.isfile(os.path.expanduser(manifest_path)):
+            raise FileNotFoundError(manifest_path)
         serves = load_manifest_set(manifest_path) if use_set else load_manifest(manifest_path)
     except FileNotFoundError:
         search_hint = (
@@ -3309,6 +3736,37 @@ def main(argv=None):
 
     if a.action == "groups":
         return cmd_groups(serves, as_json=a.json_out)
+    if a.action == "mode":
+        if a.mode_action == "status":
+            if a.target or a.restore_group:
+                print("mode status does not accept TARGET or --restore-group", file=sys.stderr)
+                return 2
+        elif not a.target or not a.restore_group:
+            print(
+                "mode %s requires TARGET and --restore-group" % a.mode_action,
+                file=sys.stderr,
+            )
+            return 2
+        if a.mode_action in {"preview", "status"} and a.confirm:
+            print("--confirm is only valid with mode enter/leave", file=sys.stderr)
+            return 2
+        rc = cmd_mode(
+            serves,
+            a.mode_action,
+            a.target,
+            a.restore_group,
+            confirm=a.confirm,
+            dry_run=a.dry_run,
+            drain_timeout=a.drain_timeout,
+            router_url=a.router_url,
+        )
+        return _finish_cache_reclaim(
+            rc,
+            cache_policy,
+            cache_before,
+            cache_operation,
+            dry_run=a.dry_run,
+        )
 
     # Resolve --group to concrete serves across the set; the union with positional
     # names becomes the target list. Print what each group resolved to before
