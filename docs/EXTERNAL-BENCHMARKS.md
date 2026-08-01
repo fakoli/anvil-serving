@@ -8,6 +8,35 @@ They are not local qualification truth. Preflight and repeated local quality
 evaluation against the exact served model, engine, and hardware determine
 whether an operator should use that serve behind a direct alias.
 
+## Curated DeepSeek V4 Flash 0731 prior
+
+The 2026-08-01
+[DeepSeek V4 Flash 0731 research update](findings/2026-08-01-deepseek-v4-flash-0731-research-update.md)
+is the current curated `external-prior` for this model. Its
+[source registry](findings/2026-08-01-deepseek-v4-flash-0731-research-evidence/source-registry.json)
+pins the publisher release-weight and current documentation revisions,
+Artificial Analysis result, vLLM/SGLang recipes, community 0731 NVFP4
+artifacts, and the Unsloth GGUF collection.
+
+Decision-critical boundaries:
+
+- 0731 is a distinct re-post-trained generation even though it retains the V4
+  Flash architecture.
+- Artificial Analysis independently supports the intelligence claim but also
+  records exceptionally high output-token use.
+- NVIDIA's official DeepSeek V4 Flash NVFP4 artifact is Preview, not 0731.
+- Current 0731 NVFP4 evidence is community-authored: TP=2 on two DGX Spark
+  systems or TP=4 on four RTX PRO 6000 cards does not prove dual-PRO TP=2.
+- DSpark can improve interactive decode while remaining neutral at saturated
+  concurrency, and mixed NVFP4-target/MXFP4-draft routing has a silent
+  zero-acceptance failure mode in the strongest current SM120 report.
+- The exact publisher checkpoint has local dual-PRO low-reasoning evidence;
+  `high`, `max`, DSpark, context above 32K, and 0731 NVFP4 remain unqualified.
+
+Do not import the external throughput rows into a local leaderboard without
+retaining GPU count, engine revision, TP/EP shape, speculative state,
+concurrency, and perplexity/quality differences.
+
 ## Choose a workflow
 
 | Goal | Command |

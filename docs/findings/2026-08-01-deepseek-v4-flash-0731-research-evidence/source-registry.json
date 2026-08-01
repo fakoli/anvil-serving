@@ -1,0 +1,133 @@
+{
+  "schema": "anvil-serving-research-source-registry/v1",
+  "subject": "deepseek-ai/DeepSeek-V4-Flash-0731",
+  "observed_at": "2026-08-01",
+  "sources": [
+    {
+      "name": "DeepSeek V4 Flash 0731 model card and weights",
+      "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731/tree/7872f01b1d1fe23eabc4c98b48bffcef5a386062",
+      "source_date": "2026-08-01",
+      "age_class": "current",
+      "evidence_type": "official",
+      "identity": {
+        "repository_revision": "7872f01b1d1fe23eabc4c98b48bffcef5a386062",
+        "release_weight_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+      },
+      "observed_metrics": {
+        "downloads": 15366,
+        "likes": 1352,
+        "quantization_descendants": 40
+      },
+      "hardware_engine_relevance": "Exact publisher checkpoint used by the local SGLang TP=2 run.",
+      "decision_impact": "Canonical local candidate identity; distinct post-training generation from Flash Preview."
+    },
+    {
+      "name": "DeepSeek API July 31 update",
+      "url": "https://api-docs.deepseek.com/updates/",
+      "source_date": "2026-07-31",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_engine_relevance": "API behavior prior, not local serving evidence.",
+      "decision_impact": "Confirms unchanged architecture and size with new post-training and API alias behavior."
+    },
+    {
+      "name": "DeepSeek-V4 technical report",
+      "url": "https://arxiv.org/abs/2606.19348",
+      "source_date": "2026-04-26",
+      "age_class": "architecture-current_post-training-superseded",
+      "evidence_type": "official-paper",
+      "hardware_engine_relevance": "Architecture and one-million-token context prior; it predates 0731 post-training.",
+      "decision_impact": "Grounds the 284B/13B-active V4 architecture and long-context design, not 0731 quality claims."
+    },
+    {
+      "name": "Artificial Analysis DeepSeek V4 Flash 0731 max-effort evaluation",
+      "url": "https://artificialanalysis.ai/models/deepseek-v4-flash",
+      "source_date": "2026-08-01",
+      "age_class": "current",
+      "evidence_type": "independent-benchmark",
+      "observed_metrics": {
+        "intelligence_index_v4_1": 50,
+        "rank": 3,
+        "comparison_population": 101,
+        "evaluation_output_tokens": 210000000
+      },
+      "hardware_engine_relevance": "Hosted API result; no target-hardware throughput relevance.",
+      "decision_impact": "Independent support for the intelligence jump and a strong warning about reasoning verbosity."
+    },
+    {
+      "name": "vLLM DeepSeek V4 Flash recipe",
+      "url": "https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4-Flash?features=tool_calling%2Creasoning&hardware=b300",
+      "source_date": "2026-07-31",
+      "age_class": "current",
+      "evidence_type": "official-runtime-recipe",
+      "hardware_engine_relevance": "Documents 0731 as the default variant, DeepSeek encoding/parsers, and DSpark; published hardware is not dual RTX PRO 6000.",
+      "decision_impact": "Primary vLLM recipe prior; local TP=2 remains separately qualified."
+    },
+    {
+      "name": "SGLang DeepSeek V4 cookbook",
+      "url": "https://docs.sglang.io/cookbook/autoregressive/DeepSeek/DeepSeek-V4",
+      "source_date": "2026-08-01",
+      "age_class": "current",
+      "evidence_type": "official-runtime-recipe",
+      "hardware_engine_relevance": "SGLang 0.5.16 documents RTX PRO 6000 TP=2 for preview Flash but lists 0731 verification on B200, GB300, and H200.",
+      "decision_impact": "Shows that the local 0731 dual-PRO TP=2 run closes a public hardware-matrix gap."
+    },
+    {
+      "name": "MJPansa DeepSeek V4 Flash 0731 NVFP4",
+      "url": "https://huggingface.co/MJPansa/DeepSeek-V4-Flash-0731-NVFP4/tree/64d64cd89bc63a66aa46506da89d7821f7491c62",
+      "source_date": "2026-07-31",
+      "age_class": "current-experimental",
+      "evidence_type": "community-conversion-and-operator-report",
+      "identity": {
+        "repository_revision": "64d64cd89bc63a66aa46506da89d7821f7491c62",
+        "source_weight_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+        "reported_output_bytes": 175535844088
+      },
+      "hardware_engine_relevance": "Reports vLLM TP=2 load and generation on two DGX Spark systems, not two RTX PRO 6000 cards.",
+      "decision_impact": "Best conversion provenance candidate; dual-PRO performance and quality remain unmeasured."
+    },
+    {
+      "name": "Auroter DeepSeek V4 Flash 0731 NVFP4",
+      "url": "https://huggingface.co/auroter/DeepSeek-V4-Flash-0731-NVFP4/tree/17e0f9da8257371654d458ba518659aa99954c86",
+      "source_date": "2026-08-01",
+      "age_class": "current-experimental",
+      "evidence_type": "community-conversion-and-benchmark",
+      "identity": {
+        "repository_revision": "17e0f9da8257371654d458ba518659aa99954c86",
+        "modelopt_version": "0.45.0"
+      },
+      "hardware_engine_relevance": "Community-reported vLLM 0.26.0 TP=4 measurements on four RTX PRO 6000 cards; DSpark used an out-of-tree SM120 branch and routing patch.",
+      "decision_impact": "Strongest RTX PRO recipe and A/B prior, but not evidence for this host's two-card TP=2 topology."
+    },
+    {
+      "name": "Utarn DeepSeek V4 Flash 0731 NVFP4",
+      "url": "https://huggingface.co/utarn/DeepSeek-V4-Flash-0731-NVFP4/tree/ca20bac907e9711b759fcebd214a2e58ba7bd857",
+      "source_date": "2026-08-01",
+      "age_class": "current-experimental",
+      "evidence_type": "community-conversion",
+      "hardware_engine_relevance": "No target-hardware qualification found in the model card.",
+      "decision_impact": "Confirms conversion interest but is not the first local test candidate."
+    },
+    {
+      "name": "Unsloth DeepSeek V4 Flash 0731 GGUF collection",
+      "url": "https://huggingface.co/unsloth/DeepSeek-V4-Flash-0731-GGUF/tree/109848da2469efe1f1aab9e11acea08a065ccd4f",
+      "source_date": "2026-08-01",
+      "age_class": "current-experimental",
+      "evidence_type": "community-conversion",
+      "identity": {
+        "repository_revision": "109848da2469efe1f1aab9e11acea08a065ccd4f"
+      },
+      "hardware_engine_relevance": "GGUF/llama.cpp family; no dual-PRO tool or reasoning qualification found.",
+      "decision_impact": "Alternate conversion lane only; publisher and NVFP4 paths retain priority for intelligence preservation."
+    },
+    {
+      "name": "DeepSeek thinking and tool-call contract",
+      "url": "https://api-docs.deepseek.com/guides/thinking_mode/",
+      "source_date": "2026-08-01",
+      "age_class": "current",
+      "evidence_type": "official-api-contract",
+      "hardware_engine_relevance": "Protocol behavior prior for local parser and harness validation.",
+      "decision_impact": "Requires explicit effort control and preservation of reasoning content across tool-call turns."
+    }
+  ]
+}

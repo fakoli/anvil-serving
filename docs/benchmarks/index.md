@@ -50,6 +50,13 @@ dated findings behind each conclusion.
 The 2026-08-01 dual-PRO campaign did not promote or reroute any of these
 aliases. It restored the pre-campaign service state after exclusive TP=2.
 
+Research priority: **DeepSeek V4 Flash 0731** is the dual-card intelligence
+`challenger` after its exact publisher checkpoint qualified at low reasoning
+and current external research independently supported the post-training jump.
+It remains `no-promotion`; high/max reasoning, DSpark, context above 32K, and
+0731-specific NVFP4 are not locally qualified. Start with its
+[model dossier](models/deepseek-v4-flash.md).
+
 ## How to read the evidence
 
 Evidence labels describe what was observed:
