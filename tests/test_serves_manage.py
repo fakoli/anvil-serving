@@ -347,6 +347,54 @@ def test_active_exclusive_owner_blocks_split_start_before_container_command(
     assert not any(call[:2] == ["docker", "compose"] for call in run.calls)
 
 
+def test_exclusive_mode_covers_legacy_unreserved_experiment_but_not_cpu_sidecar(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST + """
+        [[serve]]
+        name = "legacy-experiment"
+        container = "legacy-experiment"
+        port = 39000
+        model = "legacy-local"
+        engine = "vllm"
+        up = "docker compose -f {dir}/compose.yml up -d legacy-experiment"
+
+        [[serve]]
+        name = "realtime-proxy"
+        container = "realtime-proxy"
+        port = 8765
+        model = "realtime-proxy"
+        engine = "audio"
+        gpu_inference = false
+        up = "docker compose -f {dir}/compose.yml up -d realtime-proxy"
+    """))
+    states = {
+        "split-a": "absent",
+        "split-b": "absent",
+        "tp2": "absent",
+        "legacy-experiment": "running",
+        "realtime-proxy": "running",
+    }
+    plan = serves.operating_mode_plan(
+        loaded,
+        "tp2",
+        "split-stack",
+        lambda container: states.get(container, "absent"),
+    )
+    assert plan["stop"] == ["legacy-experiment"]
+    assert "legacy-experiment" in plan["blocked"]
+    assert "realtime-proxy" not in plan["blocked"]
+
+    states["legacy-experiment"] = "absent"
+    states["tp2"] = "running"
+    run = _mode_run(states)
+    assert serves.cmd_up(
+        loaded, ["legacy-experiment"], ledger_serves=loaded, _run=run
+    ) == 1
+    assert "blocked: legacy-experiment" in capsys.readouterr().out
+    assert not any(call[:2] == ["docker", "compose"] for call in run.calls)
+
+
 @pytest.mark.parametrize("owner_state", ["running", "error", "unknown"])
 def test_ad_hoc_compose_cannot_bypass_active_or_unresolved_exclusive_owner(
     tmp_path, owner_state,

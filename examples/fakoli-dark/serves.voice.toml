@@ -40,6 +40,7 @@ up = "docker compose --project-name anvil-voice-audio -f {dir}/docker-compose.vo
 # (managed lifecycle), after the audio serves (`anvil-serving voice audio up`).
 [[serve]]
 name = "realtime-proxy"
+gpu_inference = false
 stack = "voice-proxy"
 container = "anvil-voice-proxy"
 port = 8765
