@@ -407,6 +407,8 @@ def _normalize_reservation(s, raw):
     of them is left untouched (no keys are added), so pre-reservation manifests
     parse byte-for-byte the same as before.
     """
+    if "gpu_inference" in s and not isinstance(s.get("gpu_inference"), bool):
+        raise ValueError(f"serve entry gpu_inference must be a boolean: {raw!r}")
     if "gpu_role" in s and "gpu_roles" in s:
         raise ValueError(
             "serve entry must declare either gpu_role or gpu_roles, not both: "
@@ -2066,7 +2068,7 @@ def operating_mode_summary(serves, state_of):
             [
                 serve["name"] for serve in serves
                 if serve["name"] != owner["name"]
-                and reservations.reservations_of(serve)
+                and reservations.is_gpu_inference(serve)
             ]
             if owner else []
         ),
@@ -2846,7 +2848,7 @@ def operating_mode_plan(serves, target_name, restore_group, state_of):
 
     states = {}
     for serve in serves:
-        if reservations.reservations_of(serve):
+        if reservations.is_gpu_inference(serve):
             states[serve["name"]] = state_of(serve["container"])
     unresolved = [
         {"serve": name, "state": state}
@@ -2856,7 +2858,7 @@ def operating_mode_plan(serves, target_name, restore_group, state_of):
     competitors = [
         serve for serve in serves
         if serve["name"] != target_name
-        and reservations.reservations_of(serve)
+        and reservations.is_gpu_inference(serve)
         and states.get(serve["name"]) in reservations.RESERVED_STATES
     ]
     return {
@@ -2871,7 +2873,7 @@ def operating_mode_plan(serves, target_name, restore_group, state_of):
         "stop": [serve["name"] for serve in competitors],
         "blocked": [
             serve["name"] for serve in serves
-            if serve["name"] != target_name and reservations.reservations_of(serve)
+            if serve["name"] != target_name and reservations.is_gpu_inference(serve)
         ],
         "unresolved": unresolved,
         "rollback": {
@@ -2994,7 +2996,17 @@ def cmd_mode(
         victims = []
         for name in plan["stop"]:
             serve = _select(serves, [name])[0]
-            victims.append(reservations.reservations_of(serve)[0])
+            declared = reservations.reservations_of(serve)
+            victims.append(
+                declared[0] if declared else reservations.GpuReservation(
+                    serve=serve["name"],
+                    container=serve["container"],
+                    gpu_role="<unassigned>",
+                    vram_mib=0,
+                    residency=serve.get("residency"),
+                    state=states.get(serve["name"]),
+                )
+            )
         if victims and _evict_victims(
             serves,
             victims,
@@ -3011,7 +3023,7 @@ def cmd_mode(
         states.clear()
         remaining = []
         for serve in serves:
-            if serve["name"] == target_name or not reservations.reservations_of(serve):
+            if serve["name"] == target_name or not reservations.is_gpu_inference(serve):
                 continue
             state = state_of(serve["container"])
             if state in reservations.RESERVED_STATES or state in {"error", "unknown", "removing"}:

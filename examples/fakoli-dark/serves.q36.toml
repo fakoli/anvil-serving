@@ -1,6 +1,6 @@
-# q36 is an opt-in experiment on the RTX PRO 6000, not a production tier.
-# It intentionally stays outside the reservation ledger, matching the existing
-# single-tenant dark-heavy convention. Stop `heavy` before starting this serve.
+# q36 is an opt-in experiment on Compute A, not a production workload.
+# It predates reservation sizing, so exclusive mode still treats it as GPU
+# inference and stops or blocks it. Stop competing Compute A work first.
 
 [[serve]]
 name = "q36-pro6000"

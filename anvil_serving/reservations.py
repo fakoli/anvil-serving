@@ -1,7 +1,7 @@
 """ADR-0017 GPU residency reservations — the declarative per-`gpu_role` VRAM ledger.
 
-The ledger arbitrates VRAM on a multi-tenant GPU (the RTX 5090 hosting voice
-sidecars + purpose models + the fast LLM tier) where the driver cannot:
+The ledger arbitrates VRAM for co-resident serves on a declared GPU role where
+the driver cannot:
 per-process VRAM attribution is impossible under WSL2 passthrough, so the
 accounting is DECLARATIVE — each `[[serve]]` manifest entry may declare
 `gpu_role`/`vram_mib`/`residency` (parsed by :mod:`anvil_serving.serves`), and
@@ -62,9 +62,8 @@ DUAL_GPU_EXCLUSIVE_MODE = "dual-gpu-exclusive"
 class GpuRoleBudget:
     """Declared VRAM capacity of one `gpu_role` (ADR-0017 §2).
 
-    `vram_mib` is the card's capacity; `reserve_mib` is the never-reservable
-    display/system reserve (the 5090 is also the Windows display GPU). Both are
-    declared identity, not measured state.
+    `vram_mib` is the card's capacity; `reserve_mib` is never-reservable
+    display/system headroom. Both are declared identity, not measured state.
     """
 
     gpu_role: str
@@ -266,6 +265,16 @@ def is_exclusive(serve: dict) -> bool:
     return serve.get("operating_mode") == DUAL_GPU_EXCLUSIVE_MODE
 
 
+def is_gpu_inference(serve: dict) -> bool:
+    """Whether lifecycle for this manifest entry can occupy a GPU.
+
+    Model serves default to GPU inference so pre-reservation experiments remain
+    inside exclusive-mode safety.  Explicit non-GPU sidecars opt out with
+    ``gpu_inference = false``.
+    """
+    return serve.get("gpu_inference", True)
+
+
 def deny_exclusive_conflict(
     serves: list[dict],
     targets: list[dict],
@@ -325,7 +334,7 @@ def deny_exclusive_conflict(
         owner = active[0]
         competing = [
             target for target in targets
-            if target["name"] != owner["name"] and reservations_of(target)
+            if target["name"] != owner["name"] and is_gpu_inference(target)
         ]
         if competing:
             return [
