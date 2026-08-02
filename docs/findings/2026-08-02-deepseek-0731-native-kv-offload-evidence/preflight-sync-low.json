@@ -1,0 +1,99 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39066/v1",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-offload8-sync-tp2-128k",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": "low"
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 1024,
+    "max_completion_tokens": 1280
+  },
+  "multimodal_input": null,
+  "video_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [],
+  "checks": [
+    "smoke",
+    "json",
+    "needle"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "4.0s got='The simplest one-liner is:\\n\\n```python\\nsum(xs)\\n```\\n' finish='stop' visible=349 reasoning_chars=1108 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=80 reasoning_tokens=None"
+    },
+    {
+      "name": "needle @ ~8192 ctx",
+      "passed": false,
+      "detail": "error: HTTP 500: {\"error\":{\"message\":\"EngineCore encountered an issue. See stack trace (above) for the root cause.\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}}"
+    }
+  ],
+  "observations": [
+    {
+      "content": "The simplest one-liner is:\n\n```python\nsum(xs)\n```\n\nIf you need it as a callable function, use a lambda:\n\n```python\nlambda xs: sum(xs)\n```\n\nOr, without the built-in `sum`, using `reduce` (requires import, but can be done in one line with `from functools import reduce;`):\n\n```python\nfrom functools import reduce; reduce(lambda a, b: a + b, xs, 0)\n```",
+      "finish_reason": "stop",
+      "content_chars": 349,
+      "content_excerpt": "The simplest one-liner is:\n\n```python\nsum(xs)\n```\n\nIf you need it as a callable function, use a lambda:\n\n```python\nlambda xs: sum(xs)\n```\n\nOr, without the built-in `sum`, using `reduce` (requires impo",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 1108,
+      "reasoning_excerpt": "We need to write a Python one-liner that returns the sum of a list `xs`. The user didn't specify any constraints, but likely they want a simple expression. The most straightforward is `sum(xs)`. But m",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 20,
+        "total_tokens": 418,
+        "completion_tokens": 398,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "smoke",
+      "seconds": 3.989,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 80,
+      "reasoning_excerpt": "We need to output only the JSON object as specified. No prose. So just the JSON.",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 22,
+        "total_tokens": 52,
+        "completion_tokens": 30,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "json",
+      "seconds": 0.529,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "required",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": false
+}

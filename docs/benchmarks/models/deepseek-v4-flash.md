@@ -7,11 +7,17 @@ profile is the pinned r16 B12X TP=2 recipe with DSpark K5, 131,072 served
 tokens, and low/high/max reasoning support. It passed 128K correctness and a
 27/27 coding-agent slice, and DSpark materially beat the same-image no-spec
 control. Neither profile passed the standing 3 GiB reported-free VRAM policy,
-so no production alias changed. Review date: 2026-08-01.
+so no production alias changed.
+
+A derived WSL2 image now also qualifies native CPU KV offload at a 262,144
+served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
+the managed shared-memory lifecycle regression. This extends the capacity
+contract but does not replace the 131K profile as the preferred performance
+recipe. Review date: 2026-08-02.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
-not the current performance recipe. Community 0731 NVFP4 and GGUF conversions,
-256K local context, and concurrency above one remain unqualified.
+not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
+and concurrency above one remain unqualified.
 
 ## Immutable identity
 
@@ -54,7 +60,10 @@ JIT, and temporary build data use named Docker volumes.
 
 - [DSpark K5 recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-128k-recipe.toml)
 - [Same-image no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-nospec-128k-recipe.toml)
+- [256K 8 GiB native-offload recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload8-wsl2-mmap-unpinned-recipe.toml)
+- [256K 16 GiB CPU-reload recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload16-wsl2-mmap-unpinned-recipe.toml)
 - [Complete qualification](../../findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md)
+- [Native-offload and 256K qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md)
 
 ## Evidence by measurement class
 
@@ -74,6 +83,25 @@ The r16 revision has `functional`, `capacity`, and bounded `quality` evidence:
   median E2E from 3.88 to 1.60 seconds.
 - Cumulative DSpark counters recorded 4,865 accepted of 8,830 draft tokens,
   or 55.1% acceptance and 2.75 accepted tokens per draft.
+
+The derived native-offload lane adds `functional` and `capacity` evidence:
+
+- The 128K configuration stored 7.15 GB GPU-to-CPU and replayed 1.13 GB
+  CPU-to-GPU; a 52,495-token replay reached 99.5% cache hits and 0.514-second
+  time to first output.
+- The 256K configuration passed cold 92,754-, 193,064-, and
+  249,573-prompt-token requests. The largest measured 43.75-second TTFO,
+  45.58-second first-visible TTFT, 5,705 effective prefill tok/s, and
+  135.2 tok/s decode.
+- The 8 GiB 256K session stored 11.06 GB GPU-to-CPU, but its follow-ups stayed
+  in the larger GPU prefix tier. With a 16 GiB CPU tier, six distinct 150K
+  planned-context requests stored 13.63 GB; an exact replay then produced
+  113,408 external hits and loaded 1.002 GB CPU-to-GPU in 0.344 seconds while
+  GPU-prefix hits remained unchanged. Replay TTFO was 0.825 seconds and visible
+  TTFT was 1.974 seconds.
+- The ownership-aware managed lifecycle blocked cleanup while both TP workers
+  mapped the 8 and 16 GiB files, then reclaimed each after container removal
+  and restored split mode.
 
 The prior SGLang lane used image digest
 `sha256:0aa5324c4f38bc66f4b55e1e12efab821ef614b1a8629259b2810ff72a6570e6`,
@@ -106,8 +134,8 @@ GGUF size ladder, DSpark caveats, and source classifications.
 performance experiment and is suitable for further coding-agent and deployment
 work. Preserve the current production Primary and rollback chain. The next
 material gates are a policy-compliant 128K memory recipe, broader coding/tool
-recovery evaluation, concurrency qualification, 256K feasibility, and pinned
-0731 NVFP4 W4A16/W4A4 comparisons.
+recovery evaluation, concurrency qualification, per-card reserve sampling on
+the 256K native-offload lane, and pinned 0731 NVFP4 W4A16/W4A4 comparisons.
 
 ## Failures and gotchas
 
@@ -134,8 +162,17 @@ permission to redistribute the image or derived runtime code.
 The historical NGC vLLM architecture rejection and aborted NVFP4 load are not
 measurements of the current 0731 checkpoint.
 
+Native offload originally crashed on WSL2 because CUDA host registration of
+the process-shared mmap conflicted with the allocator lifetime. The derived
+image skips registration only for that mmap while preserving the global V2
+UVA path. A separate 256K failure was stale tmpfs exhaustion: four orphan
+offload files filled `/dev/shm`, producing `mmap.madvise: Bad address`. Anvil
+Serving now performs two ownership checks and exact-path cleanup before load
+and after managed teardown. Page-cache reclaim alone is not sufficient.
+
 ## Dated run history
 
+- [2026-08-02 native KV offload and 256K qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md)
 - [2026-08-01 r16 DSpark qualification](../../findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md)
 - [2026-08-01 deep research update](../../findings/2026-08-01-deepseek-v4-flash-0731-research-update.md)
 - [2026-08-01 dual-PRO TP=2 campaign](../../findings/2026-08-01-dual-pro-tp2-model-campaign.md)

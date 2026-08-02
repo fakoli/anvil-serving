@@ -2333,9 +2333,27 @@ def cmd_down(
         if st == "absent":
             print("  %s: absent (nothing to stop or remove)" % s["container"])
             continue
+        native_offload = host_ops.container_uses_native_kv_offload(
+            s["container"], _run=_run,
+        ) is True
+
+        def finish_native_offload_cleanup():
+            if not native_offload:
+                return True
+            cleanup = host_ops.prepare_native_kv_offload_shared_memory(_run=_run)
+            host_ops.render_vllm_offload_shared_memory(cleanup)
+            if cleanup.get("outcome") in {"clean", "reclaimed"}:
+                return True
+            print(
+                "  FAILED native KV-offload shared-memory cleanup after %s: %s"
+                % (s["container"], cleanup.get("outcome", "unknown"))
+            )
+            return False
         if st in _STOPPED:
             if keep_container:
                 print("  %s: %s (kept for logs/restart)" % (s["container"], st))
+                if not dry_run and not finish_native_offload_cleanup():
+                    rc = 1
                 continue
             print("  rm -f %s (%s)" % (s["container"], st))
             if dry_run:
@@ -2347,6 +2365,8 @@ def cmd_down(
             )
             if removed.returncode == 0:
                 print("  removed %s" % s["container"])
+                if not finish_native_offload_cleanup():
+                    rc = 1
             else:
                 print(
                     "  FAILED to remove %s: %s"
@@ -2380,6 +2400,8 @@ def cmd_down(
                 continue
             if removed.returncode == 0:
                 print("  force-removed %s" % s["container"])
+                if not finish_native_offload_cleanup():
+                    rc = 1
             else:
                 print(
                     "  FAILED to force-remove %s: %s"
@@ -2422,6 +2444,8 @@ def cmd_down(
                 continue
             if removed.returncode == 0:
                 print("  force-removed %s after stop timeout" % s["container"])
+                if not finish_native_offload_cleanup():
+                    rc = 1
             else:
                 print(
                     "  FAILED to force-remove %s after stop timeout: %s"
@@ -2443,6 +2467,8 @@ def cmd_down(
                     rc = 1
                 else:
                     print("  stopped and kept %s" % s["container"])
+                    if not finish_native_offload_cleanup():
+                        rc = 1
             else:
                 removed = _run(
                     ["docker", "rm", "-f", s["container"]],
@@ -2451,6 +2477,8 @@ def cmd_down(
                 )
                 if removed.returncode == 0:
                     print("  stopped and removed %s" % s["container"])
+                    if not finish_native_offload_cleanup():
+                        rc = 1
                 else:
                     print(
                         "  FAILED to remove %s after stop: %s"
