@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-08-02
+
+### Fixed
+
+- The Fakoli Dark controller deployment now mounts the target and rollback
+  router profiles required by routed exclusive-mode manifests. This restores
+  managed serve and mode inspection after 0.21.0 made router activation part
+  of the mode transaction; rebuilding the 0.21.0 controller without these
+  mounts would reject the otherwise valid DeepSeek Primary manifest.
+- A controller Compose regression test now derives every required routed
+  exclusive profile from the serve manifest, verifies the source file exists,
+  and requires an exact read-only mount into the controller.
+
 ## [0.21.0] - 2026-08-02
 
 Anvil Serving 0.21.0 is the DeepSeek V4 Flash 0731 long-context Primary and
