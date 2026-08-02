@@ -362,7 +362,7 @@ evidence.
   `--source` can select a different checkout; `ANVIL_WORKBENCH_IMAGE` or
   `--image` can select a different local tag.
 - Live verification: the new verb built current
-  `C:\Users\sdoum\ai-code\anvil-workbench`, managed `workbench up` started that
+  `C:\Users\operator\ai-code\anvil-workbench`, managed `workbench up` started that
   exact local tag, and the healthy authenticated sandbox returned
   `WORKBENCH_SERVING_OK`. The stack was intentionally left running.
 - Status: fixed locally and verified live.

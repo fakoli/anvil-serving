@@ -351,7 +351,7 @@ services:
   #
   # Publish: loopback-only by default (ADR-0004 — unauthenticated endpoints stay off the
   # LAN). Opt in to tailnet exposure per serve by setting EMBEDDINGS_PUBLISH /
-  # RERANKER_PUBLISH to this host's tailnet address (e.g. 100.87.34.66) before `serves up`.
+  # RERANKER_PUBLISH to this host's tailnet address (e.g. 100.64.0.10) before `serves up`.
   embeddings:
     image: ${EMBEDDINGS_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-qwen3-embedding

@@ -65,9 +65,9 @@ def test_load_config_from_toml_ports_and_full_urls(tmp_path: Path):
 
 def test_load_config_host_override_applies_to_port_routes(tmp_path: Path):
     cfg = tmp_path / "edge.toml"
-    cfg.write_text('[edge]\nhost = "100.87.34.66"\n[edge.routes]\n"/v1" = 8000\n', encoding="utf-8")
+    cfg.write_text('[edge]\nhost = "100.64.0.10"\n[edge.routes]\n"/v1" = 8000\n', encoding="utf-8")
     config = edge.load_config(cfg)
-    assert config.routes[0].target == "http://100.87.34.66:8000"
+    assert config.routes[0].target == "http://100.64.0.10:8000"
 
 
 def test_map_override_adds_and_wins_over_defaults():
@@ -152,7 +152,7 @@ def test_off_argv_is_per_path_never_reset():
 _LIVE_STATUS = {
     "TCP": {"443": {"HTTPS": True}},
     "Web": {
-        "fakoli-dark.tail4378d.ts.net:443": {
+        "node-a.example.ts.net:443": {
             "Handlers": {
                 "/": {"Proxy": "http://127.0.0.1:8766"},
                 "/v1": {"Proxy": "http://127.0.0.1:8000"},
@@ -235,8 +235,8 @@ def _fake_run(stdout: str, returncode: int = 0):
 
 
 def test_resolve_magicdns_strips_trailing_dot():
-    run = _fake_run(json.dumps({"Self": {"DNSName": "fakoli-dark.tail4378d.ts.net."}}))
-    assert edge.resolve_magicdns_name(run=run) == "fakoli-dark.tail4378d.ts.net"
+    run = _fake_run(json.dumps({"Self": {"DNSName": "node-a.example.ts.net."}}))
+    assert edge.resolve_magicdns_name(run=run) == "node-a.example.ts.net"
 
 
 def test_resolve_magicdns_handles_missing_and_error():

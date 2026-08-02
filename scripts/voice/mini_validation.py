@@ -92,7 +92,7 @@ DEFAULT_REPORT_PATH = str(_REPO_ROOT / DEFAULT_REPORT_PATH_REL)
 FINDINGS_DOC = _REPO_ROOT / "docs" / "findings" / "2026-07-voice-16gb-mini.md"
 DEFAULT_TARGET_HOST_PATTERN = r"(?i)^fakoli[-_. ]?mini(?:[-_. ]?2)?$"
 DEFAULT_TARGET_HW_MODEL_PATTERN = r"^Mac16,10$"
-DEFAULT_FAKOLI_DARK_HOSTS = ("100.87.34.66", "fakoli-dark")
+DEFAULT_FAKOLI_DARK_HOSTS = ("100.64.0.10", "fakoli-dark")
 MIN_TTS_OUTPUT_SECONDS = 0.25
 BENCHMARK_SAMPLE_TEXT = "testing the local voice proof"
 

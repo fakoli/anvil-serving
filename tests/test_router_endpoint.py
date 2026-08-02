@@ -27,19 +27,19 @@ def _docker_inspect(*, host="127.0.0.1", port="8000", running=True):
 def test_discovery_reads_live_docker_binding_and_magicdns():
     def run(argv, **_kwargs):
         assert argv == ["docker", "inspect", "anvil-router"]
-        return _completed(stdout=_docker_inspect(host="100.87.34.66", port="8765"))
+        return _completed(stdout=_docker_inspect(host="100.64.0.10", port="8765"))
 
     result = router_endpoint.discover_router_endpoint(
         run=run,
-        read_magicdns=lambda: ("fakoli-dark.tail4378d.ts.net", "connected"),
+        read_magicdns=lambda: ("node-a.example.ts.net", "connected"),
     )
 
-    assert result.listen_host == "100.87.34.66"
+    assert result.listen_host == "100.64.0.10"
     assert result.listen_port == 8765
-    assert result.local_url == "http://100.87.34.66:8765"
+    assert result.local_url == "http://100.64.0.10:8765"
     assert result.source == "docker:anvil-router"
     assert result.router_running is True
-    assert result.tailscale_dns_name == "fakoli-dark.tail4378d.ts.net"
+    assert result.tailscale_dns_name == "node-a.example.ts.net"
 
 
 def test_wildcard_binding_uses_loopback_for_connectable_url():

@@ -29,7 +29,7 @@ def _cfg():
 def test_openclaw_voice_sync_emits_anvil_talk_realtime_config(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         voice_realtime_url="ws://127.0.0.1:8765/v1/realtime",
@@ -58,7 +58,7 @@ def test_openclaw_voice_sync_emits_anvil_talk_realtime_config(capsys):
 def test_openclaw_voice_sync_can_override_consult_model(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         voice_consult_model="llm.primary",
@@ -73,7 +73,7 @@ def test_openclaw_voice_sync_can_override_consult_model(capsys):
 def test_openclaw_voice_sync_can_override_consult_thinking_level(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         voice_consult_thinking_level="low",
@@ -88,7 +88,7 @@ def test_openclaw_voice_sync_can_override_consult_thinking_level(capsys):
 def test_openclaw_voice_sync_can_override_consult_bootstrap_context_mode(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         voice_consult_bootstrap_context_mode="full",
@@ -103,7 +103,7 @@ def test_openclaw_voice_sync_can_override_consult_bootstrap_context_mode(capsys)
 def test_openclaw_voice_sync_rejects_bad_consult_thinking_level(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         voice_consult_thinking_level="turbo",
@@ -117,7 +117,7 @@ def test_openclaw_voice_sync_rejects_bad_consult_thinking_level(capsys):
 def test_openclaw_voice_sync_rejects_bad_consult_bootstrap_context_mode(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         voice_consult_bootstrap_context_mode="compact",
@@ -136,7 +136,7 @@ def test_openclaw_voice_sync_replaces_existing_consult_thinking_level(tmp_path):
                 "models": {
                     "providers": {
                         "anvil": {
-                            "baseUrl": "http://100.87.34.66:8000/v1",
+                            "baseUrl": "http://100.64.0.10:8000/v1",
                             "apiKey": "${ANVIL_ROUTER_TOKEN}",
                         }
                     }
@@ -159,7 +159,7 @@ def test_openclaw_voice_sync_replaces_existing_consult_thinking_level(tmp_path):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
         out=str(existing),
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         native_provider="openai",
@@ -182,7 +182,7 @@ def test_openclaw_voice_sync_falls_back_to_chat_consult_model(capsys):
     )
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         _load=lambda _path: cfg,
@@ -196,7 +196,7 @@ def test_openclaw_voice_sync_falls_back_to_chat_consult_model(capsys):
 def test_openclaw_voice_sync_can_emit_env_secretref(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         voice_api_key_env="ANVIL_VOICE_REALTIME_TOKEN",
@@ -216,10 +216,10 @@ def test_openclaw_voice_sync_can_emit_env_secretref(capsys):
 def test_openclaw_voice_sync_requires_env_secretref_for_private_realtime_url(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
-        voice_realtime_url="ws://100.87.34.66:8765/v1/realtime",
+        voice_realtime_url="ws://100.64.0.10:8765/v1/realtime",
         _load=lambda _path: _cfg(),
     )
 
@@ -230,24 +230,24 @@ def test_openclaw_voice_sync_requires_env_secretref_for_private_realtime_url(cap
 def test_openclaw_voice_sync_accepts_private_realtime_url_with_env_secretref(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
-        voice_realtime_url="ws://100.87.34.66:8765/v1/realtime",
+        voice_realtime_url="ws://100.64.0.10:8765/v1/realtime",
         voice_api_key_env="ANVIL_VOICE_REALTIME_TOKEN",
         _load=lambda _path: _cfg(),
     )
 
     assert rc == 0
     anvil = json.loads(capsys.readouterr().out)["talk"]["realtime"]["providers"]["anvil"]
-    assert anvil["realtimeUrl"] == "ws://100.87.34.66:8765/v1/realtime"
+    assert anvil["realtimeUrl"] == "ws://100.64.0.10:8765/v1/realtime"
     assert anvil["apiKey"]["id"] == "ANVIL_VOICE_REALTIME_TOKEN"
 
 
 def test_openclaw_voice_sync_rejects_public_realtime_url(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         voice_realtime_url="wss://8.8.8.8:8765/v1/realtime",
@@ -262,7 +262,7 @@ def test_openclaw_voice_sync_rejects_public_realtime_url(capsys):
 def test_openclaw_voice_sync_rejects_loopback_alias(capsys):
     rc = harness.cmd_sync_openclaw(
         "router.toml",
-        base_url="http://100.87.34.66:8000/v1",
+        base_url="http://100.64.0.10:8000/v1",
         api_key_env="ANVIL_ROUTER_TOKEN",
         voice=True,
         voice_realtime_url="ws://" + "local" + "host" + ":8765/v1/realtime",
@@ -285,13 +285,13 @@ def test_openclaw_anvil_voice_example_manifest_is_valid_and_hygienic():
     assert data["voice"]["name"] == "anvil-voice-openclaw"
     assert data["voice"]["realtime_host"] == "127.0.0.1"
     assert data["voice"]["realtime_port"] == 8765
-    assert data["voice"]["llm"]["base_url"] == "http://100.87.34.66:8000/v1"
+    assert data["voice"]["llm"]["base_url"] == "http://100.64.0.10:8000/v1"
     assert data["voice"]["llm"]["model"] == "llm.voice"
     assert data["voice"]["llm"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
-    assert data["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
+    assert data["voice"]["stt"]["base_url"] == "http://100.64.0.10:30110/v1"
     assert data["voice"]["stt"]["model"] == "tdt-0.6b-v3"
     assert data["voice"]["stt"]["lifecycle"] == "external"
-    assert data["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
+    assert data["voice"]["tts"]["base_url"] == "http://100.64.0.10:30111/v1"
     assert data["voice"]["tts"]["model"] == "kokoro"
     assert data["voice"]["tts"]["lifecycle"] == "external"
     assert data["voice"]["tts"]["response_format"] == "pcm"

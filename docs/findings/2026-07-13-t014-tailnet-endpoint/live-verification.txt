@@ -1,8 +1,8 @@
 T014 single tailnet DNS endpoint — live verification
 Captured: 2026-07-13T20:16:41Z  host: fakoli-dark (RTX 5090)
-MagicDNS (tailscale status --json .Self.DNSName): fakoli-dark.tail4378d.ts.net.
+MagicDNS (tailscale status --json .Self.DNSName): node-a.example.ts.net.
 Tailnet IPs: 100.64.0.10 / fd7a:115c:a1e0::8701:2247
-All requests below target http://fakoli-dark.tail4378d.ts.net:8000 (the MagicDNS name), never a raw IP.
+All requests below target http://node-a.example.ts.net:8000 (the MagicDNS name), never a raw IP.
 
 == GET /v1/models (authed) ==
 HTTP 200

@@ -1,4 +1,4 @@
-T014 routed OCR preset via MagicDNS (model=ocr + image_url through http://fakoli-dark.tail4378d.ts.net:8000/v1/chat/completions)
+T014 routed OCR preset via MagicDNS (model=ocr + image_url through http://node-a.example.ts.net:8000/v1/chat/completions)
 image: assets/explainer-quality-gate.png
 ---
 HTTP 200

@@ -46,8 +46,8 @@ terminal transcript, with that terminal arriving before `response.done`.
 
 | timestamp (UTC) | turn kind | barge-in tested? | transcript(s) | events captured | audio bytes | completed TTFA / latency ms | proof bundle |
 |---|---|---|---|---:|---:|---|---|
-| 2026-07-06T06:09:48Z | audio/audio | yes | Please count slowly from one to twenty so I can interrupt you.; Interrupting you now, please answer briefly how many countries are in Africa. | 50 | 75800 | 303.35 / 588.02 | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\realtime-sdk-20260706T060944Z.session.json |
-| 2026-07-22T18:14:43Z | audio/audio | yes | Please count slowly from 1 to 20, so I can interrupt you.; Interrupting you now, please answer briefly, how many countries are in Africa? | 40 | 41146 | 253.48 / 414.21 | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\realtime-sdk-20260722T181440Z.session.json |
+| 2026-07-06T06:09:48Z | audio/audio | yes | Please count slowly from one to twenty so I can interrupt you.; Interrupting you now, please answer briefly how many countries are in Africa. | 50 | 75800 | 303.35 / 588.02 | C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\realtime-sdk-20260706T060944Z.session.json |
+| 2026-07-22T18:14:43Z | audio/audio | yes | Please count slowly from 1 to 20, so I can interrupt you.; Interrupting you now, please answer briefly, how many countries are in Africa? | 40 | 41146 | 253.48 / 414.21 | C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\realtime-sdk-20260722T181440Z.session.json |
 
 ## Decision
 

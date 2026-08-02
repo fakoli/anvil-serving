@@ -640,9 +640,9 @@ DIRECT_PROXY_MANIFEST = VALID_MANIFEST + """
 
 [voice.proxy]
 lifecycle = "managed"
-stt_url = "http://100.87.34.66:30110/v1"
-tts_url = "http://100.87.34.66:30111/v1"
-router_url = "http://100.87.34.66:8000/v1"
+stt_url = "http://100.64.0.10:30110/v1"
+tts_url = "http://100.64.0.10:30111/v1"
+router_url = "http://100.64.0.10:8000/v1"
 listen_host = "127.0.0.1"
 listen_port = 8765
 """
@@ -801,9 +801,9 @@ def test_run_direct_endpoints_skip_topology_and_wire_verbatim(
     rc = voice_cli.main(["proxy", "run", "--config", direct_proxy_manifest])
 
     assert rc == 0
-    assert seen["stt"] == "http://100.87.34.66:30110/v1"
-    assert seen["tts"] == "http://100.87.34.66:30111/v1"
-    assert seen["llm"] == "http://100.87.34.66:8000/v1"
+    assert seen["stt"] == "http://100.64.0.10:30110/v1"
+    assert seen["tts"] == "http://100.64.0.10:30111/v1"
+    assert seen["llm"] == "http://100.64.0.10:8000/v1"
     assert seen["realtime_host"] == "127.0.0.1"
     assert seen["realtime_port"] == 8765
     assert seen["allow_non_loopback"] is False
@@ -838,12 +838,12 @@ def test_profiles_command_lists_and_describes_profiles(tmp_path, capsys):
         + """
 
 [voice.profiles.dark-audio.stt]
-base_url = "http://100.87.34.66:30110/v1"
+base_url = "http://100.64.0.10:30110/v1"
 model = "tdt_ctc-110m"
 lifecycle = "external"
 
 [voice.profiles.dark-audio.tts]
-base_url = "http://100.87.34.66:30111/v1"
+base_url = "http://100.64.0.10:30111/v1"
 model = "kokoro"
 lifecycle = "external"
 """,
@@ -857,7 +857,7 @@ lifecycle = "external"
     assert voice_cli.main(["profiles", "--config", str(manifest), "--profile", "dark-audio"]) == 0
     out = capsys.readouterr().out
     assert "dark-audio OK" in out
-    assert "100.87.34.66:30110" in out
+    assert "100.64.0.10:30110" in out
 
 
 def test_run_uses_selected_profile(tmp_path, monkeypatch):
@@ -867,12 +867,12 @@ def test_run_uses_selected_profile(tmp_path, monkeypatch):
         + """
 
 [voice.profiles.dark-audio.stt]
-base_url = "http://100.87.34.66:30110/v1"
+base_url = "http://100.64.0.10:30110/v1"
 model = "tdt_ctc-110m"
 lifecycle = "external"
 
 [voice.profiles.dark-audio.tts]
-base_url = "http://100.87.34.66:30111/v1"
+base_url = "http://100.64.0.10:30111/v1"
 model = "kokoro"
 lifecycle = "external"
 """,
@@ -924,12 +924,12 @@ def test_run_resolves_profile_candidate_overlay(tmp_path, monkeypatch, capsys):
         + """
 
 [voice.profiles.dark-audio.stt]
-base_url = "http://100.87.34.66:30110/v1"
+base_url = "http://100.64.0.10:30110/v1"
 model = "tdt_ctc-110m"
 lifecycle = "external"
 
 [voice.profiles.dark-audio.tts]
-base_url = "http://100.87.34.66:30111/v1"
+base_url = "http://100.64.0.10:30111/v1"
 model = "kokoro"
 lifecycle = "external"
 """,
@@ -939,7 +939,7 @@ lifecycle = "external"
     overlay.write_text(
         """
 [voice.llm]
-base_url = "http://100.87.34.66:39000/v1"
+base_url = "http://100.64.0.10:39000/v1"
 model = "qwen3-32b-nvfp4"
 api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
 """.strip(),
@@ -988,7 +988,7 @@ api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
 
     assert rc == 0
     assert seen == {
-        "llm": "http://100.87.34.66:39000/v1",
+        "llm": "http://100.64.0.10:39000/v1",
         "llm_model": "qwen3-32b-nvfp4",
         "stt": "http://127.0.0.1:30110/v1",
         "tts": "http://127.0.0.1:30111/v1",
@@ -1009,7 +1009,7 @@ def test_bridge_dry_run_prints_default_routes(capsys):
 
 
 def test_bridge_refuses_non_loopback_live_bind_without_ack(capsys):
-    rc = voice_cli.main(_proxy_command("bridge", "--listen-host", "100.87.34.66"))
+    rc = voice_cli.main(_proxy_command("bridge", "--listen-host", "100.64.0.10"))
 
     assert rc == 2
     err = capsys.readouterr().err
@@ -1276,7 +1276,7 @@ def test_run_refuses_non_loopback_bind_without_token(tmp_path, monkeypatch, caps
     Nothing real starts either way."""
     manifest = tmp_path / "voice_non_loopback.toml"
     manifest.write_text(
-        VALID_MANIFEST.replace('realtime_host = "127.0.0.1"', 'realtime_host = "100.87.34.66"'),
+        VALID_MANIFEST.replace('realtime_host = "127.0.0.1"', 'realtime_host = "100.64.0.10"'),
         encoding="utf-8",
     )
     monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
@@ -1620,12 +1620,12 @@ def test_cmd_benchmark_resolves_profile_candidate_overlay_and_writes_evidence(
         + """
 
 [voice.profiles.dark-audio.stt]
-base_url = "http://100.87.34.66:30110/v1"
+base_url = "http://100.64.0.10:30110/v1"
 model = "tdt_ctc-110m"
 lifecycle = "external"
 
 [voice.profiles.dark-audio.tts]
-base_url = "http://100.87.34.66:30111/v1"
+base_url = "http://100.64.0.10:30111/v1"
 model = "kokoro"
 lifecycle = "external"
 """,
@@ -1762,14 +1762,14 @@ def test_cmd_benchmark_targets_loaded_candidate_without_mutating_manifest(
         "--config",
         manifest_path,
         "--candidate-base-url",
-        "http://100.87.34.66:39012/v1",
+        "http://100.64.0.10:39012/v1",
         "--candidate-model",
         "glm-4.7-flash",
     ])
 
     assert rc == 0
     assert seen["kwargs"] == {"profile": None, "candidate": "glm-4.7-flash"}
-    assert seen["data"]["voice"]["llm"]["base_url"] == "http://100.87.34.66:39012/v1"
+    assert seen["data"]["voice"]["llm"]["base_url"] == "http://100.64.0.10:39012/v1"
     assert seen["data"]["voice"]["llm"]["model"] == "glm-4.7-flash"
     assert open(manifest_path, encoding="utf-8").read() == original_manifest
     production = voice_cli.voice_config.load_manifest(manifest_path)
@@ -1777,7 +1777,7 @@ def test_cmd_benchmark_targets_loaded_candidate_without_mutating_manifest(
     assert production["voice"]["llm"]["model"] == "chat"
     out = capsys.readouterr().out
     assert "candidate=glm-4.7-flash" in out
-    assert "llm_base_url=http://100.87.34.66:39012/v1" in out
+    assert "llm_base_url=http://100.64.0.10:39012/v1" in out
 
 
 def test_cmd_benchmark_rejects_partial_loaded_candidate_options(manifest_path, capsys):
@@ -1786,7 +1786,7 @@ def test_cmd_benchmark_rejects_partial_loaded_candidate_options(manifest_path, c
         "--config",
         manifest_path,
         "--candidate-base-url",
-        "http://100.87.34.66:39012/v1",
+        "http://100.64.0.10:39012/v1",
     ])
 
     assert rc == 2

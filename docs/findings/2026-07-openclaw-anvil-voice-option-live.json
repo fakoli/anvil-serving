@@ -14,7 +14,7 @@
     "temporary_validation_gateway_url": "ws://127.0.0.1:18790",
     "gateway_status": "running",
     "plugin_id": "anvil-voice",
-    "plugin_status": "loaded from /Users/sdoumbouya/anvil/openclaw-anvil-voice-t008-2135 for T008 smoke",
+    "plugin_status": "loaded from /Users/operator/anvil/openclaw-anvil-voice-t008-2135 for T008 smoke",
     "realtime_voice_provider_ids": [
       "anvil",
       "google",
@@ -88,7 +88,7 @@
         },
         {
           "pid": 59898,
-          "ps": "59898     1 42:21  12896 /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python /Users/sdoumbouya/anvil-serving-t007/.venv/bin/anvil-serving voice run --config examples/voice/fakoli-mini.toml"
+          "ps": "59898     1 42:21  12896 /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python /Users/operator/anvil-serving-t007/.venv/bin/anvil-serving voice run --config examples/voice/fakoli-mini.toml"
         }
       ]
     },

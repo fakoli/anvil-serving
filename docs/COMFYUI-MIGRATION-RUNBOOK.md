@@ -33,7 +33,7 @@ delete them.
 
 ## Source library (measured 2026-07-13)
 
-Source: `C:/Users/sdoum/ai-code/ComfyUI_windows_portable/ComfyUI/models`
+Source: `C:/Users/operator/ai-code/ComfyUI_windows_portable/ComfyUI/models`
 
 | Subdir | Size | Notes |
 | --- | --- | --- |
@@ -70,7 +70,7 @@ docker run --rm -v comfyui-user:/data alpine sh -c `
 #    the ~75 MB/s observed on this box, budget up to ~70 min if 9P is slow).
 #    The bind mount is read-only; the portable install is never modified.
 docker run --rm `
-  -v "C:\Users\sdoum\ai-code\ComfyUI_windows_portable\ComfyUI\models:/src:ro" `
+  -v "C:\Users\operator\ai-code\ComfyUI_windows_portable\ComfyUI\models:/src:ro" `
   -v comfyui-models:/dst `
   alpine sh -c "cp -a /src/. /dst/ && chown -R 1000:1000 /dst && du -sm /dst"
 
@@ -145,7 +145,7 @@ serve. If GGUF workflows are needed later, bake the custom node into a derived i
 
 ## Portable install retirement
 
-`C:/Users/sdoum/ai-code/ComfyUI_windows_portable/` is **retired as a serving path**
+`C:/Users/operator/ai-code/ComfyUI_windows_portable/` is **retired as a serving path**
 as of this migration: nothing should launch it, and its model library is now
 authoritative in the `comfyui-models` volume. The directory is deliberately **not
 deleted** — it stays as the migration source / rollback copy until the operator

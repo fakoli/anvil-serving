@@ -21,12 +21,12 @@ not a promotion recommendation and does not change production routing.
 |---|---|
 | Capture date | 2026-07-07 |
 | Gateway / voice host | Fakoli Mini (`Fakoli-Mini-2.local`) |
-| Benchmark checkout | `/Users/sdoumbouya/anvil-serving-t007` |
+| Benchmark checkout | `/Users/operator/anvil-serving-t007` |
 | Benchmark checkout revision | `6d024c2480b9f935b06ae26213ca7cfb69568485` |
 | Checkout status | detached `HEAD`; unrelated dirty file `docs/findings/2026-07-voice-16gb-mini.md` |
 | Voice manifest | `examples/voice/openclaw-anvil-voice.toml` |
 | Voice profile | `mini-audio` |
-| Command path | `/Users/sdoumbouya/anvil-serving-t007/.venv/bin/anvil-serving` |
+| Command path | `/Users/operator/anvil-serving-t007/.venv/bin/anvil-serving` |
 | Realtime endpoint | `ws://127.0.0.1:8765/v1/realtime` |
 | LLM endpoint | `http://100.64.0.10:8000/v1` |
 | LLM request model | `fast-local` |

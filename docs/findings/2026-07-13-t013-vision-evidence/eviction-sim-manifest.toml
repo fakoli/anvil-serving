@@ -20,7 +20,7 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 14336
 residency = "resident"
-up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d fast"
+up = "docker compose -f C:/Users/operator/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d fast"
 
 [[serve]]
 name = "embeddings"
@@ -32,7 +32,7 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 3200
 residency = "resident"
-up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d embeddings"
+up = "docker compose -f C:/Users/operator/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d embeddings"
 
 [[serve]]
 name = "reranker"
@@ -44,7 +44,7 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 3456
 residency = "resident"
-up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d reranker"
+up = "docker compose -f C:/Users/operator/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d reranker"
 
 [[serve]]
 name = "ocr"
@@ -56,7 +56,7 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 5120
 residency = "resident"
-up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d ocr"
+up = "docker compose -f C:/Users/operator/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d ocr"
 
 [[serve]]
 name = "vision"
@@ -69,7 +69,7 @@ gpu_role = "dark-fast"
 vram_mib = 12288
 residency = "evictable"
 router_tier = "vision-local"
-up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d vision"
+up = "docker compose -f C:/Users/operator/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d vision"
 
 # The simulated on-demand acquisition: stands in for a ComfyUI image-gen task
 # needing ~8 GiB. ADR-0017 accounting is declarative, so a trivial container
@@ -84,4 +84,4 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 8192
 residency = "on-demand"
-up = "docker compose -f C:/Users/sdoum/AppData/Local/Temp/claude/C--Users-sdoum-ai-code-claude-env/8873df2c-be4a-48f6-8242-c081b5736582/scratchpad/comfyui-sim-compose.yml up -d comfyui-sim"
+up = "docker compose -f C:/Users/operator/AppData/Local/Temp/claude/C--Users-operator-ai-code-claude-env/8873df2c-be4a-48f6-8242-c081b5736582/scratchpad/comfyui-sim-compose.yml up -d comfyui-sim"

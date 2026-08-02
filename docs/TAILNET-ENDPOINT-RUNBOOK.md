@@ -60,14 +60,14 @@ itself — never hardcoded:
 
 ```bash
 tailscale status --json | python -c "import sys,json;print(json.load(sys.stdin)['Self']['DNSName'])"
-# -> fakoli-dark.tail4378d.ts.net.
+# -> node-a.example.ts.net.
 ```
 
 `.Self.DNSName` carries a trailing dot (a fully-qualified DNS name); strip it for URLs. The
 canonical endpoint is therefore:
 
 ```
-http://fakoli-dark.tail4378d.ts.net:8000
+http://node-a.example.ts.net:8000
 ```
 
 Any tailnet peer (with MagicDNS enabled in the tailnet's DNS settings) resolves that name
@@ -75,7 +75,7 @@ to `100.64.0.10` and reaches the one front door. The three equivalent forms:
 
 | Form | Endpoint | When |
 |---|---|---|
-| **MagicDNS name** (preferred) | `http://fakoli-dark.tail4378d.ts.net:8000` | Human-facing, survives an IP change |
+| **MagicDNS name** (preferred) | `http://node-a.example.ts.net:8000` | Human-facing, survives an IP change |
 | Tailnet IPv4 | `http://100.64.0.10:8000` | Scripts that already hold the IP |
 | Tailnet IPv6 | `http://[fd7a:115c:a1e0::8701:2247]:8000` | IPv6-only peers |
 
@@ -116,9 +116,9 @@ when exporting a single value:
 # Load ANVIL_ROUTER_TOKEN, stripping surrounding quotes if present.
 TOKEN=$(grep '^ANVIL_ROUTER_TOKEN=' ~/.env | head -1 | cut -d= -f2- | sed "s/^['\"]//;s/['\"]\$//")
 
-curl -H "Authorization: Bearer $TOKEN" http://fakoli-dark.tail4378d.ts.net:8000/v1/models
+curl -H "Authorization: Bearer $TOKEN" http://node-a.example.ts.net:8000/v1/models
 # Bearer or x-api-key are both accepted:
-curl -H "x-api-key: $TOKEN"           http://fakoli-dark.tail4378d.ts.net:8000/v1/models
+curl -H "x-api-key: $TOKEN"           http://node-a.example.ts.net:8000/v1/models
 ```
 
 The router is started with `[server].auth_env = "ANVIL_ROUTER_TOKEN"`; the secret is read
@@ -129,17 +129,17 @@ from the environment **once** at start (never per request).
 ## Live verification (through the MagicDNS name)
 
 Captured against the live `fakoli-dark` deployment on 2026-07-13; every request goes
-through `fakoli-dark.tail4378d.ts.net:8000`, none through a raw IP. Raw captures live in
+through `node-a.example.ts.net:8000`, none through a raw IP. Raw captures live in
 [`findings/2026-07-13-t014-tailnet-endpoint/`](findings/2026-07-13-t014-tailnet-endpoint/).
 
 ### 1. Discovery + auth enforcement — `GET /v1/models`
 
 ```
 $ curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" \
-    http://fakoli-dark.tail4378d.ts.net:8000/v1/models
+    http://node-a.example.ts.net:8000/v1/models
 200
 $ curl -s -o /dev/null -w "%{http_code}" \
-    http://fakoli-dark.tail4378d.ts.net:8000/v1/models      # no token
+    http://node-a.example.ts.net:8000/v1/models      # no token
 401
 ```
 
@@ -156,7 +156,7 @@ $ curl -s -o /dev/null -w "%{http_code}" \
 ```
 $ curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
     -d '{"model":"qwen3-embedding-0.6b","input":"tailnet endpoint smoke test"}' \
-    http://fakoli-dark.tail4378d.ts.net:8000/v1/embeddings
+    http://node-a.example.ts.net:8000/v1/embeddings
 # HTTP 200
 # object=list  model=qwen3-embedding-0.6b  dim=1024
 # embedding[:3]=[0.0365, 0.0477, -0.0116]  usage={prompt_tokens:6, total_tokens:6}
@@ -197,7 +197,7 @@ certificate and proxies to the loopback front door:
 # so it need NOT be bound to the tailnet interface.
 tailscale serve --bg --https=443 http://127.0.0.1:8000
 
-# Result: https://fakoli-dark.tail4378d.ts.net/v1/models  (443, valid TS cert)
+# Result: https://node-a.example.ts.net/v1/models  (443, valid TS cert)
 tailscale serve status          # inspect the mapping
 tailscale serve reset           # tear down ALL serve config for this node
 ```
@@ -229,8 +229,8 @@ anvil-serving edge render
 
 anvil-serving edge up --confirm   # additive; only the mounts this tool manages
 
-# -> https://fakoli-dark.tail4378d.ts.net/v1/models       (router front door, path unchanged)
-# -> https://fakoli-dark.tail4378d.ts.net/comfyui/        (ComfyUI UI)
+# -> https://node-a.example.ts.net/v1/models       (router front door, path unchanged)
+# -> https://node-a.example.ts.net/comfyui/        (ComfyUI UI)
 ```
 
 The `/v1` mount forwards its path to the router verbatim, so the OpenAI/Anthropic contract is

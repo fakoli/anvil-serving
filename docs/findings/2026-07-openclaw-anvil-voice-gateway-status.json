@@ -17,7 +17,7 @@
         "--port",
         "18789"
       ],
-      "workingDirectory": "/Users/sdoumbouya/.openclaw",
+      "workingDirectory": "/Users/operator/.openclaw",
       "environment": {
         "OPENCLAW_GATEWAY_PORT": "18789"
       },
@@ -37,7 +37,7 @@
         "PATH": "file",
         "TMPDIR": "file"
       },
-      "sourcePath": "/Users/sdoumbouya/Library/LaunchAgents/ai.openclaw.gateway.plist"
+      "sourcePath": "/Users/operator/Library/LaunchAgents/ai.openclaw.gateway.plist"
     },
     "runtime": {
       "status": "running",
@@ -52,28 +52,28 @@
   },
   "config": {
     "cli": {
-      "path": "/Users/sdoumbouya/.openclaw/openclaw.json",
+      "path": "/Users/operator/.openclaw/openclaw.json",
       "exists": true,
       "valid": true,
       "controlUi": {
         "allowInsecureAuth": true,
         "allowedOrigins": [
           "http://fakoli-mini:18789",
-          "https://fakoli-mini.tail4378d.ts.net",
-          "http://100.65.157.83:18789"
+          "https://node-b.example.ts.net",
+          "http://100.64.0.10:18789"
         ]
       }
     },
     "daemon": {
-      "path": "/Users/sdoumbouya/.openclaw/openclaw.json",
+      "path": "/Users/operator/.openclaw/openclaw.json",
       "exists": true,
       "valid": true,
       "controlUi": {
         "allowInsecureAuth": true,
         "allowedOrigins": [
           "http://fakoli-mini:18789",
-          "https://fakoli-mini.tail4378d.ts.net",
-          "http://100.65.157.83:18789"
+          "https://node-b.example.ts.net",
+          "http://100.64.0.10:18789"
         ]
       }
     }
