@@ -8,6 +8,41 @@ They are not local qualification truth. Preflight and repeated local quality
 evaluation against the exact served model, engine, and hardware determine
 whether an operator should use that serve behind a direct alias.
 
+## Curated DeepSeek V4 Flash 0731 prior
+
+The 2026-08-01
+[DeepSeek V4 Flash 0731 research update](findings/2026-08-01-deepseek-v4-flash-0731-research-update.md)
+is the current curated `external-prior` for this model. Its
+[source registry](findings/2026-08-01-deepseek-v4-flash-0731-research-evidence/source-registry.json)
+pins the publisher release-weight and current documentation revisions,
+Artificial Analysis result, vLLM/SGLang recipes, community 0731 NVFP4
+artifacts, and the Unsloth GGUF collection.
+
+Decision-critical boundaries:
+
+- 0731 is a distinct re-post-trained generation even though it retains the V4
+  Flash architecture.
+- Artificial Analysis independently supports the intelligence claim but also
+  records exceptionally high output-token use.
+- NVIDIA's official DeepSeek V4 Flash NVFP4 artifact is Preview, not 0731.
+- Current 0731 NVFP4 evidence is community-authored: TP=2 on two DGX Spark
+  systems or TP=4 on four RTX PRO 6000 cards does not prove dual-PRO TP=2.
+- DSpark can improve interactive decode while remaining neutral at saturated
+  concurrency, and mixed NVFP4-target/MXFP4-draft routing has a silent
+  zero-acceptance failure mode in the strongest current SM120 report.
+- The exact publisher checkpoint now has a separate pinned r16 local lane with
+  low/high/max reasoning, DSpark K5, 128K, and same-image no-spec evidence.
+  It remains `no-promotion` because both profiles failed the 3 GiB free-VRAM
+  policy. Community 0731 NVFP4 and 256K local context remain unqualified.
+
+The local result and raw A/B are published separately in the
+[r16 qualification](findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md);
+they do not convert the external rows into local measurements.
+
+Do not import the external throughput rows into a local leaderboard without
+retaining GPU count, engine revision, TP/EP shape, speculative state,
+concurrency, and perplexity/quality differences.
+
 ## Choose a workflow
 
 | Goal | Command |

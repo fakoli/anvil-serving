@@ -5,6 +5,7 @@ to the same `cmd_up`) against per-`gpu_role` VRAM budgets declared in the
 serves manifest. Docker is injected via the `_run` seam — no docker, no GPU,
 no network. Mirrors tests/test_serves_manage.py's fake-`_run` style.
 """
+import json
 import textwrap
 import types
 
@@ -43,6 +44,15 @@ def _states_run(states, op_rc=0):
 
     def run(argv, **k):
         calls.append(argv)
+        if isinstance(argv, list) and argv[:3] == ["docker", "ps", "-a"]:
+            if any(state == "error" for state in states.values()):
+                return proc(1, "", "Cannot connect to the Docker daemon")
+            rows = [
+                json.dumps({"Names": name, "State": state})
+                for name, state in states.items()
+                if state != "absent"
+            ]
+            return proc(0, "\n".join(rows))
         if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
             state = states.get(argv[-1], "absent")
             if state == "absent":

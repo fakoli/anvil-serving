@@ -38,11 +38,45 @@ HFCACHE_MOUNT = "-v vllm-hfcache:/root/.cache/huggingface"
 REGISTRY_SCHEMA = "anvil-serving.serve-recipes/v1"
 _CONTAINER_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+_ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _BARE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 class RecipeError(ValueError):
     """A recipe or recipe registry is invalid for a requested operation."""
+
+
+def _parse_named_volume(spec: str) -> tuple[str, str, bool]:
+    """Validate and split one portable ``NAME:/absolute/target[:ro]`` mount."""
+    if not isinstance(spec, str) or any(ch in spec for ch in ("\n", "\r", "\x00")):
+        raise RecipeError(
+            "recipe.serve.named_volumes entries must be NAME:/absolute/target[:ro]"
+        )
+    if re.match(r"^[A-Za-z]:[\\/]", spec):
+        raise RecipeError(
+            "recipe.serve.named_volumes sources must be named Docker volumes"
+        )
+    parts = spec.split(":")
+    if len(parts) not in {2, 3} or (len(parts) == 3 and parts[2] != "ro"):
+        raise RecipeError(
+            "recipe.serve.named_volumes entries must be NAME:/absolute/target[:ro]"
+        )
+    source, target = parts[:2]
+    if not _CONTAINER_NAME_RE.fullmatch(source):
+        raise RecipeError(
+            "recipe.serve.named_volumes sources must be named Docker volumes"
+        )
+    target_parts = target.split("/")
+    if (
+        not target.startswith("/")
+        or "\\" in target
+        or any(ch.isspace() for ch in target)
+        or any(not part or part in {".", ".."} for part in target_parts[1:])
+    ):
+        raise RecipeError(
+            "recipe.serve.named_volumes targets must be normalized absolute POSIX paths"
+        )
+    return source, target, len(parts) == 3
 
 
 # --------------------------------------------------------------------------- #
@@ -393,6 +427,31 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
             raise RecipeError(
                 "recipe.serve.model_flag must be a single option and requires recipe.serve.entrypoint"
             )
+    model_env = serve.get("model_env")
+    if model_env is not None and (
+        entrypoint is None
+        or model_flag is not None
+        or not isinstance(model_env, str)
+        or not _ENV_KEY_RE.fullmatch(model_env)
+    ):
+        raise RecipeError(
+            "recipe.serve.model_env must be an environment variable name, requires "
+            "recipe.serve.entrypoint, and cannot be combined with model_flag"
+        )
+    named_volumes = serve.get("named_volumes", [])
+    if not isinstance(named_volumes, list):
+        raise RecipeError("recipe.serve.named_volumes must be an array of strings")
+    parsed_volumes = [_parse_named_volume(spec) for spec in named_volumes]
+    sources = [source for source, _, _ in parsed_volumes]
+    targets = [target for _, target, _ in parsed_volumes]
+    if len(sources) != len(set(sources)) or len(targets) != len(set(targets)):
+        raise RecipeError(
+            "recipe.serve.named_volumes must not repeat a source or target"
+        )
+    if "/root/.cache/huggingface" in targets:
+        raise RecipeError(
+            "recipe.serve.named_volumes cannot shadow the managed model-cache mount"
+        )
     ipc = serve.get("ipc")
     if ipc is not None and ipc not in {"host", "none", "private", "shareable"}:
         raise RecipeError("recipe.serve.ipc must be one of host, none, private, or shareable")
@@ -556,6 +615,14 @@ def docker_run_argv(
             "io.anvil-serving.recipe.revision=%s" % revision,
         ]
     declared_serve_env = list(serve.get("env", []))
+    model_env = serve.get("model_env")
+    if model_env:
+        if any(env.startswith(model_env + "=") for env in declared_serve_env):
+            raise RecipeError(
+                "recipe.serve.env must not override recipe.serve.model_env %s"
+                % model_env
+            )
+        declared_serve_env.append("%s=%s" % (model_env, recipe["model"]))
     download = recipe.get("download") or {}
     if download.get("require_complete_cache") is True:
         for name in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
@@ -623,6 +690,12 @@ def docker_run_argv(
         argv += ["-e", env]
     cache_volume = download.get("volume", "vllm-hfcache")
     argv += ["-v", "%s:/root/.cache/huggingface" % cache_volume]
+    for spec in serve.get("named_volumes", []):
+        source, target, read_only = _parse_named_volume(spec)
+        mount = "type=volume,source=%s,target=%s" % (source, target)
+        if read_only:
+            mount += ",readonly"
+        argv += ["--mount", mount]
     port = serve.get("port")
     if port is not None:
         argv += ["-p", "127.0.0.1:%s:%s" % (port, port)]
@@ -641,7 +714,8 @@ def docker_run_argv(
     model_flag = serve.get("model_flag")
     if model_flag:
         argv.append(model_flag)
-    argv.append(recipe["model"])
+    if not model_env:
+        argv.append(recipe["model"])
     for flag in serve.get("flags", []):
         try:
             tokens = shlex.split(flag)
@@ -657,8 +731,9 @@ def reconstruct_docker_run(recipe: dict) -> str:
     """Reconstruct the reproducible `docker run` for a recipe.
 
     The default image ENTRYPOINT is `vllm serve`, so the model is positional after
-    the image. Recipes can instead supply ``serve.entrypoint`` and ``model_flag``
-    for images such as NVIDIA's API-server image that require ``--model MODEL``.
+    the image. Recipes can instead supply ``serve.entrypoint`` with ``model_flag``
+    for images that require ``--model MODEL``, or ``model_env`` for launchers whose
+    environment selects the model and which must receive no model argument.
     """
     return shlex.join(docker_run_argv(recipe))
 

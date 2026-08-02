@@ -164,8 +164,11 @@ def _engine(metadata: Mapping[str, Any], artifact_context: str) -> str | None:
     return normalize_engine(raw)
 
 
-def _quantization(model_name: str | None, artifact_context: str) -> tuple[str | None, str | None]:
-    text = " ".join(v for v in (model_name, artifact_context) if v)
+def _quantization(model_name: str | None, artifact: str) -> tuple[str | None, str | None]:
+    # Parent directories are operator-controlled and may themselves be named
+    # after another quantization campaign. Only the model and artifact basename
+    # are stable identity evidence.
+    text = " ".join(v for v in (model_name, artifact) if v)
     candidates = _tokens(text)
     raw_quant = None
     if "nvfp4" in candidates:
@@ -284,7 +287,7 @@ def _row_from_result(
 ) -> dict[str, Any]:
     model_raw = _model_name(metadata)
     ident = normalize_model_identity(model_raw)
-    precision, quantization = _quantization(model_raw, artifact_context)
+    precision, quantization = _quantization(model_raw, artifact)
     raw_gpu, diagnostic_gpu_count = _gpu_from_diagnostics(payload)
     gpu_count = _metadata_gpu_count(metadata)
     if gpu_count is None:

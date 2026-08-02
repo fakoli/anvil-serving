@@ -6,6 +6,64 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-08-01
+
+Anvil Serving 0.20.0 is the DeepSeek V4 Flash 0731 DSpark qualification and
+managed-experiment reliability release. It preserves the exact pinned SM120
+runtime and recipe, publishes matched speculative-decoding evidence through
+128K context, and fixes lifecycle and benchmark-evidence gaps found during the
+unattended campaign. Production aliases remain unchanged.
+
+### Highlights
+
+- **Reproducible DeepSeek 0731 TP=2 serving.** The official checkpoint at its
+  exact revision now has pinned r16 B12X DSpark-K5 and no-spec control recipes,
+  with named cache volumes, offline nested speculative assets, reasoning
+  controls, WSL2 translation, and preserved image/source identity.
+- **Matched DSpark evidence.** On two RTX PRO 6000 Blackwell Max-Q cards,
+  DSpark raised median successful 4K/c1 decode from 64.9 to 130.7 tok/s and
+  request throughput by 70.5% versus the same-image no-spec control. The
+  cumulative draft acceptance rate was 55.1%.
+- **Long-context and quality qualification.** Low, high, and max reasoning,
+  tools, session behavior, and 27/27 coding/intelligence checks passed. Cold
+  and warm 32K, 64K, and 128K ladders record memory, time to first output,
+  visible TTFT, prefill, generation, and end-to-end timing.
+
+### Added
+
+- Managed recipe named-volume declarations and model-environment entrypoint
+  support, including cache preparation for nested speculative checkpoints.
+- A preserve-after-failure exclusive-mode option so failed targets retain the
+  container and durable diagnostics without being confused with a successful
+  transition.
+- Dated DeepSeek 0731 findings, raw bounded evidence, exact source registry,
+  model dossier, run catalog, measured hardware page, and community-facing
+  deployment recipes.
+
+### Changed
+
+- Benchmark context ladders retain timing for every row instead of only the
+  final request, and capacity failures preserve their actionable error text.
+- Reasoning effort accepts the model's qualified `low`, `high`, and `max`
+  levels across managed preflight, benchmark, CLI, and MCP surfaces.
+- External benchmark ingestion no longer carries quantization state from one
+  source row into an unrelated row.
+- Foundation-only voice CLI tests now isolate their operator home so a live
+  exclusive TP=2 owner cannot contaminate unit-test admission results.
+
+### Evidence and caveats
+
+- The 128K profile is functional but used roughly 95-96 GiB on each 96 GiB GPU
+  and failed the required 3 GiB-per-device reserve. This release records a
+  qualified experimental candidate, not a production promotion.
+- The local 130.7 tok/s DSpark result does not reproduce externally reported
+  230-250 tok/s figures from different 600 W hardware and software conditions.
+- 256K was attempted but not qualified. The supported published ceiling for
+  this exact recipe is 131,072 tokens, with 128K request evidence.
+- The runtime is a pinned custom derivative. Reusing the recipe with another
+  vLLM, CUDA, FlashInfer, GPU product, quantization, or TP size requires fresh
+  qualification.
+
 ## [0.19.0] - 2026-08-01
 
 Anvil Serving 0.19.0 is the symmetric dual-GPU and TP=2 qualification
@@ -1549,7 +1607,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/fakoli/anvil-serving/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/fakoli/anvil-serving/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/fakoli/anvil-serving/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/fakoli/anvil-serving/compare/v0.16.1...v0.17.0

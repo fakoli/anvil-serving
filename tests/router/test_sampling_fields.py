@@ -291,6 +291,11 @@ def test_reasoning_effort_forwarded_openai_to_openai():
     assert body["reasoning_effort"] == "medium"
 
 
+def test_max_reasoning_effort_forwarded_openai_to_openai():
+    body = _backend("openai")._build_body(_openai_req(reasoning_effort="max"))
+    assert body["reasoning_effort"] == "max"
+
+
 def test_reasoning_effort_not_invented_for_anthropic_origin():
     req = AnthropicDialect().parse_request(
         {"model": "claude", "max_tokens": 64, "messages": [{"role": "user", "content": "hi"}]})

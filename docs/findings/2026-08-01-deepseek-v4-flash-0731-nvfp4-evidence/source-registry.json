@@ -1,0 +1,72 @@
+{
+  "schema": "anvil-serving-research-source-registry/v1",
+  "subject": "auroter/DeepSeek-V4-Flash-0731-NVFP4 TP2 qualification and local-agent deployment",
+  "observed_at": "2026-08-01",
+  "sources": [
+    {
+      "name": "Auroter DeepSeek V4 Flash 0731 NVFP4 model card and weights",
+      "url": "https://huggingface.co/auroter/DeepSeek-V4-Flash-0731-NVFP4/tree/17e0f9da8257371654d458ba518659aa99954c86",
+      "source_date": "2026-08-01",
+      "age_class": "current-experimental",
+      "evidence_type": "community-conversion-and-benchmark",
+      "identity": {
+        "repository_revision": "17e0f9da8257371654d458ba518659aa99954c86",
+        "modelopt_version": "0.45.0",
+        "logical_checkpoint_bytes": 175568764042
+      },
+      "hardware_engine_relevance": "Reports vLLM 0.26.0 TP4 on four RTX PRO 6000 cards. The local campaign translates only the parallel shape and bounded capacity to two equal cards.",
+      "decision_impact": "Selects Marlin W4A16 with DSpark disabled as the first correctness profile; W4A4 and DSpark remain later A/B lanes."
+    },
+    {
+      "name": "vLLM 0.26.0 release",
+      "url": "https://github.com/vllm-project/vllm/releases/tag/v0.26.0",
+      "source_date": "2026-07-27",
+      "age_class": "current",
+      "evidence_type": "official-runtime-release",
+      "identity": {
+        "git_revision": "568afb3a13806beb53bb2e6bd518269357b237c0"
+      },
+      "hardware_engine_relevance": "Pinned runtime named by the candidate model card; local SM120 behavior remains separately measured.",
+      "decision_impact": "Prevents substituting a newer nightly or older architecture path during the baseline."
+    },
+    {
+      "name": "vLLM 0.26.0 Ubuntu 24.04 image",
+      "url": "https://hub.docker.com/layers/vllm/vllm-openai/v0.26.0-ubuntu2404/images/sha256-ef7bfc148a43f3d3484315252ab116dd38c1caab36800b42b025b5db68894e31",
+      "source_date": "2026-07-27",
+      "age_class": "current",
+      "evidence_type": "official-runtime-image",
+      "identity": {
+        "amd64_digest": "sha256:1161da8a5edbdff239ab1812784d7fe5d28775c675809a8420e8a0a05d0e56d1"
+      },
+      "hardware_engine_relevance": "Exact amd64 runtime image used for the local launch.",
+      "decision_impact": "Pins CUDA, vLLM, Transformers, and compiled kernels as one reproducible identity."
+    },
+    {
+      "name": "OpenClaw custom model provider contract",
+      "url": "https://github.com/openclaw/openclaw/blob/main/docs/concepts/model-providers.md",
+      "source_date": "2026-08-01",
+      "age_class": "current",
+      "evidence_type": "official-client-documentation",
+      "hardware_engine_relevance": "Client protocol only; no hardware-performance evidence.",
+      "decision_impact": "Requires an explicit OpenAI-compatible provider, declared reasoning capability, context/output limits, private-network allowance, and tested per-model parameters."
+    },
+    {
+      "name": "Pi custom model provider contract",
+      "url": "https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/models.md",
+      "source_date": "2026-08-01",
+      "age_class": "current",
+      "evidence_type": "official-client-documentation",
+      "hardware_engine_relevance": "Client protocol only; no hardware-performance evidence.",
+      "decision_impact": "Uses ~/.pi/agent/models.json with openai-completions, explicit reasoning support, compatibility flags, and free-form served model identity."
+    },
+    {
+      "name": "Pi DeepSeek V4 Flash reasoning mapping release",
+      "url": "https://github.com/earendil-works/pi/releases/tag/v0.71.0",
+      "source_date": "2026-04-30",
+      "age_class": "current",
+      "evidence_type": "official-client-release",
+      "hardware_engine_relevance": "Client protocol only; no hardware-performance evidence.",
+      "decision_impact": "Pins the client floor whose xhigh level maps to DeepSeek V4 Flash max reasoning effort and whose OpenAI-compatible DeepSeek reasoning replay was corrected."
+    }
+  ]
+}

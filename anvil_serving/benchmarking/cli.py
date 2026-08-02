@@ -14,7 +14,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from ..model_controls import validate_reasoning_control
+from ..model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
 from .artifacts import (
     atomic_write_json as _atomic_write_json,
     console_safe as _console_safe,
@@ -176,7 +176,7 @@ def main(
                          "disabled maps to chat_template_kwargs={'enable_thinking': False}; "
                          "enabled maps to {'enable_thinking': True}; unsupported records that "
                          "the serve has no supported thinking control.")
-    ap.add_argument("--reasoning-effort", choices=("none", "minimal", "low", "medium", "high"),
+    ap.add_argument("--reasoning-effort", choices=REASONING_EFFORT_CHOICES,
                     default=None,
                     help="send the OpenAI-compatible reasoning_effort field for model families "
                          "that do not use chat_template_kwargs (for example GPT-OSS or Mistral). "
@@ -394,6 +394,11 @@ def main(
     if a.max_model_len and a.max_model_len <= a.max_tokens + a.margin:
         ap.error("--max-model-len must exceed --max-tokens plus --margin")
 
+    # Dry-run plans are an operator contract, not just a request-count preview.
+    # Resolve the effective control through the same helper used by live runs so
+    # a reviewer can prove which reasoning mode will be sent before any request.
+    _, _, planned_thinking = resolve_thinking_settings(a)
+
     if a.bakeoff:
         known_suites = {"chat", "context", "tool", "session", "intelligence", "voice"}
         selected_suites = parse_csv(
@@ -461,6 +466,7 @@ def main(
                     "visible_answer_tokens": visible_answer_tokens,
                     "reasoning_headroom_tokens": reasoning_headroom_tokens,
                 },
+                "thinking": planned_thinking,
                 "output": a.evidence_out,
                 "deferred": ["endpoint identity", "model requests", "artifact write"],
             }, indent=2, sort_keys=True, ensure_ascii=True))
@@ -512,6 +518,7 @@ def main(
                 "max_tokens": a.max_tokens,
                 "timeout_seconds": a.timeout,
             },
+            "thinking": planned_thinking,
             "output": a.json_out,
             "deferred": ["endpoint identity", "context-window probe", "requests", "artifact write"],
         }, indent=2, sort_keys=True, ensure_ascii=True))
@@ -580,12 +587,18 @@ def main(
             try:
                 results.append(future.result())
             except Exception as exc:
+                error_message = str(exc) or "<empty exception message>"
                 failure = {
                     "request_index": futures[future],
                     "error_type": type(exc).__name__,
+                    "error_message": error_message[:2048],
+                    "error_message_truncated": len(error_message) > 2048,
                 }
                 failures.append(failure)
-                print("  req error:", failure["error_type"])
+                print(
+                    "  req error: %s: %s"
+                    % (failure["error_type"], failure["error_message"])
+                )
     wall = time.perf_counter() - t0
     finished_at = time.time()
     metrics = _result_metrics(results)
@@ -611,21 +624,24 @@ def main(
                 metrics["time_to_first_output_p95_ms"] / 1000.0,
             )
         )
-    print(
-        "TTFT  p50/p95:    %.2fs / %.2fs"
-        % (metrics["ttft_p50_ms"] / 1000.0, metrics["ttft_p95_ms"] / 1000.0)
-    )
-    print(
-        "E2E   p50/p95:    %.2fs / %.2fs"
-        % (metrics["e2e_p50_ms"] / 1000.0, metrics["e2e_p95_ms"] / 1000.0)
-    )
-    print(
-        "GEN   p50/p95:    %.2fs / %.2fs"
-        % (
-            metrics["generation_p50_ms"] / 1000.0,
-            metrics["generation_p95_ms"] / 1000.0,
+    if metrics["ttft_p50_ms"] is not None:
+        print(
+            "TTFT  p50/p95:    %.2fs / %.2fs"
+            % (metrics["ttft_p50_ms"] / 1000.0, metrics["ttft_p95_ms"] / 1000.0)
         )
-    )
+    if metrics["e2e_p50_ms"] is not None:
+        print(
+            "E2E   p50/p95:    %.2fs / %.2fs"
+            % (metrics["e2e_p50_ms"] / 1000.0, metrics["e2e_p95_ms"] / 1000.0)
+        )
+    if metrics["generation_p50_ms"] is not None:
+        print(
+            "GEN   p50/p95:    %.2fs / %.2fs"
+            % (
+                metrics["generation_p50_ms"] / 1000.0,
+                metrics["generation_p95_ms"] / 1000.0,
+            )
+        )
     if metrics["effective_prefill_tok_s_p50"] is not None:
         print(
             "prefill p50/p95: %.0f / %.0f effective input tok/s"

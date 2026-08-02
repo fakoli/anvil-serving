@@ -25,9 +25,9 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 try:
-    from .model_controls import validate_reasoning_control
+    from .model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
 except ImportError:  # direct ``python anvil_serving/preflight.py`` compatibility
-    from model_controls import validate_reasoning_control
+    from model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
 
 
 def _console_safe(value):
@@ -736,7 +736,7 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
     ap.add_argument("--thinking-mode", choices=("default", "enabled", "disabled", "unsupported"),
                     default="default", help="model-family thinking control to request")
     ap.add_argument("--reasoning-effort",
-                    choices=("none", "minimal", "low", "medium", "high"),
+                    choices=REASONING_EFFORT_CHOICES,
                     help="top-level OpenAI reasoning_effort for model families that use it")
     ap.add_argument("--visible-answer-tokens", type=int, default=256,
                     help="visible-answer allocation recorded by the gate")

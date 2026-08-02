@@ -1,5 +1,7 @@
 """Shared model-family reasoning-control validation for eval commands."""
 
+REASONING_EFFORT_CHOICES = ("none", "minimal", "low", "medium", "high", "max")
+
 
 def validate_reasoning_control(model, *, thinking_mode, no_thinking,
                                reasoning_effort):
@@ -23,6 +25,11 @@ def validate_reasoning_control(model, *, thinking_mode, no_thinking,
         if reasoning_effort not in {None, "low", "medium", "high"}:
             raise ValueError(
                 "GPT-OSS supports --reasoning-effort low, medium, or high"
+            )
+    if "deepseek-v4" in normalized or "deepseek_v4" in normalized:
+        if reasoning_effort not in {None, "low", "high", "max"}:
+            raise ValueError(
+                "DeepSeek V4 supports --reasoning-effort low, high, or max"
             )
     if "qwen" in normalized and reasoning_effort is not None:
         raise ValueError(
