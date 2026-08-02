@@ -1,0 +1,4 @@
+interface:
+  display_name: "Anvil Serving Release Readiness"
+  short_description: "Gate coordinated releases and live deployment parity."
+  default_prompt: "Use $anvil-serving-release-readiness to stage a coordinated Anvil Serving release, prove manifest dependency closure, deploy with exact endpoint version parity, run real-client smokes, and refuse closure while any outage remains."
