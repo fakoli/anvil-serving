@@ -1,0 +1,56 @@
+{
+  "schema": "anvil-serving.lifecycle-evidence/v1",
+  "recorded_at": "2026-08-02",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-offload8-wsl2-mmap-unpinned-tp2-256k",
+  "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "image_digest": "sha256:331b79259b9532788b44f13696d484a0d1d576231c6ad397c0f0faf72b85cd86",
+  "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q, exclusive TP=2 over PCIe without NVLink",
+  "recipe": "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload8-wsl2-mmap-unpinned-recipe.toml",
+  "enter": {
+    "elapsed_seconds": 234.0,
+    "result": "passed",
+    "mode": "dual-gpu-exclusive",
+    "tensor_parallel_size": 2
+  },
+  "active_shared_memory_inspection": {
+    "available": true,
+    "active_native_offload_containers": 1,
+    "offload_mmap_files": 1,
+    "offload_mmap_bytes": 8587821056,
+    "mapped_worker_pids": 2,
+    "reclaimable_files": 0,
+    "outcome": "blocked"
+  },
+  "preflight": {
+    "result": "all_pass",
+    "smoke": true,
+    "structured_json": true,
+    "needle_context_target": 128000,
+    "needle": true,
+    "shared_prefix_tool_batch": "20/20"
+  },
+  "leave": {
+    "elapsed_seconds": 166.7,
+    "container_removed": true,
+    "offload_mmap_reclaim": "reclaimed",
+    "offload_mmap_reclaimed_bytes": 8587821056,
+    "page_cache_before_gb": 9.6,
+    "page_cache_after_gb": 0.9,
+    "result": "passed"
+  },
+  "postcondition": {
+    "mode": "split",
+    "dark_compute_a_owners": [],
+    "dark_compute_b_owners": [
+      "omni"
+    ],
+    "omni_running": true,
+    "active_native_offload_containers": 0,
+    "offload_mmap_files": 0,
+    "reclaimable_bytes": 0
+  },
+  "decision": [
+    "challenger",
+    "no-promotion"
+  ]
+}

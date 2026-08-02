@@ -15,6 +15,7 @@ Focused `--help` is the complete flag reference for every command below.
 | Inspect a topology-owned host | `host status` | Use `host doctor` for a recommendation or `host memory` for WSL details. |
 | Change the WSL memory cap safely | `host doctor` | Preview `host wsl-config`, apply it, then restart Docker Desktop. |
 | Recover a wedged WSL backend | `host reset-wsl --dry-run` | Apply only after reviewing the process and container disruption. |
+| Diagnose vLLM native-offload tmpfs pressure | `host shared-memory status` | Reclaim only when every file is verified orphaned. |
 | Check GPU partitioning prerequisites | `host gpu-sharing inspect` | Run the confirmation-gated probe only when static evidence is insufficient. |
 | Upgrade the installed CLI | `upgrade --dry-run` | Apply through the detected package owner with `--confirm`. |
 
@@ -36,6 +37,7 @@ Focused `--help` is the complete flag reference for every command below.
 | `host gpus` | List visible NVIDIA GPU indexes, stable UUIDs, and names. |
 | `host doctor` | Explain host memory capacity and recommend a safe WSL cap. |
 | `host memory` | Show Windows, WSL VM, page-cache, and GPU memory usage. |
+| `host shared-memory status` | Report vLLM offload mmap files, live mappings, active owners, and reclaim eligibility. |
 
 ### Plan and apply host repair
 
@@ -45,6 +47,7 @@ Focused `--help` is the complete flag reference for every command below.
 | `host restart-docker` | Restart Docker Desktop once on Windows or macOS. |
 | `host reset-wsl` | Reset a wedged Windows WSL backend, then restart Docker Desktop. |
 | `host reclaim` | Drop clean WSL page cache once or run a foreground watchdog. |
+| `host shared-memory reclaim` | Remove only twice-verified orphan vLLM native-offload mmap files. |
 
 ### Inspect GPU-sharing prerequisites
 
@@ -179,6 +182,9 @@ anvil-serving host reset-wsl --dry-run
 anvil-serving host reset-wsl --confirm
 anvil-serving host reclaim --dry-run
 anvil-serving host reclaim --confirm
+anvil-serving host shared-memory status
+anvil-serving host shared-memory reclaim
+anvil-serving host shared-memory reclaim --confirm
 ```
 
 `host wsl-config` changes only `memory` and `swap`, preserves other sections,
@@ -202,6 +208,32 @@ foreground process:
 ```bash
 anvil-serving host reclaim --watch --threshold-gb 60 --interval 30 --confirm
 ```
+
+### Native KV-offload shared memory
+
+vLLM native CPU KV offload creates process-shared files named
+`/dev/shm/vllm_offload_*.mmap`. A worker crash or forced container removal can
+leave one behind; page-cache reclaim does not remove tmpfs files. Inspect first:
+
+```bash
+anvil-serving host shared-memory status
+```
+
+The inspector scans live `/proc/*/maps` entries and running Docker container
+configuration. Any live mapping, native-offload container, unavailable Docker
+ownership, invalid path, or changing second inspection blocks deletion.
+Confirmed reclaim removes only the exact validated paths from two matching
+inspections and verifies they are absent afterward:
+
+```bash
+anvil-serving host shared-memory reclaim --confirm
+```
+
+Native-offload recipe load runs the same check before Docker starts and fails
+closed when ownership is uncertain. Recipe unload and manifest-owned teardown
+run it after the owner stops, including when a stopped failure container is
+preserved for logs. The read-only controller tool is `host_shared_memory`; the
+confirm-gated `host_manage` action is `reclaim-shared-memory`.
 
 ## Automatic reclaim after model lifecycle operations
 

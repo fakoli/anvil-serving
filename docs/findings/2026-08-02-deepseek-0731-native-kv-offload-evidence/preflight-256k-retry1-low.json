@@ -1,0 +1,122 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39068/v1",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-offload8-wsl2-mmap-unpinned-tp2-256k",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": "low"
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 1024,
+    "max_completion_tokens": 1280
+  },
+  "multimodal_input": null,
+  "video_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [],
+  "checks": [
+    "smoke",
+    "json",
+    "needle"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "3.6s got=\"The simplest one-liner is to use Python's built-in\" finish='stop' visible=346 reasoning_chars=1461 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=171 reasoning_tokens=None"
+    },
+    {
+      "name": "needle @ ~8192 ctx",
+      "passed": true,
+      "detail": "1.5s ctx~8192 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=224 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "The simplest one-liner is to use Python's built-in `sum()` function:\n\n```python\nsum(xs)\n```\n\nIf you need a reusable function (e.g., a lambda), you can write:\n\n```python\nlambda xs: sum(xs)\n```\n\nOr a named function in one line:\n\n```python\ndef sum_list(xs): return sum(xs)\n```\n\nAll of these are valid one-liners that return the sum of the list `xs`.",
+      "finish_reason": "stop",
+      "content_chars": 346,
+      "content_excerpt": "The simplest one-liner is to use Python's built-in `sum()` function:\n\n```python\nsum(xs)\n```\n\nIf you need a reusable function (e.g., a lambda), you can write:\n\n```python\nlambda xs: sum(xs)\n```\n\nOr a na",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 1461,
+      "reasoning_excerpt": "We need to write a Python one-liner that returns the sum of a list `xs`. The user likely expects a lambda or a function definition in one line. The simplest is `sum(xs)`. But that's not a one-liner in",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 20,
+        "total_tokens": 506,
+        "completion_tokens": 486,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "smoke",
+      "seconds": 3.641,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 171,
+      "reasoning_excerpt": "We need to return only a JSON object as specified. The user says \"Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.\" So we just output that exact JSON.",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 22,
+        "total_tokens": 74,
+        "completion_tokens": 52,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "json",
+      "seconds": 0.424,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 224,
+      "reasoning_excerpt": "We need to extract the launch code from the text. The user inserted \"IMPORTANT: The launch code is ZEBRA-42917-QUARTZ.\" in the middle of the repeated sentence. The question asks for the launch code. S",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 7410,
+        "total_tokens": 7478,
+        "completion_tokens": 68,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "needle",
+      "seconds": 1.527,
+      "passed": true,
+      "validation_detail": "needle present"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "any",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

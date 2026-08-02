@@ -183,6 +183,24 @@ def test_load_recipe_runs_once_with_argv_seam():
     assert calls == [(argv, {"check": False})]
 
 
+def test_native_kv_offload_recipe_detection_accepts_env_and_flag_forms():
+    env_recipe = {
+        **_RECIPE,
+        "serve": {**_RECIPE["serve"], "env": ["KV_OFFLOADING_SIZE=8"]},
+    }
+    flag_recipe = {
+        **_RECIPE,
+        "serve": {**_RECIPE["serve"], "flags": ["--kv-offloading-size 8"]},
+    }
+    disabled = {
+        **_RECIPE,
+        "serve": {**_RECIPE["serve"], "env": ["KV_OFFLOADING_SIZE=0"]},
+    }
+    assert sr.uses_native_kv_offload(env_recipe) is True
+    assert sr.uses_native_kv_offload(flag_recipe) is True
+    assert sr.uses_native_kv_offload(disabled) is False
+
+
 def test_docker_run_argv_refuses_unsafe_container_and_env():
     with pytest.raises(sr.RecipeError, match="container name"):
         sr.docker_run_argv(_RECIPE, container="bad name")
