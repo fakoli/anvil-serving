@@ -59,6 +59,8 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md`;
 `docs/findings/2026-08-01-deepseek-v4-flash-0731-research-update.md`;
 `docs/findings/2026-08-01-dual-pro-tp2-model-campaign.md`;
+`docs/findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md`;
+`docs/findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md`;
 `docs/findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/2026-07-27-release-sweep-fixes.md`;

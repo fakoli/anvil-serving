@@ -36,32 +36,28 @@ dated findings behind each conclusion.
 
 ## Production aliases and recent controls
 
-1. **Agents-A1 official FP8** — `current` multimodal Primary with thinking
-   disabled.
+1. **DeepSeek V4 Flash 0731 r16 DSpark K5** — `current` exclusive TP=2 text
+   Primary at 650K, high reasoning by default, with a 32,768 output cap.
 2. **Qwen3.5 122B A10B NVFP4** — immediate managed `rollback`.
-3. **Laguna S 2.1 NVFP4** — additional managed `rollback`.
-4. **GPT-OSS Puzzle 88B** — additional pinned `rollback`; repeated strict
+3. **Agents-A1 official FP8** — previous multimodal Primary; thinking disabled.
+4. **Laguna S 2.1 NVFP4** — additional managed `rollback`.
+5. **GPT-OSS Puzzle 88B** — additional pinned `rollback`; repeated strict
    unified-diff formatting passed only 2/3.
-5. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
+6. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
    controls, not the current rollback order.
-6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
+7. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
 
-The 2026-08-01 dual-PRO campaign did not promote or reroute any of these
-aliases. It restored the pre-campaign service state after exclusive TP=2.
-
-Research priority: **DeepSeek V4 Flash 0731** is the dual-card intelligence
-`challenger` after its exact publisher checkpoint qualified at low reasoning
-and current external research independently supported the post-training jump.
-The pinned r16 B12X lane now qualifies low/high/max reasoning, DSpark K5,
-128K, and a 27/27 coding-agent slice. A derived WSL2 image also qualifies
-native offload at 256K, including a 249,573-prompt-token request, a 16 GiB
-113,408-token CPU-to-GPU prefix reload, and managed mmap cleanup. DSpark doubled
-matched decode versus the same-image
-no-spec control, but the measured 128K profiles failed the 3 GiB free-VRAM
-policy and the 256K lane lacks per-card reserve evidence. It therefore remains
-`no-promotion`; community 0731 NVFP4 remains unqualified. Start with its
-[model dossier](models/deepseek-v4-flash.md).
+The 2026-08-01 dual-PRO campaign itself did not reroute production. On
+2026-08-02, after the separate human gate and client verification, the 650K
+DeepSeek profile became Primary. It passed 640K retrieval, the complete Pi
+protocol gate, Dark and Mini Pi smokes, and a Mini OpenClaw high-reasoning smoke.
+The 1M/maxseq16 profile was removed after two fatal real-client B12X workspace
+failures; even a 5,120 output cap did not protect its 19,118-token Pi prompt.
+The 650K deployment explicitly waives the 3 GiB free-VRAM policy and is valid
+only as a single-user exclusive TP=2 serve. See the
+[model dossier](models/deepseek-v4-flash.md) and
+[promotion record](../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md).
 
 ## How to read the evidence
 

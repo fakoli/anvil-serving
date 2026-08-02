@@ -151,8 +151,15 @@ Every chat tier needs `id`, `base_url`, `model`, `dialect`, `context_limit`,
 `privacy = "local"`, `tool_support`, and `auth_env`. `base_url` is an
 OpenAI- or Anthropic-compatible base URL; use `127.0.0.1`, never `localhost`,
 for same-host serves. Optional `health_path`, `timeout`, `max_concurrency`,
-`extra_body`, and `extra_body_defaults` control relay behavior. `engine`,
+`max_output_tokens`, `extra_body`, and `extra_body_defaults` control relay behavior. `engine`,
 `quantization`, and `params` are descriptive serve metadata.
+
+`max_output_tokens` is an optional per-tier runtime safety ceiling. When a
+caller requests a larger completion budget, the router forwards the request
+with the configured ceiling and returns `Warning`, `X-Anvil-Warning`,
+`X-Anvil-Max-Tokens-Requested`, and `X-Anvil-Max-Tokens-Applied` response
+headers. It also records `served_output_clamped` in the metadata-only decision
+trail. Tiers without this field preserve caller and upstream behavior.
 
 The tier's `model` is the upstream served model name. It is not the public
 capability name.
