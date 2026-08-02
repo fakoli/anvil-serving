@@ -36,6 +36,11 @@ and includes the post-0.20 WSL2 native KV-offload lifecycle work.
 
 ### Changed
 
+- Exclusive-mode entry now treats router activation as part of the transaction:
+  routed targets declare complete current/rollback profiles, install the target
+  profile only after serve readiness, and pass guarded tier readmission before
+  success. Profile or readmission failure restores the prior profile and split
+  stack; leave performs the reverse quiesce, drain, profile, and readmit flow.
 - The reference dual-GPU manifest records separate 650K current and retained
   1M experimental DeepSeek recipes. Exclusive ownership blocks every other
   managed GPU workload while the Primary is running.
