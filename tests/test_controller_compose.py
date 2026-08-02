@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import tomllib
 
 
 REPO = Path(__file__).resolve().parents[1]
 COMPOSE = REPO / "examples" / "fakoli-dark" / "docker-compose.controller.yml"
+MANIFEST = REPO / "examples" / "fakoli-dark" / "serves.toml"
 
 
 def _text() -> str:
@@ -39,6 +41,28 @@ def test_controller_compose_mounts_explicit_artifacts_not_operator_homes():
     assert "./serves.toml:/etc/anvil/serves.toml:ro" in text
     assert "./operator-topology.toml:/etc/anvil/operator-topology.toml:ro" in text
     assert "./docker-compose.yml:/etc/anvil/docker-compose.yml:ro" in text
+
+
+def test_controller_compose_mounts_router_profiles_required_by_manifest():
+    text = _text()
+    manifest = tomllib.loads(MANIFEST.read_text(encoding="utf-8"))
+
+    profile_paths: set[str] = set()
+    for serve in manifest.get("serve", []):
+        if serve.get("operating_mode") != "dual-gpu-exclusive" or not serve.get(
+            "router_tier"
+        ):
+            continue
+        for key in ("router_config", "rollback_router_config"):
+            value = serve[key].replace("{dir}", "/etc/anvil")
+            assert value.startswith("/etc/anvil/")
+            profile_paths.add(value)
+
+    assert profile_paths
+    for container_path in profile_paths:
+        filename = PurePosixPath(container_path).name
+        assert (MANIFEST.parent / filename).is_file()
+        assert f"./{filename}:{container_path}:ro" in text
 
 
 def test_controller_compose_excludes_native_host_and_gateway_tools():

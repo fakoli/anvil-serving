@@ -10,7 +10,7 @@ services:
     build:
       context: ../..
       target: controller
-    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.21.0}
+    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.21.1}
     container_name: anvil-serving-controller
     restart: unless-stopped
     user: "999:999"
@@ -42,6 +42,8 @@ services:
       # Mount only declared operational artifacts. Do not mount the operator's
       # home, SSH/GitHub config, or the broad operator configuration directory.
       - ./serves.toml:/etc/anvil/serves.toml:ro
+      - ./anvil-router.deepseek-pi.toml:/etc/anvil/anvil-router.deepseek-pi.toml:ro
+      - ./anvil-router.live.toml:/etc/anvil/anvil-router.live.toml:ro
       - ./serves.voice.toml:/etc/anvil/serves.voice.toml:ro
       - ./voice.toml:/etc/anvil/voice.toml:ro
       - ./operator-topology.toml:/etc/anvil/operator-topology.toml:ro
