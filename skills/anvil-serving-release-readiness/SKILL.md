@@ -21,8 +21,11 @@ grant model-promotion authority.
    active routes, serve owners, operating mode, GPU reservations, shared
    memory, and OpenClaw MCP availability. Record which host executes each
    command.
-4. Name the active model and explicit rollback. A package release must not
-   silently change a route; a route change remains human-gated.
+4. Name the active model/profile, rollback serve/profile, and alias behavior.
+   Do not assume a standalone rollback alias: record which public alias the
+   rollback profile preserves and the backing identity it restores. A package
+   release must not silently change a route; a route change remains
+   human-gated.
 5. Declare build CPU and memory ceilings before compiling on an interactive
    workstation. Do not consume all host threads or RAM by default.
 
@@ -34,8 +37,8 @@ grant model-promotion authority.
    link checks, CLI/reference audit, wheel build/smoke, and package metadata
    validation. Test the exact merged tree when the target branch moved.
 3. Derive deployment file closure from operational manifests. For every
-   referenced recipe, topology, router target, rollback profile, Compose file,
-   or mounted config:
+   referenced recipe, topology, router target profile, rollback router profile,
+   Compose file, or mounted config:
    - resolve placeholders in the command host's container namespace;
    - require the host source file to exist;
    - require the exact read-only mount in each consumer container;
@@ -67,7 +70,7 @@ grant model-promotion authority.
    even when one endpoint is healthy.
 5. Stop and execute the documented rollback when the controller cannot parse
    the manifest, a required mount is absent, the router loses its target or
-   rollback profile, route identity changes unexpectedly, or an in-scope
+   rollback router profile, route identity changes unexpectedly, or an in-scope
    client path becomes unavailable.
 
 ## 4. Prove the live contract before closure
@@ -78,8 +81,11 @@ installed CLI only as a verified fallback.
 1. Controller: `operation_contracts`, serve status, operating-mode status,
    reservations, bounded logs, and zero unresolved ownership.
 2. Router: build/config identity, readiness, advertised aliases, exact
-   `llm.primary` identity, context/concurrency metadata, and the explicit
-   rollback alias. Unknown or unavailable routes must remain fail-closed.
+   `llm.primary` identity, and context/concurrency metadata. Validate that the
+   rollback router profile preserves the intended stable public alias and maps
+   it to the expected rollback model identity. Treat an auxiliary alias such
+   as `llm.rollback` as profile-specific, not a universal rollback contract.
+   Unknown or unavailable routes must remain fail-closed.
 3. Model/client: run the real Pi and OpenClaw request shape, including tools and
    tool-result continuation when affected. A long-context needle or protocol
    preflight does not replace this client-shaped smoke.
@@ -111,7 +117,7 @@ Return a compact readiness matrix with these rows:
 | Package | clean-install exact version and published artifact |
 | Files | manifest-derived host files and read-only container mounts |
 | Parity | Windows, Mini, Dark, controller, and router exact versions |
-| Route | identity, readiness, context/concurrency, rollback |
+| Route | active/rollback profile alias parity, identities, readiness, context/concurrency |
 | Client | Pi/OpenClaw real-shape smoke with reasoning and tools |
 | Safety | exclusive ownership, blocked competitors, clean shared memory |
 | Closure | no outage, or explicit rollback/degraded state |
