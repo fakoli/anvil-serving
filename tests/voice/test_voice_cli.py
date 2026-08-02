@@ -76,6 +76,14 @@ def _use_native_dark_audio_topology(monkeypatch):
     monkeypatch.setattr(voice_cli, "load_topology", lambda path: topology)
 
 
+@pytest.fixture(autouse=True)
+def isolate_operator_home(tmp_path, monkeypatch):
+    """Keep foundation-only voice CLI tests independent of live operator state."""
+    config_home = tmp_path / "operator-home"
+    config_home.mkdir(exist_ok=True)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+
+
 @pytest.fixture
 def manifest_path(tmp_path):
     p = tmp_path / "voice.toml"

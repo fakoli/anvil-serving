@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "reasoning_effort",
+  "source": "preflight-reasoning-low.json: exact auroter/DeepSeek-V4-Flash-0731-NVFP4 revision 17e0f9da8257371654d458ba518659aa99954c86 on vLLM 0.26.0 TP2 passed coding, JSON, 26000-token retrieval, 20/20 tools, streaming tools, tool-result continuation, and Responses with required low-reasoning evidence",
+  "observed_at": "2026-08-01T19:36:21Z"
+}

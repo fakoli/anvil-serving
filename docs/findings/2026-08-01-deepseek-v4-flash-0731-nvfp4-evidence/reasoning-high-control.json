@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "reasoning_effort",
+  "source": "preflight-reasoning-high.json: exact NVFP4 vLLM 0.26.0 TP2 serve passed coding, JSON, 3/3 typed tools, and tool-result continuation with required high-reasoning evidence",
+  "observed_at": "2026-08-01T20:34:56Z"
+}

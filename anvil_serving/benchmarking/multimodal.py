@@ -17,7 +17,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
-from ..model_controls import validate_reasoning_control
+from ..model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
 from ..preflight import chat, resolve_api_key, response_observation
 from .artifacts import atomic_write_json, path_is_within, real_path, validate_write_target
 
@@ -320,7 +320,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
     )
     ap.add_argument(
         "--reasoning-effort",
-        choices=("none", "minimal", "low", "medium", "high"),
+        choices=REASONING_EFFORT_CHOICES,
     )
     ap.add_argument("--allowed-finish-reasons", default="stop")
     ap.add_argument("--dry-run", action="store_true")
