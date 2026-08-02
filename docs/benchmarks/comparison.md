@@ -58,6 +58,7 @@ model workloads were offline. The campaign changed no production alias.
 | [Nemotron 3 Super 120B NVFP4](models/nemotron3-super-120b.md) | `no-promotion` | NVFP4 · FP8 KV · EP=2 | 65,536 · 60K | off for matched gates | 2.84 s TTFT @28,438 tok; 5.58 s @53,820 tok | 10,025 / 9,646 tok/s | 12/12 @32K · 59.5 tok/s; 4/4 @60K · 60.0 tok/s | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
 | [Laguna S 2.1 NVFP4](models/laguna-s-2.1.md) | `no-promotion` TP=2; single-card profile remains `rollback` | NVFP4 · FP8 KV | 262,144 · 240K | **must be off** | 1.97 s TTFT @29,834 tok; 31.85 s @231,457 tok | **15,134 / 7,252 tok/s** | 12/12 @32K · **70.9 tok/s**; 4/4 @240K · 66.0 tok/s | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
 | [DeepSeek V4 Flash 0731, r16 DSpark K5](models/deepseek-v4-flash.md) | priority `challenger`, `no-promotion`; reserve fail | B12X W4A8 NVFP4 MoE / FP8 dense · FP8 MLA KV | 131,072 · 128K | low/high/max functional; low measured | warmed 19.44 s TTFO; 23.81 s visible TTFT @125,785 tok | 6,469 tok/s from TTFO | 27/27 coding-agent; 128K pass; **130.7 tok/s** matched 4K decode | [pinned recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-128k-recipe.toml) |
+| [DeepSeek V4 Flash 0731, r16 DSpark K5 + native offload](models/deepseek-v4-flash.md) | capacity `challenger`, `no-promotion`; reserve unmeasured | same B12X/FP8 recipe · FP8 MLA KV · 8/16 GiB CPU offload | 262,144 · 250K | low functional/capacity | cold 43.75 s TTFO @249,573 tok; reload 0.825 s TTFO / 1.974 s visible TTFT @113,674 tok | cold 5,705; reload 137,856 effective tok/s | 250K pass; 16 GiB lane: 113,408 external hits, 1.002 GB CPU-to-GPU in 0.344 s | [reload recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload16-wsl2-mmap-unpinned-recipe.toml) |
 | [DeepSeek V4 Flash 0731](models/deepseek-v4-flash.md) | `challenger`, `no-promotion` | publisher FP4 experts / FP8 · FP8 E4M3 KV | 32,768 · 30K | `reasoning_effort=low` | 2.70 s TTFO; 29.11 s first-visible TTFT @21,144 tok | 7,818 tok/s from TTFO | 11/12 · 11.5 tok/s combined reasoning/visible | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
 | [Inkling Small NVFP4](models/inkling-small.md) | `no-promotion` | ModelOpt NVFP4 · BF16 KV/SWA | 32,768 · 30K | `reasoning_effort=low` | 2.79 s TTFO; 4.63 s first-visible TTFT @21,879 tok | 7,844 tok/s from TTFO | 12/12 · 73.5 tok/s combined reasoning/visible | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
 
@@ -75,6 +76,13 @@ p50 decode values at 4K/c1 with a 2,048-token output cap. A same-image no-spec
 control measured 64.9 tok/s: DSpark improved decode by 101.4%, aggregate output
 by 70.5%, and E2E by 58.8%, while using 1.6-2.3 GiB more VRAM. Both profiles
 failed the per-card 3 GiB reported-free reserve.
+
+The native-offload row uses a narrowly derived WSL2 image and a different
+262,144-token admission ceiling. Its cold 250K result is capacity evidence,
+not a matched speed comparison with the 131K row. The 8 GiB follow-ups reused
+the GPU prefix cache. The separate 16 GiB run sized CPU above the measured GPU
+KV tier and proved reload through unchanged GPU-hit counters, 113,408 new
+external hits, and 1,001,721,600 new CPU-to-GPU bytes.
 
 ---
 

@@ -1,0 +1,146 @@
+{
+  "context": {
+    "cap_tokens": 258816,
+    "max_model_len": 262144,
+    "targets": [
+      {
+        "attempted_context_tokens": 192000,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 192000,
+        "content_chunks": 21,
+        "decode_tok_s": 121.05408256968164,
+        "e2e_ms": 4751.108199998271,
+        "effective_prefill_tok_s": 126228.4172693344,
+        "estimated_prompt_tokens": 192000,
+        "generation_ms": 3618.217499999446,
+        "mean_inter_token_latency_ms": 8.26077054794394,
+        "output_token_source": "usage",
+        "output_tokens": 439,
+        "prompt_tokens": 143003,
+        "reasoning_chunks": 118,
+        "status": "passed",
+        "target_tokens": 192000,
+        "time_to_first_output_ms": 1132.8906999988249,
+        "ttft_ms": 4213.4381999931065,
+        "usage": {
+          "completion_tokens": 439,
+          "prompt_tokens": 143003,
+          "prompt_tokens_details": {
+            "cached_tokens": 139264
+          },
+          "total_tokens": 143442
+        },
+        "visible_generation_ms": 537.6700000051642
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 1024,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 1,
+    "version": 3,
+    "visible_answer_tokens": 256
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:39068/v1",
+    "candidate_id": "deepseek-v4-flash-0731-r16-offload8-wsl2-mmap-unpinned",
+    "config_id": "tp2-dspark5-256k-replay",
+    "engine": "vllm-r16-b12x-wsl2-offload-mmap-unpinned",
+    "gpu": "2x RTX PRO 6000 Blackwell Max-Q TP2",
+    "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-offload8-wsl2-mmap-unpinned-tp2-256k",
+    "started_at": "2026-08-02T05:26:27Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260802T052627Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 4751.108199998271,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "default",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 4213.4381999931065,
+    "usable_context_tokens": 192000,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      192000
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "context"
+    ]
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload8-wsl2-mmap-unpinned-recipe.toml",
+    "serve_command": null
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "reasoning_effort",
+    "control_requested": "low",
+    "control_status": "requested_unverified",
+    "mode": "default",
+    "reasoning_effort": "low",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "content_chunks": 21,
+      "decode_tok_s_p50": 121.05408256968164,
+      "decode_tok_s_p95": 121.05408256968164,
+      "e2e_p50_ms": 4751.108199998271,
+      "e2e_p95_ms": 4751.108199998271,
+      "effective_prefill_tok_s_p50": 126228.4172693344,
+      "effective_prefill_tok_s_p95": 126228.4172693344,
+      "generation_p50_ms": 3618.217499999446,
+      "generation_p95_ms": 3618.217499999446,
+      "mean_inter_token_latency_ms_p50": 8.26077054794394,
+      "mean_inter_token_latency_ms_p95": 8.26077054794394,
+      "output_tokens": 439,
+      "prompt_token_samples": 1,
+      "prompt_tokens": 143003,
+      "prompt_tokens_p50": 143003.0,
+      "prompt_tokens_p95": 143003.0,
+      "reasoning_chunks": 118,
+      "time_to_first_output_p50_ms": 1132.8906999988249,
+      "time_to_first_output_p95_ms": 1132.8906999988249,
+      "ttft_p50_ms": 4213.4381999931065,
+      "ttft_p95_ms": 4213.4381999931065,
+      "ttft_samples": 1
+    },
+    "wall_ms": 4753.7197999918135
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

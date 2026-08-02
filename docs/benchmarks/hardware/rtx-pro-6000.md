@@ -40,6 +40,7 @@ memory. The production aliases and rollback chain below are unchanged by the
 | Nemotron 3 Super 120B NVFP4, TP=2 + EP=2 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.84 s and 59.5 tok/s; 60K 4/4 at 5.58 s and 60.0 tok/s | `no-promotion` |
 | Laguna S 2.1 NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 1.97 s and 70.9 tok/s; 240K 4/4 at 31.85 s and 66.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
 | DeepSeek V4 Flash 0731, r16 B12X + DSpark K5 | coding/intelligence/session/tools 27/27; low/high/max functional gates pass | 128K pass; warmed 125,785-token row 19.44 s TTFO, 23.81 s visible TTFT, 128.9 tok/s decode; matched 4K decode 130.7 tok/s | priority intelligence `challenger`, `no-promotion`; DSpark preferred for experiments, both lanes fail 3 GiB reserve |
+| DeepSeek V4 Flash 0731, r16 B12X + DSpark K5 + native KV offload | full functional preflight passes; 128K and 256K CPU reload proven | 8 GiB cold 249,573-token row: 43.75 s TTFO, 45.58 s visible TTFT, 5,705 effective prefill tok/s, 135.2 tok/s decode; 16 GiB exact 113,674-token replay: 113,408 external hits, 1.002 GB CPU-to-GPU, 0.825 s TTFO; managed mmap cleanup passes | capacity extension, `no-promotion`; no 256K per-card reserve sample |
 | DeepSeek V4 Flash 0731, earlier SGLang lane | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | retained low-reasoning point-in-time lane; one reasoning-only exhaustion; see r16 row for current DSpark/high/max evidence |
 | Inkling Small NVFP4 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 12/12; 2.79 s TTFO, 4.63 s first-visible TTFT, 73.5 tok/s combined reasoning/visible decode; reasoning-off lane also 12/12 | `no-promotion`; reasoning-off Responses caveat retained |
 
@@ -95,6 +96,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 | Qwen3.5 122B NVFP4 | 262,144 | 1 | BF16 KV; near-ceiling prefill is slow |
 | Laguna S 2.1 NVFP4 | 262,144 | recorded recipe | FP8 KV; disabled-thinking contract |
 | DeepSeek V4 Flash 0731 r16 B12X + DSpark K5, TP=2 | 131,072 | 8 configured; c1 measured | FP8 MLA KV; 130.7 tok/s matched decode; 128K pass; 3 GiB reserve failed |
+| DeepSeek V4 Flash 0731 r16 B12X + DSpark K5 + native offload, TP=2 | 262,144 | 8 configured; c1 measured | 8 GiB cold 250K capacity; 16 GiB CPU tier proves 113,408-token external reload; per-card reserve not sampled |
 | GPT-OSS Puzzle 88B MXFP4 | 131,072 | 8 | FP8 KV; pinned Anvil vLLM |
 | Nemotron 3 Super 120B NVFP4 | 131,072 | 5 | 1M advertised is not locally validated |
 | Qwen3.6 27B community NVFP4 + MTP | 262,144 | 5 | 262K needle validated |
@@ -102,6 +104,12 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Recent changes
 
+- 2026-08-02: the derived DeepSeek 0731 WSL2 native-offload lane qualified a
+  262,144-token serve through a 249,573-prompt-token request. A 16 GiB CPU tier
+  also reloaded a 113,408-token external prefix after GPU eviction. An
+  ownership-aware Anvil lifecycle now blocks cleanup while workers map the
+  file and reclaims both 8 and 16 GiB mmaps after teardown. The decision remains
+  `no-promotion`.
 - 2026-08-01: the pinned DeepSeek 0731 r16 B12X lane qualified DSpark K5,
   low/high/max reasoning, 128K, and 27/27 coding-agent attempts. DSpark doubled
   matched decode versus same-image no-spec, but both lanes failed the 3 GiB

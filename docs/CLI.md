@@ -219,6 +219,9 @@ required operands, choices, and defaults.
 | `host gpu-sharing probe` | Run the guarded Docker CUDA prerequisite probe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host doctor` | Diagnose host configuration. | `read` / `bounded` | - |
 | `host memory` | Show host RAM and WSL VM memory usage. | `read` / `bounded` | - |
+| `host shared-memory` | Inspect and reclaim vLLM native KV-offload shared memory. | `read` / `bounded` | - |
+| `host shared-memory status` | Inspect ownership of vLLM offload mmap files. | `read` / `bounded` | - |
+| `host shared-memory reclaim` | Remove only twice-verified orphan vLLM offload mmap files. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host wsl-config` | Render or update WSL configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host restart-docker` | Restart Docker Desktop. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host reset-wsl` | Reset WSL. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

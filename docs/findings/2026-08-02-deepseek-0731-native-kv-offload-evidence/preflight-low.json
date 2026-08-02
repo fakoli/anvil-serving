@@ -1,0 +1,123 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39064/v1",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-offload8-tp2-128k",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": "low"
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 1024,
+    "max_completion_tokens": 1280
+  },
+  "multimodal_input": null,
+  "video_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [],
+  "checks": [
+    "smoke",
+    "json",
+    "needle",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "responses"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "4.4s got=\"The simplest one-liner is to use Python's built-in\" finish='stop' visible=542 reasoning_chars=1484 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=80 reasoning_tokens=None"
+    },
+    {
+      "name": "needle @ ~8192 ctx",
+      "passed": false,
+      "detail": "error: HTTP 500: {\"error\":{\"message\":\"EngineCore encountered an issue. See stack trace (above) for the root cause.\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}}"
+    },
+    {
+      "name": "shared-prefix tool batch x20",
+      "passed": false,
+      "detail": "0/20 clean (sample: error: HTTP 500: {\"error\":{\"message\":\"EngineCore encountered an issue. See stack trace (above) for the root cause.\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}})"
+    },
+    {
+      "name": "streaming tool call",
+      "passed": false,
+      "detail": "error: HTTP 500: {\"error\":{\"message\":\"EngineCore encountered an issue. See stack trace (above) for the root cause.\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}}"
+    },
+    {
+      "name": "tool-result continuation",
+      "passed": false,
+      "detail": "error: HTTP 500: {\"error\":{\"message\":\"EngineCore encountered an issue. See stack trace (above) for the root cause.\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}}"
+    },
+    {
+      "name": "Responses API subset",
+      "passed": false,
+      "detail": "error: HTTP 500: {\"error\":{\"message\":\"EngineCore encountered an issue. See stack trace (above) for the root cause.\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}}"
+    }
+  ],
+  "observations": [
+    {
+      "content": "The simplest one-liner is to use Python's built-in `sum` function:\n\n```python\nsum(xs)\n```\n\nIf you need it as a callable function (e.g., for assignment), you can use a lambda:\n\n```python\nlambda xs: sum(xs)\n```\n\nOr, if you want to avoid `sum` (e.g., for a challenge), you can use `reduce` from `functools` (though it requires an import, which may not be considered a one-liner in a single expression):\n\n```python\nfrom functools import reduce; reduce(lambda a, b: a + b, xs, 0)\n```\n\nBut the most idiomatic and concise answer is simply `sum(xs)`.",
+      "finish_reason": "stop",
+      "content_chars": 542,
+      "content_excerpt": "The simplest one-liner is to use Python's built-in `sum` function:\n\n```python\nsum(xs)\n```\n\nIf you need it as a callable function (e.g., for assignment), you can use a lambda:\n\n```python\nlambda xs: sum",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 1484,
+      "reasoning_excerpt": "We need to write a Python one-liner that returns the sum of a list `xs`. The user didn't specify any constraints, but likely they want a simple expression. The most straightforward is `sum(xs)`. But m",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 20,
+        "total_tokens": 550,
+        "completion_tokens": 530,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "smoke",
+      "seconds": 4.449,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 80,
+      "reasoning_excerpt": "We need to output only the JSON object as specified. No prose. So just the JSON.",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 22,
+        "total_tokens": 52,
+        "completion_tokens": 30,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "json",
+      "seconds": 0.399,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "required",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": false
+}
