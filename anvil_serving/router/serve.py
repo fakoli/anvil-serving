@@ -284,6 +284,37 @@ class RoutingBackend:
             **request_correlation(request),
         ))
 
+    @staticmethod
+    def _apply_output_cap(request: InternalRequest, tier: Tier) -> None:
+        """Apply an opt-in tier completion ceiling before any relay work."""
+        cap = tier.max_output_tokens
+        if cap is None:
+            return
+        requested = request.max_tokens
+        if requested is None:
+            request.max_tokens = cap
+            return
+        if isinstance(requested, bool) or not isinstance(requested, int):
+            return
+        if requested <= cap:
+            return
+
+        request.raw["_anvil_output_clamp"] = {
+            "requested": requested,
+            "applied": cap,
+        }
+        request.max_tokens = cap
+        for key in ("max_tokens", "max_completion_tokens", "max_output_tokens"):
+            if key in request.raw:
+                request.raw[key] = cap
+        print(
+            "[anvil] warning output limit clamped "
+            f"route={normalize_model_alias(request.model)} tier={tier.id} "
+            f"requested={requested} applied={cap}",
+            file=sys.stderr,
+            flush=True,
+        )
+
     def generate(self, request: InternalRequest) -> Iterator[str]:
         """Resolve once, check local constraints, then relay with no fallback."""
         self._thread_local.last_result = None
@@ -291,6 +322,8 @@ class RoutingBackend:
         tier = self._config.route_tier(request.model)
         if tier is None:
             raise NoAvailableTierError(request.model, (), kind="unknown_model")
+
+        self._apply_output_cap(request, tier)
 
         if self._prompt_tokens(request) > tier.context_limit:
             self._record(request, tier, served=False, reason="over_context", outcome="skipped")
@@ -352,7 +385,14 @@ class RoutingBackend:
                 if isinstance(usage, Mapping) else estimate_tokens([text])
             )
             self._record(
-                request, tier, served=True, reason="served",
+                request,
+                tier,
+                served=True,
+                reason=(
+                    "served_output_clamped"
+                    if "_anvil_output_clamp" in request.raw
+                    else "served"
+                ),
                 completion_tokens=completion_tokens, outcome="served",
             )
 

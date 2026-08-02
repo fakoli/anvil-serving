@@ -80,6 +80,7 @@ _TIER_KEYS = frozenset({
     "params",
     "timeout",
     "max_concurrency",
+    "max_output_tokens",
     "health_path",
     "model_identity",
 })
@@ -183,6 +184,11 @@ class Tier:
     # default-unset (NOT in ``_REQUIRED_TIER_KEYS``), so existing configs parse
     # unchanged with it reading as ``None``.
     max_concurrency: Optional[int] = None
+    # Optional per-tier completion ceiling. Requests above this value are
+    # clamped before relay and receive client-visible warning headers. Absent
+    # preserves caller/upstream behavior. This is a runtime safety envelope,
+    # distinct from the full input+output ``context_limit``.
+    max_output_tokens: Optional[int] = None
     # Optional readiness path on the same scheme/authority as ``base_url``.
     # When set on a local tier, the router probes it before dispatch and keeps
     # an unavailable container out of the candidate pool. Absent preserves the
@@ -528,6 +534,22 @@ def _parse_tier(raw: object) -> Tier:
             )
         tier_max_concurrency = raw_max_concurrency
 
+    raw_max_output_tokens = raw.get("max_output_tokens")
+    tier_max_output_tokens: Optional[int] = None
+    if raw_max_output_tokens is not None:
+        if (
+            isinstance(raw_max_output_tokens, bool)
+            or not isinstance(raw_max_output_tokens, int)
+            or raw_max_output_tokens <= 0
+            or raw_max_output_tokens > context_limit
+        ):
+            raise ConfigError(
+                f"tier {tid!r}: max_output_tokens must be a positive integer "
+                f"no greater than context_limit ({context_limit}) or absent, "
+                f"got {raw_max_output_tokens!r}"
+            )
+        tier_max_output_tokens = raw_max_output_tokens
+
     raw_health_path = raw.get("health_path")
     health_path: Optional[str] = None
     if raw_health_path is not None:
@@ -579,6 +601,7 @@ def _parse_tier(raw: object) -> Tier:
         params=params,
         timeout=tier_timeout,
         max_concurrency=tier_max_concurrency,
+        max_output_tokens=tier_max_output_tokens,
         health_path=health_path,
         model_identity=raw_model_identity,
     )

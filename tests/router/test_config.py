@@ -146,6 +146,25 @@ health_path = "/health"''',
     assert config.availability_probe_timeout == 0.5
 
 
+def test_per_tier_output_cap_is_optional_and_bounded_by_context(tmp_path):
+    config = load(_write(tmp_path, _ONE_TIER))
+    assert config.tier("primary").max_output_tokens is None
+
+    capped = _ONE_TIER.replace(
+        "context_limit = 4096",
+        "context_limit = 4096\nmax_output_tokens = 1024",
+    )
+    assert load(_write(tmp_path, capped)).tier("primary").max_output_tokens == 1024
+
+    for invalid_value in ("0", "-1", "true", '"1024"', "4097"):
+        invalid = capped.replace(
+            "max_output_tokens = 1024",
+            f"max_output_tokens = {invalid_value}",
+        )
+        with pytest.raises(ConfigError, match="max_output_tokens.*context_limit"):
+            load(_write(tmp_path, invalid))
+
+
 def test_purpose_model_routes_remain_independent_of_chat_aliases(tmp_path):
     config = load(_write(tmp_path, _ONE_TIER + """
 [[router.purpose_models]]

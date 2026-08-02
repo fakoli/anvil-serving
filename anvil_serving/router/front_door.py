@@ -178,6 +178,34 @@ def _correlation_from_headers(headers) -> dict:
     return {key: value for key, raw in values.items() if (value := safe_correlation(raw)) is not None}
 
 
+def _output_clamp_headers(request) -> dict[str, str]:
+    """Return bounded client-visible metadata for an applied tier clamp."""
+    raw = getattr(request, "raw", {})
+    marker = raw.get("_anvil_output_clamp") if isinstance(raw, dict) else None
+    if not isinstance(marker, dict):
+        return {}
+    requested = marker.get("requested")
+    applied = marker.get("applied")
+    if (
+        isinstance(requested, bool)
+        or not isinstance(requested, int)
+        or isinstance(applied, bool)
+        or not isinstance(applied, int)
+        or requested <= applied
+        or applied <= 0
+    ):
+        return {}
+    return {
+        "Warning": (
+            '299 anvil-serving "max_tokens clamped from '
+            f'{requested} to {applied}"'
+        ),
+        "X-Anvil-Warning": "max_tokens_clamped",
+        "X-Anvil-Max-Tokens-Requested": str(requested),
+        "X-Anvil-Max-Tokens-Applied": str(applied),
+    }
+
+
 def _make_handler(backend: Backend, timeout: Optional[float],
                   model_routes: Iterable[str], exhaustion_status: int = 503,
                   auth_token: Optional[str] = None,
@@ -402,6 +430,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream")
                 self.send_header("Cache-Control", "no-cache")
+                for _h_name, _h_val in _output_clamp_headers(request).items():
+                    self.send_header(_h_name, _h_val)
                 if chunked:
                     # Respect the request's Connection intent; BaseHTTPRequestHandler
                     # already populated close_connection from the request headers.
@@ -1198,7 +1228,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._error(500, "internal_error", "internal error",
                                 dialect=dialect)
                     return
-                self._json(200, payload)
+                self._json(
+                    200,
+                    payload,
+                    extra_headers=_output_clamp_headers(request),
+                )
 
         def log_message(self, *args) -> None:  # keep the server quiet
             pass
