@@ -1,6 +1,7 @@
 """Hermetic one-workstation/two-GPU transition behavior."""
 from __future__ import annotations
 
+import json
 import textwrap
 import threading
 import types
@@ -232,6 +233,15 @@ def _docker_run(states, journal):
     """Fake docker seam: inspect answers from `states`; a stop is journaled
     (ordering evidence) and flips the container to exited."""
     def run(argv, **kwargs):
+        if isinstance(argv, list) and argv[:3] == ["docker", "ps", "-a"]:
+            rows = [
+                json.dumps({"Names": name, "State": state})
+                for name, state in states.items()
+                if state != "absent"
+            ]
+            return types.SimpleNamespace(
+                returncode=0, stdout="\n".join(rows), stderr=""
+            )
         if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
             state = states.get(argv[-1], "absent")
             if state == "absent":

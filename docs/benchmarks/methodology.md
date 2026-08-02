@@ -100,6 +100,12 @@ first-visible TTFT, reasoning-chunk count, and a generation interval beginning
 at first output. Failed reasoning-only completions remain failures rather than
 being silently converted into visible latency samples.
 
+Context ladders retain the same timing and token fields on every context row,
+not only in the run-level percentile summary. A ladder may be cold, warmed, or
+prefix-cached; publish that state and the endpoint-reported cached-token count
+per row. Do not merge cold and warmed rows into one percentile or describe a
+client-observed TTFO-derived rate as standalone kernel prefill.
+
 **Percentiles.** Capacity summaries use the nearest-rank method over successful
 samples. Sort the values, compute `ceil(percentile * sample_count / 100)`, and
 select that one-based rank. Failed requests are reported separately rather than

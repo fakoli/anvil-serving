@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 
+from ....model_controls import REASONING_EFFORT_CHOICES
 from ....benchmarking.artifacts import (
     benchmark_key_metrics as _benchmark_key_metrics,
 )
@@ -371,7 +372,7 @@ FAMILY = ToolFamily(
                     },
                     "reasoning_effort": {
                         "type": "string",
-                        "enum": ["none", "minimal", "low", "medium", "high"],
+                        "enum": list(REASONING_EFFORT_CHOICES),
                     },
                     "reasoning_evidence": {
                         "type": "string",
