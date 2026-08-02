@@ -29,6 +29,27 @@ def _bytes(gb):
     return str(int(gb * 1024 ** 3))
 
 
+class _SharedMemoryRun:
+    def __init__(self, scans, *, containers=None):
+        self.scans = list(scans)
+        self.containers = containers or []
+        self.calls = []
+
+    def __call__(self, argv, **_kwargs):
+        self.calls.append(argv)
+        if argv[:3] == ["docker", "ps", "-q"]:
+            return proc(0, "\n".join(row["Id"] for row in self.containers))
+        if argv[:2] == ["docker", "inspect"]:
+            container_id = argv[2]
+            row = next(row for row in self.containers if row["Id"] == container_id)
+            return proc(0, json.dumps([row]))
+        if argv[0] == "wsl" and "sh" in argv:
+            return proc(0, self.scans.pop(0))
+        if argv[0] == "wsl" and "rm" in argv:
+            return proc(0)
+        raise AssertionError("unexpected command: %r" % argv)
+
+
 # ---- recommend_wsl_memory_gb (the safe-cap math) -----------------------------
 
 def test_recommend_leaves_a_windows_reserve():
@@ -591,6 +612,98 @@ def test_reclaim_watch_waits_out_a_streaming_load(monkeypatch, capsys):
     assert "waiting" in capsys.readouterr().out
 
 
+# ---- vLLM native KV-offload shared-memory lifecycle ------------------------
+
+def test_shared_memory_inspection_classifies_unmapped_orphan(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    path = "/dev/shm/vllm_offload_1234-abcd.mmap"
+    run = _SharedMemoryRun([path + "\t8589934592\t\n"])
+
+    report = host.inspect_vllm_offload_shared_memory(_run=run)
+
+    assert report["available"] is True
+    assert report["active_containers"] == []
+    assert report["reclaimable_files"] == [path]
+    assert report["reclaimable_bytes"] == 8589934592
+
+
+def test_shared_memory_inspection_blocks_mapped_or_active_files(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    path = "/dev/shm/vllm_offload_live.mmap"
+    container_id = "a" * 12
+    run = _SharedMemoryRun(
+        [path + "\t1024\t763,764\n"],
+        containers=[{
+            "Id": container_id,
+            "Name": "/deepseek",
+            "Config": {"Env": ["KV_OFFLOADING_SIZE=8"], "Cmd": []},
+            "Args": [],
+        }],
+    )
+
+    report = host.inspect_vllm_offload_shared_memory(_run=run)
+
+    assert report["available"] is True
+    assert report["reclaimable_files"] == []
+    assert report["active_containers"] == [{"id": container_id, "name": "deepseek"}]
+    assert "native KV offload container is running" in report["blocked_reasons"]
+    assert "offload mmap is mapped by a live process" in report["blocked_reasons"]
+
+
+def test_shared_memory_reclaim_requires_two_matching_scans_and_checks_postcondition(
+    monkeypatch,
+):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    path = "/dev/shm/vllm_offload_orphan.mmap"
+    row = path + "\t4096\t\n"
+    run = _SharedMemoryRun([row, row, ""])
+
+    result = host.reclaim_vllm_offload_shared_memory(confirm=True, _run=run)
+
+    assert result["outcome"] == "reclaimed"
+    assert result["removed_files"] == [path]
+    rm = next(call for call in run.calls if "rm" in call)
+    assert rm[-2:] == ["--", path]
+
+
+def test_shared_memory_reclaim_refuses_when_second_scan_changes(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    path = "/dev/shm/vllm_offload_orphan.mmap"
+    run = _SharedMemoryRun([path + "\t4096\t\n", path + "\t4096\t99\n"])
+
+    result = host.reclaim_vllm_offload_shared_memory(confirm=True, _run=run)
+
+    assert result["outcome"] == "changed"
+    assert not any("rm" in call for call in run.calls)
+
+
+def test_shared_memory_command_honors_top_level_confirmation_scope(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    path = "/dev/shm/vllm_offload_orphan.mmap"
+    row = path + "\t4096\t\n"
+    run = _SharedMemoryRun([row, row, ""])
+
+    with host.guard.confirmation_scope(True):
+        rc = host.cmd_shared_memory_reclaim(_run=run)
+
+    assert rc == 0
+    assert any("rm" in call for call in run.calls)
+
+
+def test_container_native_offload_detection_is_explicit():
+    row = {
+        "Config": {"Env": ["KV_OFFLOADING_SIZE=8"], "Cmd": ["serve"]},
+        "Args": [],
+    }
+    assert host.container_uses_native_kv_offload(
+        "candidate", _run=lambda *_a, **_k: proc(0, json.dumps([row]))
+    ) is True
+    row["Config"]["Env"] = ["KV_OFFLOADING_SIZE=0"]
+    assert host.container_uses_native_kv_offload(
+        "candidate", _run=lambda *_a, **_k: proc(0, json.dumps([row]))
+    ) is False
+
+
 # ---- CLI dispatch ------------------------------------------------------------
 
 def test_main_dispatches(monkeypatch):
@@ -619,6 +732,24 @@ def test_main_dispatches_status_and_disruptive_dry_run(monkeypatch):
     assert host.main(["status"]) == 0
     assert host.main(["restart-docker", "--dry-run"]) == 0
     assert seen == ["status", ("restart", {"force": False, "dry_run": True})]
+
+
+def test_main_dispatches_shared_memory_commands(monkeypatch):
+    seen = []
+    monkeypatch.setattr(
+        host, "cmd_shared_memory_status",
+        lambda **kwargs: seen.append(("status", kwargs)) or 0,
+    )
+    monkeypatch.setattr(
+        host, "cmd_shared_memory_reclaim",
+        lambda **kwargs: seen.append(("reclaim", kwargs)) or 0,
+    )
+    assert host.main(["shared-memory-status"]) == 0
+    assert host.main(["shared-memory-reclaim", "--confirm"]) == 0
+    assert seen == [
+        ("status", {"distro": "docker-desktop"}),
+        ("reclaim", {"confirm": True, "distro": "docker-desktop"}),
+    ]
 
 
 # ---- persistent lifecycle cache-reclaim policy ------------------------------

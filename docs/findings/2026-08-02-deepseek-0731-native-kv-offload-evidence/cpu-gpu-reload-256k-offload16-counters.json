@@ -1,0 +1,109 @@
+{
+  "schema": "anvil-serving.kv-offload-replay/v1",
+  "observed_at": "2026-08-02T06:19:07Z",
+  "model": {
+    "repo": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "served_name": "deepseek-v4-flash-0731-r16-b12x-dspark5-offload16-wsl2-mmap-unpinned-tp2-256k"
+  },
+  "runtime": {
+    "image": "anvil-vllm@sha256:331b79259b9532788b44f13696d484a0d1d576231c6ad397c0f0faf72b85cd86",
+    "engine": "v0.11.2.dev280+gilded.gnosis.v20.vllm1e9c9c3.sieec30ff.fi801d57a.cu132.20260731.r16",
+    "recipe": "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload16-wsl2-mmap-unpinned-recipe.toml"
+  },
+  "topology": {
+    "mode": "dual-gpu-exclusive",
+    "tensor_parallel_size": 2,
+    "gpu_roles": ["dark-compute-a", "dark-compute-b"],
+    "gpu": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "interconnect": "PCIe without NVLink"
+  },
+  "cache": {
+    "max_model_len": 262144,
+    "gpu_kv_cache_tokens": 506283,
+    "cpu_offload_gib": 16,
+    "cpu_mmap_bytes": 17177796608,
+    "kv_dtype": "fp8",
+    "prefix_caching": true
+  },
+  "eviction_sequence": {
+    "artifact": "eviction-sequence-256k-offload16-6x150k.json",
+    "requests": 6,
+    "concurrency": 1,
+    "planned_context_tokens_each": 150000,
+    "prefix_queries_after": 682044,
+    "gpu_prefix_hits_after": 26624,
+    "external_prefix_hits_after": 0,
+    "gpu_to_cpu_bytes_after": 13627722240,
+    "cpu_to_gpu_bytes_after": 0,
+    "visible_answer_passes": 4,
+    "reasoning_only_failures": 2,
+    "failed_request_indices": [1, 4]
+  },
+  "replay": {
+    "artifact": "replay-256k-offload16-prompt0-150k.json",
+    "exact_prompt_identity": "A new one-request capacity run recreates request index 0 with the same 8000-token shared prefix, 150000-token target, seed 0, and prompt constructor.",
+    "planned_context_tokens": 150000,
+    "prompt_tokens": 113674,
+    "cached_prompt_tokens": 113408,
+    "cached_fraction": 0.9976599750162746,
+    "gpu_prefix_hits_before": 26624,
+    "gpu_prefix_hits_after": 26624,
+    "gpu_prefix_hits_delta": 0,
+    "external_prefix_hits_before": 0,
+    "external_prefix_hits_after": 113408,
+    "external_prefix_hits_delta": 113408,
+    "cpu_to_gpu_bytes_before": 0,
+    "cpu_to_gpu_bytes_after": 1001721600,
+    "cpu_to_gpu_bytes_delta": 1001721600,
+    "cpu_to_gpu_seconds_delta": 0.3436592254638672,
+    "gpu_to_cpu_bytes_delta": 0,
+    "time_to_first_output_ms": 824.5862000039779,
+    "time_to_first_visible_token_ms": 1974.085699999705,
+    "end_to_end_ms": 2192.102500004694,
+    "effective_prefill_tokens_per_second": 137855.8117992414,
+    "decode_tokens_per_second": 117.73168626941829,
+    "output_tokens": 162,
+    "visible_answer": true
+  },
+  "offload8_control": {
+    "sequence": "70K, 80K, 100K, then 70K replay",
+    "artifacts": [
+      "prefix-sequence-256k-70k.json",
+      "prefix-sequence-256k-80k.json",
+      "prefix-sequence-256k-100k.json",
+      "prefix-sequence-256k-70k-replay-offload8.json"
+    ],
+    "gpu_kv_cache_tokens": 503468,
+    "cpu_offload_gib": 8,
+    "cpu_to_gpu_bytes_after": 0,
+    "external_prefix_hits_after": 0,
+    "gpu_prefix_hits_after": 163584,
+    "replay_cached_fraction": 0.99838622915546,
+    "interpretation": "The replay remained in GPU cache. At the measured bytes per stored token, the 8 GiB CPU tier was smaller than the GPU KV tier and was not a valid GPU-eviction reload setup."
+  },
+  "restoration": {
+    "managed_leave_seconds": 170.2,
+    "cpu_mmap_reclaimed_bytes": 17177796608,
+    "remaining_offload_mmap_files": 0,
+    "wsl_page_cache_gb_before": 17.7,
+    "wsl_page_cache_gb_after": 0.9,
+    "mode": "split",
+    "dark_compute_a_owners": [],
+    "dark_compute_b_owners": ["omni"]
+  },
+  "sources": [
+    {
+      "url": "https://docs.vllm.ai/en/v0.26.0/features/kv_offloading_usage/",
+      "observed_date": "2026-08-02",
+      "evidence_type": "official documentation",
+      "decision_impact": "Size CPU offload above aggregate GPU KV capacity for a useful single-tier reload test."
+    },
+    {
+      "url": "https://github.com/local-inference-lab/rtx6kpro/blob/7ffa54e28da423200855d1792b485f9e84648232/models/ds4dspark-v20.md",
+      "observed_date": "2026-08-02",
+      "evidence_type": "pinned community recipe",
+      "decision_impact": "Use counter-backed store, eviction, and replay rather than treating ordinary GPU prefix hits as CPU reload proof."
+    }
+  ]
+}

@@ -1615,6 +1615,38 @@ def test_recipe_container_unload_rechecks_identity_before_exact_remove(capsys):
     assert "unloaded recipe container" in capsys.readouterr().out
 
 
+def test_recipe_container_unload_reclaims_native_offload_after_remove(
+    monkeypatch,
+):
+    calls = []
+    recipe = {
+        **_recipe_identity(),
+        "serve": {"env": ["KV_OFFLOADING_SIZE=8"]},
+    }
+
+    def fake(argv, **_kwargs):
+        calls.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return types.SimpleNamespace(
+                returncode=0, stdout=_recipe_container_inspect(), stderr="",
+            )
+        return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    reclaimed = []
+    monkeypatch.setattr(
+        models.host_ops, "prepare_native_kv_offload_shared_memory",
+        lambda: reclaimed.append(list(calls)) or {"outcome": "reclaimed"},
+    )
+    monkeypatch.setattr(
+        models.host_ops, "render_vllm_offload_shared_memory", lambda _result: None,
+    )
+
+    assert models._recipe_container_unload(
+        recipe, "recipe-heavy", confirm=True, _run=fake,
+    ) == 0
+    assert reclaimed and ["docker", "rm", "-f", "recipe-heavy"] in reclaimed[0]
+
+
 def test_recipe_container_operations_refuse_unlabeled_container():
     def fake(_argv, **_kwargs):
         return types.SimpleNamespace(
@@ -1693,6 +1725,40 @@ def test_recipe_load_strict_cache_failure_precedes_gpu_allocation(
     err = capsys.readouterr().err
     assert "cache preflight failed before GPU allocation" in err
     assert "models pull org/model --revision" in err
+
+
+def test_native_offload_recipe_load_refuses_before_docker_when_shm_is_not_safe(
+    request, monkeypatch, capsys,
+):
+    recipe = {
+        "model": "org/deepseek",
+        "serve": {
+            "image": "example/vllm:pinned",
+            "env": ["KV_OFFLOADING_SIZE=8"],
+        },
+    }
+    loaded = []
+    monkeypatch.setattr(models.serve_recipes, "find_recipe", lambda *_args: recipe)
+    monkeypatch.setattr(
+        models.host_ops, "prepare_native_kv_offload_shared_memory",
+        lambda: {"outcome": "blocked", "inspection": {"available": True}},
+    )
+    monkeypatch.setattr(
+        models.host_ops, "render_vllm_offload_shared_memory", lambda _result: None,
+    )
+    monkeypatch.setattr(
+        models.serve_recipes, "load_recipe",
+        lambda *_args, **_kwargs: loaded.append(True) or (["docker", "run"], 0),
+    )
+
+    rc = models.main([
+        "recipe", "load", "org/deepseek", "--container", "candidate",
+        "--registry", _registry(request), "--confirm",
+    ])
+
+    assert rc == 1
+    assert loaded == []
+    assert "shared-memory ownership" in capsys.readouterr().err
 
 
 def test_recipe_load_uses_recipe_specific_startup_timeout(

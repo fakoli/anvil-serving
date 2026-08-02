@@ -1,0 +1,122 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39067/v1",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-offload8-wsl2-mmap-unpinned-tp2-128k",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": "low"
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 1024,
+    "max_completion_tokens": 1280
+  },
+  "multimodal_input": null,
+  "video_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [],
+  "checks": [
+    "smoke",
+    "json",
+    "needle"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "3.1s got='The one-liner is simply:\\n\\n```python\\nsum(xs)\\n```\\n\\nI' finish='stop' visible=120 reasoning_chars=1457 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=171 reasoning_tokens=None"
+    },
+    {
+      "name": "needle @ ~8192 ctx",
+      "passed": true,
+      "detail": "1.4s ctx~8192 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=83 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "The one-liner is simply:\n\n```python\nsum(xs)\n```\n\nIf you need a callable function, use:\n\n```python\nlambda xs: sum(xs)\n```",
+      "finish_reason": "stop",
+      "content_chars": 120,
+      "content_excerpt": "The one-liner is simply:\n\n```python\nsum(xs)\n```\n\nIf you need a callable function, use:\n\n```python\nlambda xs: sum(xs)\n```",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 1457,
+      "reasoning_excerpt": "We need to write a Python one-liner that returns the sum of a list `xs`. The user likely expects a lambda or a function definition in one line. The simplest is `sum(xs)`. But that's too trivial. Maybe",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 20,
+        "total_tokens": 441,
+        "completion_tokens": 421,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "smoke",
+      "seconds": 3.131,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 171,
+      "reasoning_excerpt": "We need to output only a JSON object as specified. The user said \"Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.\" So we just output that exact JSON.",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 22,
+        "total_tokens": 74,
+        "completion_tokens": 52,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "json",
+      "seconds": 0.457,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 83,
+      "reasoning_excerpt": "We need to answer with only the launch code. The launch code is ZEBRA-42917-QUARTZ.",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 7410,
+        "total_tokens": 7447,
+        "completion_tokens": 37,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "needle",
+      "seconds": 1.384,
+      "passed": true,
+      "validation_detail": "needle present"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "required",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}
