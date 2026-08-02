@@ -39,6 +39,13 @@ under `configs/kernel-tunes/` with an exact compatibility manifest. A tune is
 recommended only after identical untuned-versus-tuned functional and
 end-to-end performance evidence; storage never activates it.
 
+Coordinated package releases and Mini-to-Dark deployments use
+`skills/anvil-serving-release-readiness/SKILL.md`. It joins merged-tree and
+artifact gates with manifest-derived container file closure, exact endpoint
+version parity, rollback, and real Pi/OpenClaw client smokes. A published
+package or healthy single endpoint is not closure while an in-scope outage or
+version skew remains.
+
 All LLM, vision, Omni, STT, and TTS publication phases use
 `skills/anvil-serving-benchmark-docs/SKILL.md`. The required matrix is:
 
