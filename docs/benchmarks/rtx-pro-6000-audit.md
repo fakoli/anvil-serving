@@ -1,7 +1,7 @@
 # RTX PRO 6000 mention audit
 
 This audit classifies every tracked Markdown file containing an RTX PRO 6000
-name at the 2026-08-01 review. Evidence-directory Markdown is classified with
+name at the 2026-08-02 review. Evidence-directory Markdown is classified with
 its own file, not inherited implicitly from the parent finding. This is a
 coverage control; benchmark results remain in the [run catalog](runs.md).
 
@@ -59,6 +59,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md`;
 `docs/findings/2026-08-01-deepseek-v4-flash-0731-research-update.md`;
 `docs/findings/2026-08-01-dual-pro-tp2-model-campaign.md`;
+`docs/findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/2026-07-27-release-sweep-fixes.md`;
 `.tickets/2026-07-28-agents-a1-multimodal-qualification.md`;
@@ -68,6 +69,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `.tickets/2026-08-01-deepseek-dspark-sm120-w8a8-tune.md`;
 `.tickets/2026-08-01-sglang-inkling-modelopt-missing-accelerate.md`;
 `.tickets/2026-08-01-sglang-inkling-sm120-grouped-gemm-shared-memory.md`;
+`.tickets/2026-08-02-deepseek-r16-native-kv-offload-illegal-access.md`;
 `examples/fakoli-dark/q36/README.md`.
 
 ## `protected/co-resident`

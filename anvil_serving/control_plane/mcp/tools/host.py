@@ -43,6 +43,14 @@ def tool_gpu_inventory(args: dict) -> dict:
     return _ok({"gpus": gpus.list_gpus()})
 
 
+def tool_host_shared_memory(args: dict) -> dict:
+    from .... import host
+
+    if args:
+        raise ToolError("bad_argument", "host_shared_memory does not accept arguments")
+    return _ok(host.inspect_vllm_offload_shared_memory())
+
+
 def tool_observability_collect(args: dict) -> dict:
     from ....observability.api import controller_collect
 
@@ -59,8 +67,11 @@ def tool_host_manage(args: dict) -> dict:
     from .... import host
 
     action = _str_arg(args, "action", required=True)
-    if action not in {"wsl-config", "restart-docker", "reset-wsl"}:
-        raise ToolError("bad_action", "action must be wsl-config, restart-docker, or reset-wsl")
+    if action not in {"wsl-config", "restart-docker", "reset-wsl", "reclaim-shared-memory"}:
+        raise ToolError(
+            "bad_action",
+            "action must be wsl-config, restart-docker, reset-wsl, or reclaim-shared-memory",
+        )
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     force = _arg_bool(args.get("force"), False, name="force")
@@ -76,6 +87,9 @@ def tool_host_manage(args: dict) -> dict:
     }
     if action != "wsl-config" and any(key in args for key in ("memory", "swap", "revert", "force")):
         raise ToolError("bad_argument", "memory, swap, revert, and force apply only to wsl-config")
+    if action == "reclaim-shared-memory":
+        inspection = host.inspect_vllm_offload_shared_memory()
+        target["inspection"] = inspection
     if dry_run or not confirm:
         return _ok({"applied": False, "dry_run": True, "target": target})
     if action == "wsl-config":
@@ -89,6 +103,10 @@ def tool_host_manage(args: dict) -> dict:
         )
     elif action == "restart-docker":
         rc, stdout, stderr = _capture(lambda: host.cmd_restart_docker(force=True))
+    elif action == "reclaim-shared-memory":
+        rc, stdout, stderr = _capture(
+            lambda: host.cmd_shared_memory_reclaim(confirm=True)
+        )
     else:
         rc, stdout, stderr = _capture(lambda: host.cmd_reset_wsl(force=True))
     result = {
@@ -126,6 +144,14 @@ FAMILY = ToolFamily(
             "description": "Return the local NVIDIA GPU inventory with stable UUIDs.",
             "inputSchema": _schema({}),
             "handler": tool_gpu_inventory,
+        },
+        "host_shared_memory": {
+            "description": (
+                "Inspect vLLM native KV-offload mmap ownership and reclaim eligibility "
+                "without changing host state."
+            ),
+            "inputSchema": _schema({}),
+            "handler": tool_host_shared_memory,
         },
         "observability_collect": {
             "description": "Collect bounded structured telemetry from declared local capabilities.",

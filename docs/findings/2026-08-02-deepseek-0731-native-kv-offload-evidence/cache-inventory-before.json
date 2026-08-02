@@ -1,0 +1,1097 @@
+{
+  "cache": {
+    "available_bytes": 327112200192,
+    "capacity_bytes": 2163361103872,
+    "logical_bytes": 166906120779,
+    "path": "/root/.cache/huggingface",
+    "used_bytes": 1737276084224
+  },
+  "docker": {
+    "build_cache": [
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:24.397911845 +0000 UTC",
+        "id": "8aeoqbn5e42rk4cfpnrae01h5*",
+        "in_use": true,
+        "last_used_at": "",
+        "size_bytes": 20500,
+        "usage_count": 0
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:24.547616766 +0000 UTC",
+        "id": "qvkpmhggxrflw4zst0f1quak3*",
+        "in_use": true,
+        "last_used_at": "",
+        "size_bytes": 12300,
+        "usage_count": 0
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:28.41283703 +0000 UTC",
+        "id": "qyufqexfulolqs34am0z4uo7c*",
+        "in_use": true,
+        "last_used_at": "",
+        "size_bytes": 107000000,
+        "usage_count": 0
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:24.371758591 +0000 UTC",
+        "id": "t85yy5kog09525lrt13lq6x2x*",
+        "in_use": true,
+        "last_used_at": "",
+        "size_bytes": 7690000,
+        "usage_count": 0
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:28.498279104 +0000 UTC",
+        "id": "wg8oc3xp0dfkc4fmi23v32uv4*",
+        "in_use": true,
+        "last_used_at": "",
+        "size_bytes": 28700,
+        "usage_count": 0
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:24.405059939 +0000 UTC",
+        "id": "x66cuy0f5o4meq2mqsiwdk8hh*",
+        "in_use": true,
+        "last_used_at": "",
+        "size_bytes": 20500,
+        "usage_count": 0
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:28.459598318 +0000 UTC",
+        "id": "xvbk1bug2xbfhyomqx4q69h7p*",
+        "in_use": true,
+        "last_used_at": "",
+        "size_bytes": 36900,
+        "usage_count": 0
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.243827847 +0000 UTC",
+        "id": "rjp9ovku8h3qvqtkz5lc5aavl*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.327436883 +0000 UTC",
+        "size_bytes": 117000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.278196591 +0000 UTC",
+        "id": "d68ikyqb2tdbb815nzb9ybnag*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.362147228 +0000 UTC",
+        "size_bytes": 17100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.317723653 +0000 UTC",
+        "id": "8x2fvy3rx0s05p67mruk2nnx8*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.392687459 +0000 UTC",
+        "size_bytes": 2100000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.343868424 +0000 UTC",
+        "id": "4dkusin5uu20jlnot639c51x1*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.447365357 +0000 UTC",
+        "size_bytes": 427000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.377497088 +0000 UTC",
+        "id": "s30o3lwzo2nljq3y567afhfp6*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.463166836 +0000 UTC",
+        "size_bytes": 4130,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.408475303 +0000 UTC",
+        "id": "zdjwx1wk42ut8gj63m6kufwhd*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.476444994 +0000 UTC",
+        "size_bytes": 16600,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.570834055 +0000 UTC",
+        "id": "82vu9rmq31yqefzjrh6fsj1lt*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.605180578 +0000 UTC",
+        "size_bytes": 3630000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.594235133 +0000 UTC",
+        "id": "z2jne2av78k5f8v57otaox1th*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.632517161 +0000 UTC",
+        "size_bytes": 355000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.623337412 +0000 UTC",
+        "id": "yhv6fp5rocgkhuco6flp03q30*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.683795024 +0000 UTC",
+        "size_bytes": 46700,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.667947963 +0000 UTC",
+        "id": "j2x900yx4fuyceo2za2puxsip*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.718696011 +0000 UTC",
+        "size_bytes": 17900,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.708178277 +0000 UTC",
+        "id": "miz09b0xcf3ewkqcz4szgvidz*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.747849437 +0000 UTC",
+        "size_bytes": 7160000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.737813932 +0000 UTC",
+        "id": "rlpjvh5ul5xpc6esqszj2b9et*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:19:50.790288983 +0000 UTC",
+        "size_bytes": 20700,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:39.974710815 +0000 UTC",
+        "id": "e0dcleth8ufi4c1h8t64x6672*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.654812148 +0000 UTC",
+        "size_bytes": 12500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:40.9579988 +0000 UTC",
+        "id": "zqh06m9tlvqstebn0y1vqx86s*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.657734051 +0000 UTC",
+        "size_bytes": 32800,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:59.308202043 +0000 UTC",
+        "id": "mf968e3ijvmguz9lxgj8rbvn6*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.661528416 +0000 UTC",
+        "size_bytes": 16600,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:11.0805601 +0000 UTC",
+        "id": "ozwbtnvlqb85o8u4jupmwknko*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.670798179 +0000 UTC",
+        "size_bytes": 20500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:21:16.182269047 +0000 UTC",
+        "id": "kqw0xhja93ed8a2b2uejvlnq0*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.693549061 +0000 UTC",
+        "size_bytes": 922000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.776339719 +0000 UTC",
+        "id": "zqzmfdy57zwu1g59phooay4mf*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.697184309 +0000 UTC",
+        "size_bytes": 503000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:10.922219982 +0000 UTC",
+        "id": "j663bby5s0hp8lf98kjcq6hmo*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.699828858 +0000 UTC",
+        "size_bytes": 8189,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:21.429454065 +0000 UTC",
+        "id": "odfux0w3pjhga6f6bv4gll1c1*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.703906588 +0000 UTC",
+        "size_bytes": 9960000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:11.151431063 +0000 UTC",
+        "id": "s33n2qpq2at29fyek4o0h74uu*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.70650233 +0000 UTC",
+        "size_bytes": 12300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:11.005636834 +0000 UTC",
+        "id": "en5qn42kqvvyulrdpdjn6hg06*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.713022539 +0000 UTC",
+        "size_bytes": 16400,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:50.437000967 +0000 UTC",
+        "id": "e4covw4ci8dl0l3nn7b9p3a24*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.717064362 +0000 UTC",
+        "size_bytes": 31500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:23.133119296 +0000 UTC",
+        "id": "onucjw770sifqcx2ffjw8vp7v*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.719749043 +0000 UTC",
+        "size_bytes": 12300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:39.644402717 +0000 UTC",
+        "id": "mv2c2kwh3gs16nfm7p1pck4ee*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.723365444 +0000 UTC",
+        "size_bytes": 20600,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:05.076353899 +0000 UTC",
+        "id": "s14unom91qn6whnod3f6yzjht*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.726084353 +0000 UTC",
+        "size_bytes": 172000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:10.846812385 +0000 UTC",
+        "id": "dqduduf7p6n81ttotucl29g8w*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.732658924 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:11.222194893 +0000 UTC",
+        "id": "nlhh4ggk47a6avxud95xyi6ve*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.7362427 +0000 UTC",
+        "size_bytes": 16400,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:39.325701483 +0000 UTC",
+        "id": "9tpfaxmr95dfm0wb26ybjk5gc*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.753479427 +0000 UTC",
+        "size_bytes": 126000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:21.43609169 +0000 UTC",
+        "id": "8afnkf7szm5gg2hzvl3ezz9a7*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.759935031 +0000 UTC",
+        "size_bytes": 9980000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:10.537524628 +0000 UTC",
+        "id": "g43cd91ss9d5e9elqzxokbw7i*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.763634819 +0000 UTC",
+        "size_bytes": 178000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:19:58.983834062 +0000 UTC",
+        "id": "1vdw1s6w29y0hj01vhr01uyo4*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.766266217 +0000 UTC",
+        "size_bytes": 8300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:41.249294755 +0000 UTC",
+        "id": "jw947ynoavrbieutmam71240d*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.769892514 +0000 UTC",
+        "size_bytes": 12300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:05.380646342 +0000 UTC",
+        "id": "xilam32vcpczo1mwmqyxpuyf1*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.772429762 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:23.003509437 +0000 UTC",
+        "id": "zq6t3pvau0cblpznh3z661ikw*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.776052506 +0000 UTC",
+        "size_bytes": 24600,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:41.115669237 +0000 UTC",
+        "id": "7q6x3dyv6sdezp1q9edc26orl*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.778629122 +0000 UTC",
+        "size_bytes": 12300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:37.331194799 +0000 UTC",
+        "id": "xrwulh278aqnvvog9kfzb98ea*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.782287021 +0000 UTC",
+        "size_bytes": 3960000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:40.540332901 +0000 UTC",
+        "id": "5p83y6if6d62turxsy8eo9fgb*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:25:24.785102799 +0000 UTC",
+        "size_bytes": 28700,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:22:40.426608807 +0000 UTC",
+        "id": "x72pmv5laugm6hi4rvuax92hd*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.590850282 +0000 UTC",
+        "size_bytes": 140000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:23.314412939 +0000 UTC",
+        "id": "ovhgnjd31s47ec6fk6olsb6qr*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.604200417 +0000 UTC",
+        "size_bytes": 16400,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:14.572519776 +0000 UTC",
+        "id": "mshtq2bh5gdtmtvptxm9ox7d3*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.60696953 +0000 UTC",
+        "size_bytes": 30800,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:23.599707517 +0000 UTC",
+        "id": "w1lw77ooqhf8pjrbftb94jo32*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.617274807 +0000 UTC",
+        "size_bytes": 127000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:15.133031674 +0000 UTC",
+        "id": "d7pqsuj48rdk0pr4o8pd5lzi4*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.623838199 +0000 UTC",
+        "size_bytes": 32800,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:22.967578739 +0000 UTC",
+        "id": "6v0jdam6zab9c9tf0xgm08dym*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.640431814 +0000 UTC",
+        "size_bytes": 92100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:15.25214 +0000 UTC",
+        "id": "x7hxbcuwstsmm5mgw6lyyjjl5*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.659444814 +0000 UTC",
+        "size_bytes": 14000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:23.141592028 +0000 UTC",
+        "id": "nhm86vbq4wl2p041jspzce293*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.663150697 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:23.391676377 +0000 UTC",
+        "id": "hc4myfilndb094wg3ercvl8es*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.67201129 +0000 UTC",
+        "size_bytes": 131000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:24.052039127 +0000 UTC",
+        "id": "fx80y3so43iq6f1mje220m0gj*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.684541779 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:14.580427498 +0000 UTC",
+        "id": "n86o61w33lghansz10185z5wk*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.688154251 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:23.239805242 +0000 UTC",
+        "id": "vlzxp001stfq17d2jy5vof159*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.703283269 +0000 UTC",
+        "size_bytes": 139000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:23.522728017 +0000 UTC",
+        "id": "wioc1xp9a8851rr02x5i4s525*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.724265946 +0000 UTC",
+        "size_bytes": 5690000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:23.685905567 +0000 UTC",
+        "id": "y6j8t9wr1i1nk5sqsbqrkqm15*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 21:27:28.726930244 +0000 UTC",
+        "size_bytes": 20500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:23.264193489 +0000 UTC",
+        "id": "tjw8aa5gdaz36mxfmoc8ewx1u*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 23:49:47.901729014 +0000 UTC",
+        "size_bytes": 12300,
+        "usage_count": 4
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:25:22.599667935 +0000 UTC",
+        "id": "m1tz0yt4cp0cstfjvv4bkdcdb*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 23:49:47.920388373 +0000 UTC",
+        "size_bytes": 12300,
+        "usage_count": 4
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:14.690386342 +0000 UTC",
+        "id": "sb2ubo2fpgx92hyn74jjrqcr2*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 23:49:48.023718022 +0000 UTC",
+        "size_bytes": 16400,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:24.141422192 +0000 UTC",
+        "id": "o4k1pqe9mct5v1s0m01pwxvmk*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 23:49:48.090954013 +0000 UTC",
+        "size_bytes": 24600,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-01 21:27:15.328347906 +0000 UTC",
+        "id": "shy4g0t3gzkubcknw0wfoe937*",
+        "in_use": true,
+        "last_used_at": "2026-08-01 23:49:48.09910161 +0000 UTC",
+        "size_bytes": 13300,
+        "usage_count": 3
+      }
+    ],
+    "containers": [
+      {
+        "container_id": "3bdf6b3612430300b0ef2b0f2c24ccf2ad7f23c0a31e7a217f8ac515ff4bc1a3",
+        "created_at": "2026-08-01 20:16:23 -0700 PDT",
+        "image_id": null,
+        "image_reference": "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e",
+        "name": "vllm-nemotron3-omni",
+        "state": "running",
+        "status": "Up About an hour"
+      },
+      {
+        "container_id": "bf2258866848ee5228eabdb2dde65fbc9f5fd69e0aa1fd5ef066af0d87261947",
+        "created_at": "2026-07-30 01:07:27 -0700 PDT",
+        "image_id": null,
+        "image_reference": "anvil-serving-controller:0.18.0",
+        "name": "anvil-serving-controller",
+        "state": "running",
+        "status": "Up 19 hours (healthy)"
+      },
+      {
+        "container_id": "4e14d4acb94930509f39cc1d23705f2dd6e9cc663d8f02a2d5a45d22af7b1120",
+        "created_at": "2026-07-28 10:52:02 -0700 PDT",
+        "image_id": null,
+        "image_reference": "anvil-serving:0.16.0",
+        "name": "anvil-router",
+        "state": "exited",
+        "status": "Exited (137) 21 hours ago"
+      },
+      {
+        "container_id": "124b7cfe173885987f8e43882549f00782e96eefb9edf9139518fcbcf5447a2f",
+        "created_at": "2026-07-27 17:19:23 -0700 PDT",
+        "image_id": null,
+        "image_reference": "anvil-workbench:local",
+        "name": "anvil-workbench-workbench-1",
+        "state": "exited",
+        "status": "Exited (0) 5 days ago"
+      },
+      {
+        "container_id": "310cf9baf8c5e56fdbc2ab1bf9ba81b2ddffbe760585bb6b977a516b5f5d3950",
+        "created_at": "2026-07-27 17:19:22 -0700 PDT",
+        "image_id": null,
+        "image_reference": "postgres:17-alpine",
+        "name": "anvil-workbench-db-1",
+        "state": "exited",
+        "status": "Exited (0) 5 days ago"
+      },
+      {
+        "container_id": "aa48182ce44d73be880268738625d3baae2b0cb6c6415ec2861b52474a755bdb",
+        "created_at": "2026-07-27 17:19:22 -0700 PDT",
+        "image_id": null,
+        "image_reference": "neo4j:2026.01",
+        "name": "anvil-workbench-neo4j-1",
+        "state": "exited",
+        "status": "Exited (137) 5 days ago"
+      },
+      {
+        "container_id": "9534f0c6a740872879dcc78ca4852967fdc366974985b815a6bb8e11820023aa",
+        "created_at": "2026-07-24 02:01:53 -0700 PDT",
+        "image_id": null,
+        "image_reference": "docker/desktop-docker-debug-service:0.0.47",
+        "name": "docker-labs-debug-tools-service-0.0.47",
+        "state": "exited",
+        "status": "Exited (255) 5 days ago"
+      }
+    ],
+    "images": [
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 16:44:17 -0700 PDT",
+        "image_id": "sha256:76de0c41d9b216e17e81cfe89d9989c14e693c36eb76efaa860f8b27ef35d806",
+        "last_container_observed_at": null,
+        "reference": "anvil-vllm:deepseek-v4-dspark-sm120-20260801",
+        "shared_bytes": 32,
+        "size_bytes": 26300000000,
+        "unique_bytes": 26280000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 08:52:22 -0700 PDT",
+        "image_id": "sha256:6a8afc5ca0036c1be8810443636d6f835702d1e2ae5a1d717990b0baf8e70a2f",
+        "last_container_observed_at": null,
+        "reference": "anvil-sglang:inkling-b90c0d76-sm120-wsl2-v6",
+        "shared_bytes": 46320000000,
+        "size_bytes": 46400000000,
+        "unique_bytes": 36180000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 08:46:19 -0700 PDT",
+        "image_id": "sha256:89a8847303cae01e528762ea3fbf9e6efdaa55f465085668f4a993ecff03ebc2",
+        "last_container_observed_at": null,
+        "reference": "anvil-sglang:inkling-b90c0d76-sm120-v5",
+        "shared_bytes": 46320000000,
+        "size_bytes": 46400000000,
+        "unique_bytes": 36070000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 08:40:16 -0700 PDT",
+        "image_id": "sha256:62e6f0e4fa0bc0fb35104dcd3ce6c4539ef4bc8539b230e2c2569286d29347cb",
+        "last_container_observed_at": null,
+        "reference": "anvil-sglang:inkling-b90c0d76-accelerate-sm120-v4",
+        "shared_bytes": 46320000000,
+        "size_bytes": 46400000000,
+        "unique_bytes": 35960000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 08:35:47 -0700 PDT",
+        "image_id": "sha256:8dd9297cbf99ac7e4bc8ca69267c9a133ab7273e55e9a2cd7ed362271ab0bf60",
+        "last_container_observed_at": null,
+        "reference": "anvil-sglang:inkling-b90c0d76-accelerate-pinned-cache-v3",
+        "shared_bytes": 46320000000,
+        "size_bytes": 46400000000,
+        "unique_bytes": 35860000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 08:34:17 -0700 PDT",
+        "image_id": "sha256:673947e9a603448fa3f7d6d7c0331f6226cea63f66bce11f33314cade36d1845",
+        "last_container_observed_at": null,
+        "reference": "anvil-sglang:inkling-b90c0d76-accelerate-pinned-cache-v2",
+        "shared_bytes": 46320000000,
+        "size_bytes": 46400000000,
+        "unique_bytes": 35640000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 08:32:48 -0700 PDT",
+        "image_id": "sha256:d632cfe638ec6aa5d24f8433910c451f4f5fb6cc2f164c9d1305add912fabcb9",
+        "last_container_observed_at": null,
+        "reference": "anvil-sglang:inkling-b90c0d76-accelerate-pinned-cache",
+        "shared_bytes": 46320000000,
+        "size_bytes": 46400000000,
+        "unique_bytes": 35600000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 08:27:36 -0700 PDT",
+        "image_id": "sha256:b0a32a63be5b5002ed43a15a23f1751ff493776e79f4ad5c7a067a5e0593da41",
+        "last_container_observed_at": null,
+        "reference": "anvil-sglang:inkling-b90c0d76-accelerate-1.14.0",
+        "shared_bytes": 46320000000,
+        "size_bytes": 46400000000,
+        "unique_bytes": 34940000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 06:34:54 -0700 PDT",
+        "image_id": "sha256:0aa5324c4f38bc66f4b55e1e12efab821ef614b1a8629259b2810ff72a6570e6",
+        "last_container_observed_at": null,
+        "reference": "anvil-sglang:deepseek-v4-984699c2-wsl2-nomultimem",
+        "shared_bytes": 44170000000,
+        "size_bytes": 44200000000,
+        "unique_bytes": 241700
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-31 14:28:11 -0700 PDT",
+        "image_id": "sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 117300000,
+        "size_bytes": 38000000000,
+        "unique_bytes": 37920000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-30 04:46:23 -0700 PDT",
+        "image_id": "sha256:b90c0d760a65bc4dbbe4520bea966c437cc40391dcb7cca2a74922985dc1abeb",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 46320000000,
+        "size_bytes": 46300000000,
+        "unique_bytes": 81710
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-07-30 01:07:24 -0700 PDT",
+        "image_id": "sha256:70feadfc5764613b6183962f5540ec5ec612b89ccbe0c042f901c955c0d497a2",
+        "last_container_observed_at": "2026-07-30 01:07:27 -0700 PDT",
+        "reference": "anvil-serving-controller:0.18.0",
+        "shared_bytes": 186200000,
+        "size_bytes": 348000000,
+        "unique_bytes": 161500000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-29 01:39:03 -0700 PDT",
+        "image_id": "sha256:2a20134de1583bbf36d344377d0b68a1748398bd26dc011c39ce6d89092e9a69",
+        "last_container_observed_at": null,
+        "reference": "anvil-vllm:agents-a1-fp8-tuned-f25953cc",
+        "shared_bytes": 28170000000,
+        "size_bytes": 28200000000,
+        "unique_bytes": 69980
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-07-28 10:45:13 -0700 PDT",
+        "image_id": "sha256:e0105cbeb45b995f2e13ae1c9345e9877884cdac3acce4bc59c390a2701ad385",
+        "last_container_observed_at": "2026-07-28 10:52:02 -0700 PDT",
+        "reference": "anvil-serving:0.16.0",
+        "shared_bytes": 186200000,
+        "size_bytes": 223000000,
+        "unique_bytes": 37210000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-28 00:03:23 -0700 PDT",
+        "image_id": "sha256:8bc0588b53f601ed2a8b9da23a89fa3d90f27bef70ea73d2efde2ba8f93ccc1c",
+        "last_container_observed_at": null,
+        "reference": "anvil-qwen3-asr:official-vllm-0.14.0",
+        "shared_bytes": 42850000000,
+        "size_bytes": 42900000000,
+        "unique_bytes": 126200
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-27 23:40:10 -0700 PDT",
+        "image_id": "sha256:311ee25ead30100674d2885d4b2fdfb5cf13c8e2748bbcc144f98b014a371bf8",
+        "last_container_observed_at": null,
+        "reference": "anvil-transformers-asr:5.13.0",
+        "shared_bytes": 118000000,
+        "size_bytes": 10300000000,
+        "unique_bytes": 10180000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-27 21:24:55 -0700 PDT",
+        "image_id": "sha256:89cd26b02d75404cf950516eefc524eff49cd5cb8d3f6e3818e374db395b0d21",
+        "last_container_observed_at": null,
+        "reference": "anvil-vllm:omni-small-audio-a65f93fb2",
+        "shared_bytes": 27710000000,
+        "size_bytes": 28000000000,
+        "unique_bytes": 299400000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-07-27 17:18:57 -0700 PDT",
+        "image_id": "sha256:0528ed0fdb44c523b8a1378e036afad826ea6e1ab19777faf8475fe301028b2c",
+        "last_container_observed_at": "2026-07-27 17:19:23 -0700 PDT",
+        "reference": "anvil-workbench:local",
+        "shared_bytes": 0,
+        "size_bytes": 299000000,
+        "unique_bytes": 298600000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-24 19:56:09 -0700 PDT",
+        "image_id": "sha256:1161da8a5edbdff239ab1812784d7fe5d28775c675809a8420e8a0a05d0e56d1",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 6918,
+        "size_bytes": 28200000000,
+        "unique_bytes": 28240000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-24 14:24:06 -0700 PDT",
+        "image_id": "sha256:984699c298a95b73c469b2191403ddc85fd780506e13c39c4afff3845e27bc6c",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 44170000000,
+        "size_bytes": 44200000000,
+        "unique_bytes": 84490
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-20 22:19:24 -0700 PDT",
+        "image_id": "sha256:212a1bd7b4267c604408d17dc0048ef152101bc67fbe6ba8567899fc1f227bcd",
+        "last_container_observed_at": null,
+        "reference": "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1",
+        "shared_bytes": 28170000000,
+        "size_bytes": 28200000000,
+        "unique_bytes": 46470
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-18 11:06:53 -0700 PDT",
+        "image_id": "sha256:470f7b7e39c4363696d5a79fd041d6a45253229a9ba1c055d089ddbdc0ed120c",
+        "last_container_observed_at": null,
+        "reference": "anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82",
+        "shared_bytes": 562500000,
+        "size_bytes": 26000000000,
+        "unique_bytes": 25480000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-18 10:13:34 -0700 PDT",
+        "image_id": "sha256:d3322b61d6a990d052e4d4646a6643c92ea5e8fdfde131480727bed0000e5cd8",
+        "last_container_observed_at": null,
+        "reference": "anvil-vllm:gpt-oss-puzzle-485463b3498ed3ffcf0c8fcb52c1670a21be5d82-python-overlay",
+        "shared_bytes": 26050000000,
+        "size_bytes": 26000000000,
+        "unique_bytes": 201400
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-17 10:44:29 -0700 PDT",
+        "image_id": "sha256:be132a9f282288de4afaf63379dff75711fda0147c6b72a9df44e51841402144",
+        "last_container_observed_at": null,
+        "reference": "docker:cli",
+        "shared_bytes": 12920000,
+        "size_bytes": 234000000,
+        "unique_bytes": 221100000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-17 05:28:51 -0700 PDT",
+        "image_id": "sha256:2191e2740c6aac83489e2e4de597f1cafdabc2ca21cf8e412d6430b8239ad362",
+        "last_container_observed_at": null,
+        "reference": "anvil-vllm:gpt-oss-puzzle-1bf3b12d5bbeb09136e8478e37133ab0ffad3e51",
+        "shared_bytes": 26050000000,
+        "size_bytes": 26000000000,
+        "unique_bytes": 45630
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-13 18:07:39 -0700 PDT",
+        "image_id": "sha256:4b048df5d4bd82a2f56bb3b5f844d161460d03604eb935a1c367dc75b9084656",
+        "last_container_observed_at": null,
+        "reference": "q36-engine:458eb018-cuda13.1.2",
+        "shared_bytes": 3798000000,
+        "size_bytes": 3830000000,
+        "unique_bytes": 28000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-13 01:48:34 -0700 PDT",
+        "image_id": "sha256:9b00e761816546a22df09d5bf14b4bbb47ab39d947b55742129aebcf2106ec0b",
+        "last_container_observed_at": null,
+        "reference": "anvil-serving:rollback-transition-safety-8ad85c4",
+        "shared_bytes": 186200000,
+        "size_bytes": 225000000,
+        "unique_bytes": 38730000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-12 16:58:45 -0700 PDT",
+        "image_id": "sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 563400000,
+        "size_bytes": 27800000000,
+        "unique_bytes": 27280000000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-07-07 10:46:32 -0700 PDT",
+        "image_id": "sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193",
+        "last_container_observed_at": "2026-07-27 17:19:22 -0700 PDT",
+        "reference": "postgres:17-alpine",
+        "shared_bytes": 12920000,
+        "size_bytes": 424000000,
+        "unique_bytes": 410700000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-01 20:17:38 -0700 PDT",
+        "image_id": "sha256:da0130aacba61ef1f1e936e17db07927dbe64e65000c082dff6d1743c8be17d4",
+        "last_container_observed_at": null,
+        "reference": "anvil-serving:local",
+        "shared_bytes": 186200000,
+        "size_bytes": 210000000,
+        "unique_bytes": 23930000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-06-27 22:18:28 -0700 PDT",
+        "image_id": "sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e",
+        "last_container_observed_at": null,
+        "reference": "vllm/vllm-openai:nightly",
+        "shared_bytes": 27710000000,
+        "size_bytes": 27700000000,
+        "unique_bytes": 48330
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-06-26 02:27:41 -0700 PDT",
+        "image_id": "sha256:bebcf9576b1720214319ee5c7ee4f7661954cbbf59ed3fcd188cd79a67f1967e",
+        "last_container_observed_at": null,
+        "reference": "nvcr.io/nvidia/vllm:26.06-py3",
+        "shared_bytes": 32,
+        "size_bytes": 33000000000,
+        "unique_bytes": 32950000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-06-25 21:10:15 -0700 PDT",
+        "image_id": "sha256:5027e95bf6ec536856b1b52a91d1f35ff5c564ab83e8a94758a169ff09bb8df3",
+        "last_container_observed_at": null,
+        "reference": "lmsysorg/sglang:latest",
+        "shared_bytes": 12250000000,
+        "size_bytes": 43100000000,
+        "unique_bytes": 30820000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-06-24 01:05:22 -0700 PDT",
+        "image_id": "sha256:7c12af72ceb38b7432ab85e1a265cff6ae58e06f95539d539b654f2cfa64bb13",
+        "last_container_observed_at": null,
+        "reference": "curlimages/curl:latest",
+        "shared_bytes": 0,
+        "size_bytes": 35300000,
+        "unique_bytes": 35300000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-06-23 19:10:29 -0700 PDT",
+        "image_id": "sha256:b27df5841f3355e9473f9a516d38a6783b6c8dfeacaf2d14a240f443b368ddb6",
+        "last_container_observed_at": null,
+        "reference": "python:3.11-slim",
+        "shared_bytes": 186200000,
+        "size_bytes": 188000000,
+        "unique_bytes": 2222000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-06-22 12:20:21 -0700 PDT",
+        "image_id": "sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce",
+        "last_container_observed_at": null,
+        "reference": "alpine:3.22",
+        "shared_bytes": 0,
+        "size_bytes": 12800000,
+        "unique_bytes": 12830000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-06-15 17:01:29 -0700 PDT",
+        "image_id": "sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b",
+        "last_container_observed_at": null,
+        "reference": "alpine:latest",
+        "shared_bytes": 12920000,
+        "size_bytes": 13000000,
+        "unique_bytes": 88020
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-04-30 16:39:43 -0700 PDT",
+        "image_id": "sha256:bff001d3257971cc4752e15ac2d354befa70995ded8e141741ade50569fc192e",
+        "last_container_observed_at": null,
+        "reference": "nvidia/cuda:13.1.2-runtime-ubuntu24.04",
+        "shared_bytes": 3798000000,
+        "size_bytes": 3800000000,
+        "unique_bytes": 20520
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-04-16 16:53:26 -0700 PDT",
+        "image_id": "sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc",
+        "last_container_observed_at": null,
+        "reference": "alpine:3.20",
+        "shared_bytes": 0,
+        "size_bytes": 12200000,
+        "unique_bytes": 12180000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-02-24 11:25:21 -0800 PST",
+        "image_id": "sha256:657e0b601f09da7ef1bd51eebfe3758c3123eb362249767d8476500c95ea810e",
+        "last_container_observed_at": "2026-07-27 17:19:22 -0700 PDT",
+        "reference": "neo4j:2026.01",
+        "shared_bytes": 32,
+        "size_bytes": 971000000,
+        "unique_bytes": 970700000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-01-29 02:18:30 -0800 PST",
+        "image_id": "sha256:fb75b775f089e06e5a1aaebffd421e37505cc630d50c86d889d95ffa45a7e16a",
+        "last_container_observed_at": null,
+        "reference": "qwenllm/qwen3-asr:latest",
+        "shared_bytes": 42850000000,
+        "size_bytes": 42900000000,
+        "unique_bytes": 28810
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-01-07 04:42:26 -0800 PST",
+        "image_id": "sha256:27cd5ec6108982b025f9f426b1aa3b5eb0a2cbbd677e73de337a4a41f0c4bce2",
+        "last_container_observed_at": "2026-07-24 02:01:53 -0700 PDT",
+        "reference": "docker/desktop-docker-debug-service:0.0.47",
+        "shared_bytes": 0,
+        "size_bytes": 2000000000,
+        "unique_bytes": 2004000000
+      }
+    ],
+    "usage_caveat": "Image last_container_observed_at is derived from retained container creation metadata, not a complete execution history. Docker's reclaimable-volume label does not establish that a volume is disposable.",
+    "volumes": []
+  },
+  "inspector_image": "vllm/vllm-openai:nightly",
+  "observed_at": "2026-08-02T04:31:26.614797Z",
+  "repositories": [
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-08-02T01:45:02.493399Z",
+      "logical_bytes": 166898660330,
+      "refs": {},
+      "repo_id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "snapshots": [
+        "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+      ]
+    }
+  ],
+  "schema_version": "model-cache-inventory/v1",
+  "timestamp_caveat": "Cache modification timestamps describe local filesystem changes; they do not prove when a model was last served or benchmarked.",
+  "volume": "deepseek-v4-0731-r16-hfcache"
+}

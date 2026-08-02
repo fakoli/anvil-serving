@@ -51,7 +51,7 @@ narration.
   `serves_manage`, `serves_mode`, `serves_logs`, and `serves_promote`.
 - Voice: `voice_manage` and `voice_proxy_manage`.
 - Host, models, and telemetry: `doctor_summary`, `host_summary`,
-  `gpu_inventory`, `observability_collect`, `host_manage`,
+  `gpu_inventory`, `host_shared_memory`, `observability_collect`, `host_manage`,
   `models_inventory`, `model_cache_inventory`, and `cache_prune_plan`.
 - Harness: `openclaw_sync`, `openclaw_gateway_status`, and
   `openclaw_gateway_restart`.
@@ -148,7 +148,7 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   generation caps, exact/stream benchmark caps, benchmark reasoning effort, and
   endpoint overrides as serve/model-recipe settings, not skill or plugin
   constants.
-- Host/cache work: use `host_summary`, `gpu_inventory`, and `cache_prune_plan`
+- Host/cache work: use `host_summary`, `gpu_inventory`, `host_shared_memory`, and `cache_prune_plan`
   for read-only checks and plans. Use `host_manage` only for an exact reviewed
   repair after its human gate. Report Docker/WSL restart, WSL config edits, and
   cache deletion as `blocked` or `human_required` unless the human approves the

@@ -738,6 +738,40 @@ def reconstruct_docker_run(recipe: dict) -> str:
     return shlex.join(docker_run_argv(recipe))
 
 
+def uses_native_kv_offload(recipe: dict) -> bool:
+    """Whether this recipe positively requests a non-zero native KV offload region."""
+    serve = recipe.get("serve") or {}
+    for item in serve.get("env", []):
+        if not isinstance(item, str) or "=" not in item:
+            continue
+        key, value = item.split("=", 1)
+        if key == "KV_OFFLOADING_SIZE":
+            try:
+                if float(value) > 0:
+                    return True
+            except ValueError:
+                continue
+    tokens = []
+    for flag in serve.get("flags", []):
+        try:
+            tokens.extend(shlex.split(flag))
+        except (TypeError, ValueError):
+            continue
+    for index, token in enumerate(tokens):
+        if token.startswith("--kv-offloading-size="):
+            value = token.split("=", 1)[1]
+        elif token == "--kv-offloading-size" and index + 1 < len(tokens):
+            value = tokens[index + 1]
+        else:
+            continue
+        try:
+            if float(value) > 0:
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def load_recipe(
     recipe: dict,
     container: str,
