@@ -54,6 +54,25 @@ official fitting quantization instead. Exact revisions, images, longer-context
 lanes, raw JSON, and runtime fixes are in the
 [complete campaign record](findings/2026-08-01-dual-pro-tp2-model-campaign.md).
 
+### DeepSeek 0731 r16 B12X and DSpark follow-up
+
+The official release revision was requalified on a pinned r16 vLLM/B12X image
+at 131,072 tokens with DSpark K5. The translated WSL2 recipe passed low, high,
+and max reasoning preflights; completed 32K, 64K, and 128K correctness probes;
+and passed 27/27 repeated coding, intelligence, session, and tool attempts. A
+warmed 125,785-prompt-token request measured 19.44 seconds TTFO, 23.81 seconds
+first-visible TTFT, 6,469 effective prefill tok/s, and 128.9 tok/s combined
+reasoning/visible decode.
+
+In the same-image 4K/c1 A/B, DSpark raised median per-request decode from 64.9
+to 130.7 tok/s, aggregate output from 59.6 to 101.7 tok/s, and reduced median
+E2E from 3.88 to 1.60 seconds. Cumulative counters accepted 55.1% of drafted
+tokens. DSpark used 1.6-2.3 GiB more VRAM than the no-spec control, and neither
+lane preserved the required 3 GiB reported free on both GPUs. This is therefore
+a priority `challenger` performance recipe, not a promotion. Exact identities,
+context telemetry, matched controls, failures, and raw artifacts are in the
+[r16 qualification](findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md).
+
 ## RTX 5090 Omni choices (as of 2026-07-27)
 
 > For the current routed occupant, see the

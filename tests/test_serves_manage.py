@@ -3,12 +3,14 @@
 Docker is injected via the module's `_run` seam, so these run with no docker, no
 GPU, and no network. Mirrors tests/test_serves.py's fake-`_run` style.
 """
+import json
+import sys
 import textwrap
 import types
 
 import pytest
 
-from anvil_serving import serves
+from anvil_serving import guard, serves
 
 
 @pytest.fixture(autouse=True)
@@ -96,11 +98,20 @@ DUAL_MODE_MANIFEST = """
 """
 
 
-def _mode_run(states, fail_service=None):
+def _mode_run(states, fail_service=None, restart_on_stop=None):
     calls = []
 
     def run(argv, **kwargs):
         calls.append(argv)
+        if argv[:3] == ["docker", "ps", "-a"]:
+            if any(state == "error" for state in states.values()):
+                return proc(1, err="Cannot connect to the Docker daemon")
+            rows = [
+                json.dumps({"Names": name, "State": state})
+                for name, state in states.items()
+                if state != "absent"
+            ]
+            return proc(0, "\n".join(rows))
         if argv[:2] == ["docker", "inspect"]:
             state = states.get(argv[-1], "absent")
             if state == "absent":
@@ -109,7 +120,9 @@ def _mode_run(states, fail_service=None):
                 return proc(1, err="Cannot connect to the Docker daemon")
             return proc(0, state + "\n")
         if argv[:2] == ["docker", "stop"]:
-            states[argv[-1]] = "exited"
+            states[argv[-1]] = (
+                "running" if argv[-1] == restart_on_stop else "exited"
+            )
         elif argv[:3] == ["docker", "rm", "-f"]:
             states[argv[-1]] = "absent"
         elif argv[:2] == ["docker", "compose"]:
@@ -423,6 +436,30 @@ def test_mode_entry_refuses_unresolved_competitor_before_mutation(tmp_path, caps
                    for call in run.calls)
 
 
+def test_mode_entry_accepts_dispatcher_confirmation_scope(
+    tmp_path, monkeypatch, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    run = _mode_run({
+        "split-a": "absent",
+        "split-b": "absent",
+        "tp2": "absent",
+        serves.DEFAULT_ROUTER_CONTAINER: "exited",
+    })
+    monkeypatch.setattr(serves, "cmd_up", lambda *args, **kwargs: 0)
+
+    with guard.confirmation_scope(True):
+        assert serves.cmd_mode(
+            loaded,
+            "enter",
+            "tp2",
+            "split-stack",
+            _run=run,
+        ) == 0
+
+    assert "mode entered: tp2" in capsys.readouterr().out
+
+
 def test_failed_mode_entry_restores_split_stack_in_transaction_order(
     tmp_path, capsys,
 ):
@@ -460,6 +497,123 @@ def test_failed_mode_entry_restores_split_stack_in_transaction_order(
     assert transitions[-1] == ("readmit", "llm-a", None)
     assert states["split-a"] == states["split-b"] == "running"
     assert "restoring split stack" in capsys.readouterr().out
+
+
+def test_mode_entry_preserve_on_failure_keeps_stopped_target_and_restores_split(
+    tmp_path, monkeypatch, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    states = {"split-a": "running", "split-b": "running", "tp2": "absent"}
+    run = _mode_run(states)
+    real_cmd_up = serves.cmd_up
+
+    def fail_target(serves_list, names, **kwargs):
+        if names == ["tp2"]:
+            states["tp2"] = "exited"
+            return 1
+        return real_cmd_up(serves_list, names, **kwargs)
+
+    monkeypatch.setattr(serves, "cmd_up", fail_target)
+
+    assert serves.cmd_mode(
+        loaded,
+        "enter",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        preserve_on_failure=True,
+        _transition=lambda *args, **kwargs: 0,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 1
+
+    assert states == {
+        "split-a": "running",
+        "split-b": "running",
+        "tp2": "exited",
+    }
+    assert ["docker", "rm", "-f", "tp2"] not in run.calls
+    out = capsys.readouterr().out
+    assert "preserved failed target tp2 in state exited" in out
+    assert "anvil-serving serves logs tp2" in out
+
+
+def test_mode_entry_preserve_on_failure_removes_restarting_target_before_restore(
+    tmp_path, monkeypatch, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    states = {"split-a": "running", "split-b": "running", "tp2": "absent"}
+    run = _mode_run(states, restart_on_stop="tp2")
+    real_cmd_up = serves.cmd_up
+
+    def fail_target(serves_list, names, **kwargs):
+        if names == ["tp2"]:
+            states["tp2"] = "running"
+            return 1
+        return real_cmd_up(serves_list, names, **kwargs)
+
+    monkeypatch.setattr(serves, "cmd_up", fail_target)
+
+    assert serves.cmd_mode(
+        loaded,
+        "enter",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        preserve_on_failure=True,
+        _transition=lambda *args, **kwargs: 0,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 1
+
+    assert states["tp2"] == "absent"
+    assert states["split-a"] == states["split-b"] == "running"
+    remove = run.calls.index(["docker", "rm", "-f", "tp2"])
+    restore_a = next(
+        index for index, call in enumerate(run.calls)
+        if index > remove and call[:2] == ["docker", "compose"]
+        and call[-1] == "split-a"
+    )
+    assert remove < restore_a
+    assert "could not be safely preserved" in capsys.readouterr().out
+
+
+def test_mode_entry_skips_transitions_when_managed_router_is_stopped(
+    tmp_path, capsys,
+):
+    loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
+    states = {
+        "split-a": "running",
+        "split-b": "running",
+        "tp2": "absent",
+        serves.DEFAULT_ROUTER_CONTAINER: "exited",
+    }
+    run = _mode_run(states)
+
+    assert serves.cmd_mode(
+        loaded,
+        "enter",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 0
+
+    assert states["split-a"] == states["split-b"] == "absent"
+    assert states["tp2"] == "running"
+    out = capsys.readouterr().out
+    assert "router anvil-router is exited; quiesce" in out
+    assert "router anvil-router is exited; drain" in out
+    assert not any(
+        isinstance(call, list) and call[:3] == [
+            sys.executable, "-m", "anvil_serving.cli"
+        ] and "transition" in call
+        for call in run.calls
+    )
 
 
 def test_mode_leave_force_releases_exclusive_owner_before_split_restore(
@@ -530,6 +684,49 @@ def test_split_restore_skips_readmit_when_default_router_is_stopped(
 # The cmd_* functions capture `_run=subprocess.run` as a def-time default, so these
 # dispatch tests patch the cmd_* functions themselves (proving routing) rather than
 # subprocess — no real docker is touched.
+
+def test_main_mode_enter_forwards_preserve_on_failure(tmp_path, monkeypatch):
+    path = _manifest(tmp_path, DUAL_MODE_MANIFEST)
+    seen = {}
+
+    def fake(serves_list, action, target, restore_group, **kwargs):
+        seen.update(
+            action=action,
+            target=target,
+            restore_group=restore_group,
+            preserve_on_failure=kwargs["preserve_on_failure"],
+        )
+        return 0
+
+    monkeypatch.setattr(serves, "cmd_mode", fake)
+
+    assert serves.main([
+        "mode", "enter", "tp2",
+        "--restore-group", "split-stack",
+        "--manifest", path,
+        "--preserve-on-failure",
+        "--confirm",
+    ]) == 0
+    assert seen == {
+        "action": "enter",
+        "target": "tp2",
+        "restore_group": "split-stack",
+        "preserve_on_failure": True,
+    }
+
+
+@pytest.mark.parametrize("action", ["status", "preview", "leave"])
+def test_main_mode_rejects_preserve_on_failure_outside_enter(
+    action, tmp_path, capsys,
+):
+    path = _manifest(tmp_path, DUAL_MODE_MANIFEST)
+    argv = ["mode", action]
+    if action != "status":
+        argv += ["tp2", "--restore-group", "split-stack"]
+    argv += ["--manifest", path, "--preserve-on-failure"]
+
+    assert serves.main(argv) == 2
+    assert "only valid with mode enter" in capsys.readouterr().err
 
 def test_main_up_compose_needs_no_manifest(tmp_path, monkeypatch):
     # `up --compose` is independent of serves.toml: it dispatches BEFORE the manifest is

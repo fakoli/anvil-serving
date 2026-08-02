@@ -234,6 +234,40 @@ def test_reconstruct_docker_run_supports_entrypoint_and_model_flag():
     ]
 
 
+def test_reconstruct_docker_run_supports_environment_owned_model_and_named_volumes():
+    recipe = {
+        "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "download": {"volume": "deepseek-r16-models"},
+        "serve": {
+            "image": "voipmonitor/vllm@sha256:abc",
+            "entrypoint": ["/usr/local/bin/serve-ds4-flash.sh"],
+            "model_env": "MODEL",
+            "named_volumes": [
+                "deepseek-r16-jit:/cache",
+                "deepseek-r16-tmp:/container-tmp",
+                "deepseek-r16-readonly:/opt/reference:ro",
+            ],
+            "env": ["MODE=dspark"],
+        },
+    }
+
+    argv = sr.docker_run_argv(recipe)
+    image_i = argv.index("voipmonitor/vllm@sha256:abc")
+    assert argv[image_i - 2:image_i] == [
+        "--entrypoint", "/usr/local/bin/serve-ds4-flash.sh",
+    ]
+    assert argv[image_i + 1:] == []
+    assert "MODEL=deepseek-ai/DeepSeek-V4-Flash-0731" in argv
+    assert "deepseek-ai/DeepSeek-V4-Flash-0731" not in argv[image_i + 1:]
+    assert "deepseek-r16-models:/root/.cache/huggingface" in argv
+    mounts = [argv[index + 1] for index, item in enumerate(argv) if item == "--mount"]
+    assert mounts == [
+        "type=volume,source=deepseek-r16-jit,target=/cache",
+        "type=volume,source=deepseek-r16-tmp,target=/container-tmp",
+        "type=volume,source=deepseek-r16-readonly,target=/opt/reference,readonly",
+    ]
+
+
 def test_docker_run_argv_supports_recipe_ipc_shared_memory_and_ulimits():
     recipe = {
         "model": "m/x",
@@ -262,6 +296,22 @@ def test_recipe_entrypoint_and_model_flag_reject_unsafe_or_incomplete_values():
     with pytest.raises(sr.RecipeError, match="model_flag"):
         sr.validate_recipe(recipe, require_loadable=True)
 
+    recipe = {"model": "m/x", "serve": {"image": "img", "model_env": "MODEL"}}
+    with pytest.raises(sr.RecipeError, match="model_env"):
+        sr.validate_recipe(recipe, require_loadable=True)
+
+    recipe = {
+        "model": "m/x",
+        "serve": {
+            "image": "img",
+            "entrypoint": ["launcher"],
+            "model_flag": "--model",
+            "model_env": "MODEL",
+        },
+    }
+    with pytest.raises(sr.RecipeError, match="model_env"):
+        sr.validate_recipe(recipe, require_loadable=True)
+
     recipe = {"model": "m/x", "serve": {"image": "img", "ipc": "container:other"}}
     with pytest.raises(sr.RecipeError, match="ipc"):
         sr.validate_recipe(recipe, require_loadable=True)
@@ -276,6 +326,43 @@ def test_recipe_entrypoint_and_model_flag_reject_unsafe_or_incomplete_values():
     }
     with pytest.raises(sr.RecipeError, match="model_flag"):
         sr.validate_recipe(recipe, require_loadable=True)
+
+
+@pytest.mark.parametrize(
+    "named_volumes,match",
+    [
+        (["C:/host:/cache"], "named Docker volumes"),
+        (["cache:relative"], "absolute POSIX"),
+        (["cache:/bad target"], "absolute POSIX"),
+        (["cache:/a/../b"], "absolute POSIX"),
+        (["cache:/root/.cache/huggingface"], "cannot shadow"),
+        (["cache:/one", "cache:/two"], "repeat"),
+        (["one:/cache", "two:/cache"], "repeat"),
+    ],
+)
+def test_recipe_named_volumes_reject_unsafe_or_ambiguous_mounts(
+    named_volumes, match,
+):
+    recipe = {
+        "model": "m/x",
+        "serve": {"image": "img", "named_volumes": named_volumes},
+    }
+    with pytest.raises(sr.RecipeError, match=match):
+        sr.validate_recipe(recipe, require_loadable=True)
+
+
+def test_environment_owned_model_rejects_declared_env_override():
+    recipe = {
+        "model": "m/x",
+        "serve": {
+            "image": "img",
+            "entrypoint": ["launcher"],
+            "model_env": "MODEL",
+            "env": ["MODEL=other/model"],
+        },
+    }
+    with pytest.raises(sr.RecipeError, match="must not override"):
+        sr.docker_run_argv(recipe)
 
 
 def test_reconstruct_docker_run_includes_env_volume_and_flags():
@@ -515,6 +602,54 @@ def test_shipped_stable_vllm_recipes_pin_0251_and_enable_wsl2_memory(request):
     }
     assert managed["fast"] == "leon-se/gemma-4-E4B-it-FP8-Dynamic"
     assert managed["heavy-gemma4-rollback"] == "google/gemma-4-12B-it-qat-w4a16-ct"
+
+
+def test_deepseek_r16_recipe_pins_environment_launcher_and_named_data(request):
+    root = request.config.rootpath
+    registry = sr.load_registry(
+        str(
+            root
+            / "configs"
+            / "deepseek-v4-flash-0731-r16-b12x-dspark5-128k-recipe.toml"
+        )
+    )
+    recipe = sr.find_recipe(registry, "deepseek-ai/DeepSeek-V4-Flash-0731")
+
+    assert recipe is not None
+    assert recipe["download"] == {
+        "repo": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+        "volume": "deepseek-v4-0731-r16-hfcache",
+        "require_complete_cache": True,
+    }
+    serve = recipe["serve"]
+    assert serve["image"] == (
+        "voipmonitor/vllm@sha256:"
+        "48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f"
+    )
+    assert serve["entrypoint"] == ["/usr/local/bin/serve-ds4-flash.sh"]
+    assert serve["model_env"] == "MODEL"
+    assert serve["named_volumes"] == [
+        "deepseek-v4-0731-r16-jit:/cache",
+        "deepseek-v4-0731-r16-tmp:/container-tmp",
+    ]
+    assert "BACKEND=b12x-a8" in serve["env"]
+    assert "GPU_MEMORY_UTILIZATION=0.975" in serve["env"]
+    assert "MAX_MODEL_LEN=131072" in serve["env"]
+    snapshot = (
+        "/root/.cache/huggingface/hub/"
+        "models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/"
+        "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+    )
+    assert "MODEL_PATH=%s" % snapshot in serve["env"]
+    assert "SPEC_MODEL_PATH=%s" % snapshot in serve["env"]
+    assert not any(env.startswith("MODEL_REVISION=") for env in serve["env"])
+
+    argv = sr.docker_run_argv(recipe)
+    image_i = argv.index(serve["image"])
+    assert argv[image_i + 1:] == []
+    assert "MODEL=deepseek-ai/DeepSeek-V4-Flash-0731" in argv
+    assert "deepseek-ai/DeepSeek-V4-Flash-0731" not in argv[image_i + 1:]
 
 
 def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_rollback(request):

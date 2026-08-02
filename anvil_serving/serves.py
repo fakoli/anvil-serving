@@ -1915,6 +1915,36 @@ def docker_state(container, _run=subprocess.run):
     return (r.stdout or "").strip() or "unknown"
 
 
+def docker_states(containers, _run=subprocess.run):
+    """Resolve many named container states with one fail-closed Docker query."""
+    wanted = list(dict.fromkeys(str(container) for container in containers))
+    if not wanted:
+        return {}
+    try:
+        result = _run(
+            ["docker", "ps", "-a", "--format", "{{json .}}"],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return {container: "error" for container in wanted}
+    if result.returncode != 0:
+        return {container: "error" for container in wanted}
+
+    states = {container: "absent" for container in wanted}
+    for line in (result.stdout or "").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except (TypeError, json.JSONDecodeError):
+            return {container: "error" for container in wanted}
+        name = row.get("Names") or row.get("Name")
+        if name in states:
+            states[name] = str(row.get("State") or "unknown").casefold()
+    return states
+
+
 def docker_compose_project(container, _run=subprocess.run):
     """Return one container's Compose project label, or ``None`` when absent.
 
@@ -2706,7 +2736,14 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
     ):
         print("--drain-timeout must be a finite positive number of seconds")
         return 2
-    state_of = lambda container: docker_state(container, _run=_run)  # noqa: E731
+    reservation_scope = ledger_serves if ledger_serves is not None else serves
+    state_cache = docker_states(
+        [serve["container"] for serve in reservation_scope],
+        _run=_run,
+    )
+
+    def state_of(container):
+        return state_cache.get(container, "absent")
     # ADR-0017 reservation ledger admission: acquiring the targets' declared
     # VRAM reservations must fit their gpu_role budgets BEFORE any container
     # command runs — an over-budget request fails the whole batch with the
@@ -2715,7 +2752,6 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
     # reservation with no ledger bookkeeping. Read-only, so it also gates
     # --dry-run (the preview should show the same refusal the real run hits).
     # Serves/manifests without reservation fields skip this entirely.
-    reservation_scope = ledger_serves if ledger_serves is not None else serves
     exclusive_denial = reservations.deny_exclusive_conflict(
         reservation_scope,
         targets,
@@ -2757,6 +2793,10 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
             # Re-derive admission from live docker state: the victims are
             # stopped, so the request must now fit (fail loudly if not —
             # e.g. a victim's restart policy revived it).
+            state_cache = docker_states(
+                [serve["container"] for serve in reservation_scope],
+                _run=_run,
+            )
             denial = reservations.deny_over_budget(reservation_scope, targets, state_of)
     if denial:
         for line in denial:
@@ -3028,6 +3068,7 @@ def cmd_mode(
     confirm=False,
     dry_run=False,
     drain_timeout=EVICTION_DRAIN_TIMEOUT,
+    preserve_on_failure=False,
     router_url=None,
     _transition=None,
     _run=subprocess.run,
@@ -3035,12 +3076,14 @@ def cmd_mode(
     _sleep=time.sleep,
 ):
     """Preview, enter, leave, or report the exclusive TP=2 operating mode."""
-    states = {}
+    gpu_containers = [
+        serve["container"] for serve in serves
+        if reservations.is_gpu_inference(serve)
+    ]
+    states = docker_states(gpu_containers, _run=_run)
 
     def state_of(container):
-        if container not in states:
-            states[container] = docker_state(container, _run=_run)
-        return states[container]
+        return states.get(container, "absent")
 
     if action == "status":
         summary = operating_mode_summary(serves, state_of)
@@ -3058,20 +3101,43 @@ def cmd_mode(
         return 1
     if action == "preview" or dry_run:
         return 0
-    if not confirm:
+    if not (confirm or guard.confirmation_authorized()):
         print("mode transition not applied; rerun with --confirm")
         return 2
 
-    transition = _transition or (
-        lambda transition_action, tier_id, timeout=None: _transition_cli(
-            router_url or DEFAULT_ROUTER_URL,
-            transition_action,
-            tier_id,
-            timeout=timeout,
-            _run=_run,
-        )
+    uses_default_managed_router = router_url is None and _transition is None
+    managed_router_state = (
+        docker_state(DEFAULT_ROUTER_CONTAINER, _run=_run)
+        if uses_default_managed_router else None
     )
-    skip_offline_router_readmit = router_url is None and _transition is None
+    router_is_offline = (
+        uses_default_managed_router
+        and (managed_router_state == "absent" or managed_router_state in _STOPPED)
+    )
+    if router_is_offline:
+        def transition(transition_action, tier_id, timeout=None):
+            del timeout
+            print(
+                "  router %s is %s; %s for tier %s is not applicable"
+                % (
+                    DEFAULT_ROUTER_CONTAINER,
+                    managed_router_state,
+                    transition_action,
+                    tier_id,
+                )
+            )
+            return 0
+    else:
+        transition = _transition or (
+            lambda transition_action, tier_id, timeout=None: _transition_cli(
+                router_url or DEFAULT_ROUTER_URL,
+                transition_action,
+                tier_id,
+                timeout=timeout,
+                _run=_run,
+            )
+        )
+    skip_offline_router_readmit = uses_default_managed_router
     target = _select(serves, [target_name])[0]
 
     if action == "enter":
@@ -3103,7 +3169,7 @@ def cmd_mode(
                 skip_readmit_when_router_stopped=skip_offline_router_readmit,
             )
             return 1
-        states.clear()
+        states = docker_states(gpu_containers, _run=_run)
         remaining = []
         for serve in serves:
             if serve["name"] == target_name or not reservations.is_gpu_inference(serve):
@@ -3135,7 +3201,38 @@ def cmd_mode(
             ))
             return 0
         print("mode entry failed while starting target; restoring split stack")
-        cmd_down(serves, [target_name], _run=_run)
+        if preserve_on_failure:
+            cleanup_rc = cmd_down(
+                serves,
+                [target_name],
+                keep_container=True,
+                _run=_run,
+            )
+            preserved_state = docker_state(target["container"], _run=_run)
+            safely_preserved = (
+                cleanup_rc == 0
+                and preserved_state in _STOPPED
+            )
+            if safely_preserved:
+                print(
+                    "  preserved failed target %s in state %s; inspect with "
+                    "`anvil-serving serves logs %s --manifest PATH`"
+                    % (target["container"], preserved_state, target_name)
+                )
+            else:
+                print(
+                    "  WARNING: failed target could not be safely preserved "
+                    "(state %s); removing it before split restore"
+                    % preserved_state
+                )
+                cmd_down(
+                    serves,
+                    [target_name],
+                    force_remove=True,
+                    _run=_run,
+                )
+        else:
+            cmd_down(serves, [target_name], _run=_run)
         _restore_split_stack(
             serves, plan, transition=transition, _run=_run,
             _open=_open, _sleep=_sleep,
@@ -3701,9 +3798,19 @@ def _build_action_parser(action):
             metavar="SECONDS",
             help="bounded router drain wait before stopping competing serves",
         )
+        p.add_argument(
+            "--preserve-on-failure",
+            action="store_true",
+            help="on failed mode entry, stop but retain the failed target "
+                 "container and logs before restoring the split stack",
+        )
         p.add_argument("--router-url", metavar="URL", help="router transition base URL")
     else:
-        p.set_defaults(confirm=False, restore_group=None)
+        p.set_defaults(
+            confirm=False,
+            restore_group=None,
+            preserve_on_failure=False,
+        )
     if action == "logs":
         p.add_argument("--tail", default="200",
                        help="trailing lines to show (default: %(default)s; 'all').")
@@ -3906,6 +4013,12 @@ def main(argv=None):
         if a.mode_action in {"preview", "status"} and a.confirm:
             print("--confirm is only valid with mode enter/leave", file=sys.stderr)
             return 2
+        if a.preserve_on_failure and a.mode_action != "enter":
+            print(
+                "--preserve-on-failure is only valid with mode enter",
+                file=sys.stderr,
+            )
+            return 2
         rc = cmd_mode(
             serves,
             a.mode_action,
@@ -3914,6 +4027,7 @@ def main(argv=None):
             confirm=a.confirm,
             dry_run=a.dry_run,
             drain_timeout=a.drain_timeout,
+            preserve_on_failure=a.preserve_on_failure,
             router_url=a.router_url,
         )
         return _finish_cache_reclaim(

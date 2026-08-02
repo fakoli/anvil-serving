@@ -234,6 +234,17 @@ def test_rtx6kpro_parser_extracts_qwen_matrix_rows():
     assert raw_metrics["result"]["queue_fraction"] == 0.02
 
 
+def test_rtx6kpro_quantization_ignores_operator_parent_directory():
+    fixture = FIXTURES / "rtx6kpro_qwen_vllm_nomtp.json"
+    result = Rtx6kproAdapter().parse(
+        fixture.read_bytes(),
+        original_name=fixture.name,
+        source_url="C:/operator/deepseek-nvfp4/rtx6kpro_qwen_vllm_nomtp.json",
+    )
+    assert result.rows[0]["model_name_raw"] == "Qwen3.5-397B-A17B-AWQ"
+    assert result.rows[0]["quantization"] == "AWQ"
+
+
 def test_rtx6kpro_glm_decode_matrix_preserves_methodology_caveats():
     result = Rtx6kproAdapter().parse(
         (FIXTURES / "rtx6kpro_glm_decode_matrix.json").read_bytes(),

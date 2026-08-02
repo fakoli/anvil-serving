@@ -1,0 +1,81 @@
+{
+  "suite": "deepseek-v4-flash-0731-local-coding-agent",
+  "date": "2026-08-01",
+  "work_class": "coding-agent",
+  "description": "Deterministic coding, diagnosis, safe-operations, topology, and tool-selection diagnostics for OpenClaw and Pi fit. Validators are independent string or typed-tool assertions; marker-graded cases are not ranking evidence.",
+  "evidence_use": "diagnostic",
+  "validator_strength": "deterministic_marker",
+  "evals": [
+    {
+      "id": "python-timeout-guard-diff",
+      "prompt": "Return only a unified diff for worker.py. Change `def run(timeout):\n    return request(timeout=timeout)` so non-positive timeout values raise ValueError('timeout must be positive') before request is called. Preserve the existing valid path.",
+      "max_tokens": 768,
+      "checks": [
+        {"name": "unified-diff", "contains_all": ["---", "+++", "@@"]},
+        {"name": "guard", "contains_all": ["timeout <= 0", "ValueError", "timeout must be positive"]},
+        {"name": "valid-path", "contains": "return request(timeout=timeout)"}
+      ]
+    },
+    {
+      "id": "mutable-default-root-cause",
+      "prompt": "Diagnose this Python bug and return one JSON object with exactly the keys root_cause and fix: `def add_job(job, queue=[]): queue.append(job); return queue`. root_cause must identify why calls leak state; fix must state the safe signature and initialization.",
+      "max_tokens": 512,
+      "checks": [
+        {"name": "root-cause", "contains_all": ["root_cause", "mutable", "default"]},
+        {"name": "safe-fix", "contains_all": ["fix", "None", "queue"]}
+      ]
+    },
+    {
+      "id": "windows-safe-recursive-move-plan",
+      "prompt": "In five numbered steps, describe a fail-closed PowerShell plan to recursively move one explicitly named directory inside a workspace. It must resolve and verify absolute source and destination paths remain inside the intended workspace before moving, preserve unrelated files, and use native PowerShell with literal paths.",
+      "max_tokens": 768,
+      "checks": [
+        {"name": "absolute-verification", "contains_all": ["Resolve-Path", "absolute", "workspace"]},
+        {"name": "literal-native-move", "contains_all": ["Move-Item", "-LiteralPath"]},
+        {"name": "scope-preservation", "contains_any": ["unrelated", "fail closed", "abort"]}
+      ]
+    },
+    {
+      "id": "exclusive-tp2-invariant",
+      "prompt": "Return one JSON object with keys mode, gpu_count, other_gpu_inference, and memory_semantics for this invariant: a tensor-parallel serve owns both equal RTX PRO 6000 cards, while every other GPU inference workload is offline, and aggregate VRAM is not unified memory.",
+      "max_tokens": 384,
+      "checks": [
+        {"name": "mode", "contains": "dual-gpu-exclusive"},
+        {"name": "gpu-count", "contains": "2"},
+        {"name": "offline", "contains": "offline"},
+        {"name": "not-unified", "contains_all": ["not", "unified"]}
+      ]
+    },
+    {
+      "id": "ticket-before-workaround",
+      "prompt": "The managed model lifecycle cannot retrieve the serving container's startup logs. Call create_ticket exactly once to record the production tooling gap before any narrow read-only fallback. Use title `Managed recipe logs unavailable` and severity `production-gap`.",
+      "max_tokens": 512,
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "create_ticket",
+            "description": "Record a durable production defect.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "title": {"type": "string"},
+                "severity": {"type": "string"}
+              },
+              "required": ["title", "severity"],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "create_ticket",
+        "required_args": {
+          "title": "Managed recipe logs unavailable",
+          "severity": "production-gap"
+        }
+      },
+      "checks": []
+    }
+  ]
+}

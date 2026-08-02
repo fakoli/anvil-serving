@@ -15,6 +15,7 @@ def test_preflight_probe_explicit_dry_run_executes_the_safe_child_plan(monkeypat
         "base_url": "http://127.0.0.1:30000/v1",
         "model": "local",
         "checks": "smoke,json",
+        "reasoning_effort": "max",
         "allowed_finish_reasons": "stop,length",
         "timeout_seconds": 30,
         "dry_run": True,
@@ -27,6 +28,7 @@ def test_preflight_probe_explicit_dry_run_executes_the_safe_child_plan(monkeypat
     assert "--dry-run" in argv
     assert argv[argv.index("--timeout-seconds") + 1] == "30"
     assert argv[argv.index("--allowed-finish-reasons") + 1] == "stop,length"
+    assert argv[argv.index("--reasoning-effort") + 1] == "max"
     assert kwargs["timeout"] == 60
 
 
@@ -66,7 +68,7 @@ def test_preflight_probe_schema_matches_local_bounds_and_controls():
         "default": 900,
     }
     assert schema["reasoning_effort"]["enum"] == [
-        "none", "minimal", "low", "medium", "high"
+        "none", "minimal", "low", "medium", "high", "max"
     ]
     assert "allowed_finish_reasons" in schema
     assert schema["image_expect"]["maxItems"] == 32

@@ -1,0 +1,57 @@
+{
+  "schema": "anvil-serving.context-hardware-sampling/v1",
+  "observed_at": "2026-08-02T02:50:00.272955Z",
+  "capture_method": "250 ms nvidia-smi sampling while vLLM reported one active request; request order correlated through the completed-request counter",
+  "source_artifact": "quality-r16-b12x-dspark5-context-ladder-low-r3-telemetry.json",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-tp2-128k",
+  "topology": "dual-gpu-exclusive TP2",
+  "reserve_policy_mib_per_gpu": 3072,
+  "request_counter_baseline": 27,
+  "interval_ms": 250,
+  "segments": [
+    {
+      "segment": 1,
+      "target_tokens": 32768,
+      "attempted_context_tokens": 32768,
+      "actual_prompt_tokens": 23831,
+      "first_sample": "2026-08-02T02:49:17.307765Z",
+      "last_sample": "2026-08-02T02:49:22.940295Z",
+      "samples": 19,
+      "gpus": [
+        {"role": "dark-compute-a", "max_used_mib": 96260, "min_free_mib": 1179, "max_power_w": 240.85, "max_sm_clock_mhz": 2272, "max_utilization_percent": 99, "reserve_pass": false},
+        {"role": "dark-compute-b", "max_used_mib": 95408, "min_free_mib": 2031, "max_power_w": 228.31, "max_sm_clock_mhz": 2310, "max_utilization_percent": 100, "reserve_pass": false}
+      ]
+    },
+    {
+      "segment": 2,
+      "target_tokens": 65536,
+      "attempted_context_tokens": 65536,
+      "actual_prompt_tokens": 67415,
+      "first_sample": "2026-08-02T02:49:24.577078Z",
+      "last_sample": "2026-08-02T02:49:35.910980Z",
+      "samples": 37,
+      "gpus": [
+        {"role": "dark-compute-a", "max_used_mib": 96242, "min_free_mib": 1197, "max_power_w": 250.26, "max_sm_clock_mhz": 2272, "max_utilization_percent": 99, "reserve_pass": false},
+        {"role": "dark-compute-b", "max_used_mib": 95408, "min_free_mib": 2031, "max_power_w": 237.94, "max_sm_clock_mhz": 2317, "max_utilization_percent": 100, "reserve_pass": false}
+      ]
+    },
+    {
+      "segment": 3,
+      "target_tokens": 128000,
+      "attempted_context_tokens": 126464,
+      "actual_prompt_tokens": 125785,
+      "first_sample": "2026-08-02T02:49:37.541738Z",
+      "last_sample": "2026-08-02T02:49:59.971338Z",
+      "samples": 73,
+      "gpus": [
+        {"role": "dark-compute-a", "max_used_mib": 96236, "min_free_mib": 1203, "max_power_w": 265.32, "max_sm_clock_mhz": 2280, "max_utilization_percent": 100, "reserve_pass": false},
+        {"role": "dark-compute-b", "max_used_mib": 95408, "min_free_mib": 2031, "max_power_w": 251.88, "max_sm_clock_mhz": 2317, "max_utilization_percent": 100, "reserve_pass": false}
+      ]
+    }
+  ],
+  "interpretation": {
+    "memory_behavior": "Peak active-request VRAM is nearly flat across context sizes because the serve reserves its KV capacity at startup; context length primarily changes how long the GPUs remain at high utilization and power.",
+    "reserve_decision": "All sampled contexts fail the 3 GiB reported-free policy on both cards. A successful 128K request is therefore functional evidence, not promotion evidence.",
+    "timing_note": "The linked ladder is a warmed run and is published separately from the earlier colder ladder."
+  }
+}

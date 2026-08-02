@@ -448,6 +448,7 @@ def run_bakeoff(
                     a.base_url, a.model, prompt, api_key, completion_cap,
                     timeout=a.timeout, **control_kwargs,
                 ))
+                timing = result_timing(result)
                 row.update({
                     "status": "passed",
                     "ttft_ms": result["ttft"] * 1000.0,
@@ -455,6 +456,22 @@ def run_bakeoff(
                     "output_tokens": result["out_toks"],
                     "usage": result.get("usage"),
                 })
+                if timing is not None:
+                    row.update({
+                        key: timing[key]
+                        for key in (
+                            "prompt_tokens",
+                            "output_token_source",
+                            "time_to_first_output_ms",
+                            "generation_ms",
+                            "visible_generation_ms",
+                            "effective_prefill_tok_s",
+                            "decode_tok_s",
+                            "mean_inter_token_latency_ms",
+                            "reasoning_chunks",
+                            "content_chunks",
+                        )
+                    })
                 chat_results.append(result)
                 # Calibrate sizing from the serve's REAL tokenizer count so later
                 # targets land ON target instead of ~15% under the conservative default.

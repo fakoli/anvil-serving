@@ -174,6 +174,33 @@ model_flag = "--model"
 after the image. Without these optional fields, recipe loading keeps the existing
 positional-model behavior.
 
+For an environment-owned launcher that selects the model itself, set `model_env`
+instead of `model_flag`. Anvil injects that variable from the recipe's exact
+`model` identity and passes no positional model argument to the launcher. A
+declared `env` entry cannot override it.
+
+```toml
+[recipe.serve]
+image = "vendor/runtime@sha256:..."
+entrypoint = ["/usr/local/bin/serve-model.sh"]
+model_env = "MODEL"
+```
+
+Persistent engine/JIT data uses auxiliary named volumes, never host bind mounts:
+
+```toml
+[recipe.serve]
+named_volumes = [
+  "candidate-jit:/cache",
+  "candidate-reference:/opt/reference:ro",
+]
+```
+
+Each entry is `NAME:/absolute/container/path[:ro]`. Sources must be Docker volume
+names; targets must be normalized absolute POSIX paths; repeated sources or
+targets and attempts to shadow `/root/.cache/huggingface` fail closed. The model
+cache remains owned by `recipe.download.volume`.
+
 ```bash
 anvil-serving models recipes create --recipe-file ./candidate-recipe.toml --registry ./serve-recipes.local.toml --dry-run
 anvil-serving models recipes create --recipe-file ./candidate-recipe.toml --registry ./serve-recipes.local.toml --confirm

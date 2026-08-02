@@ -300,8 +300,11 @@ def test_group_up_dry_run_starts_nothing(tmp_path):
         return proc(0, "", "")
 
     serves.cmd_up(s, targets, dry_run=True, _run=run)
-    # Only inspect probes ran; no compose/start/stop mutation.
-    assert all(c[:2] == ["docker", "inspect"] for c in calls if isinstance(c, list))
+    # Only inventory/inspect probes ran; no compose/start/stop mutation.
+    assert all(
+        c[:2] == ["docker", "inspect"] or c[:3] == ["docker", "ps", "-a"]
+        for c in calls if isinstance(c, list)
+    )
 
 
 # ---- status --group keeps the whole-set ledger -----------------------------

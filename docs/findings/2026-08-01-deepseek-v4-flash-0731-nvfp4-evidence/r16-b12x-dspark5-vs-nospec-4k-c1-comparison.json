@@ -1,0 +1,130 @@
+{
+  "schema_version": "paired-capacity-comparison/v1",
+  "generated_at": "2026-08-02T02:38:15Z",
+  "hardware": "dual-rtx-pro-6000-blackwell-max-q-tp2",
+  "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "engine_revision": "30038602b71395f481ef4a6edfe4fcf8551d9c15",
+  "image_digest": "sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f",
+  "protocol": {
+    "context_tokens": 4096,
+    "max_model_len": 131072,
+    "max_tokens": 2048,
+    "margin_tokens": 1024,
+    "concurrency": 1,
+    "requests_per_run": 3,
+    "successful_runs_per_lane": 3,
+    "reasoning_effort": "low",
+    "aggregation": "median of each successful run's p50 metric",
+    "paired_variable": "DSpark fixed-depth speculative decoding with five draft tokens versus MODE=dspark-mtp0 without speculative decoding"
+  },
+  "invariants": [
+    "same r16 image digest",
+    "same official checkpoint revision",
+    "same B12X W4A8 MoE and FP8 dense kernels",
+    "same FP8 KV format",
+    "same TP2 WSL transport and native allocator",
+    "same max_num_seqs=8 and 8192 batched-token cap",
+    "same gpu_memory_utilization=0.975",
+    "same prompts, sampling, output budget, and timing boundaries"
+  ],
+  "dspark": {
+    "served_model": "deepseek-v4-flash-0731-r16-b12x-dspark5-tp2-128k",
+    "num_speculative_tokens": 5,
+    "cuda_graph_cap": 48,
+    "kv_cache_tokens": 138459,
+    "startup_seconds": 267.8,
+    "cumulative_accepted_token_fraction": 0.5509626274065685,
+    "artifacts": [
+      "capacity-r16-b12x-dspark5-low-4k-c1-r3-headroom2048-r1.json",
+      "capacity-r16-b12x-dspark5-low-4k-c1-r3-headroom2048-r2.json",
+      "capacity-r16-b12x-dspark5-low-4k-c1-r3-headroom2048-r3.json"
+    ]
+  },
+  "control": {
+    "served_model": "deepseek-v4-flash-0731-r16-b12x-nospec-tp2-128k",
+    "speculative_decoding": false,
+    "cuda_graph_cap": 32,
+    "kv_cache_tokens": 257515,
+    "startup_seconds": 237.9,
+    "artifacts": [
+      "capacity-r16-b12x-nospec-low-4k-c1-r3-headroom2048-r1.json",
+      "capacity-r16-b12x-nospec-low-4k-c1-r3-headroom2048-r3.json",
+      "capacity-r16-b12x-nospec-low-4k-c1-r3-headroom2048-r4.json"
+    ],
+    "retained_failure_artifact": {
+      "path": "capacity-r16-b12x-nospec-low-4k-c1-r3-headroom2048-r2.json",
+      "completed": 2,
+      "failed": 1,
+      "error": "stream completed without visible content",
+      "treatment": "retained as reliability evidence and excluded from successful-run median aggregation"
+    }
+  },
+  "metrics": {
+    "decode_tok_s_p50": {
+      "dspark_values": [126.61877898696345, 135.66399896434154, 130.7115725526395],
+      "control_values": [63.27635427673208, 64.89020132338185, 65.7504397141746],
+      "dspark_median": 130.7115725526395,
+      "control_median": 64.89020132338185,
+      "dspark_delta_percent": 101.43499309123006
+    },
+    "throughput_tok_s": {
+      "dspark_values": [101.66158837195294, 100.68403364855827, 107.89581980765361],
+      "control_values": [52.431882748330764, 59.63562926720519, 61.39048977248664],
+      "dspark_median": 101.66158837195294,
+      "control_median": 59.63562926720519,
+      "dspark_delta_percent": 70.47122604583407
+    },
+    "time_to_first_output_p50_ms": {
+      "dspark_values": [330.56650000071386, 333.9449999984936, 335.50889999605715],
+      "control_values": [315.43819999933476, 299.7285000019474, 316.00109999999404],
+      "dspark_median": 333.9449999984936,
+      "control_median": 315.43819999933476,
+      "dspark_latency_delta_percent": 5.867012936035604
+    },
+    "ttft_p50_ms": {
+      "dspark_values": [1428.6952999973437, 1042.724699997052, 1670.3684000021894],
+      "control_values": [2003.1591000006301, 3533.8245000020834, 4282.079100004921],
+      "dspark_median": 1428.6952999973437,
+      "control_median": 3533.8245000020834,
+      "dspark_latency_delta_percent": -59.57084739220917
+    },
+    "effective_prefill_tok_s_p50": {
+      "dspark_values": [8954.32537777908, 8863.735046230226, 8822.41871984554],
+      "control_values": [9383.771528008474, 9875.604088302474, 9367.056000754605],
+      "dspark_median": 8863.735046230226,
+      "control_median": 9383.771528008474,
+      "dspark_delta_percent": -5.541870667098564
+    },
+    "generation_p50_ms": {
+      "dspark_values": [1266.723799999454, 874.6172999963164, 1553.0376999959117],
+      "control_values": [2015.1945000034175, 3590.680799999973, 4451.168900006451],
+      "dspark_median": 1266.723799999454,
+      "control_median": 3590.680799999973,
+      "dspark_latency_delta_percent": -64.72190454803268
+    },
+    "e2e_p50_ms": {
+      "dspark_values": [1597.290300000168, 1211.8998999940231, 1860.7002999997349],
+      "control_values": [2330.6327000027522, 3876.587099999597, 4767.170000006445],
+      "dspark_median": 1597.290300000168,
+      "control_median": 3876.587099999597,
+      "dspark_latency_delta_percent": -58.79648105932318
+    }
+  },
+  "memory": {
+    "capture_phase": "idle immediately after each lane's benchmark work",
+    "dspark_used_mib": [97044, 97174],
+    "control_used_mib": [95457, 94846],
+    "dspark_increment_mib": [1587, 2328],
+    "reserve_policy_mib_per_gpu": 3072,
+    "dspark_reserve_pass": false,
+    "control_reserve_pass": false,
+    "caveat": "WSL/WDDM global VRAM includes host display/runtime allocations; snapshots are post-run rather than in-request peak samples."
+  },
+  "functional_gate": {
+    "dspark": "pass",
+    "control": "pass",
+    "checks": ["smoke", "json", "tools", "streaming-tools", "tool-result", "responses"],
+    "reasoning_evidence": "required"
+  },
+  "decision": "DSpark K5 is the performance lane: it doubled median per-request decode, improved aggregate throughput by 70.5%, and reduced median end-to-end latency by 58.8% on the same runtime. It costs substantial VRAM, slightly worsens median time to first reasoning/content output, and the current WSL/WDDM 131K recipe does not pass the 3 GiB physical-free reserve gate; retain no-promotion status until the reserve contract is resolved or explicitly revised."
+}

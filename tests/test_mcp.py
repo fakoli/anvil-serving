@@ -140,6 +140,56 @@ def test_serves_mode_live_apply_requires_separate_human_gate(tmp_path, monkeypat
     assert refused.value.code == "human_approval_required"
 
 
+def test_serves_mode_live_enter_forwards_preserve_on_failure(
+    tmp_path, monkeypatch,
+):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(MODE_MANIFEST, encoding="utf-8")
+    monkeypatch.setattr(serves, "docker_state", lambda *args, **kwargs: "absent")
+    seen = {}
+
+    def run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["kwargs"] = kwargs
+        return {"returncode": 0, "stdout": "", "stderr": ""}
+
+    monkeypatch.setattr(serves_tools, "_run_argv", run)
+    result = mcp.tool_serves_mode({
+        "action": "enter",
+        "manifest": str(manifest),
+        "target": "tp2",
+        "restore_group": "split-stack",
+        "dry_run": False,
+        "confirm": True,
+        "human_approved": True,
+        "preserve_on_failure": True,
+    })
+
+    assert result["ok"]
+    assert result["data"]["preserve_on_failure"] is True
+    assert "--preserve-on-failure" in seen["argv"]
+    assert seen["kwargs"]["confirm"] is True
+
+
+@pytest.mark.parametrize("action", ["status", "preview", "leave"])
+def test_serves_mode_rejects_preserve_on_failure_outside_enter(
+    action, tmp_path,
+):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(MODE_MANIFEST, encoding="utf-8")
+    args = {
+        "action": action,
+        "manifest": str(manifest),
+        "preserve_on_failure": True,
+    }
+    if action != "status":
+        args.update(target="tp2", restore_group="split-stack")
+
+    with pytest.raises(mcp.ToolError) as refused:
+        mcp.tool_serves_mode(args)
+    assert refused.value.code == "bad_argument"
+
+
 def test_openclaw_sync_apply_writes_direct_alias_provider(tmp_path):
     config = Path(__file__).resolve().parents[1] / "configs" / "example.toml"
     out = tmp_path / "openclaw.json"

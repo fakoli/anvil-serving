@@ -1,0 +1,46 @@
+{
+  "schema": "anvil-serving.speculative-decoding-snapshot/v1",
+  "observed_at": "2026-08-02T02:28:49Z",
+  "source": {
+    "endpoint": "http://127.0.0.1:39062/metrics",
+    "format": "Prometheus text exposition",
+    "engine": "vllm-r16-b12x-dspark5-sm120",
+    "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-tp2-128k"
+  },
+  "configuration": {
+    "method": "dspark",
+    "draft_tokens": 5,
+    "depth_mode": "fixed",
+    "draft_sample_method": "probabilistic",
+    "rejection_sample_method": "standard",
+    "tensor_parallel_size": 2
+  },
+  "scope": {
+    "kind": "cumulative_since-serve-start",
+    "chat_completion_requests_2xx": 37,
+    "responses_requests_2xx": 1,
+    "includes": [
+      "functional preflights",
+      "three repeated 4K capacity runs",
+      "two 32K/64K/128K context ladders"
+    ],
+    "caveat": "Cumulative counters are not attributable to one prompt or context row. Use paired before/after snapshots for future isolated A/B acceptance measurements."
+  },
+  "counters": {
+    "drafts": 1766,
+    "draft_tokens": 8830,
+    "accepted_tokens": 4865,
+    "accepted_tokens_per_position": [1492, 1218, 926, 717, 512]
+  },
+  "derived": {
+    "accepted_token_fraction": 0.5509626274065685,
+    "accepted_tokens_per_draft": 2.7548131370328424,
+    "acceptance_by_position": [
+      0.8448471121177803,
+      0.6896942242355606,
+      0.5243488108720272,
+      0.4060022650056625,
+      0.289920724801812
+    ]
+  }
+}
