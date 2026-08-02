@@ -1,6 +1,7 @@
 """Direct capability routing behavior retained by the thin gateway."""
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -19,8 +20,18 @@ def _request(model="llm.primary", *, raw=None, content="hello"):
     return InternalRequest(model=model, messages=(Message("user", content),), raw=raw or {})
 
 
-def _routing(*, backends=None, admission=None):
+def _routing(*, backends=None, admission=None, max_output_tokens=None):
     config = load(_CONFIG)
+    if max_output_tokens is not None:
+        config = replace(
+            config,
+            tiers=tuple(
+                replace(tier, max_output_tokens=max_output_tokens)
+                if tier.id == "primary-local"
+                else tier
+                for tier in config.tiers
+            ),
+        )
     return RoutingBackend(
         config,
         backends or {"primary-local": StaticBackend(["heavy"]), "omni-local": StaticBackend(["omni"])},
@@ -79,3 +90,61 @@ def test_client_disconnect_records_metadata_without_content():
     assert record.served_tier is None
     assert record.attempts[0].reason == "client_disconnected"
     assert "first" not in repr(record)
+
+
+@pytest.mark.parametrize(
+    "wire_field",
+    ["max_tokens", "max_completion_tokens", "max_output_tokens"],
+)
+def test_tier_output_cap_overrides_larger_client_budget_before_relay(wire_field):
+    seen = []
+
+    class CapturingBackend:
+        def generate(self, request):
+            seen.append(request.max_tokens)
+            return iter(("ok",))
+
+    request = _request(raw={wire_field: 32768})
+    request.max_tokens = 32768
+    routing = _routing(
+        backends={
+            "primary-local": CapturingBackend(),
+            "omni-local": StaticBackend(["omni"]),
+        },
+        max_output_tokens=5120,
+    )
+
+    assert list(routing.generate(request)) == ["ok"]
+    assert seen == [5120]
+    assert request.raw[wire_field] == 5120
+    assert request.raw["_anvil_output_clamp"] == {
+        "requested": 32768,
+        "applied": 5120,
+    }
+    assert (
+        routing._decision_log.records[-1].attempts[0].reason
+        == "served_output_clamped"
+    )
+
+
+def test_tier_output_cap_supplies_missing_budget_without_false_warning():
+    seen = []
+
+    class CapturingBackend:
+        def generate(self, request):
+            seen.append(request.max_tokens)
+            return iter(("ok",))
+
+    request = _request()
+    routing = _routing(
+        backends={
+            "primary-local": CapturingBackend(),
+            "omni-local": StaticBackend(["omni"]),
+        },
+        max_output_tokens=5120,
+    )
+
+    assert list(routing.generate(request)) == ["ok"]
+    assert seen == [5120]
+    assert "_anvil_output_clamp" not in request.raw
+    assert routing._decision_log.records[-1].attempts[0].reason == "served"

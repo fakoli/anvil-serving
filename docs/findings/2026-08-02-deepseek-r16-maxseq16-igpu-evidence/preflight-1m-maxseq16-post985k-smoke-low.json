@@ -1,0 +1,64 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39065/v1",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-1m",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": "low"
+  },
+  "budget": {
+    "visible_answer_tokens": 512,
+    "reasoning_headroom_tokens": 4096,
+    "max_completion_tokens": 4608
+  },
+  "multimodal_input": null,
+  "video_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [],
+  "checks": [
+    "smoke"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "2.4s got=\"The simplest one-liner is to use Python's built-in\" finish='stop' visible=315 reasoning_chars=995 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "The simplest one-liner is to use Python's built-in `sum` function:\n\n```python\nsum(xs)\n```\n\nIf you need a reusable function (also a one-liner), you can define a lambda:\n\n```python\nlambda xs: sum(xs)\n```\n\nOr a named function:\n\n```python\ndef total(xs): return sum(xs)\n```\n\nAll of these return the sum of the list `xs`.",
+      "finish_reason": "stop",
+      "content_chars": 315,
+      "content_excerpt": "The simplest one-liner is to use Python's built-in `sum` function:\n\n```python\nsum(xs)\n```\n\nIf you need a reusable function (also a one-liner), you can define a lambda:\n\n```python\nlambda xs: sum(xs)\n``",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 995,
+      "reasoning_excerpt": "We need to write a Python one-liner that returns the sum of a list `xs`. The user likely expects a simple expression like `sum(xs)`. But they said \"one-liner\" which could be a lambda or a function def",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 20,
+        "total_tokens": 372,
+        "completion_tokens": 352,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "smoke",
+      "seconds": 2.441,
+      "passed": true,
+      "validation_detail": "contains sum("
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "required",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}
