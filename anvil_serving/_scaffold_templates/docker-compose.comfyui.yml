@@ -43,7 +43,7 @@
 #
 # Publish: loopback-only by default (ADR-0004, 127.0.0.1:8188). Opt in to tailnet
 # exposure by setting COMFYUI_PUBLISH to this host's tailnet address (e.g.
-# 100.87.34.66) before `serves up`. Never bind localhost (gotcha #1) or 0.0.0.0.
+# 100.64.0.10) before `serves up`. Never bind localhost (gotcha #1) or 0.0.0.0.
 name: comfyui
 
 services:

@@ -122,6 +122,7 @@ controller, and ordinary CLI remain stdlib-only.
 - [Getting started](docs/GETTING-STARTED.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Configuration](docs/CONFIGURATION.md)
+- [Public product and private operator state](docs/OPERATOR-PRIVACY.md)
 - [Thin capability gateway](docs/THIN-CAPABILITY-GATEWAY.md)
 - [CLI reference](docs/CLI.md)
 - [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md)
@@ -136,6 +137,9 @@ controller, and ordinary CLI remain stdlib-only.
 
 ## Security and operating boundaries
 
+- Treat every tracked file as public. Keep real topology, active promotions,
+  machine paths, and working evidence in a private operator repository selected
+  through `ANVIL_SERVING_HOME`.
 - Use `127.0.0.1`, never `localhost`, for same-host URLs.
 - Keep router authentication enabled before exposing it beyond loopback.
 - Store credentials only through environment-variable references.

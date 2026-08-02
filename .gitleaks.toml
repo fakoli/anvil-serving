@@ -1,0 +1,46 @@
+title = "anvil-serving secret scan"
+
+[extend]
+useDefault = true
+
+# Public/synthetic values used to prove redaction and validation behavior.
+# Keep these value-specific: never allowlist an entire test directory.
+[[allowlists]]
+description = "Documented and synthetic AWS access-key examples"
+targetRules = ["aws-access-token"]
+regexes = [
+  '''AKIAIOSFODNN7EXAMPLE''',
+  '''AKIAABCDEFGHIJKLMNOP''',
+]
+
+[[allowlists]]
+description = "Deterministic long-context retrieval sentinel"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)anvil_serving/preflight\.py$''']
+regexes = ['''ZEBRA-42917-QUARTZ''']
+
+[[allowlists]]
+description = "Immutable tokenizer revisions are provenance, not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)docs/findings/.*\.(json|log)$''']
+regexes = ['''tokenizer_revision''']
+
+[[allowlists]]
+description = "Published model-capacity setting"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)docs/findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion\.md$''']
+regexes = ['''MAX_NUM_SEQS=16''']
+
+[[allowlists]]
+description = "RFC 6455 sample WebSocket nonce"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)tests/voice/test_ws_transport\.py$''']
+regexes = ['''dGhlIHNhbXBsZSBub25jZQ==''']

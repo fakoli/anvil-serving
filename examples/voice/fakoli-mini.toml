@@ -18,7 +18,7 @@ realtime_host = "127.0.0.1"
 realtime_port = 8765
 
 [voice.llm]
-base_url = "http://100.87.34.66:8000/v1"
+base_url = "http://100.64.0.10:8000/v1"
 model = "llm.voice"
 stream = true
 system_prompt = "For this Mini validation manifest, answer every message with exactly: I understand."
@@ -27,7 +27,7 @@ max_tokens = 8
 history_max_turns = 0
 tool_result_max_chars = 12000
 api_key_env = "ANVIL_ROUTER_TOKEN"
-expected_endpoint_host = "100.87.34.66"
+expected_endpoint_host = "100.64.0.10"
 
 [voice.stt]
 base_url = "http://127.0.0.1:30010/v1"

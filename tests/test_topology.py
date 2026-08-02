@@ -181,13 +181,13 @@ def test_partial_overlay_merges_records_by_id(tmp_path):
     overlay.write_text(
         'command_host = "host:primary-node"\n'
         'command_runtime = "runtime:dark-native"\n'
-        '[[hosts]]\nid = "primary-node"\naddress = "100.87.34.66"\n',
+        '[[hosts]]\nid = "primary-node"\naddress = "100.64.0.10"\n',
         encoding="utf-8",
     )
     topology = topology_module.load_topology(str(source), str(overlay))
     assert topology.command_host == "primary-node"
     assert topology.command_runtime == "dark-native"
-    assert topology.host("primary-node").address == "100.87.34.66"
+    assert topology.host("primary-node").address == "100.64.0.10"
     assert topology.host("primary-node").os == "windows"
 
 

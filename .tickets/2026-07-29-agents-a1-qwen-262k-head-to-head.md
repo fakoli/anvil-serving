@@ -37,7 +37,7 @@ recorded in this ticket.
 - Fast-forwarded `main` to merge commit
   `06f54e2f5fce8e1784f598de963242edba3fe20e`.
 - Created isolated worktree
-  `C:\Users\sdoum\ai-code\anvil-serving-wt-agents-a1-qwen-head-to-head` on
+  `C:\Users\operator\ai-code\anvil-serving-wt-agents-a1-qwen-head-to-head` on
   `codex/agents-a1-qwen-head-to-head`.
 - Confirmed the live model serves were already absent before the campaign.
   The production router remained running and healthy on `127.0.0.1:8000`.

@@ -62,6 +62,8 @@ nav:
       - Voice commands: cli/voice.md
   - Operate the host:
       - Operator playbooks: OPERATOR-PLAYBOOKS.md
+      - Public product and private operator state: OPERATOR-PRIVACY.md
+      - Repository history reset runbook: HISTORY-RESET-RUNBOOK.md
       - Troubleshooting: TROUBLESHOOTING.md
       - Host & setup commands: cli/host.md
       - Control plane & integrations commands: cli/control-plane.md
@@ -146,6 +148,7 @@ nav:
       - 'ADR-0029: Modular command registry': adr/0029-modular-command-registry.md
       - 'ADR-0030: Containerized Dark controller and MCP 2026': adr/0030-containerized-remote-controller-and-mcp-2026.md
       - 'ADR-0031: Dual-era TypeScript MCP bridge': adr/0031-dual-era-typescript-mcp-bridge.md
+      - 'ADR-0032: Public product, private operator state': adr/0032-public-product-private-operator-state.md
   - Changelog: changelog.md
 
 markdown_extensions:

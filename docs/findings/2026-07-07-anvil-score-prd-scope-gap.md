@@ -10,10 +10,10 @@
 
 - Product: Anvil State
 - Runtime checked: `anvil 0.4.2 (schema 8)`
-- Plugin cache: `C:\Users\sdoum\.codex\plugins\cache\anvil\anvil\0.4.2`
+- Plugin cache: `C:\Users\operator\.codex\plugins\cache\anvil\anvil\0.4.2`
 - Installed revision: `2fbb37196a6a2879d6ae9cc91521e62d61a14fce`
 - Project workspace: `anvil-serving`
-- State path: `C:\Users\sdoum\.anvil\workspaces\anvil-serving-7a68b006\.anvil`
+- State path: `C:\Users\operator\.anvil\workspaces\anvil-serving-7a68b006\.anvil`
 - Affected PRD used for reproduction: `voice-latency-model-ab`
 
 ## Symptom

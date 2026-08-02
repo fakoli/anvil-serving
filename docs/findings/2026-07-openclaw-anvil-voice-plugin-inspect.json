@@ -1,5 +1,5 @@
 {
-  "workspaceDir": "/Users/sdoumbouya/.openclaw/workspace",
+  "workspaceDir": "/Users/operator/.openclaw/workspace",
   "plugin": {
     "id": "anvil-voice",
     "name": "Anvil Voice",
@@ -7,8 +7,8 @@
     "version": "2026.6.11",
     "packageName": "@openclaw/anvil-voice-plugin",
     "format": "openclaw",
-    "source": "/Users/sdoumbouya/anvil/openclaw-anvil-voice-t007/index.ts",
-    "rootDir": "/Users/sdoumbouya/anvil/openclaw-anvil-voice-t007",
+    "source": "/Users/operator/anvil/openclaw-anvil-voice-t007/index.ts",
+    "rootDir": "/Users/operator/anvil/openclaw-anvil-voice-t007",
     "origin": "config",
     "enabled": true,
     "compat": [],
@@ -142,8 +142,8 @@
   "compatibility": [],
   "install": {
     "source": "path",
-    "sourcePath": "/Users/sdoumbouya/anvil/openclaw-anvil-voice-t007",
-    "installPath": "/Users/sdoumbouya/anvil/openclaw-anvil-voice-t007",
+    "sourcePath": "/Users/operator/anvil/openclaw-anvil-voice-t007",
+    "installPath": "/Users/operator/anvil/openclaw-anvil-voice-t007",
     "version": "2026.6.11",
     "installedAt": "2026-07-06T20:49:42.535Z"
   }

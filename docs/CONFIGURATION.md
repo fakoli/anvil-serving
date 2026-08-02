@@ -14,6 +14,12 @@ runtime checks that config home first, then any legacy CWD or checkout default
 the command supports. Explicit `--config`, `--manifest`, `--registry`, and
 `--topology` paths always take precedence.
 
+For a production/public checkout, point `ANVIL_SERVING_HOME` at an
+access-controlled companion repository's `operator-home/` directory. Track
+real topology, deployment overlays, and promoted assignments there. Keep
+credentials outside Git in environment variables or file-backed secret stores.
+See [Public product and private operator state](OPERATOR-PRIVACY.md).
+
 The operator files include `router.toml`, `serves.toml`,
 `serve-recipes.toml`, `voice.toml`, `host.toml`, `operator-topology.toml`,
 Compose files, and `.env.example`. Each existing file is backed up beside the
@@ -235,6 +241,9 @@ routes remain separate from chat and purpose-model routing.
   voice aliases.
 - `configs/example-docker.toml`: the same
   topology for a Compose-network router.
+
+These files are public templates, not live deployment defaults. They contain
+generic identities and must not be edited to match an operator workstation.
 
 The removed cloud-routing and mode-manifest examples are intentionally not
 supported by the direct gateway. Send cloud traffic through the owning harness,

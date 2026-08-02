@@ -4,7 +4,7 @@
   "repository": {
     "branch": "codex/agents-a1-qwen-head-to-head",
     "commit": "06f54e2f5fce8e1784f598de963242edba3fe20e",
-    "worktree": "C:\\Users\\sdoum\\ai-code\\anvil-serving-wt-agents-a1-qwen-head-to-head"
+    "worktree": "C:\\Users\\operator\\ai-code\\anvil-serving-wt-agents-a1-qwen-head-to-head"
   },
   "hardware": {
     "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",

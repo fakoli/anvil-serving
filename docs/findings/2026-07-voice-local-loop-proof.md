@@ -100,8 +100,8 @@ python scripts/voice/local_loop_demo.py --meter-inputs --input-device 6 --meter-
 
 | timestamp (UTC) | turns completed | barge-in observed? | avg TTFA (ms) | avg turn latency (ms) | route probe provider | mic recording | assistant recording | session JSON |
 |---|---:|---|---:|---:|---|---|---|---|
-| 2026-07-06T05:21:47Z | 1 | yes | 384.4 | 3365.5 | fast-local | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.input.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.output.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.session.json |
-| 2026-07-06T05:32:28Z | 1 | yes | 1517.5 | 27379.2 | fast-local | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.input.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.output.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.session.json |
+| 2026-07-06T05:21:47Z | 1 | yes | 384.4 | 3365.5 | fast-local | C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.input.wav | C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.output.wav | C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.session.json |
+| 2026-07-06T05:32:28Z | 1 | yes | 1517.5 | 27379.2 | fast-local | C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.input.wav | C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.output.wav | C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.session.json |
 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 
 Note: the 2026-07-06T05:21:47Z capture passed the automated acceptance gate
