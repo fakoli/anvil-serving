@@ -10,7 +10,7 @@ services:
     build:
       context: ../..
       target: controller
-    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.18.0}
+    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.21.0}
     container_name: anvil-serving-controller
     restart: unless-stopped
     user: "999:999"
@@ -48,6 +48,8 @@ services:
       - ./docker-compose.yml:/etc/anvil/docker-compose.yml:ro
       - ./docker-compose.flexibility.yml:/etc/anvil/docker-compose.flexibility.yml:ro
       - ./docker-compose.voice-audio.yml:/etc/anvil/docker-compose.voice-audio.yml:ro
+      - ../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml:/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml:ro
+      - ../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml:/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml:ro
       - anvil-controller-state:/var/lib/anvil-serving
     command:
       - --host

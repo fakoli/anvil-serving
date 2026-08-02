@@ -1,0 +1,64 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39065/v1",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-1m",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": "low"
+  },
+  "budget": {
+    "visible_answer_tokens": 512,
+    "reasoning_headroom_tokens": 4096,
+    "max_completion_tokens": 4608
+  },
+  "multimodal_input": null,
+  "video_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [],
+  "checks": [
+    "needle"
+  ],
+  "results": [
+    {
+      "name": "needle @ ~985000 ctx",
+      "passed": true,
+      "detail": "237.7s ctx~985000 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=292 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 292,
+      "reasoning_excerpt": "We need to answer the question: \"What is the launch code?\" The user provided a long text with repeated sentences and then inserted \"IMPORTANT: The launch code is ZEBRA-42917-QUARTZ.\" So the launch cod",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 886540,
+        "total_tokens": 886629,
+        "completion_tokens": 89,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "needle",
+      "seconds": 237.748,
+      "passed": true,
+      "validation_detail": "needle present"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "required",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

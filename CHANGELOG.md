@@ -6,6 +6,73 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-08-02
+
+Anvil Serving 0.21.0 is the DeepSeek V4 Flash 0731 long-context Primary and
+model-specific output-safety release. It promotes the locally stable 650K
+profile for one Pi/OpenClaw coding user, retains the failed 1M client evidence,
+and includes the post-0.20 WSL2 native KV-offload lifecycle work.
+
+### Highlights
+
+- **Human-gated 650K DeepSeek Primary.** The exact official 0731 revision on
+  the pinned r16 B12X/DSpark K5 image now backs `llm.primary` in exclusive TP=2
+  mode with 650,000 context tokens, 16 admitted sequences, 4,096-token
+  batching, high reasoning by default in the verified clients, and an explicit
+  Qwen rollback alias.
+- **Real-client qualification, not a synthetic-only promotion.** Pi on Fakoli
+  Dark, Pi on Fakoli Mini, and OpenClaw on Fakoli Mini passed live routed
+  smokes. The published narrative follows the complete 128K-to-650K-to-1M
+  experiment and explains why bounded 1M success did not survive actual coding
+  agent request shapes.
+- **Per-model output protection.** Router tiers may declare an optional
+  positive `max_output_tokens`. Oversized OpenAI Chat, Responses, and Anthropic
+  Messages requests are clamped before admission and relay, with standard and
+  `X-Anvil-*` warning headers instead of a hidden mutation or hard rejection.
+- **Managed WSL2 native KV offload.** The release includes the exact mmap-only
+  pinning translation, 128K replay and 256K capacity evidence, counter-backed
+  CPU-to-GPU reload, and ownership-aware shared-memory inspection and reclaim
+  surfaces merged after 0.20.0.
+
+### Changed
+
+- Exclusive-mode entry now treats router activation as part of the transaction:
+  routed targets declare complete current/rollback profiles, install the target
+  profile only after serve readiness, and pass guarded tier readmission before
+  success. Profile or readmission failure restores the prior profile and split
+  stack; leave performs the reverse quiesce, drain, profile, and readmit flow.
+- The reference dual-GPU manifest records separate 650K current and retained
+  1M experimental DeepSeek recipes. Exclusive ownership blocks every other
+  managed GPU workload while the Primary is running.
+- Router metadata and effective-config fingerprints advertise the configured
+  output ceiling. Tiers without the field retain their previous behavior.
+- Package metadata now uses the SPDX `MIT` expression and explicit license-file
+  declaration supported by the pinned setuptools build floor, removing the
+  deprecated license table and classifier from release builds.
+- Pi on both hosts and OpenClaw on Mini use `llm.primary` with 650K context,
+  32,768 maximum output tokens, and high reasoning as the default.
+- Benchmark publication now records the current/rollback chain, exact client
+  smokes, output-clamp proof, and both fatal 1M workspace failures across the
+  finding, run catalog, model dossier, hardware page, comparison, and archive.
+
+### Evidence and caveats
+
+- The 650K profile recovered a needle near 640K and measured 141.6 tok/s median
+  decode in the matched 32K/c1 low-reasoning slice. High and max reasoning are
+  functionally verified, but no high-reasoning throughput claim is made.
+- The 1M/maxseq16 profile passed near-985K retrieval and bounded protocol gates,
+  then fatally exceeded its 514.25 MiB locked B12X workspace on two real client
+  shapes. The second failure used a 19,118-token prompt and only 5,120 requested
+  output tokens, proving that output clamping alone is not a sufficient 1M fix.
+- Moving display output to the AMD iGPU enabled the larger graph envelope, but
+  the operator explicitly waived the normal 3 GiB per-device reserve for this
+  single-user exclusive deployment. The final reservation ledger reported only
+  94 MiB free after that reserve; this is not a co-residency claim.
+- The pinned custom runtime and recipes remain specific to the recorded model
+  revision, image digest, two sm_120 Max-Q cards, WSL2 transport, quantization,
+  TP size, and KV format. Requalification is required after changing any of
+  those dimensions.
+
 ## [0.20.0] - 2026-08-01
 
 Anvil Serving 0.20.0 is the DeepSeek V4 Flash 0731 DSpark qualification and
@@ -1607,7 +1674,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/fakoli/anvil-serving/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/fakoli/anvil-serving/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/fakoli/anvil-serving/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/fakoli/anvil-serving/compare/v0.17.0...v0.18.0

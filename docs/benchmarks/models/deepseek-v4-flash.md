@@ -2,12 +2,14 @@
 
 ## Current status and review date
 
-Priority intelligence `challenger`; `no-promotion`. The preferred experiment
-profile is the pinned r16 B12X TP=2 recipe with DSpark K5, 131,072 served
-tokens, and low/high/max reasoning support. It passed 128K correctness and a
-27/27 coding-agent slice, and DSpark materially beat the same-image no-spec
-control. Neither profile passed the standing 3 GiB reported-free VRAM policy,
-so no production alias changed.
+`current` for the human-approved `llm.primary` alias. The pinned r16 B12X TP=2
+recipe uses DSpark K5, 650,000 served tokens, 4,096-token batching, 16 admitted
+sequences, and a router-enforced 32,768-token output cap. It passed ~640K
+retrieval, the complete low-reasoning Pi protocol gate, a matched 32K c1 run at
+141.6 tok/s median decode, and current high-reasoning smokes from Pi on Fakoli
+Dark, Pi on Fakoli Mini, and OpenClaw on Fakoli Mini. The former 1M/maxseq16
+candidate remains capacity evidence but is no longer client-facing: two real
+agent request shapes fatally exceeded the locked B12X workspace.
 
 A derived WSL2 image now also qualifies native CPU KV offload at a 262,144
 served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
@@ -17,7 +19,8 @@ recipe. Review date: 2026-08-02.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
 not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
-and concurrency above one remain unqualified.
+remain unqualified. The local maxseq16 lane has bounded c16 and three-tool-burst
+evidence, but not broad repeated multi-agent quality.
 
 ## Immutable identity
 
@@ -62,8 +65,13 @@ JIT, and temporary build data use named Docker volumes.
 - [Same-image no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-nospec-128k-recipe.toml)
 - [256K 8 GiB native-offload recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload8-wsl2-mmap-unpinned-recipe.toml)
 - [256K 16 GiB CPU-reload recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload16-wsl2-mmap-unpinned-recipe.toml)
+- [650K maxseq16 Pi recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml)
+- [1M maxseq4 deep-session recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq4-1m-recipe.toml)
+- [1M maxseq16 deep-session recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml)
 - [Complete qualification](../../findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md)
 - [Native-offload and 256K qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md)
+- [650K/1M Pi qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md)
+- [650K Primary promotion](../../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md)
 
 ## Evidence by measurement class
 
@@ -103,6 +111,26 @@ The derived native-offload lane adds `functional` and `capacity` evidence:
   mapped the 8 and 16 GiB files, then reclaimed each after container removal
   and restored split mode.
 
+The GPU-only Pi-context lane adds `functional` and `capacity` evidence:
+
+- The 650K/maxseq16 profile recovered a needle at approximately 640K in 120.6
+  seconds and passed smoke, JSON, three typed tools, streaming tools,
+  tool-result continuation, and Responses.
+- Its matched 32K c1 run completed 3/3 in 16.6 seconds at 5.59-second median
+  E2E, 8,793 effective prefill tok/s, and 141.6 tok/s median decode.
+- The first 1M profile admitted one sequence and recovered a 985K needle, but
+  a three-tool burst fatally exceeded its locked B12X workspace. It is rejected
+  for Pi agentic use.
+- Raising admission to four retained 1M capacity, passed the same Pi gate and
+  985K retrieval, and delivered 119.9 tok/s median decode at 32K c1. Near-limit
+  retrieval still took 235.7 seconds.
+- Raising admission again to 16 retained 1,715,610 KV tokens, passed the same
+  Pi gate and 985K retrieval plus a post-probe coding request, and improved
+  median 32K decode to 129.0 tok/s. Later real requests required 703.64 and
+  687.83 MiB workspaces when only 514.25 MiB was available. The latter had a
+  19,118-token Pi prompt and only 5,120 requested output tokens, proving that
+  output clamping alone does not make the 1M profile safe.
+
 The prior SGLang lane used image digest
 `sha256:0aa5324c4f38bc66f4b55e1e12efab821ef614b1a8629259b2810ff72a6570e6`,
 publisher hybrid FP4-expert/FP8 weights, FP8 E4M3 KV, 32,768 context, one
@@ -130,12 +158,14 @@ GGUF size ladder, DSpark caveats, and source classifications.
 
 ## Decision and promotion state
 
-`challenger`, `no-promotion`. The r16 DSpark profile is the preferred local
-performance experiment and is suitable for further coding-agent and deployment
-work. Preserve the current production Primary and rollback chain. The next
-material gates are a policy-compliant 128K memory recipe, broader coding/tool
-recovery evaluation, concurrency qualification, per-card reserve sampling on
-the 256K native-offload lane, and pinned 0731 NVFP4 W4A16/W4A4 comparisons.
+`current`, human-approved. The 650K/maxseq16 r16 DSpark profile is the exclusive
+TP=2 Primary for one Pi/OpenClaw coding user, with high reasoning as the client
+default and `llm.rollback` preserved explicitly. The router's optional per-tier
+output cap is 32,768 and warns instead of rejecting an oversized caller budget.
+The 1M profiles are experimental only. Remaining gates include restoring a
+policy-compliant reserve, sustained multi-turn high/max testing, fixing and
+requalifying the client-shaped 1M B12X workspace failure, and pinned 0731 NVFP4
+W4A16/W4A4 comparisons.
 
 ## Failures and gotchas
 
@@ -149,6 +179,16 @@ Both r16 profiles fail the 3 GiB reported-free reserve. Per-context sampling
 found only 1,179-1,203 MiB free on `dark-compute-a` and 2,031 MiB on
 `dark-compute-b`. WSL/WDDM global allocation differs from native Linux, but a
 successful request does not authorize silently weakening the gate.
+
+Moving Windows display output to the AMD iGPU allowed the previously failing
+maxseq16 graph envelope to start. The 650K profile reported only 797/805 MiB
+free after its workload, the 1M/maxseq4 profile reported 207/209 MiB after
+the 985K probe, and the 1M/maxseq16 profile reported 339/335 MiB. The experiment
+intentionally waived the separate 3 GiB
+acceptance gate while retaining `GPU_MEMORY_UTILIZATION=0.975`; this is a
+capacity result, not a new reserve policy. The 1M/maxseq1 profile also remains
+an explicit retained failure because its locked 514.25 MB B12X workspace could
+not satisfy a later 873.62 MB compressed-MLA allocation.
 
 Reasoning-budget exhaustion is still a real operational risk. One earlier
 SGLang capacity request and one additional r16 no-spec control run completed
@@ -172,6 +212,8 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
+- [2026-08-02 650K/1M Pi qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md)
+- [2026-08-02 650K Primary promotion](../../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md)
 - [2026-08-02 native KV offload and 256K qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md)
 - [2026-08-01 r16 DSpark qualification](../../findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md)
 - [2026-08-01 deep research update](../../findings/2026-08-01-deepseek-v4-flash-0731-research-update.md)

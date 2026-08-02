@@ -8,19 +8,18 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained production-alias chain remains Agents-A1 official FP8 (`current`,
-thinking disabled), Qwen3.5 122B NVFP4 (immediate managed `rollback`),
-Laguna S 2.1 NVFP4 and GPT-OSS Puzzle 88B (additional `rollback` profiles; Puzzle
-retains the strict unified-diff caveat), and Gemma 4 and ThinkingCap
-(historical controls). Fakoli Dark now has two equal RTX PRO 6000 cards. The
-2026-08-01 campaign added exclusive TP=2 evidence without promoting any
-candidate. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
+The maintained production-alias chain is DeepSeek V4 Flash 0731 r16 DSpark K5
+at 650K (`current`, exclusive TP=2, high reasoning default), Qwen3.5 122B NVFP4
+(immediate managed `rollback`), and Agents-A1 official FP8 as the previous
+multimodal Primary. Laguna S 2.1 and GPT-OSS Puzzle remain additional managed
+rollback profiles; Gemma 4 and ThinkingCap remain historical controls. Fakoli
+Dark has two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
 now-removed RTX 5090 while the PRO 6000 was protected. Older sections below
 preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-01**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-02**.
 
 ## Read these results correctly
 
@@ -88,6 +87,22 @@ loaded 1,001,721,600 bytes CPU-to-GPU in 0.344 seconds, with 0.825-second TTFO
 and 1.974-second visible TTFT. The model remains
 `no-promotion`; see the
 [256K qualification](findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md).
+
+### DeepSeek 0731 650K Primary promotion
+
+After a separate human gate, the GPU-only 650K/maxseq16 profile became
+`llm.primary` for one Pi/OpenClaw coding user. Pi on Fakoli Dark, Pi on Fakoli
+Mini, and OpenClaw on Fakoli Mini passed live high-reasoning smokes. The router
+now supports an optional per-tier output cap; this tier declares 32,768 and a
+live 50,000-token request was clamped, completed, and returned a warning.
+
+The initially selected 1M/maxseq16 profile was removed after two real client
+shapes fatally exceeded its 514.25 MiB locked B12X workspace. One failure used
+a 19,118-token Pi prompt with only 5,120 requested output tokens, proving that
+output clamping alone cannot make the 1M profile safe. The promoted 650K serve
+still waives the standing 3 GiB reported-free VRAM policy and therefore remains
+an explicit single-user, exclusive TP=2 deployment. See the
+[promotion record](findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md).
 
 ## RTX 5090 Omni choices (as of 2026-07-27)
 

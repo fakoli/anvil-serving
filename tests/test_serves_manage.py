@@ -98,6 +98,40 @@ DUAL_MODE_MANIFEST = """
 """
 
 
+def _routed_mode_manifest(tmp_path):
+    def router_config(path, model):
+        path.write_text(textwrap.dedent(f"""
+            [router]
+            [[router.tiers]]
+            id = "llm-a"
+            base_url = "http://127.0.0.1:30003/v1"
+            model = "{model}"
+            dialect = "openai"
+            context_limit = 4096
+            privacy = "local"
+            tool_support = true
+            auth_env = "ANVIL_PRIMARY_KEY"
+            health_path = "/health"
+            model_identity = true
+            [router.model_routes]
+            llm.primary = "llm-a"
+        """), encoding="utf-8")
+
+    target_config = tmp_path / "router-target.toml"
+    rollback_config = tmp_path / "router-rollback.toml"
+    router_config(target_config, "candidate-local")
+    router_config(rollback_config, "split-a-local")
+    body = DUAL_MODE_MANIFEST.replace(
+        'tensor_parallel_size = 2\n',
+        'tensor_parallel_size = 2\n'
+        '    router_tier = "llm-a"\n'
+        '    router_config = "{dir}/router-target.toml"\n'
+        '    rollback_router_config = "{dir}/router-rollback.toml"\n',
+    )
+    loaded = serves.load_manifest(_manifest(tmp_path, body))
+    return loaded, target_config, rollback_config
+
+
 def _mode_run(states, fail_service=None, restart_on_stop=None):
     calls = []
 
@@ -614,6 +648,194 @@ def test_mode_entry_skips_transitions_when_managed_router_is_stopped(
         ] and "transition" in call
         for call in run.calls
     )
+
+
+def test_routed_mode_entry_installs_profile_then_guardedly_readmits_alias(
+    tmp_path, capsys,
+):
+    loaded, target_config, _rollback_config = _routed_mode_manifest(tmp_path)
+    states = {
+        "split-a": "running",
+        "split-b": "running",
+        "tp2": "absent",
+        serves.DEFAULT_ROUTER_CONTAINER: "running",
+    }
+    run = _mode_run(states)
+    events = []
+
+    def transition(action, tier, timeout=None):
+        events.append((action, tier, timeout))
+        return 0
+
+    def install(config_file, **_kwargs):
+        events.append(("install", config_file, None))
+        return 0
+
+    assert serves.cmd_mode(
+        loaded,
+        "enter",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        _transition=transition,
+        _install_config=install,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 0
+
+    installed = events.index(("install", str(target_config), None))
+    readmitted = max(
+        index for index, event in enumerate(events)
+        if event == ("readmit", "llm-a", None)
+    )
+    assert installed < readmitted
+    config = __import__(
+        "anvil_serving.router.config", fromlist=["load"]
+    ).load(str(target_config))
+    assert config.model_routes["llm.primary"] == "llm-a"
+    assert config.tier("llm-a").model == "candidate-local"
+    assert states["tp2"] == "running"
+    assert "mode entered: tp2" in capsys.readouterr().out
+
+
+def test_routed_mode_entry_router_failure_restores_profile_and_split_stack(
+    tmp_path, capsys,
+):
+    loaded, target_config, rollback_config = _routed_mode_manifest(tmp_path)
+    states = {
+        "split-a": "running",
+        "split-b": "running",
+        "tp2": "absent",
+        serves.DEFAULT_ROUTER_CONTAINER: "running",
+    }
+    run = _mode_run(states)
+    installed = []
+
+    def install(config_file, **_kwargs):
+        installed.append(config_file)
+        return 1 if config_file == str(target_config) else 0
+
+    assert serves.cmd_mode(
+        loaded,
+        "enter",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        _transition=lambda *args, **kwargs: 0,
+        _install_config=install,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 1
+
+    assert installed == [str(target_config), str(rollback_config)]
+    assert states["tp2"] == "absent"
+    assert states["split-a"] == states["split-b"] == "running"
+    assert "failed while activating router tier" in capsys.readouterr().out
+
+
+def test_routed_mode_entry_readmit_failure_restores_profile_and_split_stack(
+    tmp_path,
+):
+    loaded, target_config, rollback_config = _routed_mode_manifest(tmp_path)
+    states = {
+        "split-a": "running",
+        "split-b": "running",
+        "tp2": "absent",
+        serves.DEFAULT_ROUTER_CONTAINER: "running",
+    }
+    run = _mode_run(states)
+    installed = []
+    failed_target_readmit = False
+
+    def install(config_file, **_kwargs):
+        installed.append(config_file)
+        return 0
+
+    def transition(action, _tier, timeout=None):
+        nonlocal failed_target_readmit
+        del timeout
+        if (
+            action == "readmit"
+            and installed
+            and installed[-1] == str(target_config)
+            and not failed_target_readmit
+        ):
+            failed_target_readmit = True
+            return 1
+        return 0
+
+    assert serves.cmd_mode(
+        loaded,
+        "enter",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        _transition=transition,
+        _install_config=install,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 1
+
+    assert failed_target_readmit is True
+    assert installed == [str(target_config), str(rollback_config)]
+    assert states["tp2"] == "absent"
+    assert states["split-a"] == states["split-b"] == "running"
+
+
+def test_routed_mode_leave_drains_target_and_restores_split_router_profile(
+    tmp_path,
+):
+    loaded, _target_config, rollback_config = _routed_mode_manifest(tmp_path)
+    states = {
+        "split-a": "absent",
+        "split-b": "absent",
+        "tp2": "running",
+        serves.DEFAULT_ROUTER_CONTAINER: "running",
+    }
+    run = _mode_run(states)
+    events = []
+
+    def transition(action, tier, timeout=None):
+        events.append((action, tier, timeout))
+        return 0
+
+    def install(config_file, **_kwargs):
+        events.append(("install", config_file, None))
+        return 0
+
+    assert serves.cmd_mode(
+        loaded,
+        "leave",
+        "tp2",
+        "split-stack",
+        confirm=True,
+        _transition=transition,
+        _install_config=install,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 0
+
+    assert events[:2] == [
+        ("quiesce", "llm-a", None),
+        ("drain", "llm-a", 120),
+    ]
+    assert ("install", str(rollback_config), None) in events
+    assert events[-1] == ("readmit", "llm-a", None)
+    assert states["tp2"] == "absent"
+    assert states["split-a"] == states["split-b"] == "running"
+
+
+def test_routed_exclusive_manifest_requires_complete_router_profiles(tmp_path):
+    body = DUAL_MODE_MANIFEST.replace(
+        'tensor_parallel_size = 2\n',
+        'tensor_parallel_size = 2\n    router_tier = "llm-a"\n',
+    )
+    with pytest.raises(ValueError, match="must declare router_config"):
+        serves.load_manifest(_manifest(tmp_path, body))
 
 
 def test_mode_leave_force_releases_exclusive_owner_before_split_restore(

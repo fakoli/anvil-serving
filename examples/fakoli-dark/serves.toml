@@ -35,6 +35,48 @@ id = "dark-compute-b"
 vram_mib = 97887
 reserve_mib = 3072
 
+# Human-approved 2026-08-02 fallback for the dedicated single-user Pi route
+# after the 1M profile exposed a B12X locked-workspace failure on a normal Pi
+# prompt. This exclusive owner is the only GPU inference workload admitted
+# while active.
+[[serve]]
+name = "tp2-deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k"
+stack = "serving"
+container = "vllm-tp2-deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k"
+port = 39062
+model = "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-650k"
+engine = "vllm"
+health = "/health"
+gpu_roles = ["dark-compute-a", "dark-compute-b"]
+vram_mib = 94721
+residency = "on-demand"
+operating_mode = "dual-gpu-exclusive"
+tensor_parallel_size = 2
+router_tier = "primary-local"
+router_config = "{dir}/anvil-router.deepseek-pi.toml"
+rollback_router_config = "{dir}/anvil-router.live.toml"
+groups = ["tp2-pi"]
+up = "python -m anvil_serving.cli models recipes load deepseek-ai/DeepSeek-V4-Flash-0731 --registry {dir}/../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml --container vllm-tp2-deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k --gpu-device GPU-d0f446cf-1771-414c-e116-a39138798a8c,GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490 --confirm"
+
+# Qualified 1M experiment retained for explicit deep-session testing. It is
+# not the client-facing Primary because a 19,118-token Pi prompt reproduced a
+# fatal B12X workspace-growth assertion.
+[[serve]]
+name = "tp2-deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m"
+stack = "serving"
+container = "vllm-tp2-deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m"
+port = 39065
+model = "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-1m"
+engine = "vllm"
+health = "/health"
+gpu_roles = ["dark-compute-a", "dark-compute-b"]
+vram_mib = 94721
+residency = "on-demand"
+operating_mode = "dual-gpu-exclusive"
+tensor_parallel_size = 2
+groups = ["tp2-pi-1m"]
+up = "python -m anvil_serving.cli models recipes load deepseek-ai/DeepSeek-V4-Flash-0731 --registry {dir}/../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml --container vllm-tp2-deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m --gpu-device GPU-d0f446cf-1771-414c-e116-a39138798a8c,GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490 --confirm"
+
 [[serve]]
 name = "primary"                 # primary quality tier — Agents-A1 official FP8
 stack = "serving"

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-08-02T05:46:45-07:00",
+  "decision": {
+    "gate": "human-approved",
+    "alias": "llm.primary",
+    "status": "current",
+    "rollback_alias": "llm.rollback"
+  },
+  "host": {
+    "name": "Fakoli Dark",
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "interconnect": "PCIe without NVLink",
+    "display": "AMD iGPU",
+    "mode": "dual-gpu-exclusive"
+  },
+  "serve": {
+    "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "served_model_name": "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-650k",
+    "image_digest": "sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f",
+    "engine": "vllm-r16-b12x",
+    "tensor_parallel_size": 2,
+    "context_tokens": 650000,
+    "max_num_seqs": 16,
+    "max_num_batched_tokens": 4096,
+    "router_max_output_tokens": 32768,
+    "reasoning_default": "high",
+    "reasoning_supported": ["low", "high", "max"]
+  },
+  "client_smokes": [
+    {"client": "Pi on Fakoli Dark", "result": "PI_DARK_650K_OK", "status": "pass"},
+    {"client": "Pi on Fakoli Mini", "result": "PI_MINI_650K_OK", "status": "pass"},
+    {"client": "OpenClaw on Fakoli Mini", "result": "OPENCLAW_MINI_650K_OK", "run_id": "1fb80922-6ff5-4ca7-859d-fe2a2beaccbc", "context_tokens": 650000, "reasoning": "high", "fallback_used": false, "status": "pass"}
+  ],
+  "router_clamp": {
+    "requested_max_tokens": 50000,
+    "applied_max_tokens": 32768,
+    "http_status": 200,
+    "result": "ROUTER_650K_CLAMP_OK",
+    "warning": "299 anvil-serving \"max_tokens clamped from 50000 to 32768\"",
+    "x_anvil_warning": "max_tokens_clamped",
+    "status": "pass"
+  },
+  "final_state": {
+    "readiness": "identity_passed",
+    "exclusive_gpu_roles": ["dark-compute-a", "dark-compute-b"],
+    "other_managed_gpu_workloads_blocked": true,
+    "reported_ledger_free_mib_after_reserve": 94
+  },
+  "evidence_labels": ["functional", "capacity"],
+  "caveat": "The operator explicitly waived the normal 3 GiB reported-free VRAM gate for this single-user exclusive deployment."
+}
