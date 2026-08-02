@@ -423,7 +423,7 @@ os = "linux"
 [[hosts]]
 id = "dark"
 roles = ["router"]
-address = "100.87.34.66"
+address = "100.64.0.10"
 os = "windows"
 
 [[runtimes]]
@@ -449,7 +449,7 @@ id = "dark-controller"
 kind = "controller"
 host = "dark"
 runtime = "dark-native"
-endpoint = "http://100.87.34.66:8765"
+endpoint = "http://100.64.0.10:8765"
 auth_env = "ANVIL_CONTROLLER_TOKEN"
 allowed_operations = ["{operation}"]
 """,
@@ -506,7 +506,7 @@ def test_cli_remote_router_restart_dispatches_typed_operation(tmp_path, monkeypa
         "dry_run": False,
     }
     assert seen["controller"] == (
-        "http://100.87.34.66:8765",
+        "http://100.64.0.10:8765",
         {
             "auth_env": "ANVIL_CONTROLLER_TOKEN",
             "allowed_operations": ("router-restart",),
@@ -834,7 +834,7 @@ id = "gateway-ssh-recovery"
 kind = "ssh"
 host = "dark"
 runtime = "dark-native"
-endpoint = "ssh://operator@100.87.34.66:22"
+endpoint = "ssh://operator@100.64.0.10:22"
 allowed_operations = ["{operation}"]
 host_key_fingerprint = "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 known_hosts_path = "{known_hosts_toml}"
@@ -865,7 +865,7 @@ def test_cli_harness_restart_ssh_fallback_is_explicit_and_fixed(tmp_path, monkey
     class FakeSSH:
         def __init__(self, endpoint, **kwargs):
             self.endpoint = endpoint
-            self.host = "100.87.34.66"
+            self.host = "100.64.0.10"
             self.transport_id = kwargs["transport_id"]
             self.known_hosts_path = str(known_hosts)
             self.host_key_fingerprint = kwargs["host_key_fingerprint"]
@@ -899,7 +899,7 @@ def test_cli_harness_restart_ssh_fallback_is_explicit_and_fixed(tmp_path, monkey
     assert dict(seen["operation"].arguments) == {}
     output = capsys.readouterr().out
     assert "transport=ssh" in output
-    assert "controller=http://100.87.34.66:8765" in output
+    assert "controller=http://100.64.0.10:8765" in output
 
 
 @pytest.mark.parametrize("leading", [False, True])

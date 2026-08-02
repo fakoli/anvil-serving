@@ -449,7 +449,7 @@
   "suites": {},
   "thinking": {
     "chat_template_kwargs": null,
-    "control_evidence": "C:\\Users\\sdoum\\ai-code\\anvil-serving-wt-gpt-oss-puzzle\\docs\\findings\\2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence\\live-reasoning-control-20260718.json",
+    "control_evidence": "C:\\Users\\operator\\ai-code\\anvil-serving-wt-gpt-oss-puzzle\\docs\\findings\\2026-07-18-gpt-oss-puzzle-heavy-promotion-evidence\\live-reasoning-control-20260718.json",
     "control_evidence_sha256": "7bc2d4fcdd3831601f34f876dc4f52b9c3a4085edfaae79d31197510c97c30cb",
     "control_mechanism": "reasoning_effort",
     "control_requested": "low",

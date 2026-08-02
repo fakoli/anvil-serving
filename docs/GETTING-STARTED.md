@@ -33,6 +33,12 @@ pip install anvil-serving
 Published packages can lag `main`, so use the editable clone install when a command documented here
 is missing from the package.
 
+Before `anvil-serving init` on a real host, choose a private operator root. For
+example, point `ANVIL_SERVING_HOME` at the `operator-home/` directory of a
+private companion repository. This keeps real topology and active assignments
+out of the public product checkout. See
+[Public product and private operator state](OPERATOR-PRIVACY.md).
+
 Confirm the CLI is available:
 
 ```bash
@@ -41,7 +47,8 @@ anvil-serving --help
 
 ## Start Real Local Tiers
 
-`configs/example.toml` is local-only. It expects compatible OpenAI-style model serves at:
+`configs/example.toml` is a public loopback template. It expects compatible
+OpenAI-style model serves at:
 
 | Tier | URL | Purpose |
 |------|-----|---------|
@@ -161,6 +168,8 @@ to need on a first run:
   [Thin capability gateway](THIN-CAPABILITY-GATEWAY.md) for the current design rationale.
 - Read the [Configuration reference](CONFIGURATION.md) to adapt `configs/example.toml` to your
   serves, and the [CLI reference](CLI.md) for the full command surface.
+- Read [Public product and private operator state](OPERATOR-PRIVACY.md) before
+  recording real topology or deployment state.
 - Read [Device topologies](DEVICE-TOPOLOGIES.md) before spreading gateway, voice, router, or serve roles across more devices.
 - Read [Model settings](MODEL-SETTINGS-EXAMPLE.md) before serving thinking-by-default models.
 - Read [Operator playbooks](OPERATOR-PLAYBOOKS.md) to manage Docker Compose model serves.

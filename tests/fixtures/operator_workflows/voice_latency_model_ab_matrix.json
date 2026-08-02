@@ -36,7 +36,7 @@
         "request_model": "fast-local",
         "served_model": "qwen36-27b",
         "managed_serve": "fast",
-        "llm_base_url": "http://100.87.34.66:8000/v1",
+        "llm_base_url": "http://100.64.0.10:8000/v1",
         "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
         "tts_model": "mlx-community/Kokoro-82M-bf16"
       },
@@ -50,7 +50,7 @@
       "source_revision": {
         "repo": "anvil-serving",
         "git_commit": "6d024c2480b9f935b06ae26213ca7cfb69568485",
-        "checkout": "/Users/sdoumbouya/anvil-serving-t007"
+        "checkout": "/Users/operator/anvil-serving-t007"
       },
       "command": ".venv/bin/anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio",
       "prompt_set_id": "generated_audio_roundtrip",
@@ -79,7 +79,7 @@
         "request_model": "fast-local",
         "served_model": "qwen36-27b",
         "managed_serve": "fast",
-        "llm_base_url": "http://100.87.34.66:8000/v1",
+        "llm_base_url": "http://100.64.0.10:8000/v1",
         "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
         "tts_model": "mlx-community/Kokoro-82M-bf16"
       },
@@ -93,7 +93,7 @@
       "source_revision": {
         "repo": "anvil-serving",
         "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
-        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+        "checkout": "C:/Users/operator/ai-code/anvil-serving"
       },
       "command": "anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio",
       "prompt_set_id": "generated_audio_roundtrip",
@@ -128,7 +128,7 @@
         "request_model": "qwen3-32b-nvfp4",
         "served_model": "qwen3-32b-nvfp4",
         "managed_serve": "voice-qwen3-32b",
-        "llm_base_url": "http://100.87.34.66:39000/v1",
+        "llm_base_url": "http://100.64.0.10:39000/v1",
         "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
         "tts_model": "mlx-community/Kokoro-82M-bf16"
       },
@@ -142,7 +142,7 @@
       "source_revision": {
         "repo": "anvil-serving",
         "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
-        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+        "checkout": "C:/Users/operator/ai-code/anvil-serving"
       },
       "command": "anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile candidate-qwen3-32b",
       "prompt_set_id": "generated_audio_roundtrip",
@@ -177,7 +177,7 @@
         "request_model": "gemma4-12b-it",
         "served_model": "gemma4-12b-it",
         "managed_serve": "voice-gemma4-12b",
-        "llm_base_url": "http://100.87.34.66:39001/v1",
+        "llm_base_url": "http://100.64.0.10:39001/v1",
         "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
         "tts_model": "mlx-community/Kokoro-82M-bf16"
       },
@@ -191,7 +191,7 @@
       "source_revision": {
         "repo": "anvil-serving",
         "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
-        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+        "checkout": "C:/Users/operator/ai-code/anvil-serving"
       },
       "command": "anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile candidate-gemma4-12b",
       "prompt_set_id": "generated_audio_roundtrip",
@@ -226,7 +226,7 @@
         "request_model": "gemma4-e4b-it",
         "served_model": "gemma4-e4b-it",
         "managed_serve": "voice-gemma4-e4b",
-        "llm_base_url": "http://100.87.34.66:39002/v1",
+        "llm_base_url": "http://100.64.0.10:39002/v1",
         "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
         "tts_model": "mlx-community/Kokoro-82M-bf16"
       },
@@ -240,7 +240,7 @@
       "source_revision": {
         "repo": "anvil-serving",
         "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
-        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+        "checkout": "C:/Users/operator/ai-code/anvil-serving"
       },
       "command": "anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile candidate-gemma4-e4b",
       "prompt_set_id": "generated_audio_roundtrip",
@@ -275,7 +275,7 @@
         "request_model": "qwen3-32b-nvfp4",
         "served_model": "qwen3-32b-nvfp4",
         "managed_serve": "voice-qwen3-32b",
-        "llm_base_url": "http://100.87.34.66:39000/v1",
+        "llm_base_url": "http://100.64.0.10:39000/v1",
         "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
         "tts_model": "mlx-community/Kokoro-82M-bf16"
       },
@@ -289,7 +289,7 @@
       "source_revision": {
         "repo": "anvil-serving",
         "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
-        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+        "checkout": "C:/Users/operator/ai-code/anvil-serving"
       },
       "command": "candidate matrix row retained for T006 live Talk validation after endpoint availability is restored",
       "prompt_set_id": "tool_weather_zip",

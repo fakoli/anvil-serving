@@ -1,0 +1,4 @@
+interface:
+  display_name: "Anvil Serving Secret Hygiene"
+  short_description: "Audit repositories and rotate live credentials safely"
+  default_prompt: "Use $anvil-serving-secret-hygiene to audit repository exposure or rotate live OpenClaw credentials with rollback and verification."

@@ -26,8 +26,8 @@ def test_runtime_url_rewrites_only_exact_loopback_with_explicit_alias():
         "http://127.0.0.1:8000/v1/models?limit=1",
         environ=env,
     ) == "http://host.docker.internal:8000/v1/models?limit=1"
-    assert paths.runtime_url("http://100.87.34.66:8000/v1", environ=env) == (
-        "http://100.87.34.66:8000/v1"
+    assert paths.runtime_url("http://100.64.0.10:8000/v1", environ=env) == (
+        "http://100.64.0.10:8000/v1"
     )
 
 

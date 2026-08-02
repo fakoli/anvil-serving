@@ -193,7 +193,7 @@
     "chat_template_kwargs": {
       "enable_thinking": false
     },
-    "control_evidence": "C:\\Users\\sdoum\\ai-code\\anvil-serving-wt-agents-a1-qualification\\docs\\findings\\2026-07-28-agents-a1-multimodal-qualification-evidence\\fp8-thinking-disabled-control.json",
+    "control_evidence": "C:\\Users\\operator\\ai-code\\anvil-serving-wt-agents-a1-qualification\\docs\\findings\\2026-07-28-agents-a1-multimodal-qualification-evidence\\fp8-thinking-disabled-control.json",
     "control_evidence_sha256": "1d47f77e055ed9c51f6dc65659d9e843890539a53e7a05f5e47fade517e3f31f",
     "control_mechanism": "chat_template_kwargs",
     "control_requested": {

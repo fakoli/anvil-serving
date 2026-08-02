@@ -26,7 +26,7 @@ recreate its safe container lifecycle, credentials boundary, and tailnet exposur
 That proxy must inject the configured `WORKBENCH_IDENTITY_HEADER` only after stripping any browser-supplied copy. Workbench defaults to the `Tailscale-User-Login` header and rejects an absent identity; the insecure development override is not for a tailnet hub.
 
 ```powershell
-anvil-serving workbench build --source C:\Users\sdoum\ai-code\anvil-workbench --confirm
+anvil-serving workbench build --source C:\Users\operator\ai-code\anvil-workbench --confirm
 anvil-serving workbench up --env-file .\workbench.env --confirm
 anvil-serving workbench status --env-file .\workbench.env
 anvil-serving workbench logs --env-file .\workbench.env --tail 200
@@ -35,7 +35,7 @@ anvil-serving workbench down --env-file .\workbench.env --confirm
 
 `build`, `up`, and `down` require `--confirm`; every mutation supports
 `--dry-run`. `build` defaults to
-`C:\Users\sdoum\ai-code\anvil-workbench` and the local
+`C:\Users\operator\ai-code\anvil-workbench` and the local
 `anvil-workbench:local` tag; override those with `--source` and `--image`.
 `down` preserves named database volumes. `up` waits for Postgres, Neo4j, and
 the hub's loopback `/healthz` endpoint and fails closed after 180 seconds by
