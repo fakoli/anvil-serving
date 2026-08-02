@@ -30,6 +30,7 @@ def _config() -> RouterConfig:
         model="qwen35-122b-a10b-nvfp4",
         dialect="openai",
         context_limit=262_144,
+        max_output_tokens=5120,
         privacy="local",
         tool_support=True,
         auth_env="ANVIL_TEST_KEY",
@@ -71,7 +72,11 @@ def test_capabilities_project_declared_allowlist_and_readiness():
         "tools": {"supported": True},
         "modalities": ["image", "text"],
         "thinking": {"supported": True, "default": "enabled", "caller_override": True},
-        "limits": {"images_per_request": 1, "video_per_request": 0},
+        "limits": {
+            "max_output_tokens": 5120,
+            "images_per_request": 1,
+            "video_per_request": 0,
+        },
         "readiness": {"loaded": True, "state": "ready", "reason": "identity_passed"},
     }
 

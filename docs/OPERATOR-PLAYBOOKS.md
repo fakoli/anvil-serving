@@ -60,7 +60,10 @@ serving change.
 ## Enter or leave exclusive TP=2 mode
 
 The candidate must already be declared with both GPU roles,
-`operating_mode = "dual-gpu-exclusive"`, and `tensor_parallel_size = 2`.
+`operating_mode = "dual-gpu-exclusive"`, and `tensor_parallel_size = 2`. A
+routed target additionally declares its exact `router_tier`, complete
+`router_config`, and complete `rollback_router_config`; an unrouted experiment
+omits all three.
 Preview the full blast radius first:
 
 ```bash
@@ -71,11 +74,14 @@ anvil-serving serves mode enter <tp2-serve> \
 ```
 
 Entry quiesces and drains routed competitors, stops all active GPU inference,
-rechecks both role ledgers, and only then starts the TP=2 owner. A failed start
-restores the named split group in manifest order. While exclusive mode is
-active, ordinary serve starts and ad-hoc Compose experiments fail before a
-container command. Capability aliases whose normal backing serves are offline
-return unavailable; they never fall back to the TP=2 serve.
+rechecks both role ledgers, and only then starts the TP=2 owner. For a routed
+target it then installs the declared complete router profile and guardedly
+readmits the target tier, so success means the declared alias is actually
+routable. A failed start, profile install, or readmission restores both the
+rollback router profile and named split group. While exclusive mode is active,
+ordinary serve starts and ad-hoc Compose experiments fail before a container
+command. Other aliases whose backing serves are offline return unavailable;
+they never fall back to the TP=2 serve.
 
 Leave in the reverse order:
 
@@ -84,7 +90,9 @@ anvil-serving serves mode leave <tp2-serve> \
   --restore-group split-stack --manifest <serves.toml> --confirm
 ```
 
-The `serves_mode` controller tool returns a structured plan. Live `enter` or
+Leave quiesces and drains the routed exclusive tier before stopping it, installs
+the rollback profile, restores the split group, and guardedly readmits its
+tiers. The `serves_mode` controller tool returns a structured plan. Live `enter` or
 `leave` additionally requires `confirm=true`, `dry_run=false`, and
 `human_approved=true`. Selecting or qualifying the first TP=2 model is a
 separate benchmark and promotion decision.

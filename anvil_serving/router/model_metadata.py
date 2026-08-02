@@ -151,6 +151,7 @@ def build_model_capabilities(
             "modalities": _safe_modalities(capabilities.get("modalities")),
             "thinking": _thinking(capabilities.get("thinking")),
             "limits": {
+                "max_output_tokens": tier.max_output_tokens,
                 "images_per_request": _nonnegative_int(capabilities.get("images_per_request")),
                 "video_per_request": _nonnegative_int(capabilities.get("video_per_request")),
             },
@@ -212,6 +213,7 @@ def _canonical_public_config(config: RouterConfig) -> bytes:
             "model": tier.model,
             "dialect": tier.dialect,
             "context_limit_tokens": tier.context_limit,
+            "max_output_tokens": tier.max_output_tokens,
             "tool_support": tier.tool_support,
             "engine": tier.engine,
             "quantization": tier.quantization,

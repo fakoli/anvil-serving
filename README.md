@@ -7,7 +7,7 @@
 > **Benchmark and serve local models through one explicit capability gateway.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.20.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.21.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 </div>

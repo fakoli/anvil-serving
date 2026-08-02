@@ -79,6 +79,9 @@ vram_mib = 90000
 residency = "on-demand"
 operating_mode = "dual-gpu-exclusive"
 tensor_parallel_size = 2
+router_tier = "primary-local"
+router_config = "{dir}/router-exclusive.toml"
+rollback_router_config = "{dir}/router-split.toml"
 ```
 
 The exclusive entry is inert until a separately qualified model recipe adds
@@ -91,6 +94,17 @@ container mutation. Pre-reservation model experiments are treated as GPU
 inference by default so they cannot bypass exclusivity. A genuine CPU-only
 sidecar may declare `gpu_inference = false`. The two cards remain separate VRAM
 heaps without NVLink or transparent 192 GB pooling.
+
+A routed exclusive owner must declare `router_tier`, `router_config`, and
+`rollback_router_config` together. Both direct profiles must route the same
+caller aliases to that tier. The exclusive profile's tier model must equal the
+target serve's exact `served_name`; the rollback profile must match exactly one
+serve in the selected restore group. Mode entry starts and verifies the target,
+atomically installs its complete profile, waits for router health, and then
+guardedly readmits the tier. Any install or readmission failure stops the target,
+restores the rollback profile, and restores the split group. Leave performs the
+reverse quiesce, drain, profile, and readmission transaction. An unrouted TP=2
+experiment omits all three fields and remains direct-port only.
 
 ## Minimal direct gateway
 
@@ -151,8 +165,15 @@ Every chat tier needs `id`, `base_url`, `model`, `dialect`, `context_limit`,
 `privacy = "local"`, `tool_support`, and `auth_env`. `base_url` is an
 OpenAI- or Anthropic-compatible base URL; use `127.0.0.1`, never `localhost`,
 for same-host serves. Optional `health_path`, `timeout`, `max_concurrency`,
-`extra_body`, and `extra_body_defaults` control relay behavior. `engine`,
+`max_output_tokens`, `extra_body`, and `extra_body_defaults` control relay behavior. `engine`,
 `quantization`, and `params` are descriptive serve metadata.
+
+`max_output_tokens` is an optional per-tier runtime safety ceiling. When a
+caller requests a larger completion budget, the router forwards the request
+with the configured ceiling and returns `Warning`, `X-Anvil-Warning`,
+`X-Anvil-Max-Tokens-Requested`, and `X-Anvil-Max-Tokens-Applied` response
+headers. It also records `served_output_clamped` in the metadata-only decision
+trail. Tiers without this field preserve caller and upstream behavior.
 
 The tier's `model` is the upstream served model name. It is not the public
 capability name.

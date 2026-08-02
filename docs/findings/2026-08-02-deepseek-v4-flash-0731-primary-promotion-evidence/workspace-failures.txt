@@ -1,0 +1,18 @@
+DeepSeek V4 Flash 0731 1M/maxseq16 client-shaped failure excerpts
+Observed 2026-08-02 on 2x RTX PRO 6000 Max-Q, exclusive TP=2, r16 B12X.
+
+Failure 1
+Caller output request: max_tokens=32768
+Fatal runtime condition: B12X workspace required 703.64 MiB; available 514.25 MiB.
+Result: engine terminated and Anvil restored a safe non-serving state.
+
+Failure 2
+Caller shape: Pi prompt_tokens=19118, max_tokens=5120
+Fatal runtime condition: B12X workspace required 687.83 MiB; available 514.25 MiB.
+Result: engine terminated and Anvil restored a safe non-serving state.
+
+Interpretation
+The second failure occurred after applying a smaller output cap. Therefore the
+1M failure is not adequately protected by output-token clamping; prompt/prefill
+shape can still exceed the fixed B12X workspace. The 1M recipe is retained as
+experimental capacity evidence and removed from llm.primary.

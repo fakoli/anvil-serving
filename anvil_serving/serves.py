@@ -494,6 +494,40 @@ def _normalize_reservation(s, raw):
         s["residency"] = normalized
 
 
+def _normalize_mode_router_configs(s, raw, manifest_dir):
+    """Validate the router profiles owned by a routed exclusive-mode serve."""
+    fields = ("router_config", "rollback_router_config")
+    present = [field for field in fields if field in s]
+    exclusive = reservations.is_exclusive(s)
+    router_tier = s.get("router_tier")
+    if present and not exclusive:
+        raise ValueError(
+            "serve entry router_config fields are only valid for a "
+            f"dual-gpu-exclusive serve: {raw!r}"
+        )
+    if exclusive and router_tier and len(present) != len(fields):
+        missing = [field for field in fields if field not in s]
+        raise ValueError(
+            "routed dual-gpu-exclusive serve must declare "
+            f"{', '.join(missing)}: {raw!r}"
+        )
+    if present and not router_tier:
+        raise ValueError(
+            "serve entry router_config fields require router_tier: "
+            f"{raw!r}"
+        )
+    for field in present:
+        value = s.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(
+                f"serve entry {field} must be a non-empty path: {raw!r}"
+            )
+        value = value.strip().replace("{dir}", manifest_dir)
+        s[field] = os.path.abspath(
+            value if os.path.isabs(value) else os.path.join(manifest_dir, value)
+        )
+
+
 def _normalize_groups(s, raw):
     """Validate/normalize the optional `groups` field on one serve entry.
 
@@ -583,6 +617,7 @@ def load_manifest(path):
                 )
         s["engine"] = _normalize_engine(s, up)
         _normalize_reservation(s, raw)
+        _normalize_mode_router_configs(s, raw, mdir)
         declared_roles = [
             reservation.gpu_role for reservation in reservations.reservations_of(s)
         ]
@@ -3023,6 +3058,63 @@ def operating_mode_plan(serves, target_name, restore_group, state_of):
     }
 
 
+def _mode_router_plan(serves, target, plan):
+    """Validate the complete direct-router swap for a routed exclusive owner."""
+    tier_id = target.get("router_tier")
+    if not tier_id:
+        return None
+    from .router.config import ConfigError, load as load_router_config
+
+    target_config = load_router_config(target["router_config"])
+    rollback_config = load_router_config(target["rollback_router_config"])
+    try:
+        target_tier = target_config.tier(tier_id)
+        rollback_tier = rollback_config.tier(tier_id)
+    except ConfigError as exc:
+        raise ValueError(
+            "exclusive router profiles must both declare tier %r" % tier_id
+        ) from exc
+    if target_tier.model != target["served_name"]:
+        raise ValueError(
+            "exclusive router profile tier %r model %r does not match target %r"
+            % (tier_id, target_tier.model, target["served_name"])
+        )
+    target_aliases = {
+        alias for alias, selected in target_config.model_routes.items()
+        if selected == tier_id
+    }
+    rollback_aliases = {
+        alias for alias, selected in rollback_config.model_routes.items()
+        if selected == tier_id
+    }
+    if not target_aliases:
+        raise ValueError(
+            "exclusive router profile does not route any alias to tier %r" % tier_id
+        )
+    if target_aliases != rollback_aliases:
+        raise ValueError(
+            "exclusive and rollback router profiles must route the same aliases "
+            "to tier %r" % tier_id
+        )
+    rollback_serves = [
+        serve for serve in _select(serves, plan["rollback"]["serves"])
+        if serve.get("router_tier") == tier_id
+        and serve["served_name"] == rollback_tier.model
+    ]
+    if len(rollback_serves) != 1:
+        raise ValueError(
+            "rollback router profile tier %r model %r must match exactly one "
+            "serve in restore group %r"
+            % (tier_id, rollback_tier.model, plan["rollback"]["group"])
+        )
+    return {
+        "tier": tier_id,
+        "aliases": sorted(target_aliases),
+        "router_config": target["router_config"],
+        "rollback_router_config": target["rollback_router_config"],
+    }
+
+
 def _print_operating_mode_plan(plan):
     print("mode: %s" % plan["mode"])
     print("target: %s (TP=%s)" % (plan["target"], plan["tensor_parallel_size"]))
@@ -3042,6 +3134,14 @@ def _print_operating_mode_plan(plan):
     print("rollback group %s: %s" % (
         plan["rollback"]["group"], ", ".join(plan["rollback"]["serves"]),
     ))
+    if plan.get("router"):
+        print("router aliases: %s -> %s" % (
+            ", ".join(plan["router"]["aliases"]), plan["router"]["tier"],
+        ))
+        print("router profile: %s" % plan["router"]["router_config"])
+        print("router rollback profile: %s" % (
+            plan["router"]["rollback_router_config"]
+        ))
     for item in plan["unresolved"]:
         print("UNRESOLVED: %s state %s" % (item["serve"], item["state"]))
 
@@ -3102,6 +3202,7 @@ def cmd_mode(
     _run=subprocess.run,
     _open=urllib.request.urlopen,
     _sleep=time.sleep,
+    _install_config=None,
 ):
     """Preview, enter, leave, or report the exclusive TP=2 operating mode."""
     gpu_containers = [
@@ -3120,6 +3221,8 @@ def cmd_mode(
 
     try:
         plan = operating_mode_plan(serves, target_name, restore_group, state_of)
+        target = _select(serves, [target_name])[0]
+        plan["router"] = _mode_router_plan(serves, target, plan)
     except ValueError as exc:
         print("mode transition refused: %s" % exc, file=sys.stderr)
         return 2
@@ -3166,7 +3269,63 @@ def cmd_mode(
             )
         )
     skip_offline_router_readmit = uses_default_managed_router
-    target = _select(serves, [target_name])[0]
+    if plan["router"] and router_is_offline:
+        print(
+            "mode transition refused before container mutation: routed exclusive "
+            "mode requires the managed router to be running"
+        )
+        return 1
+    install_config = _install_config or _install_router_config
+
+    def install_router_profile(config_file):
+        rc = install_config(config_file, _run=_run)
+        if rc != 0:
+            return rc
+        gateway = (router_url or DEFAULT_ROUTER_URL).rstrip("/") + "/healthz"
+        status = _await_gateway(
+            gateway, 60, 1, _open=_open, _sleep=_sleep,
+        )
+        if status != 200:
+            print("  router profile installed but gateway health returned HTTP %s" % status)
+            return 1
+        return 0
+
+    def restore_split_with_router():
+        config_rc = 0
+        if plan["router"]:
+            config_rc = install_router_profile(
+                plan["router"]["rollback_router_config"]
+            )
+            if config_rc != 0:
+                print("  CRITICAL: rollback router profile was not restored")
+        stack_rc = _restore_split_stack(
+            serves, plan, transition=transition, _run=_run,
+            _open=_open, _sleep=_sleep,
+            skip_readmit_when_router_stopped=skip_offline_router_readmit,
+        )
+        return 0 if config_rc == 0 and stack_rc == 0 else 1
+
+    def stop_failed_target():
+        if preserve_on_failure:
+            cleanup_rc = cmd_down(
+                serves, [target_name], keep_container=True, _run=_run,
+            )
+            preserved_state = docker_state(target["container"], _run=_run)
+            safely_preserved = cleanup_rc == 0 and preserved_state in _STOPPED
+            if safely_preserved:
+                print(
+                    "  preserved failed target %s in state %s; inspect with "
+                    "`anvil-serving serves logs %s --manifest PATH`"
+                    % (target["container"], preserved_state, target_name)
+                )
+                return
+            print(
+                "  WARNING: failed target could not be safely preserved "
+                "(state %s); removing it before split restore" % preserved_state
+            )
+            cmd_down(serves, [target_name], force_remove=True, _run=_run)
+            return
+        cmd_down(serves, [target_name], _run=_run)
 
     if action == "enter":
         victims = []
@@ -3224,67 +3383,52 @@ def cmd_mode(
             _sleep=_sleep,
         )
         if rc == 0:
+            if plan["router"]:
+                config_rc = install_router_profile(plan["router"]["router_config"])
+                readmit_rc = (
+                    transition("readmit", plan["router"]["tier"])
+                    if config_rc == 0 else 1
+                )
+                if config_rc != 0 or readmit_rc != 0:
+                    print(
+                        "mode entry failed while activating router tier %s; "
+                        "restoring split stack" % plan["router"]["tier"]
+                    )
+                    stop_failed_target()
+                    restore_split_with_router()
+                    return 1
             print("mode entered: %s owns %s" % (
                 target_name, ", ".join(plan["gpu_roles"]),
             ))
             return 0
         print("mode entry failed while starting target; restoring split stack")
-        if preserve_on_failure:
-            cleanup_rc = cmd_down(
-                serves,
-                [target_name],
-                keep_container=True,
-                _run=_run,
-            )
-            preserved_state = docker_state(target["container"], _run=_run)
-            safely_preserved = (
-                cleanup_rc == 0
-                and preserved_state in _STOPPED
-            )
-            if safely_preserved:
-                print(
-                    "  preserved failed target %s in state %s; inspect with "
-                    "`anvil-serving serves logs %s --manifest PATH`"
-                    % (target["container"], preserved_state, target_name)
-                )
-            else:
-                print(
-                    "  WARNING: failed target could not be safely preserved "
-                    "(state %s); removing it before split restore"
-                    % preserved_state
-                )
-                cmd_down(
-                    serves,
-                    [target_name],
-                    force_remove=True,
-                    _run=_run,
-                )
-        else:
-            cmd_down(serves, [target_name], _run=_run)
-        _restore_split_stack(
-            serves, plan, transition=transition, _run=_run,
-            _open=_open, _sleep=_sleep,
-            skip_readmit_when_router_stopped=skip_offline_router_readmit,
-        )
+        stop_failed_target()
+        restore_split_with_router()
         return 1
 
     if action == "leave":
         if state_of(target["container"]) not in reservations.RESERVED_STATES:
             print("mode leave refused: %s is not the active exclusive owner" % target_name)
             return 1
+        if plan["router"]:
+            tier = plan["router"]["tier"]
+            if transition("quiesce", tier) != 0 or transition(
+                "drain", tier, timeout=drain_timeout
+            ) != 0:
+                print("mode leave refused: could not quiesce and drain %s" % tier)
+                transition("readmit", tier)
+                return 1
         if cmd_down(serves, [target_name], force_remove=True, _run=_run) != 0:
             print("mode leave failed: exclusive owner did not stop")
+            if plan["router"]:
+                transition("readmit", plan["router"]["tier"])
             return 1
-        if _restore_split_stack(
-            serves, plan, transition=transition, _run=_run,
-            _open=_open, _sleep=_sleep,
-            skip_readmit_when_router_stopped=skip_offline_router_readmit,
-        ) == 0:
+        if restore_split_with_router() == 0:
             print("mode left: restored split group %s" % restore_group)
             return 0
         print("mode leave rollback: split restore failed; returning to exclusive owner")
         cmd_down(serves, plan["rollback"]["serves"], _run=_run)
-        cmd_up(
+        target_rc = cmd_up(
             serves,
             [target_name],
             ledger_serves=serves,
@@ -3294,6 +3438,10 @@ def cmd_mode(
             _open=_open,
             _sleep=_sleep,
         )
+        if plan["router"] and target_rc == 0:
+            config_rc = install_router_profile(plan["router"]["router_config"])
+            if config_rc == 0:
+                transition("readmit", plan["router"]["tier"])
         return 1
 
     print("unknown mode action %r" % action, file=sys.stderr)
