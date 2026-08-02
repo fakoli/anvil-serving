@@ -1517,6 +1517,11 @@ def _recipe_container_unload(
         print("revision: %s" % (identity["revision"] or "unrecorded"))
         print("state: %s" % identity["state"])
         print("ordered actions: verify recipe ownership labels; remove exact container")
+        if serve_recipes.uses_native_kv_offload(recipe):
+            print(
+                "postcondition: inspect and reclaim only twice-verified orphan "
+                "vLLM offload mmap files"
+            )
         print("deferred until apply: confirmation and identity recheck")
         return 0
     if not _confirm_recipe_mutation(
@@ -1542,6 +1547,16 @@ def _recipe_container_unload(
         )
         return completed.returncode
     print("unloaded recipe container %r" % container)
+    if serve_recipes.uses_native_kv_offload(recipe):
+        cleanup = host_ops.prepare_native_kv_offload_shared_memory()
+        host_ops.render_vllm_offload_shared_memory(cleanup)
+        if cleanup.get("outcome") not in {"clean", "reclaimed"}:
+            print(
+                "recipe container was removed, but native KV-offload shared-memory "
+                "cleanup did not meet its postcondition",
+                file=sys.stderr,
+            )
+            return 1
     return 0
 
 
@@ -1893,6 +1908,11 @@ def _recipe_main(argv):
                     "precondition on apply: independently verify the exact cached "
                     "repository revision before Docker start"
                 )
+            if serve_recipes.uses_native_kv_offload(recipe):
+                print(
+                    "precondition on apply: inspect /dev/shm vLLM offload ownership "
+                    "and reclaim only twice-verified orphan mmap files"
+                )
             print(
                 "postcondition: wait up to %ss for declared HTTP health before "
                 "automatic cache reclaim" % readiness_timeout
@@ -1936,6 +1956,20 @@ def _recipe_main(argv):
                     verification.get("repo_bytes", "unknown"),
                 )
             )
+        if serve_recipes.uses_native_kv_offload(recipe):
+            shared_memory = host_ops.prepare_native_kv_offload_shared_memory()
+            host_ops.render_vllm_offload_shared_memory(shared_memory)
+            if shared_memory.get("outcome") not in {"clean", "reclaimed"}:
+                print(
+                    "recipe load refused: native KV-offload shared-memory ownership "
+                    "could not be established safely",
+                    file=sys.stderr,
+                )
+                print(
+                    "inspect: anvil-serving host shared-memory status",
+                    file=sys.stderr,
+                )
+                return 1
         before = host_ops.capture_cache_before(cache_policy)
         print("loading recipe %r as container %r" % (recipe["model"], a.container))
         print("$ " + printable)
@@ -1947,6 +1981,9 @@ def _recipe_main(argv):
             _command, rc = serve_recipes.load_recipe(recipe, a.container)
         if rc:
             print("recipe load failed with docker exit code %s" % rc, file=sys.stderr)
+            if serve_recipes.uses_native_kv_offload(recipe):
+                cleanup = host_ops.prepare_native_kv_offload_shared_memory()
+                host_ops.render_vllm_offload_shared_memory(cleanup)
             return rc
         port = recipe_serve.get("port")
         readiness = True
@@ -1986,6 +2023,9 @@ def _recipe_main(argv):
                 ),
                 file=sys.stderr,
             )
+            if serve_recipes.uses_native_kv_offload(recipe):
+                cleanup = host_ops.prepare_native_kv_offload_shared_memory()
+                host_ops.render_vllm_offload_shared_memory(cleanup)
             return 1
         if cache_policy["enabled"]:
             result = host_ops.automatic_cache_reclaim(

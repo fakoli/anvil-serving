@@ -1,0 +1,98 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "deepseek-ai/DeepSeek-V4-Flash-0731"
+status = "qualification-candidate"
+source = "2026-08-02 pinned r16 WSL2 native-offload translation with CPU tier sized above the measured 256K GPU KV cache"
+family = "deepseek-v4"
+total_params_b = 304
+active_params_b = 13
+
+[recipe.download]
+repo = "deepseek-ai/DeepSeek-V4-Flash-0731"
+revision = "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+volume = "deepseek-v4-0731-r16-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink; exclusive TP2 only. Global WSL2 pinned memory remains enabled for V2 UVA, while the process-shared offload mmap uses unregistered host memory."
+
+[recipe.serve]
+engine = "vllm-r16-b12x-wsl2-offload-mmap-unpinned"
+allow_cuda_visible_devices_index = true
+image = "anvil-vllm@sha256:331b79259b9532788b44f13696d484a0d1d576231c6ad397c0f0faf72b85cd86"
+entrypoint = ["/usr/local/bin/serve-ds4-flash.sh"]
+model_env = "MODEL"
+named_volumes = [
+  "deepseek-v4-0731-r16-jit:/cache",
+  "deepseek-v4-0731-r16-tmp:/container-tmp",
+]
+quantization = "Official 0731 mixed FP8/FP4 checkpoint; B12X W4A8 NVFP4 MoE, B12X FP8 dense GEMM, FP8 KV"
+context_tokens = 262144
+port = 39069
+startup_timeout_seconds = 1800
+served_model_name = "deepseek-v4-flash-0731-r16-b12x-dspark5-offload16-wsl2-mmap-unpinned-tp2-256k"
+ipc = "host"
+shm_size = "32gb"
+ulimits = [
+  "memlock=-1",
+  "nofile=1048576:1048576",
+  "stack=67108864",
+]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "VLLM_KV_OFFLOAD_MMAP_PIN_MEMORY=0",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "PORT=39069",
+  "MODE=dspark",
+  "BACKEND=b12x-a8",
+  "TP_SIZE=2",
+  "DCP_SIZE=1",
+  "DSPARK_DEPTH_MODE=fixed",
+  "DSPARK_TOKENS=5",
+  "DRAFT_SAMPLE_METHOD=probabilistic",
+  "REJECTION_SAMPLE_METHOD=standard",
+  "MAX_NUM_SEQS=8",
+  "MAX_MODEL_LEN=262144",
+  "MAX_NUM_BATCHED_TOKENS=4096",
+  "GPU_MEMORY_UTILIZATION=0.975",
+  "LOAD_FORMAT=instanttensor",
+  "INSTANTTENSOR_BACKEND=BUFFERED",
+  "KV_OFFLOADING_SIZE=16",
+  "MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SPEC_MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SERVED_MODEL_NAME=deepseek-v4-flash-0731-r16-b12x-dspark5-offload16-wsl2-mmap-unpinned-tp2-256k",
+]
+flags = []
+note = "256K CPU-to-GPU reload qualification lane. The preceding 8 GiB run measured a 503,468-token GPU KV cache while the offload tier held only about 414K tokens at the observed 20.8 KiB per token, so it could not reliably retain a prefix after GPU eviction. This lane changes only KV_OFFLOADING_SIZE from 8 to 16 GiB, sizes the CPU tier above the GPU cache, and uses a distinct port and served name. Image sha256:331b79259b9532788b44f13696d484a0d1d576231c6ad397c0f0faf72b85cd86 derives solely from base sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f and skips cudaHostRegister/cudaHostUnregister only for /dev/shm/vllm_offload_*.mmap. This is not promoted."
+
+[recipe.fit]
+suited = ["qualification", "speculative-decoding", "native-kv-offload", "very-long-context", "coding-agent"]
+rationale = "Proves that a 256K-configured engine can evict a prefix from GPU KV, retain it in a larger CPU tier, and reload it to GPU on replay."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731/tree/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "https://docs.vllm.ai/en/v0.26.0/features/kv_offloading_usage/",
+]
+community = [
+  "https://github.com/local-inference-lab/rtx6kpro/blob/7ffa54e28da423200855d1792b485f9e84648232/models/ds4dspark-v20.md",
+  "https://github.com/local-inference-lab/vllm/pull/217",
+  "https://github.com/local-inference-lab/vllm/pull/218",
+]
+local = [
+  "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload8-wsl2-mmap-unpinned-recipe.toml",
+  "configs/runtime-patches/vllm/48518e91-wsl2-offload-mmap-unpinned/Dockerfile",
+  "configs/runtime-patches/vllm/48518e91-wsl2-offload-mmap-unpinned/wsl2-offload-mmap-pin-control.patch",
+  ".tickets/2026-08-02-deepseek-r16-native-kv-offload-illegal-access.md",
+]

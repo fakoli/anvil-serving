@@ -73,6 +73,22 @@ a priority `challenger` performance recipe, not a promotion. Exact identities,
 context telemetry, matched controls, failures, and raw artifacts are in the
 [r16 qualification](findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md).
 
+The 2026-08-02 native-offload follow-up derived one narrow WSL2 image that
+keeps global V2 UVA enabled while skipping CUDA host registration only for the
+process-shared offload mmap. At a 262,144-token ceiling it passed cold requests
+through 249,573 prompt tokens; that row measured 43.75-second TTFO,
+45.58-second first-visible TTFT, 5,705 effective prefill tok/s, and 135.2 tok/s
+decode. An initial identical start failed because four orphan mmap files filled
+`/dev/shm`, not because of model geometry. The product now checks live process
+and container ownership twice before exact-path cleanup and applies that
+postcondition to managed native-offload load/unload. A 16 GiB follow-up sized
+the CPU tier above the measured 506,283-token GPU KV cache; after six distinct
+150K planned-context requests, exact replay added 113,408 external hits and
+loaded 1,001,721,600 bytes CPU-to-GPU in 0.344 seconds, with 0.825-second TTFO
+and 1.974-second visible TTFT. The model remains
+`no-promotion`; see the
+[256K qualification](findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md).
+
 ## RTX 5090 Omni choices (as of 2026-07-27)
 
 > For the current routed occupant, see the

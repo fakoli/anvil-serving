@@ -36,6 +36,7 @@ import argparse
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -49,6 +50,26 @@ MIN_WINDOWS_RESERVE_GB = 10
 # The doctor's RECOMMENDED reserve (more generous - room for AV scans / Windows Update / cache spikes).
 RECOMMENDED_WINDOWS_RESERVE_GB = 14
 DEFAULT_PROBE_TIMEOUT_SECONDS = 15
+DEFAULT_SHARED_MEMORY_DISTRO = "docker-desktop"
+_VLLM_OFFLOAD_MMAP_RE = re.compile(
+    r"^/dev/shm/vllm_offload_[A-Za-z0-9][A-Za-z0-9_.-]*\.mmap$"
+)
+_CONTAINER_ID_RE = re.compile(r"^[0-9a-f]{12,64}$")
+_SHARED_MEMORY_SCAN = r'''set -eu
+for path in /dev/shm/vllm_offload_*.mmap; do
+    [ -e "$path" ] || continue
+    size=$(stat -c %s "$path")
+    pids=""
+    for maps in /proc/[0-9]*/maps; do
+        [ -r "$maps" ] || continue
+        if grep -Fq "$path" "$maps" 2>/dev/null; then
+            pid=${maps#/proc/}
+            pid=${pid%/maps}
+            if [ -n "$pids" ]; then pids="$pids,$pid"; else pids="$pid"; fi
+        fi
+    done
+    printf '%s\t%s\t%s\n' "$path" "$size" "$pids"
+done'''
 
 
 # --------------------------------------------------------------------------- #
@@ -397,6 +418,267 @@ def render_cache_reclaim_plan(policy, operation):
 
 def _wsl_argv(tail, distro=None):
     return ["wsl"] + (["-d", distro] if distro else []) + tail
+
+
+def _shared_memory_argv(tail, distro):
+    """Run one exact argv in the Linux environment that owns ``/dev/shm``."""
+    if sys.platform == "win32":
+        return _wsl_argv(tail, distro)
+    return tail
+
+
+def _positive_number(value):
+    try:
+        return float(value) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _native_kv_offload_config(env, argv):
+    """Return whether a Docker config positively enables vLLM native KV offload."""
+    values = {}
+    for item in env or ():
+        if isinstance(item, str) and "=" in item:
+            key, value = item.split("=", 1)
+            values[key] = value
+    if _positive_number(values.get("KV_OFFLOADING_SIZE")):
+        return True
+    tokens = [str(item) for item in (argv or ())]
+    for index, token in enumerate(tokens):
+        if token.startswith("--kv-offloading-size="):
+            return _positive_number(token.split("=", 1)[1])
+        if token == "--kv-offloading-size" and index + 1 < len(tokens):
+            return _positive_number(tokens[index + 1])
+    return False
+
+
+def container_uses_native_kv_offload(container, _run=subprocess.run):
+    """True/False for an inspectable container, or None when ownership is unknown."""
+    try:
+        result = _run(
+            ["docker", "inspect", container],
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=DEFAULT_PROBE_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result is None or result.returncode != 0:
+        return None
+    try:
+        rows = json.loads(result.stdout or "[]")
+        row = rows[0]
+        config = row.get("Config") or {}
+        argv = [config.get("Entrypoint"), config.get("Cmd"), row.get("Path"), row.get("Args")]
+        flattened = []
+        for value in argv:
+            if isinstance(value, list):
+                flattened.extend(value)
+            elif value:
+                flattened.append(value)
+        return _native_kv_offload_config(config.get("Env"), flattened)
+    except (IndexError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def _running_native_kv_offload_containers(_run=subprocess.run):
+    """Return ``(containers, error)``; uncertainty is explicit and fail-closed."""
+    try:
+        listed = _run(
+            ["docker", "ps", "-q"], capture_output=True, text=True,
+            errors="replace", timeout=DEFAULT_PROBE_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [], str(exc)
+    if listed is None or listed.returncode != 0:
+        return [], (listed.stderr or "docker ps failed").strip()
+    ids = [line.strip() for line in (listed.stdout or "").splitlines() if line.strip()]
+    if any(not _CONTAINER_ID_RE.fullmatch(item) for item in ids):
+        return [], "docker ps returned an invalid container id"
+    active = []
+    for container_id in ids:
+        try:
+            inspected = _run(
+                ["docker", "inspect", container_id], capture_output=True, text=True,
+                errors="replace", timeout=DEFAULT_PROBE_TIMEOUT_SECONDS,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return [], str(exc)
+        if inspected is None or inspected.returncode != 0:
+            return [], (inspected.stderr or "docker inspect failed").strip()
+        try:
+            rows = json.loads(inspected.stdout or "[]")
+            row = rows[0]
+            config = row.get("Config") or {}
+            argv = []
+            for value in (config.get("Entrypoint"), config.get("Cmd"), row.get("Path"), row.get("Args")):
+                if isinstance(value, list):
+                    argv.extend(value)
+                elif value:
+                    argv.append(value)
+            if _native_kv_offload_config(config.get("Env"), argv):
+                active.append({
+                    "id": container_id,
+                    "name": str(row.get("Name") or "").lstrip("/") or container_id,
+                })
+        except (IndexError, TypeError, ValueError, json.JSONDecodeError):
+            return [], "docker inspect returned invalid JSON for %s" % container_id
+    return active, None
+
+
+def inspect_vllm_offload_shared_memory(
+    *, distro=DEFAULT_SHARED_MEMORY_DISTRO, _run=subprocess.run,
+):
+    """Classify vLLM native-offload mmap files without changing host state."""
+    report = {
+        "schema_version": 1,
+        "available": False,
+        "distro": distro if sys.platform == "win32" else None,
+        "files": [],
+        "active_containers": [],
+        "reclaimable_files": [],
+        "reclaimable_bytes": 0,
+        "blocked_reasons": [],
+    }
+    try:
+        scanned = _run(
+            _shared_memory_argv(
+                ["-u", "root", "-e", "sh", "-c", _SHARED_MEMORY_SCAN], distro
+            ) if sys.platform == "win32" else ["sh", "-c", _SHARED_MEMORY_SCAN],
+            capture_output=True, text=True, errors="replace",
+            timeout=DEFAULT_PROBE_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        report["blocked_reasons"].append("shared-memory scan unavailable: %s" % exc)
+        return report
+    if scanned is None or scanned.returncode != 0:
+        report["blocked_reasons"].append(
+            "shared-memory scan failed: %s" % ((scanned.stderr or "unknown error").strip())
+        )
+        return report
+    files = []
+    for line in (scanned.stdout or "").splitlines():
+        parts = line.split("\t")
+        if len(parts) != 3 or not _VLLM_OFFLOAD_MMAP_RE.fullmatch(parts[0]):
+            report["blocked_reasons"].append("shared-memory scan returned invalid output")
+            return report
+        try:
+            size = int(parts[1])
+            pids = sorted({int(pid) for pid in parts[2].split(",") if pid})
+        except ValueError:
+            report["blocked_reasons"].append("shared-memory scan returned invalid metadata")
+            return report
+        if size < 0 or any(pid <= 0 for pid in pids):
+            report["blocked_reasons"].append("shared-memory scan returned invalid metadata")
+            return report
+        files.append({"path": parts[0], "size_bytes": size, "mapped_pids": pids})
+    active, docker_error = _running_native_kv_offload_containers(_run=_run)
+    report["files"] = files
+    report["active_containers"] = active
+    if docker_error:
+        report["blocked_reasons"].append("container ownership unavailable: %s" % docker_error)
+        return report
+    report["available"] = True
+    if active:
+        report["blocked_reasons"].append("native KV offload container is running")
+    mapped = [item for item in files if item["mapped_pids"]]
+    if mapped:
+        report["blocked_reasons"].append("offload mmap is mapped by a live process")
+    if not report["blocked_reasons"]:
+        report["reclaimable_files"] = [item["path"] for item in files]
+        report["reclaimable_bytes"] = sum(item["size_bytes"] for item in files)
+    return report
+
+
+def reclaim_vllm_offload_shared_memory(
+    *, confirm=False, distro=DEFAULT_SHARED_MEMORY_DISTRO, _run=subprocess.run,
+):
+    """Delete only twice-verified orphan vLLM offload mmaps."""
+    first = inspect_vllm_offload_shared_memory(distro=distro, _run=_run)
+    result = {"applied": False, "outcome": "unavailable", "inspection": first}
+    if not first["available"]:
+        return result
+    if first["blocked_reasons"]:
+        result["outcome"] = "blocked"
+        return result
+    paths = first["reclaimable_files"]
+    if not paths:
+        result["outcome"] = "clean"
+        return result
+    if not confirm:
+        result["outcome"] = "preview"
+        return result
+    second = inspect_vllm_offload_shared_memory(distro=distro, _run=_run)
+    result["verification"] = second
+    if (
+        not second["available"] or second["blocked_reasons"]
+        or second["reclaimable_files"] != paths
+    ):
+        result["outcome"] = "changed"
+        return result
+    try:
+        removed = _run(
+            _shared_memory_argv(["-u", "root", "-e", "rm", "-f", "--", *paths], distro)
+            if sys.platform == "win32" else ["rm", "-f", "--", *paths],
+            capture_output=True, text=True, errors="replace", timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        result.update({"outcome": "failed", "error": str(exc)})
+        return result
+    if removed is None or removed.returncode != 0:
+        result.update({
+            "outcome": "failed",
+            "error": (removed.stderr or "shared-memory removal failed").strip(),
+        })
+        return result
+    final = inspect_vllm_offload_shared_memory(distro=distro, _run=_run)
+    result["final_inspection"] = final
+    remaining = {item["path"] for item in final.get("files", [])}
+    if not final["available"] or any(path in remaining for path in paths):
+        result["outcome"] = "failed"
+        result["error"] = "shared-memory cleanup postcondition was not met"
+        return result
+    result.update({
+        "applied": True,
+        "outcome": "reclaimed",
+        "removed_files": paths,
+        "reclaimed_bytes": first["reclaimable_bytes"],
+    })
+    return result
+
+
+def prepare_native_kv_offload_shared_memory(
+    *, distro=DEFAULT_SHARED_MEMORY_DISTRO, _run=subprocess.run,
+):
+    """Fail-closed startup preparation for a native KV-offload serve."""
+    return reclaim_vllm_offload_shared_memory(confirm=True, distro=distro, _run=_run)
+
+
+def render_vllm_offload_shared_memory(result):
+    inspection = result.get("inspection", result)
+    print(json.dumps(inspection, indent=2, sort_keys=True))
+    if "outcome" in result:
+        print("vLLM offload shared-memory lifecycle: %s" % result["outcome"])
+
+
+def cmd_shared_memory_status(distro=DEFAULT_SHARED_MEMORY_DISTRO, _run=subprocess.run):
+    report = inspect_vllm_offload_shared_memory(distro=distro, _run=_run)
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return 0 if report["available"] else 1
+
+
+def cmd_shared_memory_reclaim(
+    *, confirm=False, distro=DEFAULT_SHARED_MEMORY_DISTRO, _run=subprocess.run,
+):
+    authorized = bool(confirm or guard.confirmation_authorized())
+    result = reclaim_vllm_offload_shared_memory(
+        confirm=authorized, distro=distro, _run=_run,
+    )
+    render_vllm_offload_shared_memory(result)
+    if not authorized and result["outcome"] == "preview":
+        print("re-run with --confirm to remove the verified orphan file(s)")
+    return 0 if result["outcome"] in {"clean", "preview", "reclaimed"} else 1
 
 
 def wsl_meminfo(_run=subprocess.run, distro=None):
@@ -1010,6 +1292,24 @@ def _build_parser():
                      help="(--watch) seconds between checks (default 30).")
     rec.add_argument("--distro", help="WSL distro to run in (default: the default distro).")
     rec.add_argument("--dry-run", action="store_true", help="show the command, run nothing.")
+
+    shm_status = sub.add_parser(
+        "shared-memory-status",
+        help="inspect ownership of /dev/shm/vllm_offload_*.mmap",
+    )
+    shm_status.add_argument(
+        "--distro", default=DEFAULT_SHARED_MEMORY_DISTRO,
+        help="WSL distro owning Docker shared memory (default: docker-desktop).",
+    )
+    shm_reclaim = sub.add_parser(
+        "shared-memory-reclaim",
+        help="remove only twice-verified orphan vLLM offload mmap files",
+    )
+    shm_reclaim.add_argument("--confirm", action="store_true")
+    shm_reclaim.add_argument(
+        "--distro", default=DEFAULT_SHARED_MEMORY_DISTRO,
+        help="WSL distro owning Docker shared memory (default: docker-desktop).",
+    )
     return p
 
 
@@ -1034,6 +1334,10 @@ def main(argv=None):
     if a.action == "reclaim":
         return cmd_reclaim(force=a.force, yes=a.yes, watch=a.watch, threshold_gb=a.threshold_gb,
                            interval_s=a.interval, distro=a.distro, dry_run=a.dry_run)
+    if a.action == "shared-memory-status":
+        return cmd_shared_memory_status(distro=a.distro)
+    if a.action == "shared-memory-reclaim":
+        return cmd_shared_memory_reclaim(confirm=a.confirm, distro=a.distro)
     return 2
 
 

@@ -15,14 +15,15 @@ from anvil_serving import mcp
 from anvil_serving.benchmarking import artifacts as benchmark_artifacts
 from anvil_serving.control_plane.mcp import catalog
 from anvil_serving.control_plane.mcp.tools import TOOL_FAMILIES
+from anvil_serving.control_plane.mcp.tools import host as host_tools
 from anvil_serving.control_plane.mcp.tools import models as model_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "b1e6a71f4012f392c997ecf0587279a1e89caf4be1e700833241fd01ff5b2e80"
+    "3dd27173a8463c8b3b8e19871853ee51771b97069704eb606cc65e12c945258b"
 )
 HANDLER_MAP_SHA256 = (
-    "a9abb43493e43636a7b0adfa5fce4a1e66e8e018cd67b85b169ede69f7f459ea"
+    "8a3c32d27c89a73ae346cb642b4c8fef8f3875b561e0edbb1ab6cee51b8edd17"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -42,6 +43,7 @@ TOOL_NAMES = [
     "doctor_summary",
     "host_summary",
     "gpu_inventory",
+    "host_shared_memory",
     "observability_collect",
     "host_manage",
     "models_inventory",
@@ -127,6 +129,35 @@ def test_explicit_ordered_families_compose_the_public_catalog():
         )
         for specification in mcp.TOOLS.values()
     )
+
+
+def test_host_shared_memory_tools_preview_and_apply(monkeypatch):
+    from anvil_serving import host
+
+    inspection = {
+        "available": True,
+        "files": [{"path": "/dev/shm/vllm_offload_x.mmap"}],
+        "reclaimable_files": ["/dev/shm/vllm_offload_x.mmap"],
+    }
+    monkeypatch.setattr(
+        host, "inspect_vllm_offload_shared_memory", lambda: inspection,
+    )
+    observed = []
+    monkeypatch.setattr(
+        host, "cmd_shared_memory_reclaim",
+        lambda **kwargs: observed.append(kwargs) or 0,
+    )
+
+    status = host_tools.tool_host_shared_memory({})
+    assert status["data"] == inspection
+    preview = host_tools.tool_host_manage({"action": "reclaim-shared-memory"})
+    assert preview["data"]["applied"] is False
+    assert preview["data"]["target"]["inspection"] == inspection
+    applied = host_tools.tool_host_manage({
+        "action": "reclaim-shared-memory", "confirm": True, "dry_run": False,
+    })
+    assert applied["data"]["applied"] is True
+    assert observed == [{"confirm": True}]
 
 
 def test_operation_contracts_resolve_against_the_composed_public_catalog():

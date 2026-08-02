@@ -1,0 +1,34 @@
+DeepSeek V4 Flash 0731 r16 native KV-offload 256K first startup
+Observed: 2026-08-02
+Image: anvil-vllm@sha256:331b79259b9532788b44f13696d484a0d1d576231c6ad397c0f0faf72b85cd86
+Model revision: 9e165c30e2704aec5d9d593cce3eebd58bbef1cb
+TP: 2
+MAX_MODEL_LEN: 262144
+MAX_NUM_BATCHED_TOKENS: 4096
+KV_OFFLOADING_SIZE: 8 GiB
+
+The engine completed model load and GPU profiling. It reported:
+
+GPU KV cache size: 506,401 tokens
+
+Both TP workers then failed at the same shared-offload-region operation:
+
+Created mmap file /dev/shm/vllm_offload_12c3bfe8-25cc-4114-8b91-bf160413b6ec.mmap (8.59 GB)
+Opened existing mmap file /dev/shm/vllm_offload_12c3bfe8-25cc-4114-8b91-bf160413b6ec.mmap
+File "/opt/venv/lib/python3.12/site-packages/vllm/v1/kv_offload/cpu/shared_offload_region.py", line 100, in __init__
+    self.mmap_obj.madvise(...)
+OSError: [Errno 14] Bad address
+
+Post-failure host evidence:
+
+- /dev/shm capacity: 31.4 GiB
+- used before verified-orphan cleanup: 31.1 GiB
+- available before cleanup: 306.3 MiB
+- orphan offload mmaps: three complete 8 GiB files plus the new 7.1 GiB partial file
+- live process mappings to any orphan: none
+- preserved current container state: exited
+- used after removing only the four verified-orphan offload mmaps: 19 MiB
+- available after cleanup: 31.4 GiB
+
+The first attempt is classified as stale shared-memory exhaustion, not a
+256K model-capacity result. The identical recipe is retried after cleanup.

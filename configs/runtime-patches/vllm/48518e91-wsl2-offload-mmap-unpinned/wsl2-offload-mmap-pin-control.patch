@@ -1,0 +1,49 @@
+diff --git a/vllm/v1/kv_offload/cpu/gpu_worker.py b/vllm/v1/kv_offload/cpu/gpu_worker.py
+--- a/vllm/v1/kv_offload/cpu/gpu_worker.py
++++ b/vllm/v1/kv_offload/cpu/gpu_worker.py
+@@ -1,6 +1,7 @@
+ # SPDX-License-Identifier: Apache-2.0
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+ import functools
++import os
+ import time
+ from collections import deque
+ from dataclasses import dataclass
+@@ -120,6 +121,19 @@ def get_cpu_block_ptrs(
+     output[:] = flat[skip_count : skip_count + num_sub_blocks]
+ 
+ 
++def _pin_mmap_region_enabled() -> bool:
++    """Keep V2 UVA enabled while allowing WSL2 to skip mmap registration."""
++    value = os.getenv("VLLM_KV_OFFLOAD_MMAP_PIN_MEMORY", "1").strip().lower()
++    if value in {"1", "true", "yes", "on"}:
++        return True
++    if value in {"0", "false", "no", "off"}:
++        return False
++    raise ValueError(
++        "VLLM_KV_OFFLOAD_MMAP_PIN_MEMORY must be one of "
++        "1/true/yes/on or 0/false/no/off"
++    )
++
++
+ def pin_mmap_region(region: SharedOffloadRegion) -> None:
+     """Register the entire mmap as CUDA pinned memory via cudaHostRegister."""
+     if not current_platform.is_cuda_alike():
+@@ -478,8 +495,15 @@ class CPUOffloadingWorker(OffloadingWorker):
+     ):
+         pin_memory = PIN_MEMORY
+         logger.info("Allocating %d CPU tensors...", len(kv_caches.tensors))
+-        if mmap_region is not None and pin_memory:
+-            pin_mmap_region(mmap_region)
++        if mmap_region is not None and pin_memory:
++            if _pin_mmap_region_enabled():
++                pin_mmap_region(mmap_region)
++            else:
++                logger.warning(
++                    "Skipping cudaHostRegister for the shared KV-offload mmap "
++                    "because VLLM_KV_OFFLOAD_MMAP_PIN_MEMORY=0; global pinned "
++                    "memory and V2 UVA remain enabled"
++                )
+ 
+         gpu_tensors: list[torch.Tensor] = []
+         cpu_tensors: list[torch.Tensor] = []

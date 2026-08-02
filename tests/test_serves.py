@@ -1080,6 +1080,71 @@ def test_cmd_down_force_remove_skips_graceful_stop():
     assert ["docker", "rm", "-f", "sglang"] in run.calls
 
 
+def test_cmd_down_reclaims_native_offload_mmap_after_force_remove(monkeypatch):
+    serv = [{"name": "h", "container": "deepseek", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running")
+    events = []
+    monkeypatch.setattr(
+        serves.host_ops, "container_uses_native_kv_offload",
+        lambda container, **_kwargs: events.append(("detect", container)) or True,
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "prepare_native_kv_offload_shared_memory",
+        lambda **_kwargs: events.append(("reclaim", list(run.calls)))
+        or {"outcome": "reclaimed"},
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "render_vllm_offload_shared_memory",
+        lambda result: events.append(("render", result["outcome"])),
+    )
+
+    assert serves.cmd_down(serv, [], force_remove=True, _run=run) == 0
+    reclaim_calls = next(event[1] for event in events if event[0] == "reclaim")
+    assert ["docker", "rm", "-f", "deepseek"] in reclaim_calls
+    assert events[-1] == ("render", "reclaimed")
+
+
+def test_cmd_down_preserved_stopped_native_offload_container_still_cleans_mmap(
+    monkeypatch,
+):
+    serv = [{"name": "h", "container": "deepseek", "port": 1, "health": "/health"}]
+    run = _inspect_returning("exited")
+    reclaimed = []
+    monkeypatch.setattr(
+        serves.host_ops, "container_uses_native_kv_offload",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "prepare_native_kv_offload_shared_memory",
+        lambda **_kwargs: reclaimed.append(True) or {"outcome": "clean"},
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "render_vllm_offload_shared_memory", lambda _result: None,
+    )
+
+    assert serves.cmd_down(serv, [], keep_container=True, _run=run) == 0
+    assert reclaimed == [True]
+    assert ["docker", "rm", "-f", "deepseek"] not in run.calls
+
+
+def test_cmd_down_reports_native_offload_cleanup_failure(monkeypatch):
+    serv = [{"name": "h", "container": "deepseek", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running")
+    monkeypatch.setattr(
+        serves.host_ops, "container_uses_native_kv_offload",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "prepare_native_kv_offload_shared_memory",
+        lambda **_kwargs: {"outcome": "unavailable"},
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "render_vllm_offload_shared_memory", lambda _result: None,
+    )
+
+    assert serves.cmd_down(serv, [], force_remove=True, _run=run) == 1
+
+
 def test_cmd_down_reports_remove_failure_after_stop():
     serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running", remove_rc=1, remove_err="still referenced")
