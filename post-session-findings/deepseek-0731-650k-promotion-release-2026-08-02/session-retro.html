@@ -1,0 +1,251 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session Retro</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--bd:#30363d;--fg:#e6edf3;--mut:#8b949e;--ac:#58a6ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+a{color:var(--ac)}.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 70px}
+header h1{margin:0 0 4px;font-size:24px}.meta{color:var(--mut);font-size:12px;margin-bottom:22px;word-break:break-all}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px 16px}
+.kpi .v{font-size:21px;font-weight:700}.kpi .l{color:var(--mut);font-size:12px;margin-top:2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px}.card h2{margin:0 0 14px;font-size:15px}
+.bar{display:flex;align-items:center;gap:10px;margin:7px 0}.bar .lab{width:130px;color:var(--mut);font-size:12px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .track{flex:1;background:#0d1117;border-radius:6px;overflow:hidden;height:22px;position:relative}
+.bar .fill{height:100%;border-radius:6px;transition:width .9s cubic-bezier(.2,.8,.2,1);min-width:2px}
+.bar .val{position:absolute;right:8px;top:0;line-height:22px;font-size:11px}.bar:hover .fill{filter:brightness(1.25)}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--bd)}
+th{color:var(--mut);cursor:pointer;user-select:none}th:hover{color:var(--fg)}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.dough{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.legend div{margin:6px 0;color:var(--mut);font-size:12px}.legend b{color:var(--fg)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px}
+.tl{max-height:330px;overflow:auto}.tl .t{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #21262d}.tl .i{color:var(--ac);font-weight:700;min-width:22px}
+.note{color:var(--mut);font-size:12px;margin-top:8px}
+.narrative{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:6px 22px 18px;margin-top:16px}
+.narrative h2{font-size:18px;border-bottom:1px solid var(--bd);padding-bottom:8px}.narrative h3{font-size:14px;color:var(--ac)}
+.narrative code{background:#0d1117;padding:2px 5px;border-radius:4px;font-size:12px}
+footer{color:var(--mut);font-size:12px;margin-top:28px;text-align:center}
+</style></head><body><div class="wrap">
+<header><h1>Session Retro</h1><div class="meta" id="meta"></div></header>
+<div class="kpis" id="kpis"></div>
+<div class="grid">
+<div class="card"><h2>Generated tokens — orchestrator vs delegated</h2><div class="dough" id="dough"></div><div class="note">Output tokens (the real work). Cache reads are shown separately.</div></div>
+<div class="card"><h2>Tokens processed (incl. cache)</h2><div id="cache"></div><div class="note">Cache reads = context re-read each turn; cheap, usually the largest line.</div></div>
+</div>
+<div class="grid">
+<div class="card"><h2>Workflows by type</h2><div id="wftype"></div><div class="note">Hover a bar for runs / agents / minutes.</div></div>
+<div class="card"><h2>Tool calls</h2><div id="tools"></div></div>
+</div>
+<div class="grid">
+<div class="card"><h2>Dynamic workflows in play</h2><div id="wfnamed"></div><div class="note">By invocation count. A reused workflow script counts each run.</div></div>
+<div class="card"><h2>Agents &amp; skills</h2><div id="agents"></div></div>
+</div>
+<div class="card" style="margin-bottom:16px"><h2>Activity timeline <span class="note">output tokens / hour, purple dots = workflow dispatches</span></h2><div id="timeline"></div></div>
+<div class="card" id="wfrunsCard" style="margin-bottom:16px"><h2>Most expensive workflow runs <span class="note">(click a header to sort)</span></h2><table id="wfruns"></table></div>
+<div class="card"><h2>Interaction timeline <span class="note" id="utc"></span></h2><div class="tl" id="turns"></div></div>
+<div class="narrative" id="narrative"><h1>DeepSeek 0731 long-context promotion and 0.21.1 release retrospective</h1>
+<h2>Outcome</h2>
+<p>The session translated a community DeepSeek V4 Flash 0731 recipe to the local</p>
+<p>two-card SM120/WSL2 topology, established reproducible 128K, 650K, and 1M</p>
+<p>profiles, rejected the superficially successful 1M profile after real Pi</p>
+<p>traffic crashed it twice, and promoted the stable 650K profile as</p>
+<p><code>llm.primary</code>. Pi on Fakoli Dark, Pi on Fakoli Mini, and OpenClaw on Mini all</p>
+<p>passed through the promoted alias with high reasoning as the default. The</p>
+<p>router gained a model-specific 32,768-token output cap that clamps oversized</p>
+<p>requests with an explicit warning instead of silently mutating or rejecting</p>
+<p>them.</p>
+<p>The resulting release was 0.21.1. Release 0.21.0 shipped the benchmark,</p>
+<p>promotion, client configuration, transactional router activation, and rollback</p>
+<p>work. Live deployment then exposed a controller packaging defect: the hardened</p>
+<p>controller Compose file did not mount the target and rollback router profiles</p>
+<p>newly required by exclusive-mode manifests. PR #338 added the missing read-only</p>
+<p>mounts and a manifest-derived regression test, and 0.21.1 restored exact</p>
+<p>Windows, Mini, Dark controller, and router version parity.</p>
+<p>Final live state was healthy: DeepSeek exclusively owned both GPUs, 65 other</p>
+<p>managed GPU workloads were blocked, shared memory was clean, <code>llm.primary</code></p>
+<p>reported 650K context and concurrency 16, a high-reasoning smoke returned</p>
+<p><code>OK</code>, and OpenClaw discovered all 16 Anvil tools.</p>
+<h2>Interaction analysis</h2>
+<p>This was an operator-led, highly interactive hardware-to-production run. The</p>
+<p>operator set the direction and made the important product decisions in short</p>
+<p>increments: move display output to the iGPU, preserve workstation CPU and RAM,</p>
+<p>retry max sequences 16, compare 650K and 1M, benchmark every attempt, target a</p>
+<p>single Pi coding user, use <code>llm.primary</code>, default to high reasoning, warn on</p>
+<p>output clamping, and keep every other GPU stack blocked during exclusive TP=2</p>
+<p>service.</p>
+<p>The interventions were valuable because the problem changed as evidence</p>
+<p>arrived. The clearest friction signals were the question about the missing</p>
+<p>goal, the warning that compilation was consuming too much CPU and memory, the</p>
+<p>correction from <code>llm.pi</code> to <code>llm.primary</code>, and the requirement to fix live</p>
+<p>outages before closing the release. These were not cosmetic preferences; they</p>
+<p>identified continuity, workstation coexistence, public contract, and release</p>
+<p>readiness requirements that the workflow had not made explicit early enough.</p>
+<h2>What went well</h2>
+<ul>
+<li>The experiment varied the important knobs deliberately while keeping model,</li>
+</ul>
+<p>  image digest, quantization, TP size, DSpark depth, and runtime utilization</p>
+<p>  pinned. That made the 128K, 650K, and 1M results comparable.</p>
+<ul>
+<li>Moving the display to the AMD iGPU recovered enough device memory to run the</li>
+</ul>
+<p>  upstream max-sequences-16 envelope. The workflow measured the resulting</p>
+<p>  headroom instead of treating the hardware change as proof.</p>
+<ul>
+<li>The 1M profile was not promoted from its near-985K retrieval and synthetic</li>
+</ul>
+<p>  Pi gates. Real Pi requests reproduced fatal B12X workspace allocation twice,</p>
+<p>  including with only 5,120 requested output tokens. That client-shaped test</p>
+<p>  changed the decision to the stable 650K profile.</p>
+<ul>
+<li>The final client contract was verified end to end on Dark Pi, Mini Pi, and</li>
+</ul>
+<p>  Mini OpenClaw, with high reasoning, exact model identity, no silent fallback,</p>
+<p>  and a live oversized-output clamp warning.</p>
+<ul>
+<li>Exclusive ownership remained mechanical rather than advisory: the promoted</li>
+</ul>
+<p>  TP=2 serve owned both GPUs and the controller blocked 65 competing workloads.</p>
+<ul>
+<li>The release gate was broad and reproducible: 3,500 tests passed with 8</li>
+</ul>
+<p>  skipped, plus Linux and Windows CI, Ruff, strict documentation, wheel smoke,</p>
+<p>  Twine, and Greptile 5/5.</p>
+<ul>
+<li>When the controller regression appeared, the fix was durable. The regression</li>
+</ul>
+<p>  test now derives every required exclusive router profile from the manifest</p>
+<p>  and requires an exact read-only controller mount.</p>
+<h2>What went wrong</h2>
+<ul>
+<li>The session briefly lost its explicit goal, forcing the operator to ask where</li>
+</ul>
+<p>  it went. A long experiment should keep the current objective and exit gates</p>
+<p>  visible across compaction and hardware restarts.</p>
+<ul>
+<li>An early image build consumed essentially all CPU threads and roughly 60 GB</li>
+</ul>
+<p>  of Docker memory. The operator had to request workstation headroom after the</p>
+<p>  build started. Resource ceilings should be declared before compilation.</p>
+<ul>
+<li>The first recommendation favored 1M/maxseq16 because bounded retrieval and</li>
+</ul>
+<p>  protocol tests passed. Those tests underrepresented real coding-client prompt</p>
+<p>  and tool shapes, so the recommendation was overturned only during live Pi</p>
+<p>  validation.</p>
+<ul>
+<li>The 0.21.0 release changed the controller&#x27;s runtime file dependency closure</li>
+</ul>
+<p>  without checking that every new router profile was present inside the</p>
+<p>  hardened container. CI passed, yet the deployed controller rejected an</p>
+<p>  otherwise valid promoted manifest.</p>
+<ul>
+<li>Release and deployment were too tightly coupled in one long session. The</li>
+</ul>
+<p>  release artifact was published before a manifest-derived container filesystem</p>
+<p>  check and exact endpoint-parity smoke had completed.</p>
+<ul>
+<li>The stock session-retro parser emitted an all-zero report because repeated</li>
+</ul>
+<p>  Codex Desktop <code>session_meta</code> records were treated as replay-only. This report</p>
+<p>  required an independent reconstruction from unique event identifiers.</p>
+<h2>Where we got lucky</h2>
+<ul>
+<li>The missing controller mounts failed immediately during the live deployment</li>
+</ul>
+<p>  while the session was still active and the operator had explicitly required</p>
+<p>  outage repair before closure. Without that timing, 0.21.0 could have remained</p>
+<p>  published as a broken deployment path.</p>
+<ul>
+<li>The 1M profile&#x27;s workspace failure appeared under real Pi traffic before it</li>
+</ul>
+<p>  became the durable Primary. Its synthetic evidence was strong enough that a</p>
+<p>  less representative gate could have promoted it.</p>
+<ul>
+<li>Moving display output to the iGPU recovered just enough VRAM for the desired</li>
+</ul>
+<p>  envelope, but the retained post-reserve ledger headroom was only 94 MiB. The</p>
+<p>  success depended on a narrow machine state and must not be generalized to</p>
+<p>  co-residency or another host.</p>
+<h2>Five Whys: why did 0.21.0 break the controller deployment?</h2>
+<p>1. The controller rejected the promoted exclusive-mode manifest because the</p>
+<p>   referenced target and rollback router profiles did not exist in the</p>
+<p>   container.</p>
+<p>2. They did not exist because the hardened Compose deployment mounted the serve</p>
+<p>   manifest but not the newly referenced router profile files.</p>
+<p>3. The dependency was new because router activation became transactional with</p>
+<p>   exclusive-mode entry and rollback in 0.21.0.</p>
+<p>4. CI missed it because Compose and controller tests checked hardening and</p>
+<p>   selected files, not the complete file dependency closure derived from the</p>
+<p>   serve manifest.</p>
+<p>5. The release workflow lacked a single readiness contract that joined source</p>
+<p>   version, manifest-referenced files, container mounts, target-host config</p>
+<p>   migration, endpoint version parity, and post-deploy client smokes.</p>
+<p>The systemic fix is a release-readiness skill that treats the release and live</p>
+<p>deployment as one staged evidence chain. It must inventory manifest file</p>
+<p>dependencies before publishing, require source/controller/router/remote CLI</p>
+<p>version parity, smoke the real client route with adequate visible-answer</p>
+<p>headroom, and stop closure when any outage remains.</p>
+<h2>Recommendations</h2>
+<h3>Now</h3>
+<ul>
+<li>Use the new <code>anvil-serving-release-readiness</code> skill for coordinated releases</li>
+</ul>
+<p>  that will be deployed to Mini and Dark. Its pre-publish and post-deploy gates</p>
+<p>  make manifest dependency closure and endpoint parity explicit.</p>
+<ul>
+<li>Keep a real Pi/OpenClaw client-shaped smoke as a required promotion gate for</li>
+</ul>
+<p>  long-context agentic profiles. Near-limit retrieval and protocol conformance</p>
+<p>  are necessary but not sufficient.</p>
+<ul>
+<li>Declare build CPU and memory ceilings before compiling community runtime</li>
+</ul>
+<p>  images on an interactive workstation.</p>
+<h3>Next</h3>
+<ul>
+<li>Add a product command that reports deployment dependency closure for a serve</li>
+</ul>
+<p>  manifest and controller Compose file, rather than relying only on a skill and</p>
+<p>  static test.</p>
+<ul>
+<li>Extend release validation to render the controller deployment in a disposable</li>
+</ul>
+<p>  environment and verify every manifest-referenced file is readable at its</p>
+<p>  container path.</p>
+<ul>
+<li>Improve session-retro parsing so repeated Codex Desktop metadata records do</li>
+</ul>
+<p>  not erase valid turn, tool, and token evidence.</p>
+<h3>Later</h3>
+<ul>
+<li>Add a retained, sanitized client-shape corpus for Pi and OpenClaw so future</li>
+</ul>
+<p>  long-context profiles can be challenged before any route mutation.</p>
+<ul>
+<li>Automate a bounded post-deploy parity packet covering installed CLI,</li>
+</ul>
+<p>  controller, router, route identity, context/concurrency, exclusive ownership,</p>
+<p>  shared memory, and OpenClaw MCP discovery.</p></div>
+<footer>Generated by the session-retro skill - reads only local ~/.claude / ~/.codex logs, sends nothing.</footer>
+</div><script>
+const D = {"sessions": ["C:\\Users\\sdoum\\.codex\\sessions\\2026\\08\\01\\rollout-2026-08-01T23-50-00-019fc13c-92d9-7200-871d-a0df87f83c6f.jsonl"], "cwd": "C:\\Users\\sdoum\\ai-code\\anvil-serving", "branch": "codex/deepseek-r16-maxseq16-igpu", "wall_hours": 7.6, "assistant_turns": 387, "user_turns": 55, "runtimes": ["codex"], "main_output_tokens": 648124, "fresh_input_tokens": 4742524, "cache_creation_tokens": 0, "cache_read_tokens": 210030080, "workflows": 0, "workflow_agents": 0, "workflow_tokens": 0, "workflow_tokens_available": true, "tools": {"exec": 1096, "wait": 402, "apply_patch": 91, "mcp_tool_call": 27, "web_search": 21}, "user_turn_text": [], "measurement_notes": ["The stock parser classified 54 repeated session_meta records as replay-only and emitted zero additive counters.", "Counts were independently reconstructed from unique task, client, call, and event identifiers through the 0.21.1 release-completion event.", "Token totals use the final cumulative counter before that event and exclude this retrospective turn."], "skills_used": {"anvil-serving-llm-qualification": 1, "anvil-serving-benchmark-docs": 1, "anvil-serving-workbench": 1}, "agent_types": {}, "workflows_named": {}, "timeline": [], "workflow_by_type": {}, "workflow_runs": [], "generative_total": 648124}, fmt = n => (n==null ? 'n/a' : (n||0).toLocaleString()), $ = id => document.getElementById(id);
+$('meta').textContent = [D.cwd, D.branch, D.wall_hours? D.wall_hours+' h':''].filter(Boolean).join('  -  ');
+$('kpis').innerHTML = [['Wall-clock',(D.wall_hours||0)+' h'],['Assistant turns',fmt(D.assistant_turns)],['Human messages',fmt(D.user_turns)],['Generated tokens',fmt(D.generative_total)],['Workflows',fmt(D.workflows)+' / '+fmt(D.workflow_agents)+' ag'],['Cache read',fmt(D.cache_read_tokens)]].map(([l,v])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+function doughnut(parts){const tot=parts.reduce((a,p)=>a+p.value,0)||1,R=52,C=2*Math.PI*R;let off=0;const segs=parts.map(p=>{const dash=p.value/tot*C,s=`<circle r="${R}" cx="70" cy="70" fill="none" stroke="${p.color}" stroke-width="20" stroke-dasharray="${dash} ${C-dash}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"/>`;off+=dash;return s;}).join('');return `<svg width="140" height="140" viewBox="0 0 140 140">${segs}</svg><div class="legend">${parts.map(p=>`<div><span class="dot" style="background:${p.color}"></span><b>${fmt(p.value)}</b> ${p.label} (${Math.round(100*p.value/tot)}%)</div>`).join('')}</div>`;}
+$('dough').innerHTML=doughnut([{label:'delegated to workflows',value:D.workflow_tokens,color:'#bc8cff'},{label:'main-loop orchestrator',value:D.main_output_tokens,color:'#58a6ff'}]);
+if(D.workflow_tokens_available===false){$('dough').parentElement.querySelector('.note').textContent='Delegated token totals are unavailable in this log format — percentages omitted.';$('dough').querySelectorAll('.legend div').forEach((lg,i)=>{lg.innerHTML=lg.innerHTML.replace(/\s*\(\d+%\)/,'');if(i===0)lg.innerHTML=lg.innerHTML.replace(/<b>[^<]*<\/b>/,'<b>n/a</b>');});}
+function hbars(el,items){const mx=Math.max(...items.map(i=>i.value),1);el.innerHTML=items.map(i=>`<div class="bar" title="${i.tip||''}"><div class="lab">${i.label}</div><div class="track"><div class="fill" style="width:${100*i.value/mx}%;background:${i.color}"></div><div class="val">${i.disp||fmt(i.value)}</div></div></div>`).join('');}
+hbars($('cache'),[{label:'cache read',value:D.cache_read_tokens,color:'#6e7681'},{label:'cache creation',value:D.cache_creation_tokens,color:'#484f58'},{label:'generated output',value:D.generative_total,color:'#58a6ff'},{label:'fresh input',value:D.fresh_input_tokens,color:'#3fb950'}]);
+hbars($('wftype'),Object.entries(D.workflow_by_type||{}).map(([k,v])=>({label:k,value:v.tokens,disp:fmt(v.tokens),tip:v.runs+' runs / '+v.agents+' agents / '+v.minutes+' min',color:'#3fb950'})));
+hbars($('tools'),Object.entries(D.tools||{}).map(([k,v])=>({label:k,value:v,disp:String(v),color:'#d29922'})));
+hbars($('wfnamed'),Object.entries(D.workflows_named||{}).map(([k,v])=>({label:k.length>22?k.slice(0,21)+'…':k,value:v,disp:v+'x',color:'#bc8cff',tip:k})));
+(function(){const at=Object.entries(D.agent_types||{}),sk=Object.entries(D.skills_used||{}),tot=Object.values(D.agent_types||{}).reduce((a,b)=>a+b,0);const m1=Math.max(...at.map(x=>x[1]),1),m2=Math.max(...sk.map(x=>x[1]),1);let h='<div class="note" style="margin:0 0 6px">Agent types ('+tot+' subagents)</div>';h+=(at.map(([k,v])=>`<div class="bar"><div class="lab">${k}</div><div class="track"><div class="fill" style="width:${100*v/m1}%;background:#58a6ff"></div><div class="val">${fmt(v)}</div></div></div>`).join('')||'<div class="note">none</div>');h+='<div class="note" style="margin:13px 0 6px">Skills invoked</div>';h+=(sk.length?sk.map(([k,v])=>`<div class="bar"><div class="lab">${k}</div><div class="track"><div class="fill" style="width:${100*v/m2}%;background:#3fb950"></div><div class="val">${v}</div></div></div>`).join(''):'<div class="note">none</div>');$('agents').innerHTML=h;})();
+(function(){const T=D.timeline||[];if(!T.length){$('timeline').closest('.card').style.display='none';return;}const mx=Math.max(...T.map(t=>t.out),1);$('timeline').innerHTML='<div style="display:flex;align-items:flex-end;gap:3px;height:120px">'+T.map(t=>`<div title="${t.hour}: ${fmt(t.out)} output tokens${t.wf?', '+t.wf+' workflow(s) dispatched':''}" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%"><div style="font-size:11px;color:#bc8cff;height:13px;line-height:13px">${t.wf?'●':''}</div><div style="width:100%;background:linear-gradient(#58a6ff,#1f6feb);border-radius:3px 3px 0 0;height:${Math.round(100*t.out/mx)}%;min-height:2px"></div></div>`).join('')+'</div><div style="display:flex;gap:3px;margin-top:5px">'+T.map((t,i)=>`<div style="flex:1;text-align:center;font-size:8px;color:var(--mut)">${i%2?'':t.hour.slice(6,11)}</div>`).join('')+'</div>';})();
+const runs=(D.workflow_runs||[]).slice(0,30);let sk='tokens',sd=-1;
+function rr(){runs.sort((a,b)=>sd*((a[sk]>b[sk])?1:(a[sk]<b[sk])?-1:0));$('wfruns').innerHTML='<tr><th data-k="kind">type</th><th data-k="agents" class="n">agents</th><th data-k="tokens" class="n">tokens</th><th data-k="ms" class="n">min</th><th data-k="summary">summary</th></tr>'+runs.map(r=>`<tr><td>${r.kind}</td><td class="n">${r.agents}</td><td class="n">${fmt(r.tokens)}</td><td class="n">${(r.ms/60000).toFixed(1)}</td><td>${(r.summary||'').replace(/</g,'&lt;').slice(0,60)}</td></tr>`).join('');$('wfruns').querySelectorAll('th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;sd=(sk===k)?-sd:-1;sk=k;rr();});}
+runs.length?rr():$('wfrunsCard').style.display='none';
+$('utc').textContent='('+(D.user_turn_text||[]).length+' human turns)';
+$('turns').innerHTML=(D.user_turn_text||[]).map((t,i)=>`<div class="t"><div class="i">${i+1}</div><div>${t.replace(/</g,'&lt;')}</div></div>`).join('');
+if(!$('narrative').textContent.trim())$('narrative').style.display='none';
+</script></body></html>
