@@ -104,6 +104,12 @@ JSON/text under `docs/findings/`. Published files use **generic topology values*
   engine/Triton/CUDA build, dtype, TP size, or model geometry without
   requalification. A missing-config warning is a tuning candidate, not proof
   that tuning will improve end-to-end performance.
+- **Coordinated releases require deployment readiness.** Use
+  `skills/anvil-serving-release-readiness/SKILL.md` when work includes a merge,
+  package release, controller/router rebuild, or live Mini-to-Dark deployment.
+  Prove manifest-derived file mounts, exact endpoint version parity, rollback,
+  and real Pi/OpenClaw client smokes; do not close while an in-scope outage
+  remains.
 - **Return dicts, not print-side-effects** in library code. CLI wrappers print; modules return.
 - **Never self-verify.** Don't write a check that uses the same model to validate its own
   output. Preflight and benchmark gates must be independent.
