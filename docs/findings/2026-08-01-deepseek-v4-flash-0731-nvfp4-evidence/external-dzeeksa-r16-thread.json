@@ -1,0 +1,121 @@
+{
+  "schema_version": "external-runtime-lead/v1",
+  "observed_at": "2026-08-01",
+  "evidence_type": "community deployment thread with terminal video and configuration replies",
+  "thread": {
+    "url": "https://x.com/dzeeksa/status/2083324856536613229",
+    "author": "Zeeksa",
+    "published_at": "2026-07-31T22:52:00Z",
+    "material_replies": [
+      "https://x.com/dzeeksa/status/2083324860621877287",
+      "https://x.com/dzeeksa/status/2083324863163547802",
+      "https://x.com/dzeeksa/status/2083324866313453855",
+      "https://x.com/dzeeksa/status/2083324868846932450",
+      "https://x.com/dzeeksa/status/2083324870960775666",
+      "https://x.com/dzeeksa/status/2083324874114924598",
+      "https://x.com/dzeeksa/status/2083324877558428067"
+    ],
+    "firsthand_details": [
+      {
+        "post": "https://x.com/dzeeksa/status/2083324860621877287",
+        "claim": "Stock vLLM routes DSpark multi-token verify through the SM120 sparse-MLA prefill path and asserts because num_tokens=5 is not greater than 64; decode and prefill need distinct sparse-MLA paths on SM120."
+      },
+      {
+        "post": "https://x.com/dzeeksa/status/2083324863163547802",
+        "claim": "The official eight-B200 command includes deep_gemm_mega_moe and use_fp4_indexer_cache options which are not valid on SM120; removing them lets stock vLLM boot without speculative decoding."
+      },
+      {
+        "post": "https://x.com/dzeeksa/status/2083324866313453855",
+        "claim": "The r16 image supplies B12X_MLA_SPARSE for SM120 multi-token verify and starts DSpark with num_spec_tokens=5, next_n=6, and approximately 139245 exposed KV tokens."
+      },
+      {
+        "post": "https://x.com/dzeeksa/status/2083324868846932450",
+        "claim": "next_n=6 means five draft tokens plus one verification token; the intended deployment is the local-inference-lab r16 Compose recipe."
+      },
+      {
+        "post": "https://x.com/dzeeksa/status/2083324870960775666",
+        "claim": "Reported defaults are DSpark, B12X A8, TP2, K5, 131072 context, 0.975 memory utilization, and InstantTensor; K5 measured 217.8 tok/s versus K7 at 192.1 in the author's harness."
+      },
+      {
+        "post": "https://x.com/dzeeksa/status/2083324874114924598",
+        "claim": "The official 0731 weights already include the DSpark modules; FP8 repacks which strip expert_dtype can break expert tensor allocation. Three shown 800-token runs measured 243.1, 231.7, and 238.6 tok/s with 56.7% draft acceptance."
+      },
+      {
+        "post": "https://x.com/dzeeksa/status/2083324877558428067",
+        "claim": "Accepted draft blocks appear as multi-token SSE chunks; local accepted-token counters are stronger evidence than this visual signal."
+      }
+    ],
+    "capture_note": "The fifth post's rendered clone and cd command is truncated and concatenated. The Compose command was independently confirmed from the source repository rather than reconstructed as a verbatim post quote."
+  },
+  "reported_hardware": {
+    "active_gpus": 2,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell",
+    "architecture": "sm_120",
+    "memory_total_mib_per_gpu": 97887,
+    "memory_used_mib_per_gpu": 94721,
+    "memory_free_mib_per_gpu": 3166,
+    "power_limit_w": 600,
+    "local_parity_caveat": "The local cards are Max-Q. Capacity and architecture match, but clocks and power do not. The external PCIe topology was not published."
+  },
+  "reported_result": {
+    "configured_context_tokens": 131072,
+    "single_stream_output_tok_s_range": [230, 250],
+    "video_output_tokens": 506,
+    "video_elapsed_seconds": 2.13,
+    "video_output_tok_s": 237.2,
+    "reported_k5_tok_s": 217.8,
+    "reported_k7_tok_s": 192.1,
+    "reported_draft_acceptance_fraction": 0.567,
+    "video_sse_chunks": 137,
+    "video_tokens_per_chunk": 3.69,
+    "timing_caveat": "The unpublished client script leaves unclear whether elapsed time begins before the request or at the first streamed token. No raw acceptance-counter artifact was published."
+  },
+  "runtime": {
+    "source_repository": "https://github.com/local-inference-lab/blackwell-llm-docker",
+    "source_revision": "1dc0198b646d73a2fbb0dbafbb32875417150756",
+    "thread_time_compose_commit": "2fb66edd7c83e2a8e5d027796a57b02cee21be86",
+    "compose": "examples/docker-compose-ds4-v20-r16.yml",
+    "image": "voipmonitor/vllm:gilded-gnosis-v20-vllm1e9c9c3-sieec30ff-fi801d57a-cu132-20260731-r16",
+    "image_digest": "sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f",
+    "digest_verification": "Independently matched by docker buildx imagetools inspect on 2026-08-01.",
+    "vllm_base_commit": "30038602b71395f481ef4a6edfe4fcf8551d9c15",
+    "vllm_result_tree": "1e9c9c3475fa30ab48d5639f8882f1e93bb552bf",
+    "sparkinfer_result_tree": "eec30ff294c1870b59a04686fff6608fddb62089",
+    "flashinfer_commit": "801d57a08958c13d375ddbb6be3be4808f48a708",
+    "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+  },
+  "settings": {
+    "mode": "dspark",
+    "backend": "b12x-a8",
+    "tensor_parallel_size": 2,
+    "decode_context_parallel_size": 1,
+    "dspark_depth_mode": "fixed",
+    "dspark_tokens": 5,
+    "dspark_next_n": 6,
+    "draft_sample_method": "probabilistic",
+    "max_num_seqs": 16,
+    "max_num_batched_tokens": 8192,
+    "max_model_len": 131072,
+    "gpu_memory_utilization": 0.975,
+    "load_format": "instanttensor",
+    "instanttensor_backend": "BUFFERED",
+    "attention_backend": "B12X_MLA_SPARSE",
+    "moe_path": "B12X W4A8 NVFP4",
+    "kv_cache_dtype": "fp8",
+    "block_size": 256,
+    "model_runner": "V2"
+  },
+  "assessment": {
+    "decision": "Run as a separate pinned compatibility and performance lane. Do not replace the preserved local FlashInfer DSpark build.",
+    "why_separate": "B12X sparse MLA, W4A8 MoE, InstantTensor, CUDA graphs, PCIe all-reduce, checkpoint revision, and memory behavior all differ from the current lane.",
+    "required_local_proof": [
+      "8K low/high/max functional and protocol gates",
+      "three warmed single-stream 4K repetitions under the existing paired protocol",
+      "completed 128K request with TTFT, prefill, decode, E2E, correctness, and per-card memory/power telemetry",
+      "DSpark draft and acceptance counters",
+      "startup proof for B12X_MLA_SPARSE, W4A8 NVFP4, next_n=6, V2, and InstantTensor"
+    ],
+    "license_caveat": "The model weights are MIT. The pinned blackwell-llm-docker repository has no root license file; local evaluation does not establish permission to redistribute the image or derived code."
+  }
+}

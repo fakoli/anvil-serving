@@ -1,0 +1,90 @@
+{
+  "schema_version": "paired-capacity-comparison/v1",
+  "generated_at": "2026-08-02T00:49:13Z",
+  "hardware": "dual-rtx-pro-6000-blackwell-max-q-tp2",
+  "model_revision": "17e0f9da8257371654d458ba518659aa99954c86",
+  "engine_revision": "52113932444ed3b8f2228b2589ef2ff3cedf7ab2",
+  "image_digest": "sha256:76de0c41d9b216e17e81cfe89d9989c14e693c36eb76efaa860f8b27ef35d806",
+  "protocol": {
+    "context_tokens": 4096,
+    "max_model_len": 8192,
+    "max_tokens": 2048,
+    "margin_tokens": 1024,
+    "concurrency": 1,
+    "requests_per_run": 3,
+    "runs_per_lane": 3,
+    "reasoning_effort": "low",
+    "aggregation": "median of each run's p50 metric",
+    "paired_variable": "DSpark speculative_config with five draft tokens versus no speculative_config"
+  },
+  "dspark": {
+    "served_model": "deepseek-v4-flash-0731-nvfp4-tp2-dspark5-w4a16-8k",
+    "draft_model": "deepseek-ai/DeepSeek-V4-Flash-DSpark",
+    "num_speculative_tokens": 5,
+    "artifacts": [
+      "capacity-dspark5-low-4k-c1-r3-headroom2048.json",
+      "capacity-dspark5-low-4k-c1-r3-headroom2048-r2.json",
+      "capacity-dspark5-low-4k-c1-r3-headroom2048-r3.json"
+    ]
+  },
+  "control": {
+    "served_model": "deepseek-v4-flash-0731-nvfp4-tp2-dspark-control-w4a16-8k",
+    "speculative_decoding": false,
+    "artifacts": [
+      "capacity-dspark-control-low-4k-c1-r3-headroom2048-r1.json",
+      "capacity-dspark-control-low-4k-c1-r3-headroom2048-r2.json",
+      "capacity-dspark-control-low-4k-c1-r3-headroom2048-r3.json"
+    ]
+  },
+  "metrics": {
+    "decode_tok_s_p50": {
+      "dspark_values": [32.792953681602405, 27.891119901748247, 31.025196848973742],
+      "control_values": [10.26060447933774, 10.275383095575796, 10.220906757450578],
+      "dspark_median": 31.025196848973742,
+      "control_median": 10.26060447933774,
+      "dspark_delta_percent": 202.37201825146497
+    },
+    "throughput_tok_s": {
+      "dspark_values": [28.958360890441345, 27.197543052535135, 30.76693689435445],
+      "control_values": [8.145846554781375, 10.207234557855557, 10.145460653920944],
+      "dspark_median": 28.958360890441345,
+      "control_median": 10.145460653920944,
+      "dspark_delta_percent": 185.43170072075264
+    },
+    "ttft_p50_ms": {
+      "dspark_values": [3675.196500000311, 9459.629400000267, 8348.703800002113],
+      "control_values": [17665.199199997005, 14623.91960000241, 21547.318499993708],
+      "dspark_median": 8348.703800002113,
+      "control_median": 17665.199199997005,
+      "dspark_latency_delta_percent": -52.73926036450509
+    },
+    "e2e_p50_ms": {
+      "dspark_values": [4471.274000003177, 10310.641600000963, 9323.585199999798],
+      "control_values": [20844.066700003168, 17533.729200004018, 23632.143700000597],
+      "dspark_median": 9323.585199999798,
+      "control_median": 20844.066700003168,
+      "dspark_latency_delta_percent": -55.26983609202143
+    },
+    "effective_prefill_tok_s_p50": {
+      "dspark_values": [12164.740171587302, 10573.260011086151, 13258.16788228411],
+      "control_values": [488.66404252927646, 14043.471185502742, 14995.52667257597],
+      "dspark_median": 12164.740171587302,
+      "control_median": 14043.471185502742,
+      "dspark_delta_percent": -13.377967520272893
+    },
+    "time_to_first_output_p50_ms": {
+      "dspark_values": [243.32620000495808, 279.95150000060676, 223.25860000273678],
+      "control_values": [6057.331300005899, 210.77409999998054, 197.39219999610214],
+      "dspark_median": 243.32620000495808,
+      "control_median": 210.77409999998054,
+      "dspark_latency_delta_percent": 15.44407021782115
+    }
+  },
+  "functional_gate": {
+    "dspark": "pass",
+    "control": "pass",
+    "checks": ["smoke", "json", "tools", "streaming-tools", "tool-result", "responses"],
+    "reasoning_evidence": "required"
+  },
+  "decision": "DSpark is the performance lane for subsequent context qualification. It improved median decode by 202.4%, aggregate throughput by 185.4%, median TTFT by 52.7%, and median end-to-end latency by 55.3%. The control retained a 13.4% median effective-prefill advantage and 13.4% lower warm median time-to-first-output; retain both caveats."
+}

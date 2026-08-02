@@ -39,7 +39,8 @@ memory. The production aliases and rollback chain below are unchanged by the
 | Qwen3.5 122B NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.32 s TTFT and 67.5 tok/s decode; 128K 4/4 at 14.59 s and 65.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
 | Nemotron 3 Super 120B NVFP4, TP=2 + EP=2 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.84 s and 59.5 tok/s; 60K 4/4 at 5.58 s and 60.0 tok/s | `no-promotion` |
 | Laguna S 2.1 NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 1.97 s and 70.9 tok/s; 240K 4/4 at 31.85 s and 66.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
-| DeepSeek V4 Flash 0731 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | priority intelligence `challenger`, `no-promotion`; one reasoning-only exhaustion; high/max, DSpark, and 0731 NVFP4 unqualified |
+| DeepSeek V4 Flash 0731, r16 B12X + DSpark K5 | coding/intelligence/session/tools 27/27; low/high/max functional gates pass | 128K pass; warmed 125,785-token row 19.44 s TTFO, 23.81 s visible TTFT, 128.9 tok/s decode; matched 4K decode 130.7 tok/s | priority intelligence `challenger`, `no-promotion`; DSpark preferred for experiments, both lanes fail 3 GiB reserve |
+| DeepSeek V4 Flash 0731, earlier SGLang lane | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | retained low-reasoning point-in-time lane; one reasoning-only exhaustion; see r16 row for current DSpark/high/max evidence |
 | Inkling Small NVFP4 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 12/12; 2.79 s TTFO, 4.63 s first-visible TTFT, 73.5 tok/s combined reasoning/visible decode; reasoning-off lane also 12/12 | `no-promotion`; reasoning-off Responses caveat retained |
 
 All rows used both physical cards as measured hardware, exclusive ownership,
@@ -47,15 +48,24 @@ one admitted request, and no co-resident inference. See the
 [dated campaign](../../findings/2026-08-01-dual-pro-tp2-model-campaign.md) for
 exact revisions, raw artifacts, protocol differences, and failure records.
 
-#### DeepSeek 0731 research priority
+#### DeepSeek 0731 research priority and r16 result
 
 DeepSeek identifies 0731 as a re-post-trained official Flash generation with
 the same 284B/13B-active target architecture as Preview and a bundled DSpark
 draft module. Artificial Analysis independently scores the max-effort model at
 50, number 3 of 101 comparable models, but reports 210 million evaluation
-output tokens. That verbosity signal is consistent with the local 11/12 run's
-reasoning-only exhaustion and makes reasoning-budget policy a first-class
+output tokens. That verbosity signal is consistent with the earlier 11/12
+run's reasoning-only exhaustion and makes reasoning-budget policy a first-class
 capacity gate.
+
+The follow-up translated a pinned r16 B12X/InstantTensor recipe to WSL2 and
+qualified the official release revision at 131K with DSpark K5. Low, high, and
+max reasoning preflights passed, as did a 27/27 coding-agent slice and a warmed
+125,785-prompt-token request. Against the same image and checkpoint without
+speculative decoding, DSpark improved median per-request decode by 101.4% and
+reduced median E2E by 58.8%. It also consumed 1.6-2.3 GiB more VRAM, and neither
+lane retained 3 GiB reported free on each card. See the
+[r16 qualification](../../findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md).
 
 Current 0731-specific NVFP4 conversions are community artifacts. The strongest
 conversion receipt reports TP=2 generation on two DGX Spark systems; the
@@ -84,6 +94,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 | Agents-A1 NVFP4 compact text | 131,072 | 16 | 198 tok/s at 8K c16; 128K c4 pass; vision excluded |
 | Qwen3.5 122B NVFP4 | 262,144 | 1 | BF16 KV; near-ceiling prefill is slow |
 | Laguna S 2.1 NVFP4 | 262,144 | recorded recipe | FP8 KV; disabled-thinking contract |
+| DeepSeek V4 Flash 0731 r16 B12X + DSpark K5, TP=2 | 131,072 | 8 configured; c1 measured | FP8 MLA KV; 130.7 tok/s matched decode; 128K pass; 3 GiB reserve failed |
 | GPT-OSS Puzzle 88B MXFP4 | 131,072 | 8 | FP8 KV; pinned Anvil vLLM |
 | Nemotron 3 Super 120B NVFP4 | 131,072 | 5 | 1M advertised is not locally validated |
 | Qwen3.6 27B community NVFP4 + MTP | 262,144 | 5 | 262K needle validated |
@@ -91,6 +102,10 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Recent changes
 
+- 2026-08-01: the pinned DeepSeek 0731 r16 B12X lane qualified DSpark K5,
+  low/high/max reasoning, 128K, and 27/27 coding-agent attempts. DSpark doubled
+  matched decode versus same-image no-spec, but both lanes failed the 3 GiB
+  reserve and remain `no-promotion`.
 - 2026-08-01: DeepSeek V4 Flash 0731 became the priority intelligence
   challenger after official and independent research was reconciled with its
   exact local low-reasoning TP=2 evidence. The decision remains

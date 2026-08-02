@@ -60,6 +60,13 @@ def _inspect_returning(
 
     def run(argv, **k):
         calls.append(argv)
+        if isinstance(argv, list) and argv[:3] == ["docker", "ps", "-a"]:
+            st = state_after_stop if stopped else state
+            if st == "error":
+                return proc(1, "", "Cannot connect to the Docker daemon")
+            if st == "absent":
+                return proc(0)
+            return proc(0, json.dumps({"Names": "vllm", "State": st}) + "\n")
         if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
             st = state_after_stop if stopped else state
             if st == "absent":
@@ -947,6 +954,36 @@ def test_docker_state_error_when_docker_missing():
     assert serves.docker_state("c", _run=boom) == "error"
 
 
+def test_docker_states_batches_names_and_marks_missing_absent():
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return proc(0, '\n'.join([
+            '{"Names":"running-one","State":"running"}',
+            '{"Names":"stopped-one","State":"exited"}',
+        ]))
+
+    assert serves.docker_states(
+        ["running-one", "stopped-one", "missing-one"], _run=run
+    ) == {
+        "running-one": "running",
+        "stopped-one": "exited",
+        "missing-one": "absent",
+    }
+    assert calls == [["docker", "ps", "-a", "--format", "{{json .}}"]]
+
+
+@pytest.mark.parametrize("result", [
+    proc(1, "", "daemon unavailable"),
+    proc(0, "not-json", ""),
+])
+def test_docker_states_fails_closed_on_unreliable_inventory(result):
+    assert serves.docker_states(
+        ["one", "two"], _run=lambda *args, **kwargs: result
+    ) == {"one": "error", "two": "error"}
+
+
 # ---- down -------------------------------------------------------------------
 
 def test_cmd_down_stops_running():
@@ -1074,14 +1111,16 @@ def test_cmd_up_dead_is_not_auto_created():
     serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health", "up": ["bash", "x.sh"]}]
     run = _inspect_returning("dead")
     assert serves.cmd_up(serv, [], _run=run) == 1
-    assert all(c[:2] == ["docker", "inspect"] for c in run.calls)  # only inspected
+    assert all(c[:2] == ["docker", "inspect"] or c[:3] == ["docker", "ps", "-a"]
+               for c in run.calls)  # only inventoried/inspected
 
 
 def test_cmd_up_error_state_does_not_create():
     serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health", "up": ["bash", "x.sh"]}]
     run = _inspect_returning("error")
     assert serves.cmd_up(serv, [], _run=run) == 1
-    assert all(c[:2] == ["docker", "inspect"] for c in run.calls)
+    assert all(c[:2] == ["docker", "inspect"] or c[:3] == ["docker", "ps", "-a"]
+               for c in run.calls)
 
 
 def test_cmd_up_absent_runs_up_argv_list_no_shell():

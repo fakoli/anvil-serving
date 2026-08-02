@@ -1,0 +1,115 @@
+{
+  "base_url": "http://127.0.0.1:39063/v1",
+  "completed": 2,
+  "concurrency": 1,
+  "context_distribution": {
+    "4096": 3
+  },
+  "context_seed": 0,
+  "context_tokens": 4096,
+  "engine": "vllm-r16-b12x-nospec-sm120",
+  "failed": 1,
+  "failures": [
+    {
+      "error_message": "stream completed without visible content",
+      "error_message_truncated": false,
+      "error_type": "ValueError",
+      "request_index": 1
+    }
+  ],
+  "finished_at": "2026-08-02T02:36:49Z",
+  "gpu": "dual-rtx-pro-6000-blackwell-max-q-tp2",
+  "manifest": null,
+  "max_context_tokens": 131072,
+  "max_tokens": 2048,
+  "measurement_protocol": "capacity-v4-reasoning",
+  "metrics": {
+    "content_chunks": 65,
+    "content_chunks_s": null,
+    "decode_tok_s_p50": 63.42698272931779,
+    "decode_tok_s_p95": 65.23813922441124,
+    "e2e_p50_ms": 3683.8987000010093,
+    "e2e_p95_ms": 4595.840999994834,
+    "effective_prefill_tok_s_p50": 9498.19373874236,
+    "effective_prefill_tok_s_p95": 9627.728900041568,
+    "generation_p50_ms": 3372.260500000266,
+    "generation_p95_ms": 4288.395699993998,
+    "mean_inter_token_latency_ms_p50": 15.328456818183026,
+    "mean_inter_token_latency_ms_p95": 15.76616066174264,
+    "output_token_sources": {
+      "usage": 2
+    },
+    "output_tokens": 494,
+    "prefix_cache_hit_avg": 0.9513513513513514,
+    "prompt_token_samples": 2,
+    "prompt_tokens": 5920,
+    "prompt_tokens_p50": 2960.0,
+    "prompt_tokens_p95": 2960.0,
+    "reasoning_chunks": 395,
+    "throughput_tok_s": 12.27946271394819,
+    "time_to_first_output_p50_ms": 307.44530000083614,
+    "time_to_first_output_p95_ms": 311.6382000007434,
+    "ttft_p50_ms": 3215.108099997451,
+    "ttft_p95_ms": 4069.840500000282,
+    "ttft_samples": 2
+  },
+  "model": "deepseek-v4-flash-0731-r16-b12x-nospec-tp2-128k",
+  "request_timings": [
+    {
+      "content_chunks": 31,
+      "decode_tok_s": 65.23813922441124,
+      "e2e_ms": 3683.8987000010093,
+      "effective_prefill_tok_s": 9498.19373874236,
+      "generation_ms": 3372.260500000266,
+      "mean_inter_token_latency_ms": 15.328456818183026,
+      "output_token_source": "usage",
+      "output_tokens": 221,
+      "planned_context_tokens": 4096,
+      "prompt_tokens": 2960,
+      "reasoning_chunks": 173,
+      "request_index": 0,
+      "time_to_first_output_ms": 311.6382000007434,
+      "ttft_ms": 3215.108099997451,
+      "visible_generation_ms": 468.7906000035582
+    },
+    {
+      "content_chunks": 34,
+      "decode_tok_s": 63.42698272931779,
+      "e2e_ms": 4595.840999994834,
+      "effective_prefill_tok_s": 9627.728900041568,
+      "generation_ms": 4288.395699993998,
+      "mean_inter_token_latency_ms": 15.76616066174264,
+      "output_token_source": "usage",
+      "output_tokens": 273,
+      "planned_context_tokens": 4096,
+      "prompt_tokens": 2960,
+      "reasoning_chunks": 222,
+      "request_index": 2,
+      "time_to_first_output_ms": 307.44530000083614,
+      "ttft_ms": 4069.840500000282,
+      "visible_generation_ms": 526.0004999945522
+    }
+  ],
+  "requests": 3,
+  "run_id": "benchmark-20260802T023609Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": "low",
+    "shared_prefix_burst": false,
+    "thinking_mode": "default"
+  },
+  "source_recipe": null,
+  "started_at": "2026-08-02T02:36:09Z",
+  "tier": null,
+  "timing_methodology": {
+    "clock": "client time.perf_counter",
+    "decode": "usage completion tokens after the first token divided by client-observed generation time; completion tokens may include reasoning tokens",
+    "effective_prefill": "usage.prompt_tokens divided by client-observed time to first output; includes queueing, scheduling, prefill, and first-token work",
+    "generation": "client-observed E2E minus time to first output",
+    "mean_inter_token_latency": "client-observed generation time divided by completion tokens after the first token; not a raw per-token timestamp trace",
+    "time_to_first_output": "request start through the first non-empty streamed reasoning or content delta",
+    "ttft": "request start through the first non-empty streamed content delta"
+  },
+  "wall_clock_ms": 40229.773200000636
+}
