@@ -1,0 +1,56 @@
+{
+  "schema": "anvil-serving.transcribed-runtime-observations/v1",
+  "date": "2026-08-02",
+  "evidence_type": "transcribed-live-observation",
+  "host": "Fakoli Dark",
+  "display_gpu": "AMD iGPU",
+  "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "image_digest": "sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f",
+  "profiles": [
+    {
+      "id": "650k-maxseq16-batch4096",
+      "managed_load_seconds": 246.5,
+      "kv_cache_gib_per_rank": 9.26,
+      "kv_cache_tokens": 996983,
+      "reported_max_concurrency_at_configured_context": 1.53,
+      "post_benchmark_free_mib_by_gpu": [797, 805]
+    },
+    {
+      "id": "1m-maxseq1-batch2048",
+      "managed_load_seconds": 203.1,
+      "kv_cache_gib_per_rank": 10.94,
+      "kv_cache_tokens": 1907945,
+      "reported_max_concurrency_at_configured_context": 1.91,
+      "idle_free_mib_by_gpu": [1129, 1129],
+      "fatal_error": "Workspace is locked but allocation from 'b12x.py:354:_run_compressed_mla' requires 873.62 MB, current size is 514.25 MB. Workspace growth is not allowed after locking."
+    },
+    {
+      "id": "1m-maxseq4-batch2048",
+      "managed_load_seconds": 216.6,
+      "kv_cache_gib_per_rank": 10.6,
+      "kv_cache_tokens": 1849667,
+      "reported_max_concurrency_at_configured_context": 1.85,
+      "idle_free_mib_by_gpu": [1135, 1137],
+      "post_985k_probe_free_mib_by_gpu": [207, 209],
+      "windows_physical_ram_free_gib_after_probe": 54.54
+    },
+    {
+      "id": "1m-maxseq16-batch2048",
+      "managed_load_seconds": 258.0,
+      "kv_cache_gib_per_rank": 9.83,
+      "kv_cache_tokens": 1715610,
+      "reported_max_concurrency_at_configured_context": 1.72,
+      "idle_free_mib_by_gpu": [1339, 1335],
+      "post_985k_probe_free_mib_by_gpu": [339, 335],
+      "windows_physical_ram_free_gib_after_probe": 50.55,
+      "post_probe_coding_smoke_passed": true
+    }
+  ],
+  "restoration": {
+    "recipe_containers_present": false,
+    "gpu_memory_used_mib_by_gpu": [0, 0],
+    "shared_memory_files": 0,
+    "shared_memory_reclaimable_bytes": 0
+  },
+  "provenance_note": "Values were transcribed from managed recipe load/log/unload output, nvidia-smi, Windows memory inspection, and anvil-serving host shared-memory status during the qualification. Startup durations are operational observations, not a controlled cold-start ranking."
+}

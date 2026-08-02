@@ -6,6 +6,7 @@ import json
 import socket
 import threading
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -27,8 +28,18 @@ _TOKEN = "test-gateway-token"
 
 
 @contextmanager
-def running_server(*, auth=False):
+def running_server(*, auth=False, max_output_tokens=None):
     config = load(_CONFIG)
+    if max_output_tokens is not None:
+        config = replace(
+            config,
+            tiers=tuple(
+                replace(tier, max_output_tokens=max_output_tokens)
+                if tier.id == "primary-local"
+                else tier
+                for tier in config.tiers
+            ),
+        )
     routing = RoutingBackend(config, {
         "primary-local": StaticBackend(["heavy response"]),
         "omni-local": StaticBackend(["omni response"]),
@@ -134,6 +145,62 @@ def test_openai_streaming_relays_sse_for_exact_alias():
     assert headers["Content-Type"].startswith("text/event-stream")
     assert b"heavy response" in raw
     assert raw.rstrip().endswith(b"data: [DONE]")
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_output_cap_clamps_and_warns_without_rejecting(stream):
+    with running_server(max_output_tokens=5120) as (host, port):
+        status, headers, raw = _request(
+            host,
+            port,
+            "POST",
+            "/v1/chat/completions",
+            {
+                "model": "llm.primary",
+                "max_tokens": 32768,
+                "stream": stream,
+                "messages": [{"role": "user", "content": "hi"}],
+            },
+        )
+
+    assert status == 200
+    assert headers["X-Anvil-Warning"] == "max_tokens_clamped"
+    assert headers["X-Anvil-Max-Tokens-Requested"] == "32768"
+    assert headers["X-Anvil-Max-Tokens-Applied"] == "5120"
+    assert "max_tokens clamped from 32768 to 5120" in headers["Warning"]
+    assert b"heavy response" in raw
+
+
+@pytest.mark.parametrize(
+    ("path", "body"),
+    [
+        (
+            "/v1/messages",
+            {
+                "model": "llm.primary",
+                "max_tokens": 32768,
+                "messages": [{"role": "user", "content": "hi"}],
+            },
+        ),
+        (
+            "/v1/responses",
+            {
+                "model": "llm.primary",
+                "max_output_tokens": 32768,
+                "input": "hi",
+            },
+        ),
+    ],
+)
+def test_output_cap_warns_for_every_supported_chat_protocol(path, body):
+    with running_server(max_output_tokens=5120) as (host, port):
+        status, headers, raw = _request(host, port, "POST", path, body)
+
+    assert status == 200
+    assert headers["X-Anvil-Warning"] == "max_tokens_clamped"
+    assert headers["X-Anvil-Max-Tokens-Requested"] == "32768"
+    assert headers["X-Anvil-Max-Tokens-Applied"] == "5120"
+    assert b"heavy response" in raw
 
 
 def test_anthropic_non_streaming_preserves_native_envelope():

@@ -1,0 +1,141 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39063/v1",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq1-tp2-1m",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": "low"
+  },
+  "budget": {
+    "visible_answer_tokens": 512,
+    "reasoning_headroom_tokens": 4096,
+    "max_completion_tokens": 4608
+  },
+  "multimodal_input": null,
+  "video_input": null,
+  "image_expect": [],
+  "ocr_expect": [],
+  "video_expect": [],
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "responses"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "23.8s got='The simplest one-liner is to use the built-in `sum' finish='stop' visible=248 reasoning_chars=955 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=184 reasoning_tokens=None"
+    },
+    {
+      "name": "shared-prefix tool batch x3",
+      "passed": false,
+      "detail": "1/3 clean (sample: 4.2s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=69 reasoning_tokens=None)"
+    },
+    {
+      "name": "streaming tool call",
+      "passed": false,
+      "detail": "error: HTTP 500: {\"error\":{\"message\":\"EngineCore encountered an issue. See stack trace (above) for the root cause.\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}}"
+    },
+    {
+      "name": "tool-result continuation",
+      "passed": false,
+      "detail": "error: HTTP 500: {\"error\":{\"message\":\"EngineCore encountered an issue. See stack trace (above) for the root cause.\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}}"
+    },
+    {
+      "name": "Responses API subset",
+      "passed": false,
+      "detail": "error: HTTP 500: {\"error\":{\"message\":\"EngineCore encountered an issue. See stack trace (above) for the root cause.\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}}"
+    }
+  ],
+  "observations": [
+    {
+      "content": "The simplest one-liner is to use the built-in `sum` function:\n\n```python\nsum(xs)\n```\n\nIf you need it as a reusable function, you can define a lambda:\n\n```python\nlambda xs: sum(xs)\n```\n\nBoth are valid one-liners that return the sum of the list `xs`.",
+      "finish_reason": "stop",
+      "content_chars": 248,
+      "content_excerpt": "The simplest one-liner is to use the built-in `sum` function:\n\n```python\nsum(xs)\n```\n\nIf you need it as a reusable function, you can define a lambda:\n\n```python\nlambda xs: sum(xs)\n```\n\nBoth are valid ",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 955,
+      "reasoning_excerpt": "We need to write a Python one-liner that returns the sum of a list `xs`. The user didn't specify any constraints, but likely they want a simple expression. The most straightforward is `sum(xs)`. But m",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 20,
+        "total_tokens": 330,
+        "completion_tokens": 310,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "smoke",
+      "seconds": 23.798,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 184,
+      "reasoning_excerpt": "We need to return only a JSON object with the specified fields. The user said \"Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.\" So we just output that exact JSON.",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 22,
+        "total_tokens": 76,
+        "completion_tokens": 54,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "json",
+      "seconds": 3.462,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 69,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I'll use the get_weather tool.",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5085,
+        "total_tokens": 5149,
+        "completion_tokens": 64,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "test": "tools",
+      "seconds": 4.211,
+      "request_index": 0,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "required",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": false
+}

@@ -1,0 +1,94 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "deepseek-ai/DeepSeek-V4-Flash-0731"
+status = "qualification-candidate"
+source = "2026-08-02 operator-authorized retry of the upstream r16 max_num_seqs=16 profile after moving the Windows display to the iGPU"
+family = "deepseek-v4"
+total_params_b = 304
+active_params_b = 13
+
+[recipe.download]
+repo = "deepseek-ai/DeepSeek-V4-Flash-0731"
+revision = "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+volume = "deepseek-v4-0731-r16-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink; exclusive TP2 only. Windows display output is on the AMD iGPU for this retry."
+
+[recipe.serve]
+engine = "vllm-r16-b12x"
+allow_cuda_visible_devices_index = true
+image = "voipmonitor/vllm@sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f"
+entrypoint = ["/usr/local/bin/serve-ds4-flash.sh"]
+model_env = "MODEL"
+named_volumes = [
+  "deepseek-v4-0731-r16-jit:/cache",
+  "deepseek-v4-0731-r16-tmp:/container-tmp",
+]
+quantization = "Official 0731 mixed FP8/FP4 checkpoint; B12X W4A8 NVFP4 MoE, B12X FP8 dense GEMM, FP8 KV"
+context_tokens = 131072
+port = 39062
+startup_timeout_seconds = 1800
+served_model_name = "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-128k"
+ipc = "host"
+shm_size = "32gb"
+ulimits = [
+  "memlock=-1",
+  "nofile=1048576:1048576",
+  "stack=67108864",
+]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "PORT=39062",
+  "MODE=dspark",
+  "BACKEND=b12x-a8",
+  "TP_SIZE=2",
+  "DCP_SIZE=1",
+  "DSPARK_DEPTH_MODE=fixed",
+  "DSPARK_TOKENS=5",
+  "DRAFT_SAMPLE_METHOD=probabilistic",
+  "REJECTION_SAMPLE_METHOD=standard",
+  "MAX_NUM_SEQS=16",
+  "MAX_MODEL_LEN=131072",
+  "MAX_NUM_BATCHED_TOKENS=8192",
+  "GPU_MEMORY_UTILIZATION=0.975",
+  "LOAD_FORMAT=instanttensor",
+  "INSTANTTENSOR_BACKEND=BUFFERED",
+  "KV_OFFLOADING_SIZE=0",
+  "MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SPEC_MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SERVED_MODEL_NAME=deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-128k",
+]
+flags = []
+note = "Exact one-variable retry of the qualified max_num_seqs=8 lane: only MAX_NUM_SEQS changes to the upstream default of 16, which derives a DSpark K5 CUDA-graph cap of 96 instead of 48. The operator moved display output to the AMD iGPU and explicitly removed the separate 3 GiB reported-free VRAM acceptance gate for this experiment. GPU_MEMORY_UTILIZATION remains at the upstream 0.975 because the remaining allocator/workspace headroom is required by CUDA, NCCL, and vLLM rather than reserved for display. No CPU KV offload is enabled. The normal split-mode manifest and its reservations remain unchanged; this candidate is exclusive TP2 and no-promotion."
+
+[recipe.fit]
+suited = ["qualification", "speculative-decoding", "long-context", "concurrency", "coding-agent"]
+rationale = "Determines whether iGPU display placement frees enough WSL/WDDM headroom to run the exact upstream 16-sequence, 131K DSpark K5 profile on two Max-Q cards."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731/tree/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+]
+community = [
+  "https://github.com/local-inference-lab/rtx6kpro/blob/master/models/ds4dspark-v20.md",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/tree/1dc0198b646d73a2fbb0dbafbb32875417150756",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/1dc0198b646d73a2fbb0dbafbb32875417150756/examples/docker-compose-ds4-v20-r16.yml",
+]
+local = [
+  "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-128k-recipe.toml",
+  "docs/findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md",
+]
