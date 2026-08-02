@@ -79,6 +79,9 @@ vram_mib = 90000
 residency = "on-demand"
 operating_mode = "dual-gpu-exclusive"
 tensor_parallel_size = 2
+router_tier = "primary-local"
+router_config = "{dir}/router-exclusive.toml"
+rollback_router_config = "{dir}/router-split.toml"
 ```
 
 The exclusive entry is inert until a separately qualified model recipe adds
@@ -91,6 +94,17 @@ container mutation. Pre-reservation model experiments are treated as GPU
 inference by default so they cannot bypass exclusivity. A genuine CPU-only
 sidecar may declare `gpu_inference = false`. The two cards remain separate VRAM
 heaps without NVLink or transparent 192 GB pooling.
+
+A routed exclusive owner must declare `router_tier`, `router_config`, and
+`rollback_router_config` together. Both direct profiles must route the same
+caller aliases to that tier. The exclusive profile's tier model must equal the
+target serve's exact `served_name`; the rollback profile must match exactly one
+serve in the selected restore group. Mode entry starts and verifies the target,
+atomically installs its complete profile, waits for router health, and then
+guardedly readmits the tier. Any install or readmission failure stops the target,
+restores the rollback profile, and restores the split group. Leave performs the
+reverse quiesce, drain, profile, and readmission transaction. An unrouted TP=2
+experiment omits all three fields and remains direct-port only.
 
 ## Minimal direct gateway
 

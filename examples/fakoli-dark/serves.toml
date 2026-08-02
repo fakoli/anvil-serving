@@ -53,6 +53,8 @@ residency = "on-demand"
 operating_mode = "dual-gpu-exclusive"
 tensor_parallel_size = 2
 router_tier = "primary-local"
+router_config = "{dir}/anvil-router.deepseek-pi.toml"
+rollback_router_config = "{dir}/anvil-router.live.toml"
 groups = ["tp2-pi"]
 up = "python -m anvil_serving.cli models recipes load deepseek-ai/DeepSeek-V4-Flash-0731 --registry {dir}/../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml --container vllm-tp2-deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k --gpu-device GPU-d0f446cf-1771-414c-e116-a39138798a8c,GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490 --confirm"
 
@@ -72,7 +74,6 @@ vram_mib = 94721
 residency = "on-demand"
 operating_mode = "dual-gpu-exclusive"
 tensor_parallel_size = 2
-router_tier = "primary-local"
 groups = ["tp2-pi-1m"]
 up = "python -m anvil_serving.cli models recipes load deepseek-ai/DeepSeek-V4-Flash-0731 --registry {dir}/../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml --container vllm-tp2-deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m --gpu-device GPU-d0f446cf-1771-414c-e116-a39138798a8c,GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490 --confirm"
 
