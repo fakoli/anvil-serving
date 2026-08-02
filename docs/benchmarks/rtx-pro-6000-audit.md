@@ -56,12 +56,16 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-07-29-agents-a1-primary-promotion.md`;
 `docs/findings/2026-07-29-agents-a1-qwen-262k-head-to-head.md`;
 `docs/findings/2026-07-29-agents-a1-qwen-262k-head-to-head-evidence/README.md`;
+`docs/findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md`;
 `docs/findings/2026-08-01-deepseek-v4-flash-0731-research-update.md`;
 `docs/findings/2026-08-01-dual-pro-tp2-model-campaign.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/2026-07-27-release-sweep-fixes.md`;
 `.tickets/2026-07-28-agents-a1-multimodal-qualification.md`;
 `.tickets/2026-07-29-agents-a1-qwen-262k-head-to-head.md`;
+`.tickets/2026-08-01-deepseek-0731-r16-b12x-performance-spike.md`;
+`.tickets/2026-08-01-deepseek-dspark-128k-kv-reserve.md`;
+`.tickets/2026-08-01-deepseek-dspark-sm120-w8a8-tune.md`;
 `.tickets/2026-08-01-sglang-inkling-modelopt-missing-accelerate.md`;
 `.tickets/2026-08-01-sglang-inkling-sm120-grouped-gemm-shared-memory.md`;
 `examples/fakoli-dark/q36/README.md`.
@@ -101,5 +105,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 ## `unrelated`
 
 `CHANGELOG.md` (release-history mention);
+`.tickets/2026-08-01-external-benchmark-path-quantization-contamination.md`
+(test-adapter identity bug, not a local hardware measurement);
 `tests/fixtures/external_benchmarks/rtx6kpro_summary.md` (test fixture, not local
 qualification evidence).

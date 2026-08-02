@@ -56,6 +56,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-08-01 | [2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md](2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md) | Official DeepSeek V4 Flash 0731 on the pinned r16 B12X runtime: DSpark K5 versus same-image no-spec A/B, low/high/max reasoning, 128K timing and per-card telemetry, 27/27 coding-agent attempts, durable WSL2 translation, and no-promotion reserve decision |
 | 2026-08-01 | [2026-08-01-deepseek-v4-flash-0731-research-update.md](2026-08-01-deepseek-v4-flash-0731-research-update.md) | DeepSeek V4 Flash 0731 identity, intelligence evidence, reasoning/tool protocol, vLLM/SGLang and DSpark status, 0731 NVFP4/GGUF conversions, reconciliation with the local dual-PRO TP=2 run, and priority no-promotion qualification plan |
 | 2026-08-01 | [2026-08-01-dual-pro-tp2-model-campaign.md](2026-08-01-dual-pro-tp2-model-campaign.md) | Five-model exclusive TP=2 qualification on two RTX PRO 6000 cards: DeepSeek V4 Flash 0731, Inkling Small, Qwen3.5, Nemotron 3 Super, and Laguna S; pinned recipes, reasoning-aware capacity, NVFP8 search, failures, and no-promotion decision |
 | 2026-07-29 | [2026-07-29-agents-a1-primary-promotion.md](2026-07-29-agents-a1-primary-promotion.md) | Agents-A1 official FP8 passes the complete 262K protocol-v3 gate and becomes the thinking-disabled Primary; Qwen3.5 becomes the immediate managed rollback |

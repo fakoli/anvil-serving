@@ -84,6 +84,24 @@ def test_preflight_main_records_model_controls_and_budget(monkeypatch, tmp_path)
     assert artifact["observations"][0]["finish_reason"] == "stop"
 
 
+def test_preflight_forwards_deepseek_max_reasoning_effort(monkeypatch):
+    calls = []
+
+    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout):
+        calls.append(reasoning_effort)
+        evidence.append({"test": "smoke", "finish_reason": "stop", "reasoning_chars": 12})
+        return True, "ok"
+
+    monkeypatch.setattr(pf, "t_smoke", fake_smoke)
+    assert pf.main([
+        "--base-url", "http://127.0.0.1:30000/v1",
+        "--model", "deepseek-v4-flash-0731",
+        "--checks", "smoke",
+        "--reasoning-effort", "max",
+    ]) == 0
+    assert calls == ["max"]
+
+
 def test_preflight_rejects_length_finish_and_missing_required_reasoning(monkeypatch):
     def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout):
         assert timeout == 60.0

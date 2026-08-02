@@ -30,8 +30,14 @@ Decision-critical boundaries:
 - DSpark can improve interactive decode while remaining neutral at saturated
   concurrency, and mixed NVFP4-target/MXFP4-draft routing has a silent
   zero-acceptance failure mode in the strongest current SM120 report.
-- The exact publisher checkpoint has local dual-PRO low-reasoning evidence;
-  `high`, `max`, DSpark, context above 32K, and 0731 NVFP4 remain unqualified.
+- The exact publisher checkpoint now has a separate pinned r16 local lane with
+  low/high/max reasoning, DSpark K5, 128K, and same-image no-spec evidence.
+  It remains `no-promotion` because both profiles failed the 3 GiB free-VRAM
+  policy. Community 0731 NVFP4 and 256K local context remain unqualified.
+
+The local result and raw A/B are published separately in the
+[r16 qualification](findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md);
+they do not convert the external rows into local measurements.
 
 Do not import the external throughput rows into a local leaderboard without
 retaining GPU count, engine revision, TP/EP shape, speculative state,

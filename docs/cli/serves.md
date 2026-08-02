@@ -99,7 +99,8 @@ anvil-serving serves mode status --manifest ./serves.toml
 anvil-serving serves mode preview TP2_SERVE \
   --restore-group split-stack --manifest ./serves.toml
 anvil-serving serves mode enter TP2_SERVE \
-  --restore-group split-stack --manifest ./serves.toml --confirm
+  --restore-group split-stack --manifest ./serves.toml \
+  --preserve-on-failure --confirm
 anvil-serving serves mode leave TP2_SERVE \
   --restore-group split-stack --manifest ./serves.toml --confirm
 ```
@@ -109,7 +110,12 @@ and stop, workloads blocked while exclusive, and the explicit rollback group.
 Entry fails closed on unresolved Docker state, drains routed competitors,
 stops all GPU inference, rechecks both roles, then starts the exclusive owner.
 Failure restores the split group. Leave stops the owner before restoring that
-group. The `serves_mode` MCP tool exposes the same structured plan; live remote
+group. By default, failed entry removes the candidate before rollback. Add
+`--preserve-on-failure` when debugging a candidate: Anvil stops the failed
+target, retains the stopped/exited container and its logs, and then restores the
+split group. If the target cannot be proven stopped, Anvil removes it so an
+unhealthy or restarting process cannot retain either GPU during restoration.
+The `serves_mode` MCP tool exposes the same structured plan; live remote
 entry/leave requires its separate human-approval gate.
 
 ## Functional probes

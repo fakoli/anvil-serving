@@ -1,0 +1,53 @@
+{
+  "schema": "anvil-serving.hardware-snapshot/v1",
+  "observed_at": "2026-08-02T02:29:05Z",
+  "phase": "idle immediately after successful 32K/64K/128K context ladder",
+  "capture_method": "nvidia-smi query-gpu",
+  "host": "Fakoli Dark",
+  "topology": "dual-gpu-exclusive TP2",
+  "model": "deepseek-v4-flash-0731-r16-b12x-dspark5-tp2-128k",
+  "reserve_policy_mib_per_gpu": 3072,
+  "gpus": [
+    {
+      "role": "dark-compute-a",
+      "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "memory_total_mib": 97887,
+      "memory_used_mib": 97044,
+      "memory_free_reported_mib": 395,
+      "reserve_pass": false,
+      "power_draw_w": 61.36,
+      "power_limit_w": 300.0,
+      "sm_clock_mhz": 802,
+      "memory_clock_mhz": 13365,
+      "temperature_c": 57,
+      "gpu_utilization_percent": 6,
+      "performance_state": "P1"
+    },
+    {
+      "role": "dark-compute-b",
+      "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "memory_total_mib": 97887,
+      "memory_used_mib": 97174,
+      "memory_free_reported_mib": 265,
+      "reserve_pass": false,
+      "power_draw_w": 23.08,
+      "power_limit_w": 300.0,
+      "sm_clock_mhz": 180,
+      "memory_clock_mhz": 405,
+      "temperature_c": 47,
+      "gpu_utilization_percent": 0,
+      "performance_state": "P8"
+    }
+  ],
+  "host_memory": {
+    "physical_used_gb": 93.7,
+    "wsl_total_gb": 62.8,
+    "wsl_used_gb": 11.7,
+    "wsl_page_cache_gb": 2.0,
+    "wsl_available_gb": 51.1
+  },
+  "interpretation": {
+    "context_behavior": "vLLM reserves the 138459-token KV cache at serve startup, so idle VRAM is a serve-level reservation rather than a context-row allocation.",
+    "limitation": "This post-run snapshot is not an in-request peak sample. It proves the configured serve fails the 3 GiB physical-free reserve despite completing the context ladder."
+  }
+}

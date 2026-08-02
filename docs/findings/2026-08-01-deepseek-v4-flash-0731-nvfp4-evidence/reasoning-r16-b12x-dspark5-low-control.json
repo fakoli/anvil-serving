@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "reasoning_effort",
+  "source": "preflight-r16-b12x-dspark5-128k-low.json: exact deepseek-ai/DeepSeek-V4-Flash-0731 revision 9e165c30e2704aec5d9d593cce3eebd58bbef1cb on pinned r16 B12X/DSpark TP2 passed coding, JSON, 3/3 typed tools, streaming tools, tool-result continuation, and Responses with required low-reasoning evidence",
+  "observed_at": "2026-08-02T02:17:41Z"
+}

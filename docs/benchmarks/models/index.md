@@ -21,7 +21,7 @@ evidence class, decision boundary, failures, and dated history.
 | [Mistral Small 4](mistral-small-4.md) | `no-promotion` | Low-TTFT control |
 | [MiniMax M2.7 REAP](minimax-m27-reap.md) | `no-promotion` | Historical community challenger |
 | [Ornith 1.0 35B](ornith-35b.md) | `no-promotion` | Historical specialist |
-| [DeepSeek V4 Flash 0731](deepseek-v4-flash.md) | priority `challenger`, `no-promotion` | Qualified low-reasoning TP=2 lane; intelligence, DSpark, NVFP4, GGUF, and reasoning-budget research |
+| [DeepSeek V4 Flash 0731](deepseek-v4-flash.md) | priority `challenger`, `no-promotion` | Pinned r16 DSpark K5 TP=2 lane; low/high/max reasoning, 128K, same-image no-spec A/B, coding-agent quality, NVFP4/GGUF research |
 | [Inkling Small](inkling-small.md) | `no-promotion` | Qualified NVFP4 TP=2 lane; low-reasoning contract passes, reasoning-off Responses caveat retained |
 
 ## RTX 5090

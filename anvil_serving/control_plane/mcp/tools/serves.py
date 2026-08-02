@@ -460,6 +460,16 @@ def tool_serves_mode(args: dict) -> dict:
             "action must be one of: status, preview, enter, leave",
             {"action": action},
         )
+    preserve_on_failure = _arg_bool(
+        args.get("preserve_on_failure"),
+        False,
+        name="preserve_on_failure",
+    )
+    if preserve_on_failure and action != "enter":
+        raise ToolError(
+            "bad_argument",
+            "preserve_on_failure is only valid with action='enter'",
+        )
     manifest_arg = _str_arg(args, "manifest", "")
     manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
     manifest_serves = _load_serves_for_tool(manifest)
@@ -519,6 +529,7 @@ def tool_serves_mode(args: dict) -> dict:
             "applied": False,
             "dry_run": True,
             "human_gate_required": action in {"enter", "leave"},
+            "preserve_on_failure": preserve_on_failure,
             "manifest": manifest,
             "plan": plan,
         })
@@ -539,11 +550,14 @@ def tool_serves_mode(args: dict) -> dict:
         str(drain_timeout),
         "--confirm",
     ]
+    if preserve_on_failure:
+        argv.append("--preserve-on-failure")
     result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
     return _ok({
         "applied": True,
         "dry_run": False,
         "human_approved": True,
+        "preserve_on_failure": preserve_on_failure,
         "manifest": manifest,
         "plan": plan,
         **result,
@@ -652,6 +666,7 @@ FAMILY = ToolFamily(
                     "manifest": {"type": "string"},
                     "target": {"type": "string"},
                     "restore_group": {"type": "string"},
+                    "preserve_on_failure": {"type": "boolean"},
                     "drain_timeout": _bounded_integer_schema(1, 3600, 120),
                     "dry_run": {"type": "boolean"},
                     "confirm": {"type": "boolean"},

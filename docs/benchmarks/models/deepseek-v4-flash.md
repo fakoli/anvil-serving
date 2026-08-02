@@ -2,18 +2,24 @@
 
 ## Current status and review date
 
-Priority intelligence `challenger`; `no-promotion`. Exact publisher weights
-are qualified for the bounded low-reasoning TP=2 contract below. `high`, `max`,
-DSpark, 0731-specific NVFP4, context above 32K, and concurrency above one are
-not locally qualified. The 2026-07-10 single-card attempt remains a retained
-historical rejection. Review date: 2026-08-01.
+Priority intelligence `challenger`; `no-promotion`. The preferred experiment
+profile is the pinned r16 B12X TP=2 recipe with DSpark K5, 131,072 served
+tokens, and low/high/max reasoning support. It passed 128K correctness and a
+27/27 coding-agent slice, and DSpark materially beat the same-image no-spec
+control. Neither profile passed the standing 3 GiB reported-free VRAM policy,
+so no production alias changed. Review date: 2026-08-01.
+
+The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
+not the current performance recipe. Community 0731 NVFP4 and GGUF conversions,
+256K local context, and concurrency above one remain unqualified.
 
 ## Immutable identity
 
-Current result: `deepseek-ai/DeepSeek-V4-Flash-0731` revision
-`7872f01b1d1fe23eabc4c98b48bffcef5a386062`. Release weights first appeared at
-`9e165c30e2704aec5d9d593cce3eebd58bbef1cb`; the current revision adds model-card
-documentation without replacing those weights.
+The r16 result pins `deepseek-ai/DeepSeek-V4-Flash-0731` revision
+`9e165c30e2704aec5d9d593cce3eebd58bbef1cb`, the release revision containing
+the tested weights. The upstream repository has since advanced to
+`7872f01b1d1fe23eabc4c98b48bffcef5a386062` for model-card documentation; that
+later commit was not substituted into the measured recipe.
 
 DeepSeek identifies 0731 as a re-post-trained official release that supersedes
 Flash Preview while retaining the V4 Flash architecture. Treat it as a
@@ -34,37 +40,57 @@ figure is aggregate VRAM, not unified memory.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
-The working lane uses SGLang 0.5.16 from pinned derived image
-`sha256:0aa5324c4f38bc66f4b55e1e12efab821ef614b1a8629259b2810ff72a6570e6`,
-publisher hybrid FP4-expert/FP8 weights, FP8 E4M3 KV, 32,768 context, one
-admitted request, `reasoning_effort=low`, and no speculative decoding. The
-derived image disables only the WSL2-incompatible symmetric-memory logits
-gather and retains SGLang's NCCL fallback.
+The working profile uses image digest
+`sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f`,
+vLLM base commit `30038602b71395f481ef4a6edfe4fcf8551d9c15`, B12X W4A8
+NVFP4 MoE and FP8 dense kernels, FP8 MLA KV, InstantTensor, TP=2, 131,072
+context, eight admitted sequences, and DSpark fixed-depth five-token drafting.
+The measured workload is c1.
 
-The checkpoint has no ordinary Jinja template. The qualified serve uses the
-DeepSeek-V4 tokenizer mode plus its reasoning and DSML tool-call parsers.
-Reasoning state must be preserved across tool-result continuation.
+The native-Linux source recipe required an SM120-to-WSL2 translation:
+direct NCCL P2P and NCCL cuMem device/host allocation are disabled, shared
+memory remains enabled, and PyTorch expandable segments are disabled. Model,
+JIT, and temporary build data use named Docker volumes.
+
+- [DSpark K5 recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-128k-recipe.toml)
+- [Same-image no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-nospec-128k-recipe.toml)
+- [Complete qualification](../../findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md)
 
 ## Evidence by measurement class
 
-The current revision has `functional`, `capacity`, and `quality` local
-evidence. Smoke, JSON, 30K retrieval, tools 20/20, streaming tools, tool-result
-continuation, and Responses passed. Repeated quality passed intelligence 6/6,
-session 3/3, and tools 3/3 with 4,096 reasoning-headroom tokens. The final 32K
-capacity lane completed 11/12: TTFO p50 2.705 seconds, first-visible TTFT p50
-29.106 seconds, effective prefill 7,818 tok/s, combined reasoning/visible
-decode 11.5 tok/s, and aggregate output 7.60 tok/s.
+The r16 revision has `functional`, `capacity`, and bounded `quality` evidence:
+
+- Low reasoning passed smoke, JSON, three typed tools, streaming tools,
+  tool-result continuation, and Responses. High and max passed smoke, JSON,
+  tools, and tool-result continuation.
+- The context ladder passed 32K, 64K, and a clamped 126,464-token request.
+  The warmed 125,785-prompt-token row measured 19.44-second TTFO,
+  23.81-second first-visible TTFT, 6,469 effective prefill tok/s, and
+  128.9 tok/s combined reasoning/visible decode.
+- Nine coding/intelligence/session/tool items ran three times each and passed
+  27/27 attempts with 4,096 reasoning-headroom tokens.
+- In a same-image c1 A/B, DSpark increased median per-request decode from
+  64.9 to 130.7 tok/s, aggregate output from 59.6 to 101.7 tok/s, and reduced
+  median E2E from 3.88 to 1.60 seconds.
+- Cumulative DSpark counters recorded 4,865 accepted of 8,830 draft tokens,
+  or 55.1% acceptance and 2.75 accepted tokens per draft.
+
+The prior SGLang lane used image digest
+`sha256:0aa5324c4f38bc66f4b55e1e12efab821ef614b1a8629259b2810ff72a6570e6`,
+publisher hybrid FP4-expert/FP8 weights, FP8 E4M3 KV, 32,768 context, one
+admitted request, low reasoning, and no speculative decoding. It passed
+functional and repeated quality gates. Its final 32K capacity lane completed
+11/12 at 2.705-second TTFO, 29.106-second first-visible TTFT, 7,818 effective
+prefill tok/s, and 11.5 tok/s combined reasoning/visible decode.
 
 Current `external-prior` evidence strengthens the research priority without
-expanding that local contract:
+expanding the local contract:
 
 - DeepSeek reports large agentic gains over Preview, including 82.7 versus
   61.8 on Terminal Bench 2.1 and 54.4 versus 7.3 on DeepSWE. The code-agent
   runs used an unreleased harness at `max`; two DSBench sets are internal.
 - Artificial Analysis independently scores max-effort 0731 at 50, number 3 of
   101 comparable models, while reporting 210 million evaluation output tokens.
-- vLLM and SGLang publish 0731 parser and DSpark recipes, but neither source
-  provides the exact two-RTX-PRO non-speculative result recorded here.
 - Community 0731 NVFP4 conversions now exist. MJPansa has the strongest
   conversion receipt; Auroter has the strongest four-RTX-PRO performance
   prior. Neither is local TP=2 qualification.
@@ -76,35 +102,41 @@ GGUF size ladder, DSpark caveats, and source classifications.
 
 ## Decision and promotion state
 
-`challenger`, `no-promotion`. Make 0731 the priority dual-card intelligence
-research target, but preserve the current production Primary and rollback
-chain. The next gates are publisher `low`/`high`/`max`, progressive context,
-matched DSpark off/on, then pinned 0731 NVFP4 W4A16/W4A4 qualification.
+`challenger`, `no-promotion`. The r16 DSpark profile is the preferred local
+performance experiment and is suitable for further coding-agent and deployment
+work. Preserve the current production Primary and rollback chain. The next
+material gates are a policy-compliant 128K memory recipe, broader coding/tool
+recovery evaluation, concurrency qualification, 256K feasibility, and pinned
+0731 NVFP4 W4A16/W4A4 comparisons.
 
 ## Failures and gotchas
 
-One of twelve final capacity requests consumed 2,048 completion tokens in the
-reasoning channel without a visible answer. Artificial Analysis's 210-million-
-output-token max-effort run points to the same operational risk: reasoning
-budget policy can dominate latency, cost, and visible-answer reliability.
+The first r16 start exposed an offline nested-speculative-model localization
+gap. The second exposed native-Linux NCCL defaults incompatible with WSL2. The
+third loaded both ranks but missed the 131K KV admission gate by 0.15 GiB at
+`max_num_seqs=16`; the qualified c1 recipe reduces admission to eight and the
+CUDA-graph cap to 48 without raising its memory-utilization ceiling.
 
-The checkpoint does not provide FP8 KV scaling factors, so the runtime's
-unscaled FP8 KV path remains an accuracy caveat. The locally served 32K profile
-cannot represent DeepSeek's recommendation to allow up to 384K output tokens
-for `high` and `max`.
+Both r16 profiles fail the 3 GiB reported-free reserve. Per-context sampling
+found only 1,179-1,203 MiB free on `dark-compute-a` and 2,031 MiB on
+`dark-compute-b`. WSL/WDDM global allocation differs from native Linux, but a
+successful request does not authorize silently weakening the gate.
 
-NVIDIA's official NVFP4 repository is Preview, not 0731. Community 0731 NVFP4
-artifacts must be pinned and independently checked. In the strongest current
-SM120 report, the main experts are NVFP4 but the bundled draft experts remain
-MXFP4; without prefix-aware draft routing, DSpark can generate with zero draft
-acceptance. Successful startup or text generation alone is not a sufficient
-NVFP4+DSpark gate.
+Reasoning-budget exhaustion is still a real operational risk. One earlier
+SGLang capacity request and one additional r16 no-spec control run completed
+without visible content. High/max support proves protocol compatibility, not
+that arbitrarily large reasoning budgets are efficient.
+
+The pinned runtime source repository has no root license file at the tested
+revision. The model weights are MIT, but local qualification does not establish
+permission to redistribute the image or derived runtime code.
 
 The historical NGC vLLM architecture rejection and aborted NVFP4 load are not
 measurements of the current 0731 checkpoint.
 
 ## Dated run history
 
+- [2026-08-01 r16 DSpark qualification](../../findings/2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md)
 - [2026-08-01 deep research update](../../findings/2026-08-01-deepseek-v4-flash-0731-research-update.md)
 - [2026-08-01 dual-PRO TP=2 campaign](../../findings/2026-08-01-dual-pro-tp2-model-campaign.md)
 - [2026-07-10 bakeoff](../../findings/2026-07-10-blackwell-local-model-bakeoff.md)

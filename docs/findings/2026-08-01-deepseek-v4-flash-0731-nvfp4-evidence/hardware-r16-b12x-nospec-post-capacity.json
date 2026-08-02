@@ -1,0 +1,53 @@
+{
+  "schema": "anvil-serving.hardware-snapshot/v1",
+  "observed_at": "2026-08-02T02:38:08Z",
+  "phase": "idle immediately after no-spec 4K capacity repetitions",
+  "capture_method": "nvidia-smi query-gpu",
+  "host": "Fakoli Dark",
+  "topology": "dual-gpu-exclusive TP2",
+  "model": "deepseek-v4-flash-0731-r16-b12x-nospec-tp2-128k",
+  "reserve_policy_mib_per_gpu": 3072,
+  "gpus": [
+    {
+      "role": "dark-compute-a",
+      "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "memory_total_mib": 97887,
+      "memory_used_mib": 95457,
+      "memory_free_reported_mib": 1982,
+      "reserve_pass": false,
+      "power_draw_w": 66.92,
+      "power_limit_w": 300.0,
+      "sm_clock_mhz": 907,
+      "memory_clock_mhz": 13365,
+      "temperature_c": 63,
+      "gpu_utilization_percent": 6,
+      "performance_state": "P1"
+    },
+    {
+      "role": "dark-compute-b",
+      "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "memory_total_mib": 97887,
+      "memory_used_mib": 94846,
+      "memory_free_reported_mib": 2593,
+      "reserve_pass": false,
+      "power_draw_w": 31.67,
+      "power_limit_w": 300.0,
+      "sm_clock_mhz": 180,
+      "memory_clock_mhz": 405,
+      "temperature_c": 55,
+      "gpu_utilization_percent": 0,
+      "performance_state": "P8"
+    }
+  ],
+  "host_memory": {
+    "physical_used_gb": 93.7,
+    "wsl_total_gb": 62.8,
+    "wsl_used_gb": 10.6,
+    "wsl_page_cache_gb": 1.8,
+    "wsl_available_gb": 52.2
+  },
+  "interpretation": {
+    "context_behavior": "vLLM reserves the 257515-token KV cache at serve startup, so idle VRAM is a serve-level reservation rather than a context-row allocation.",
+    "limitation": "This post-run snapshot is not an in-request peak sample. The control uses materially less VRAM than DSpark but still fails the 3 GiB physical-free reserve on both WSL/WDDM-visible GPUs."
+  }
+}

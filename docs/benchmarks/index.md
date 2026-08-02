@@ -53,8 +53,11 @@ aliases. It restored the pre-campaign service state after exclusive TP=2.
 Research priority: **DeepSeek V4 Flash 0731** is the dual-card intelligence
 `challenger` after its exact publisher checkpoint qualified at low reasoning
 and current external research independently supported the post-training jump.
-It remains `no-promotion`; high/max reasoning, DSpark, context above 32K, and
-0731-specific NVFP4 are not locally qualified. Start with its
+The pinned r16 B12X lane now qualifies low/high/max reasoning, DSpark K5,
+128K, and a 27/27 coding-agent slice. DSpark doubled matched decode versus the
+same-image no-spec control, but both profiles failed the 3 GiB free-VRAM policy.
+It therefore remains `no-promotion`; 256K and community 0731 NVFP4 remain
+unqualified. Start with its
 [model dossier](models/deepseek-v4-flash.md).
 
 ## How to read the evidence

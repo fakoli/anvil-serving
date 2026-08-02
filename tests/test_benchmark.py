@@ -185,6 +185,11 @@ def test_body_has_no_chat_template_kwargs_by_default():
 def test_reasoning_effort_uses_top_level_openai_field():
     body = bm.build_body("m", "hi", 640, reasoning_effort="high")
     assert body["reasoning_effort"] == "high"
+
+
+def test_max_reasoning_effort_is_forwarded_unchanged():
+    body = bm.build_body("m", "hi", 640, reasoning_effort="max")
+    assert body["reasoning_effort"] == "max"
     assert "chat_template_kwargs" not in body
 
 
@@ -491,6 +496,40 @@ def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp
     assert [row["request_index"] for row in summary["request_timings"]] == [0, 1]
     assert summary["timing_methodology"]["clock"] == "client time.perf_counter"
     assert summary["wall_clock_ms"] > 0
+
+
+def test_capacity_failure_retains_bounded_actionable_error(monkeypatch, tmp_path, capsys):
+    message = "stream ended without any visible or reasoning output"
+    monkeypatch.setattr(
+        bm,
+        "stream_chat",
+        lambda *args, **kwargs: (_ for _ in ()).throw(ValueError(message)),
+    )
+    out = tmp_path / "capacity-failure.json"
+
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:30002/v1",
+        "--model", "candidate",
+        "--engine", "vllm",
+        "--gpu", "dual-gpu",
+        "--requests", "1",
+        "--concurrency", "1",
+        "--ctx-tokens", "1024",
+        "--max-model-len", "8192",
+        "--output", str(out),
+    ]) == 1
+
+    artifact = json.loads(out.read_text(encoding="utf-8"))
+    assert artifact["failures"] == [{
+        "request_index": 0,
+        "error_type": "ValueError",
+        "error_message": message,
+        "error_message_truncated": False,
+    }]
+    assert "ValueError: %s" % message in capsys.readouterr().out
+    assert artifact["completed"] == 0
+    assert artifact["metrics"]["ttft_p50_ms"] is None
 
 
 # ---- GENERATE: benchmarking a serve ALSO records its recipe (--recipe-out) ---------
@@ -1754,6 +1793,7 @@ def test_notebook_rejects_diagnostic_suite_before_live_work(
 @pytest.mark.parametrize("model,extra,expected", [
     ("openai/gpt-oss-120b", ["--thinking-mode", "disabled"], "does not use Qwen"),
     ("openai/gpt-oss-120b", ["--reasoning-effort", "minimal"], "low, medium, or high"),
+    ("deepseek-v4-flash-0731", ["--reasoning-effort", "medium"], "low, high, or max"),
     ("Qwen/Qwen3.6-27B", ["--reasoning-effort", "high"], "chat-template thinking control"),
 ])
 def test_model_family_rejects_known_ignored_reasoning_controls(
@@ -1780,6 +1820,38 @@ def test_gpt_oss_accepts_published_reasoning_effort(monkeypatch, capsys):
         "--dry-run",
     ]) == 0
     assert json.loads(capsys.readouterr().out)["workload"] == "capacity"
+
+
+def test_deepseek_accepts_max_reasoning_effort(capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "deepseek-v4-flash-0731",
+        "--reasoning-effort", "max",
+        "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["thinking"]["reasoning_effort"] == "max"
+    assert plan["thinking"]["control_mechanism"] == "reasoning_effort"
+    assert plan["thinking"]["control_requested"] == "max"
+
+
+def test_quality_dry_run_reports_exact_reasoning_control(capsys):
+    assert bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "deepseek-v4-flash-0731",
+        "--candidate-id", "deepseek-v4-flash-0731",
+        "--config-id", "tp2-w4a16",
+        "--suite", "intelligence",
+        "--reasoning-effort", "max",
+        "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["workload"] == "quality"
+    assert plan["thinking"]["reasoning_effort"] == "max"
+    assert plan["thinking"]["control_mechanism"] == "reasoning_effort"
+    assert plan["thinking"]["control_requested"] == "max"
 
 
 @pytest.mark.parametrize(
