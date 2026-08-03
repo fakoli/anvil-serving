@@ -494,7 +494,7 @@ def test_remote_controller_request_uses_2026_http_endpoint_and_headers():
         def __exit__(self, *_args):
             return False
 
-        def read(self):
+        def read(self, *_args):
             return b'{"jsonrpc":"2.0","id":9,"result":{"resultType":"complete"}}'
 
     def opener(req, timeout):
@@ -516,3 +516,28 @@ def test_remote_controller_request_uses_2026_http_endpoint_and_headers():
     assert seen["headers"]["mcp-protocol-version"] == mcp.PROTOCOL_VERSION
     assert seen["headers"]["mcp-method"] == "tools/call"
     assert seen["headers"]["mcp-name"].startswith("=?base64?")
+
+
+def test_remote_controller_request_bounds_response_body():
+    request = _request("tools/list", request_id=10)
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, size):
+            return b"x" * size
+
+    with pytest.raises(mcp.ToolError) as exc_info:
+        mcp.remote_controller_request(
+            "http://127.0.0.1:8765",
+            request,
+            "secret",
+            opener=lambda _request, timeout: Response(),
+            max_response_bytes=32,
+        )
+
+    assert exc_info.value.code == "controller_response_too_large"

@@ -61,6 +61,70 @@ Run `anvil-serving init` only after selecting the intended private root. It can
 detect and write real local values there; it must never write them back into
 the public examples.
 
+## Typed inventory and private-repository handoff
+
+Use the typed host configuration surface to discover and transfer operator
+configuration. Do not recursively copy an operator home or retrieve it through
+an ad hoc SSH, SCP, rsync, archive, Docker, or filesystem command.
+
+On the host that owns the operator home, inventory first:
+
+```bash
+anvil-serving host config inventory --json
+anvil-serving host config export --path router.toml --json
+anvil-serving host config export --path serves.toml --json
+```
+
+Inventory is metadata-only. It reports relative paths, classifications, byte
+sizes, parser types, dependency edges, installed product/protocol revisions,
+and SHA-256 digests for versionable candidates. Excluded files are not opened
+for hashing and report a null digest. Inventory does not return file contents
+or environment values. Export returns content only for supported versionable Anvil
+configuration. A selected export automatically includes its transitive dependency
+closure. OpenClaw configuration is a separate, explicit input whose output is
+limited to an allowlisted and redacted Anvil-owned fragment; the complete
+`openclaw.json` document is never an export artifact.
+
+The same operations are available through the authenticated controller as
+`operator_config_inventory` and `operator_config_export`. Remote callers cannot
+override the resource owner's operator-home or gateway paths. The owning host
+resolves its configured `ANVIL_SERVING_HOME` and standard OpenClaw path, which
+keeps the control plane from becoming an arbitrary remote file reader.
+
+A lifecycle `--registry` under the declared product `/configs` mount or the
+source checkout's public `configs/` directory is represented by the fixed
+`<external-product-registry>` marker and is never read through this surface.
+Arbitrary external registries fail closed. Portable product recipes remain in
+the public repository. A private registry that must move with the operator
+configuration belongs inside the operator home, where selected export includes
+it in the transitive closure.
+
+The operations fail closed on symlinks or junctions, path escapes, unreadable
+or oversized files, parse failures, unresolved dependencies, unsupported YAML
+exports, and credential-like or capability-bearing values. Secret material,
+runtime databases and logs, backups, caches, cookie stores, and unknown files
+remain excluded. A private repository is not an exception to the credential
+rule: exported configuration must still use environment or file-backed secret
+references.
+
+Treat the export as a reviewed handoff, not as a remote-copy shortcut:
+
+1. record the inventory and the explicitly selected paths;
+2. review the returned dependency closure, exclusions, redaction count, and
+   hashes;
+3. place only the reviewed `files` entries under
+   `hosts/<host>/operator-home/` in the private repository, preserving their
+   relative paths;
+4. run the private repository's ignore and secret-hygiene checks, then compare
+   the tracked snapshot with a fresh typed inventory; and
+5. commit the configuration in the private repository before planning any live
+   operator-home cutover.
+
+Inventory and export are read-only. They do not write configuration, switch
+`ANVIL_SERVING_HOME`, restart a component, deploy a manifest, change a route,
+or promote a model. A live cutover remains a separate reviewed operation with
+an explicit rollback manifest.
+
 ## Publishing evidence
 
 Keep raw logs and session traces private while working. To make a public claim:
