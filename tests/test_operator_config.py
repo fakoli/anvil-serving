@@ -264,6 +264,8 @@ def test_gateway_sanitizer_closes_structural_credential_bypasses(tmp_path):
                         "provider": "default",
                         "id": marker,
                     },
+                    "apiKeyEnv": f"literal-{marker}",
+                    "accessTokenEnv": "ANVIL_ACCESS_TOKEN",
                     "accessToken": marker,
                     "headerPairs": [["Cookie", f"session={marker}"]],
                     "headersList": [["X-Auth-Token", marker]],
@@ -350,7 +352,10 @@ def test_gateway_sanitizer_closes_structural_credential_bypasses(tmp_path):
     rendered = json.dumps(result, sort_keys=True)
     assert marker not in rendered
     assert "mcpServers" not in result["gateway_fragment"]
-    assert result["redaction_count"] == 24
+    provider = result["gateway_fragment"]["models"]["providers"]["anvil"]
+    assert provider["apiKeyEnv"] == "<redacted>"
+    assert provider["accessTokenEnv"] == "ANVIL_ACCESS_TOKEN"
+    assert result["redaction_count"] == 25
 
 
 def test_export_refuses_secret_literal_in_versionable_config(tmp_path):

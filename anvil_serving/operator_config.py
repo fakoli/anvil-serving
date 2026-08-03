@@ -581,9 +581,16 @@ def _sanitize_gateway(value: Any, *, key: str = "") -> tuple[Any, int]:
                     result[child_key] = "<redacted>"
                     count += 1
                 continue
-            if _is_secret_key(child_key) and not normalized.endswith("_env"):
+            if _is_secret_key(child_key):
                 if _safe_secret_reference(child):
                     result[child_key] = dict(child)
+                    continue
+                if (
+                    normalized.endswith("_env")
+                    and isinstance(child, str)
+                    and _ENV_NAME_RE.fullmatch(child)
+                ):
+                    result[child_key] = child
                     continue
                 result[child_key] = "<redacted>"
                 count += 1
