@@ -171,6 +171,106 @@ def test_export_returns_safe_config_and_only_sanitized_anvil_gateway_fragment(tm
     assert result["redaction_count"] == 2
 
 
+def test_gateway_sanitizer_closes_structural_credential_bypasses(tmp_path):
+    marker = "reusable-secret-marker"
+    _write(tmp_path / "host.toml", "schema_version = 1\n")
+    gateway = {
+        "models": {
+            "providers": {
+                "anvil": {
+                    "baseUrl": "http://127.0.0.1:8000/v1",
+                    "apiKey": {
+                        "source": "env",
+                        "provider": "default",
+                        "id": marker,
+                    },
+                    "accessToken": marker,
+                    "headerPairs": [["Cookie", f"session={marker}"]],
+                    "headersList": [["X-Auth-Token", marker]],
+                    "defaultHeaders": ["Cookie", f"session={marker}"],
+                    "customHeaderPairs": [["X-Auth-Token", marker]],
+                    "relativeCallback": f"/cb?sig={marker}",
+                    "oauthRedirect": f"?code={marker}",
+                    "stateCallback": f"/cb?state={marker}",
+                    "ticketCallback": f"?ticket={marker}",
+                    "pathSession": f"/cb;session={marker}",
+                    "encodedSignature": f"?%73ig={marker}",
+                    "encodedToken": f"?access_%74oken={marker}",
+                    "fullyEncodedRelative": f"%2Fcb%3Ftoken%3D{marker}",
+                    "fullyEncodedAbsolute": (
+                        f"https%3A%2F%2Fexample.invalid%2Fcb%3Ftoken%3D{marker}"
+                    ),
+                    "keyMaterial": f"PuTTY-User-Key-File-3: ssh-rsa\n{marker}",
+                    "badUrl": "//[",
+                    "headerObjects": [
+                        {"Name": "Cookie", "Values": [f"session={marker}"]},
+                        {"headerName": "Cookie", "headerValue": marker},
+                        {
+                            "name": "Cookie",
+                            "value": {
+                                "source": "env",
+                                "provider": "default",
+                                "id": "COOKIE_REF",
+                            },
+                            "values": [marker],
+                        },
+                        {"name": "Cookie", "Name": "Cookie", "value": marker},
+                        {
+                            "name": "Cookie",
+                            "key": "X-Auth-Token",
+                            "value": marker,
+                        },
+                        {
+                            "name": "Cookie",
+                            "value": {
+                                "source": "env",
+                                "provider": "default",
+                                "id": "COOKIE_REF",
+                            },
+                            "headerName": "X-Auth-Token",
+                            "headerValue": marker,
+                        },
+                    ],
+                }
+            }
+        },
+        "mcpServers": {
+            "anvil-serving": {
+                "command": "anvil-serving",
+                "args": [
+                    f"--callback=https://example.invalid/cb?token={marker}",
+                    f"Authorization: Bearer {marker}",
+                    f"--header=Cookie: session={marker}",
+                    f"-HCookie: session={marker}",
+                    f"X-Auth-Token: {marker}",
+                    f"//user:{marker}@example.invalid/path",
+                    f"--dsn=postgresql://user:{marker}@example.invalid/database",
+                    f"/cb?token={marker}",
+                    f"?token={marker}",
+                    f"https:opaque?token={marker}",
+                ],
+                "headers": [["Authorization", f"Bearer {marker}"]],
+                "headerObjects": [
+                    {"name": "Cookie", "value": f"session={marker}"},
+                    {"key": "X-Api-Key", "value": marker},
+                    {"Name": "Cookie", "Value": f"session={marker}"},
+                ],
+            }
+        },
+    }
+    gateway_path = _write(
+        tmp_path.parent / f"{tmp_path.name}-gateway-structural" / "openclaw.json",
+        json.dumps(gateway),
+    )
+
+    result = operator_config.export(str(tmp_path), gateway_path=str(gateway_path))
+
+    rendered = json.dumps(result, sort_keys=True)
+    assert marker not in rendered
+    assert "mcpServers" not in result["gateway_fragment"]
+    assert result["redaction_count"] == 24
+
+
 def test_export_refuses_secret_literal_in_versionable_config(tmp_path):
     _write(tmp_path / "voice.toml", 'api_key = "raw-secret"\n')
     with pytest.raises(operator_config.ConfigExportError, match="secret-like field"):
@@ -178,28 +278,16 @@ def test_export_refuses_secret_literal_in_versionable_config(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("name", "content"),
+    "content",
     [
-        (
-            "router.json",
-            json.dumps({"headers": {"Authorization": "Bearer reusable-secret"}}),
-        ),
-        (
-            "router.json",
-            json.dumps({"headers": {"Cookie": "session=reusable-secret"}}),
-        ),
-        (
-            "router.toml",
-            '[headers]\nproxy-authorization = "Basic reusable-secret"\n',
-        ),
-        (
-            "router.toml",
-            '[headers]\nset-cookie = "session=reusable-secret"\n',
-        ),
+        '[headers]\nAuthorization = "Bearer reusable-secret"\n',
+        '[headers]\nCookie = "session=reusable-secret"\n',
+        '[headers]\nproxy-authorization = "Basic reusable-secret"\n',
+        '[headers]\nset-cookie = "session=reusable-secret"\n',
     ],
 )
-def test_export_refuses_http_credential_literals(tmp_path, name, content):
-    _write(tmp_path / name, content)
+def test_export_refuses_http_credential_literals(tmp_path, content):
+    _write(tmp_path / "router.toml", content)
 
     with pytest.raises(operator_config.ConfigExportError, match="secret-like field"):
         operator_config.export(str(tmp_path))
@@ -207,23 +295,159 @@ def test_export_refuses_http_credential_literals(tmp_path, name, content):
 
 def test_export_accepts_http_credential_secret_reference(tmp_path):
     _write(
-        tmp_path / "router.json",
-        json.dumps(
-            {
-                "headers": {
-                    "Authorization": {
-                        "source": "env",
-                        "provider": "default",
-                        "id": "ROUTER_AUTHORIZATION",
-                    }
-                }
-            }
-        ),
+        tmp_path / "router.toml",
+        "[headers.Authorization]\n"
+        'source = "env"\n'
+        'provider = "default"\n'
+        'id = "ROUTER_AUTHORIZATION"\n',
     )
 
     result = operator_config.export(str(tmp_path))
 
     assert result["files"][0]["content"]
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        'accessToken = "reusable-secret"\n',
+        'headers = [["Authorization", "Bearer reusable-secret"]]\n',
+        'headers = ["Cookie", "session=reusable-secret"]\n',
+        'headerPairs = [["Cookie", "session=reusable-secret"]]\n',
+        'headersList = [["X-Auth-Token", "reusable-secret"]]\n',
+        'defaultHeaders = [["Cookie", "session=reusable-secret"]]\n',
+        'customHeaderPairs = [["X-Auth-Token", "reusable-secret"]]\n',
+        'privateKey = "-----BEGIN PRIVATE KEY-----\\nreusable-secret"\n',
+        'args = ["--header=Authorization: Bearer reusable-secret"]\n',
+        'args = ["Cookie: session=reusable-secret"]\n',
+        'args = ["--cookie session=reusable-secret"]\n',
+        'args = ["-HCookie: session=reusable-secret"]\n',
+        'args = ["X-Auth-Token: reusable-secret"]\n',
+        'args = ["--callback=https://example.invalid/cb?token=reusable-secret"]\n',
+        'args = ["//user:reusable-secret@example.invalid/path"]\n',
+        'args = ["/cb?token=reusable-secret"]\n',
+        'args = ["?token=reusable-secret"]\n',
+        'args = ["https:opaque?token=reusable-secret"]\n',
+        'args = ["/cb?sig=reusable-secret"]\n',
+        'args = ["?code=reusable-secret"]\n',
+        'args = ["/cb?state=reusable-secret"]\n',
+        'args = ["?ticket=reusable-secret"]\n',
+        'args = ["/cb;session=reusable-secret"]\n',
+        'args = ["?%73ig=reusable-secret"]\n',
+        'args = ["?access_%74oken=reusable-secret"]\n',
+        'args = ["%2Fcb%3Ftoken%3Dreusable-secret"]\n',
+        'args = ["https%3A%2F%2Fexample.invalid%2Fcb%3Ftoken%3Dreusable-secret"]\n',
+        'args = ["//["]\n',
+        'headerObjects = [{name = "Cookie", value = "session=reusable-secret"}]\n',
+        'headerObjects = [{key = "X-Api-Key", value = "reusable-secret"}]\n',
+        'headerObjects = [{Name = "Cookie", Value = "session=reusable-secret"}]\n',
+        'headerObjects = [{Name = "Cookie", Values = ["session=reusable-secret"]}]\n',
+        'headerObjects = [{headerName = "Cookie", headerValue = "reusable-secret"}]\n',
+        'headerObjects = [{name = "Cookie", value = {source = "env", provider = "default", id = "COOKIE_REF"}, values = ["reusable-secret"]}]\n',
+        'headerObjects = [{name = "Cookie", Name = "Cookie", value = "reusable-secret"}]\n',
+        'headerObjects = [{name = "Cookie", key = "X-Auth-Token", value = "reusable-secret"}]\n',
+        'headerObjects = [{name = "Cookie", value = {source = "env", provider = "default", id = "COOKIE_REF"}, headerName = "X-Auth-Token", headerValue = "reusable-secret"}]\n',
+        'content = "-----BEGIN PGP PRIVATE KEY BLOCK-----reusable-secret"\n',
+        'content = "---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ----reusable-secret"\n',
+        'content = "PuTTY-User-Key-File-3: ssh-rsa\\nreusable-secret"\n',
+    ],
+)
+def test_export_refuses_alternate_credential_shapes(tmp_path, content):
+    _write(tmp_path / "router.toml", content)
+
+    with pytest.raises(operator_config.ConfigExportError):
+        operator_config.export(str(tmp_path))
+
+
+def test_export_refuses_invalid_secret_reference(tmp_path):
+    _write(
+        tmp_path / "router.toml",
+        "[headers.Authorization]\n"
+        'source = "env"\n'
+        'provider = "default"\n'
+        'id = "literal reusable secret"\n',
+    )
+
+    with pytest.raises(operator_config.ConfigExportError, match="invalid SecretRef"):
+        operator_config.export(str(tmp_path))
+
+
+def test_export_accepts_header_pair_secret_reference(tmp_path):
+    _write(
+        tmp_path / "router.toml",
+        "headers = [[\"Authorization\", "
+        '{source = "env", provider = "default", id = "ROUTER_AUTHORIZATION"}]]\n',
+    )
+
+    result = operator_config.export(str(tmp_path))
+
+    assert result["files"][0]["content"]
+
+
+def test_export_preserves_benign_pairs_and_descriptions(tmp_path):
+    _write(
+        tmp_path / "router.toml",
+        'description = "Supports basic authentication mode; Cookie policy is disabled"\n'
+        'dimensions = [["token", "count"]]\n'
+        'tokenizer = "Qwen/Qwen3"\n'
+        'tokenizer_id = "cl100k_base"\n'
+        'keyboard = "us"\n'
+        'monkey = "banana"\n'
+        'auth_mode = "auth=none"\n'
+        'session_mode = "session=default"\n'
+        'code_mode = "code=python"\n',
+    )
+
+    result = operator_config.export(str(tmp_path))
+
+    assert "Supports basic authentication mode" in result["files"][0]["content"]
+    assert 'dimensions = [["token", "count"]]' in result["files"][0]["content"]
+
+
+@pytest.mark.parametrize("reference_id", ["X", "AB", "_TOKEN"])
+def test_export_accepts_product_valid_env_secret_reference(tmp_path, reference_id):
+    _write(
+        tmp_path / "router.toml",
+        "[headers.Authorization]\n"
+        'source = "env"\n'
+        'provider = "default"\n'
+        f'id = "{reference_id}"\n',
+    )
+
+    result = operator_config.export(str(tmp_path))
+
+    assert result["files"][0]["content"]
+
+
+def test_export_accepts_bounded_file_secret_reference(tmp_path):
+    _write(
+        tmp_path / "router.toml",
+        "[headers.Authorization]\n"
+        'source = "file"\n'
+        'provider = "default"\n'
+        'id = "/gateway/authToken"\n',
+    )
+
+    result = operator_config.export(str(tmp_path))
+
+    assert result["files"][0]["content"]
+
+
+def test_cookie_and_arbitrary_json_are_not_versionable(tmp_path):
+    marker = "reusable-secret-cookie"
+    _write(
+        tmp_path / "cookies.json",
+        json.dumps([{"name": "session", "value": marker}]),
+    )
+    _write(tmp_path / "arbitrary.json", json.dumps({"value": marker}))
+
+    inventory = operator_config.inventory(str(tmp_path))
+    by_path = {row["path"]: row for row in inventory["files"]}
+    assert by_path["cookies.json"]["classification"] == "secret"
+    assert by_path["arbitrary.json"]["classification"] == "unknown"
+
+    result = operator_config.export(str(tmp_path))
+    assert marker not in json.dumps(result)
 
 
 def test_export_refuses_secret_literals_in_env_example(tmp_path):

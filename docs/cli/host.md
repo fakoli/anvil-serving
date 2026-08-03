@@ -187,8 +187,10 @@ relative to that home, classifications, byte sizes, SHA-256 digests, parser
 types, dependency edges, and installed product/protocol revisions. It never
 returns file contents or environment values.
 
-Export includes exact content only for TOML, JSON, and env-example files
-classified as versionable Anvil configuration. YAML is reported as
+Export includes exact content only for allowlisted Anvil TOML names and
+env-example files classified as versionable configuration. Arbitrary TOML and
+JSON names remain `unknown`; `openclaw.json` is handled only through the
+separate allowlisted and sanitized gateway-fragment path. YAML is reported as
 `unsupported`, and export fails closed when it is present because the packaged
 runtime has no safe stdlib YAML parser for syntax and dependency validation.
 After inventory, repeat `--path RELATIVE_PATH` to request a bounded supported
@@ -196,13 +198,18 @@ subset; its direct dependencies are included automatically, and YAML or any
 non-versionable dependency still fails the selected export. The matching MCP
 tool accepts a bounded `paths` array relative to the resource owner's configured
 home. With no path selection, export continues to require whole-home closure.
-Secret material, runtime databases and logs, backups, caches, and unknown files
-remain excluded with counts. A versionable file containing a secret-like
-literal is refused; credential fields must use environment names or structured
-SecretRefs. When `--gateway-path` is explicit, the full OpenClaw
+Secret material, cookie stores, runtime databases and logs, backups, caches,
+and unknown files remain excluded with counts. A versionable file containing a
+secret-like literal, credential-bearing header shape, private-key material, or
+capability URL is refused. Credential fields must use validated environment or
+file SecretRefs. When `--gateway-path` is explicit, the full OpenClaw
 document is never returned. The output is limited to the `anvil` model provider,
 Anvil agent-model entries, Anvil realtime fields, and the Anvil MCP server
 entry; raw credentials and capability-bearing URLs are redacted and counted.
+An MCP entry is retained only when it matches the known local stdio launch
+schema (`anvil-serving mcp serve` or the packaged Python module equivalent).
+Unknown fields or any alternate command/argument shape are omitted and counted
+instead of passing through an open-ended command configuration.
 
 The entire operation fails closed on a symlink (including the caller-supplied
 gateway path before resolution), unreadable or oversized file, path escaping
