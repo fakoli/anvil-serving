@@ -9,6 +9,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Iterable
 
@@ -187,25 +188,73 @@ def scan_text(text: str, rel_path: str, source: str) -> list[dict[str, object]]:
 
 
 def scan_files(
-    root: Path, entries: Iterable[tuple[str, str]]
+    root: Path,
+    entries: Iterable[tuple[str, str]],
+    *,
+    max_file_bytes: int = MAX_FILE_BYTES,
 ) -> tuple[int, list[dict[str, object]]]:
     scanned = 0
     findings: list[dict[str, object]] = []
     for source, rel_path in entries:
         path = root / rel_path
+        normalized_path = rel_path.replace("\\", "/")
+        if path.suffix.lower() not in TEXT_SUFFIXES and path.name != ".env.example":
+            continue
         try:
-            if not path.is_file() or path.stat().st_size > MAX_FILE_BYTES:
+            if path.is_symlink():
+                findings.append(
+                    {
+                        "kind": "tracked-text-symlink-unscanned",
+                        "path": normalized_path,
+                        "line": 0,
+                        "source": source,
+                    }
+                )
                 continue
-            if path.suffix.lower() not in TEXT_SUFFIXES and path.name != ".env.example":
+            if not path.is_file():
+                findings.append(
+                    {
+                        "kind": "tracked-text-file-not-regular",
+                        "path": normalized_path,
+                        "line": 0,
+                        "source": source,
+                    }
+                )
+                continue
+            if path.stat().st_size > max_file_bytes:
+                findings.append(
+                    {
+                        "kind": "tracked-text-file-too-large",
+                        "path": normalized_path,
+                        "line": 0,
+                        "source": source,
+                    }
+                )
                 continue
             data = path.read_bytes()
         except OSError:
+            findings.append(
+                {
+                    "kind": "tracked-text-file-unreadable",
+                    "path": normalized_path,
+                    "line": 0,
+                    "source": source,
+                }
+            )
             continue
         if b"\0" in data:
+            findings.append(
+                {
+                    "kind": "tracked-text-file-binary",
+                    "path": normalized_path,
+                    "line": 0,
+                    "source": source,
+                }
+            )
             continue
         scanned += 1
         text = data.decode("utf-8", errors="replace")
-        findings.extend(scan_text(text, rel_path.replace("\\", "/"), source))
+        findings.extend(scan_text(text, normalized_path, source))
     return scanned, findings
 
 
@@ -244,16 +293,45 @@ def self_test() -> int:
         f'"example": "node-a.example.ts.net {example_home}"\n'
     )
     findings = scan_text(sample, "docs/fixture.json", "self-test")
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        root = Path(temporary_directory)
+        (root / "large.md").write_text("x" * 17, encoding="utf-8")
+        (root / "binary.json").write_bytes(b"{}\0")
+        _, file_findings = scan_files(
+            root,
+            (
+                ("self-test", "large.md"),
+                ("self-test", "binary.json"),
+                ("self-test", "missing.toml"),
+            ),
+            max_file_bytes=16,
+        )
+    file_kinds = {finding["kind"] for finding in file_findings}
     output = json.dumps(findings)
     passed = (
         len(findings) == 5
+        and file_kinds
+        == {
+            "tracked-text-file-binary",
+            "tracked-text-file-not-regular",
+            "tracked-text-file-too-large",
+        }
         and secret_a not in output
         and secret_b not in output
         and "private-person" not in output
         and "private-node" not in output
         and tailnet not in output
     )
-    print(json.dumps({"ok": passed, "findings": len(findings)}, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "ok": passed,
+                "semantic_findings": len(findings),
+                "fail_closed_findings": len(file_findings),
+            },
+            sort_keys=True,
+        )
+    )
     return 0 if passed else 1
 
 

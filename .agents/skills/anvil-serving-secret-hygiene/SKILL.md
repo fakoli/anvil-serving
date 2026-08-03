@@ -34,6 +34,9 @@ python .agents/skills/anvil-serving-secret-hygiene/scripts/semantic_secret_scan.
 ```
 
 It scans tracked and non-ignored untracked files and emits metadata-only JSON. Use `--scope tracked` or `--scope untracked` to isolate a surface.
+Tracked text files that are unreadable, symlinked, binary despite a text
+extension, or larger than the bounded scan limit are findings; the semantic
+gate must never silently skip them.
 
 ### 2. Run independent signature scans
 
