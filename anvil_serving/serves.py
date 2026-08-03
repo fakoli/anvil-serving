@@ -410,6 +410,10 @@ def _normalize_reservation(s, raw):
     """
     if "gpu_inference" in s and not isinstance(s.get("gpu_inference"), bool):
         raise ValueError(f"serve entry gpu_inference must be a boolean: {raw!r}")
+    if "native_kv_offload" in s and not isinstance(s.get("native_kv_offload"), bool):
+        raise ValueError(
+            f"serve entry native_kv_offload must be a boolean: {raw!r}"
+        )
     if "gpu_role" in s and "gpu_roles" in s:
         raise ValueError(
             "serve entry must declare either gpu_role or gpu_roles, not both: "
@@ -523,9 +527,14 @@ def _normalize_mode_router_configs(s, raw, manifest_dir):
                 f"serve entry {field} must be a non-empty path: {raw!r}"
             )
         value = value.strip().replace("{dir}", manifest_dir)
-        s[field] = os.path.abspath(
+        resolved = os.path.abspath(
             value if os.path.isabs(value) else os.path.join(manifest_dir, value)
         )
+        if not os.path.isfile(resolved):
+            raise ValueError(
+                f"serve entry {field} does not exist: {resolved}"
+            )
+        s[field] = resolved
 
 
 def _normalize_groups(s, raw):
@@ -2365,16 +2374,9 @@ def cmd_down(
                   "permission?)" % s["container"])
             rc = 1
             continue
-        if st == "absent":
-            print("  %s: absent (nothing to stop or remove)" % s["container"])
-            continue
-        native_offload = host_ops.container_uses_native_kv_offload(
-            s["container"], _run=_run,
-        ) is True
+        declared_native_offload = s.get("native_kv_offload") is True
 
         def finish_native_offload_cleanup():
-            if not native_offload:
-                return True
             cleanup = host_ops.prepare_native_kv_offload_shared_memory(_run=_run)
             host_ops.render_vllm_offload_shared_memory(cleanup)
             if cleanup.get("outcome") in {"clean", "reclaimed"}:
@@ -2384,10 +2386,31 @@ def cmd_down(
                 % (s["container"], cleanup.get("outcome", "unknown"))
             )
             return False
+
+        if st == "absent":
+            print("  %s: absent (nothing to stop or remove)" % s["container"])
+            if declared_native_offload:
+                if dry_run:
+                    print(
+                        "  would inspect/reclaim twice-verified native KV-offload "
+                        "orphan mmap files"
+                    )
+                elif not finish_native_offload_cleanup():
+                    rc = 1
+            continue
+        detected_native_offload = host_ops.container_uses_native_kv_offload(
+            s["container"], _run=_run,
+        ) is True
+        native_offload = declared_native_offload or detected_native_offload
+
+        def finish_detected_native_offload_cleanup():
+            if not native_offload:
+                return True
+            return finish_native_offload_cleanup()
         if st in _STOPPED:
             if keep_container:
                 print("  %s: %s (kept for logs/restart)" % (s["container"], st))
-                if not dry_run and not finish_native_offload_cleanup():
+                if not dry_run and not finish_detected_native_offload_cleanup():
                     rc = 1
                 continue
             print("  rm -f %s (%s)" % (s["container"], st))
@@ -2400,7 +2423,7 @@ def cmd_down(
             )
             if removed.returncode == 0:
                 print("  removed %s" % s["container"])
-                if not finish_native_offload_cleanup():
+                if not finish_detected_native_offload_cleanup():
                     rc = 1
             else:
                 print(
@@ -2435,7 +2458,7 @@ def cmd_down(
                 continue
             if removed.returncode == 0:
                 print("  force-removed %s" % s["container"])
-                if not finish_native_offload_cleanup():
+                if not finish_detected_native_offload_cleanup():
                     rc = 1
             else:
                 print(
@@ -2479,7 +2502,7 @@ def cmd_down(
                 continue
             if removed.returncode == 0:
                 print("  force-removed %s after stop timeout" % s["container"])
-                if not finish_native_offload_cleanup():
+                if not finish_detected_native_offload_cleanup():
                     rc = 1
             else:
                 print(
@@ -2502,7 +2525,7 @@ def cmd_down(
                     rc = 1
                 else:
                     print("  stopped and kept %s" % s["container"])
-                    if not finish_native_offload_cleanup():
+                    if not finish_detected_native_offload_cleanup():
                         rc = 1
             else:
                 removed = _run(
@@ -2512,7 +2535,7 @@ def cmd_down(
                 )
                 if removed.returncode == 0:
                     print("  stopped and removed %s" % s["container"])
-                    if not finish_native_offload_cleanup():
+                    if not finish_detected_native_offload_cleanup():
                         rc = 1
                 else:
                     print(
