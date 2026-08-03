@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import random
 import re
+import statistics
 from typing import Any, Callable, Mapping
 
 from .jobs import BenchmarkJobError
@@ -227,3 +228,150 @@ def external_context_case(
         "scorer": "normalized_exact/v1",
     }
     return public, expected
+
+
+def _mean(values: list[float]) -> float | None:
+    return statistics.fmean(values) if values else None
+
+
+def summarize_context_degradation(
+    observations: list[Mapping[str, Any]],
+    *,
+    scoring: Mapping[str, Any],
+    advertised_context: int | None = None,
+) -> dict[str, Any]:
+    """Aggregate attempted buckets and compute the first profile-defined drop."""
+    if not observations:
+        raise BenchmarkJobError("no_context_observations", "context curve needs observations")
+    baseline_bucket = scoring.get("baseline_bucket")
+    floor = scoring.get("pass_rate_floor")
+    max_drop = scoring.get("max_relative_drop")
+    if (
+        not isinstance(baseline_bucket, int)
+        or not isinstance(floor, (int, float))
+        or isinstance(floor, bool)
+        or not 0 <= floor <= 1
+        or not isinstance(max_drop, (int, float))
+        or isinstance(max_drop, bool)
+        or not 0 <= max_drop <= 1
+    ):
+        raise BenchmarkJobError("bad_scoring_policy", "context scoring policy is invalid")
+    grouped: dict[int, list[dict[str, Any]]] = {}
+    for raw in observations:
+        sample = dict(raw)
+        if sample.get("schema") != CONTEXT_OBSERVATION_SCHEMA:
+            raise BenchmarkJobError("bad_context_observation", "observation schema is invalid")
+        bucket = sample.get("requested_tokens")
+        if not isinstance(bucket, int) or isinstance(bucket, bool) or bucket < 1:
+            raise BenchmarkJobError("bad_context_observation", "observation bucket is invalid")
+        if not isinstance(sample.get("passed"), bool) or not isinstance(
+            sample.get("completed"), bool
+        ):
+            raise BenchmarkJobError("bad_context_observation", "observation outcome is invalid")
+        grouped.setdefault(bucket, []).append(sample)
+    if baseline_bucket not in grouped:
+        raise BenchmarkJobError(
+            "baseline_not_attempted", "context scoring baseline was not attempted"
+        )
+    summaries = []
+    for bucket in sorted(grouped):
+        samples = grouped[bucket]
+        latency = [
+            float(item["latency_ms"])
+            for item in samples
+            if isinstance(item.get("latency_ms"), (int, float))
+            and not isinstance(item.get("latency_ms"), bool)
+        ]
+        throughput = [
+            float(item["throughput_tps"])
+            for item in samples
+            if isinstance(item.get("throughput_tps"), (int, float))
+            and not isinstance(item.get("throughput_tps"), bool)
+        ]
+        telemetry = [
+            dict(item["engine_telemetry"])
+            for item in samples
+            if isinstance(item.get("engine_telemetry"), Mapping)
+        ]
+        failures: dict[str, int] = {}
+        for item in samples:
+            failure = item.get("failure")
+            if isinstance(failure, Mapping):
+                code = failure.get("code")
+                name = code if isinstance(code, str) and code else "unclassified"
+                failures[name] = failures.get(name, 0) + 1
+        summaries.append(
+            {
+                "requested_tokens": bucket,
+                "sample_count": len(samples),
+                "passed_count": sum(item["passed"] for item in samples),
+                "completed_count": sum(item["completed"] for item in samples),
+                "pass_rate": sum(item["passed"] for item in samples) / len(samples),
+                "completion_rate": sum(item["completed"] for item in samples) / len(samples),
+                "latency_ms": {
+                    "available": bool(latency),
+                    "mean": _mean(latency),
+                    "observations": latency,
+                },
+                "throughput_tps": {
+                    "available": bool(throughput),
+                    "mean": _mean(throughput),
+                    "observations": throughput,
+                },
+                "engine_telemetry": {
+                    "available": bool(telemetry),
+                    "observations": telemetry,
+                },
+                "failures": failures,
+                "samples": samples,
+            }
+        )
+    baseline = next(item for item in summaries if item["requested_tokens"] == baseline_bucket)
+    baseline_rate = baseline["pass_rate"]
+    first_degradation = None
+    effective_context = None
+    for summary in summaries:
+        relative_drop = (
+            0.0
+            if baseline_rate == 0 and summary["pass_rate"] == 0
+            else 1.0
+            if baseline_rate == 0
+            else max(0.0, (baseline_rate - summary["pass_rate"]) / baseline_rate)
+        )
+        meets_policy = summary["pass_rate"] >= floor and relative_drop <= max_drop
+        summary["relative_drop_from_baseline"] = relative_drop
+        summary["meets_policy"] = meets_policy
+        if first_degradation is None and not meets_policy:
+            first_degradation = {
+                "requested_tokens": summary["requested_tokens"],
+                "pass_rate": summary["pass_rate"],
+                "relative_drop": relative_drop,
+                "reasons": [
+                    name
+                    for condition, name in (
+                        (summary["pass_rate"] < floor, "pass_rate_below_floor"),
+                        (relative_drop > max_drop, "relative_drop_exceeded"),
+                    )
+                    if condition
+                ],
+            }
+        if first_degradation is None:
+            effective_context = summary["requested_tokens"]
+    return {
+        "schema": CONTEXT_CURVE_SCHEMA,
+        "attempted_buckets": sorted(grouped),
+        "advertised_context": advertised_context,
+        "effective_context": effective_context,
+        "first_material_degradation": first_degradation,
+        "threshold_policy": {
+            "baseline_bucket": baseline_bucket,
+            "baseline_pass_rate": baseline_rate,
+            "pass_rate_floor": float(floor),
+            "max_relative_drop": float(max_drop),
+        },
+        "buckets": summaries,
+        "notes": [
+            "effective_context uses attempted buckets only",
+            "missing engine telemetry is unavailable and is not inferred from latency",
+        ],
+    }
