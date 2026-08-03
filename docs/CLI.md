@@ -212,6 +212,9 @@ required operands, choices, and defaults.
 | `controller serve` | Run the private controller. | `process` / `foreground` | - |
 | `controller status` | Probe controller health. | `read` / `bounded` | - |
 | `host` | Inspect and repair declared host operations. | `read` / `bounded` | - |
+| `host config` | Inventory and safely export operator-owned configuration. | `read` / `bounded` | - |
+| `host config inventory` | Classify operator-home files and verify dependency closure. | `read` / `bounded` | `--home`<br>`--max-bytes` |
+| `host config export` | Export safe config and sanitized Anvil-owned gateway fragments. | `read` / `bounded` | `--home`<br>`--gateway-path`<br>`--path`<br>`--max-bytes` |
 | `host status` | Show structured host status. | `read` / `bounded` | - |
 | `host gpus` | Show GPU inventory. | `read` / `bounded` | - |
 | `host gpu-sharing` | Inspect and probe CUDA GPU-sharing capabilities. | `read` / `bounded` | - |

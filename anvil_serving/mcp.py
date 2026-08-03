@@ -72,6 +72,8 @@ from .control_plane.mcp.tools.host import (
     tool_doctor_summary,
     tool_gpu_inventory,
     tool_host_manage,
+    tool_operator_config_export,
+    tool_operator_config_inventory,
     tool_host_shared_memory,
     tool_host_summary,
     tool_observability_collect,

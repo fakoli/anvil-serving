@@ -51,7 +51,8 @@ narration.
   `serves_manage`, `serves_mode`, `serves_logs`, and `serves_promote`.
 - Voice: `voice_manage` and `voice_proxy_manage`.
 - Host, models, and telemetry: `doctor_summary`, `host_summary`,
-  `gpu_inventory`, `host_shared_memory`, `observability_collect`, `host_manage`,
+  `gpu_inventory`, `host_shared_memory`, `operator_config_inventory`,
+  `operator_config_export`, `observability_collect`, `host_manage`,
   `models_inventory`, `model_cache_inventory`, and `cache_prune_plan`.
 - Harness: `openclaw_sync`, `openclaw_gateway_status`, and
   `openclaw_gateway_restart`.
@@ -149,6 +150,16 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   manual reclaim after a `reclaimed` result. Ad-hoc Compose, voice, request-time
   ComfyUI loads, and the request-triggered multiplexer remain outside that
   policy. Treat changing the persistent opt-in as a reviewed host mutation.
+- Public/private config work: use `operator_config_inventory` first for
+  metadata-only classification and dependency closure. Use
+  `operator_config_export` only for the resulting safe versionable files and
+  allowlisted, redacted Anvil-owned gateway fragment. Preserve its refusal on
+  symlinks, unsupported YAML export, outside-root or missing dependencies,
+  unsafe secret fields, and oversized files; never replace it with raw remote
+  filesystem access. When a whole-home export is blocked by YAML, use the
+  inventory and an explicit bounded `paths` selection for only the required
+  supported files; every selected file's direct dependency closure is still
+  mandatory.
 
 ## Model Benchmark Source Freshness
 
