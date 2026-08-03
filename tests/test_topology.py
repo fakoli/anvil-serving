@@ -150,6 +150,10 @@ def test_fakoli_reference_topology_validates_offline_and_assigns_models_to_dark(
     assert recovery.known_hosts_path == "~/.ssh/known_hosts"
     assert topology.transport("mini-controller").runtime == "mini-native"
     assert topology.transport("dark-host-controller").runtime == "dark-native"
+    for transport_id in ("mini-controller", "dark-host-controller"):
+        allowed = topology.transport(transport_id).allowed_operations
+        assert "host-config-inventory" in allowed
+        assert "host-config-export" in allowed
     assert {
         resource.host for resource in topology.resources if resource.role == "host"
     } == {"fakoli-mini", "fakoli-dark"}

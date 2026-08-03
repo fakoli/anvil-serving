@@ -145,7 +145,7 @@ def test_top_level_version_reports_installed_version(flag, capsys):
 def test_command_manifest_is_terminal_and_machine_readable(capsys):
     assert cli.main(["--command-manifest"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["schema_version"] == 4
+    assert payload["schema_version"] == 5
     assert any(record["path"] == "topology resolve" for record in payload["commands"])
 
     assert cli.main(["--command-manifest", "router", "status"]) == 2
@@ -514,6 +514,65 @@ def test_cli_remote_router_restart_dispatches_typed_operation(tmp_path, monkeypa
         },
     )
     assert seen["execute_kwargs"]["idempotency_key"].startswith("cli-")
+    assert "transport=controller" in capsys.readouterr().out
+
+
+def test_cli_remote_config_export_maps_path_and_allows_bounded_large_response(
+    tmp_path, monkeypatch, capsys
+):
+    topology = _write_remote_router_topology(tmp_path, "host-config-export")
+    text = topology.read_text(encoding="utf-8")
+    text = text.replace('roles = ["router"]', 'roles = ["host"]')
+    text = text.replace('role = "router"', 'role = "host"')
+    topology.write_text(text, encoding="utf-8")
+    seen = {}
+
+    class FakeController:
+        def __init__(self, endpoint, **kwargs):
+            seen["controller"] = (endpoint, kwargs)
+
+    def fake_execute(plan, operation, **kwargs):
+        seen["operation"] = operation
+        return cli.TransportResult(operation.name, "controller", {"ok": True})
+
+    monkeypatch.setattr(cli, "ControllerTransport", FakeController)
+    monkeypatch.setattr(cli, "execute_plan", fake_execute)
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail("remote config export imported the local handler"),
+    )
+
+    assert (
+        cli.main(
+            [
+                "host",
+                "config",
+                "export",
+                "--topology",
+                str(topology),
+                "--path",
+                "serve-recipes.toml",
+                "--path",
+                "host.toml",
+            ]
+        )
+        == 0
+    )
+
+    assert seen["operation"].tool_name == "operator_config_export"
+    assert dict(seen["operation"].arguments) == {
+        "paths": ["serve-recipes.toml", "host.toml"]
+    }
+    assert seen["controller"] == (
+        "http://100.64.0.10:8765",
+        {
+            "auth_env": "ANVIL_CONTROLLER_TOKEN",
+            "allowed_operations": ("host-config-export",),
+            "timeout_seconds": 60.0,
+            "max_response_bytes": 1024 * 1024,
+        },
+    )
     assert "transport=controller" in capsys.readouterr().out
 
 
