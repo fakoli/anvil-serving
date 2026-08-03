@@ -8625,7 +8625,7 @@
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
-      "handler": null,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
       "mutation_class": "read",
       "options": [
         {
@@ -8736,6 +8736,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         }
       ],
       "output_policy": "bounded",
@@ -8868,6 +8886,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
@@ -9033,6 +9069,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
@@ -9231,6 +9285,24 @@
         },
         {
           "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
             "--run-id"
           ],
           "output_policy": null,
@@ -9383,6 +9455,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
@@ -9571,6 +9661,24 @@
         },
         {
           "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
             "--run-id"
           ],
           "output_policy": null,
@@ -9746,6 +9854,24 @@
         },
         {
           "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
             "--run-id"
           ],
           "output_policy": null,
@@ -9784,7 +9910,7 @@
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
-      "handler": null,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
       "mutation_class": "read",
       "options": [
         {
@@ -9895,6 +10021,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         }
       ],
       "output_policy": "bounded",
@@ -10027,6 +10171,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
@@ -10192,6 +10354,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
@@ -10390,6 +10570,24 @@
         },
         {
           "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
             "--run-id"
           ],
           "output_policy": null,
@@ -10542,6 +10740,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
@@ -10730,6 +10946,24 @@
         },
         {
           "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
             "--run-id"
           ],
           "output_policy": null,
@@ -10905,6 +11139,24 @@
         },
         {
           "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
             "--run-id"
           ],
           "output_policy": null,
@@ -10943,7 +11195,7 @@
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
-      "handler": null,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
       "mutation_class": "read",
       "options": [
         {
@@ -11054,6 +11306,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         }
       ],
       "output_policy": "bounded",
@@ -11186,6 +11456,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
@@ -11351,6 +11639,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
@@ -11549,6 +11855,24 @@
         },
         {
           "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
             "--run-id"
           ],
           "output_policy": null,
@@ -11701,6 +12025,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
@@ -11889,6 +12231,24 @@
         },
         {
           "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
             "--run-id"
           ],
           "output_policy": null,
@@ -12061,6 +12421,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "smoke|scout|deep"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
         },
         {
           "flags": [
