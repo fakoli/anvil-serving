@@ -89,7 +89,7 @@ def test_realtime_proxy_rejects_non_mini_ownership():
         RealtimeProxyService(lambda: _BlockingServer(), owner="dark")
 
 
-@pytest.mark.parametrize("host", ["0.0.0.0", "::", "100.87.34.66"])
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "100.64.0.10"])
 def test_realtime_proxy_rejects_non_loopback_and_wildcard_binds(host):
     with pytest.raises(ValueError, match="127.0.0.1"):
         RealtimeProxyService(lambda: _BlockingServer(), host=host)

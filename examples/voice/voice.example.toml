@@ -71,9 +71,9 @@ api_key_env = "ANVIL_VOICE_TTS_TOKEN"   # optional; omit if the serve is unauthe
 #   # DIRECT downstream endpoints -- when all three are set, `voice proxy run`
 #   # wires them verbatim and SKIPS topology/forwarder resolution entirely.
 #   # These legitimately point at cross-host tailnet/LAN addresses.
-#   stt_url      = "http://100.87.34.66:30110/v1"
-#   tts_url      = "http://100.87.34.66:30111/v1"
-#   router_url   = "http://100.87.34.66:8000/v1"
+#   stt_url      = "http://100.64.0.10:30110/v1"
+#   tts_url      = "http://100.64.0.10:30111/v1"
+#   router_url   = "http://100.64.0.10:8000/v1"
 #
 # Bring the managed proxy up with `anvil-serving voice proxy up`; bring the
 # STT/TTS audio serves up first with `anvil-serving voice audio up` (the proxy

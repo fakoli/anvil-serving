@@ -457,7 +457,7 @@
     "chat_template_kwargs": {
       "enable_thinking": false
     },
-    "control_evidence": "C:\\Users\\sdoum\\ai-code\\anvil-serving-wt-qwen35-primary\\docs\\findings\\2026-07-28-qwen35-122b-primary-evidence\\thinking-disabled-control.json",
+    "control_evidence": "C:\\Users\\operator\\ai-code\\anvil-serving-wt-qwen35-primary\\docs\\findings\\2026-07-28-qwen35-122b-primary-evidence\\thinking-disabled-control.json",
     "control_evidence_sha256": "3e4d26ac4667ffcf6f59062a5042dd1a75979a03c0a3e30aac5b15b30bfd38d9",
     "control_mechanism": "chat_template_kwargs",
     "control_requested": {

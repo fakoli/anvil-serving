@@ -45,8 +45,8 @@ Skill inspection reported:
 {
   "name": "anvil-serving-workbench",
   "source": "openclaw-workspace",
-  "filePath": "/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench/SKILL.md",
-  "baseDir": "/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench",
+  "filePath": "/Users/operator/.openclaw/workspace/skills/anvil-serving-workbench/SKILL.md",
+  "baseDir": "/Users/operator/.openclaw/workspace/skills/anvil-serving-workbench",
   "eligible": true,
   "modelVisible": true,
   "userInvocable": true,

@@ -38,7 +38,7 @@ def _run_capacity(*a, **k):
 
 
 def _run_tailnet(*a, **k):
-    return "100.87.34.66\n"
+    return "100.64.0.10\n"
 
 
 def _scaffold_home(*args, **kwargs):
@@ -284,7 +284,7 @@ def test_cli_dispatches_init_and_rejects_unknown_onboard(tmp_path, monkeypatch, 
 _REAL_HOST_VALUES = (
     "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
     "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
-    "100.87.34.66",
+    "100.64.0.10",
 )
 _EXPECTED_HOME_FILES = {
     "router.toml", "example.toml", "example-docker.toml",
@@ -603,7 +603,7 @@ def test_discover_host_overrides_take_precedence():
     discovery = init.discover_host(
         compute_a_gpu_uuid=primary,
         compute_b_gpu_uuid=auxiliary,
-        tailnet_ip="100.100.100.100",
+        tailnet_ip="100.64.0.10",
         probe=False,
         _tailscale_run=_run_missing,
     )
@@ -615,7 +615,7 @@ def test_discover_host_overrides_take_precedence():
         "source": "override",
     }
     assert discovery["compute_b_gpu"]["uuid"] == auxiliary
-    assert discovery["tailnet_ip"] == "100.100.100.100"
+    assert discovery["tailnet_ip"] == "100.64.0.10"
     assert discovery["tailnet_source"] == "override"
 
 
@@ -625,7 +625,7 @@ def test_no_detect_host_still_applies_explicit_overrides(tmp_path):
         out_dir=str(tmp_path),
         detect_host=False,
         compute_a_gpu_uuid=primary,
-        tailnet_ip="100.100.100.100",
+        tailnet_ip="100.64.0.10",
     )
 
     assert result["discovery"]["compute_a_gpu"]["source"] == "override"

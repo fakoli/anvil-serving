@@ -165,15 +165,19 @@ def test_cli_dispatches_nested_voice_sidecar_validate(capsys):
     assert "OK:" in capsys.readouterr().out
 
 
-def test_cli_uses_source_checkout_default_config(capsys):
+def test_cli_uses_operator_home_default_config(tmp_path, monkeypatch, capsys):
+    home = tmp_path / "operator-home"
+    home.mkdir()
+    (home / "voice-sidecar.toml").write_bytes(EXAMPLE.read_bytes())
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+
     rc = cli.main(["voice", "sidecar", "validate"])
     assert rc == 0
-    assert str(EXAMPLE) in capsys.readouterr().out
+    assert str(home / "voice-sidecar.toml") in capsys.readouterr().out
 
 
 def test_cli_without_config_explains_missing_installed_default(monkeypatch, capsys, tmp_path):
-    missing = tmp_path / "missing-example.toml"
-    monkeypatch.setattr(voice_sidecar, "DEFAULT_CONFIG", str(missing))
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "missing-home"))
 
     rc = voice_sidecar.main(["validate"])
 

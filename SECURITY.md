@@ -3,7 +3,7 @@
 ## Supported versions
 
 anvil-serving is pre-1.0. Security fixes target the **latest minor release line** (currently
-`0.11.x`, matching the source tree version in [CHANGELOG.md](CHANGELOG.md)); older minor lines
+`0.21.x`, matching the source tree version in [CHANGELOG.md](CHANGELOG.md)); older minor lines
 are not supported.
 
 | Version              | Supported          |
@@ -27,6 +27,11 @@ acknowledge within a few business days and will coordinate a fix and disclosure 
 
 anvil-serving is a **network-facing server** that proxies coding-harness traffic
 to configured local model endpoints. Keep this in mind:
+
+- Every tracked file is a public surface. Real topology, active deployments,
+  personal paths, and unsanitized evidence belong in a private operator
+  repository; credential values belong outside Git in both repositories. See
+  [Public product and private operator state](docs/OPERATOR-PRIVACY.md).
 
 - The server binds `127.0.0.1` by default. **Built-in authentication is opt-in, not automatic**:
   configure `[server].auth_env = "ANVIL_ROUTER_TOKEN"` (any env-var NAME matching

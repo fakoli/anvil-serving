@@ -450,7 +450,7 @@
     "chat_template_kwargs": {
       "enable_thinking": false
     },
-    "control_evidence": "C:\\Users\\sdoum\\ai-code\\anvil-serving-wt-agents-a1-qualification\\docs\\findings\\2026-07-28-agents-a1-multimodal-qualification-evidence\\nvfp4-thinking-disabled-control.json",
+    "control_evidence": "C:\\Users\\operator\\ai-code\\anvil-serving-wt-agents-a1-qualification\\docs\\findings\\2026-07-28-agents-a1-multimodal-qualification-evidence\\nvfp4-thinking-disabled-control.json",
     "control_evidence_sha256": "fa87148f19e783a0db21a0865f08fbf273d3992eefed7d7e23525dc925225ac0",
     "control_mechanism": "chat_template_kwargs",
     "control_requested": {

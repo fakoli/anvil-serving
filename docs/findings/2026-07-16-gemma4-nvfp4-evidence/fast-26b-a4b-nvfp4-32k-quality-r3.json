@@ -451,7 +451,7 @@
     "chat_template_kwargs": {
       "enable_thinking": true
     },
-    "control_evidence": "C:\\Users\\sdoum\\ai-code\\anvil-serving\\docs\\findings\\2026-07-16-gemma4-nvfp4-evidence\\nvfp4-thinking-control.json",
+    "control_evidence": "C:\\Users\\operator\\ai-code\\anvil-serving\\docs\\findings\\2026-07-16-gemma4-nvfp4-evidence\\nvfp4-thinking-control.json",
     "control_evidence_sha256": "76122ddb42cbb489bc023164a2693a741215b257d949c18d8663981903c2e99b",
     "control_mechanism": "chat_template_kwargs",
     "control_requested": {

@@ -21,7 +21,7 @@
     "detail": "torch not importable; GPU context collected with nvidia-smi"
   },
   "reference_text": "The quick brown fox jumps over the lazy dog. Anvil serving routes local models where proven and cloud where not.",
-  "sample": "C:\\Users\\sdoum\\AppData\\Local\\Temp\\claude\\C--Users-sdoum-ai-code-anvil-serving\\21eba8ab-885c-4f97-acef-864745e5c375\\scratchpad\\test_stt.wav",
+  "sample": "C:\\Users\\operator\\AppData\\Local\\Temp\\claude\\C--Users-operator-ai-code-anvil-serving\\21eba8ab-885c-4f97-acef-864745e5c375\\scratchpad\\test_stt.wav",
   "candidates": [
     {
       "name": "parakeet.cpp",
