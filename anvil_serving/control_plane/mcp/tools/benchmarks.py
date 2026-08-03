@@ -8,6 +8,7 @@ import sys
 
 from ....model_controls import REASONING_EFFORT_CHOICES
 from ....benchmarking.jobs import BenchmarkJobError, validate_job_spec
+from ....benchmarking.evidence_reader import read_referenced_job_evidence
 from ....benchmarking.preflight import run_benchmark_preflight
 from ....benchmarking.harnesses import (
     cleanup_harness_work,
@@ -170,8 +171,11 @@ def tool_benchmark_job_cancel(args: dict) -> dict:
 def tool_benchmark_job_artifact(args: dict) -> dict:
     store = _benchmark_job_store()
     run_id = _str_arg(args, "run_id", required=True)
-    _job_for_suite(store, run_id, _str_arg(args, "suite", required=True))
+    record = _job_for_suite(store, run_id, _str_arg(args, "suite", required=True))
+    path = _str_arg(args, "path")
     try:
+        if path:
+            return _ok(read_referenced_job_evidence(store, record, path))
         artifact = store.artifact(run_id)
     except BenchmarkJobError as exc:
         raise _job_error(exc) from None
@@ -659,6 +663,7 @@ FAMILY = ToolFamily(
                 {
                     "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
                     "run_id": {"type": "string", "maxLength": 128},
+                    "path": {"type": "string", "maxLength": 512},
                 },
                 required=["suite", "run_id"],
             ),

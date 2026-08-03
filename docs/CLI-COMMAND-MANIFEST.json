@@ -10488,6 +10488,15 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Digest-bound stage evidence path from the job artifact.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -10495,7 +10504,8 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [
-          "run_id"
+          "run_id",
+          "path"
         ],
         "confirmed_arguments": {},
         "fixed_arguments": {
@@ -12383,6 +12393,15 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Digest-bound stage evidence path from the job artifact.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -12390,7 +12409,8 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [
-          "run_id"
+          "run_id",
+          "path"
         ],
         "confirmed_arguments": {},
         "fixed_arguments": {
@@ -14278,6 +14298,15 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Digest-bound stage evidence path from the job artifact.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -14285,7 +14314,8 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [
-          "run_id"
+          "run_id",
+          "path"
         ],
         "confirmed_arguments": {},
         "fixed_arguments": {

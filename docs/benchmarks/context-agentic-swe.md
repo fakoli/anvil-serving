@@ -130,6 +130,15 @@ anvil-serving eval benchmark context artifact --run-id deepseek-context-smoke-00
   --target host-role:benchmark-worker --transport controller
 ```
 
+The terminal artifact contains digest-bound stage paths. Retrieve a referenced
+stage through the same controller rather than reading the worker filesystem:
+
+```powershell
+anvil-serving eval benchmark context artifact --run-id deepseek-context-smoke-001 `
+  --path evidence/0-context.json `
+  --target host-role:benchmark-worker --transport controller
+```
+
 Cancellation first records partial evidence. It terminates a worker only when
 its process command can be verified against the owned run and then removes only
 that run's `work/` directory. When process identity cannot be verified, active
