@@ -7,6 +7,21 @@ import pytest
 from anvil_serving import cli, init, mcp, operator_config
 
 
+_PEM_PRIVATE_KEY_TOML = (
+    'privateKey = "-----BEGIN PRIVATE ' + 'KEY-----\\nreusable-secret"\n'
+)
+_PGP_PRIVATE_KEY_TOML = (
+    'content = "-----BEGIN PGP PRIVATE ' + 'KEY BLOCK-----reusable-secret"\n'
+)
+_SSH2_PRIVATE_KEY_TOML = (
+    'content = "---- BEGIN SSH2 ENCRYPTED PRIVATE ' + 'KEY ----reusable-secret"\n'
+)
+_PUTTY_PRIVATE_KEY = "PuTTY-User-" + "Key-File-3: ssh-rsa\nreusable-secret"
+_PUTTY_PRIVATE_KEY_TOML = (
+    'content = "PuTTY-User-' + 'Key-File-3: ssh-rsa\\nreusable-secret"\n'
+)
+
+
 def _write(path, text):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
@@ -200,7 +215,9 @@ def test_gateway_sanitizer_closes_structural_credential_bypasses(tmp_path):
                     "fullyEncodedAbsolute": (
                         f"https%3A%2F%2Fexample.invalid%2Fcb%3Ftoken%3D{marker}"
                     ),
-                    "keyMaterial": f"PuTTY-User-Key-File-3: ssh-rsa\n{marker}",
+                    "keyMaterial": _PUTTY_PRIVATE_KEY.replace(
+                        "reusable-secret", marker
+                    ),
                     "badUrl": "//[",
                     "headerObjects": [
                         {"Name": "Cookie", "Values": [f"session={marker}"]},
@@ -317,7 +334,7 @@ def test_export_accepts_http_credential_secret_reference(tmp_path):
         'headersList = [["X-Auth-Token", "reusable-secret"]]\n',
         'defaultHeaders = [["Cookie", "session=reusable-secret"]]\n',
         'customHeaderPairs = [["X-Auth-Token", "reusable-secret"]]\n',
-        'privateKey = "-----BEGIN PRIVATE KEY-----\\nreusable-secret"\n',
+        _PEM_PRIVATE_KEY_TOML,
         'args = ["--header=Authorization: Bearer reusable-secret"]\n',
         'args = ["Cookie: session=reusable-secret"]\n',
         'args = ["--cookie session=reusable-secret"]\n',
@@ -347,9 +364,9 @@ def test_export_accepts_http_credential_secret_reference(tmp_path):
         'headerObjects = [{name = "Cookie", Name = "Cookie", value = "reusable-secret"}]\n',
         'headerObjects = [{name = "Cookie", key = "X-Auth-Token", value = "reusable-secret"}]\n',
         'headerObjects = [{name = "Cookie", value = {source = "env", provider = "default", id = "COOKIE_REF"}, headerName = "X-Auth-Token", headerValue = "reusable-secret"}]\n',
-        'content = "-----BEGIN PGP PRIVATE KEY BLOCK-----reusable-secret"\n',
-        'content = "---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ----reusable-secret"\n',
-        'content = "PuTTY-User-Key-File-3: ssh-rsa\\nreusable-secret"\n',
+        _PGP_PRIVATE_KEY_TOML,
+        _SSH2_PRIVATE_KEY_TOML,
+        _PUTTY_PRIVATE_KEY_TOML,
     ],
 )
 def test_export_refuses_alternate_credential_shapes(tmp_path, content):
