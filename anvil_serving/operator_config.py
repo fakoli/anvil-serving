@@ -145,23 +145,118 @@ def _parser_type(path: Path) -> str:
     return "binary"
 
 
-def _read_bounded(path: Path, *, max_bytes: int) -> bytes:
-    try:
-        metadata = path.lstat()
-    except OSError as exc:
-        raise ConfigExportError(f"could not inspect candidate {path.name}: {exc}") from exc
-    if stat.S_ISLNK(metadata.st_mode):
-        raise ConfigExportError(f"candidate must not be a symlink: {path.name}")
-    if not stat.S_ISREG(metadata.st_mode):
-        raise ConfigExportError(f"candidate must be a regular file: {path.name}")
-    if metadata.st_size > max_bytes:
+def _is_link_or_reparse(metadata: os.stat_result) -> bool:
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    file_attributes = getattr(metadata, "st_file_attributes", 0)
+    return stat.S_ISLNK(metadata.st_mode) or bool(
+        reparse_flag and file_attributes & reparse_flag
+    )
+
+
+def _stat_snapshot(metadata: os.stat_result) -> tuple[int, int, int]:
+    return (metadata.st_size, metadata.st_mtime_ns, metadata.st_ctime_ns)
+
+
+def _path_snapshot(metadata: os.stat_result) -> tuple[int, int]:
+    # Windows reports creation/change time differently for path and descriptor
+    # stat calls, so only compare their shared stable fields here. Descriptor
+    # snapshots below still compare ctime across the read interval.
+    return (metadata.st_size, metadata.st_mtime_ns)
+
+
+def _read_descriptor_bounded(
+    descriptor: int, *, path: Path, max_bytes: int
+) -> bytes:
+    chunks = []
+    total = 0
+    while total <= max_bytes:
+        chunk = os.read(descriptor, min(64 * 1024, max_bytes + 1 - total))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        total += len(chunk)
+    if total > max_bytes:
         raise ConfigExportError(
             f"candidate exceeds the {max_bytes}-byte size limit: {path.name}"
         )
+    return b"".join(chunks)
+
+
+def _read_bounded(path: Path, *, max_bytes: int) -> bytes:
+    _assert_no_link_components(path, label="candidate")
     try:
-        return path.read_bytes()
+        before = path.lstat()
+    except OSError as exc:
+        raise ConfigExportError(f"could not inspect candidate {path.name}: {exc}") from exc
+    if _is_link_or_reparse(before):
+        raise ConfigExportError(f"candidate must not be a symlink: {path.name}")
+    if not stat.S_ISREG(before.st_mode):
+        raise ConfigExportError(f"candidate must be a regular file: {path.name}")
+    if before.st_size > max_bytes:
+        raise ConfigExportError(
+            f"candidate exceeds the {max_bytes}-byte size limit: {path.name}"
+        )
+
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    flags |= getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
     except OSError as exc:
         raise ConfigExportError(f"candidate is unreadable: {path.name}: {exc}") from exc
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ConfigExportError(f"candidate must be a regular file: {path.name}")
+        if opened.st_size > max_bytes:
+            raise ConfigExportError(
+                f"candidate exceeds the {max_bytes}-byte size limit: {path.name}"
+            )
+
+        # Validate the pathname again after opening, then compare it to the
+        # descriptor. Reads below use that same descriptor, closing the
+        # lstat-to-open replacement race without trusting a second pathname
+        # open. The component check also catches a swapped ancestor junction.
+        _assert_no_link_components(path, label="candidate")
+        try:
+            after = path.lstat()
+        except OSError as exc:
+            raise ConfigExportError(
+                f"candidate changed during validation: {path.name}: {exc}"
+            ) from exc
+        if (
+            _is_link_or_reparse(after)
+            or not stat.S_ISREG(after.st_mode)
+            or not os.path.samestat(before, opened)
+            or not os.path.samestat(after, opened)
+            or _path_snapshot(before) != _path_snapshot(opened)
+            or _path_snapshot(after) != _path_snapshot(opened)
+        ):
+            raise ConfigExportError(
+                f"candidate changed during validation: {path.name}"
+            )
+
+        data = _read_descriptor_bounded(
+            descriptor, path=path, max_bytes=max_bytes
+        )
+        middle = os.fstat(descriptor)
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        repeated = _read_descriptor_bounded(
+            descriptor, path=path, max_bytes=max_bytes
+        )
+        final = os.fstat(descriptor)
+        if (
+            not os.path.samestat(opened, middle)
+            or not os.path.samestat(opened, final)
+            or _stat_snapshot(middle) != _stat_snapshot(opened)
+            or _stat_snapshot(final) != _stat_snapshot(opened)
+            or repeated != data
+        ):
+            raise ConfigExportError(f"candidate changed while reading: {path.name}")
+        return data
+    except OSError as exc:
+        raise ConfigExportError(f"candidate is unreadable: {path.name}: {exc}") from exc
+    finally:
+        os.close(descriptor)
 
 
 def _assert_no_link_components(path: Path, *, label: str) -> None:
@@ -174,11 +269,7 @@ def _assert_no_link_components(path: Path, *, label: str) -> None:
         except OSError as exc:
             raise ConfigExportError(f"could not inspect {label} path component: {exc}") from exc
         else:
-            reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
-            file_attributes = getattr(metadata, "st_file_attributes", 0)
-            if stat.S_ISLNK(metadata.st_mode) or (
-                reparse_flag and file_attributes & reparse_flag
-            ):
+            if _is_link_or_reparse(metadata):
                 raise ConfigExportError(f"{label} path must not contain a symlink or junction")
         if current.parent == current:
             return
@@ -797,6 +888,13 @@ def export(
             continue
         path = root / Path(row["path"])
         data = _read_bounded(path, max_bytes=max_bytes)
+        if (
+            len(data) != row["size_bytes"]
+            or hashlib.sha256(data).hexdigest() != row["sha256"]
+        ):
+            raise ConfigExportError(
+                f"candidate changed since inventory: {row['path']}"
+            )
         parsed = _parse(path, data, row["parser"])
         if row["parser"] in {"toml", "json"}:
             _assert_no_secret_literals(parsed, path=row["path"])
