@@ -14,6 +14,20 @@ from typing import Any, Callable, Iterator, Mapping, Optional
 import urllib.parse
 import uuid
 
+from ...benchmarking.artifacts import atomic_write_json
+from ...benchmarking.jobs import (
+    BenchmarkJobError,
+    append_job_log,
+    build_artifact_envelope,
+    canonical_json_bytes,
+    job_spec_sha256,
+    new_job_record,
+    resolve_owned_run_path,
+    transition_job,
+    validate_job_id,
+    validate_job_record,
+    validate_job_spec,
+)
 from .errors import ControllerError
 from .security import _json_dumps, _sanitize_persisted_value, _strict_json_loads
 
@@ -31,8 +45,272 @@ DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES = 64 * 1024
 DEFAULT_IDEMPOTENCY_DB_PATH = os.path.join(
     os.path.expanduser("~"), ".anvil-serving", "controller-operations.sqlite3"
 )
+DEFAULT_BENCHMARK_JOB_DB_PATH = os.path.join(
+    os.path.expanduser("~"), ".anvil-serving", "benchmark-jobs.sqlite3"
+)
+DEFAULT_BENCHMARK_RUN_ROOT = os.path.join(
+    os.path.expanduser("~"), ".anvil-serving", "benchmark-runs"
+)
 
 Clock = Callable[[], float]
+BenchmarkCleanup = Callable[[str], None]
+
+
+class BenchmarkJobStore:
+    """Durable suite-neutral benchmark jobs with bounded logs and artifacts."""
+
+    def __init__(
+        self,
+        path: str = DEFAULT_BENCHMARK_JOB_DB_PATH,
+        *,
+        run_root: str = DEFAULT_BENCHMARK_RUN_ROOT,
+    ) -> None:
+        if not isinstance(path, str) or not path:
+            raise ValueError("benchmark job database path must be a non-empty string")
+        if not isinstance(run_root, str) or not run_root:
+            raise ValueError("benchmark run root must be a non-empty string")
+        self.path = path
+        self.run_root = os.path.realpath(os.path.abspath(os.path.expanduser(run_root)))
+        Path(self.run_root).mkdir(parents=True, exist_ok=True)
+        resolve_owned_run_path(
+            self.run_root,
+            ownership_id="validation",
+            run_id="validation",
+        )
+        self._lock = threading.RLock()
+
+    def submit(self, spec: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
+        """Create a queued job, or return the identical existing run."""
+        normalized = validate_job_spec(spec)
+        digest = job_spec_sha256(normalized)
+        record = new_job_record(normalized)
+        with self._lock, self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT spec_sha256, record FROM benchmark_jobs WHERE run_id = ?",
+                (normalized["run_id"],),
+            ).fetchone()
+            if row is not None:
+                existing = self._decode_record(row["record"])
+                connection.commit()
+                if row["spec_sha256"] != digest:
+                    raise BenchmarkJobError(
+                        "run_id_conflict",
+                        "run_id already exists with a different immutable specification",
+                        {"run_id": normalized["run_id"]},
+                    )
+                return "existing", existing
+            connection.execute(
+                """
+                INSERT INTO benchmark_jobs (run_id, spec_sha256, state, revision, record)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    normalized["run_id"],
+                    digest,
+                    record["state"],
+                    record["revision"],
+                    _json_dumps(record),
+                ),
+            )
+            connection.commit()
+        return "submitted", record
+
+    def status(self, run_id: str) -> Optional[dict[str, Any]]:
+        run = validate_job_id(run_id)
+        with self._lock, self._connection() as connection:
+            row = connection.execute(
+                "SELECT record FROM benchmark_jobs WHERE run_id = ?", (run,)
+            ).fetchone()
+        return self._decode_record(row["record"]) if row is not None else None
+
+    def logs(self, run_id: str, *, cursor: int = 0, limit: int = 100) -> dict[str, Any]:
+        if not isinstance(cursor, int) or isinstance(cursor, bool) or cursor < 0:
+            raise BenchmarkJobError("bad_log_cursor", "log cursor must be non-negative")
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 1000:
+            raise BenchmarkJobError("bad_log_limit", "log limit must be between 1 and 1000")
+        record = self._required(run_id)
+        logs = record["logs"]
+        entries = [item for item in logs["entries"] if item["cursor"] >= cursor][:limit]
+        next_cursor = entries[-1]["cursor"] + 1 if entries else max(
+            cursor, logs["retained_from"]
+        )
+        return {
+            "run_id": record["spec"]["run_id"],
+            "state": record["state"],
+            "cursor": cursor,
+            "next_cursor": next_cursor,
+            "retained_from": logs["retained_from"],
+            "truncated": logs["truncated"] or cursor < logs["retained_from"],
+            "entries": entries,
+        }
+
+    def append_log(self, run_id: str, *, level: str, message: Any) -> dict[str, Any]:
+        return self._mutate(
+            run_id,
+            lambda record: append_job_log(record, level=level, message=message),
+        )
+
+    def transition(
+        self,
+        run_id: str,
+        target: str,
+        *,
+        failure: Mapping[str, Any] | None = None,
+        results: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        def change(record: dict[str, Any]) -> dict[str, Any]:
+            updated = transition_job(record, target, failure=failure)
+            if target in {"completed", "failed", "cancelled"}:
+                artifact = build_artifact_envelope(
+                    updated, results=results, failure=failure
+                )
+                metadata = self._write_artifact(updated, artifact)
+                updated = dict(updated)
+                updated["artifact"] = metadata
+            return updated
+
+        return self._mutate(run_id, change)
+
+    def cancel(
+        self,
+        run_id: str,
+        *,
+        cleanup: BenchmarkCleanup | None = None,
+    ) -> dict[str, Any]:
+        """Record partial evidence, perform owned cleanup, and finish cancelled."""
+        record = self._required(run_id)
+        if record["state"] in {"completed", "failed", "cancelled"}:
+            return record
+        if record["state"] == "running":
+            record = self._mutate(
+                run_id, lambda current: transition_job(current, "cancelling")
+            )
+        record = self._mutate(
+            run_id,
+            lambda current: append_job_log(
+                current, level="warning", message="cancellation requested"
+            ),
+        )
+        partial = build_artifact_envelope(record)
+        self._write_artifact(record, partial)
+        if cleanup is not None:
+            work_path = resolve_owned_run_path(
+                self.run_root,
+                ownership_id=record["spec"]["ownership_id"],
+                run_id=record["spec"]["run_id"],
+                relative="work",
+            )
+            cleanup(work_path)
+        return self.transition(run_id, "cancelled")
+
+    def artifact(self, run_id: str) -> Optional[dict[str, Any]]:
+        record = self._required(run_id)
+        metadata = record.get("artifact")
+        if not isinstance(metadata, Mapping):
+            return None
+        path = self._artifact_path(record)
+        try:
+            raw = Path(path).read_text(encoding="utf-8")
+            value = _strict_json_loads(raw)
+        except (OSError, TypeError, ValueError) as exc:
+            raise BenchmarkJobError(
+                "artifact_unavailable", "benchmark artifact could not be read"
+            ) from exc
+        digest = hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+        if digest != metadata.get("sha256"):
+            raise BenchmarkJobError(
+                "artifact_digest_mismatch", "benchmark artifact digest does not match"
+            )
+        return value
+
+    def _required(self, run_id: str) -> dict[str, Any]:
+        record = self.status(run_id)
+        if record is None:
+            raise BenchmarkJobError(
+                "job_not_found", "benchmark job does not exist", {"run_id": run_id}
+            )
+        return record
+
+    def _mutate(
+        self,
+        run_id: str,
+        mutation: Callable[[dict[str, Any]], dict[str, Any]],
+    ) -> dict[str, Any]:
+        run = validate_job_id(run_id)
+        with self._lock, self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT record FROM benchmark_jobs WHERE run_id = ?", (run,)
+            ).fetchone()
+            if row is None:
+                connection.rollback()
+                raise BenchmarkJobError(
+                    "job_not_found", "benchmark job does not exist", {"run_id": run}
+                )
+            updated = validate_job_record(mutation(self._decode_record(row["record"])))
+            connection.execute(
+                """
+                UPDATE benchmark_jobs SET state = ?, revision = ?, record = ?
+                WHERE run_id = ?
+                """,
+                (updated["state"], updated["revision"], _json_dumps(updated), run),
+            )
+            connection.commit()
+        return updated
+
+    def _artifact_path(self, record: Mapping[str, Any]) -> str:
+        spec = record["spec"]
+        return resolve_owned_run_path(
+            self.run_root,
+            ownership_id=spec["ownership_id"],
+            run_id=spec["run_id"],
+            relative="artifact.json",
+        )
+
+    def _write_artifact(
+        self, record: Mapping[str, Any], artifact: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        path = self._artifact_path(record)
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(path, artifact)
+        return {
+            "schema": artifact["schema"],
+            "path": "artifact.json",
+            "sha256": hashlib.sha256(canonical_json_bytes(artifact)).hexdigest(),
+        }
+
+    @staticmethod
+    def _decode_record(raw: str) -> dict[str, Any]:
+        try:
+            return validate_job_record(_strict_json_loads(raw))
+        except (TypeError, ValueError) as exc:
+            raise BenchmarkJobError(
+                "bad_job_record", "persisted benchmark job is invalid"
+            ) from exc
+
+    @contextmanager
+    def _connection(self) -> Iterator[sqlite3.Connection]:
+        path = Path(self.path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(str(path), timeout=5.0, isolation_level=None)
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS benchmark_jobs (
+                    run_id TEXT PRIMARY KEY,
+                    spec_sha256 TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    revision INTEGER NOT NULL,
+                    record TEXT NOT NULL
+                )
+                """
+            )
+            yield connection
+        finally:
+            connection.close()
 
 
 def _bounded_persisted_value(
