@@ -151,6 +151,36 @@ required operands, choices, and defaults.
 | `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark context` | Measure retrieval and reasoning degradation by context depth. | `read` / `bounded` | `--profile`<br>`--observed-context` |
+| `eval benchmark context prepare` | Prepare digest-pinned context harness assets on the benchmark worker. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark context assets` | Inspect prepared context harness assets. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark context cleanup` | Clean only the owned work directory for a context benchmark run. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark context preflight` | Validate the endpoint and worker for a context benchmark job. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark context submit` | Submit a durable context benchmark job. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark context status` | Read durable context benchmark job status. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark context logs` | Read bounded cursor logs for a context benchmark job. | `read` / `follow` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark context cancel` | Cancel a context benchmark job after recording partial evidence. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm` |
+| `eval benchmark context artifact` | Read the terminal or partial context benchmark artifact. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark agentic` | Run deterministic tool-use and software-solving scenarios. | `read` / `bounded` | `--profile`<br>`--observed-context` |
+| `eval benchmark agentic prepare` | Prepare digest-pinned agentic harness assets on the benchmark worker. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark agentic assets` | Inspect prepared agentic harness assets. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark agentic cleanup` | Clean only the owned work directory for a agentic benchmark run. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark agentic preflight` | Validate the endpoint and worker for a agentic benchmark job. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark agentic submit` | Submit a durable agentic benchmark job. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark agentic status` | Read durable agentic benchmark job status. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark agentic logs` | Read bounded cursor logs for a agentic benchmark job. | `read` / `follow` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark agentic cancel` | Cancel a agentic benchmark job after recording partial evidence. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm` |
+| `eval benchmark agentic artifact` | Read the terminal or partial agentic benchmark artifact. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark swe` | Run pinned repository problem-solving benchmarks. | `read` / `bounded` | `--profile`<br>`--observed-context` |
+| `eval benchmark swe prepare` | Prepare digest-pinned swe harness assets on the benchmark worker. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark swe assets` | Inspect prepared swe harness assets. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark swe cleanup` | Clean only the owned work directory for a swe benchmark run. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark swe preflight` | Validate the endpoint and worker for a swe benchmark job. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark swe submit` | Submit a durable swe benchmark job. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark swe status` | Read durable swe benchmark job status. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark swe logs` | Read bounded cursor logs for a swe benchmark job. | `read` / `follow` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark swe cancel` | Cancel a swe benchmark job after recording partial evidence. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm` |
+| `eval benchmark swe artifact` | Read the terminal or partial swe benchmark artifact. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
 | `eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark quality` | Run repeated quality suites and retain comparison evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark multimodal` | Run a hashed deterministic image/video corpus. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
