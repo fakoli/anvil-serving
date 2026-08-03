@@ -17,6 +17,30 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
         summary,
         children=(
             _resource_node(
+                "preflight",
+                f"Validate the endpoint and worker for a {name} benchmark job.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                options=(
+                    _option(
+                        "--spec-json",
+                        summary="Portable benchmark job specification JSON.",
+                        value_name="JSON",
+                    ),
+                    _option(
+                        "--requirements-json",
+                        summary="Worker and harness requirement JSON.",
+                        value_name="JSON",
+                    ),
+                ),
+                argv_prefix=(name, "preflight"),
+                remote_operation=_remote(
+                    "benchmark_job_preflight",
+                    fixed=(("suite", name),),
+                    allowed=("spec_json", "requirements_json"),
+                ),
+            ),
+            _resource_node(
                 "submit",
                 f"Submit a durable {name} benchmark job.",
                 "anvil_serving.benchmarking.jobs_cli",
