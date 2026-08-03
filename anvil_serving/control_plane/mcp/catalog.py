@@ -87,6 +87,8 @@ def operation_records(
                 "confirmed_arguments": dict(remote.confirmed_arguments),
                 "allowed_arguments": list(remote.allowed_arguments),
                 "positional_arguments": list(remote.positional_arguments),
+                "argument_aliases": dict(remote.argument_aliases),
+                "max_response_bytes": remote.max_response_bytes,
                 "resource_role": node.resource_role,
                 "transports": list(node.transports),
                 "execution_runtime_roles": list(node.execution_runtime_roles),

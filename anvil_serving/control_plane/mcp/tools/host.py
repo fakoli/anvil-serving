@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 
 from ..arguments import (
     arg_bool as _arg_bool,
@@ -15,6 +16,26 @@ from ..errors import ok as _ok
 from ..runtime import (
     capture as _capture,
 )
+
+
+# MCP 2026 returns the envelope both as structuredContent and as JSON text.
+# Keep the pre-framing envelope small enough for the controller's 1 MiB cap,
+# including worst-case JSON escaping in that duplicated representation.
+_MAX_OPERATOR_CONFIG_RESULT_BYTES = 256 * 1024
+
+
+def _bounded_operator_config_result(result: dict) -> dict:
+    payload = _ok(result)
+    encoded = json.dumps(
+        payload, separators=(",", ":"), sort_keys=True, ensure_ascii=True
+    ).encode("utf-8")
+    if len(encoded) > _MAX_OPERATOR_CONFIG_RESULT_BYTES:
+        raise ToolError(
+            "result_too_large",
+            "operator config result exceeds the bounded remote response; "
+            "select fewer paths",
+        )
+    return payload
 
 
 def tool_doctor_summary(args: dict) -> dict:
@@ -82,7 +103,9 @@ def tool_operator_config_inventory(args: dict) -> dict:
 
     max_bytes = _operator_config_max_bytes(args)
     try:
-        return _ok(operator_config.inventory(max_bytes=max_bytes))
+        return _bounded_operator_config_result(
+            operator_config.inventory(max_bytes=max_bytes)
+        )
     except operator_config.ConfigExportError as exc:
         raise ToolError("unsafe_config", str(exc)) from exc
 
@@ -104,7 +127,7 @@ def tool_operator_config_export(args: dict) -> dict:
             )
     default_gateway = operator_config.default_gateway_path()
     try:
-        return _ok(
+        return _bounded_operator_config_result(
             operator_config.export(
                 gateway_path=default_gateway,
                 paths=paths,

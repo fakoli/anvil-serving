@@ -44,6 +44,7 @@ def commands() -> tuple[CommandNode, ...]:
                             remote_operation=_remote(
                                 "operator_config_inventory",
                                 allowed=("max_bytes",),
+                                max_response_bytes=1024 * 1024,
                             ),
                             execution_runtime_roles=("native",),
                             docs_anchor=(
@@ -81,6 +82,8 @@ def commands() -> tuple[CommandNode, ...]:
                             remote_operation=_remote(
                                 "operator_config_export",
                                 allowed=("max_bytes", "paths"),
+                                aliases=(("path", "paths"),),
+                                max_response_bytes=1024 * 1024,
                             ),
                             execution_runtime_roles=("native",),
                             docs_anchor=(
