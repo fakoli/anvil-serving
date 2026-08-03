@@ -186,18 +186,22 @@ relative to that home, classifications, byte sizes, SHA-256 digests, parser
 types, dependency edges, and installed product/protocol revisions. It never
 returns file contents or environment values.
 
-Export includes exact content only for files classified as versionable Anvil
-configuration. Secret material, runtime databases and logs, backups, caches,
-and unknown files remain excluded with counts. A versionable file containing a
-secret-like literal is refused; credential fields must use environment names or
-structured SecretRefs. When `--gateway-path` is explicit, the full OpenClaw
+Export includes exact content only for TOML, JSON, and env-example files
+classified as versionable Anvil configuration. YAML is reported as
+`unsupported`, and export fails closed when it is present because the packaged
+runtime has no safe stdlib YAML parser for syntax and dependency validation.
+Secret material, runtime databases and logs, backups, caches, and unknown files
+remain excluded with counts. A versionable file containing a secret-like
+literal is refused; credential fields must use environment names or structured
+SecretRefs. When `--gateway-path` is explicit, the full OpenClaw
 document is never returned. The output is limited to the `anvil` model provider,
 Anvil agent-model entries, Anvil realtime fields, and the Anvil MCP server
 entry; raw credentials and capability-bearing URLs are redacted and counted.
 
-The entire operation fails closed on a symlink, unreadable or oversized file,
-path escaping the selected home, missing direct dependency, parse failure, or
-unsafe credential field. The same two read-only operations are available
+The entire operation fails closed on a symlink (including the caller-supplied
+gateway path before resolution), unreadable or oversized file, path escaping
+the selected home, unsupported YAML export, missing direct dependency, parse
+failure, or unsafe credential field. The same two read-only operations are available
 through MCP/controller transport as `operator_config_inventory` and
 `operator_config_export`. Remote calls intentionally reject filesystem-root
 overrides: the resource owner uses its configured `ANVIL_SERVING_HOME` and the

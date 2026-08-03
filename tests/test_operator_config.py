@@ -50,6 +50,23 @@ def test_inventory_refuses_symlink(tmp_path):
         operator_config.inventory(str(tmp_path))
 
 
+def test_export_refuses_gateway_symlink_before_resolution(tmp_path):
+    _write(tmp_path / "host.toml", "schema_version = 1\n")
+    target = _write(
+        tmp_path.parent / "gateway-target" / "openclaw.json",
+        json.dumps({"models": {"providers": {"anvil": {"baseUrl": "http://127.0.0.1:8000/v1"}}}}),
+    )
+    link = tmp_path.parent / f"{tmp_path.name}-gateway-link" / "openclaw.json"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.symlink(target, link)
+    except OSError:
+        pytest.skip("symlink creation is unavailable")
+
+    with pytest.raises(operator_config.ConfigExportError, match="gateway.*symlink"):
+        operator_config.export(str(tmp_path), gateway_path=str(link))
+
+
 def test_inventory_refuses_oversized_file(tmp_path):
     _write(tmp_path / "voice.toml", "x" * 32)
     with pytest.raises(operator_config.ConfigExportError, match="size limit"):
@@ -129,7 +146,8 @@ def test_export_returns_safe_config_and_only_sanitized_anvil_gateway_fragment(tm
         "unrelated": {"private": "must-not-return"},
     }
     gateway_path = _write(
-        tmp_path.parent / "openclaw.json", json.dumps(gateway),
+        tmp_path.parent / f"{tmp_path.name}-gateway" / "openclaw.json",
+        json.dumps(gateway),
     )
 
     result = operator_config.export(str(tmp_path), gateway_path=str(gateway_path))
@@ -159,16 +177,30 @@ def test_export_refuses_secret_literal_in_versionable_config(tmp_path):
         operator_config.export(str(tmp_path))
 
 
+def test_export_refuses_secret_literals_in_env_example(tmp_path):
+    _write(tmp_path / ".env.example", "API_TOKEN=raw-secret\n")
+    with pytest.raises(operator_config.ConfigExportError, match="secret-like field"):
+        operator_config.export(str(tmp_path))
+
+
 @pytest.mark.parametrize(
-    ("name", "content"),
+    "content",
     [
-        ("unsafe.yaml", "api_key: raw-secret\n"),
-        (".env.example", "API_TOKEN=raw-secret\n"),
+        "broken: [\n",
+        "router_config: router.toml\n",
     ],
 )
-def test_export_refuses_secret_literals_in_text_config(tmp_path, name, content):
-    _write(tmp_path / name, content)
-    with pytest.raises(operator_config.ConfigExportError, match="secret-like field"):
+def test_inventory_marks_yaml_unsupported_and_export_fails_closed(tmp_path, content):
+    _write(tmp_path / "config.yaml", content)
+    _write(tmp_path / "router.toml", "[router]\n")
+
+    result = operator_config.inventory(str(tmp_path))
+    row = next(row for row in result["files"] if row["path"] == "config.yaml")
+    assert row["classification"] == "unsupported"
+    assert row["parser"] == "yaml"
+    assert row["dependencies"] == []
+
+    with pytest.raises(operator_config.ConfigExportError, match="does not support YAML"):
         operator_config.export(str(tmp_path))
 
 

@@ -32,7 +32,8 @@ _VERSIONABLE_NAMES = {
     "serve-recipes.toml",
     "edge.toml",
 }
-_VERSIONABLE_SUFFIXES = (".toml", ".json", ".yaml", ".yml")
+_VERSIONABLE_SUFFIXES = (".toml", ".json")
+_UNSUPPORTED_VERSIONABLE_SUFFIXES = (".yaml", ".yml")
 _SECRET_PARTS = {"secrets", "credentials", "identity"}
 _RUNTIME_SUFFIXES = (".sqlite", ".sqlite3", ".db", ".log", ".pid")
 _CACHE_PARTS = {"cache", "caches", "tmp", "temp", "__pycache__"}
@@ -95,6 +96,8 @@ def _classification(relative: Path) -> str:
         token in name for token in ("operation-state", "controller-operations")
     ):
         return "runtime"
+    if name.endswith(_UNSUPPORTED_VERSIONABLE_SUFFIXES):
+        return "unsupported"
     if name in _VERSIONABLE_NAMES or name.endswith(_VERSIONABLE_SUFFIXES):
         return "versionable"
     return "unknown"
@@ -454,6 +457,16 @@ def export(
 
     report = inventory(home, max_bytes=max_bytes)
     root = Path(report["effective_home"])
+    unsupported = [
+        row["path"]
+        for row in report["files"]
+        if row["classification"] == "unsupported"
+    ]
+    if unsupported:
+        raise ConfigExportError(
+            "operator config export does not support YAML without a safe "
+            f"stdlib parser: {', '.join(unsupported)}"
+        )
     exported = []
     for row in report["files"]:
         if row["classification"] != "versionable":
@@ -474,7 +487,7 @@ def export(
     gateway_metadata = None
     redaction_count = 0
     if gateway_path:
-        resolved_gateway = Path(gateway_path).expanduser().resolve(strict=False)
+        resolved_gateway = Path(gateway_path).expanduser().absolute()
         fragment, gateway_metadata, redaction_count = _gateway_fragment(
             resolved_gateway, max_bytes=max_bytes
         )
@@ -492,7 +505,14 @@ def export(
             classification: sum(
                 row["classification"] == classification for row in report["files"]
             )
-            for classification in ("secret", "runtime", "backup", "cache", "unknown")
+            for classification in (
+                "secret",
+                "runtime",
+                "backup",
+                "cache",
+                "unsupported",
+                "unknown",
+            )
         },
     }
 
