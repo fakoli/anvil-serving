@@ -10,6 +10,7 @@ import sys
 from ..guard import confirmation_authorized
 from ..control_plane.controller.store import BenchmarkJobStore
 from .jobs import BenchmarkJobError, validate_job_spec
+from .preflight import run_benchmark_preflight
 
 
 def _store() -> BenchmarkJobStore:
@@ -25,6 +26,9 @@ def _parser() -> argparse.ArgumentParser:
     for suite in ("context", "agentic", "swe"):
         suite_parser = suites.add_parser(suite)
         actions = suite_parser.add_subparsers(dest="action", required=True)
+        preflight = actions.add_parser("preflight")
+        preflight.add_argument("--spec-json", required=True)
+        preflight.add_argument("--requirements-json", default="{}")
         submit = actions.add_parser("submit")
         submit.add_argument("--spec-json", required=True)
         mode = submit.add_mutually_exclusive_group()
@@ -62,9 +66,26 @@ def _spec_json(raw: str, suite: str) -> dict:
     return _require_suite(value, suite)
 
 
+def _json_object(raw: str, *, field: str) -> dict:
+    try:
+        value = json.loads(raw)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise BenchmarkJobError("bad_json", f"{field} must be valid JSON") from exc
+    if not isinstance(value, dict):
+        raise BenchmarkJobError("bad_json", f"{field} must be a JSON object")
+    return value
+
+
 def run(argv: list[str]) -> dict:
     args = _parser().parse_args(argv)
     store = _store()
+    if args.action == "preflight":
+        return run_benchmark_preflight(
+            _spec_json(args.spec_json, args.suite),
+            run_root=store.run_root,
+            requirements=_json_object(args.requirements_json, field="requirements-json"),
+            assets_root=os.environ.get("ANVIL_BENCHMARK_ASSETS_ROOT"),
+        )
     if args.action == "submit":
         if not (args.confirm or confirmation_authorized()):
             raise BenchmarkJobError("confirmation_required", "submit requires --confirm")

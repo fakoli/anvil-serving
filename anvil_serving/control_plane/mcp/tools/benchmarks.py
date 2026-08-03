@@ -8,6 +8,7 @@ import sys
 
 from ....model_controls import REASONING_EFFORT_CHOICES
 from ....benchmarking.jobs import BenchmarkJobError, validate_job_spec
+from ....benchmarking.preflight import run_benchmark_preflight
 from ...controller.store import BenchmarkJobStore
 from ....benchmarking.artifacts import (
     benchmark_key_metrics as _benchmark_key_metrics,
@@ -89,6 +90,33 @@ def tool_benchmark_job_submit(args: dict) -> dict:
             "detached": detach or not follow,
         }
     )
+
+
+def tool_benchmark_job_preflight(args: dict) -> dict:
+    suite = _str_arg(args, "suite", required=True)
+    raw_spec = _str_arg(args, "spec_json", required=True)
+    raw_requirements = _str_arg(args, "requirements_json") or "{}"
+    try:
+        spec = validate_job_spec(json.loads(raw_spec))
+        requirements = json.loads(raw_requirements)
+        if not isinstance(requirements, dict):
+            raise BenchmarkJobError("bad_json", "requirements_json must be an object")
+        if spec["suite"] != suite:
+            raise BenchmarkJobError(
+                "suite_mismatch", "job specification suite does not match the command"
+            )
+        store = _benchmark_job_store()
+        artifact = run_benchmark_preflight(
+            spec,
+            run_root=store.run_root,
+            requirements=requirements,
+            assets_root=os.environ.get("ANVIL_BENCHMARK_ASSETS_ROOT"),
+        )
+    except (TypeError, json.JSONDecodeError):
+        raise ToolError("bad_json", "benchmark preflight JSON is invalid") from None
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
+    return _ok(artifact)
 
 
 def tool_benchmark_job_status(args: dict) -> dict:
@@ -439,6 +467,18 @@ def tool_benchmark_artifact(args: dict) -> dict:
 FAMILY = ToolFamily(
     name="benchmarks",
     tools={
+        "benchmark_job_preflight": {
+            "description": "Validate a benchmark endpoint and isolated worker without model lifecycle changes.",
+            "inputSchema": _schema(
+                {
+                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "spec_json": {"type": "string", "maxLength": 262144},
+                    "requirements_json": {"type": "string", "maxLength": 262144},
+                },
+                required=["suite", "spec_json"],
+            ),
+            "handler": tool_benchmark_job_preflight,
+        },
         "benchmark_job_submit": {
             "description": "Submit one durable context, agentic, or SWE benchmark job.",
             "inputSchema": _schema(
