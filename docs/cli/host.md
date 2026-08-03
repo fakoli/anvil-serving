@@ -13,6 +13,7 @@ Focused `--help` is the complete flag reference for every command below.
 | Configure a new installation | `init` | Review detected host values and remaining placeholders, then run `doctor`. |
 | Check whether this machine is ready | `doctor --no-config` | Add `--config PATH` when the router config exists. |
 | Inspect a topology-owned host | `host status` | Use `host doctor` for a recommendation or `host memory` for WSL details. |
+| Inventory private operator config safely | `host config inventory` | Review classifications and dependency closure, then use the sanitized export. |
 | Change the WSL memory cap safely | `host doctor` | Preview `host wsl-config`, apply it, then restart Docker Desktop. |
 | Recover a wedged WSL backend | `host reset-wsl --dry-run` | Apply only after reviewing the process and container disruption. |
 | Diagnose vLLM native-offload tmpfs pressure | `host shared-memory status` | Reclaim only when every file is verified orphaned. |
@@ -38,6 +39,8 @@ Focused `--help` is the complete flag reference for every command below.
 | `host doctor` | Explain host memory capacity and recommend a safe WSL cap. |
 | `host memory` | Show Windows, WSL VM, page-cache, and GPU memory usage. |
 | `host shared-memory status` | Report vLLM offload mmap files, live mappings, active owners, and reclaim eligibility. |
+| `host config inventory` | Return metadata-only classifications, hashes, parser types, dependencies, and installed revisions. |
+| `host config export` | Return safe versionable files and an allowlisted, redacted Anvil-owned OpenClaw fragment. |
 
 ### Plan and apply host repair
 
@@ -82,18 +85,17 @@ without a backup or rewrite; repeated runs therefore do not accumulate copies
 of unchanged files such as `.env.example`.
 
 Bare `init` queries `nvidia-smi` and `tailscale ip -4`. The highest-VRAM GPU is
-assigned to Primary, the smallest distinct GPU is assigned to Auxiliary, and the
-detected tailnet IPv4 address replaces the reference placeholder. Equal-VRAM
-cards are assigned by runtime index, with the lower index becoming Primary.
-The primary LLM maps to Primary; the smaller LLM, STT, TTS, OCR, embeddings,
-reranker, vision, and ComfyUI map to Auxiliary. Missing tools, unavailable
+assigned to Compute A, the smallest distinct GPU is assigned to Compute B, and
+the detected tailnet IPv4 address replaces the reference placeholder. Equal-VRAM
+cards use canonical UUID ordering rather than volatile runtime index. Workload
+capability remains independent of A/B placement. Missing tools, unavailable
 values, or a single-GPU host leave unresolved placeholders visible; one card
 is never silently assigned to both roles.
 
 Override any detected value or disable host probing:
 
 ```bash
-anvil-serving init --primary-gpu-uuid GPU-... --auxiliary-gpu-uuid GPU-... --tailnet-ip 100.64.0.10
+anvil-serving init --compute-a-gpu-uuid GPU-... --compute-b-gpu-uuid GPU-... --tailnet-ip 100.64.0.10
 anvil-serving init --no-detect-host
 ```
 
@@ -167,6 +169,40 @@ schema and lifecycle coverage.
 
 These commands are read-only. Missing GPU tools or unavailable probes remain
 visible as empty or degraded results instead of triggering repair.
+
+## Operator configuration inventory and export
+
+Use the typed host surface when a public checkout needs to recover or refresh
+configuration owned by a private operator repository:
+
+```bash
+anvil-serving host config inventory --json
+anvil-serving host config export --gateway-path ~/.openclaw/openclaw.json --json
+```
+
+Both commands resolve the effective operator home from `--home`, then
+`ANVIL_SERVING_HOME`, then the platform default. Inventory returns only paths
+relative to that home, classifications, byte sizes, SHA-256 digests, parser
+types, dependency edges, and installed product/protocol revisions. It never
+returns file contents or environment values.
+
+Export includes exact content only for files classified as versionable Anvil
+configuration. Secret material, runtime databases and logs, backups, caches,
+and unknown files remain excluded with counts. A versionable file containing a
+secret-like literal is refused; credential fields must use environment names or
+structured SecretRefs. When `--gateway-path` is explicit, the full OpenClaw
+document is never returned. The output is limited to the `anvil` model provider,
+Anvil agent-model entries, Anvil realtime fields, and the Anvil MCP server
+entry; raw credentials and capability-bearing URLs are redacted and counted.
+
+The entire operation fails closed on a symlink, unreadable or oversized file,
+path escaping the selected home, missing direct dependency, parse failure, or
+unsafe credential field. The same two read-only operations are available
+through MCP/controller transport as `operator_config_inventory` and
+`operator_config_export`. Remote calls intentionally reject filesystem-root
+overrides: the resource owner uses its configured `ANVIL_SERVING_HOME` and the
+standard `~/.openclaw/openclaw.json` path when present. Neither command writes,
+restarts, deploys, reroutes, or promotes anything.
 
 ## Repair the host
 
