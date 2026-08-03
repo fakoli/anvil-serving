@@ -92,6 +92,7 @@ tensor_parallel_size = 2
 router_tier = "primary-local"
 router_config = "{dir}/router-exclusive.toml"
 rollback_router_config = "{dir}/router-split.toml"
+native_kv_offload = true
 ```
 
 The exclusive entry is inert until a separately qualified model recipe adds
@@ -115,6 +116,19 @@ guardedly readmits the tier. Any install or readmission failure stops the target
 restores the rollback profile, and restores the split group. Leave performs the
 reverse quiesce, drain, profile, and readmission transaction. An unrouted TP=2
 experiment omits all three fields and remains direct-port only.
+
+Both router profile paths are direct dependencies of the operating-mode
+manifest. Manifest loading resolves `{dir}` and relative paths against the
+manifest directory and fails before lifecycle work if either file is missing.
+
+Set `native_kv_offload = true` only when the serve recipe uses vLLM's native
+CPU KV-offload mmap files. This explicit ownership declaration lets `serves
+down` run the bounded, two-scan orphan cleanup even when Docker has already
+removed the container and its runtime metadata. An absent serve without the
+declaration remains a no-op. Cleanup only considers exact
+`/dev/shm/vllm_offload_*.mmap` candidates and fails closed when active owners,
+live mappings, a changed second scan, or an unavailable postcondition prevent a
+safe reclaim.
 
 ## Minimal direct gateway
 
