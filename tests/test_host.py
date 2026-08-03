@@ -666,6 +666,21 @@ def test_shared_memory_reclaim_requires_two_matching_scans_and_checks_postcondit
     assert rm[-2:] == ["--", path]
 
 
+def test_shared_memory_reclaim_never_deletes_unrelated_paths(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    offload_path = "/dev/shm/vllm_offload_orphan.mmap"
+    unrelated_path = "/dev/shm/operator-owned.mmap"
+    row = offload_path + "\t4096\t\n"
+    run = _SharedMemoryRun([row, row, ""])
+
+    result = host.reclaim_vllm_offload_shared_memory(confirm=True, _run=run)
+
+    assert result["outcome"] == "reclaimed"
+    rm = next(call for call in run.calls if "rm" in call)
+    assert rm[-2:] == ["--", offload_path]
+    assert unrelated_path not in rm
+
+
 def test_shared_memory_reclaim_refuses_when_second_scan_changes(monkeypatch):
     monkeypatch.setattr(host.sys, "platform", "win32")
     path = "/dev/shm/vllm_offload_orphan.mmap"
