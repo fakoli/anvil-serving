@@ -11,6 +11,7 @@ from ..guard import confirmation_authorized
 from ..control_plane.controller.store import BenchmarkJobStore
 from .jobs import BenchmarkJobError, validate_job_spec
 from .preflight import run_benchmark_preflight
+from .profiles import load_profile
 
 
 def _store() -> BenchmarkJobStore:
@@ -26,6 +27,10 @@ def _parser() -> argparse.ArgumentParser:
     for suite in ("context", "agentic", "swe"):
         suite_parser = suites.add_parser(suite)
         actions = suite_parser.add_subparsers(dest="action", required=True)
+        plan = actions.add_parser("plan")
+        plan.add_argument("--profile", choices=("smoke", "scout", "deep"), required=True)
+        plan.add_argument("--observed-context", type=int)
+        plan.add_argument("--dry-run", action="store_true")
         preflight = actions.add_parser("preflight")
         preflight.add_argument("--spec-json", required=True)
         preflight.add_argument("--requirements-json", default="{}")
@@ -79,6 +84,21 @@ def _json_object(raw: str, *, field: str) -> dict:
 def run(argv: list[str]) -> dict:
     args = _parser().parse_args(argv)
     store = _store()
+    if args.action == "plan":
+        profile = load_profile(args.profile, observed_context=args.observed_context)
+        return {
+            "schema": "anvil-serving.benchmark-plan/v1",
+            "suite": args.suite,
+            "profile": profile["name"],
+            "profile_sha256": profile["content_sha256"],
+            "configuration": profile["suites"][args.suite],
+            "adapters": {
+                name: profile["adapters"][name]
+                for name in profile["suites"][args.suite]["adapters"]
+            },
+            "dry_run": bool(args.dry_run),
+            "deferred": ["benchmark preflight", "model requests", "artifact write"],
+        }
     if args.action == "preflight":
         return run_benchmark_preflight(
             _spec_json(args.spec_json, args.suite),
