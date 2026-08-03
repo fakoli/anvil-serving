@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 
-MANIFEST_SCHEMA_VERSION = 4
+MANIFEST_SCHEMA_VERSION = 5
 MANIFEST_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "CLI-COMMAND-MANIFEST.json"
 CLI_DOC = "docs/CLI.md"
 ROUTER_DOC = "docs/cli/router.md"
@@ -89,12 +89,15 @@ class RemoteOperation:
     confirmed_arguments: tuple[tuple[str, object], ...] = field(default_factory=tuple)
     allowed_arguments: tuple[str, ...] = field(default_factory=tuple)
     positional_arguments: tuple[str, ...] = field(default_factory=tuple)
+    argument_aliases: tuple[tuple[str, str], ...] = field(default_factory=tuple)
+    max_response_bytes: int | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "fixed_arguments", tuple(self.fixed_arguments))
         object.__setattr__(self, "confirmed_arguments", tuple(self.confirmed_arguments))
         object.__setattr__(self, "allowed_arguments", tuple(self.allowed_arguments))
         object.__setattr__(self, "positional_arguments", tuple(self.positional_arguments))
+        object.__setattr__(self, "argument_aliases", tuple(self.argument_aliases))
 
 
 @dataclass(frozen=True)
@@ -190,6 +193,8 @@ def _remote(
     confirmed: Iterable[tuple[str, object]] = (),
     allowed: Iterable[str] = (),
     positionals: Iterable[str] = (),
+    aliases: Iterable[tuple[str, str]] = (),
+    max_response_bytes: int | None = None,
 ) -> RemoteOperation:
     return RemoteOperation(
         mode=mode,
@@ -198,6 +203,8 @@ def _remote(
         confirmed_arguments=tuple(confirmed),
         allowed_arguments=tuple(allowed),
         positional_arguments=tuple(positionals),
+        argument_aliases=tuple(aliases),
+        max_response_bytes=max_response_bytes,
     )
 
 
@@ -490,6 +497,18 @@ def _validate_policy(node: CommandNode, label: str) -> None:
         raise CommandTreeError(f"command {label!r} has duplicate allowed remote arguments")
     if len(remote.positional_arguments) != len(set(remote.positional_arguments)):
         raise CommandTreeError(f"command {label!r} has duplicate remote positional arguments")
+    alias_names = [name for name, _target in remote.argument_aliases]
+    alias_targets = [target for _name, target in remote.argument_aliases]
+    if (
+        len(alias_names) != len(set(alias_names))
+        or any(not name or not target for name, target in remote.argument_aliases)
+        or any(target not in remote.allowed_arguments for target in alias_targets)
+    ):
+        raise CommandTreeError(f"command {label!r} has invalid remote argument aliases")
+    if remote.max_response_bytes is not None and (
+        isinstance(remote.max_response_bytes, bool) or remote.max_response_bytes <= 0
+    ):
+        raise CommandTreeError(f"command {label!r} has an invalid remote response bound")
 
 
 def manifest_data(tree: CommandTree | None = None) -> dict[str, object]:
@@ -548,6 +567,8 @@ def _remote_operation_data(remote: RemoteOperation | None) -> dict[str, object] 
         "confirmed_arguments": dict(remote.confirmed_arguments),
         "allowed_arguments": list(remote.allowed_arguments),
         "positional_arguments": list(remote.positional_arguments),
+        "argument_aliases": dict(remote.argument_aliases),
+        "max_response_bytes": remote.max_response_bytes,
     }
 
 

@@ -183,9 +183,11 @@ anvil-serving host config export --path anvil-router.live.toml --json
 
 Both commands resolve the effective operator home from `--home`, then
 `ANVIL_SERVING_HOME`, then the platform default. Inventory returns only paths
-relative to that home, classifications, byte sizes, SHA-256 digests, parser
-types, dependency edges, and installed product/protocol revisions. It never
-returns file contents or environment values.
+relative to that home, classifications, byte sizes, parser types, dependency
+edges, and installed product/protocol revisions. Versionable candidates also
+include SHA-256 digests. Excluded secret, runtime, backup, cache, unsupported,
+and unknown files are not opened for hashing and report a null digest. Inventory
+never returns file contents or environment values.
 
 Export includes exact content only for allowlisted Anvil TOML names and
 env-example files classified as versionable configuration. Arbitrary TOML and
@@ -194,7 +196,7 @@ separate allowlisted and sanitized gateway-fragment path. YAML is reported as
 `unsupported`, and export fails closed when it is present because the packaged
 runtime has no safe stdlib YAML parser for syntax and dependency validation.
 After inventory, repeat `--path RELATIVE_PATH` to request a bounded supported
-subset; its direct dependencies are included automatically, and YAML or any
+subset; its transitive dependencies are included automatically, and YAML or any
 non-versionable dependency still fails the selected export. The matching MCP
 tool accepts a bounded `paths` array relative to the resource owner's configured
 home. With no path selection, export continues to require whole-home closure.
@@ -213,13 +215,27 @@ instead of passing through an open-ended command configuration.
 
 The entire operation fails closed on a symlink (including the caller-supplied
 gateway path before resolution), unreadable or oversized file, path escaping
-the selected home, unsupported YAML export, missing direct dependency, parse
+the selected home, unsupported YAML export, missing transitive dependency, parse
 failure, or unsafe credential field. The same two read-only operations are available
 through MCP/controller transport as `operator_config_inventory` and
 `operator_config_export`. Remote calls intentionally reject filesystem-root
 overrides: the resource owner uses its configured `ANVIL_SERVING_HOME` and the
 standard `~/.openclaw/openclaw.json` path when present. Neither command writes,
 restarts, deploys, reroutes, or promotes anything.
+
+Lifecycle `--registry` paths under the declared product `/configs` mount or the
+source checkout's `configs/` directory are recorded as a fixed
+`<external-product-registry>` edge and are not read or copied. Arbitrary
+out-of-home registries still fail closed. This preserves the boundary between
+operator-owned configuration and portable product recipes; an operator-owned
+registry placed inside the home remains part of the selected transitive closure.
+
+Use the result as a reviewed, path-preserving handoff into
+`hosts/<host>/operator-home/` in the private repository. Do not replace this
+surface with a recursive SSH, SCP, rsync, archive, Docker, or raw filesystem
+copy of the remote operator home, and never copy the complete OpenClaw document.
+See [Public Product and Private Operator State](../OPERATOR-PRIVACY.md#typed-inventory-and-private-repository-handoff)
+for the review, secret-hygiene, and cutover boundary.
 
 ## Repair the host
 

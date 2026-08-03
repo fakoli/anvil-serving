@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Read-only `host config inventory` and `host config export` commands, with
+  matching MCP/controller tools, now provide metadata-only operator-home
+  discovery and bounded export of allowlisted Anvil configuration plus a
+  sanitized Anvil-owned OpenClaw fragment. Explicit path selection closes
+  supported direct dependencies without requiring a whole-home export.
+
+### Security
+
+- Operator configuration export fails closed for YAML, unknown or secret
+  files, malformed secret references, credential-bearing values, capability
+  URLs, symlinks/junctions, concurrent filesystem mutation, and dependencies
+  outside the captured operator-home snapshot unless they are declared portable
+  product registries recorded without reading. POSIX capture is anchored to a
+  directory descriptor; Windows holds a non-reparse, no-delete-share root
+  handle; export reuses the exact bytes captured by inventory.
+
 ## [0.21.1] - 2026-08-02
 
 ### Fixed

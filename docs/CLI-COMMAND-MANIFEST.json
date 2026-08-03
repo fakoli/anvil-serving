@@ -607,10 +607,12 @@
           "recreate",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_manage"
@@ -791,10 +793,12 @@
           "service",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_manage"
@@ -975,10 +979,12 @@
           "dry_run",
           "no_verify"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "restart"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_manage"
@@ -1159,10 +1165,12 @@
           "dry_run",
           "no_verify"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "reload"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_manage"
@@ -1617,8 +1625,10 @@
         "allowed_arguments": [
           "container"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_status"
@@ -1780,10 +1790,12 @@
           "tier",
           "router_url"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "status"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_transition"
@@ -1965,10 +1977,12 @@
           "timeout",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "quiesce"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_transition"
@@ -2141,10 +2155,12 @@
           "timeout",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "drain"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_transition"
@@ -2326,10 +2342,12 @@
           "timeout",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "readmit"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_transition"
@@ -2484,8 +2502,10 @@
           "since",
           "follow"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_logs"
@@ -3059,10 +3079,12 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -3235,10 +3257,12 @@
           "keep_container",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -3399,10 +3423,12 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "rm"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -3563,10 +3589,12 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "adopt"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -3911,10 +3939,12 @@
           "resume",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "human_approved": true
         },
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "plan"
@@ -4186,10 +4216,12 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "status"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "serves_mode"
@@ -4342,10 +4374,12 @@
           "manifest",
           "restore_group"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "preview"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "target"
@@ -4539,12 +4573,14 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "human_approved": true
         },
         "fixed_arguments": {
           "action": "enter"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "target"
@@ -4738,12 +4774,14 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "human_approved": true
         },
         "fixed_arguments": {
           "action": "leave"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "target"
@@ -4886,8 +4924,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -5307,8 +5347,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -8473,10 +8515,12 @@
           "timeout_seconds",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "preflight_probe"
@@ -9999,8 +10043,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "external_bench_sources"
@@ -10445,8 +10491,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "external_bench_list"
@@ -10587,8 +10635,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "external_bench_report"
@@ -10881,8 +10931,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "external_bench_compare"
@@ -12163,10 +12215,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_manage"
@@ -12332,10 +12386,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_manage"
@@ -12483,10 +12539,12 @@
           "ready_timeout",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "status"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_manage"
@@ -12634,10 +12692,12 @@
           "tail",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "logs"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_manage"
@@ -13070,10 +13130,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -13241,10 +13303,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -13412,10 +13476,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "restart"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -13564,10 +13630,12 @@
           "log_file",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "status"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -13717,10 +13785,12 @@
           "tail",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "logs"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -15712,10 +15782,12 @@
           "voice_api_key_env",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "openclaw_sync"
@@ -16006,10 +16078,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "openclaw_gateway_restart"
@@ -16283,8 +16357,10 @@
           "timeout_seconds",
           "max_output_bytes"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "openclaw_gateway_status"
@@ -16554,8 +16630,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "mcp-bridge",
         "positional_arguments": [],
         "tool": null
@@ -16696,8 +16774,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "mcp-bridge",
         "positional_arguments": [],
         "tool": null
@@ -17101,8 +17181,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "controller-status",
         "positional_arguments": [],
         "tool": null
@@ -17520,8 +17602,10 @@
         "allowed_arguments": [
           "max_bytes"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": 1048576,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "operator_config_inventory"
@@ -17700,8 +17784,12 @@
           "max_bytes",
           "paths"
         ],
+        "argument_aliases": {
+          "path": "paths"
+        },
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": 1048576,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "operator_config_export"
@@ -17841,8 +17929,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_summary"
@@ -17983,8 +18073,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "gpu_inventory"
@@ -18537,8 +18629,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_summary"
@@ -18942,8 +19036,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_shared_memory"
@@ -19103,12 +19199,14 @@
         "allowed_arguments": [
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "action": "reclaim-shared-memory"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_manage"
@@ -19274,12 +19372,14 @@
           "force",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "action": "wsl-config"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_manage"
@@ -19442,12 +19542,14 @@
         "allowed_arguments": [
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "action": "restart-docker"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_manage"
@@ -19610,12 +19712,14 @@
         "allowed_arguments": [
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "action": "reset-wsl"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_manage"
@@ -19918,8 +20022,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "doctor_summary"
@@ -23089,5 +23195,5 @@
       "visible": true
     }
   ],
-  "schema_version": 4
+  "schema_version": 5
 }

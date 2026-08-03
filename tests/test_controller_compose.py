@@ -72,6 +72,8 @@ def test_controller_compose_excludes_native_host_and_gateway_tools():
         "host_manage",
         "host_summary",
         "doctor_summary",
+        "operator_config_inventory",
+        "operator_config_export",
         "voice_proxy_manage",
         "openclaw_gateway_restart",
         "openclaw_gateway_status",
