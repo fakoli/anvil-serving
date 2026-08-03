@@ -164,6 +164,27 @@ def _read_bounded(path: Path, *, max_bytes: int) -> bytes:
         raise ConfigExportError(f"candidate is unreadable: {path.name}: {exc}") from exc
 
 
+def _assert_no_link_components(path: Path, *, label: str) -> None:
+    current = path
+    while True:
+        try:
+            metadata = current.lstat()
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            raise ConfigExportError(f"could not inspect {label} path component: {exc}") from exc
+        else:
+            reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+            file_attributes = getattr(metadata, "st_file_attributes", 0)
+            if stat.S_ISLNK(metadata.st_mode) or (
+                reparse_flag and file_attributes & reparse_flag
+            ):
+                raise ConfigExportError(f"{label} path must not contain a symlink or junction")
+        if current.parent == current:
+            return
+        current = current.parent
+
+
 def _parse(path: Path, data: bytes, parser: str) -> Any:
     if parser == "binary":
         return None
@@ -648,8 +669,7 @@ def _safe_mcp_server_fragment(value: Any) -> tuple[dict | None, int]:
 def _gateway_fragment(path: Path, *, max_bytes: int) -> tuple[dict, dict, int]:
     if path.name.lower() != "openclaw.json":
         raise ConfigExportError("gateway configuration must be named openclaw.json")
-    if path.is_symlink():
-        raise ConfigExportError("gateway configuration must not be a symlink")
+    _assert_no_link_components(path, label="gateway configuration")
     data = _read_bounded(path, max_bytes=max_bytes)
     parsed = _parse(path, data, "json")
     if not isinstance(parsed, dict):
