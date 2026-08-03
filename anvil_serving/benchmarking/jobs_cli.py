@@ -13,6 +13,7 @@ from .harnesses import cleanup_harness_work, harness_asset_status, prepare_harne
 from .jobs import BenchmarkJobError, validate_job_spec
 from .preflight import run_benchmark_preflight
 from .profiles import load_profile
+from .worker import cancel_benchmark_job, launch_benchmark_job
 
 
 def _store() -> BenchmarkJobStore:
@@ -156,9 +157,19 @@ def run(argv: list[str]) -> dict:
         if not (args.confirm or confirmation_authorized()):
             raise BenchmarkJobError("confirmation_required", "submit requires --confirm")
         disposition, job = store.submit(_spec_json(args.spec_json, args.suite))
+        launch = (
+            launch_benchmark_job(
+                path=store.path,
+                run_root=store.run_root,
+                run_id=job["spec"]["run_id"],
+            )
+            if job["state"] == "queued"
+            else {"launched": False, "reason": f"job is {job['state']}"}
+        )
         return {
             "disposition": disposition,
             "job": job,
+            "worker": launch,
             "follow": bool(args.follow),
             "detached": bool(args.detach or not args.follow),
         }
@@ -178,7 +189,7 @@ def run(argv: list[str]) -> dict:
         return artifact
     if not (args.confirm or confirmation_authorized()):
         raise BenchmarkJobError("confirmation_required", "cancel requires --confirm")
-    return store.cancel(args.run_id)
+    return cancel_benchmark_job(store, args.run_id)
 
 
 def main(argv=None) -> int:

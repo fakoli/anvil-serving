@@ -257,6 +257,8 @@ def build_swe_run_plan(
             "grader_work": grader_work,
             "config": config_path,
             "predictions_jsonl": predictions_jsonl,
+            "mini_root": mini_root,
+            "grader_root": grader_root,
             "result": os.path.join(run_path, "swe-result.json"),
         },
         "commands": {"agent": mini_command, "grader": grader_command},
@@ -406,6 +408,13 @@ def run_swe_benchmark(
     else:
         child_env.setdefault("OPENAI_API_KEY", "anvil-local")
     child_env["MSWEA_COST_TRACKING"] = "ignore_errors"
+    pinned_python_paths = [
+        os.path.join(paths["mini_root"], "src"),
+        paths["grader_root"],
+    ]
+    if child_env.get("PYTHONPATH"):
+        pinned_python_paths.append(child_env["PYTHONPATH"])
+    child_env["PYTHONPATH"] = os.pathsep.join(pinned_python_paths)
 
     agent_started = time.monotonic()
     try:
