@@ -140,7 +140,7 @@ def test_mcp_voice_tools_reach_for_config_home_topology(
 def test_init_personalizes_default_topology_for_detected_gpu_host(tmp_path):
     primary = "GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     auxiliary = "GPU-11111111-2222-3333-4444-555555555555"
-    tailnet_ip = "100.100.100.100"
+    tailnet_ip = "100.64.0.10"
     gpu_output = (
         "0, %s, Primary Card, 97887\n"
         "1, %s, Auxiliary Card, 32607\n"

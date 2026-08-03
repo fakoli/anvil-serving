@@ -5,7 +5,7 @@
 # serves.toml must never stop them - that is exactly the outage this split fixes.
 
 # Published on Dark loopback (30010/30011) and the tailnet bridge ports
-# (100.87.34.66:30110/30111) that Mini's realtime proxy targets.
+# (100.64.0.10:30110/30111) that Mini's realtime proxy targets.
 [[serve]]
 name = "stt"                   # parakeet.cpp tdt-0.6b-v3 (Compute B)
 stack = "voice-audio"

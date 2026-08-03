@@ -266,7 +266,7 @@
         "presence": [
           {
             "host": "Mac",
-            "ip": "10.0.0.78",
+            "ip": "100.64.0.10",
             "version": "2026.6.11",
             "platform": "macos 27.0",
             "deviceFamily": "Mac",
@@ -274,7 +274,7 @@
             "mode": "gateway",
             "reason": "self",
             "instanceId": "49a913d0-0b4e-4d83-81d1-b79c9d461532",
-            "text": "Gateway: Mac (10.0.0.78) · app 2026.6.11 · mode gateway · reason self",
+            "text": "Gateway: Mac (100.64.0.10) · app 2026.6.11 · mode gateway · reason self",
             "ts": 1783374418420
           },
           {
@@ -420,7 +420,7 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/main/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/main/sessions/sessions.json",
                 "count": 2,
                 "recent": [
                   {
@@ -449,7 +449,7 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/fakoli-welder/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/fakoli-welder/sessions/sessions.json",
                 "count": 0,
                 "recent": []
               }
@@ -467,7 +467,7 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/fakoli-orchestrator/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/fakoli-orchestrator/sessions/sessions.json",
                 "count": 0,
                 "recent": []
               }
@@ -485,7 +485,7 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/fakoli-guido/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/fakoli-guido/sessions/sessions.json",
                 "count": 0,
                 "recent": []
               }
@@ -503,7 +503,7 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/fakoli-critic/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/fakoli-critic/sessions/sessions.json",
                 "count": 0,
                 "recent": []
               }
@@ -521,7 +521,7 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/fakoli-sentinel/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/fakoli-sentinel/sessions/sessions.json",
                 "count": 0,
                 "recent": []
               }
@@ -539,7 +539,7 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/fakoli-smith/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/fakoli-smith/sessions/sessions.json",
                 "count": 0,
                 "recent": []
               }
@@ -557,7 +557,7 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/fakoli-scout/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/fakoli-scout/sessions/sessions.json",
                 "count": 0,
                 "recent": []
               }
@@ -575,7 +575,7 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/fakoli-herald/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/fakoli-herald/sessions/sessions.json",
                 "count": 0,
                 "recent": []
               }
@@ -593,14 +593,14 @@
                 "ackMaxChars": 300
               },
               "sessions": {
-                "path": "/Users/sdoumbouya/.openclaw/agents/fakoli-keeper/sessions/sessions.json",
+                "path": "/Users/operator/.openclaw/agents/fakoli-keeper/sessions/sessions.json",
                 "count": 0,
                 "recent": []
               }
             }
           ],
           "sessions": {
-            "path": "/Users/sdoumbouya/.openclaw/agents/main/sessions/sessions.json",
+            "path": "/Users/operator/.openclaw/agents/main/sessions/sessions.json",
             "count": 2,
             "recent": [
               {
@@ -629,7 +629,7 @@
         }
       },
       "pluginSurfaceUrls": {
-        "canvas": "http://127.0.0.1:18790/__openclaw__/cap/PgV-3fKjo2V5H8UsIEe2fZ4u"
+        "canvas": "http://127.0.0.1:18790/__openclaw__/cap/<redacted>"
       },
       "auth": {
         "role": "operator",
@@ -639,7 +639,7 @@
           "operator.read",
           "operator.write"
         ],
-        "deviceToken": "fZ4iZoLYchqZOgPW5VB6Wz2ErN1Zbzkm1VZdNGfDxiA",
+        "deviceToken": "<redacted>",
         "issuedAtMs": 1781375994095
       },
       "policy": {

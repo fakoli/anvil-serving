@@ -31,7 +31,7 @@ rollback ran, no route changed, and no Puzzle/Gemma configuration was modified.
 ## Policy and target
 
 The operator file did not exist before the run, so there was no prior file to back up. It was
-created at `C:\Users\sdoum\.anvil-serving\host.toml` and intentionally left enabled:
+created at `C:\Users\operator\.anvil-serving\host.toml` and intentionally left enabled:
 
 ```toml
 schema_version = 1

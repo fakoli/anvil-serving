@@ -176,9 +176,9 @@ def test_run_benchmark_populates_transcript_tool_and_topology_evidence():
     clock = _clock_sequence([0.0, 0.1, 0.2, 0.25, 0.3])
 
     result = run_benchmark(
-        stt_config=STTStageConfig(base_url="http://100.87.34.66:30110/v1", model="parakeet"),
-        llm_config=LLMStageConfig(base_url="http://100.87.34.66:8000/v1", model="llm.voice"),
-        tts_config=TTSStageConfig(base_url="http://100.87.34.66:30111/v1", model="kokoro"),
+        stt_config=STTStageConfig(base_url="http://100.64.0.10:30110/v1", model="parakeet"),
+        llm_config=LLMStageConfig(base_url="http://100.64.0.10:8000/v1", model="llm.voice"),
+        tts_config=TTSStageConfig(base_url="http://100.64.0.10:30111/v1", model="kokoro"),
         pcm=b"\x00\x00",
         sample_rate=16000,
         reference_text="what is the weather for 98101",
@@ -211,9 +211,9 @@ def test_run_benchmark_populates_transcript_tool_and_topology_evidence():
     assert run["tool"]["calls"][0]["name"] == "openclaw_agent_consult"
     assert evidence["topology"]["profile"] == "dark-audio"
     assert evidence["topology"]["endpoints"] == {
-        "stt_base_url": "http://100.87.34.66:30110/v1",
-        "llm_base_url": "http://100.87.34.66:8000/v1",
-        "tts_base_url": "http://100.87.34.66:30111/v1",
+        "stt_base_url": "http://100.64.0.10:30110/v1",
+        "llm_base_url": "http://100.64.0.10:8000/v1",
+        "tts_base_url": "http://100.64.0.10:30111/v1",
     }
     mini_assertion = evidence["topology"]["mini_model_free_assertion"]
     assert mini_assertion["checked"] is True
@@ -547,7 +547,7 @@ def test_build_evidence_record_has_stable_json_schema_fields():
         profile="mini-audio",
         candidate="baseline",
         route_identity={
-            "endpoint_host": "100.87.34.66",
+            "endpoint_host": "100.64.0.10",
             "alias": "llm.voice",
         },
     )
@@ -569,7 +569,7 @@ def test_build_evidence_record_has_stable_json_schema_fields():
             "model": "kokoro",
         },
             "route": {
-                "endpoint_host": "100.87.34.66",
+                "endpoint_host": "100.64.0.10",
                 "alias": "llm.voice",
         },
     }

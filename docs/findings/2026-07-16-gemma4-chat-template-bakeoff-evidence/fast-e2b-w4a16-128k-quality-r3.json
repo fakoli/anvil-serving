@@ -468,7 +468,7 @@
     "chat_template_kwargs": {
       "enable_thinking": false
     },
-    "control_evidence": "C:\\Users\\sdoum\\ai-code\\anvil-serving\\docs\\findings\\2026-07-16-gemma4-chat-template-bakeoff-evidence\\fast-e2b-thinking-control.json",
+    "control_evidence": "C:\\Users\\operator\\ai-code\\anvil-serving\\docs\\findings\\2026-07-16-gemma4-chat-template-bakeoff-evidence\\fast-e2b-thinking-control.json",
     "control_evidence_sha256": "c10e344767cb1577b80d45e858169a6c79bc07d390c30f6ed1579ec81f3e6023",
     "control_mechanism": "chat_template_kwargs",
     "control_requested": {

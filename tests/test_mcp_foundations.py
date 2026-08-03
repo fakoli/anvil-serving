@@ -295,6 +295,27 @@ def test_models_inventory_defaults_to_operator_config_home(tmp_path, monkeypatch
     assert seen["catalog_dir"] == str(tmp_path / "model-library")
 
 
+def test_doctor_summary_uses_same_operator_home_default_as_cli(tmp_path, monkeypatch):
+    from anvil_serving import doctor
+
+    operator_config = tmp_path / "operator-home" / "router.toml"
+    operator_config.parent.mkdir()
+    operator_config.write_text("[router]\n", encoding="utf-8")
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(operator_config.parent))
+    seen = {}
+    monkeypatch.setattr(
+        doctor,
+        "checks_summary",
+        lambda **kwargs: seen.update(kwargs) or {"ok": True, "checks": []},
+    )
+
+    result = host_tools.tool_doctor_summary({})
+
+    assert result["ok"]
+    assert seen["config_path"] == str(operator_config)
+    assert seen["config_explicit"] is False
+
+
 def test_model_cache_inventory_is_read_only_and_structured(monkeypatch):
     from anvil_serving import models
 

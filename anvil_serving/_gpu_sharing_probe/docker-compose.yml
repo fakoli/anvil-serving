@@ -1,0 +1,36 @@
+name: anvil-gpu-sharing-probe
+
+services:
+  gpu-sharing-inspect:
+    profiles: ["gpu-sharing-probe"]
+    image: nvidia/cuda@sha256:9cf8694a27722418a1f175d90f85d5afb5a728fd4a9907d7f0565efecfa14d32
+    platform: linux/amd64
+    container_name: cuda-green-context-inspect
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /run/anvil:size=128m,mode=0755,exec
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - "./gpu-sharing:/opt/anvil-gpu-sharing:ro"
+    working_dir: /opt/anvil-gpu-sharing
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:?set COMPUTE_B_GPU_UUID}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${COMPUTE_B_GPU_UUID:?set COMPUTE_B_GPU_UUID}"]
+              capabilities: [gpu]
+    entrypoint: ["/bin/bash", "-lc"]
+    command:
+      - >-
+        nvcc -std=c++17 -O2
+        /opt/anvil-gpu-sharing/inspect.cu
+        -lcuda -ldl -o /run/anvil/gpu-sharing-inspect
+        && /run/anvil/gpu-sharing-inspect

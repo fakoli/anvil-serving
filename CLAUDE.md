@@ -101,6 +101,12 @@ user-relevant benchmark results as dated findings with raw-artifact links and
 the engine, hardware, quantization, context, concurrency, metrics, failures,
 and caveats.
 
+Every tracked file is public by default. Real topology, active/promoted route
+assignments, GPU UUIDs, personal paths, and unsanitized working evidence belong
+in the private operator repository selected through `ANVIL_SERVING_HOME`.
+Credentials remain outside Git through environment or file-backed references.
+Public examples and the packaged scaffold contain generic placeholders only.
+
 ## Working rules
 
 1. Use only the Python standard library in `anvil_serving/` unless explicitly
@@ -109,6 +115,8 @@ and caveats.
    bundled into package data, and it requires Node.js 20+ only when remote MCP
    proxy mode is launched.
 2. Secrets are environment-variable references only; never commit a literal.
+   Treat the private operator repository the same way: it tracks configuration,
+   not credential values.
 3. Return dictionaries from library code; CLI wrappers print.
 4. Durable lifecycle, host, routing, voice, and benchmark operations belong in
    the `anvil-serving` CLI and, where useful, MCP/controller surfaces.
@@ -138,6 +146,7 @@ Use model depth at decision boundaries, then reduce it for bounded execution:
 - `README.md` — product framing and quick start
 - `docs/ARCHITECTURE.md` — current request path and topology
 - `docs/CONFIGURATION.md` — direct-gateway configuration contract
+- `docs/OPERATOR-PRIVACY.md` — public/private repository and evidence boundary
 - `docs/THIN-CAPABILITY-GATEWAY.md` — gateway boundary and omissions
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — harness ownership and direct aliases
 - `docs/adr/0028-serving-benchmarks-and-thin-capability-gateway.md` — rationale
