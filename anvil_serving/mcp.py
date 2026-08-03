@@ -59,6 +59,11 @@ from .control_plane.mcp.stdio import (
 from .control_plane.mcp.tools import TOOLS
 from .control_plane.mcp.tools.benchmarks import (
     tool_benchmark_artifact,
+    tool_benchmark_job_artifact,
+    tool_benchmark_job_cancel,
+    tool_benchmark_job_logs,
+    tool_benchmark_job_status,
+    tool_benchmark_job_submit,
     tool_benchmark_probe,
     tool_preflight_probe,
 )
