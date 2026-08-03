@@ -124,10 +124,10 @@ Read-registry precedence is `--registry`, `$ANVIL_SERVING_HOME/serve-recipes.tom
 (or `~/.anvil-serving/serve-recipes.toml`), a source checkout's immutable
 `./configs/serve-recipes.toml`, then the packaged registry. The latter two are
 portable product catalogs for discovery, not operator promotion state. Create,
-update, and delete require an explicit registry or resolve to the private
-operator home; they never mutate the public checkout or packaged catalog by
-default. A selector may be either a recipe's exact model identifier or its
-unique basename.
+update, and delete require an explicit operator-owned registry path; normally
+pass `$ANVIL_SERVING_HOME/serve-recipes.toml`. They never mutate the public
+checkout or packaged catalog implicitly. A selector may be either a recipe's
+exact model identifier or its unique basename.
 
 ### Discover recipes
 
