@@ -1,0 +1,106 @@
+# Fakoli Dark direct-alias router profile with DeepSeek as the exclusive primary.
+# Existing aliases remain declared for clean unavailability while TP=2 owns
+# both GPU roles; llm.primary is the expected ready chat alias in this mode.
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+
+[router]
+relay_timeout = 60
+availability_probe_interval = 5
+availability_probe_timeout = 1
+
+[[router.tiers]]
+id = "primary-rollback"
+base_url = "http://host.docker.internal:30002/v1"
+model = "qwen35-122b-a10b-nvfp4"
+dialect = "openai"
+context_limit = 262144
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
+health_path = "/health"
+model_identity = true
+
+[[router.tiers]]
+id = "omni-local"
+base_url = "http://host.docker.internal:30003/v1"
+model = "nemotron3-omni-30b-a3b-nvfp4"
+dialect = "openai"
+context_limit = 65536
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_OMNI_LOCAL_KEY"
+health_path = "/health"
+model_identity = true
+
+[[router.tiers]]
+id = "primary-local"
+base_url = "http://host.docker.internal:39062/v1"
+model = "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-650k"
+dialect = "openai"
+context_limit = 650000
+max_output_tokens = 32768
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_PI_LOCAL_KEY"
+health_path = "/health"
+model_identity = true
+timeout = 600
+engine = "vllm-r16-b12x"
+quantization = "official-mixed-fp8-fp4-b12x-w4a8"
+max_concurrency = 16
+
+[router.tiers.params.capacity]
+gpu_role = "dark-compute-a+dark-compute-b"
+gpu_name = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+gpu_memory_total_mib = 195774
+model_memory_gib = 177.05
+kv_cache_capacity_tokens = 1715610
+scheduler_max_num_seqs = 16
+image_limit = 0
+video_limit = 0
+
+[router.tiers.params.capabilities]
+modalities = ["text"]
+thinking = { supported = true, default = "enabled", caller_override = true }
+images_per_request = 0
+video_per_request = 0
+
+[router.tiers.params.fingerprint]
+model_revision = "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+image_digest = "sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f"
+config_fingerprint = "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k"
+
+[router.model_routes]
+llm.primary = "primary-local"
+llm.rollback = "primary-rollback"
+llm.voice = "omni-local"
+vision.ocr = "omni-local"
+vision.general = "omni-local"
+
+[[router.purpose_models]]
+id = "embeddings-local"
+kind = "embedding"
+model = "qwen3-embedding-0.6b"
+base_url = "http://host.docker.internal:30005/v1"
+
+[[router.purpose_models]]
+id = "reranker-local"
+kind = "rerank"
+model = "qwen3-reranker-0.6b"
+base_url = "http://host.docker.internal:30006/v1"
+
+[[router.audio_routes]]
+id = "dark-stt"
+purpose = "stt"
+model = "tdt-0.6b-v3"
+base_url = "http://host.docker.internal:30010/v1"
+default = true
+
+[[router.audio_routes]]
+id = "dark-tts"
+purpose = "tts"
+model = "kokoro"
+base_url = "http://host.docker.internal:30011/v1"
+source_sample_rate = 24000
+default = true
