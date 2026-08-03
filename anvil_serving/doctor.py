@@ -29,12 +29,15 @@ import urllib.request
 from . import gpus as _gpus
 from .paths import config_path, first_existing
 
-DEFAULT_CONFIG = "./router.toml"  # legacy current-directory fallback
+# Retained for callers that explicitly import the old spelling. It is no longer
+# part of default resolution because the current working directory may be a
+# public checkout rather than operator state.
+DEFAULT_CONFIG = "./router.toml"
 
 
 def default_config_candidates():
-    """Search machine-wide configuration before the legacy CWD file."""
-    return [config_path("router.toml"), DEFAULT_CONFIG]
+    """Return operator-owned default router configuration candidates."""
+    return [config_path("router.toml")]
 
 
 def resolve_default_config_path():
@@ -195,7 +198,7 @@ def main(argv):
                     "configured tier health. Non-zero exit on a failed required check.")
     ap.add_argument("--config", default=None,
                     help="router config to probe tier /health from "
-                         "(default: config home, then ./router.toml if present)")
+                         "(default: $ANVIL_SERVING_HOME/router.toml if present)")
     ap.add_argument("--no-config", action="store_true",
                     help="skip the tier /health checks entirely")
     a = ap.parse_args(argv)

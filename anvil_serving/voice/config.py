@@ -306,11 +306,9 @@ def _resolve_config_path(path: str | None) -> str:
     operator_config = config_path("voice.toml")
     if os.path.isfile(operator_config):
         return operator_config
-    if os.path.isfile(DEFAULT_CONFIG):
-        return DEFAULT_CONFIG
     raise ConfigError(
-        "no default voice manifest is available in ~/.anvil-serving/voice.toml "
-        "or this installation; pass an explicit path"
+        "no operator voice manifest found at %s; run anvil-serving init in the "
+        "selected ANVIL_SERVING_HOME or pass an explicit path" % operator_config
     )
 
 
@@ -351,7 +349,7 @@ def load_manifest(
     candidate_overlay: dict | None = None,
     candidate: str | None = None,
 ) -> dict:
-    """Load and validate the voice manifest TOML at `path` (or the shipped example).
+    """Load and validate the voice manifest TOML at `path` (or operator home).
 
     When `profile` is provided, `[voice.profiles.<name>]` is applied as an
     operator-selected overlay before validation. Profiles are for topology

@@ -441,12 +441,10 @@ model = "tts"
         voice_config.load_manifest(str(manifest), profile="missing")
 
 
-def test_shipped_example_default_path_used_when_no_operator_config(tmp_path, monkeypatch):
-    # load_manifest(None) should fall back to DEFAULT_CONFIG when the operator
-    # home has no voice.toml.
+def test_missing_operator_config_does_not_fall_back_to_shipped_example(tmp_path, monkeypatch):
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "missing-home"))
-    data = voice_config.load_manifest(None)
-    assert "voice" in data
+    with pytest.raises(voice_config.ConfigError, match="ANVIL_SERVING_HOME"):
+        voice_config.load_manifest(None)
 
 
 def test_operator_voice_config_is_default_when_present(tmp_path, monkeypatch):

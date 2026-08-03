@@ -81,6 +81,7 @@ def isolate_operator_home(tmp_path, monkeypatch):
     """Keep foundation-only voice CLI tests independent of live operator state."""
     config_home = tmp_path / "operator-home"
     config_home.mkdir(exist_ok=True)
+    (config_home / "voice.toml").write_text(VALID_MANIFEST, encoding="utf-8")
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
 
 
@@ -2107,12 +2108,12 @@ def test_run_does_not_refuse_start_when_endpoints_return_401(tmp_path, monkeypat
     assert "build" in calls  # proves the preflight passed and `run` proceeded
 
 
-def test_default_config_falls_back_to_shipped_example(capsys):
-    # No --config passed: should use the shipped examples/voice example and succeed.
+def test_default_config_uses_operator_home_manifest(capsys):
+    # No --config passed: the isolated operator home provides voice.toml.
     rc = voice_cli.main(_audio_command("up", "--dry-run"))
     assert rc == 0
     out = capsys.readouterr().out
-    assert "anvil-voice" in out
+    assert "test-voice" in out
 
 
 def test_dispatched_via_top_level_cli(capsys):
