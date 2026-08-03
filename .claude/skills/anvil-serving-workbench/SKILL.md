@@ -56,7 +56,8 @@ narration.
 - Harness: `openclaw_sync`, `openclaw_gateway_status`, and
   `openclaw_gateway_restart`.
 - Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
-  `benchmark_artifact`, `benchmark_job_preflight`, `benchmark_job_submit`, `benchmark_job_status`,
+  `benchmark_artifact`, `benchmark_harness_prepare`, `benchmark_harness_status`,
+  `benchmark_harness_cleanup`, `benchmark_job_preflight`, `benchmark_job_submit`, `benchmark_job_status`,
   `benchmark_job_logs`, `benchmark_job_cancel`, `benchmark_job_artifact`,
   `workflow_packet_validate`,
   `external_bench_sources`, `external_bench_list`, `external_bench_report`,
