@@ -172,6 +172,19 @@ class BenchmarkJobStore:
 
         return self._mutate(run_id, change)
 
+    def claim(self, run_id: str) -> dict[str, Any]:
+        """Atomically claim one queued job for exactly one worker process."""
+        def change(record: dict[str, Any]) -> dict[str, Any]:
+            if record["state"] != "queued":
+                raise BenchmarkJobError(
+                    "job_already_claimed",
+                    "benchmark job is not queued",
+                    {"state": record["state"]},
+                )
+            return transition_job(record, "running")
+
+        return self._mutate(run_id, change)
+
     def cancel(
         self,
         run_id: str,

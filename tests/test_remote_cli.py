@@ -4,6 +4,7 @@ import json
 
 from anvil_serving import cli, mcp
 from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
+from anvil_serving.control_plane.mcp.tools import benchmarks
 
 
 def _spec(suite: str = "context") -> str:
@@ -29,6 +30,10 @@ def _spec(suite: str = "context") -> str:
 def test_local_context_job_controls_persist(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("ANVIL_BENCHMARK_JOB_DB", str(tmp_path / "jobs.sqlite3"))
     monkeypatch.setenv("ANVIL_BENCHMARK_RUN_ROOT", str(tmp_path / "runs"))
+    monkeypatch.setattr(
+        "anvil_serving.benchmarking.jobs_cli.launch_benchmark_job",
+        lambda **_kwargs: {"launched": True, "pid": 123},
+    )
     assert cli.main(
         ["eval", "benchmark", "context", "submit", "--spec-json", _spec(), "--confirm"]
     ) == 0
@@ -44,6 +49,11 @@ def test_local_context_job_controls_persist(monkeypatch, tmp_path, capsys):
 def test_remote_job_tools_share_the_portable_spec(monkeypatch, tmp_path):
     monkeypatch.setenv("ANVIL_BENCHMARK_JOB_DB", str(tmp_path / "jobs.sqlite3"))
     monkeypatch.setenv("ANVIL_BENCHMARK_RUN_ROOT", str(tmp_path / "runs"))
+    monkeypatch.setattr(
+        benchmarks,
+        "launch_benchmark_job",
+        lambda **_kwargs: {"launched": True, "pid": 123},
+    )
     result = mcp.call_tool(
         "benchmark_job_submit",
         {
