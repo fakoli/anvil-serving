@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -64,6 +65,93 @@ def test_inventory_refuses_symlink(tmp_path):
 
     with pytest.raises(operator_config.ConfigExportError, match="symlink"):
         operator_config.inventory(str(tmp_path))
+
+
+def test_export_refuses_candidate_swapped_to_symlink_during_read(
+    tmp_path, monkeypatch
+):
+    candidate = _write(tmp_path / "host.toml", "schema_version = 1\n")
+    outside = _write(
+        tmp_path.parent / f"{tmp_path.name}-outside.toml",
+        'api_key = "must-not-export"\n',
+    )
+    prepared_link = tmp_path.parent / f"{tmp_path.name}-prepared-link.toml"
+    try:
+        os.symlink(outside, prepared_link)
+    except OSError:
+        pytest.skip("symlink creation is unavailable")
+    real_open = os.open
+    candidate_opens = 0
+    swap_performed = False
+
+    def swapping_open(path, flags, mode=0o777, *, dir_fd=None):
+        nonlocal candidate_opens, swap_performed
+        if Path(path) == candidate:
+            candidate_opens += 1
+            if candidate_opens == 2:
+                os.replace(prepared_link, candidate)
+                swap_performed = True
+        if dir_fd is None:
+            return real_open(path, flags, mode)
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(operator_config.os, "open", swapping_open)
+
+    with pytest.raises(
+        operator_config.ConfigExportError,
+        match="symlink|changed during validation|unreadable",
+    ):
+        operator_config.export(str(tmp_path))
+    assert swap_performed
+
+
+def test_export_binds_content_to_inventory_snapshot(tmp_path, monkeypatch):
+    candidate = _write(tmp_path / "host.toml", "schema_version = 1\n")
+    outside = _write(tmp_path.parent / "outside-router.toml", "[router]\n")
+    real_read_bounded = operator_config._read_bounded
+    candidate_reads = 0
+
+    def replacing_read(path, *, max_bytes):
+        nonlocal candidate_reads
+        if Path(path) == candidate:
+            candidate_reads += 1
+            if candidate_reads == 2:
+                candidate.write_text(
+                    f'router_config = "{outside.as_posix()}"\n',
+                    encoding="utf-8",
+                )
+        return real_read_bounded(path, max_bytes=max_bytes)
+
+    monkeypatch.setattr(operator_config, "_read_bounded", replacing_read)
+
+    with pytest.raises(operator_config.ConfigExportError, match="since inventory"):
+        operator_config.export(str(tmp_path))
+    assert candidate_reads == 2
+
+
+def test_read_bounded_refuses_same_size_torn_snapshot(tmp_path, monkeypatch):
+    candidate = tmp_path / "host.toml"
+    original = b"A" * (128 * 1024)
+    replacement = b"B" * len(original)
+    candidate.write_bytes(original)
+    initial = candidate.stat()
+    real_read = os.read
+    mutated = False
+
+    def mutating_read(descriptor, size):
+        nonlocal mutated
+        chunk = real_read(descriptor, size)
+        if chunk and not mutated:
+            candidate.write_bytes(replacement)
+            os.utime(candidate, ns=(initial.st_atime_ns, initial.st_mtime_ns))
+            mutated = True
+        return chunk
+
+    monkeypatch.setattr(operator_config.os, "read", mutating_read)
+
+    with pytest.raises(operator_config.ConfigExportError, match="changed while reading"):
+        operator_config._read_bounded(candidate, max_bytes=len(original))
+    assert mutated
 
 
 def test_export_refuses_gateway_symlink_before_resolution(tmp_path):
