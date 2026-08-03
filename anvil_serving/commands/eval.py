@@ -15,6 +15,21 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
     return _node(
         name,
         summary,
+        handler=_handler(
+            "anvil_serving.benchmarking.jobs_cli", argv_prefix=(name, "plan")
+        ),
+        options=(
+            _option(
+                "--profile",
+                summary="Versioned benchmark profile.",
+                value_name="smoke|scout|deep",
+            ),
+            _option(
+                "--observed-context",
+                summary="Observed model context capacity used to enforce output headroom.",
+                value_name="TOKENS",
+            ),
+        ),
         children=(
             _resource_node(
                 "preflight",
