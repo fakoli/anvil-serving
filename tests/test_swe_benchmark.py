@@ -1,0 +1,180 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import subprocess
+from types import SimpleNamespace
+
+import pytest
+
+from anvil_serving.benchmarking.harnesses import HARNESS_ASSETS_SCHEMA
+from anvil_serving.benchmarking.jobs import BenchmarkJobError
+from anvil_serving.benchmarking.profiles import load_profile
+from anvil_serving.benchmarking.swe import (
+    SWE_DATASET,
+    build_swe_run_plan,
+    classify_swe_failure,
+    run_swe_benchmark,
+    validate_swe_selection,
+)
+
+
+INSTANCE = "astropy__astropy-12907"
+
+
+def manifest(profile):
+    assets = {}
+    for name in profile["suites"]["swe"]["adapters"]:
+        adapter = profile["adapters"][name]
+        if adapter["kind"] in {"git", "dataset"}:
+            assets[name] = {
+                **adapter,
+                "cache_key": f"{name}/{adapter['revision']}",
+                "dirty": False,
+            }
+        else:
+            assets[name] = dict(adapter)
+    return {
+        "schema": HARNESS_ASSETS_SCHEMA,
+        "profile_sha256": profile["content_sha256"],
+        "suite": "swe",
+        "assets": assets,
+    }
+
+
+def plan(tmp_path):
+    profile = load_profile("smoke")
+    return build_swe_run_plan(
+        profile,
+        manifest(profile),
+        endpoint={
+            "base_url": "http://100.64.0.10:8000/v1",
+            "model": "deepseek-challenger",
+            "auth_env": "ANVIL_ROUTER_TOKEN",
+        },
+        instance_ids=[INSTANCE],
+        run_root=str(tmp_path / "runs"),
+        cache_root=str(tmp_path / "cache"),
+        ownership_id="campaign",
+        run_id="smoke-one",
+    )
+
+
+def test_plan_pins_selection_router_and_both_harnesses(tmp_path):
+    value = plan(tmp_path)
+    assert value["dataset"] == SWE_DATASET
+    assert value["selection"]["kind"] == "explicit_instance_ids"
+    assert value["selection"]["instance_ids"] == [INSTANCE]
+    assert "^" in value["commands"]["agent"][value["commands"]["agent"].index("--filter") + 1]
+    assert value["commands"]["grader"][-1] == INSTANCE
+    assert value["harnesses"]["agent"]["revision"] == load_profile("smoke")["adapters"]["mini-swe-agent"]["revision"]
+    assert value["harnesses"]["grader"]["revision"] == load_profile("smoke")["adapters"]["swe-bench"]["revision"]
+    assert "secret" not in value["config_text"].lower()
+    assert "http://100.64.0.10:8000/v1" in value["config_text"]
+
+
+def test_selection_cannot_be_implicit_short_or_duplicated():
+    profile = load_profile("smoke")
+    with pytest.raises(BenchmarkJobError) as exc:
+        validate_swe_selection(profile, [])
+    assert exc.value.code == "explicit_swe_selection_required"
+    with pytest.raises(BenchmarkJobError):
+        validate_swe_selection(profile, ["not-an-instance"])
+
+
+class SuccessfulRunner:
+    def __init__(self, value):
+        self.plan = value
+        self.calls = []
+
+    def __call__(self, argv, cwd, timeout, env):
+        self.calls.append((list(argv), cwd, timeout, dict(env)))
+        if "swebench.py" in argv[1]:
+            output = Path(self.plan["paths"]["output"])
+            instance_dir = output / INSTANCE
+            instance_dir.mkdir(parents=True, exist_ok=True)
+            (output / "preds.json").write_text(json.dumps({
+                INSTANCE: {
+                    "model_name_or_path": "openai/deepseek-challenger",
+                    "instance_id": INSTANCE,
+                    "model_patch": "diff --git a/a.py b/a.py\n",
+                }
+            }), encoding="utf-8")
+            (instance_dir / f"{INSTANCE}.traj.json").write_text(json.dumps({
+                "info": {
+                    "exit_status": "Submitted",
+                    "duration_s": 12.5,
+                    "usage": {"prompt_tokens": 101, "completion_tokens": 22},
+                },
+                "messages": [{"extra": {"response": {"id": "req-anvil-1"}}}],
+            }), encoding="utf-8")
+        else:
+            report = Path(self.plan["paths"]["grader_work"]) / (
+                f"openai__deepseek-challenger.{self.plan['run_id']}.json"
+            )
+            report.write_text(json.dumps({
+                "completed_ids": [INSTANCE],
+                "resolved_ids": [INSTANCE],
+                "error_ids": [],
+                "schema_version": 2,
+            }), encoding="utf-8")
+        return SimpleNamespace(returncode=0, stdout=b"ok", stderr=b"")
+
+
+def test_completed_run_requires_official_grader_and_keeps_instance_evidence(tmp_path):
+    value = plan(tmp_path)
+    runner = SuccessfulRunner(value)
+    result = run_swe_benchmark(
+        value,
+        runner=runner,
+        environ={"ANVIL_ROUTER_TOKEN": "not-recorded"},
+    )
+    assert result["state"] == "completed"
+    assert result["official_grader_complete"] is True
+    assert result["summary"]["resolve_rate"] == 1.0
+    instance = result["instances"][0]
+    assert instance["tokens"] == {"prompt_tokens": 101, "completion_tokens": 22, "total_tokens": 123}
+    assert instance["request_ids"] == ["req-anvil-1"]
+    assert instance["grader"]["resolved"] is True
+    assert result["promotion"]["authorized"] is False
+    serialized = json.dumps(result)
+    assert "not-recorded" not in serialized
+
+
+def test_agent_completion_without_official_report_is_incomplete(tmp_path):
+    value = plan(tmp_path)
+    runner = SuccessfulRunner(value)
+
+    def no_report(argv, cwd, timeout, env):
+        result = runner(argv, cwd, timeout, env)
+        if "swebench.harness.run_evaluation" in argv:
+            for path in Path(value["paths"]["grader_work"]).glob("*.json"):
+                path.unlink()
+        return result
+
+    result = run_swe_benchmark(
+        value,
+        runner=no_report,
+        environ={"ANVIL_ROUTER_TOKEN": "token"},
+    )
+    assert result["state"] == "incomplete"
+    assert result["official_grader_complete"] is False
+    assert result["failure"]["stage"] == "official_grader"
+
+
+def test_timeout_and_failures_are_distinct(tmp_path):
+    value = plan(tmp_path)
+
+    def timeout(*_args):
+        raise subprocess.TimeoutExpired(cmd="mini", timeout=1)
+
+    result = run_swe_benchmark(
+        value,
+        runner=timeout,
+        environ={"ANVIL_ROUTER_TOKEN": "token"},
+    )
+    assert result["failure"] == {"class": "timeout", "stage": "agent"}
+    assert classify_swe_failure(stage="agent", returncode=1, text="401 Unauthorized") == "model_failure"
+    assert classify_swe_failure(stage="agent", returncode=1, text="Cannot connect to Docker daemon") == "infrastructure_failure"
+    assert classify_swe_failure(stage="grader", returncode=0, text="tests failed") == "test_failure"
+    assert classify_swe_failure(stage="agent", returncode=1, text="exec format error") == "image_failure"
