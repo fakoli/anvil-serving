@@ -20,10 +20,10 @@ from anvil_serving.control_plane.mcp.tools import models as model_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "3dd27173a8463c8b3b8e19871853ee51771b97069704eb606cc65e12c945258b"
+    "981b8934f60edf478303f4462bb87d1411fe01a0796b611715e18b5f3392fc7d"
 )
 HANDLER_MAP_SHA256 = (
-    "8a3c32d27c89a73ae346cb642b4c8fef8f3875b561e0edbb1ab6cee51b8edd17"
+    "b91d48b3e317b8b19045af99b1f858cfc9cf63a2e95999ec564d27f2d7cce466"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -52,6 +52,15 @@ TOOL_NAMES = [
     "openclaw_sync",
     "openclaw_gateway_restart",
     "openclaw_gateway_status",
+    "benchmark_harness_prepare",
+    "benchmark_harness_status",
+    "benchmark_harness_cleanup",
+    "benchmark_job_preflight",
+    "benchmark_job_submit",
+    "benchmark_job_status",
+    "benchmark_job_logs",
+    "benchmark_job_cancel",
+    "benchmark_job_artifact",
     "preflight_probe",
     "benchmark_probe",
     "benchmark_artifact",
