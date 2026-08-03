@@ -119,6 +119,7 @@ controller, and ordinary CLI remain stdlib-only.
 
 ## Documentation
 
+- [Start here for the next internet model recipe](START_HERE.md)
 - [Getting started](docs/GETTING-STARTED.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Configuration](docs/CONFIGURATION.md)
