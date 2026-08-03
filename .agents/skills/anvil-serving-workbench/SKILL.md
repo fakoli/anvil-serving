@@ -164,8 +164,9 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   metadata-only classification and dependency closure. Use
   `operator_config_export` only for the resulting safe versionable files and
   allowlisted, redacted Anvil-owned gateway fragment. Preserve its refusal on
-  symlinks, outside-root or missing dependencies, unsafe secret fields, and
-  oversized files; never replace it with raw remote filesystem access.
+  symlinks, unsupported YAML export, outside-root or missing dependencies,
+  unsafe secret fields, and oversized files; never replace it with raw remote
+  filesystem access.
 
 ## Model Benchmark Source Freshness
 
