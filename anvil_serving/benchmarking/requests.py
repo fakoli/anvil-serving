@@ -203,7 +203,18 @@ def post_chat(base, model, key, messages, max_tokens=128, timeout=120,
     t0 = time.perf_counter()
     with urllib.request.urlopen(req, timeout=timeout) as response:
         data = json.loads(response.read())
-    return {"latency_s": time.perf_counter() - t0, "response": data}
+        request_id = None
+        response_headers = getattr(response, "headers", {})
+        for name in ("x-request-id", "request-id", "x-anvil-request-id"):
+            value = response_headers.get(name) if hasattr(response_headers, "get") else None
+            if value:
+                request_id = value[:512]
+                break
+    return {
+        "latency_s": time.perf_counter() - t0,
+        "response": data,
+        "request_id": request_id,
+    }
 
 
 def detect_max_model_len(base, model=None, key=None, timeout=15):

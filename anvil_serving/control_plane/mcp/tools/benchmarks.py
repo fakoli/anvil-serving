@@ -15,6 +15,7 @@ from ....benchmarking.harnesses import (
     prepare_harness_assets,
 )
 from ....benchmarking.profiles import load_profile
+from ....benchmarking.worker import cancel_benchmark_job, launch_benchmark_job
 from ...controller.store import BenchmarkJobStore
 from ....benchmarking.artifacts import (
     benchmark_key_metrics as _benchmark_key_metrics,
@@ -83,7 +84,17 @@ def tool_benchmark_job_submit(args: dict) -> dict:
             raise BenchmarkJobError(
                 "suite_mismatch", "job specification suite does not match the command"
             )
-        disposition, job = _benchmark_job_store().submit(spec)
+        store = _benchmark_job_store()
+        disposition, job = store.submit(spec)
+        launch = (
+            launch_benchmark_job(
+                path=store.path,
+                run_root=store.run_root,
+                run_id=job["spec"]["run_id"],
+            )
+            if job["state"] == "queued"
+            else {"launched": False, "reason": f"job is {job['state']}"}
+        )
     except (TypeError, json.JSONDecodeError):
         raise ToolError("bad_spec_json", "spec_json must be valid JSON") from None
     except BenchmarkJobError as exc:
@@ -92,6 +103,7 @@ def tool_benchmark_job_submit(args: dict) -> dict:
         {
             "disposition": disposition,
             "job": job,
+            "worker": launch,
             "follow": follow,
             "detached": detach or not follow,
         }
@@ -150,7 +162,7 @@ def tool_benchmark_job_cancel(args: dict) -> dict:
     run_id = _str_arg(args, "run_id", required=True)
     _job_for_suite(store, run_id, _str_arg(args, "suite", required=True))
     try:
-        return _ok(store.cancel(run_id))
+        return _ok(cancel_benchmark_job(store, run_id))
     except BenchmarkJobError as exc:
         raise _job_error(exc) from None
 
