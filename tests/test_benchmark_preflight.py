@@ -86,6 +86,25 @@ def test_missing_credentials_and_authorization_are_distinct(monkeypatch, tmp_pat
     assert "not-recorded" not in json.dumps(denied)
 
 
+def test_endpoint_auth_normalizes_crlf_dotenv_value(monkeypatch, tmp_path):
+    secured = _spec(endpoint={
+        "base_url": "http://127.0.0.1:8000/v1",
+        "model": "deepseek",
+        "auth_env": "ANVIL_ROUTER_TOKEN",
+    })
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "  routed-token\r")
+
+    def opener(request, **_kwargs):
+        assert request.get_header("Authorization") == "Bearer routed-token"
+        return Response({"data": [{"id": "deepseek", "max_model_len": 650000}]})
+
+    artifact = run_benchmark_preflight(
+        secured, run_root=str(tmp_path / "normalized"), opener=opener
+    )
+
+    assert artifact["passed"] is True
+
+
 @pytest.mark.parametrize(
     ("models", "code"),
     [([{"id": "other"}], "model_mismatch")],
