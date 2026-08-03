@@ -156,7 +156,10 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   allowlisted, redacted Anvil-owned gateway fragment. Preserve its refusal on
   symlinks, unsupported YAML export, outside-root or missing dependencies,
   unsafe secret fields, and oversized files; never replace it with raw remote
-  filesystem access.
+  filesystem access. When a whole-home export is blocked by YAML, use the
+  inventory and an explicit bounded `paths` selection for only the required
+  supported files; every selected file's direct dependency closure is still
+  mandatory.
 
 ## Model Benchmark Source Freshness
 

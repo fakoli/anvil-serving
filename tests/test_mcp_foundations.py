@@ -20,7 +20,7 @@ from anvil_serving.control_plane.mcp.tools import models as model_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "37cd1be9d84272ffbdb6845743fcc7200916f7f9b2ff9770822197638180a04f"
+    "cbd048bc69f047ac095ec5927ca78bb114ae39462784e193b7f1ec225a20e6df"
 )
 HANDLER_MAP_SHA256 = (
     "745870e4d7ba84612d2424b8ec598ee57aa72924a72bba93f02132140b82e74d"
