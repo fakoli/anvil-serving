@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
+import json
 import sys
 
 from ....model_controls import REASONING_EFFORT_CHOICES
+from ....benchmarking.jobs import BenchmarkJobError, validate_job_spec
+from ...controller.store import BenchmarkJobStore
 from ....benchmarking.artifacts import (
     benchmark_key_metrics as _benchmark_key_metrics,
 )
@@ -31,6 +34,104 @@ from ..runtime import (
 from ..security import (
     safe_probe_url as _safe_probe_url,
 )
+
+
+def _benchmark_job_store() -> BenchmarkJobStore:
+    path = os.environ.get("ANVIL_BENCHMARK_JOB_DB")
+    run_root = os.environ.get("ANVIL_BENCHMARK_RUN_ROOT")
+    kwargs = {"run_root": run_root} if run_root else {}
+    return BenchmarkJobStore(path, **kwargs) if path else BenchmarkJobStore(**kwargs)
+
+
+def _job_error(exc: BenchmarkJobError) -> ToolError:
+    return ToolError(exc.code, exc.message, exc.details)
+
+
+def _job_for_suite(store: BenchmarkJobStore, run_id: str, suite: str) -> dict:
+    try:
+        record = store.status(run_id)
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
+    if record is None:
+        raise ToolError("job_not_found", "benchmark job does not exist", {"run_id": run_id})
+    if record["spec"]["suite"] != suite:
+        raise ToolError("suite_mismatch", "run belongs to a different suite")
+    return record
+
+
+def tool_benchmark_job_submit(args: dict) -> dict:
+    suite = _str_arg(args, "suite", required=True)
+    raw = _str_arg(args, "spec_json", required=True)
+    follow = _arg_bool(args.get("follow"), False, name="follow")
+    detach = _arg_bool(args.get("detach"), False, name="detach")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    if follow and detach:
+        raise ToolError("bad_argument", "follow and detach are mutually exclusive")
+    if not confirm:
+        raise ToolError("confirmation_required", "benchmark submission requires confirmation")
+    try:
+        value = json.loads(raw)
+        spec = validate_job_spec(value)
+        if spec["suite"] != suite:
+            raise BenchmarkJobError(
+                "suite_mismatch", "job specification suite does not match the command"
+            )
+        disposition, job = _benchmark_job_store().submit(spec)
+    except (TypeError, json.JSONDecodeError):
+        raise ToolError("bad_spec_json", "spec_json must be valid JSON") from None
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
+    return _ok(
+        {
+            "disposition": disposition,
+            "job": job,
+            "follow": follow,
+            "detached": detach or not follow,
+        }
+    )
+
+
+def tool_benchmark_job_status(args: dict) -> dict:
+    store = _benchmark_job_store()
+    return _ok(_job_for_suite(store, _str_arg(args, "run_id", required=True), _str_arg(args, "suite", required=True)))
+
+
+def tool_benchmark_job_logs(args: dict) -> dict:
+    store = _benchmark_job_store()
+    run_id = _str_arg(args, "run_id", required=True)
+    _job_for_suite(store, run_id, _str_arg(args, "suite", required=True))
+    cursor = _bounded_int_arg(args, "cursor", 0, min_value=0, max_value=2147483647)
+    limit = _bounded_int_arg(args, "limit", 100, min_value=1, max_value=1000)
+    _arg_bool(args.get("follow"), False, name="follow")
+    try:
+        return _ok(store.logs(run_id, cursor=cursor, limit=limit))
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
+
+
+def tool_benchmark_job_cancel(args: dict) -> dict:
+    if not _arg_bool(args.get("confirm"), False, name="confirm"):
+        raise ToolError("confirmation_required", "benchmark cancellation requires confirmation")
+    store = _benchmark_job_store()
+    run_id = _str_arg(args, "run_id", required=True)
+    _job_for_suite(store, run_id, _str_arg(args, "suite", required=True))
+    try:
+        return _ok(store.cancel(run_id))
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
+
+
+def tool_benchmark_job_artifact(args: dict) -> dict:
+    store = _benchmark_job_store()
+    run_id = _str_arg(args, "run_id", required=True)
+    _job_for_suite(store, run_id, _str_arg(args, "suite", required=True))
+    try:
+        artifact = store.artifact(run_id)
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
+    if artifact is None:
+        raise ToolError("artifact_pending", "benchmark artifact is not available")
+    return _ok(artifact)
 
 
 def tool_preflight_probe(args: dict) -> dict:
@@ -338,6 +439,68 @@ def tool_benchmark_artifact(args: dict) -> dict:
 FAMILY = ToolFamily(
     name="benchmarks",
     tools={
+        "benchmark_job_submit": {
+            "description": "Submit one durable context, agentic, or SWE benchmark job.",
+            "inputSchema": _schema(
+                {
+                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "spec_json": {"type": "string", "maxLength": 262144},
+                    "follow": {"type": "boolean"},
+                    "detach": {"type": "boolean"},
+                    "confirm": {"type": "boolean"},
+                },
+                required=["suite", "spec_json"],
+            ),
+            "handler": tool_benchmark_job_submit,
+        },
+        "benchmark_job_status": {
+            "description": "Read durable benchmark job status.",
+            "inputSchema": _schema(
+                {
+                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "run_id": {"type": "string", "maxLength": 128},
+                },
+                required=["suite", "run_id"],
+            ),
+            "handler": tool_benchmark_job_status,
+        },
+        "benchmark_job_logs": {
+            "description": "Read bounded cursor logs for a durable benchmark job.",
+            "inputSchema": _schema(
+                {
+                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "run_id": {"type": "string", "maxLength": 128},
+                    "cursor": _bounded_integer_schema(0, 2147483647, 0),
+                    "limit": _bounded_integer_schema(1, 1000, 100),
+                    "follow": {"type": "boolean"},
+                },
+                required=["suite", "run_id"],
+            ),
+            "handler": tool_benchmark_job_logs,
+        },
+        "benchmark_job_cancel": {
+            "description": "Cancel a durable benchmark job after recording partial evidence.",
+            "inputSchema": _schema(
+                {
+                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "run_id": {"type": "string", "maxLength": 128},
+                    "confirm": {"type": "boolean"},
+                },
+                required=["suite", "run_id"],
+            ),
+            "handler": tool_benchmark_job_cancel,
+        },
+        "benchmark_job_artifact": {
+            "description": "Read a durable benchmark job artifact.",
+            "inputSchema": _schema(
+                {
+                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "run_id": {"type": "string", "maxLength": 128},
+                },
+                required=["suite", "run_id"],
+            ),
+            "handler": tool_benchmark_job_artifact,
+        },
         "preflight_probe": {
             "description": "Preview or run an anvil-serving eval preflight command for a model endpoint.",
             "inputSchema": _schema(

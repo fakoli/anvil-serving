@@ -56,15 +56,16 @@ narration.
 - Harness: `openclaw_sync`, `openclaw_gateway_status`, and
   `openclaw_gateway_restart`.
 - Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
-  `benchmark_artifact`, `workflow_packet_validate`,
+  `benchmark_artifact`, `benchmark_job_submit`, `benchmark_job_status`,
+  `benchmark_job_logs`, `benchmark_job_cancel`, `benchmark_job_artifact`,
+  `workflow_packet_validate`,
   `external_bench_sources`, `external_bench_list`, `external_bench_report`,
   and `external_bench_compare`.
 - Transport discovery: `operation_contracts`.
 
-`benchmark_probe` and `benchmark_artifact` are bounded capacity tools, not
-quality graders. Repeated quality evaluation remains the explicit
-`anvil-serving eval benchmark quality` workflow until a dedicated MCP wrapper
-exists.
+`benchmark_probe` and `benchmark_artifact` are bounded capacity tools. The
+`benchmark_job_*` tools provide durable context, agentic, and SWE job control;
+they do not make a job's grader independent or authorize model promotion.
 
 ## Gates
 
