@@ -397,6 +397,56 @@ def test_load_manifest_rejects_non_positive_integer_vram_mib(tmp_path, vram):
         serves.load_manifest(path)
 
 
+@pytest.mark.parametrize("value", ['"true"', "1", "[]"])
+def test_load_manifest_rejects_non_boolean_native_kv_offload(tmp_path, value):
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "candidate"
+        container = "vllm-candidate"
+        port = 30001
+        model = "candidate-local"
+        engine = "vllm"
+        native_kv_offload = {value}
+    """)
+    with pytest.raises(ValueError, match="native_kv_offload must be a boolean"):
+        serves.load_manifest(path)
+
+
+@pytest.mark.parametrize("missing_field", ["router_config", "rollback_router_config"])
+def test_load_manifest_rejects_missing_exclusive_router_dependency(
+    tmp_path, missing_field,
+):
+    (tmp_path / "router-target.toml").write_text("[router]\n", encoding="utf-8")
+    (tmp_path / "router-rollback.toml").write_text("[router]\n", encoding="utf-8")
+    (tmp_path / ("router-target.toml" if missing_field == "router_config" else
+                 "router-rollback.toml")).unlink()
+    path = _manifest(tmp_path, """
+        [[gpu_roles]]
+        id = "dark-compute-a"
+        vram_mib = 97887
+
+        [[gpu_roles]]
+        id = "dark-compute-b"
+        vram_mib = 97887
+
+        [[serve]]
+        name = "candidate"
+        container = "vllm-candidate"
+        port = 30001
+        model = "candidate-local"
+        engine = "vllm"
+        gpu_roles = ["dark-compute-a", "dark-compute-b"]
+        operating_mode = "dual-gpu-exclusive"
+        tensor_parallel_size = 2
+        router_tier = "primary-local"
+        router_config = "{dir}/router-target.toml"
+        rollback_router_config = "{dir}/router-rollback.toml"
+    """)
+
+    with pytest.raises(ValueError, match=rf"{missing_field} does not exist"):
+        serves.load_manifest(path)
+
+
 @pytest.mark.parametrize("gpu_role", ['""', '"   "', "5"])
 def test_load_manifest_rejects_empty_or_non_string_gpu_role(tmp_path, gpu_role):
     path = _manifest(tmp_path, f"""
@@ -1143,6 +1193,75 @@ def test_cmd_down_reports_native_offload_cleanup_failure(monkeypatch):
     )
 
     assert serves.cmd_down(serv, [], force_remove=True, _run=run) == 1
+
+
+def test_cmd_down_absent_declared_native_offload_reclaims_orphan_mmap(monkeypatch):
+    serv = [{
+        "name": "h", "container": "deepseek", "port": 1, "health": "/health",
+        "native_kv_offload": True,
+    }]
+    run = _inspect_returning("absent")
+    events = []
+    monkeypatch.setattr(
+        serves.host_ops, "container_uses_native_kv_offload",
+        lambda *_args, **_kwargs: pytest.fail("absent container metadata was queried"),
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "prepare_native_kv_offload_shared_memory",
+        lambda **_kwargs: events.append("reclaim") or {"outcome": "reclaimed"},
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "render_vllm_offload_shared_memory",
+        lambda result: events.append(("render", result["outcome"])),
+    )
+
+    assert serves.cmd_down(serv, [], _run=run) == 0
+    assert events == ["reclaim", ("render", "reclaimed")]
+
+
+def test_cmd_down_absent_ordinary_serve_does_not_scan_shared_memory(monkeypatch):
+    serv = [{"name": "h", "container": "ordinary", "port": 1, "health": "/health"}]
+    run = _inspect_returning("absent")
+    monkeypatch.setattr(
+        serves.host_ops, "prepare_native_kv_offload_shared_memory",
+        lambda **_kwargs: pytest.fail("ordinary absent serve attempted shared-memory cleanup"),
+    )
+
+    assert serves.cmd_down(serv, [], _run=run) == 0
+
+
+def test_cmd_down_absent_declared_native_offload_dry_run_does_not_mutate(
+    monkeypatch, capsys,
+):
+    serv = [{
+        "name": "h", "container": "deepseek", "port": 1, "health": "/health",
+        "native_kv_offload": True,
+    }]
+    run = _inspect_returning("absent")
+    monkeypatch.setattr(
+        serves.host_ops, "prepare_native_kv_offload_shared_memory",
+        lambda **_kwargs: pytest.fail("dry-run attempted shared-memory cleanup"),
+    )
+
+    assert serves.cmd_down(serv, [], dry_run=True, _run=run) == 0
+    assert "would inspect/reclaim" in capsys.readouterr().out
+
+
+def test_cmd_down_absent_declared_native_offload_cleanup_failure(monkeypatch):
+    serv = [{
+        "name": "h", "container": "deepseek", "port": 1, "health": "/health",
+        "native_kv_offload": True,
+    }]
+    run = _inspect_returning("absent")
+    monkeypatch.setattr(
+        serves.host_ops, "prepare_native_kv_offload_shared_memory",
+        lambda **_kwargs: {"outcome": "changed"},
+    )
+    monkeypatch.setattr(
+        serves.host_ops, "render_vllm_offload_shared_memory", lambda _result: None,
+    )
+
+    assert serves.cmd_down(serv, [], _run=run) == 1
 
 
 def test_cmd_down_reports_remove_failure_after_stop():

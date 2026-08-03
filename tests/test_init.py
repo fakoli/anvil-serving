@@ -289,6 +289,8 @@ _REAL_HOST_VALUES = (
 _EXPECTED_HOME_FILES = {
     "router.toml", "example.toml", "example-docker.toml",
     "host.toml", "serve-recipes.toml",
+    "anvil-router.deepseek-pi.toml", "anvil-router.live.toml",
+    "anvil-router.qwen35-rollback.toml",
     "serves.toml", "serves.voice.toml", "serves.comfyui.toml",
     "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.voice-proxy.yml",
     "docker-compose.comfyui.yml",
@@ -335,6 +337,9 @@ def test_scaffold_home_router_configs_and_recipes_parse(tmp_path):
         "router.toml",
         "example.toml",
         "example-docker.toml",
+        "anvil-router.deepseek-pi.toml",
+        "anvil-router.live.toml",
+        "anvil-router.qwen35-rollback.toml",
     ):
         cfg = router_config.load(str(tmp_path / name))
         assert cfg.tiers, name
