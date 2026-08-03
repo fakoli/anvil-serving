@@ -253,7 +253,7 @@ def detect_max_model_len(base, model=None, key=None, timeout=15):
 def resolve_api_key(api_key_env=None):
     """Resolve auth for probes from an environment variable reference."""
     if api_key_env:
-        value = os.environ.get(api_key_env)
+        value = (os.environ.get(api_key_env) or "").strip()
         if not value:
             raise ValueError("environment variable %s is not set" % api_key_env)
         return value

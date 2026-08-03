@@ -104,7 +104,7 @@ def _endpoint_models(
 ) -> tuple[list[dict[str, Any]], int | None]:
     endpoint = spec["endpoint"]
     auth_env = endpoint.get("auth_env")
-    token = os.environ.get(auth_env) if auth_env else None
+    token = (os.environ.get(auth_env) or "").strip() if auth_env else None
     if auth_env and not token:
         raise BenchmarkJobError(
             "missing_credentials", "endpoint credential environment variable is not set"
