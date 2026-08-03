@@ -25,9 +25,11 @@ regexes = ['''ZEBRA-42917-QUARTZ''']
 description = "Immutable tokenizer revisions are provenance, not credentials"
 targetRules = ["generic-api-key"]
 condition = "AND"
-regexTarget = "line"
+regexTarget = "match"
 paths = ['''(^|/)docs/findings/.*\.(json|log)$''']
-regexes = ['''tokenizer_revision''']
+regexes = [
+  '''(?i)tokenizer_revision[^\r\n]{0,32}["']?[0-9a-f]{40,64}["']?''',
+]
 
 [[allowlists]]
 description = "Published model-capacity setting"
