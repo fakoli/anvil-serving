@@ -451,25 +451,59 @@ def export(
     home: str | os.PathLike[str] | None = None,
     *,
     gateway_path: str | os.PathLike[str] | None = None,
+    paths: list[str] | tuple[str, ...] | None = None,
     max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> dict:
     """Return exact safe config files and an allowlisted, redacted gateway fragment."""
 
     report = inventory(home, max_bytes=max_bytes)
     root = Path(report["effective_home"])
-    unsupported = [
-        row["path"]
-        for row in report["files"]
-        if row["classification"] == "unsupported"
-    ]
-    if unsupported:
-        raise ConfigExportError(
-            "operator config export does not support YAML without a safe "
-            f"stdlib parser: {', '.join(unsupported)}"
-        )
+    by_path = {row["path"]: row for row in report["files"]}
+    selected_paths: list[str] | None = None
+    if paths is None:
+        selected = {
+            row["path"]
+            for row in report["files"]
+            if row["classification"] in {"versionable", "unsupported"}
+        }
+    else:
+        if not isinstance(paths, (list, tuple)):
+            raise ConfigExportError("paths must be an array of relative file paths")
+        selected_paths = []
+        for raw in paths:
+            if not isinstance(raw, str) or not raw.strip():
+                raise ConfigExportError("paths must contain non-empty strings")
+            relative = Path(raw.strip())
+            if relative.is_absolute() or ".." in relative.parts:
+                raise ConfigExportError(f"selected path must stay relative: {raw}")
+            normalized = relative.as_posix()
+            if normalized not in selected_paths:
+                selected_paths.append(normalized)
+        selected = set(selected_paths)
+
+    pending = list(selected)
+    while pending:
+        relative = pending.pop()
+        row = by_path.get(relative)
+        if row is None:
+            raise ConfigExportError(f"selected path does not exist: {relative}")
+        if row["classification"] == "unsupported":
+            raise ConfigExportError(
+                "operator config export does not support YAML without a safe "
+                f"stdlib parser: {relative}"
+            )
+        if row["classification"] != "versionable":
+            raise ConfigExportError(
+                f"selected path is not safe versionable config: {relative}"
+            )
+        for dependency in row["dependencies"]:
+            if dependency not in selected:
+                selected.add(dependency)
+                pending.append(dependency)
+
     exported = []
     for row in report["files"]:
-        if row["classification"] != "versionable":
+        if row["path"] not in selected:
             continue
         path = root / Path(row["path"])
         data = _read_bounded(path, max_bytes=max_bytes)
@@ -495,6 +529,8 @@ def export(
         "schema": "operator-config-export/v1",
         "effective_home": report["effective_home"],
         "read_only": True,
+        "selected_paths": selected_paths,
+        "dependency_complete": True,
         "files": exported,
         "dependency_edges": report["dependency_edges"],
         "gateway_fragment": fragment,
@@ -526,6 +562,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
         if name == "export":
             command.add_argument("--gateway-path")
+            command.add_argument("--path", dest="paths", action="append")
     args = parser.parse_args(argv)
     try:
         if args.command == "inventory":
@@ -534,6 +571,7 @@ def main(argv: list[str] | None = None) -> int:
             result = export(
                 args.home,
                 gateway_path=args.gateway_path,
+                paths=args.paths,
                 max_bytes=args.max_bytes,
             )
     except ConfigExportError as exc:

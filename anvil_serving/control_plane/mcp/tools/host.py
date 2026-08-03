@@ -91,11 +91,23 @@ def tool_operator_config_export(args: dict) -> dict:
     from .... import operator_config
 
     max_bytes = _operator_config_max_bytes(args)
+    paths = args.get("paths")
+    if paths is not None:
+        if not isinstance(paths, list) or len(paths) > 64:
+            raise ToolError("bad_argument", "paths must be an array of at most 64 strings")
+        if any(
+            not isinstance(path, str) or not path.strip() or len(path) > 512
+            for path in paths
+        ):
+            raise ToolError(
+                "bad_argument", "paths must contain non-empty strings of at most 512 characters"
+            )
     default_gateway = operator_config.default_gateway_path()
     try:
         return _ok(
             operator_config.export(
                 gateway_path=default_gateway,
+                paths=paths,
                 max_bytes=max_bytes,
             )
         )
@@ -223,8 +235,9 @@ FAMILY = ToolFamily(
         },
         "operator_config_export": {
             "description": (
-                "Export safe operator config and an allowlisted, redacted "
-                "Anvil-owned OpenClaw fragment without changing host state."
+                "Export whole-home or explicitly selected safe operator config and an "
+                "allowlisted, redacted Anvil-owned OpenClaw fragment without changing "
+                "host state."
             ),
             "inputSchema": _schema(
                 {
@@ -232,6 +245,11 @@ FAMILY = ToolFamily(
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 16 * 1024 * 1024,
+                    },
+                    "paths": {
+                        "type": "array",
+                        "maxItems": 64,
+                        "items": {"type": "string", "minLength": 1, "maxLength": 512},
                     },
                 }
             ),

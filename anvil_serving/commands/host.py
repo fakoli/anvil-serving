@@ -68,6 +68,11 @@ def commands() -> tuple[CommandNode, ...]:
                                     value_name="PATH",
                                 ),
                                 _option(
+                                    "--path",
+                                    summary="Relative config path to export; repeat for a safe subset.",
+                                    value_name="RELATIVE_PATH",
+                                ),
+                                _option(
                                     "--max-bytes",
                                     summary="Maximum accepted candidate size.",
                                     value_name="BYTES",
@@ -75,7 +80,7 @@ def commands() -> tuple[CommandNode, ...]:
                             ),
                             remote_operation=_remote(
                                 "operator_config_export",
-                                allowed=("max_bytes",),
+                                allowed=("max_bytes", "paths"),
                             ),
                             execution_runtime_roles=("native",),
                             docs_anchor=(

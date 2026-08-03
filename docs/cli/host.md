@@ -178,6 +178,7 @@ configuration owned by a private operator repository:
 ```bash
 anvil-serving host config inventory --json
 anvil-serving host config export --gateway-path ~/.openclaw/openclaw.json --json
+anvil-serving host config export --path anvil-router.live.toml --json
 ```
 
 Both commands resolve the effective operator home from `--home`, then
@@ -190,6 +191,11 @@ Export includes exact content only for TOML, JSON, and env-example files
 classified as versionable Anvil configuration. YAML is reported as
 `unsupported`, and export fails closed when it is present because the packaged
 runtime has no safe stdlib YAML parser for syntax and dependency validation.
+After inventory, repeat `--path RELATIVE_PATH` to request a bounded supported
+subset; its direct dependencies are included automatically, and YAML or any
+non-versionable dependency still fails the selected export. The matching MCP
+tool accepts a bounded `paths` array relative to the resource owner's configured
+home. With no path selection, export continues to require whole-home closure.
 Secret material, runtime databases and logs, backups, caches, and unknown files
 remain excluded with counts. A versionable file containing a secret-like
 literal is refused; credential fields must use environment names or structured

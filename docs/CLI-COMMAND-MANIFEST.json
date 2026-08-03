@@ -17675,6 +17675,15 @@
         },
         {
           "flags": [
+            "--path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Relative config path to export; repeat for a safe subset.",
+          "value_name": "RELATIVE_PATH"
+        },
+        {
+          "flags": [
             "--max-bytes"
           ],
           "output_policy": null,
@@ -17688,7 +17697,8 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [
-          "max_bytes"
+          "max_bytes",
+          "paths"
         ],
         "confirmed_arguments": {},
         "fixed_arguments": {},

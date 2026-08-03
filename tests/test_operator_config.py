@@ -204,6 +204,30 @@ def test_inventory_marks_yaml_unsupported_and_export_fails_closed(tmp_path, cont
         operator_config.export(str(tmp_path))
 
 
+def test_selected_export_ignores_unselected_yaml_and_closes_dependencies(tmp_path):
+    _write(tmp_path / "docker-compose.yml", "services: {}\n")
+    _write(tmp_path / "router.toml", "[router]\n")
+    _write(tmp_path / "serves.toml", 'router_config = "router.toml"\n')
+
+    result = operator_config.export(str(tmp_path), paths=["serves.toml"])
+
+    assert result["selected_paths"] == ["serves.toml"]
+    assert result["dependency_complete"] is True
+    assert [row["path"] for row in result["files"]] == [
+        "router.toml",
+        "serves.toml",
+    ]
+    assert result["excluded_counts"]["unsupported"] == 1
+
+
+@pytest.mark.parametrize("path", ["docker-compose.yml", "../router.toml", ".env"])
+def test_selected_export_refuses_unsupported_escaping_and_secret_paths(tmp_path, path):
+    _write(tmp_path / "docker-compose.yml", "services: {}\n")
+    _write(tmp_path / ".env", "TOKEN=secret\n")
+    with pytest.raises(operator_config.ConfigExportError):
+        operator_config.export(str(tmp_path), paths=[path])
+
+
 def test_full_openclaw_document_inside_home_is_never_exported(tmp_path):
     _write(tmp_path / "openclaw.json", json.dumps({"unrelated": {"private": "value"}}))
     result = operator_config.export(str(tmp_path))
@@ -222,14 +246,17 @@ def test_export_refuses_capability_bearing_url_in_versionable_config(tmp_path):
 
 def test_mcp_inventory_and_export_are_read_only_typed_tools(tmp_path, monkeypatch):
     _write(tmp_path / "host.toml", "schema_version = 1\n")
+    _write(tmp_path / "docker-compose.yml", "services: {}\n")
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
     monkeypatch.setattr(operator_config, "default_gateway_path", lambda: None)
 
     inventory = mcp.call_tool("operator_config_inventory", {})
-    exported = mcp.call_tool("operator_config_export", {})
+    exported = mcp.call_tool("operator_config_export", {"paths": ["host.toml"]})
 
     assert inventory["ok"] is True
-    assert inventory["data"]["files"][0]["path"] == "host.toml"
+    inventory_by_path = {row["path"]: row for row in inventory["data"]["files"]}
+    assert inventory_by_path["host.toml"]["classification"] == "versionable"
+    assert inventory_by_path["docker-compose.yml"]["classification"] == "unsupported"
     assert exported["ok"] is True
     assert exported["data"]["files"][0]["content"].splitlines() == [
         "schema_version = 1"
