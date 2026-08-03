@@ -310,7 +310,10 @@ def resolve_auth_token(
                 status=400,
             )
         return None
-    token = effective_env.get(auth_token_env)
+    # Match the controller client and tolerate CRLF-backed dotenv exports.
+    # Retaining an invisible trailing carriage return here makes a controller
+    # reject the same environment value after the client normalizes it.
+    token = (effective_env.get(auth_token_env) or "").strip()
     if token:
         return token
     if required:
