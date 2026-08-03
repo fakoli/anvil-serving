@@ -23,9 +23,12 @@ runbooks, and working evidence. A small layout is sufficient:
 
 ```text
 anvil-serving-ops-private/
-├── operator-home/       # selected by ANVIL_SERVING_HOME
+├── hosts/
+│   ├── dark/operator-home/  # Dark ANVIL_SERVING_HOME
+│   └── mini/operator-home/  # Mini ANVIL_SERVING_HOME
 ├── evidence/            # private raw/working evidence
 ├── runbooks/            # operator-only procedures and decisions
+├── migration/           # inventories and rollback manifests
 └── README.md
 ```
 
@@ -33,17 +36,24 @@ Do not commit credentials to either repository. Private configuration should
 refer to environment variables or file-backed secrets. Keep `.env`, secret
 files, caches, generated locks, captures, and backup files ignored.
 
-On PowerShell, select the private operator home for the current process:
+Portable recipe definitions remain in the public product catalog and its
+packaged copy. Each host may also track an operator-owned
+`serve-recipes.toml` under its private operator home for local recipes and
+overrides. Recipe locks and numbered backups are runtime state and remain
+ignored. Active route assignments stay in the private manifests; a recipe's
+presence or historical qualification text is not a promotion claim.
+
+On PowerShell, select one private host root for the current process:
 
 ```powershell
-$env:ANVIL_SERVING_HOME = 'C:\path\to\anvil-serving-ops-private\operator-home'
+$env:ANVIL_SERVING_HOME = 'C:\path\to\anvil-serving-ops-private\hosts\dark\operator-home'
 anvil-serving doctor
 ```
 
 On Bash:
 
 ```bash
-export ANVIL_SERVING_HOME=/path/to/anvil-serving-ops-private/operator-home
+export ANVIL_SERVING_HOME=/path/to/anvil-serving-ops-private/hosts/dark/operator-home
 anvil-serving doctor
 ```
 
