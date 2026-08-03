@@ -111,6 +111,11 @@ def _validate_id(value: Any, *, field: str) -> str:
     return value
 
 
+def validate_job_id(value: Any, *, field: str = "run_id") -> str:
+    """Validate a portable benchmark identifier for storage and CLI boundaries."""
+    return _validate_id(value, field=field)
+
+
 def _validate_closed_mapping(
     value: Any,
     *,
