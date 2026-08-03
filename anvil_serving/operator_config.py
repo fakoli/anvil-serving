@@ -32,7 +32,10 @@ _VERSIONABLE_NAMES = {
     "serve-recipes.toml",
     "edge.toml",
 }
-_VERSIONABLE_SUFFIXES = (".toml", ".json")
+_VERSIONABLE_NAME_RE = re.compile(
+    r"^(?:anvil-router|router|serves|voice|host|operator-topology|serve-recipes)"
+    r"(?:\.[a-z0-9][a-z0-9._-]*)?\.toml$"
+)
 _UNSUPPORTED_VERSIONABLE_SUFFIXES = (".yaml", ".yml")
 _SECRET_PARTS = {"secrets", "credentials", "identity"}
 _RUNTIME_SUFFIXES = (".sqlite", ".sqlite3", ".db", ".log", ".pid")
@@ -48,10 +51,31 @@ _DEPENDENCY_KEYS = {
 }
 _SECRET_KEY_RE = re.compile(
     r"(?:^|_)(?:api_?key|token|secret|password|credential|"
-    r"authorization|proxy_authorization|cookie|set_cookie)(?:$|_)",
+    r"authorization|proxy_authorization|cookie|set_cookie|private_?key)(?:$|_)",
     re.IGNORECASE,
 )
-_ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
+_ENV_NAME_RE = re.compile(r"^(?=.{1,128}$)[A-Z_][A-Z0-9_]*$")
+_REFERENCE_PROVIDER_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
+_JSON_POINTER_RE = re.compile(
+    r"^/(?:[^~/\x00-\x1f]|~[01])+(?:/(?:[^~/\x00-\x1f]|~[01])+)*$"
+)
+_AUTH_VALUE_RE = re.compile(r"^\s*(?:bearer|basic)\s+\S+\s*$", re.IGNORECASE)
+_HEADER_CREDENTIAL_RE = re.compile(
+    r"(?:^|[^a-z0-9])(?:[a-z0-9-]*(?:authorization|token|api-?key|cookie))"
+    r"\s*[:=]\s*\S+",
+    re.IGNORECASE,
+)
+_CLI_SECRET_ARG_RE = re.compile(
+    r"(?:^|\s)--?(?:api-?key|token|cookie|authorization)\s+\S+", re.IGNORECASE
+)
+_PRIVATE_KEY_RE = re.compile(
+    r"(?:-{4,5}\s*BEGIN (?:PGP |SSH2 )?(?:ENCRYPTED )?PRIVATE KEY"
+    r"(?: BLOCK)?\s*-{4,5}|PuTTY-User-Key-File-[23]:)",
+    re.IGNORECASE,
+)
+_URL_CANDIDATE_RE = re.compile(
+    r"(?:[a-z][a-z0-9+.-]*:|//|/|\?)[^\s'\"<>]+", re.IGNORECASE
+)
 
 
 class ConfigExportError(ValueError):
@@ -90,7 +114,10 @@ def _classification(relative: Path) -> str:
         name == ".env"
         or name == "openclaw.json"
         or any(part in _SECRET_PARTS for part in lower_parts)
-        or any(token in name for token in ("secret", "credential", "device-auth"))
+        or any(
+            token in name
+            for token in ("secret", "credential", "device-auth", "cookie")
+        )
         or ("token" in name and not name.endswith(".example"))
     ):
         return "secret"
@@ -100,7 +127,7 @@ def _classification(relative: Path) -> str:
         return "runtime"
     if name.endswith(_UNSUPPORTED_VERSIONABLE_SUFFIXES):
         return "unsupported"
-    if name in _VERSIONABLE_NAMES or name.endswith(_VERSIONABLE_SUFFIXES):
+    if name in _VERSIONABLE_NAMES or _VERSIONABLE_NAME_RE.fullmatch(name):
         return "versionable"
     return "unknown"
 
@@ -277,42 +304,191 @@ def inventory(
     }
 
 
+def _normalized_key(value: Any) -> str:
+    text = str(value)
+    text = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", text)
+    text = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", text)
+    return re.sub(r"[^a-zA-Z0-9]+", "_", text).strip("_").lower()
+
+
+def _is_secret_key(value: Any) -> bool:
+    return bool(_SECRET_KEY_RE.search(_normalized_key(value)))
+
+
+def _looks_like_secret_reference(value: Any) -> bool:
+    return isinstance(value, dict) and (
+        value.get("source") in {"env", "file"}
+        or ({"source", "id"} <= set(value) and set(value) <= {"source", "provider", "id"})
+    )
+
+
 def _safe_secret_reference(value: Any) -> bool:
-    return (
-        isinstance(value, dict)
-        and value.get("source") in {"env", "file"}
-        and isinstance(value.get("id"), str)
-        and bool(value["id"].strip())
-        and set(value) <= {"source", "provider", "id"}
+    if not isinstance(value, dict) or set(value) != {"source", "provider", "id"}:
+        return False
+    source = value.get("source")
+    provider = value.get("provider")
+    reference_id = value.get("id")
+    if (
+        source not in {"env", "file"}
+        or not isinstance(provider, str)
+        or not _REFERENCE_PROVIDER_RE.fullmatch(provider)
+        or not isinstance(reference_id, str)
+    ):
+        return False
+    if source == "env":
+        return bool(_ENV_NAME_RE.fullmatch(reference_id))
+    return len(reference_id) <= 256 and bool(_JSON_POINTER_RE.fullmatch(reference_id))
+
+
+def _is_capability_url(value: str) -> bool:
+    decoded = value
+    for _ in range(2):
+        next_value = urllib.parse.unquote(decoded)
+        if next_value == decoded:
+            break
+        decoded = next_value
+    for match in _URL_CANDIDATE_RE.finditer(decoded):
+        candidate = match.group(0).rstrip("),];}")
+        try:
+            parsed = urllib.parse.urlsplit(candidate)
+        except ValueError:
+            return True
+        if (
+            parsed.username
+            or parsed.password
+            or (parsed.query and "=" in parsed.query)
+            or parsed.fragment
+            or re.search(r";[^;/?#=]+=", parsed.path)
+        ):
+            return True
+    return False
+
+
+def _looks_like_secret_literal(value: str) -> bool:
+    return bool(
+        _AUTH_VALUE_RE.search(value)
+        or _HEADER_CREDENTIAL_RE.search(value)
+        or _CLI_SECRET_ARG_RE.search(value)
+        or _PRIVATE_KEY_RE.search(value)
+    )
+
+
+def _header_pair(value: Any) -> tuple[str, Any] | None:
+    if (
+        isinstance(value, (list, tuple))
+        and len(value) == 2
+        and isinstance(value[0], str)
+    ):
+        return value[0], value[1]
+    return None
+
+
+def _is_header_collection_key(value: Any) -> bool:
+    normalized = _normalized_key(value)
+    return normalized in {"headers", "header_pairs", "headers_list"} or normalized.endswith(
+        ("_headers", "_header_pairs", "_headers_list")
+    )
+
+
+def _named_secret_record(value: Any) -> tuple[str, Any | None] | None:
+    if not isinstance(value, dict):
+        return None
+    normalized_fields = [(_normalized_key(field), field) for field in value]
+    name_fields = {"name", "key", "header", "header_name", "key_name"}
+    value_fields = {
+        "value",
+        "values",
+        "header_value",
+        "header_values",
+        "key_value",
+        "key_values",
+    }
+    secret_names = [
+        (actual, value[actual])
+        for normalized, actual in normalized_fields
+        if normalized in name_fields
+        and isinstance(value[actual], str)
+        and _is_secret_key(value[actual])
+    ]
+    if not secret_names:
+        return None
+    actual_values = [
+        actual for normalized, actual in normalized_fields if normalized in value_fields
+    ]
+    label = str(secret_names[0][1])
+    if len(secret_names) != 1 or len(actual_values) != 1:
+        return label, None
+    return label, actual_values[0]
+
+
+def _safe_named_secret_value(value: Any) -> bool:
+    return _safe_secret_reference(value) or (
+        isinstance(value, list)
+        and bool(value)
+        and all(_safe_secret_reference(item) for item in value)
     )
 
 
 def _assert_no_secret_literals(value: Any, *, path: str, key: str = "") -> None:
+    if _looks_like_secret_reference(value):
+        if _safe_secret_reference(value):
+            return
+        raise ConfigExportError(f"versionable config contains an invalid SecretRef: {path}:{key}")
+    named_secret = _named_secret_record(value)
+    if named_secret and (
+        named_secret[1] is None
+        or not _safe_named_secret_value(value[named_secret[1]])
+    ):
+        raise ConfigExportError(
+            f"versionable config contains a named secret value: {path}:{named_secret[0]}"
+        )
     if isinstance(value, dict):
         for child_key, child in value.items():
             child_name = str(child_key)
-            normalized = child_name.lower().replace("-", "_")
-            if _SECRET_KEY_RE.search(normalized) and not normalized.endswith("_env"):
+            normalized = _normalized_key(child_name)
+            if _is_secret_key(child_name) and not normalized.endswith("_env"):
                 if _safe_secret_reference(child):
                     continue
+                if _looks_like_secret_reference(child):
+                    raise ConfigExportError(
+                        f"versionable config contains an invalid SecretRef: "
+                        f"{path}:{child_name}"
+                    )
                 raise ConfigExportError(
                     f"versionable config contains a secret-like field without a SecretRef: "
                     f"{path}:{child_name}"
                 )
             _assert_no_secret_literals(child, path=path, key=child_name)
     elif isinstance(value, list):
+        if _is_header_collection_key(key):
+            flat_pair = _header_pair(value)
+            candidates = [value] if flat_pair else value
+            for child in candidates:
+                pair = _header_pair(child)
+                if (
+                    pair
+                    and _is_secret_key(pair[0])
+                    and not _safe_secret_reference(pair[1])
+                ):
+                    raise ConfigExportError(
+                        f"versionable config contains a secret-like header field: "
+                        f"{path}:{pair[0]}"
+                    )
         for child in value:
             _assert_no_secret_literals(child, path=path, key=key)
-    elif isinstance(value, str) and key.lower().endswith("_env"):
+    elif isinstance(value, str) and _normalized_key(key).endswith("_env"):
         if not _ENV_NAME_RE.fullmatch(value):
             raise ConfigExportError(
                 f"versionable config has an invalid environment reference: {path}:{key}"
             )
     elif isinstance(value, str):
-        parsed = urllib.parse.urlsplit(value)
-        if parsed.scheme and (parsed.username or parsed.password or parsed.query or parsed.fragment):
+        if _is_capability_url(value):
             raise ConfigExportError(
                 f"versionable config contains a capability-bearing URL: {path}:{key}"
+            )
+        if _looks_like_secret_literal(value):
+            raise ConfigExportError(
+                f"versionable config contains a credential-like value: {path}:{key}"
             )
 
 
@@ -323,13 +499,18 @@ def _assert_text_config_safe(text: str, *, parser: str, path: str) -> None:
             if not line or line.startswith("#") or "=" not in line:
                 continue
             name, value = line.split("=", 1)
-            normalized = name.strip().lower()
+            normalized = _normalized_key(name.strip())
             value = value.strip()
-            if _SECRET_KEY_RE.search(normalized) and value and not (
+            if _is_secret_key(normalized) and value and not (
                 value.startswith("${") or value.startswith("<")
             ):
                 raise ConfigExportError(
                     f"versionable config contains a secret-like field: {path}:{name.strip()}"
+                )
+            if _looks_like_secret_literal(value) or _is_capability_url(value):
+                raise ConfigExportError(
+                    f"versionable config contains a credential-like value: "
+                    f"{path}:{name.strip()}"
                 )
         return
     if parser != "yaml":
@@ -339,7 +520,7 @@ def _assert_text_config_safe(text: str, *, parser: str, path: str) -> None:
         if not line or line.startswith("#") or ":" not in line:
             continue
         name, value = line.split(":", 1)
-        normalized = name.strip().lower().replace("-", "_")
+        normalized = _normalized_key(name.strip())
         value = value.strip().strip("'\"")
         if normalized.endswith("_env"):
             if value and not _ENV_NAME_RE.fullmatch(value):
@@ -347,23 +528,39 @@ def _assert_text_config_safe(text: str, *, parser: str, path: str) -> None:
                     f"versionable config has an invalid environment reference: "
                     f"{path}:{name.strip()}"
                 )
-        elif _SECRET_KEY_RE.search(normalized) and value:
+        elif _is_secret_key(normalized) and value:
             raise ConfigExportError(
                 f"versionable config contains a secret-like field: {path}:{name.strip()}"
             )
 
 
 def _sanitize_gateway(value: Any, *, key: str = "") -> tuple[Any, int]:
-    if _safe_secret_reference(value):
-        return dict(value), 0
+    if _looks_like_secret_reference(value):
+        if _safe_secret_reference(value):
+            return dict(value), 0
+        return "<redacted-invalid-secret-ref>", 1
     if isinstance(value, dict):
-        if key.lower() == "env":
-            return {str(name): "<redacted>" for name in sorted(value)}, len(value)
+        if _normalized_key(key) == "env":
+            sanitized_env = {str(name): "<redacted>" for name in sorted(value)}
+            redactions = sum(value[name] != "<redacted>" for name in value)
+            return sanitized_env, redactions
+        named_secret = _named_secret_record(value)
+        if named_secret and named_secret[1] is None:
+            return "<redacted-invalid-named-secret>", 1
         result = {}
         count = 0
         for child_key, child in value.items():
-            normalized = str(child_key).lower().replace("-", "_")
-            if _SECRET_KEY_RE.search(normalized) and not normalized.endswith("_env"):
+            normalized = _normalized_key(child_key)
+            if named_secret and child_key == named_secret[1]:
+                if _safe_secret_reference(child):
+                    result[child_key] = dict(child)
+                elif _safe_named_secret_value(child):
+                    result[child_key] = [dict(item) for item in child]
+                else:
+                    result[child_key] = "<redacted>"
+                    count += 1
+                continue
+            if _is_secret_key(child_key) and not normalized.endswith("_env"):
                 if _safe_secret_reference(child):
                     result[child_key] = dict(child)
                     continue
@@ -375,18 +572,77 @@ def _sanitize_gateway(value: Any, *, key: str = "") -> tuple[Any, int]:
             count += child_count
         return result, count
     if isinstance(value, list):
+        flat_pair = _header_pair(value) if _is_header_collection_key(key) else None
+        if flat_pair and _is_secret_key(flat_pair[0]):
+            if _safe_secret_reference(flat_pair[1]):
+                return [flat_pair[0], dict(flat_pair[1])], 0
+            return [flat_pair[0], "<redacted>"], 1
         result = []
         count = 0
         for child in value:
+            pair = _header_pair(child)
+            if (
+                _is_header_collection_key(key)
+                and pair
+                and _is_secret_key(pair[0])
+            ):
+                if _safe_secret_reference(pair[1]):
+                    result.append([pair[0], dict(pair[1])])
+                else:
+                    result.append([pair[0], "<redacted>"])
+                    count += 1
+                continue
             sanitized, child_count = _sanitize_gateway(child, key=key)
             result.append(sanitized)
             count += child_count
         return result, count
-    if isinstance(value, str) and key.lower().endswith(("url", "uri")):
-        parsed = urllib.parse.urlsplit(value)
-        if parsed.username or parsed.password or parsed.query or parsed.fragment:
+    if isinstance(value, str):
+        if _is_capability_url(value):
             return "<redacted-capability-url>", 1
+        if _looks_like_secret_literal(value):
+            return "<redacted-credential>", 1
     return value, 0
+
+
+def _safe_mcp_server_fragment(value: Any) -> tuple[dict | None, int]:
+    """Return only the known local stdio launch schema; omit every other shape."""
+
+    if not isinstance(value, dict):
+        return None, 1
+    command = value.get("command")
+    args = value.get("args")
+    accepted = {
+        "anvil-serving": ["mcp", "serve"],
+        "python": ["-m", "anvil_serving.cli", "mcp", "serve"],
+        "python3": ["-m", "anvil_serving.cli", "mcp", "serve"],
+        "py": ["-m", "anvil_serving.cli", "mcp", "serve"],
+    }
+    if command not in accepted or args != accepted[command]:
+        return None, 1
+    if "type" in value and value["type"] != "stdio":
+        return None, 1
+
+    result: dict[str, Any] = {"command": command, "args": list(args)}
+    if value.get("type") == "stdio":
+        result["type"] = "stdio"
+    if "enabled" in value:
+        if not isinstance(value["enabled"], bool):
+            return None, 1
+        result["enabled"] = value["enabled"]
+
+    redactions = 0
+    env = value.get("env")
+    if env is not None:
+        if not isinstance(env, dict) or not all(
+            isinstance(name, str) and _ENV_NAME_RE.fullmatch(name) for name in env
+        ):
+            return None, 1
+        result["env"] = {name: "<redacted>" for name in sorted(env)}
+        redactions += len(env)
+
+    allowed_fields = {"type", "command", "args", "env", "enabled"}
+    redactions += len(set(value) - allowed_fields)
+    return result, redactions
 
 
 def _gateway_fragment(path: Path, *, max_bytes: int) -> tuple[dict, dict, int]:
@@ -430,12 +686,17 @@ def _gateway_fragment(path: Path, *, max_bytes: int) -> tuple[dict, dict, int]:
                 selected_talk["realtime"] = selected_realtime
         if selected_talk:
             fragment["talk"] = selected_talk
+    pre_redactions = 0
     servers = parsed.get("mcpServers")
     if isinstance(servers, dict):
-        selected_servers = {
-            name: value for name, value in servers.items()
-            if str(name).lower() in {"anvil", "anvil-serving", "anvil_controller"}
-        }
+        selected_servers = {}
+        for name, value in servers.items():
+            if str(name).lower() not in {"anvil", "anvil-serving", "anvil_controller"}:
+                continue
+            selected, count = _safe_mcp_server_fragment(value)
+            pre_redactions += count
+            if selected is not None:
+                selected_servers[name] = selected
         if selected_servers:
             fragment["mcpServers"] = selected_servers
     sanitized, redactions = _sanitize_gateway(fragment)
@@ -446,7 +707,7 @@ def _gateway_fragment(path: Path, *, max_bytes: int) -> tuple[dict, dict, int]:
         "sha256": hashlib.sha256(data).hexdigest(),
         "parser": "json",
     }
-    return sanitized, metadata, redactions
+    return sanitized, metadata, pre_redactions + redactions
 
 
 def export(
@@ -510,7 +771,8 @@ def export(
         path = root / Path(row["path"])
         data = _read_bounded(path, max_bytes=max_bytes)
         parsed = _parse(path, data, row["parser"])
-        _assert_no_secret_literals(parsed, path=row["path"])
+        if row["parser"] in {"toml", "json"}:
+            _assert_no_secret_literals(parsed, path=row["path"])
         try:
             content = data.decode("utf-8")
         except UnicodeDecodeError as exc:
