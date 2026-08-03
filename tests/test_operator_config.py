@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import subprocess
 
 import pytest
 
@@ -80,6 +81,70 @@ def test_export_refuses_gateway_symlink_before_resolution(tmp_path):
 
     with pytest.raises(operator_config.ConfigExportError, match="gateway.*symlink"):
         operator_config.export(str(tmp_path), gateway_path=str(link))
+
+
+def test_export_refuses_gateway_with_symlinked_parent(tmp_path):
+    _write(tmp_path / "host.toml", "schema_version = 1\n")
+    target_parent = tmp_path.parent / f"{tmp_path.name}-gateway-parent-target"
+    _write(
+        target_parent / "openclaw.json",
+        json.dumps(
+            {"models": {"providers": {"anvil": {"baseUrl": "http://127.0.0.1:8000/v1"}}}}
+        ),
+    )
+    linked_parent = tmp_path.parent / f"{tmp_path.name}-gateway-parent-link"
+    try:
+        os.symlink(target_parent, linked_parent, target_is_directory=True)
+    except OSError:
+        pytest.skip("directory symlink creation is unavailable")
+
+    with pytest.raises(operator_config.ConfigExportError, match="symlink or junction"):
+        operator_config.export(
+            str(tmp_path), gateway_path=str(linked_parent / "openclaw.json")
+        )
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows junction integration")
+def test_export_refuses_gateway_with_junction_parent_on_windows(tmp_path):
+    home = tmp_path / "home"
+    _write(home / "host.toml", "schema_version = 1\n")
+    target_parent = tmp_path / "gateway-junction-target"
+    _write(
+        target_parent / "openclaw.json",
+        json.dumps(
+            {"models": {"providers": {"anvil": {"baseUrl": "http://127.0.0.1:8000/v1"}}}}
+        ),
+    )
+    junction_parent = tmp_path / "gateway-junction"
+    environment = {
+        **os.environ,
+        "ANVIL_TEST_JUNCTION": str(junction_parent),
+        "ANVIL_TEST_TARGET": str(target_parent),
+    }
+    created = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "$ErrorActionPreference='Stop'; "
+            "New-Item -ItemType Junction -Path $env:ANVIL_TEST_JUNCTION "
+            "-Target $env:ANVIL_TEST_TARGET | Out-Null",
+        ],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if created.returncode != 0:
+        pytest.skip("junction creation is unavailable")
+    try:
+        with pytest.raises(operator_config.ConfigExportError, match="symlink or junction"):
+            operator_config.export(
+                str(home), gateway_path=str(junction_parent / "openclaw.json")
+            )
+    finally:
+        junction_parent.rmdir()
 
 
 def test_inventory_refuses_oversized_file(tmp_path):
