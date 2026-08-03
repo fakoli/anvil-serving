@@ -10,13 +10,17 @@ names for credentials, never credential literals.
 config home: `$ANVIL_SERVING_HOME`, or `~/.anvil-serving/` when that variable
 is unset. It copies the packaged templates mirrored from `configs/` and the
 reference manifests into that directory. When an optional path is omitted, the
-runtime checks that config home first, then any legacy CWD or checkout default
-the command supports. Explicit `--config`, `--manifest`, `--registry`, and
-`--topology` paths always take precedence.
+runtime resolves live configuration from that config home. Explicit
+`--config`, `--manifest`, `--registry`, and `--topology` paths always take
+precedence. Public checkout examples are never live defaults. Immutable
+packaged catalogs, such as the shipped recipe registry, may remain read-only
+discovery fallbacks; write operations require an explicit or operator-owned
+destination.
 
 For a production/public checkout, point `ANVIL_SERVING_HOME` at an
-access-controlled companion repository's `operator-home/` directory. Track
-real topology, deployment overlays, and promoted assignments there. Keep
+access-controlled companion repository's host-specific `operator-home/`
+directory. Track real topology, deployment overlays, promoted assignments,
+and operator recipes there. Keep
 credentials outside Git in environment variables or file-backed secret stores.
 See [Public product and private operator state](OPERATOR-PRIVACY.md).
 

@@ -35,7 +35,9 @@ DEFAULT_TIMEOUT_SECONDS = 10.0
 MAX_TIMEOUT_SECONDS = 60.0
 DEFAULT_PROBE_TIMEOUT_SECONDS = 180.0
 MAX_PROBE_TIMEOUT_SECONDS = 300.0
-DEFAULT_PROBE_COMPOSE_FILE = Path("examples/fakoli-dark/docker-compose.experiment.yml")
+DEFAULT_PROBE_COMPOSE_FILE = (
+    Path(__file__).resolve().with_name("_gpu_sharing_probe") / "docker-compose.yml"
+)
 DEFAULT_PROBE_PROFILE = "gpu-sharing-probe"
 DEFAULT_PROBE_SERVICE = "gpu-sharing-inspect"
 DEFAULT_PROBE_IMAGE = (

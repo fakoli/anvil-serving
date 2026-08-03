@@ -328,6 +328,19 @@ def test_timeout_bounds_and_cli_help_contract(capsys):
     assert "--confirm" in output
 
 
+def test_default_probe_assets_are_packaged_and_not_checkout_examples():
+    compose = gpu_sharing.DEFAULT_PROBE_COMPOSE_FILE
+    source = compose.parent / "gpu-sharing" / "inspect.cu"
+
+    assert compose.is_file()
+    assert source.is_file()
+    assert "_gpu_sharing_probe" in compose.parts
+    assert "examples" not in compose.parts
+    assert source.read_text(encoding="utf-8").replace("\r\n", "\n") == (
+        ROOT / "examples" / "fakoli-dark" / "gpu-sharing" / "inspect.cu"
+    ).read_text(encoding="utf-8").replace("\r\n", "\n")
+
+
 def _rendered_probe_service(gpu_uuid=ROLES[0]["uuid"]):
     return {
         "services": {

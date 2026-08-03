@@ -15,6 +15,8 @@ import sys
 import tomllib
 import urllib.parse
 
+from .paths import config_path
+
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_CONFIG = os.path.join(
@@ -37,10 +39,12 @@ class ConfigError(ValueError):
 def _resolve_config_path(path: str | None) -> str:
     if path:
         return path
-    if os.path.isfile(DEFAULT_CONFIG):
-        return DEFAULT_CONFIG
+    operator_config = config_path("voice-sidecar.toml")
+    if os.path.isfile(operator_config):
+        return operator_config
     raise ConfigError(
-        "no default voice sidecar manifest is available in this installation; pass --config PATH"
+        "no operator voice sidecar manifest found at %s; place it in the selected "
+        "ANVIL_SERVING_HOME or pass --config PATH" % operator_config
     )
 
 
@@ -335,7 +339,7 @@ def build_parser(prog: str = "anvil-serving voice sidecar") -> argparse.Argument
     def add_config(sp):
         sp.add_argument(
             "--config",
-            help="sidecar manifest TOML; defaults to the source-checkout example when present",
+            help="sidecar manifest TOML; defaults to $ANVIL_SERVING_HOME/voice-sidecar.toml",
         )
 
     sp = sub.add_parser("validate", help="validate the sidecar manifest")

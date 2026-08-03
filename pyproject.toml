@@ -74,7 +74,13 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
 # resolves them via importlib.resources from any install location — not just a
 # source checkout. Without this the installed `init` (default home scaffold)
 # cannot find its templates (the #252 packaging regression).
-"anvil_serving" = ["py.typed", "_scaffold_templates/*", "_node/*.mjs"]
+"anvil_serving" = [
+    "py.typed",
+    "_scaffold_templates/*",
+    "_node/*.mjs",
+    "_gpu_sharing_probe/*.yml",
+    "_gpu_sharing_probe/gpu-sharing/*.cu",
+]
 "anvil_serving.observability.dashboard.static" = ["*.html"]
 
 [tool.pytest.ini_options]
