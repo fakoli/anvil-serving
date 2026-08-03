@@ -130,6 +130,7 @@ controller, and ordinary CLI remain stdlib-only.
 - [Fakoli Mini to Dark remote control](examples/fakoli-dark/REMOTE-CONTROL.md)
 - [Voice pipeline](docs/VOICE.md)
 - [Benchmarks](docs/benchmarks/index.md)
+  - [Context, agentic, and SWE benchmark jobs](docs/benchmarks/context-agentic-swe.md)
   - [RTX PRO 6000](docs/benchmarks/hardware/rtx-pro-6000.md)
   - [RTX 5090 historical measurements](docs/benchmarks/hardware/rtx-5090.md)
 - [Benchmark run catalog](docs/benchmarks/runs.md)
