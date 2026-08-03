@@ -304,10 +304,31 @@ def run_agentic_suite(
         not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
     ):
         raise BenchmarkJobError("bad_case_limit", "agentic case_limit must be positive")
+    case_ids = parameters.get("case_ids")
+    if case_ids is not None:
+        if (
+            not isinstance(case_ids, list)
+            or not case_ids
+            or any(not isinstance(item, str) or not item for item in case_ids)
+            or len(set(case_ids)) != len(case_ids)
+        ):
+            raise BenchmarkJobError(
+                "bad_agentic_case_ids",
+                "agentic case_ids must be a non-empty list of unique strings",
+            )
+        unknown = set(case_ids).difference(suite["cases"])
+        if unknown:
+            raise BenchmarkJobError(
+                "unknown_agentic_case_id",
+                "agentic case_ids must be present in the pinned profile",
+            )
+        selected_cases = case_ids
+    else:
+        selected_cases = suite["cases"]
     recovery_result = parameters.get("recovery_result", "error")
     observations = []
     request_ids = []
-    for case_type in suite["cases"]:
+    for case_type in selected_cases:
         scenario, expected = build_agentic_scenario(
             case_type,
             recovery_result=recovery_result,

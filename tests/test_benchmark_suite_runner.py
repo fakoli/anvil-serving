@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import copy
 import math
 import re
 
-from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
+import pytest
+
+from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking.suite_runner import run_agentic_suite, run_context_suite
 
@@ -93,11 +94,9 @@ class AgentCaller:
 
 
 def test_agentic_runner_injects_failed_result_then_scores_retry():
-    profile = copy.deepcopy(load_profile("smoke"))
-    profile["suites"]["agentic"]["cases"] = ["tool-recovery"]
     result = run_agentic_suite(
-        profile,
-        spec("agentic", recovery_result="error", case_limit=1),
+        load_profile("smoke"),
+        spec("agentic", recovery_result="error", case_ids=["tool-recovery"]),
         caller=AgentCaller(),
     )
     assert result["passed"] is True
@@ -105,3 +104,13 @@ def test_agentic_runner_injects_failed_result_then_scores_retry():
     assert observation["stages"]["recovery"]["passed"] is True
     assert [call["arguments"]["attempt"] for call in observation["tool_calls"]] == ["1", "2"]
     assert len(result["request_ids"]) == 3
+
+
+@pytest.mark.parametrize("case_ids", [[], ["tool-recovery", "tool-recovery"], ["unknown"]])
+def test_agentic_runner_rejects_invalid_case_selection(case_ids):
+    with pytest.raises(BenchmarkJobError):
+        run_agentic_suite(
+            load_profile("smoke"),
+            spec("agentic", case_ids=case_ids),
+            caller=AgentCaller(),
+        )
