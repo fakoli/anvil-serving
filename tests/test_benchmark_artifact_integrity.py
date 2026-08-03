@@ -135,16 +135,17 @@ def test_evidence_discovery_keeps_measured_and_prior_labels(tmp_path):
 
 def test_publication_redacts_secrets_and_real_private_topology(tmp_path):
     value = measured(tmp_path)
+    synthetic_tailnet_address = ".".join(str(part) for part in (100, 127, 255, 254))
     value["operator"] = {
         "headers": {"Authorization": "Bearer top-secret-token"},
         "env": {"ANVIL_ROUTER_TOKEN": "top-secret-token"},
-        "endpoint": "http://100.87.34.66:8000/v1",
+        "endpoint": f"http://{synthetic_tailnet_address}:8000/v1",
         "magicdns": "private-host.example.ts.net",
     }
     redacted = sanitize_publishable_evidence(value)
     encoded = json.dumps(redacted)
     assert "top-secret-token" not in encoded
-    assert "100.87.34.66" not in encoded
+    assert synthetic_tailnet_address not in encoded
     assert "example.ts.net" not in encoded
     assert "100.64.0.10" in encoded
     with pytest.raises(BenchmarkArtifactError) as exc:
