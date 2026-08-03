@@ -1,0 +1,44 @@
+{
+  "schema_version": "anvil-serving-benchmark-publication/v1",
+  "observed_at": "2026-08-03",
+  "run_id": "deepseek-swe-verified-smoke-20260803-01",
+  "benchmark_kind": "swe_bench_verified",
+  "profile": "smoke",
+  "endpoint": "http://100.64.0.10:8000/v1",
+  "model": {
+    "checkpoint": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "served_name": "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-650k"
+  },
+  "topology": {
+    "worker": "AI-MBP25",
+    "serve_host": "Fakoli Dark",
+    "gpu": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q",
+    "tensor_parallel_size": 2
+  },
+  "harness": {
+    "mini_swe_agent_revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+    "swe_bench_revision": "f7bbbbfefbb0b9efdcddc5eb568a29d9cace17c9",
+    "dataset_revision": "c104a568cd32d76b9a41390466a2c865d98f5d6a",
+    "official_grader": true
+  },
+  "result": {
+    "status": "completed",
+    "instance_id": "django__django-11099",
+    "attempted_instances": 1,
+    "resolved_instances": 1,
+    "resolution_rate": 1.0,
+    "agent_exit_code": 0,
+    "grader_exit_code": 0,
+    "request_ids": 5,
+    "interpretation": "The one-instance official-grader smoke passed. One resolved issue is infrastructure proof, not a general SWE-bench score."
+  },
+  "integrity": {
+    "spec_sha256": "2ca160d0f10bc81404d209e7fce756e399aeb20d8a50c4a3f6f520b40585555b",
+    "artifact_sha256": "93eb2d9abecdd6a1d4e0b38ac99820b22e6129dab48883cc0357ddecb7f045c0",
+    "stage_sha256": "0163bb1395b3d1a3932f5740dcb19f8005e34e8759ec11470e656e23bfca3994",
+    "prediction_sha256": "dcd7202d62b786de764d90d5793d4d1d2f531486e1bd4f2c0b7bf5507a82163d",
+    "trajectory_sha256": "51b9ea68848b11f2fe9a804f23c44edeaf5130d662f1d646c6ef1d875542007f",
+    "official_report_sha256": "2ebbcc2889dc004393f68a0c56d3a4de6f9facaac9b3f4fa3e79f9dc9eb6851b"
+  }
+}

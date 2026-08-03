@@ -2,7 +2,7 @@
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark, Windows 11 with
-Docker Desktop/WSL2. **Reviewed:** 2026-08-02.
+Docker Desktop/WSL2. **Reviewed:** 2026-08-03.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -41,6 +41,7 @@ DeepSeek 650K Primary. Fakoli Mini remains model-free and reaches it remotely.
 | Laguna S 2.1 NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 1.97 s and 70.9 tok/s; 240K 4/4 at 31.85 s and 66.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
 | DeepSeek V4 Flash 0731, r16 B12X + DSpark K5 | coding/intelligence/session/tools 27/27; low/high/max functional gates pass | 128K pass; warmed 125,785-token row 19.44 s TTFO, 23.81 s visible TTFT, 128.9 tok/s decode; matched 4K decode 130.7 tok/s | priority intelligence `challenger`, `no-promotion`; DSpark preferred for experiments, both lanes fail 3 GiB reserve |
 | DeepSeek V4 Flash 0731, r16 B12X + DSpark K5, GPU-only Pi contexts | 650K/maxseq16 passed the low-reasoning gate plus Dark Pi, Mini Pi, and Mini OpenClaw high-reasoning smokes; 1M retained two fatal client-shaped workspace failures | 640K retrieval 120.6 s; matched 32K decode 141.6 tok/s at 650K; 1M qualification reached 985K before later client failures | 650K `current`, human-approved Primary; 1M experimental only; 3 GiB reserve explicitly waived |
+| DeepSeek V4 Flash 0731, remote AI-MBP25 benchmark worker | 8K context 1/1; tool-error retry protocol passed but final answer failed; SWE-bench Verified official-grader smoke resolved 1/1 | 6,102 observed prompt tokens in the 8K context case; larger buckets not attempted | benchmark substrate qualified for scout; no promotion change |
 | DeepSeek V4 Flash 0731, r16 B12X + DSpark K5 + native KV offload | full functional preflight passes; 128K and 256K CPU reload proven | 8 GiB cold 249,573-token row: 43.75 s TTFO, 45.58 s visible TTFT, 5,705 effective prefill tok/s, 135.2 tok/s decode; 16 GiB exact 113,674-token replay: 113,408 external hits, 1.002 GB CPU-to-GPU, 0.825 s TTFO; managed mmap cleanup passes | capacity extension, `no-promotion`; no 256K per-card reserve sample |
 | DeepSeek V4 Flash 0731, earlier SGLang lane | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | retained low-reasoning point-in-time lane; one reasoning-only exhaustion; see r16 row for current DSpark/high/max evidence |
 | Inkling Small NVFP4 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 12/12; 2.79 s TTFO, 4.63 s first-visible TTFT, 73.5 tok/s combined reasoning/visible decode; reasoning-off lane also 12/12 | `no-promotion`; reasoning-off Responses caveat retained |
@@ -106,6 +107,11 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Recent changes
 
+- 2026-08-03: AI-MBP25 completed the first managed remote context, agentic
+  recovery, and SWE-bench Verified smoke against the unchanged 650K DeepSeek
+  Primary. The 8K context and one-instance official grader paths passed. The
+  tool-error case retried correctly but failed its final answer. This qualifies
+  the worker and artifact path for a scout campaign without changing routes.
 - 2026-08-02: after human approval, the 650K/maxseq16 profile became
   `llm.primary` with high reasoning as the client default and a generic
   per-tier 32,768 output cap. Dark Pi, Mini Pi, and Mini OpenClaw passed. The

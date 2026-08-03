@@ -1,0 +1,41 @@
+{
+  "schema_version": "anvil-serving-benchmark-publication/v1",
+  "observed_at": "2026-08-03",
+  "run_id": "deepseek-agentic-recovery-smoke-20260803-01",
+  "benchmark_kind": "agentic",
+  "profile": "smoke",
+  "endpoint": "http://100.64.0.10:8000/v1",
+  "model": {
+    "checkpoint": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "served_name": "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-650k"
+  },
+  "topology": {
+    "worker": "AI-MBP25",
+    "serve_host": "Fakoli Dark",
+    "gpu": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q",
+    "tensor_parallel_size": 2
+  },
+  "result": {
+    "status": "completed",
+    "scenario": "tool-recovery-error",
+    "score": 0,
+    "maximum_score": 1,
+    "failure_class": "reasoning_failure",
+    "checks": {
+      "protocol": "pass",
+      "result_incorporation": "pass",
+      "recovery": "pass",
+      "history": "pass",
+      "reasoning": "fail",
+      "final_answer": "fail"
+    },
+    "tool_attempts": 2,
+    "interpretation": "The model followed the tool protocol and retried after an injected tool error, but did not produce the required final answer."
+  },
+  "integrity": {
+    "spec_sha256": "ec61ff097b94e770480360d2a2616bdca1be067fb0243b9da06594b88cba241d",
+    "artifact_sha256": "b9d336e8709db2660c03d060a9f942afd609e585af0c98f74d9fad650f68693b",
+    "stage_sha256": "6659ae77717e3535911820cf674bd69c9878d3e9649d4d9fc4c6dc627e68dac6"
+  }
+}
