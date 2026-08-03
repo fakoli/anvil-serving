@@ -9,16 +9,17 @@ model fits, runs correctly, performs well, or is safe to promote on this host.
 
 Read this section before starting another recipe campaign.
 
-1. **Fix or explicitly guard the absent-container native-offload cleanup P1.**
-   Post-merge review of PR
-   [#336](https://github.com/fakoli/anvil-serving/pull/336#issuecomment-5155978026)
-   found that `serves down` returns early when a container is already absent,
-   before it can reclaim an orphaned `/dev/shm/vllm_offload_*.mmap`. Track the
-   fix in
-   [the open ticket](.tickets/2026-08-02-native-offload-absent-container-cleanup.md).
-   Until it is fixed, run `anvil-serving host shared-memory status` before and
-   after every native-offload experiment and stop if ownership is blocked or
-   ambiguous. Do not replace the fail-closed reclaim checks with a broad delete.
+1. **Use the fixed managed native-offload cleanup path and retain the live
+   guard.** PR [#342](https://github.com/fakoli/anvil-serving/pull/342) fixes the
+   absent-container defect reported after PR #336. An absent serve requests the
+   existing fail-closed orphan-mmap reclaim only when its manifest explicitly
+   declares `native_kv_offload = true`; ordinary absent serves remain no-ops.
+   The [ticket](.tickets/2026-08-02-native-offload-absent-container-cleanup.md)
+   records the product resolution and the still-required bounded live
+   regression. Until that acceptance run is recorded, inspect `anvil-serving
+   host shared-memory status` before and after every native-offload experiment
+   and stop if ownership is blocked or ambiguous. Never replace the exact-path,
+   two-scan reclaim checks with a broad delete.
 2. **DeepSeek V4 Flash 0731 650K is the human-approved Primary.** The current
    product record promotes the pinned r16 B12X/DSpark K5 profile at 650,000
    served tokens, 16 admitted sequences, a 4,096-token batching budget, FP8 MLA KV,

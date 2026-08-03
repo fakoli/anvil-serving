@@ -1,6 +1,6 @@
 # Native KV-offload cleanup is skipped when the serve container is absent
 
-**Status:** Open; post-merge P1 from PR #336 review
+**Status:** Product defect resolved in PR #342; bounded live acceptance pending
 
 ## Problem
 
@@ -25,6 +25,27 @@ shared memory. A later native-offload load can then fail before serving.
 
 The report was posted after PR #336 had merged. CI for the merged commit was
 green, so this is a missing lifecycle case rather than a failed existing gate.
+
+## Resolution
+
+PR [#342](https://github.com/fakoli/anvil-serving/pull/342) merged as
+`2a2c0b91af2269137ebac2eb46032721d01e04bf` and closes the product defect:
+
+- serve manifests can explicitly declare `native_kv_offload = true`;
+- the absent-container path invokes the existing guarded shared-memory cleanup
+  only for that explicit declaration;
+- dry-run reports the bounded inspection/reclaim intent without mutating; and
+- ordinary absent serves and unrelated shared-memory paths remain untouched.
+
+The exact merged head passed the full Linux/Windows test matrix, both clean
+wheel smokes, Ruff, strict documentation, and public snapshot hygiene. Hermetic
+regression coverage proves the managed dispatch and preserves the underlying
+exact-path, active-owner, mapped-file, two-scan, and postcondition checks.
+
+The final acceptance item is operational rather than a remaining product-code
+gap: perform and record a bounded live regression before relying on this path
+for another native-offload recipe. No live workload was mutated as part of the
+PR merge.
 
 ## Required behavior
 
@@ -53,7 +74,8 @@ green, so this is a missing lifecycle case rather than a failed existing gate.
 
 ## Temporary operator guard
 
-Until fixed, run `anvil-serving host shared-memory status` before and after
-every native-offload experiment. Use the confirmed managed reclaim command only
-when the report classifies the exact files as safe orphans. Never delete
+Until the bounded live regression is recorded, run `anvil-serving host
+shared-memory status` before and after every native-offload experiment. Use the
+confirmed managed reclaim command only when the report classifies the exact
+files as safe orphans. Never delete
 `/dev/shm/vllm_offload_*.mmap` with a broad shell command.
