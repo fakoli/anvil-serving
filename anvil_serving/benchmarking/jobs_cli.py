@@ -10,6 +10,7 @@ import sys
 from ..guard import confirmation_authorized
 from ..control_plane.controller.store import BenchmarkJobStore
 from .harnesses import cleanup_harness_work, harness_asset_status, prepare_harness_assets
+from .evidence_reader import read_referenced_job_evidence
 from .jobs import BenchmarkJobError, validate_job_spec
 from .preflight import run_benchmark_preflight
 from .profiles import load_profile
@@ -59,6 +60,8 @@ def _parser() -> argparse.ArgumentParser:
         for action in ("status", "cancel", "artifact"):
             command = actions.add_parser(action)
             command.add_argument("--run-id", required=True)
+            if action == "artifact":
+                command.add_argument("--path")
             if action == "cancel":
                 command.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
         logs = actions.add_parser("logs")
@@ -183,6 +186,8 @@ def run(argv: list[str]) -> dict:
     if args.action == "logs":
         return store.logs(args.run_id, cursor=args.cursor, limit=args.limit)
     if args.action == "artifact":
+        if args.path:
+            return read_referenced_job_evidence(store, record, args.path)
         artifact = store.artifact(args.run_id)
         if artifact is None:
             raise BenchmarkJobError("artifact_pending", "benchmark artifact is not available")

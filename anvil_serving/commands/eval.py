@@ -194,11 +194,17 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 f"Read the terminal or partial {name} benchmark artifact.",
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
-                options=_JOB_READ_OPTIONS,
+                options=_JOB_READ_OPTIONS + (
+                    _option(
+                        "--path",
+                        summary="Digest-bound stage evidence path from the job artifact.",
+                        value_name="PATH",
+                    ),
+                ),
                 argv_prefix=(name, "artifact"),
                 remote_operation=_remote(
                     "benchmark_job_artifact",
-                    allowed=("run_id",),
+                    allowed=("run_id", "path"),
                     **common_remote,
                 ),
             ),
