@@ -366,7 +366,7 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="anvil-serving benchmark-worker")
+    parser = argparse.ArgumentParser(prog="anvil-benchmark-worker")
     parser.add_argument("--db", required=True)
     parser.add_argument("--run-root", required=True)
     parser.add_argument("--run-id", required=True)
