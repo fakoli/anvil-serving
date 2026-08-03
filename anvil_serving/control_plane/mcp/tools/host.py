@@ -59,6 +59,50 @@ def tool_host_shared_memory(args: dict) -> dict:
     return _ok(host.inspect_vllm_offload_shared_memory())
 
 
+def _operator_config_max_bytes(args: dict) -> int:
+    forbidden = sorted(set(args) & {"home", "gateway_path"})
+    if forbidden:
+        raise ToolError(
+            "bad_argument",
+            "%s cannot be overridden remotely; the resource owner uses its "
+            "configured operator and gateway homes" % ", ".join(forbidden),
+        )
+    max_bytes = _bounded_int_arg(
+        args,
+        "max_bytes",
+        1024 * 1024,
+        min_value=1,
+        max_value=16 * 1024 * 1024,
+    )
+    return max_bytes
+
+
+def tool_operator_config_inventory(args: dict) -> dict:
+    from .... import operator_config
+
+    max_bytes = _operator_config_max_bytes(args)
+    try:
+        return _ok(operator_config.inventory(max_bytes=max_bytes))
+    except operator_config.ConfigExportError as exc:
+        raise ToolError("unsafe_config", str(exc)) from exc
+
+
+def tool_operator_config_export(args: dict) -> dict:
+    from .... import operator_config
+
+    max_bytes = _operator_config_max_bytes(args)
+    default_gateway = operator_config.default_gateway_path()
+    try:
+        return _ok(
+            operator_config.export(
+                gateway_path=default_gateway,
+                max_bytes=max_bytes,
+            )
+        )
+    except operator_config.ConfigExportError as exc:
+        raise ToolError("unsafe_config", str(exc)) from exc
+
+
 def tool_observability_collect(args: dict) -> dict:
     from ....observability.api import controller_collect
 
@@ -160,6 +204,38 @@ FAMILY = ToolFamily(
             ),
             "inputSchema": _schema({}),
             "handler": tool_host_shared_memory,
+        },
+        "operator_config_inventory": {
+            "description": (
+                "Classify an operator config home and verify its direct dependency "
+                "closure without returning file contents."
+            ),
+            "inputSchema": _schema(
+                {
+                    "max_bytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 16 * 1024 * 1024,
+                    },
+                }
+            ),
+            "handler": tool_operator_config_inventory,
+        },
+        "operator_config_export": {
+            "description": (
+                "Export safe operator config and an allowlisted, redacted "
+                "Anvil-owned OpenClaw fragment without changing host state."
+            ),
+            "inputSchema": _schema(
+                {
+                    "max_bytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 16 * 1024 * 1024,
+                    },
+                }
+            ),
+            "handler": tool_operator_config_export,
         },
         "observability_collect": {
             "description": "Collect bounded structured telemetry from declared local capabilities.",

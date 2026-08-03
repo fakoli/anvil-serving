@@ -20,10 +20,10 @@ from anvil_serving.control_plane.mcp.tools import models as model_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "3dd27173a8463c8b3b8e19871853ee51771b97069704eb606cc65e12c945258b"
+    "37cd1be9d84272ffbdb6845743fcc7200916f7f9b2ff9770822197638180a04f"
 )
 HANDLER_MAP_SHA256 = (
-    "8a3c32d27c89a73ae346cb642b4c8fef8f3875b561e0edbb1ab6cee51b8edd17"
+    "745870e4d7ba84612d2424b8ec598ee57aa72924a72bba93f02132140b82e74d"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -44,6 +44,8 @@ TOOL_NAMES = [
     "host_summary",
     "gpu_inventory",
     "host_shared_memory",
+    "operator_config_inventory",
+    "operator_config_export",
     "observability_collect",
     "host_manage",
     "models_inventory",
