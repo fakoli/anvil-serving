@@ -277,6 +277,24 @@ def test_controller_transport_bounds_response_and_classifies_partial_result():
     assert exc.value.may_have_executed is True
 
 
+def test_controller_transport_accepts_configured_response_above_default_bound():
+    body = json.dumps({"ok": True, "data": {"content": "x" * 71_000}}).encode("utf-8")
+    assert transports.DEFAULT_MAX_RESPONSE_BYTES < len(body) <= transports.MAX_RESPONSE_BYTES
+    transport = transports.ControllerTransport(
+        "http://100.64.0.10:8765",
+        auth_env="ANVIL_CONTROLLER_TOKEN",
+        allowed_operations=["host-config-export"],
+        environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        max_response_bytes=transports.MAX_RESPONSE_BYTES,
+        opener=lambda request, timeout: Response(body),
+    )
+
+    result = transport.execute(transports.Operation("host-config-export", {}))
+
+    assert result.data["data"]["content"] == "x" * 71_000
+    assert result.response_bytes == len(body)
+
+
 @pytest.mark.parametrize("body", [b"{}", b'{"ok":"yes"}'])
 def test_controller_transport_rejects_missing_or_malformed_ok(body):
     transport = transports.ControllerTransport(
