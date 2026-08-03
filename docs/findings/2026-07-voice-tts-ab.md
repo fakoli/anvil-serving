@@ -82,9 +82,9 @@ Full proof output:
 ```text
 candidate        ttfa       rtf      status    capture
 ------------------------------------------------------
-kokoro-82m       444.2ms    0.154    ok        C:\Users\sdoum\AppData\Local\Temp\anvil-tts-ab-full-20260706\kokoro-82m.wav
-orpheus-3b       2958.8ms   0.991    ok        C:\Users\sdoum\AppData\Local\Temp\anvil-tts-ab-full-20260706\orpheus-3b.wav
-qwen3-tts-1.7b   4697.1ms   1.796    ok        C:\Users\sdoum\AppData\Local\Temp\anvil-tts-ab-full-20260706\qwen3-tts-1.7b.wav
+kokoro-82m       444.2ms    0.154    ok        C:\Users\operator\AppData\Local\Temp\anvil-tts-ab-full-20260706\kokoro-82m.wav
+orpheus-3b       2958.8ms   0.991    ok        C:\Users\operator\AppData\Local\Temp\anvil-tts-ab-full-20260706\orpheus-3b.wav
+qwen3-tts-1.7b   4697.1ms   1.796    ok        C:\Users\operator\AppData\Local\Temp\anvil-tts-ab-full-20260706\qwen3-tts-1.7b.wav
 ```
 
 | candidate | endpoint | wire model | TTFA (ms) | audio seconds | RTF | automated audio sanity note | quality note |

@@ -1,6 +1,6 @@
 [voice.llm]
-base_url = "http://100.87.34.66:39001/v1"
+base_url = "http://100.64.0.10:39001/v1"
 model = "gemma4-12b-it"
 api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
 speech_chunk_max_chars = 56
-expected_endpoint_host = "100.87.34.66"
+expected_endpoint_host = "100.64.0.10"

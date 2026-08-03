@@ -21,10 +21,18 @@ def tool_doctor_summary(args: dict) -> dict:
     from .... import doctor
 
     no_config = _arg_bool(args.get("no_config"), False, name="no_config")
-    config = None if no_config else args.get("config", doctor.DEFAULT_CONFIG)
+    config_explicit = "config" in args
+    config = None if no_config else args.get("config")
     if config is not None and not isinstance(config, str):
         raise ToolError("bad_argument", "'config' must be a string")
-    return _ok(doctor.checks_summary(config_path=config, config_explicit=bool(args.get("config"))))
+    if config is None and not no_config:
+        config = doctor.resolve_default_config_path()
+    return _ok(
+        doctor.checks_summary(
+            config_path=config,
+            config_explicit=config_explicit,
+        )
+    )
 
 
 def tool_host_summary(args: dict) -> dict:

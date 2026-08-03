@@ -1,7 +1,7 @@
 # Dark-owned STT/TTS audio serves for the OpenClaw Talk reference topology.
 # Publishes each serve on the Dark loopback port (same-host local loop) and on
 # the tailnet bridge port that Fakoli Mini's realtime proxy targets
-# (100.87.34.66:30110 / :30111 — private tailnet only, never LAN).
+# (100.64.0.10:30110 / :30111 — private tailnet only, never LAN).
 # Managed via `anvil-serving voice audio up/down`; do not docker-run by hand.
 name: anvil-voice-audio
 

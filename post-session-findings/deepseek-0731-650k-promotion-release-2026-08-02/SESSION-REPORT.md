@@ -4,7 +4,7 @@
 
 | Metric | Value |
 |---|---:|
-| Project | `C:\Users\sdoum\ai-code\anvil-serving` |
+| Project | `C:\Users\operator\ai-code\anvil-serving` |
 | Runtime | Codex Desktop |
 | Analyzed interval | 2026-08-02 06:51-14:28 UTC |
 | Wall-clock | 7.6 h |

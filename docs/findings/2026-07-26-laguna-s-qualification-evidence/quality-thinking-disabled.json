@@ -457,7 +457,7 @@
     "chat_template_kwargs": {
       "enable_thinking": false
     },
-    "control_evidence": "C:\\Users\\sdoum\\ai-code\\anvil-serving\\docs\\findings\\2026-07-26-laguna-s-qualification-evidence\\thinking-disabled-control.json",
+    "control_evidence": "C:\\Users\\operator\\ai-code\\anvil-serving\\docs\\findings\\2026-07-26-laguna-s-qualification-evidence\\thinking-disabled-control.json",
     "control_evidence_sha256": "7eb26ab85c3fe69212ed25eb5659b1b871e581eeaa3f5dde1f9e2b17324c7258",
     "control_mechanism": "chat_template_kwargs",
     "control_requested": {

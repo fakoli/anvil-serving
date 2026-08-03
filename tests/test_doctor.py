@@ -141,6 +141,14 @@ def test_default_config_prefers_config_home_before_cwd(tmp_path, monkeypatch):
     assert doctor.resolve_default_config_path() == str(home_config)
 
 
+def test_default_config_does_not_use_cwd_router_file(tmp_path, monkeypatch):
+    (tmp_path / "router.toml").write_text("[router]\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "missing-home"))
+
+    assert doctor.resolve_default_config_path() is None
+
+
 def test_run_checks_missing_explicit_config_is_required_fail():
     checks = doctor.run_checks(config_path="./does-not-exist.toml", config_explicit=True,
                                _run=_ok_run, _gpu_run=lambda *a, **k: CSV)

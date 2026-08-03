@@ -34,7 +34,7 @@ anvil-serving checkout:
 
 OpenClaw checkout on Fakoli Mini:
 
-- Deployment worktree: `/Users/sdoumbouya/openclaw-node`
+- Deployment worktree: `/Users/operator/openclaw-node`
 - Local branch state before implementation research: `main...origin/main [behind 6588]`
 - Local dirty file: `npm-shrinkwrap.json`
 - Local HEAD before fetch: `5e1fbca3cb`
@@ -358,7 +358,7 @@ Live host proof:
 
 OpenClaw installation proof:
 
-- `openclaw plugins inspect anvil-voice --runtime --json` reported plugin id `anvil-voice`, status `loaded`, source `/Users/sdoumbouya/anvil/openclaw-anvil-voice-t007/index.ts`, and `realtimeVoiceProviderIds: ["anvil"]`.
+- `openclaw plugins inspect anvil-voice --runtime --json` reported plugin id `anvil-voice`, status `loaded`, source `/Users/operator/anvil/openclaw-anvil-voice-t007/index.ts`, and `realtimeVoiceProviderIds: ["anvil"]`.
 - `openclaw gateway call talk.catalog --json` reported realtime providers `anvil`, `google`, and `openai`, with active realtime provider `anvil`.
 - The `anvil` catalog row reported `label: "Anvil Voice"`, `configured: true`, `transports: ["gateway-relay"]`, `supportsBargeIn: true`, and `supportsToolCalls: false`.
 - `openclaw gateway call talk.config --json` reported Talk realtime provider `anvil` and transport `gateway-relay`; secret-bearing fields were redacted by the CLI response.

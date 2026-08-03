@@ -9,12 +9,12 @@
 
 | item | evidence |
 |---|---|
-| T010 local-loop proof | `docs/findings/2026-07-voice-local-loop-proof.md` row `2026-07-06T05:32:28Z`; session `C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.session.json` |
-| T014 Realtime SDK proof | `docs/findings/2026-07-voice-realtime-proof.md` row `2026-07-06T06:09:48Z`; session `C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\realtime-sdk-20260706T060944Z.session.json` |
+| T010 local-loop proof | `docs/findings/2026-07-voice-local-loop-proof.md` row `2026-07-06T05:32:28Z`; session `C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.session.json` |
+| T014 Realtime SDK proof | `docs/findings/2026-07-voice-realtime-proof.md` row `2026-07-06T06:09:48Z`; session `C:\Users\operator\AppData\Local\Temp\anvil-voice-captures\realtime-sdk-20260706T060944Z.session.json` |
 | T014 PR | `https://github.com/fakoli/anvil-serving/pull/151` |
 | T014 commit | `bf4cac6f37c9186196e3ff5efb47d4231a62f791` |
 | T014 merge commit | `59b3be3e496c835c298a3ade2116aea68aa31480` |
-| T014 Anvil proof | `C:\Users\sdoum\.anvil\workspaces\anvil-serving-7a68b006\.anvil\proofs\voice-pipeline-T014-E006230.json` |
+| T014 Anvil proof | `C:\Users\operator\.anvil\workspaces\anvil-serving-7a68b006\.anvil\proofs\voice-pipeline-T014-E006230.json` |
 | T017 PR | `https://github.com/fakoli/anvil-serving/pull/152` |
 
 ## Independent Checks
@@ -64,7 +64,7 @@ Commands run for this gate:
 git status --porcelain
 gh pr checks
 gh pr checks 152 --json name,state,bucket,startedAt,completedAt,link,workflow
-anvil proof verify C:\Users\sdoum\.anvil\workspaces\anvil-serving-7a68b006\.anvil\proofs\voice-pipeline-T014-E006230.json --trust %TEMP%\anvil-t014-trust.txt --json
+anvil proof verify C:\Users\operator\.anvil\workspaces\anvil-serving-7a68b006\.anvil\proofs\voice-pipeline-T014-E006230.json --trust %TEMP%\anvil-t014-trust.txt --json
 ```
 
 The T017 branch was rebased onto `origin/main` after PR #151 merged, so its

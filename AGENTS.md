@@ -22,22 +22,25 @@ readiness, admission, and metadata-only decisions. The canonical product descrip
    gateway is direct-only: extend its explicit route, protocol, readiness, or
    admission seams; do not reintroduce inferred routing or fallback behavior.
 
-## Published-docs topology policy
+## Public product and private operator-state policy
 
-Everything under `docs/` is published to the public site, including raw evidence
-JSON/text under `docs/findings/`. Published files use **generic topology values**:
+Treat **every tracked file as public**, including `AGENTS.md`, `CLAUDE.md`,
+examples, tests, tickets, and raw evidence under `docs/findings/`.
 
-- The generic tailnet placeholder address is `100.64.0.10`. Never write a real
-  tailnet/private address, MagicDNS name, or any other network identity of an
-  operator's machine into `docs/`. If evidence output contains one, redact it to
-  the placeholder before committing and note the redaction in the finding.
-- Real topology values (actual tailnet addresses, host bindings, ports in use)
-  live only in repo-internal, non-published files: this file, `CLAUDE.md`,
-  `examples/`, and gitignored `.env`/config. Do not "fix" a published doc by
-  copying a real address back in, and do not change `examples/` or code to
-  generic values — those must keep working against the real deployment.
-- Host names (`Fakoli Dark`, `Fakoli Mini`, `fakoli-dark`) are acceptable in
-  published docs; they carry no network-reachable information.
+- The generic tailnet placeholder address is `100.64.0.10`; the reserved
+  `100.64.0.0/24` range may be used for distinct synthetic test fixtures. Never
+  commit a real tailnet/private address, MagicDNS name, personal home path, or
+  other network identity of an operator machine. If evidence contains one,
+  sanitize it before committing and record the redaction in the finding.
+- Real topology values, active/promoted assignments, GPU UUIDs, local paths,
+  and unsanitized working evidence belong in the private operator repository or
+  the operator home selected by `ANVIL_SERVING_HOME`. Credentials remain
+  environment- or file-backed secrets and are never committed, even privately.
+- Files under `examples/` and the packaged scaffold are public templates. They
+  must remain generic and byte-synchronized; `anvil-serving init` may detect
+  real values only while writing to the private operator home.
+- Display labels such as `Fakoli Dark` and `Fakoli Mini` may remain in public
+  benchmark evidence, but they must not resolve to a reachable network identity.
 
 ## Code conventions
 
@@ -51,7 +54,7 @@ JSON/text under `docs/findings/`. Published files use **generic topology values*
   reference OpenClaw voice topology, Fakoli Mini's 16 GB RAM is reserved for
   OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude Code, and Codex. Do not
   run STT, TTS, or LLM model serves on Mini for reference testing. Fakoli Dark
-  owns the router at `http://100.87.34.66:8000/v1`, candidate LLM serves, and
+  owns the router, candidate LLM serves, and
   STT/TTS model endpoints or bridge ports. `mini-dark-audio-proxy` means
   Mini-local proxy ports `127.0.0.1:30110` and `127.0.0.1:30111` forwarding to
   Dark, not local models and not the operator machine. `mini-audio` is an

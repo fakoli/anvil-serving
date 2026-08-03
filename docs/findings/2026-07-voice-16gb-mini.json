@@ -62,7 +62,7 @@
       "endpoint_host": "127.0.0.1",
       "port": 30010,
       "listener": "127.0.0.1:30010",
-      "command": "/Users/sdoumbouya/code/mlx-audio/.venv/bin/python3 -m mlx_audio.server --host 127.0.0.1 --port 30010 --log-dir /tmp/anvil-voice-mini",
+      "command": "/Users/operator/code/mlx-audio/.venv/bin/python3 -m mlx_audio.server --host 127.0.0.1 --port 30010 --log-dir /tmp/anvil-voice-mini",
       "observed_after_benchmark": false,
       "model_probe": null
     },
@@ -73,7 +73,7 @@
       "endpoint_host": "127.0.0.1",
       "port": 30010,
       "listener": "127.0.0.1:30010",
-      "command": "/Users/sdoumbouya/code/mlx-audio/.venv/bin/python3 -m mlx_audio.server --host 127.0.0.1 --port 30010 --log-dir /tmp/anvil-voice-mini",
+      "command": "/Users/operator/code/mlx-audio/.venv/bin/python3 -m mlx_audio.server --host 127.0.0.1 --port 30010 --log-dir /tmp/anvil-voice-mini",
       "observed_after_benchmark": true,
       "model_probe": {
         "ok": true,

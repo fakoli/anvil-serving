@@ -39,7 +39,7 @@
       },
       "audio_sanity_note": "automated PCM sanity only; no human listening pass by this script",
       "source_sample_rate": 24000,
-      "capture_path": "C:\\Users\\sdoum\\AppData\\Local\\Temp\\anvil-tts-ab-qwen3-20260706\\qwen3-tts-1.7b.wav",
+      "capture_path": "C:\\Users\\operator\\AppData\\Local\\Temp\\anvil-tts-ab-qwen3-20260706\\qwen3-tts-1.7b.wav",
       "quality": "not measured; human listening pass required",
       "error": null,
       "readiness": {

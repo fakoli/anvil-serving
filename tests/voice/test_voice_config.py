@@ -196,9 +196,9 @@ def test_fakoli_mini_manifest_is_valid_and_preserves_route_contract():
     data = voice_config.load_manifest("examples/voice/fakoli-mini.toml")
 
     assert data["voice"]["name"] == "anvil-voice-fakoli-mini"
-    assert data["voice"]["llm"]["base_url"] == "http://100.87.34.66:8000/v1"
+    assert data["voice"]["llm"]["base_url"] == "http://100.64.0.10:8000/v1"
     assert data["voice"]["llm"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
-    assert data["voice"]["llm"]["expected_endpoint_host"] == "100.87.34.66"
+    assert data["voice"]["llm"]["expected_endpoint_host"] == "100.64.0.10"
     assert data["voice"]["llm"]["system_prompt"].endswith("I understand.")
     assert data["voice"]["llm"]["temperature"] == 0.0
     assert data["voice"]["llm"]["max_tokens"] == 8
@@ -223,8 +223,8 @@ def test_fakoli_dark_manifest_marks_sidecars_external():
 
 def test_openclaw_voice_manifest_profiles_are_valid():
     raw = voice_config.load_manifest("examples/voice/openclaw-anvil-voice.toml")
-    assert raw["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
-    assert raw["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
+    assert raw["voice"]["stt"]["base_url"] == "http://100.64.0.10:30110/v1"
+    assert raw["voice"]["tts"]["base_url"] == "http://100.64.0.10:30111/v1"
     assert raw["voice"]["stt"]["lifecycle"] == "external"
     assert raw["voice"]["tts"]["lifecycle"] == "external"
     assert voice_config.profile_names(raw) == [
@@ -259,8 +259,8 @@ def test_openclaw_voice_manifest_profiles_are_valid():
         profile="dark-audio",
     )
     assert dark["voice"]["llm"]["speech_chunk_max_chars"] == 72
-    assert dark["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
-    assert dark["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
+    assert dark["voice"]["stt"]["base_url"] == "http://100.64.0.10:30110/v1"
+    assert dark["voice"]["tts"]["base_url"] == "http://100.64.0.10:30111/v1"
     assert dark["voice"]["stt"]["lifecycle"] == "external"
     assert "start_command" not in dark["voice"]["stt"]
     assert "pid_file" not in dark["voice"]["tts"]
@@ -269,8 +269,8 @@ def test_openclaw_voice_manifest_profiles_are_valid():
         "examples/voice/openclaw-anvil-voice.toml",
         profile="gepard-fast-tts",
     )
-    assert gepard["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
-    assert gepard["voice"]["tts"]["base_url"] == "http://100.87.34.66:39111"
+    assert gepard["voice"]["stt"]["base_url"] == "http://100.64.0.10:30110/v1"
+    assert gepard["voice"]["tts"]["base_url"] == "http://100.64.0.10:39111"
     assert gepard["voice"]["tts"]["model"] == "gepard-1.0"
     assert gepard["voice"]["tts"]["protocol"] == "gepard"
     assert gepard["voice"]["tts"]["source_sample_rate"] == 22050
@@ -299,11 +299,11 @@ def test_openclaw_voice_manifest_profiles_are_valid():
         "examples/voice/openclaw-anvil-voice.toml",
         profile="candidate-qwen3-32b",
     )
-    assert candidate["voice"]["llm"]["base_url"] == "http://100.87.34.66:39000/v1"
+    assert candidate["voice"]["llm"]["base_url"] == "http://100.64.0.10:39000/v1"
     assert candidate["voice"]["llm"]["model"] == "qwen3-32b-nvfp4"
     assert candidate["voice"]["llm"]["api_key_env"] == "ANVIL_CANDIDATE_LLM_TOKEN"
-    assert candidate["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
-    assert candidate["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
+    assert candidate["voice"]["stt"]["base_url"] == "http://100.64.0.10:30110/v1"
+    assert candidate["voice"]["tts"]["base_url"] == "http://100.64.0.10:30111/v1"
     assert candidate["voice"]["stt"]["lifecycle"] == "external"
     assert candidate["voice"]["tts"]["lifecycle"] == "external"
 
@@ -317,9 +317,9 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     )
     assert composed.profile == "dark-audio"
     assert composed.candidate == "qwen3-32b-nvfp4"
-    assert composed.llm_base_url == "http://100.87.34.66:39000/v1"
-    assert composed.stt_base_url == "http://100.87.34.66:30110/v1"
-    assert composed.tts_base_url == "http://100.87.34.66:30111/v1"
+    assert composed.llm_base_url == "http://100.64.0.10:39000/v1"
+    assert composed.stt_base_url == "http://100.64.0.10:30110/v1"
+    assert composed.tts_base_url == "http://100.64.0.10:30111/v1"
 
 
 def test_resolve_manifest_data_returns_profile_identity():
@@ -327,15 +327,15 @@ def test_resolve_manifest_data_returns_profile_identity():
     data["voice"]["profiles"] = {
         "dark-audio": {
             "llm": {
-                "base_url": "http://100.87.34.66:8000/v1",
+                "base_url": "http://100.64.0.10:8000/v1",
                 "model": "auxiliary-local",
             },
             "stt": {
-                "base_url": "http://100.87.34.66:30110/v1",
+                "base_url": "http://100.64.0.10:30110/v1",
                 "model": "tdt_ctc-110m",
             },
             "tts": {
-                "base_url": "http://100.87.34.66:30111/v1",
+                "base_url": "http://100.64.0.10:30111/v1",
                 "model": "kokoro",
             },
         },
@@ -345,11 +345,11 @@ def test_resolve_manifest_data_returns_profile_identity():
 
     assert resolved.profile == "dark-audio"
     assert resolved.candidate is None
-    assert resolved.llm_base_url == "http://100.87.34.66:8000/v1"
+    assert resolved.llm_base_url == "http://100.64.0.10:8000/v1"
     assert resolved.llm_model == "auxiliary-local"
     assert resolved.stt_model == "tdt_ctc-110m"
     assert resolved.tts_model == "kokoro"
-    assert resolved.identity()["tts_base_url"] == "http://100.87.34.66:30111/v1"
+    assert resolved.identity()["tts_base_url"] == "http://100.64.0.10:30111/v1"
 
 
 def test_candidate_overlay_merges_after_profile_without_mutating_source():
@@ -441,12 +441,10 @@ model = "tts"
         voice_config.load_manifest(str(manifest), profile="missing")
 
 
-def test_shipped_example_default_path_used_when_no_operator_config(tmp_path, monkeypatch):
-    # load_manifest(None) should fall back to DEFAULT_CONFIG when the operator
-    # home has no voice.toml.
+def test_missing_operator_config_does_not_fall_back_to_shipped_example(tmp_path, monkeypatch):
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "missing-home"))
-    data = voice_config.load_manifest(None)
-    assert "voice" in data
+    with pytest.raises(voice_config.ConfigError, match="ANVIL_SERVING_HOME"):
+        voice_config.load_manifest(None)
 
 
 def test_operator_voice_config_is_default_when_present(tmp_path, monkeypatch):
@@ -559,7 +557,7 @@ def test_rejects_0000_and_ipv6_loopback():
 def test_accepts_non_loopback_remote_host():
     # STT/TTS may legitimately live on a different tailnet/LAN host.
     data = _valid_manifest()
-    data["voice"]["stt"]["base_url"] = "http://100.87.34.66:8090/v1"
+    data["voice"]["stt"]["base_url"] = "http://100.64.0.10:8090/v1"
     voice_config.validate_manifest(data)  # should not raise
 
 
@@ -629,7 +627,7 @@ def test_native_audio_lifecycle_requires_start_command():
 def test_native_audio_lifecycle_requires_same_host_base_url():
     data = _valid_manifest()
     data["voice"]["stt"].update({
-        "base_url": "http://100.87.34.66:30010/v1",
+        "base_url": "http://100.64.0.10:30010/v1",
         "lifecycle": "native",
         "start_command": "python -m mlx_audio.server --port 30010",
     })
@@ -815,14 +813,14 @@ def test_rejects_non_loopback_realtime_host_without_token_env():
     itself must reject this combination too, so it can never validate as
     "OK" in the first place."""
     data = _valid_manifest()
-    data["voice"]["realtime_host"] = "100.87.34.66"
+    data["voice"]["realtime_host"] = "100.64.0.10"
     with pytest.raises(voice_config.ConfigError, match="realtime_token_env"):
         voice_config.validate_manifest(data)
 
 
 def test_accepts_non_loopback_realtime_host_with_token_env():
     data = _valid_manifest()
-    data["voice"]["realtime_host"] = "100.87.34.66"
+    data["voice"]["realtime_host"] = "100.64.0.10"
     data["voice"]["realtime_token_env"] = "ANVIL_VOICE_REALTIME_TOKEN"
     voice_config.validate_manifest(data)  # should not raise
 
@@ -873,9 +871,9 @@ def test_accepts_managed_proxy_with_direct_endpoints_including_tailnet_hosts():
     data = _valid_manifest()
     data["voice"]["proxy"] = {
         "lifecycle": "managed",
-        "stt_url": "http://100.87.34.66:30110/v1",
-        "tts_url": "http://100.87.34.66:30111/v1",
-        "router_url": "http://100.87.34.66:8000/v1",
+        "stt_url": "http://100.64.0.10:30110/v1",
+        "tts_url": "http://100.64.0.10:30111/v1",
+        "router_url": "http://100.64.0.10:8000/v1",
     }
     voice_config.validate_manifest(data)  # non-loopback direct endpoints are allowed
 

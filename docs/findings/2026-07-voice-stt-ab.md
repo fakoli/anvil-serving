@@ -78,7 +78,7 @@ Claude session:
 python scripts/voice/preflight_stt.py --no-bring-up `
   --candidate name=parakeet.cpp,base_url=http://127.0.0.1:30010/v1,model=tdt_ctc-110m,container=parakeet-stt,stream=false `
   --candidate name=vllm-whisper-tiny,base_url=http://127.0.0.1:30015/v1,model=whisper-tiny,container=anvil-stt-vllm-whisper-tiny-eager-test,stream=false `
-  --sample 'C:\Users\sdoum\AppData\Local\Temp\claude\C--Users-sdoum-ai-code-anvil-serving\21eba8ab-885c-4f97-acef-864745e5c375\scratchpad\test_stt.wav' `
+  --sample 'C:\Users\operator\AppData\Local\Temp\claude\C--Users-operator-ai-code-anvil-serving\21eba8ab-885c-4f97-acef-864745e5c375\scratchpad\test_stt.wav' `
   --reference-text 'The quick brown fox jumps over the lazy dog. Anvil serving routes local models where proven and cloud where not.' `
   --report docs/findings/stt-ab-live-20260705.json
 ```

@@ -51,3 +51,4 @@ people and the chat logs.
 | [0029](0029-modular-command-registry.md) | Modular command registry with parser-owned leaf help | Accepted |
 | [0030](0030-containerized-remote-controller-and-mcp-2026.md) | Containerized Dark controller and MCP 2026-only remote operation | Superseded by ADR-0031 |
 | [0031](0031-dual-era-typescript-mcp-bridge.md) | Dual-era TypeScript MCP bridge on Fakoli Mini | Accepted |
+| [0032](0032-public-product-private-operator-state.md) | Public product, private operator state | Accepted |
