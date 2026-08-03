@@ -47,7 +47,9 @@ _DEPENDENCY_KEYS = {
     "compose_file",
 }
 _SECRET_KEY_RE = re.compile(
-    r"(?:^|_)(?:api_?key|token|secret|password|credential)(?:$|_)", re.IGNORECASE
+    r"(?:^|_)(?:api_?key|token|secret|password|credential|"
+    r"authorization|proxy_authorization|cookie|set_cookie)(?:$|_)",
+    re.IGNORECASE,
 )
 _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
 

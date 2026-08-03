@@ -177,6 +177,55 @@ def test_export_refuses_secret_literal_in_versionable_config(tmp_path):
         operator_config.export(str(tmp_path))
 
 
+@pytest.mark.parametrize(
+    ("name", "content"),
+    [
+        (
+            "router.json",
+            json.dumps({"headers": {"Authorization": "Bearer reusable-secret"}}),
+        ),
+        (
+            "router.json",
+            json.dumps({"headers": {"Cookie": "session=reusable-secret"}}),
+        ),
+        (
+            "router.toml",
+            '[headers]\nproxy-authorization = "Basic reusable-secret"\n',
+        ),
+        (
+            "router.toml",
+            '[headers]\nset-cookie = "session=reusable-secret"\n',
+        ),
+    ],
+)
+def test_export_refuses_http_credential_literals(tmp_path, name, content):
+    _write(tmp_path / name, content)
+
+    with pytest.raises(operator_config.ConfigExportError, match="secret-like field"):
+        operator_config.export(str(tmp_path))
+
+
+def test_export_accepts_http_credential_secret_reference(tmp_path):
+    _write(
+        tmp_path / "router.json",
+        json.dumps(
+            {
+                "headers": {
+                    "Authorization": {
+                        "source": "env",
+                        "provider": "default",
+                        "id": "ROUTER_AUTHORIZATION",
+                    }
+                }
+            }
+        ),
+    )
+
+    result = operator_config.export(str(tmp_path))
+
+    assert result["files"][0]["content"]
+
+
 def test_export_refuses_secret_literals_in_env_example(tmp_path):
     _write(tmp_path / ".env.example", "API_TOKEN=raw-secret\n")
     with pytest.raises(operator_config.ConfigExportError, match="secret-like field"):
