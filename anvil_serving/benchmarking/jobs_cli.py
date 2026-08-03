@@ -9,6 +9,7 @@ import sys
 
 from ..guard import confirmation_authorized
 from ..control_plane.controller.store import BenchmarkJobStore
+from .harnesses import cleanup_harness_work, harness_asset_status, prepare_harness_assets
 from .jobs import BenchmarkJobError, validate_job_spec
 from .preflight import run_benchmark_preflight
 from .profiles import load_profile
@@ -34,6 +35,20 @@ def _parser() -> argparse.ArgumentParser:
         preflight = actions.add_parser("preflight")
         preflight.add_argument("--spec-json", required=True)
         preflight.add_argument("--requirements-json", default="{}")
+        prepare = actions.add_parser("prepare")
+        prepare.add_argument("--profile", choices=("smoke", "scout", "deep"), required=True)
+        prepare.add_argument("--run-id", required=True)
+        prepare.add_argument("--ownership-id", required=True)
+        prepare.add_argument("--offline", action="store_true")
+        prepare.add_argument("--max-download-bytes", type=int, default=20 * 1024**3)
+        prepare.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+        assets = actions.add_parser("assets")
+        assets.add_argument("--run-id", required=True)
+        assets.add_argument("--ownership-id", required=True)
+        cleanup = actions.add_parser("cleanup")
+        cleanup.add_argument("--run-id", required=True)
+        cleanup.add_argument("--ownership-id", required=True)
+        cleanup.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
         submit = actions.add_parser("submit")
         submit.add_argument("--spec-json", required=True)
         mode = submit.add_mutually_exclusive_group()
@@ -99,6 +114,37 @@ def run(argv: list[str]) -> dict:
             "dry_run": bool(args.dry_run),
             "deferred": ["benchmark preflight", "model requests", "artifact write"],
         }
+    if args.action in {"prepare", "assets", "cleanup"}:
+        if args.action == "assets":
+            return harness_asset_status(
+                run_root=store.run_root,
+                ownership_id=args.ownership_id,
+                run_id=args.run_id,
+            )
+        if not (args.confirm or confirmation_authorized()):
+            raise BenchmarkJobError(
+                "confirmation_required", f"harness {args.action} requires --confirm"
+            )
+        if args.action == "cleanup":
+            return cleanup_harness_work(
+                run_root=store.run_root,
+                ownership_id=args.ownership_id,
+                run_id=args.run_id,
+            )
+        cache_root = os.environ.get(
+            "ANVIL_BENCHMARK_CACHE_ROOT",
+            os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
+        )
+        return prepare_harness_assets(
+            load_profile(args.profile),
+            suite=args.suite,
+            run_root=store.run_root,
+            ownership_id=args.ownership_id,
+            run_id=args.run_id,
+            cache_root=cache_root,
+            offline=args.offline,
+            max_download_bytes=args.max_download_bytes,
+        )
     if args.action == "preflight":
         return run_benchmark_preflight(
             _spec_json(args.spec_json, args.suite),

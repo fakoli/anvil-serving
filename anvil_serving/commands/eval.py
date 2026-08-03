@@ -32,6 +32,71 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
         ),
         children=(
             _resource_node(
+                "prepare",
+                f"Prepare digest-pinned {name} harness assets on the benchmark worker.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                mutation="mutate",
+                options=CONFIRM_OPTIONS + (
+                    _option("--run-id", summary="Portable benchmark run identifier.", value_name="ID"),
+                    _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
+                    _option("--offline", summary="Require exact assets to exist in cache."),
+                    _option(
+                        "--max-download-bytes",
+                        summary="Maximum prepared repository bytes.",
+                        value_name="BYTES",
+                    ),
+                ),
+                argv_prefix=(name, "prepare"),
+                remote_operation=_remote(
+                    "benchmark_harness_prepare",
+                    fixed=(("suite", name),),
+                    confirmed=(("confirm", True),),
+                    allowed=(
+                        "profile",
+                        "run_id",
+                        "ownership_id",
+                        "offline",
+                        "max_download_bytes",
+                    ),
+                ),
+            ),
+            _resource_node(
+                "assets",
+                f"Inspect prepared {name} harness assets.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                options=(
+                    _option("--run-id", summary="Portable benchmark run identifier.", value_name="ID"),
+                    _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
+                ),
+                argv_prefix=(name, "assets"),
+                remote_operation=_remote(
+                    "benchmark_harness_status",
+                    fixed=(("suite", name),),
+                    allowed=("run_id", "ownership_id"),
+                ),
+            ),
+            _resource_node(
+                "cleanup",
+                f"Clean only the owned work directory for a {name} benchmark run.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                mutation="mutate",
+                options=_JOB_READ_OPTIONS
+                + CONFIRM_OPTIONS
+                + (
+                    _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
+                ),
+                argv_prefix=(name, "cleanup"),
+                remote_operation=_remote(
+                    "benchmark_harness_cleanup",
+                    fixed=(("suite", name),),
+                    confirmed=(("confirm", True),),
+                    allowed=("run_id", "ownership_id"),
+                ),
+            ),
+            _resource_node(
                 "preflight",
                 f"Validate the endpoint and worker for a {name} benchmark job.",
                 "anvil_serving.benchmarking.jobs_cli",

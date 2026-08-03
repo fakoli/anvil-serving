@@ -9,6 +9,12 @@ import sys
 from ....model_controls import REASONING_EFFORT_CHOICES
 from ....benchmarking.jobs import BenchmarkJobError, validate_job_spec
 from ....benchmarking.preflight import run_benchmark_preflight
+from ....benchmarking.harnesses import (
+    cleanup_harness_work,
+    harness_asset_status,
+    prepare_harness_assets,
+)
+from ....benchmarking.profiles import load_profile
 from ...controller.store import BenchmarkJobStore
 from ....benchmarking.artifacts import (
     benchmark_key_metrics as _benchmark_key_metrics,
@@ -160,6 +166,70 @@ def tool_benchmark_job_artifact(args: dict) -> dict:
     if artifact is None:
         raise ToolError("artifact_pending", "benchmark artifact is not available")
     return _ok(artifact)
+
+
+def tool_benchmark_harness_prepare(args: dict) -> dict:
+    if not _arg_bool(args.get("confirm"), False, name="confirm"):
+        raise ToolError("confirmation_required", "harness preparation requires confirmation")
+    profile_name = _str_arg(args, "profile", required=True)
+    suite = _str_arg(args, "suite", required=True)
+    run_id = _str_arg(args, "run_id", required=True)
+    ownership_id = _str_arg(args, "ownership_id", required=True)
+    offline = _arg_bool(args.get("offline"), False, name="offline")
+    max_download_bytes = _bounded_int_arg(
+        args,
+        "max_download_bytes",
+        20 * 1024**3,
+        min_value=1,
+        max_value=1024**4,
+    )
+    store = _benchmark_job_store()
+    cache_root = os.environ.get(
+        "ANVIL_BENCHMARK_CACHE_ROOT",
+        os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
+    )
+    try:
+        result = prepare_harness_assets(
+            load_profile(profile_name),
+            suite=suite,
+            run_root=store.run_root,
+            ownership_id=ownership_id,
+            run_id=run_id,
+            cache_root=cache_root,
+            offline=offline,
+            max_download_bytes=max_download_bytes,
+        )
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
+    return _ok(result)
+
+
+def tool_benchmark_harness_status(args: dict) -> dict:
+    store = _benchmark_job_store()
+    try:
+        result = harness_asset_status(
+            run_root=store.run_root,
+            ownership_id=_str_arg(args, "ownership_id", required=True),
+            run_id=_str_arg(args, "run_id", required=True),
+        )
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
+    return _ok(result)
+
+
+def tool_benchmark_harness_cleanup(args: dict) -> dict:
+    if not _arg_bool(args.get("confirm"), False, name="confirm"):
+        raise ToolError("confirmation_required", "harness cleanup requires confirmation")
+    store = _benchmark_job_store()
+    try:
+        result = cleanup_harness_work(
+            run_root=store.run_root,
+            ownership_id=_str_arg(args, "ownership_id", required=True),
+            run_id=_str_arg(args, "run_id", required=True),
+        )
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
+    return _ok(result)
 
 
 def tool_preflight_probe(args: dict) -> dict:
@@ -467,6 +537,47 @@ def tool_benchmark_artifact(args: dict) -> dict:
 FAMILY = ToolFamily(
     name="benchmarks",
     tools={
+        "benchmark_harness_prepare": {
+            "description": "Prepare exact external benchmark assets through the managed worker cache.",
+            "inputSchema": _schema(
+                {
+                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "profile": {"type": "string", "enum": ["smoke", "scout", "deep"]},
+                    "run_id": {"type": "string", "maxLength": 128},
+                    "ownership_id": {"type": "string", "maxLength": 128},
+                    "offline": {"type": "boolean"},
+                    "max_download_bytes": _bounded_integer_schema(1, 1024**4, 20 * 1024**3),
+                    "confirm": {"type": "boolean"},
+                },
+                required=["suite", "profile", "run_id", "ownership_id"],
+            ),
+            "handler": tool_benchmark_harness_prepare,
+        },
+        "benchmark_harness_status": {
+            "description": "Inspect one run's prepared external benchmark assets.",
+            "inputSchema": _schema(
+                {
+                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "run_id": {"type": "string", "maxLength": 128},
+                    "ownership_id": {"type": "string", "maxLength": 128},
+                },
+                required=["suite", "run_id", "ownership_id"],
+            ),
+            "handler": tool_benchmark_harness_status,
+        },
+        "benchmark_harness_cleanup": {
+            "description": "Clean only a benchmark run's owned work directory.",
+            "inputSchema": _schema(
+                {
+                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "run_id": {"type": "string", "maxLength": 128},
+                    "ownership_id": {"type": "string", "maxLength": 128},
+                    "confirm": {"type": "boolean"},
+                },
+                required=["suite", "run_id", "ownership_id"],
+            ),
+            "handler": tool_benchmark_harness_cleanup,
+        },
         "benchmark_job_preflight": {
             "description": "Validate a benchmark endpoint and isolated worker without model lifecycle changes.",
             "inputSchema": _schema(
