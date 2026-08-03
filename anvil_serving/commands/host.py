@@ -19,6 +19,74 @@ def commands() -> tuple[CommandNode, ...]:
             "host",
             "Inspect and repair declared host operations.",
             children=(
+                _node(
+                    "config",
+                    "Inventory and safely export operator-owned configuration.",
+                    children=(
+                        _resource_node(
+                            "inventory",
+                            "Classify operator-home files and verify dependency closure.",
+                            "anvil_serving.operator_config",
+                            role="host",
+                            argv_prefix=("inventory",),
+                            options=(
+                                _option(
+                                    "--home",
+                                    summary="Operator config home to inspect.",
+                                    value_name="PATH",
+                                ),
+                                _option(
+                                    "--max-bytes",
+                                    summary="Maximum accepted candidate size.",
+                                    value_name="BYTES",
+                                ),
+                            ),
+                            remote_operation=_remote(
+                                "operator_config_inventory",
+                                allowed=("max_bytes",),
+                            ),
+                            execution_runtime_roles=("native",),
+                            docs_anchor=(
+                                "docs/cli/host.md#operator-configuration-inventory-and-export"
+                            ),
+                        ),
+                        _resource_node(
+                            "export",
+                            "Export safe config and sanitized Anvil-owned gateway fragments.",
+                            "anvil_serving.operator_config",
+                            role="host",
+                            argv_prefix=("export",),
+                            options=(
+                                _option(
+                                    "--home",
+                                    summary="Operator config home to export.",
+                                    value_name="PATH",
+                                ),
+                                _option(
+                                    "--gateway-path",
+                                    summary="OpenClaw JSON source for the Anvil-owned fragment.",
+                                    value_name="PATH",
+                                ),
+                                _option(
+                                    "--max-bytes",
+                                    summary="Maximum accepted candidate size.",
+                                    value_name="BYTES",
+                                ),
+                            ),
+                            remote_operation=_remote(
+                                "operator_config_export",
+                                allowed=("max_bytes",),
+                            ),
+                            execution_runtime_roles=("native",),
+                            docs_anchor=(
+                                "docs/cli/host.md#operator-configuration-inventory-and-export"
+                            ),
+                        ),
+                    ),
+                    docs_anchor=(
+                        "docs/cli/host.md#operator-configuration-inventory-and-export"
+                    ),
+                ),
                 _resource_node(
                     "status",
                     "Show structured host status.",
