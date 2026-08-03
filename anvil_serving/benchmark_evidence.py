@@ -26,6 +26,7 @@ MAX_ATTEMPTS_PER_CHECK = 100
 BENCHMARK_SCHEMAS = frozenset({
     "anvil-serving.benchmark/v1",
     "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.benchmark-evidence/v1",
 })
 THINKING_MODES = frozenset({"default", "disabled", "enabled", "unsupported"})
 THINKING_CONTROL_MECHANISMS = frozenset({"chat_template_kwargs", "reasoning_effort"})
@@ -255,6 +256,8 @@ def _numeric_shape_errors(groups: Sequence[tuple[str, Mapping[str, Any], Sequenc
 
 def _artifact_kind(raw: Mapping[str, Any]) -> str | None:
     schema = _text(raw.get("schema")) or ""
+    if schema == "anvil-serving.benchmark-evidence/v1":
+        return "external_prior" if raw.get("evidence_kind") == "external_prior" else "campaign"
     benchmark_schema = schema in BENCHMARK_SCHEMAS
     if benchmark_schema and (
             isinstance(raw.get("suites"), Mapping) and raw.get("suites")
@@ -278,6 +281,48 @@ def summarize_artifact(path: str | Path) -> dict[str, Any]:
     kind = _artifact_kind(raw)
     if kind is None:
         raise EvidenceError(f"JSON file is not recognized benchmark evidence: {artifact_path}")
+
+    if kind in {"campaign", "external_prior"}:
+        from .benchmarking.artifacts import (
+            BenchmarkArtifactError,
+            validate_cross_suite_evidence,
+        )
+
+        try:
+            validate_cross_suite_evidence(raw, verify_files=False)
+            validation_errors = []
+        except BenchmarkArtifactError as exc:
+            validation_errors = [f"{exc.code}: {exc.message}"]
+        run = _mapping(raw.get("run"))
+        identities = _mapping(raw.get("identities"))
+        model = _mapping(identities.get("model"))
+        served = _mapping(identities.get("served_model"))
+        source = _mapping(raw.get("source"))
+        summary = _mapping(raw.get("summary"))
+        return {
+            "path": _text(artifact_path.as_posix()),
+            "schema": _text(raw.get("schema")),
+            "kind": kind,
+            "evidence_kind": _text(raw.get("evidence_kind")),
+            "locally_measured": raw.get("evidence_kind") == "measured",
+            "run_id": _text(run.get("run_id")),
+            "recorded_at": _text(raw.get("created_at"), source.get("observed_at")),
+            "model": _text(model.get("alias"), model.get("id"), served.get("id")),
+            "candidate_id": _text(model.get("candidate_id")),
+            "config_id": _text(model.get("config_id")),
+            "completeness": _text(raw.get("completeness")),
+            "suite": _text(run.get("suite")),
+            "profile": _text(run.get("profile")),
+            "source_url": _text(source.get("url")),
+            "summary": {
+                "attempted": _number(summary.get("attempted")),
+                "completed": _number(summary.get("completed"), summary.get("graded")),
+                "score": _number(summary.get("score"), summary.get("resolve_rate")),
+            },
+            "promotion_authorized": False,
+            "validation_errors": validation_errors,
+            "warnings": [] if kind == "campaign" else ["external prior; not locally measured"],
+        }
 
     identity = _mapping(raw.get("identity"))
     timing = _mapping(raw.get("timing"))
@@ -827,7 +872,9 @@ def _parser() -> argparse.ArgumentParser:
     list_parser.add_argument("--model")
     list_parser.add_argument("--suite")
     list_parser.add_argument(
-        "--kind", choices=("benchmark", "capacity", "quality", "speculative")
+        "--kind", choices=(
+            "benchmark", "capacity", "quality", "speculative", "campaign", "external_prior"
+        )
     )
     list_parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     list_parser.add_argument("--format", choices=("human", "json"), default="human")
