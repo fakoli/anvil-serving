@@ -52,6 +52,17 @@ def _mk_request(dialect: str = "anthropic") -> InternalRequest:
     )
 
 
+def _mk_stream_req(include_usage: bool = True) -> InternalRequest:
+    """Request that carries ``stream_options.include_usage`` on the wire."""
+    return InternalRequest(
+        model="test-model",
+        messages=[Message("user", "call the tool")],
+        max_tokens=100,
+        dialect="openai",
+        raw={"stream": True, "stream_options": {"include_usage": include_usage}},
+    )
+
+
 def _anthropic_tier() -> Tier:
     return Tier(
         id="cloud",
@@ -551,6 +562,90 @@ class TestOpenAIDialectStream:
         raw = self._stream(["text"], get_structured=lambda: None)
         chunks = _parse_openai_sse(raw)
         assert chunks[-1]["choices"][0]["finish_reason"] == "stop"
+
+    def test_lazy_streaming_preserved_when_not_requested(self):
+        # The default (non-usage) path MUST stream each delta lazily, not
+        # materialize the whole upstream stream first. A generator that emits
+        # an item immediately proves TTFB is preserved on the common path.
+        d = OpenAIDialect()
+        r = _mk_request("openai")  # no stream_options -> emit_usage False
+        produced = []
+
+        def lazy_deltas():
+            produced.append(("first",))
+            yield "a"
+            produced.append(("second",))
+            yield "b"
+
+        gen = d.stream(r, lazy_deltas())
+        next(gen)  # opening (role) chunk; yields before the source produces anything.
+        assert produced == [], "stream() must not drain the source up front"
+        second = next(gen)
+        assert len(produced) == 1 and produced[0] == ("first",)
+        assert b'"content":"a"' in second
+        # Consume the rest.
+        list(gen)
+        assert len(produced) == 2
+
+    def test_lazy_streaming_preserved_when_usage_requested(self):
+        # The usage path must ALSO stream each delta lazily: the trailing usage
+        # chunk is emitted after the stream, but content must yield as it
+        # arrives, never after the upstream stream is fully drained.
+        d = OpenAIDialect()
+        r = _mk_stream_req(include_usage=True)
+        produced = []
+
+        def lazy_deltas():
+            produced.append(("first",))
+            yield "a"
+            produced.append(("second",))
+            yield "b"
+
+        gen = d.stream(r, lazy_deltas())
+        next(gen)  # opening role chunk
+        assert produced == [], "usage path must not drain the source up front"
+        second = next(gen)
+        assert len(produced) == 1 and produced[0] == ("first",)
+        assert b'"content":"a"' in second
+        # Consume the rest; usage chunk emitted after the stream.
+        rest = b"".join(gen)
+        assert len(produced) == 2
+        assert b'"usage"' in rest
+
+    def test_no_usage_chunk_when_not_requested(self):
+        # Default request has no stream_options -> no usage chunk emitted.
+        raw = self._stream(["hello"])
+        chunks = _parse_openai_sse(raw)
+        usage_chunks = [c for c in chunks if c.get("usage") is not None]
+        assert not usage_chunks
+
+    def test_usage_chunk_with_real_upstream_counts(self):
+        d = OpenAIDialect()
+        r = _mk_stream_req(include_usage=True)
+        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7})
+        raw = b"".join(d.stream(r, ["hello"], get_structured=lambda: s))
+        chunks = _parse_openai_sse(raw)
+        usage_chunks = [c for c in chunks if c.get("usage") is not None]
+        assert len(usage_chunks) == 1
+        u = usage_chunks[0]
+        assert u["choices"] == []
+        assert u["usage"] == {
+            "prompt_tokens": 12,
+            "completion_tokens": 7,
+            "total_tokens": 19,
+        }
+
+    def test_usage_chunk_estimated_when_upstream_counts_absent(self):
+        d = OpenAIDialect()
+        r = _mk_stream_req(include_usage=True)
+        # No structured usage -> estimates used.
+        raw = b"".join(d.stream(r, ["hello"], get_structured=lambda: None))
+        chunks = _parse_openai_sse(raw)
+        usage_chunks = [c for c in chunks if c.get("usage") is not None]
+        assert len(usage_chunks) == 1
+        u = usage_chunks[0]["usage"]
+        assert set(u) == {"prompt_tokens", "completion_tokens", "total_tokens"}
+        assert u["total_tokens"] == u["prompt_tokens"] + u["completion_tokens"]
 
 
 # ---------------------------------------------------------------------------

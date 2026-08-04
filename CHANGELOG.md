@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-08-04
+
+### Added
+
+- The OpenAI streaming dialect now emits a trailing `usage` chunk when the caller
+  requests `stream_options.include_usage: true`, fixing the missing streaming
+  usage that broke OpenClaw-style context-window metering (#345). Real upstream
+  counts are used when the relay surfaces them; estimates fall back exactly like
+  the non-streaming path. The default (non-usage) streaming path remains fully
+  lazy, so time-to-first-token and backpressure are unaffected.
+- `GET /v1/models/capabilities` now exposes a `compat` block per tier, currently
+  carrying `supportsUsageInStreaming` (an allowlisted bool declared under
+  `tier.params.capabilities.compat`). This mirrors OpenClaw's provider-model
+  `compat` shape so a client can discover that a tier emits streaming usage.
+
 ## [Unreleased]
 
 ### Added
