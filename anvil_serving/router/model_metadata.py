@@ -56,6 +56,22 @@ def _safe_modalities(value: object) -> list[str]:
     return sorted({item for item in value if isinstance(item, str) and _MODALITY_RE.fullmatch(item)})
 
 
+def _compat(value: object) -> Optional[dict]:
+    """Allowlist the OpenClaw-compatible ``compat`` capability declarations.
+
+    Currently only ``supportsUsageInStreaming`` (a bool) is emitted.  Everything
+    else in the source mapping is intentionally dropped so arbitrary ``params``
+    values never leak into the public capabilities payload.
+    """
+    if not isinstance(value, Mapping):
+        return None
+    result: dict[str, object] = {}
+    supports = value.get("supportsUsageInStreaming")
+    if isinstance(supports, bool):
+        result["supportsUsageInStreaming"] = supports
+    return result or None
+
+
 def _thinking(value: object) -> Optional[dict]:
     if not isinstance(value, Mapping):
         return None
@@ -150,6 +166,7 @@ def build_model_capabilities(
             "tools": {"supported": tier.tool_support},
             "modalities": _safe_modalities(capabilities.get("modalities")),
             "thinking": _thinking(capabilities.get("thinking")),
+            "compat": _compat(capabilities.get("compat")),
             "limits": {
                 "max_output_tokens": tier.max_output_tokens,
                 "images_per_request": _nonnegative_int(capabilities.get("images_per_request")),
@@ -221,6 +238,7 @@ def _canonical_public_config(config: RouterConfig) -> bytes:
             "capabilities": {
                 "modalities": _safe_modalities(capabilities.get("modalities")),
                 "thinking": _thinking(capabilities.get("thinking")),
+                "compat": _compat(capabilities.get("compat")),
                 "images_per_request": _nonnegative_int(capabilities.get("images_per_request")),
                 "video_per_request": _nonnegative_int(capabilities.get("video_per_request")),
             },

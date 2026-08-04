@@ -41,6 +41,40 @@ def _chunk(cid: str, created: int, model: str,
     }
 
 
+def _caller_wants_usage(request: InternalRequest) -> bool:
+    """Whether the caller asked for streaming usage (``stream_options.include_usage``).
+
+    OpenAI's ``include_usage`` contract emits the real token counts as a trailing
+    ``chat.completion.chunk`` with empty ``choices``. Only emit when explicitly
+    requested, so clients that do not want a usage chunk in their parse loop get none.
+
+    Precedence note: this reflects the CALLER's request only. The relay sets
+    ``stream_options.include_usage`` upstream (unless an operator hard-overrides it
+    via ``tier.extra_body``, which "always wins" upstream). If an operator forces
+    upsteam usage off but a caller still asks, the relay has no real counts, so we
+    fall back to estimates here. That is a deliberate, documented estimate, not a
+    pass-through of upstream data.
+    """
+    raw = request.raw if isinstance(request.raw, Mapping) else {}
+    stream_options = raw.get("stream_options")
+    if not isinstance(stream_options, Mapping):
+        return False
+    return stream_options.get("include_usage") is True
+
+
+def _usage_chunk(cid: str, created: int, model: str,
+                 usage: Dict[str, int]) -> Dict[str, Any]:
+    """Build the trailing OpenAI ``include_usage`` chunk (empty ``choices``)."""
+    return {
+        "id": cid,
+        "object": "chat.completion.chunk",
+        "created": created,
+        "model": model,
+        "choices": [],
+        "usage": usage,
+    }
+
+
 def _openai_finish_reason(raw: Optional[str]) -> str:
     """Map a raw upstream stop reason to the OpenAI wire ``finish_reason``.
 
@@ -113,16 +147,50 @@ class OpenAIDialect:
         cid = _new_id("chatcmpl-")
         created = int(time.time())
         model = response_model or request.model
+        # Whether to emit a trailing usage chunk (#345). Decide BEFORE consuming
+        # deltas so every path stays fully lazy (the chunk is emitted after the
+        # stream), with no up-front drain of the live upstream generator.
+        emit_usage = _caller_wants_usage(request)
+        # If the caller wants usage, incrementally collect the deltas so the
+        # estimate fallback can count the exact output at the end without
+        # re-consuming an exhausted generator. Collection happens AS chunks are
+        # yielded, so time-to-first-token, backpressure, and cancellation are
+        # never blocked by materialization.
+        collected = [] if emit_usage else None
         # 1) opening chunk announces the assistant role.
         yield _sse(_chunk(cid, created, model, {"role": "assistant"}, None))
-        # 2) one chunk per text delta.
+        # 2) one chunk per text delta. Yield immediately as each arrives; on the
+        #    usage path also append to ``collected`` for a later estimate.
         for piece in deltas:
+            if emit_usage:
+                collected.append(piece)
             yield _sse(_chunk(cid, created, model, {"content": piece}, None))
 
         # Gather structured fields AFTER deltas are fully consumed (#42 / #52).
         _structured = get_structured() if callable(get_structured) else None
         _tool_calls = _structured.tool_calls if _structured is not None else None
         _finish_reason = _structured.finish_reason if _structured is not None else None
+        _usage = getattr(_structured, "usage", None) if _structured is not None else None
+
+        # Streaming usage (#345): emit when the caller asked for it. Prefer the
+        # upstream's real counts (normalized ``{input_tokens, output_tokens}``) when
+        # the relay surfaced them; fall back to estimates, counting the joined text
+        # so chunk boundaries do not skew the count (matches ``render()``).
+        if emit_usage:
+            if _usage is not None:
+                prompt = int(_usage.get("input_tokens", 0))
+                completion = int(_usage.get("output_tokens", 0))
+            else:
+                prompt_texts: List[str] = [
+                    m.content for m in request.messages
+                ]
+                prompt = estimate_tokens(prompt_texts)
+                completion = estimate_tokens(["".join(collected or [])])
+            _usage_wire = {
+                "prompt_tokens": prompt,
+                "completion_tokens": completion,
+                "total_tokens": prompt + completion,
+            }
 
         # 3) Tool-call chunks (if any).  Two chunks per call: header (id/name) then
         #    arguments.  Consolidated streaming — full arguments in one chunk.
@@ -154,6 +222,9 @@ class OpenAIDialect:
 
         # 4) Final chunk: empty delta + real finish_reason, then [DONE].
         yield _sse(_chunk(cid, created, model, {}, _openai_finish_reason(_finish_reason)))
+        # 5) Optional trailing usage chunk (only when requested), then [DONE].
+        if emit_usage:
+            yield _sse(_usage_chunk(cid, created, model, _usage_wire))
         yield b"data: [DONE]\n\n"
 
     def render(
