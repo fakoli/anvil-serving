@@ -63,7 +63,7 @@ video_limit = 0
 [router.tiers.params.capabilities]
 modalities = ["text"]
 thinking = { supported = true, default = "enabled", caller_override = true }
-compat = { supportsUsageInStreaming = true }
+compat = { supportsUsageInStreaming = true, supportsStrictMode = true, supportedReasoningEfforts = ["low", "high", "max"] }
 images_per_request = 0
 video_per_request = 0
 
