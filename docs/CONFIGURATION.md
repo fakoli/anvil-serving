@@ -230,7 +230,10 @@ images reports context admissibility only when total `image_tokens` is supplied.
 `params.capabilities` is the allowlisted client-facing declaration used by
 `GET /v1/models/capabilities`: `modalities`, nested `thinking` fields
 (`supported`, `default`, `caller_override`, and optional `max_tokens`),
-`images_per_request`, and `video_per_request`.
+`images_per_request`, `video_per_request`, and a nested `compat` block. The
+`compat` block mirrors OpenClaw's provider-model shape and currently carries
+`supportsUsageInStreaming` (a bool): set it to `true` when a tier's streaming
+path can emit a usage chunk, so metering clients know to look for one.
 
 `params.fingerprint` supplies optional identity evidence for
 `GET /v1/models/fingerprints`: `model_revision`, `engine_version`,

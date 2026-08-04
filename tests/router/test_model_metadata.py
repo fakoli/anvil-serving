@@ -42,6 +42,10 @@ def _config() -> RouterConfig:
             "capabilities": {
                 "modalities": ["text", "image", "wrong value", 1],
                 "thinking": {"supported": True, "default": "enabled", "caller_override": True, "private": "nope"},
+                "compat": {
+                    "supportsUsageInStreaming": True,
+                    "supportsSomethingPrivate": "never-leak-me",
+                },
                 "images_per_request": 1,
                 "video_per_request": 0,
             },
@@ -72,6 +76,7 @@ def test_capabilities_project_declared_allowlist_and_readiness():
         "tools": {"supported": True},
         "modalities": ["image", "text"],
         "thinking": {"supported": True, "default": "enabled", "caller_override": True},
+        "compat": {"supportsUsageInStreaming": True},
         "limits": {
             "max_output_tokens": 5120,
             "images_per_request": 1,
@@ -79,6 +84,20 @@ def test_capabilities_project_declared_allowlist_and_readiness():
         },
         "readiness": {"loaded": True, "state": "ready", "reason": "identity_passed"},
     }
+
+
+def test_capabilities_compat_unset_emits_null_and_never_leaks_unknown_keys():
+    # No declared compat (or only unknown keys) -> null; private/unknown never leak.
+    config = _config()
+    config.tiers[0].params["capabilities"] = {
+        "modalities": ["text"],
+        "compat": {"unlistedCapability": True},
+    }
+    (row,) = build_model_capabilities(config, _Availability(), {})["data"]
+    assert row["compat"] is None
+    body = json.dumps(build_model_capabilities(config, _Availability(), {}))
+    assert "supportsSomethingPrivate" not in body
+    assert "unlistedCapability" not in body
 
 
 def test_fingerprints_exclude_arbitrary_params_and_connection_details():
