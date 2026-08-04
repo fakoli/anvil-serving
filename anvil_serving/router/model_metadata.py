@@ -59,9 +59,9 @@ def _safe_modalities(value: object) -> list[str]:
 def _compat(value: object) -> Optional[dict]:
     """Allowlist the OpenClaw-compatible ``compat`` capability declarations.
 
-    Currently only ``supportsUsageInStreaming`` (a bool) is emitted.  Everything
-    else in the source mapping is intentionally dropped so arbitrary ``params``
-    values never leak into the public capabilities payload.
+    Currently emits ``supportsUsageInStreaming`` and ``supportsStrictMode`` (both
+    bools).  Everything else in the source mapping is intentionally dropped so
+    arbitrary ``params`` values never leak into the public capabilities payload.
     """
     if not isinstance(value, Mapping):
         return None
@@ -69,6 +69,23 @@ def _compat(value: object) -> Optional[dict]:
     supports = value.get("supportsUsageInStreaming")
     if isinstance(supports, bool):
         result["supportsUsageInStreaming"] = supports
+    strict = value.get("supportsStrictMode")
+    if isinstance(strict, bool):
+        result["supportsStrictMode"] = strict
+    # Reasoning-effort ladder. Uses the EXACT OpenClaw compat key and accepts a
+    # list as a SET: order is not semantically meaningful to OpenClaw (it treats
+    # the list as a membership set), so we preserve source order for readability
+    # but document that consumers must not read it as an ordered ladder.
+    efforts = value.get("supportedReasoningEfforts")
+    if isinstance(efforts, (list, tuple)):
+        seen = set()
+        cleaned = []
+        for e in efforts:
+            if isinstance(e, str) and e not in seen and _MODALITY_RE.fullmatch(e):
+                seen.add(e)
+                cleaned.append(e)
+        if cleaned:
+            result["supportedReasoningEfforts"] = cleaned
     return result or None
 
 

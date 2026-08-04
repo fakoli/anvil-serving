@@ -23,6 +23,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `GET /v1/models/capabilities` extends the per-tier `compat` declarations with
+  two more fields that use the exact OpenClaw keys: `supportsStrictMode` (a bool)
+  and `supportedReasoningEfforts` (an ordered set of lowercase effort labels such
+  as `["low", "high", "max"]`). Both are strictly allowlisted per tier and feed
+  the canonical config hash. This lets an operator author an accurate OpenClaw
+  `compat` block (strict-mode structured output and supported reasoning efforts)
+  instead of guessing. OpenClaw treats the effort list as a membership set (order
+  is cosmetic) and does not auto-read this endpoint.
+
 - Read-only `host config inventory` and `host config export` commands, with
   matching MCP/controller tools, now provide metadata-only operator-home
   discovery and bounded export of allowlisted Anvil configuration plus a
