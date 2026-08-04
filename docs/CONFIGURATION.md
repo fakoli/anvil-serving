@@ -231,9 +231,17 @@ images reports context admissibility only when total `image_tokens` is supplied.
 `GET /v1/models/capabilities`: `modalities`, nested `thinking` fields
 (`supported`, `default`, `caller_override`, and optional `max_tokens`),
 `images_per_request`, `video_per_request`, and a nested `compat` block. The
-`compat` block mirrors OpenClaw's provider-model shape and currently carries
-`supportsUsageInStreaming` (a bool): set it to `true` when a tier's streaming
-path can emit a usage chunk, so metering clients know to look for one.
+`compat` block carries OpenClaw-compatible capability declarations:
+`supportsUsageInStreaming`, `supportsStrictMode`, and `supportedReasoningEfforts`
+(the exact OpenClaw key, an ordered set of lowercase effort labels such as
+`["low", "high", "max"]` that a tier honors). Set `supportsUsageInStreaming` to
+`true` when a tier's streaming path can emit a usage chunk (so metering clients
+look for one), `supportsStrictMode` to `true` when a tier honors strict
+JSON-schema structured output, and enumerate the reasoning-effort levels the tier
+honors under `supportedReasoningEfforts`. OpenClaw treats the effort list as a
+membership set, not an ordered ladder; order is cosmetic. This is a declaration
+surface: an operator maps these to the model's `compat` in OpenClaw config
+(OpenClaw does not auto-read this endpoint).
 
 `params.fingerprint` supplies optional identity evidence for
 `GET /v1/models/fingerprints`: `model_revision`, `engine_version`,

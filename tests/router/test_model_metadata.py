@@ -44,6 +44,8 @@ def _config() -> RouterConfig:
                 "thinking": {"supported": True, "default": "enabled", "caller_override": True, "private": "nope"},
                 "compat": {
                     "supportsUsageInStreaming": True,
+                    "supportsStrictMode": True,
+                    "supportedReasoningEfforts": ["low", "high", "MEDIUM", "xhigh", 1, "bad value"],
                     "supportsSomethingPrivate": "never-leak-me",
                 },
                 "images_per_request": 1,
@@ -76,7 +78,8 @@ def test_capabilities_project_declared_allowlist_and_readiness():
         "tools": {"supported": True},
         "modalities": ["image", "text"],
         "thinking": {"supported": True, "default": "enabled", "caller_override": True},
-        "compat": {"supportsUsageInStreaming": True},
+        "compat": {"supportsUsageInStreaming": True, "supportsStrictMode": True,
+                   "supportedReasoningEfforts": ["low", "high", "xhigh"]},
         "limits": {
             "max_output_tokens": 5120,
             "images_per_request": 1,
@@ -98,6 +101,40 @@ def test_capabilities_compat_unset_emits_null_and_never_leaks_unknown_keys():
     body = json.dumps(build_model_capabilities(config, _Availability(), {}))
     assert "supportsSomethingPrivate" not in body
     assert "unlistedCapability" not in body
+
+
+def test_reasoning_efforts_and_strict_mode_allowlist_behavior():
+    # Invalid reasoningEfforts entries are dropped; strict-mode is a strict bool;
+    # unknown keys never leak.
+    config = _config()
+    config.tiers[0].params["capabilities"] = {
+        "modalities": ["text"],
+        "thinking": {"supported": True},
+        "compat": {"supportsStrictMode": "not-a-bool",
+                   "supportsUsageInStreaming": True,
+                   "supportedReasoningEfforts": ["low", "BAD VALUE", 5, "xhigh", "high"],
+                   "secretKey": "never-leak"},
+    }
+    (row,) = build_model_capabilities(config, _Availability(), {})["data"]
+    # source order preserved, invalid dropped, dedup kept
+    assert row["compat"]["supportedReasoningEfforts"] == ["low", "xhigh", "high"]
+    # supportsStrictMode is dropped because the value is not a bool.
+    assert row["compat"]["supportsUsageInStreaming"] is True
+    assert "supportsStrictMode" not in row["compat"]
+    body = json.dumps(build_model_capabilities(config, _Availability(), {}))
+    assert "BAD VALUE" not in body
+    assert "secretKey" not in body
+
+
+def test_supported_reasoning_efforts_omitted_when_absent():
+    # A compat block without supportedReasoningEfforts must emit no such key.
+    config = _config()
+    config.tiers[0].params["capabilities"] = {
+        "modalities": ["text"],
+        "compat": {"supportsUsageInStreaming": True},
+    }
+    (row,) = build_model_capabilities(config, _Availability(), {})["data"]
+    assert "supportedReasoningEfforts" not in row["compat"]
 
 
 def test_fingerprints_exclude_arbitrary_params_and_connection_details():
