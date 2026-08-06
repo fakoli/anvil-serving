@@ -11,12 +11,13 @@ home. The manifest aggregator accepted the duplicate without a warning and the
 `serves.toml` entry won. That entry carried
 `--registry {dir}/../../configs/...-recipe.toml` — a relative path written
 when the operator home lived inside a repository worktree
-(`examples/fakoli-dark`). After the operator home moved to
-`~/.anvil-serving`, `{dir}/../..` resolves outside any repository, so the
-first `serves mode enter` of the night failed at the `up` step with:
+(`examples/fakoli-dark`). After the operator home moved to a standalone
+directory outside any repository, `{dir}/../..` no longer lands in a
+checkout, so the first `serves mode enter` of the night failed at the `up`
+step with:
 
 ```text
-FAILED: serve-recipe registry not found: C:\Users\sdoum\.anvil-serving/../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml
+FAILED: serve-recipe registry not found: <operator-home>/../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml
 ```
 
 The failure appeared only after the full live-state scan and the transactional
