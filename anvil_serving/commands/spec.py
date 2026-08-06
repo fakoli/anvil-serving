@@ -44,6 +44,7 @@ class HandlerRef:
     attribute: str = "main"
     argv_prefix: tuple[str, ...] | None = None
     forward_resolution_options: bool = False
+    forward_confirm_flag: bool = False
 
     def __post_init__(self) -> None:
         if self.argv_prefix is not None:
@@ -172,12 +173,14 @@ def _handler(
     attribute: str = "main",
     argv_prefix: Iterable[str] | None = None,
     forward_resolution_options: bool = False,
+    forward_confirm_flag: bool = False,
 ) -> HandlerRef:
     return HandlerRef(
         module,
         attribute=attribute,
         argv_prefix=None if argv_prefix is None else tuple(argv_prefix),
         forward_resolution_options=forward_resolution_options,
+        forward_confirm_flag=forward_confirm_flag,
     )
 
 
@@ -267,6 +270,7 @@ def _resource_node(
     argv_prefix: Iterable[str] | None = None,
     handler_attribute: str = "main",
     forward_resolution_options: bool = False,
+    forward_confirm_flag: bool = False,
     output_policy: str = "bounded",
     docs_anchor: str = CLI_DOC,
     remote_operation: RemoteOperation | None = None,
@@ -282,6 +286,7 @@ def _resource_node(
             attribute=handler_attribute,
             argv_prefix=argv_prefix,
             forward_resolution_options=forward_resolution_options,
+            forward_confirm_flag=forward_confirm_flag,
         )
         if module
         else _future_handler(),
@@ -411,6 +416,14 @@ def _validate_nodes(
         _validate_policy(node, label)
         if not node.children and node.handler is None:
             raise CommandTreeError(f"command {label!r} has no handler")
+        if (
+            node.handler is not None
+            and node.handler.forward_confirm_flag
+            and "--confirm" not in declared_flags
+        ):
+            raise CommandTreeError(
+                f"command {label!r} forwards --confirm without declaring the option"
+            )
         if node.handler is not None and resolve_handlers:
             node.handler.resolve()
         _validate_nodes(

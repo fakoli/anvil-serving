@@ -1212,6 +1212,12 @@ def _dispatch(
     prefix = _handler_argv(path)
     if node.handler.forward_resolution_options:
         rest = (*rest, *_resolution_options_argv(resolution_options))
+    if node.handler.forward_confirm_flag and confirmed:
+        # The dispatcher consumed --confirm, but this legacy local handler
+        # gates on its own argparse option; restore exactly one token before
+        # any literal `--` separator.
+        separator = rest.index("--") if "--" in rest else len(rest)
+        rest = (*rest[:separator], "--confirm", *rest[separator:])
     try:
         with guard.confirmation_scope(confirmed):
             result = handler([*prefix, *rest])

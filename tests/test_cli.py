@@ -247,6 +247,49 @@ def test_json_mutation_never_prompts_and_requires_confirmation(monkeypatch, caps
     assert "--confirm" in payload["error"]["message"]
 
 
+def test_serves_mode_confirm_is_forwarded_to_the_local_legacy_handler(monkeypatch):
+    # `serves mode enter|leave` declare forward_confirm_flag: the legacy leaf
+    # parser gates on its own --confirm option, so the dispatcher restores the
+    # consumed token in argv. Preview/status never receive one.
+    calls = []
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: lambda argv: calls.append(argv) or 0,
+    )
+
+    for action in ("enter", "leave"):
+        assert cli.main([
+            "serves", "mode", action, "tp2",
+            "--restore-group", "split-stack", "--confirm",
+        ]) == 0
+    assert cli.main([
+        "serves", "mode", "preview", "tp2", "--restore-group", "split-stack",
+    ]) == 0
+    assert cli.main(["serves", "mode", "status"]) == 0
+
+    enter, leave, preview, status = calls
+    assert enter[:3] == ["mode", "enter", "tp2"]
+    assert enter.count("--confirm") == 1
+    assert leave[:3] == ["mode", "leave", "tp2"]
+    assert leave.count("--confirm") == 1
+    assert "--confirm" not in preview
+    assert "--confirm" not in status
+
+
+def test_serves_mode_enter_json_never_prompts_and_requires_confirmation(monkeypatch, capsys):
+    monkeypatch.setattr("builtins.input", lambda _prompt: pytest.fail("prompted in JSON mode"))
+    monkeypatch.setattr(HandlerRef, "resolve", lambda self: pytest.fail("handler resolved"))
+    assert cli.main([
+        "serves", "mode", "enter", "tp2", "--restore-group", "split-stack", "--json",
+    ]) == 3
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert captured.err == ""
+    assert payload["error"]["class"] == "safety"
+    assert "--confirm" in payload["error"]["message"]
+
+
 @pytest.mark.parametrize("policy", ["foreground", "protocol"])
 def test_declarative_command_policy_classifies_synthetic_commands(policy):
     node = CommandNode("synthetic", "Synthetic command.", output_policy=policy)
