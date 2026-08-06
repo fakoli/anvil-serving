@@ -158,10 +158,20 @@ GGUF size ladder, DSpark caveats, and source classifications.
 
 ## Decision and promotion state
 
-`current`, human-approved. The 650K/maxseq16 r16 DSpark profile is the exclusive
+`current`, human-approved. The maxseq16 r16 DSpark profile is the exclusive
 TP=2 Primary for one Pi/OpenClaw coding user, with high reasoning as the client
 default and `llm.rollback` preserved explicitly. The router's optional per-tier
 output cap is 32,768 and warns instead of rejecting an oversized caller budget.
+
+2026-08-06 operator-directed retune: the pinned recipe now serves
+`MAX_MODEL_LEN=262144` with `MAX_NUM_BATCHED_TOKENS=8192` (previously
+650,000/4,096; serve and model names retain the historical `650k` suffix). The
+engine sized GPU KV cache at 272,040 tokens (1.04x concurrency at a full
+262,144-token request) and a same-day functional preflight (smoke, structured
+JSON, tool batch x20, tool-result continuation) passed. The ~640K retrieval,
+650K-envelope performance rows, and client smokes above are dated history from
+the prior envelope and do not transfer without fresh measurement.
+
 The 1M profiles are experimental only. Remaining gates include restoring a
 policy-compliant reserve, sustained multi-turn high/max testing, fixing and
 requalifying the client-shaped 1M B12X workspace failure, and pinned 0731 NVFP4
