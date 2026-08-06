@@ -28,7 +28,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "${ANVIL_CONTROLLER_PUBLISH:-127.0.0.1}:8765:8765"
+      # Single publish spec of the form <host-ip>:<host-port>:8765. Defaults to
+      # loopback:8765 to match the controller's fixed container-internal 8765.
+      # Override ANVIL_CONTROLLER_PUBLISH (e.g. "127.0.0.1:18765") when 8765 is
+      # already claimed on the host by another service, and point Tailscale Serve
+      # at the chosen host port. The host port must not equal the container 8765.
+      - "${ANVIL_CONTROLLER_PUBLISH:-127.0.0.1:8765}:8765"
     environment:
       ANVIL_CONTROLLER_TOKEN: ${ANVIL_CONTROLLER_TOKEN:?set ANVIL_CONTROLLER_TOKEN}
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
