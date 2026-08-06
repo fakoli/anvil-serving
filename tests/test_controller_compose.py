@@ -19,9 +19,13 @@ def test_controller_compose_is_hardened_and_loopback_published():
     text = _text()
 
     assert "target: controller" in text
-    assert "${ANVIL_CONTROLLER_PUBLISH:-127.0.0.1}:${ANVIL_CONTROLLER_PUBLISH_PORT:-8765}:8765" in text
-    # container-internal 8765 stays canonical; only the host-side port is overridable
-    assert ":-8765}:8765" in text and "${ANVIL_CONTROLLER_PUBLISH_PORT:-8765}:8765" in text
+    # The controller's publish line must default to loopback:8765 and keep the
+    # container-internal port canonical at 8765 as a literal (not overridable).
+    assert "${ANVIL_CONTROLLER_PUBLISH:-127.0.0.1:8765}:8765" in text
+    # The container-internal 8765 from the publish line must stay in sync with
+    # the controller's command --port and its in-container healthcheck URL.
+    assert '--port\n      - "8765"' in text
+    assert "http://127.0.0.1:8765" in text
     assert "read_only: true" in text
     assert "no-new-privileges:true" in text
     assert "cap_drop:" in text and "- ALL" in text
