@@ -31,7 +31,7 @@ named_volumes = [
   "deepseek-v4-0731-r16-tmp:/container-tmp",
 ]
 quantization = "Official 0731 mixed FP8/FP4 checkpoint; B12X W4A8 NVFP4 MoE, B12X FP8 dense GEMM, FP8 KV"
-context_tokens = 650000
+context_tokens = 262144
 port = 39062
 startup_timeout_seconds = 1800
 served_model_name = "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-650k"
@@ -62,8 +62,8 @@ env = [
   "DRAFT_SAMPLE_METHOD=probabilistic",
   "REJECTION_SAMPLE_METHOD=standard",
   "MAX_NUM_SEQS=16",
-  "MAX_MODEL_LEN=650000",
-  "MAX_NUM_BATCHED_TOKENS=4096",
+  "MAX_MODEL_LEN=262144",
+  "MAX_NUM_BATCHED_TOKENS=8192",
   "GPU_MEMORY_UTILIZATION=0.975",
   "LOAD_FORMAT=instanttensor",
   "INSTANTTENSOR_BACKEND=BUFFERED",
@@ -73,11 +73,11 @@ env = [
   "SERVED_MODEL_NAME=deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-650k",
 ]
 flags = []
-note = "Human-approved llm.primary configuration after passing the local Pi protocol gate, 640K retrieval, matched 32K performance, Dark Pi, Mini Pi, and Mini OpenClaw client smokes. MAX_MODEL_LEN=650000, MAX_NUM_BATCHED_TOKENS=4096, MAX_NUM_SEQS=16, model, image, TP2, DCP1, DSpark K5, WSL2 transport, 0.975 utilization, and zero CPU KV offload remain pinned. The router tier independently caps output at 32768 tokens and warns when it clamps a larger caller request. The separate 3 GiB reported-free VRAM gate is waived for this single-user exclusive deployment; measured headroom remains a caveat."
+note = "2026-08-06 operator-directed retune: MAX_MODEL_LEN=262144 and MAX_NUM_BATCHED_TOKENS=8192 replace the 650000/4096 envelope. A same-day functional preflight (smoke, structured JSON, tool batch x20, tool-result continuation) passed at the new envelope with GPU KV cache 272,040 tokens (1.04x concurrency at 262,144/request). Prior long-context and performance evidence (local Pi protocol gate, 640K retrieval, matched 32K performance, Dark Pi, Mini Pi, and Mini OpenClaw client smokes) was recorded at 650000/4096 and does not transfer without fresh measurement. MAX_NUM_SEQS=16, model, image, TP2, DCP1, DSpark K5, WSL2 transport, 0.975 utilization, and zero CPU KV offload remain pinned. The router tier independently caps output at 32768 tokens and warns when it clamps a larger caller request. The separate 3 GiB reported-free VRAM gate is waived for this single-user exclusive deployment; measured headroom remains a caveat."
 
 [recipe.fit]
-suited = ["qualification", "speculative-decoding", "long-context", "concurrency", "coding-agent"]
-rationale = "Current single-user coding-agent Primary: the largest locally tested GPU-only envelope that remained stable under real Dark Pi, Mini Pi, and Mini OpenClaw traffic."
+suited = ["qualification", "speculative-decoding", "coding-agent"]
+rationale = "Current single-user coding-agent Primary at the 2026-08-06 262144/8192 envelope. Long-context and concurrency fitness were demonstrated at the prior 650000/4096 envelope and await fresh measurement here."
 
 [recipe.sources]
 official = [
@@ -91,4 +91,5 @@ local = [
   "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-128k-recipe.toml",
   "docs/findings/2026-08-02-deepseek-r16-maxseq16-igpu-evidence/preflight-128k-maxseq16-low.json",
   "docs/findings/2026-08-02-deepseek-r16-maxseq16-igpu-evidence/capacity-4k-c16-r16-low.json",
+  "private operator repository: evidence/2026-08-06-deepseek-650k-262k-8192-promotion/preflight-smoke-json-tools-toolresult.json",
 ]
