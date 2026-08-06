@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The canonical CLI now forwards the consumed `--confirm` flag into the legacy
+  `serves mode enter` / `serves mode leave` handler argv via an explicit
+  `HandlerRef.forward_confirm_flag` declaration, making the leaf argparse gate
+  authoritative instead of relying on the dispatcher's thread-local
+  confirmation scope (the `confirmation_authorized()` fallback remains as
+  defense in depth). A spec validator rejects the declaration on handlers that
+  do not define a `--confirm` option, so it cannot spread to
+  `confirmation_scope`-style handlers. JSON mode still never prompts and still
+  requires explicit confirmation.
+
 ## [0.22.0] - 2026-08-04
 
 ### Added

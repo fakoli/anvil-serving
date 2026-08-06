@@ -2,10 +2,18 @@
 
 **Observed:** 2026-08-01
 
-Status: fixed locally on 2026-08-06. `HandlerRef.forward_confirm_flag` is the
-explicit handler-declaration contract; only `serves mode enter` and
-`serves mode leave` declare it, and the dispatcher restores exactly one
-`--confirm` in argv before any literal `--` separator. Acceptance evidence:
+Status: fixed on 2026-08-06. Two mechanisms resolve this ticket, and honesty
+requires naming both. First, main commit `5e98124` (predating this change)
+added a `guard.confirmation_authorized()` fallback in `cmd_mode`, which
+already unblocks the documented canonical command by consulting the
+dispatcher's thread-local confirmation scope — the 2026-08-01 observation was
+on a deployed build predating that fallback. Second, this change adds the
+ticket's proposed explicit contract: `HandlerRef.forward_confirm_flag`; only
+`serves mode enter` and `serves mode leave` declare it, and the dispatcher
+restores exactly one `--confirm` in argv before any literal `--` separator, so
+the leaf argparse gate is authoritative and no longer relies on ambient
+thread-local state. The fallback remains in place and pinned by its own test.
+Acceptance evidence:
 root-CLI tests prove enter/leave receive exactly one `--confirm` while
 preview/status receive none, JSON mode still refuses without prompting, the
 guarded-dispatch contract test encodes the declaration, and a hermetic
