@@ -494,6 +494,47 @@ def test_mode_entry_accepts_dispatcher_confirmation_scope(
     assert "mode entered: tp2" in capsys.readouterr().out
 
 
+def test_canonical_cli_enters_and_leaves_synthetic_exclusive_mode(
+    tmp_path, monkeypatch, capsys,
+):
+    # The documented canonical command: the dispatcher consumes --confirm and
+    # forwards it back in argv (forward_confirm_flag), so the legacy leaf
+    # parser sees confirm=True on both transitions.
+    from anvil_serving import cli
+
+    path = _manifest(tmp_path, DUAL_MODE_MANIFEST)
+    states = {
+        "split-a": "absent",
+        "split-b": "absent",
+        "tp2": "absent",
+        serves.DEFAULT_ROUTER_CONTAINER: "exited",
+    }
+    run = _mode_run(states)
+    seen_confirm = []
+    real_cmd_mode = serves.cmd_mode
+
+    def cmd_mode_with_fake_docker(*args, **kwargs):
+        seen_confirm.append(kwargs.get("confirm"))
+        return real_cmd_mode(*args, _run=run, **kwargs)
+
+    monkeypatch.setattr(serves, "cmd_mode", cmd_mode_with_fake_docker)
+
+    def fake_up(serves_list, names, **kwargs):
+        for name in names:
+            states[name] = "running"
+        return 0
+
+    monkeypatch.setattr(serves, "cmd_up", fake_up)
+
+    tail = ["tp2", "--restore-group", "split-stack", "--manifest", path, "--confirm"]
+    assert cli.main(["serves", "mode", "enter", *tail]) == 0
+    assert "mode entered: tp2" in capsys.readouterr().out
+
+    assert cli.main(["serves", "mode", "leave", *tail]) == 0
+    assert "mode left: restored split group split-stack" in capsys.readouterr().out
+    assert seen_confirm == [True, True]
+
+
 def test_failed_mode_entry_restores_split_stack_in_transaction_order(
     tmp_path, capsys,
 ):
