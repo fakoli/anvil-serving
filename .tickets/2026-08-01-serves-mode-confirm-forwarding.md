@@ -2,6 +2,18 @@
 
 **Observed:** 2026-08-01
 
+Status: fixed locally on 2026-08-06. `HandlerRef.forward_confirm_flag` is the
+explicit handler-declaration contract; only `serves mode enter` and
+`serves mode leave` declare it, and the dispatcher restores exactly one
+`--confirm` in argv before any literal `--` separator. Acceptance evidence:
+root-CLI tests prove enter/leave receive exactly one `--confirm` while
+preview/status receive none, JSON mode still refuses without prompting, the
+guarded-dispatch contract test encodes the declaration, and a hermetic
+canonical-CLI test enters and leaves a synthetic exclusive mode with
+`confirm=True` reaching the leaf parser on both transitions. Remote/controller
+dispatch is untouched (it returns before the forwarding point). Ruff and the
+full pytest suite pass on Windows.
+
 ## Problem
 
 `python -m anvil_serving.cli serves mode enter TARGET --restore-group GROUP
