@@ -23,6 +23,8 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- The controller's host publish port is now overridable via a single `ANVIL_CONTROLLER_PUBLISH` spec (`<host-ip>:<host-port>:8765`, default `127.0.0.1:8765`), so an operator can move the loopback publish off a host port already claimed by another service while keeping the container-internal `8765` canonical. Documented in `examples/fakoli-dark/.env.example`, the operator playbook, and the hardened-controller test. Tailscale Serve must be pointed at the chosen host port, and any prior route on the old host port should be removed.
+
 - `GET /v1/models/capabilities` extends the per-tier `compat` declarations with
   two more fields that use the exact OpenClaw keys: `supportsStrictMode` (a bool)
   and `supportedReasoningEfforts` (an ordered set of lowercase effort labels such
