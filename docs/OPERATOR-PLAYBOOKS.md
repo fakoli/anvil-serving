@@ -122,11 +122,24 @@ docker compose -f examples/fakoli-dark/docker-compose.controller.yml up -d --wai
 anvil-serving controller status --url http://127.0.0.1:8765
 ```
 
-The deployment publishes only `127.0.0.1:8765`. Expose that loopback listener
+The deployment publishes only `127.0.0.1:<host-port>` (default `8765`), keeping
+the container-internal port canonical at `8765`. Expose that loopback listener
 to the tailnet from the Dark host, not from the container:
 
 ```powershell
 tailscale serve --bg --set-path=/anvil-controller http://127.0.0.1:8765
+tailscale serve status
+```
+
+If host port `8765` is already claimed on the Dark host (for example, an
+HTTP.sys URL reservation on `127.0.0.1:8765` from another service), publish the
+controller to a free host port and point Tailscale Serve at it instead:
+
+```powershell
+$env:ANVIL_CONTROLLER_PUBLISH_PORT = '18765'
+docker compose -f examples/fakoli-dark/docker-compose.controller.yml up -d --wait controller
+anvil-serving controller status --url http://127.0.0.1:18765
+tailscale serve --bg --set-path=/anvil-controller http://127.0.0.1:18765
 tailscale serve status
 ```
 
