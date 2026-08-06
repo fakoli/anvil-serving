@@ -122,13 +122,37 @@ docker compose -f examples/fakoli-dark/docker-compose.controller.yml up -d --wai
 anvil-serving controller status --url http://127.0.0.1:8765
 ```
 
-The deployment publishes only `127.0.0.1:8765`. Expose that loopback listener
+By default the deployment publishes only `127.0.0.1:8765` (the host bind and
+host port come from the single `ANVIL_CONTROLLER_PUBLISH` spec, defaulting to
+`127.0.0.1:8765`), keeping the container-internal port canonical at `8765`. Expose that loopback listener
 to the tailnet from the Dark host, not from the container:
 
 ```powershell
 tailscale serve --bg --set-path=/anvil-controller http://127.0.0.1:8765
 tailscale serve status
 ```
+
+If host port `8765` is already claimed on the Dark host (for example, another
+service or Windows HTTP.sys actively listening on `127.0.0.1:8765`), publish the
+controller to a free host port and point Tailscale Serve at it instead. Override
+the single `ANVIL_CONTROLLER_PUBLISH` spec (`<host-ip>:<host-port>:8765`), keeping
+the host port distinct from the container-internal `8765`:
+
+```powershell
+$env:ANVIL_CONTROLLER_PUBLISH = '127.0.0.1:18765'
+docker compose -f examples/fakoli-dark/docker-compose.controller.yml up -d --wait controller
+anvil-serving controller status --url http://127.0.0.1:18765
+tailscale serve reset
+tailscale serve --bg --set-path=/anvil-controller http://127.0.0.1:18765
+tailscale serve status
+```
+
+`tailscale serve reset` clears any prior route before you re-add the path, so the
+tailnet never proxies `/anvil-controller/mcp` to a leftover or unrelated listener
+on the old host port. Re-run `tailscale serve --bg --set-path=/anvil-controller
+http://127.0.0.1:18765` after the reset (as shown) to restore the proxy on the new
+host port. The `--bg` flag keeps Tailscale Serve up across disconnects; the reset
+and re-add pair replaces the backend at that path rather than stacking a route.
 
 On Fakoli Mini, install the same Anvil Serving revision and provide the same
 token to the OpenClaw gateway's owner-only service environment. Register the
