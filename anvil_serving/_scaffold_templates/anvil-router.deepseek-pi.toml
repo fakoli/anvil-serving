@@ -46,7 +46,7 @@ auth_env = "ANVIL_PI_LOCAL_KEY"
 health_path = "/health"
 model_identity = true
 timeout = 600
-engine = "vllm-r16-b12x"
+engine = "vllm-r27-b12x"
 quantization = "official-mixed-fp8-fp4-b12x-w4a8"
 max_concurrency = 16
 
