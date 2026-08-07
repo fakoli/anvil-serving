@@ -1,6 +1,6 @@
 # Windows SSH sessions cannot pull public images: Docker Desktop credential helper requires an interactive logon
 
-**Status:** Open — `docker save | docker load` transfer proposed; in flight and unverified at time of writing
+**Status:** Open (product gaps remain) — the `docker save | docker load` workaround is **verified working** as of 2026-08-07
 
 ## Problem
 
@@ -28,14 +28,23 @@ direct CLI use).
   `serves up` when any image is missing from the local daemon cache.
 - The error message misleads: no credentials are needed for these pulls.
 
-## Proposed workaround (untested)
+## Workaround (verified 2026-08-07)
 
 Pull the pinned image on another host and stream it:
 `docker save <image> | ssh <host> docker load`. Loads do not consult
-registry credentials, so this should bypass the failure; whether the load
-side works over a Windows SSH session is itself unverified. Once images are
-in the daemon cache, `serves up` should not need to pull. Record the
-outcome here when the transfer has actually been exercised.
+registry credentials; a ~28GB transfer completed over a Windows SSH
+session and the serves came up from the cached image. Three wrinkles an
+operator must know:
+
+1. `docker load` restores the image but NOT its `name@digest` repo
+   reference, so a compose file pinning `image: name@sha256:...` still
+   tries to pull. Fix: `docker tag <image-id> name:local-tag` and point the
+   compose image-override env var at that tag.
+2. Compose `external: true` volumes (e.g. `vllm-hfcache`) must be created
+   once on the new host (`docker volume create ...`) before first `up`.
+3. If the serve publishes only on a tailnet address, the local readiness
+   wait against `127.0.0.1` reports failure even when the serve is healthy
+   — probe the published address, or publish on both loopback and tailnet.
 
 ## Required behavior
 
