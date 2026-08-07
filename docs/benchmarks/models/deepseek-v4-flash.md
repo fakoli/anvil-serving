@@ -172,6 +172,15 @@ JSON, tool batch x20, tool-result continuation) passed. The ~640K retrieval,
 650K-envelope performance rows, and client smokes above are dated history from
 the prior envelope and do not transfer without fresh measurement.
 
+2026-08-07 image upgrade: the pinned recipe moved from the r16 to the
+digest-pinned r27 community image (official 0731 reasoning/tool prompt
+contract, tiered-offload lifetime fixes, InstantTensor registration fallback,
+`PYTHONHASHSEED=0`). KV cache re-sized to 272,107 tokens; a same-day
+functional preflight passed and a matched 4K/c16 capacity probe showed
+concurrency parity with the recorded r16 artifact (520 vs 513.5 aggregate
+tok/s). All r16-labeled performance figures on this page predate the image
+upgrade.
+
 The 1M profiles are experimental only. Remaining gates include restoring a
 policy-compliant reserve, sustained multi-turn high/max testing, fixing and
 requalifying the client-shaped 1M B12X workspace failure, and pinned 0731 NVFP4
