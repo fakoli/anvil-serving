@@ -139,6 +139,16 @@ functional and repeated quality gates. Its final 32K capacity lane completed
 11/12 at 2.705-second TTFO, 29.106-second first-visible TTFT, 7,818 effective
 prefill tok/s, and 11.5 tok/s combined reasoning/visible decode.
 
+A separate vision-adapter package,
+`webbrain-one/DeepSeek-V4-Flash-0731-Vision-NVFP4` (rev `3a8f168c`,
+digest-pinned SGLang v0.5.16, marlin/marlin kernels, TP=2, 4,096 context,
+`--mem-fraction-static 0.97`), first-loaded and served on 2026-08-07 with
+`compatibility-only` and bounded `functional`/negative `quality` evidence:
+text-lane gates and image conditioning pass, but dense OCR and GUI-affordance
+reading confabulate against known ground truth, and the checkpoint has no
+chat template. See the
+[vision first-load finding](../../findings/2026-08-07-deepseek-0731-vision-nvfp4-sglang-first-load.md).
+
 Current `external-prior` evidence strengthens the research priority without
 expanding the local contract:
 
@@ -186,6 +196,13 @@ policy-compliant reserve, sustained multi-turn high/max testing, fixing and
 requalifying the client-shaped 1M B12X workspace failure, and pinned 0731 NVFP4
 W4A16/W4A4 comparisons.
 
+2026-08-07 vision-adapter first load: `no-promotion`, evaluated separately
+from the text Primary. The WebBrain 0731 vision overlay loaded and served on
+TP=2 with grounded image conditioning, but OCR/GUI reading confabulated and
+the checkpoint exposes no chat template, so it cannot serve a router chat
+client. The 650K Primary was restored and its health verified in the same
+session; no alias, route, or promoted serve changed.
+
 ## Failures and gotchas
 
 The first r16 start exposed an offline nested-speculative-model localization
@@ -231,6 +248,7 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
+- [2026-08-07 vision-adapter (NVFP4) first load](../../findings/2026-08-07-deepseek-0731-vision-nvfp4-sglang-first-load.md)
 - [2026-08-02 650K/1M Pi qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md)
 - [2026-08-02 650K Primary promotion](../../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md)
 - [2026-08-02 native KV offload and 256K qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md)

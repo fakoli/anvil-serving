@@ -99,6 +99,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 | DeepSeek V4 Flash 0731 r16 B12X + DSpark K5, TP=2 | 131,072 | 8 configured; c1 measured | FP8 MLA KV; 130.7 tok/s matched decode; 128K pass; 3 GiB reserve failed |
 | DeepSeek V4 Flash 0731 r16 B12X + DSpark K5 GPU-only Pi, TP=2 | 650,000 current / 1,000,000 experimental | 16 | 650K: 640K retrieval, 141.6 tok/s matched 32K decode, live Pi/OpenClaw smokes; 1M: retained client-shaped workspace failures; reserve waived |
 | DeepSeek V4 Flash 0731 r16 B12X + DSpark K5 + native offload, TP=2 | 262,144 | 8 configured; c1 measured | 8 GiB cold 250K capacity; 16 GiB CPU tier proves 113,408-token external reload; per-card reserve not sampled |
+| DeepSeek 0731 Vision (NVFP4), webbrain-one SGLang, TP=2 | 4,096 | 1; one image per request | ~175.6 GB mixed FP8/NVFP4 weights, 88.08/87.87 GB per card; `--mem-fraction-static 0.97` against an engine-measured KV floor of 0.9411; steady-state 95,164/93,992 MiB of 97,887 MiB; marlin MoE JIT first-compile requires a persistent tvm-ffi cache volume |
 | GPT-OSS Puzzle 88B MXFP4 | 131,072 | 8 | FP8 KV; pinned Anvil vLLM |
 | Nemotron 3 Super 120B NVFP4 | 131,072 | 5 | 1M advertised is not locally validated |
 | Qwen3.6 27B community NVFP4 + MTP | 262,144 | 5 | 262K needle validated |
@@ -106,6 +107,15 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Recent changes
 
+- 2026-08-07: a WebBrain DeepSeek 0731 vision-adapter (NVFP4) package
+  first-loaded and served on TP=2 via SGLang, marlin/marlin kernels, and
+  `--mem-fraction-static 0.97` against an engine-measured KV floor of 0.9411.
+  ~175.6 GB of mixed FP8/NVFP4 weights split 88.08/87.87 GB per card, with
+  steady-state usage of 95,164/93,992 MiB of 97,887 MiB; the first marlin MoE
+  call required a persistent tvm-ffi JIT cache volume. Image conditioning was
+  grounded, but OCR/GUI reading confabulated and the checkpoint has no chat
+  template. Decision `no-promotion`; the 650K Primary was restored and
+  verified healthy in the same session.
 - 2026-08-02: after human approval, the 650K/maxseq16 profile became
   `llm.primary` with high reasoning as the client default and a generic
   per-tier 32,768 output cap. Dark Pi, Mini Pi, and Mini OpenClaw passed. The
