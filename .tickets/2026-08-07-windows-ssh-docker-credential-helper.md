@@ -1,6 +1,6 @@
 # Windows SSH sessions cannot pull public images: Docker Desktop credential helper requires an interactive logon
 
-**Status:** Open — worked around by `docker save | docker load` image transfer
+**Status:** Open — `docker save | docker load` transfer proposed; in flight and unverified at time of writing
 
 ## Problem
 
@@ -28,11 +28,14 @@ direct CLI use).
   `serves up` when any image is missing from the local daemon cache.
 - The error message misleads: no credentials are needed for these pulls.
 
-## Workaround (applied)
+## Proposed workaround (untested)
 
 Pull the pinned image on another host and stream it:
-`docker save <image> | ssh <host> docker load`. Loads bypass registry auth.
-Once images are cached, `serves up` succeeds.
+`docker save <image> | ssh <host> docker load`. Loads do not consult
+registry credentials, so this should bypass the failure; whether the load
+side works over a Windows SSH session is itself unverified. Once images are
+in the daemon cache, `serves up` should not need to pull. Record the
+outcome here when the transfer has actually been exercised.
 
 ## Required behavior
 
