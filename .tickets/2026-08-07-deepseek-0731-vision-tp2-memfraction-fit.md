@@ -1,6 +1,6 @@
 # DeepSeek 0731 Vision TP=2: mem-fraction-static fit ladder
 
-- **Status:** resolved in attempt 2 (pending verification)
+- **Status:** resolved in attempt 7 (0.97 mem-fraction + persistent JIT volume + skip-warmup + multimem-gatherer patch; healthy serve verified)
 - **Lane:** tp2-deepseek-0731-vision-nvfp4-sglang-4k (SGLang v0.5.16-cu130 digest-pinned, marlin/marlin, 4096 ctx)
 
 ## Attempt 1 (2026-08-07 08:41–08:45)

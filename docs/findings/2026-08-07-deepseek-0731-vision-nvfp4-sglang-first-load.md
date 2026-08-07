@@ -181,11 +181,14 @@ Email: johndoe@example.com
 Commit hash: 1234567890abcdef
 ```
 
-The card actually reads `kd_marchetti_82`,
-`kaya.doumbia+ops@fakoli-labs.io`, and
-`3a8f168ccafeb4304b7490f773ad1bd18852e215`. Nothing in the answer is a
-misreading of what is on the image; all three fields are generic filler
-rendered in the requested shape, with no hedge. This is precisely the failure
+The card actually reads `kd_marchetti_82`, a synthetic plus-addressed email
+(masked here because tracked findings are public; the exact string is
+preserved with the probe image and its SHA-256 in the private evidence
+archive), and `3a8f168ccafeb4304b7490f773ad1bd18852e215`. All identity strings
+on the probe cards are synthetic, generated for this probe; they correspond to
+no real person, account, or service. Nothing in the answer is a misreading of
+what is on the image; all three fields are generic filler rendered in the
+requested shape, with no hedge. This is precisely the failure
 mode WebBrain's own vision shootout flags as the critical browser-agent
 weakness.
 
