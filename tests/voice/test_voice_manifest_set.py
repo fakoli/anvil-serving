@@ -11,6 +11,7 @@ vram_mib = 100
 [[serve]]
 name = "omni"
 container = "omni"
+runtime = "docker"
 port = 30003
 model = "omni"
 engine = "vllm"
@@ -27,6 +28,7 @@ up = "echo omni"
 [[serve]]
 name = "stt"
 container = "stt"
+runtime = "docker"
 port = 30010
 model = "stt"
 engine = "audio"

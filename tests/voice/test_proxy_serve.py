@@ -23,7 +23,7 @@ from tests.voice.conftest import FakeOpenResponse, FakeRun, fake_open_fails
 def manifest_with_proxy(tmp_path):
     p = tmp_path / "serves.voice.toml"
     p.write_text(
-        '[[serve]]\nname = "realtime-proxy"\ncontainer = "anvil-voice-proxy"\n'
+        '[[serve]]\nname = "realtime-proxy"\ncontainer = "anvil-voice-proxy"\nruntime = "docker"\n'
         'port = 8765\nmodel = "anvil-realtime-proxy"\nengine = "audio"\nhealth = "/usage"\n'
         'up = "echo bring-up-proxy"\n',
         encoding="utf-8",
@@ -56,7 +56,7 @@ def test_bring_up_raises_serve_not_configured_when_manifest_missing(tmp_path):
 def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
     p = tmp_path / "serves.toml"
     p.write_text(
-        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nport = 8090\n'
+        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nruntime = "docker"\nport = 8090\n'
         'model = "parakeet"\nengine = "audio"\n',
         encoding="utf-8",
     )

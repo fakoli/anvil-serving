@@ -244,6 +244,7 @@ def render_serve_entry(name, container, port, served_name, up, health="/health",
         f'\n[[serve]]\n'
         f'name = {_toml_str(name)}\n'
         f'container = {_toml_str(container)}\n'
+        f'runtime = "docker"\n'
         f'port = {port}\n'
         f'model = {_toml_str(served_name)}\n'
         f'engine = {_toml_str(engine)}\n'
