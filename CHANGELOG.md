@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-08-08
+
+### Added
+
+- `fleet drift` — compares each declared host's repository snapshot
+  (`PATH/hosts/<host>/operator-home/`) against that host's *live* operator
+  home, file by file, content-based (sha256, newline-normalized). The LOCAL
+  host is read directly (`--home`, else `$ANVIL_SERVING_HOME`, else the
+  platform default config home); every other host is probed with one
+  `ssh -n -o BatchMode=yes <host> python3 -c "..."` call per host that hashes
+  exactly the repo-tracked filenames it is given. Only repo-tracked files
+  are ever compared or read — a live-only `.env`, backup, or lock file is
+  never listed, opened, or sent over SSH. Reports `identical` / `differs` /
+  `missing-live` per file; `--json` for tooling. Exits non-zero iff any
+  compared file differs or is missing on a *reachable* host; an unreachable
+  host reports that state, not drift (same availability-class reasoning as
+  `fleet version`). `--repo` is required — the tool never guesses the
+  private operator repository root. Feature 7 of
+  `docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md`, closing the incident where a live
+  operator home was found six commits behind its repo while serving
+  production, and a second host's live home was a wholesale byte-copy of the
+  wrong host's home. See ADR-0034 §9.
+
 ## [0.29.0] - 2026-08-08
 
 ### Added
