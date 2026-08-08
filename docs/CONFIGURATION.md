@@ -173,6 +173,27 @@ auth_env = "ANVIL_ROUTER_TOKEN"
 send its resolved value as a bearer token or `x-api-key`. Expose non-loopback
 routers only with token authentication.
 
+### Token persistence contract
+
+Token configuration names environment variables; the values must also survive a
+host reboot. Store each token line in the gitignored operator `.env` chain —
+`$ANVIL_SERVING_HOME/.env`, then `~/.env` — and treat the process environment
+as an override, never the only copy. Router and controller token resolution
+reads the shell environment first and falls back through that chain, so a
+freshly rebooted host can authenticate without re-exporting variables in a
+live shell. Refusals name every location that was checked. Values never appear
+in tracked files (ADR-0032).
+
+### Durability sinks (ADR-0033)
+
+| Key | Default | Meaning |
+|---|---:|---|
+| `admission_state_path` | unset | Opt-in persisted tier-quiesce intent. Quiesced tiers (except promotion-owned quiescence) are restored quiesced at boot; readmission still requires the health+identity gate. A corrupt file refuses to serve. |
+| `decision_log_path` | unset | Opt-in append-only, metadata-only JSONL of decision records (timestamped), size-capped with one rotated generation. |
+
+Both point at writable paths on the router state volume in containerized
+deployments. Unset keys mean no file I/O.
+
 ## `[router]`
 
 | Key | Default | Meaning |

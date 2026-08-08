@@ -180,6 +180,10 @@ class OperationStore:
             ).fetchone()
             if row is not None:
                 record = self._record(row)
+                if record["status"] == "running":
+                    failed = self._fail_orphaned(connection, key, now, self._orphan_grace())
+                    if failed is not None:
+                        record = failed
                 connection.commit()
                 if record["fingerprint"] != fingerprint:
                     return "conflict", record
@@ -271,6 +275,104 @@ class OperationStore:
                 raise RuntimeError("active idempotency record is unavailable for completion")
             self._expire_records(connection, now)
             connection.commit()
+
+    def _orphan_grace(self) -> float:
+        """Grace before a running record's lease counts as stale.
+
+        Several missed heartbeats, floored so scheduler jitter under load can
+        never orphan a live operation (ADR-0033).
+        """
+        interval = max(0.05, min(5.0, self.retention_seconds / 3.0))
+        return max(15.0, 4.0 * interval)
+
+    def _fail_orphaned(
+        self,
+        connection: sqlite3.Connection,
+        key: str,
+        now: float,
+        grace: float,
+    ) -> Optional[dict[str, Any]]:
+        """Fail-close one orphaned running record; None when it is live."""
+        if key in self._active_keys:
+            return None
+        lease = connection.execute(
+            "SELECT updated_at FROM operation_leases WHERE idempotency_key = ?", (key,)
+        ).fetchone()
+        if lease is not None and float(lease["updated_at"]) > now - grace:
+            return None
+        row = connection.execute(
+            "SELECT * FROM operation_records WHERE idempotency_key = ? AND status = 'running'",
+            (key,),
+        ).fetchone()
+        if row is None:
+            return None
+        envelope = {
+            "ok": False,
+            "request_id": row["request_id"],
+            "error": {
+                "code": "operation_interrupted",
+                "message": "controller restarted while this operation was running",
+                "details": {"key": key},
+            },
+        }
+        connection.execute(
+            """
+            UPDATE operation_records
+            SET status = 'failed', updated_at = ?, expires_at = ?,
+                response = ?, result = NULL, error = ?
+            WHERE idempotency_key = ? AND status = 'running'
+            """,
+            (
+                now,
+                now + self.retention_seconds,
+                _json_dumps(envelope),
+                _json_dumps(envelope["error"]),
+                key,
+            ),
+        )
+        connection.execute(
+            "DELETE FROM operation_leases WHERE idempotency_key = ?", (key,)
+        )
+        refreshed = connection.execute(
+            "SELECT * FROM operation_records WHERE idempotency_key = ?", (key,)
+        ).fetchone()
+        return self._record(refreshed) if refreshed is not None else None
+
+    def recover_interrupted(
+        self, *, grace_seconds: Optional[float] = None
+    ) -> list[dict[str, Any]]:
+        """Fail-close running records orphaned by a controller restart.
+
+        A running record with no in-process execution and an absent or stale
+        lease was interrupted. It becomes a typed ``operation_interrupted``
+        failure; the underlying action is never silently re-executed. Returns
+        metadata-only summaries for audit.
+        """
+        grace = (
+            self._orphan_grace()
+            if grace_seconds is None
+            else max(0.0, float(grace_seconds))
+        )
+        now = self._clock()
+        recovered: list[dict[str, Any]] = []
+        with self._lock, self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                "SELECT idempotency_key, request_id, created_at FROM operation_records"
+                " WHERE status = 'running'"
+            ).fetchall()
+            for row in rows:
+                key = row["idempotency_key"]
+                if self._fail_orphaned(connection, key, now, grace) is not None:
+                    recovered.append(
+                        {
+                            "key": key,
+                            "request_id": row["request_id"],
+                            "created_at": row["created_at"],
+                        }
+                    )
+            connection.commit()
+        return recovered
 
     def lookup(self, key: str) -> Optional[dict[str, Any]]:
         now = self._clock()

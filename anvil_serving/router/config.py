@@ -92,6 +92,9 @@ _ROUTER_KEYS = frozenset({
     "availability_probe_interval",
     "availability_probe_timeout",
     "availability_probe_max_bytes",
+    "availability_prober",
+    "availability_probe_backoff_max",
+    "availability_probe_staleness",
     "purpose_models",
     "audio_routes",
     "audio_max_input_bytes",
@@ -266,6 +269,18 @@ class RouterConfig:
     availability_probe_interval: float = 5.0
     availability_probe_timeout: float = 1.0
     availability_probe_max_bytes: int = 64 * 1024
+    # ADR-0033 opt-in background prober. "inline" (default) probes lazily on
+    # the request path exactly as before; "background" moves probing to a
+    # jittered, backoff-aware daemon thread and serves last-known state within
+    # the staleness bound. Never a fallback mechanism: it changes when the
+    # same probe runs, never where traffic goes.
+    availability_prober: str = "inline"
+    # Per-tier exponential backoff cap for consecutive background-probe
+    # failures; None derives 8x the probe interval.
+    availability_probe_backoff_max: Optional[float] = None
+    # Maximum age of a background result served without an inline re-probe;
+    # None derives 3x the probe interval. Must be >= the interval.
+    availability_probe_staleness: Optional[float] = None
     # gpu-reservations:T010 (ADR-0017 §7) — purpose-model serves routed by model
     # name on /v1/embeddings and /v1/rerank. Additive and default-empty: an
     # absent [[router.purpose_models]] list leaves the front door exactly as
@@ -311,9 +326,19 @@ class ServerConfig:
     loopback-only default — full back-compat. The secret literal is NEVER
     stored here, only the env-var NAME, mirroring the ``Tier.auth_env``
     contract above.
+
+    ``admission_state_path`` and ``decision_log_path`` are the opt-in ADR-0033
+    durability sinks: persisted tier-quiesce intent restored at boot, and an
+    append-only metadata-only JSONL of decision records. Both absent -> no
+    file I/O, identical to the pre-ADR-0033 router.
     """
 
     auth_env: Optional[str] = None
+    admission_state_path: Optional[str] = None
+    decision_log_path: Optional[str] = None
+
+
+_SERVER_KEYS = frozenset({"auth_env", "admission_state_path", "decision_log_path"})
 
 
 def load_server_config(path: str) -> ServerConfig:
@@ -335,27 +360,37 @@ def load_server_config(path: str) -> ServerConfig:
 
     server = data.get("server")
     if server is None:
-        return ServerConfig(auth_env=None)
+        return ServerConfig()
     if not isinstance(server, dict):
         raise ConfigError(f"[server] must be a table in {path}")
+    _reject_unknown_keys(server, _SERVER_KEYS, "[server]")
 
     auth_env = server.get("auth_env")
-    if auth_env is None:
-        return ServerConfig(auth_env=None)
+    if auth_env is not None:
+        if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
+            raise ConfigError(
+                f"[server].auth_env must name an ENV VAR matching "
+                f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret reference, "
+                f"never the secret itself"
+            )
+        if _SECRET_SHAPED_RE.fullmatch(auth_env):
+            raise ConfigError(
+                f"[server].auth_env {auth_env!r} is shaped like a credential "
+                f"literal, not an env-var name; store the env-var NAME, never the secret"
+            )
 
-    if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
-        raise ConfigError(
-            f"[server].auth_env must name an ENV VAR matching "
-            f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret reference, "
-            f"never the secret itself"
-        )
-    if _SECRET_SHAPED_RE.fullmatch(auth_env):
-        raise ConfigError(
-            f"[server].auth_env {auth_env!r} is shaped like a credential "
-            f"literal, not an env-var name; store the env-var NAME, never the secret"
-        )
+    paths: dict[str, Optional[str]] = {}
+    for key in ("admission_state_path", "decision_log_path"):
+        value = server.get(key)
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            raise ConfigError(f"[server].{key} must be a non-empty file path")
+        paths[key] = os.path.expanduser(value) if isinstance(value, str) else None
 
-    return ServerConfig(auth_env=auth_env)
+    return ServerConfig(
+        auth_env=auth_env,
+        admission_state_path=paths["admission_state_path"],
+        decision_log_path=paths["decision_log_path"],
+    )
 
 
 def _parse_tier(raw: object) -> Tier:
@@ -1091,6 +1126,27 @@ def load(path: str) -> RouterConfig:
             f"256 through 1048576 in {path}"
         )
 
+    availability_prober = router.get("availability_prober", "inline")
+    if availability_prober not in ("inline", "background"):
+        raise ConfigError(
+            f"[router].availability_prober must be 'inline' or 'background' in {path}"
+        )
+    availability_probe_backoff_max: Optional[float] = None
+    if "availability_probe_backoff_max" in router:
+        availability_probe_backoff_max = _positive_seconds(
+            "availability_probe_backoff_max", availability_probe_interval
+        )
+    availability_probe_staleness: Optional[float] = None
+    if "availability_probe_staleness" in router:
+        availability_probe_staleness = _positive_seconds(
+            "availability_probe_staleness", availability_probe_interval
+        )
+        if availability_probe_staleness < availability_probe_interval:
+            raise ConfigError(
+                f"[router].availability_probe_staleness must be >= "
+                f"availability_probe_interval in {path}"
+            )
+
     return RouterConfig(
         tiers=tuple(tiers),
         model_routes=MappingProxyType(model_routes),
@@ -1099,6 +1155,9 @@ def load(path: str) -> RouterConfig:
         availability_probe_interval=availability_probe_interval,
         availability_probe_timeout=availability_probe_timeout,
         availability_probe_max_bytes=raw_probe_max_bytes,
+        availability_prober=availability_prober,
+        availability_probe_backoff_max=availability_probe_backoff_max,
+        availability_probe_staleness=availability_probe_staleness,
         purpose_models=tuple(purpose_models),
         audio_routes=tuple(audio_routes),
         audio_max_input_bytes=audio_max_input_bytes,
