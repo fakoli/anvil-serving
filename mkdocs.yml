@@ -68,6 +68,7 @@ nav:
       - Repository history reset runbook: HISTORY-RESET-RUNBOOK.md
       - Troubleshooting: TROUBLESHOOTING.md
       - Host & setup commands: cli/host.md
+      - Fleet commands: cli/fleet.md
       - Control plane & integrations commands: cli/control-plane.md
       - Device topologies: DEVICE-TOPOLOGIES.md
       - Tailnet endpoint runbook: TAILNET-ENDPOINT-RUNBOOK.md

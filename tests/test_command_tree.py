@@ -378,7 +378,7 @@ def test_explicit_family_list_rebuilds_the_same_tree():
     rebuilt = build_command_tree(FAMILIES)
 
     assert rebuilt == COMMAND_TREE
-    assert len(FAMILIES) == 8
+    assert len(FAMILIES) == 9
 
 
 def test_registry_import_does_not_import_operational_handlers():
