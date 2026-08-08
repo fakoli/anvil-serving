@@ -27,8 +27,13 @@ jobs:
           python-version: "3.12"
       - name: Install (editable + dev extras)
         run: python -m pip install -e ".[dev]"
-      - name: Verify active CLI references
-        run: python scripts/audit_cli_references.py --check --scope full
+      - name: Verify active CLI references (all scopes)
+        # Sole home of the repo-level audit checks; the test suite keeps only
+        # unit tests of the script so the matrix does not re-run these.
+        run: |
+          python scripts/audit_cli_references.py --check --scope docs
+          python scripts/audit_cli_references.py --check --scope skills
+          python scripts/audit_cli_references.py --check --scope full
 
   test:
     name: test (${{ matrix.os }}, py${{ matrix.python-version }})
