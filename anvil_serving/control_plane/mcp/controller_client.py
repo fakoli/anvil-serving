@@ -13,22 +13,17 @@ from typing import Any
 
 from .errors import ToolError
 from .security import ENV_NAME_RE, redact_secret, safe_controller_url
+from ...transports import _NoRedirectHandler, _urlopen_no_proxy_no_redirect
+
+NoRedirectHandler = _NoRedirectHandler
 
 
+MAX_REMOTE_CONTROLLER_RESPONSE_BYTES = 1024 * 1024
 MAX_ERROR_BODY_BYTES = 4096
 
 
-class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
-
-
 def urlopen_no_proxy_no_redirect(req, timeout=30):
-    opener = urllib.request.build_opener(
-        urllib.request.ProxyHandler({}),
-        NoRedirectHandler(),
-    )
-    return opener.open(req, timeout=timeout)
+    return _urlopen_no_proxy_no_redirect(req, timeout)
 
 
 def http_error_details(
@@ -116,11 +111,23 @@ def remote_controller_request(
     *,
     timeout: int = 30,
     opener: Callable[..., Any] | None = None,
+    max_response_bytes: int = MAX_REMOTE_CONTROLLER_RESPONSE_BYTES,
 ) -> dict:
     """POST one JSON-RPC request to a remote controller endpoint."""
 
     if not token:
         raise ToolError("missing_controller_token", "controller token is required")
+    if (
+        isinstance(max_response_bytes, bool)
+        or not isinstance(max_response_bytes, int)
+        or max_response_bytes < 1
+        or max_response_bytes > MAX_REMOTE_CONTROLLER_RESPONSE_BYTES
+    ):
+        raise ToolError(
+            "bad_argument",
+            "max_response_bytes must be between 1 and %s"
+            % MAX_REMOTE_CONTROLLER_RESPONSE_BYTES,
+        )
     controller_url = _mcp_endpoint(safe_controller_url(controller_url))
     if opener is None:
         opener = urlopen_no_proxy_no_redirect
@@ -157,7 +164,19 @@ def remote_controller_request(
     )
     try:
         with opener(req, timeout=timeout) as response:
-            raw = response.read().decode("utf-8")
+            bounded = response.read(max_response_bytes + 1)
+            if not isinstance(bounded, bytes):
+                raise ToolError(
+                    "bad_controller_response",
+                    "controller response body must be bytes",
+                )
+            if len(bounded) > max_response_bytes:
+                raise ToolError(
+                    "controller_response_too_large",
+                    "controller response exceeds the bounded response limit",
+                    {"max_response_bytes": max_response_bytes},
+                )
+            raw = bounded.decode("utf-8")
     except urllib.error.HTTPError as exc:
         details, _ = http_error_details(exc, token)
         raise ToolError(
@@ -165,6 +184,8 @@ def remote_controller_request(
             "controller returned HTTP %s" % exc.code,
             details,
         )
+    except ToolError:
+        raise
     except Exception as exc:
         raise ToolError(
             "controller_request_failed",

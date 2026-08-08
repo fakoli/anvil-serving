@@ -177,15 +177,6 @@ def measure_callable(
     return observations
 
 
-def process_cpu_percent(process_cpu_start: float, wall_start: float) -> float:
-    """Return current-process CPU as a percentage of whole-host capacity."""
-
-    wall = time.monotonic() - wall_start
-    if wall <= 0:
-        return 0.0
-    return max(0.0, (time.process_time() - process_cpu_start) / wall * 100 / (os.cpu_count() or 1))
-
-
 def publish_overhead_result(
     results: Mapping[str, Mapping[str, Any]],
     *,

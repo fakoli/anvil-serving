@@ -7,6 +7,7 @@ import hmac
 import os
 import socket
 import sys
+import threading
 import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
@@ -56,6 +57,73 @@ JsonLoadsFunc = Callable[[str], Any]
 def _default_audit_logger(record: dict[str, Any]) -> None:
     sys.stderr.write(_json_dumps(record) + "\n")
     sys.stderr.flush()
+
+
+#: Default size cap for one :class:`FileAuditLogger` generation before the
+#: single-rotation ``os.replace`` to ``<path>.1``.
+DEFAULT_AUDIT_LOG_MAX_BYTES = 16 * 1024 * 1024
+
+
+class FileAuditLogger:
+    """Durable JSONL audit sink that tees to stderr (ADR-0033).
+
+    Records are the same already-redacted, metadata-only audit dictionaries
+    the stderr logger receives. Container logs stay complete (the tee), and
+    the file on the operation-state volume survives restarts. Construction
+    fails when the path is unwritable — a configured audit sink that cannot
+    write is a boot error, not a silent downgrade. Later write failures fall
+    back to stderr-only and never fail the request being audited.
+    """
+
+    def __init__(
+        self, path: str, *, max_bytes: int = DEFAULT_AUDIT_LOG_MAX_BYTES
+    ) -> None:
+        if max_bytes < 1024:
+            raise ControllerError(
+                "bad_audit_log_config",
+                "audit log max_bytes must be at least 1024",
+                status=400,
+            )
+        self.path = path
+        self.max_bytes = int(max_bytes)
+        self._lock = threading.Lock()
+        try:
+            with open(path, "a", encoding="utf-8"):
+                pass
+        except OSError as exc:
+            raise ControllerError(
+                "audit_log_unwritable",
+                "audit log path is not writable",
+                status=400,
+                details={"path": path, "error": type(exc).__name__},
+            ) from exc
+
+    def __call__(self, record: dict[str, Any]) -> None:
+        _default_audit_logger(record)
+        try:
+            line = _json_dumps(record)
+        except (TypeError, ValueError):
+            return
+        try:
+            with self._lock:
+                self._rotate_if_needed()
+                with open(self.path, "a", encoding="utf-8") as handle:
+                    handle.write(line + "\n")
+                    handle.flush()
+        except OSError:
+            sys.stderr.write(
+                _json_dumps({"event": "audit_file_write_failed", "path": self.path}) + "\n"
+            )
+            sys.stderr.flush()
+
+    def _rotate_if_needed(self) -> None:
+        try:
+            size = os.path.getsize(self.path)
+        except OSError:
+            return
+        if size < self.max_bytes:
+            return
+        os.replace(self.path, self.path + ".1")
 
 
 def _content_type_is_json(value: Optional[str]) -> bool:
@@ -199,6 +267,7 @@ def make_handler(
     operation_store: Optional[OperationStore] = None,
     allowed_operations: Optional[Sequence[str]] = None,
     json_loads_func: JsonLoadsFunc = _strict_json_loads,
+    node_id: Optional[str] = None,
 ):
     """Build a request handler class for controller tests or ``make_server``."""
 
@@ -643,13 +712,19 @@ def make_handler(
                 if route in ("/health", "/healthz"):
                     status = 200
                     ok = True
+                    health_payload = {
+                        "status": "ok",
+                        "service": "anvil-serving-controller",
+                        "request_id": request_id,
+                    }
+                    # ADR-0033 node identity: declared by the operator via
+                    # --node-id; clients with a matching transport
+                    # expected_node verify it fail-closed before dispatch.
+                    if node_id:
+                        health_payload["node"] = node_id
                     self._send_json(
                         status,
-                        {
-                            "status": "ok",
-                            "service": "anvil-serving-controller",
-                            "request_id": request_id,
-                        },
+                        health_payload,
                         request_id=request_id,
                     )
                     return

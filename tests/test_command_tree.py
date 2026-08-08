@@ -31,7 +31,7 @@ def test_manifest_is_checked_in_and_matches_deterministic_regeneration():
 
 def test_manifest_is_byte_stable():
     assert render_manifest() == render_manifest()
-    assert manifest_data()["schema_version"] == 4
+    assert manifest_data()["schema_version"] == 5
 
 
 def test_visible_commands_link_to_existing_reference_pages_and_headings():
@@ -140,6 +140,8 @@ def test_manifest_records_recursive_paths_and_metadata():
         "confirmed_arguments": {},
         "allowed_arguments": ["timeout_seconds", "max_output_bytes"],
         "positional_arguments": [],
+        "argument_aliases": {},
+        "max_response_bytes": None,
     }
     assert any(
         "--dry-run" in option["flags"]

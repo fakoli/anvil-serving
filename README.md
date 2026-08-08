@@ -1,13 +1,13 @@
 <div align="center">
 
-![anvil-serving - local model serving and a thin capability gateway](assets/banner.png)
+![anvil-serving - local model serving and a thin capability gateway](docs/assets/banner.png)
 
 # anvil-serving
 
 > **Benchmark and serve local models through one explicit capability gateway.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.21.1-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.23.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 </div>

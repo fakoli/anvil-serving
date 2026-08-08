@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 import ipaddress
 import json
-import os
 import re
 import socket
 import uuid
 from typing import Any, Callable, Mapping, Optional, Sequence
 
+from ...envfile import env_sources, resolve_env_value
 from .errors import ControllerError
 
 
@@ -220,10 +220,13 @@ def _resolve_bind_ips(
     return tuple(unique)
 
 
-def _env_has_token(auth_token_env: Optional[str], env: Mapping[str, str]) -> bool:
+def _env_has_token(auth_token_env: Optional[str], env: Optional[Mapping[str, str]]) -> bool:
+    """True when the token resolves from ``env`` or, for the real process
+    environment (``env is None``), from the operator dotenv fallback chain."""
     if not auth_token_env:
         return False
-    return bool(env.get(auth_token_env))
+    value, _source = resolve_env_value(auth_token_env, env=env)
+    return value is not None
 
 
 def validate_bind_safety(
@@ -236,7 +239,6 @@ def validate_bind_safety(
     resolver: Optional[Callable[..., Sequence[Any]]] = None,
 ) -> BindAssessment:
     """Validate controller bind safety and return the bind classification."""
-    effective_env = os.environ if env is None else env
     addrs = _resolve_bind_ips(host, resolver=resolver)
 
     wildcard_resolved = bool(addrs and any(addr.is_unspecified for addr in addrs))
@@ -273,7 +275,7 @@ def validate_bind_safety(
         )
 
     requires_auth = not (loopback and allow_unauthenticated_loopback)
-    if requires_auth and not _env_has_token(auth_token_env, effective_env):
+    if requires_auth and not _env_has_token(auth_token_env, env):
         raise BindSafetyError(
             "auth_token_required",
             "controller binds require an auth token environment variable",
@@ -282,6 +284,7 @@ def validate_bind_safety(
                 "host": host,
                 "auth_token_env": auth_token_env or None,
                 "addresses": list(addresses),
+                "sources_checked": env_sources(auth_token_env) if auth_token_env else [],
             },
         )
     return BindAssessment(
@@ -301,7 +304,6 @@ def resolve_auth_token(
     env: Optional[Mapping[str, str]] = None,
     required: bool = False,
 ) -> Optional[str]:
-    effective_env = os.environ if env is None else env
     if not auth_token_env:
         if required:
             raise ControllerError(
@@ -310,10 +312,7 @@ def resolve_auth_token(
                 status=400,
             )
         return None
-    # Match the controller client and tolerate CRLF-backed dotenv exports.
-    # Retaining an invisible trailing carriage return here makes a controller
-    # reject the same environment value after the client normalizes it.
-    token = (effective_env.get(auth_token_env) or "").strip()
+    token, _source = resolve_env_value(auth_token_env, env=env)
     if token:
         return token
     if required:
@@ -321,7 +320,10 @@ def resolve_auth_token(
             "auth_token_missing",
             "auth token environment variable is not set",
             status=400,
-            details={"auth_token_env": auth_token_env},
+            details={
+                "auth_token_env": auth_token_env,
+                "sources_checked": env_sources(auth_token_env),
+            },
         )
     return None
 

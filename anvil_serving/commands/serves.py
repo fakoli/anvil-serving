@@ -173,6 +173,10 @@ def commands() -> CommandNode:
                             mutation="mutate",
                             gpu=True,
                             argv_prefix=("mode", action),
+                            # The legacy leaf parser gates the transaction on
+                            # its own --confirm option; forward the consumed
+                            # dispatcher flag in argv.
+                            forward_confirm_flag=True,
                             remote_operation=_remote(
                                 "serves_mode",
                                 fixed=(("action", action),),

@@ -92,17 +92,6 @@ def manifest_path(tmp_path):
     return str(p)
 
 
-@pytest.fixture
-def runnable_manifest_path(tmp_path):
-    """Same as `manifest_path`, but `realtime_port = 0` (ephemeral) -- for the
-    `run` tests below that actually bind a real (loopback-only) WebSocket
-    server socket, so they never fight another test/process for a fixed
-    port."""
-    p = tmp_path / "voice_runnable.toml"
-    p.write_text(VALID_MANIFEST.replace("realtime_port = 8765", "realtime_port = 0"), encoding="utf-8")
-    return str(p)
-
-
 def test_help_lists_subcommands(capsys):
     with pytest.raises(SystemExit) as exc:
         voice_cli.main(["--help"])
@@ -678,6 +667,7 @@ def test_managed_audio_readiness_comes_from_selected_serve_manifest(tmp_path):
 [[serve]]
 name = "stt"
 container = "anvil-voice-stt"
+runtime = "docker"
 port = 30010
 model = "tdt"
 engine = "audio"
@@ -759,22 +749,39 @@ def test_managed_proxy_status_uses_wait_ready(managed_proxy_manifest, monkeypatc
     assert '"docker_state": "running"' in out
 
 
-def _direct_run_fakes(monkeypatch, seen):
+def _make_run_fakes(*, address=("127.0.0.1", 8765), pool_size=1, calls=None):
+    """Build the `(_FakeServer, _FakeThread, _FakePool)` triple `run`'s fakes
+    need to stand in for `_build_realtime_server`'s return value and
+    `serve_forever_in_background`'s thread, without binding a real socket or
+    thread. When `calls` is given, `shutdown`/`server_close`/`join` each
+    append their name to it (for shutdown-order assertions); otherwise
+    they're no-ops."""
+
+    def _record(name):
+        if calls is not None:
+            calls.append(name)
+
     class _FakeServer:
-        server_address = ("127.0.0.1", 8765)
+        server_address = address
 
         def shutdown(self):
-            pass
+            _record("shutdown")
 
         def server_close(self):
-            pass
+            _record("server_close")
 
     class _FakeThread:
         def join(self, timeout=None):
-            pass
+            _record("join")
 
     class _FakePool:
-        size = 2
+        size = pool_size
+
+    return _FakeServer, _FakeThread, _FakePool
+
+
+def _direct_run_fakes(monkeypatch, seen):
+    _FakeServer, _FakeThread, _FakePool = _make_run_fakes(pool_size=2)
 
     def _fake_build(data, voice, *, allow_non_loopback=False):
         seen["stt"] = voice["stt"]["base_url"]
@@ -881,21 +888,7 @@ lifecycle = "external"
     )
     seen = {}
 
-    class _FakeServer:
-        server_address = ("127.0.0.1", 8765)
-
-        def shutdown(self):
-            pass
-
-        def server_close(self):
-            pass
-
-    class _FakeThread:
-        def join(self, timeout=None):
-            pass
-
-    class _FakePool:
-        size = 1
+    _FakeServer, _FakeThread, _FakePool = _make_run_fakes()
 
     def _fake_build(data, voice):
         seen["stt"] = voice["stt"]["base_url"]
@@ -948,21 +941,7 @@ api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
     )
     seen = {}
 
-    class _FakeServer:
-        server_address = ("127.0.0.1", 8765)
-
-        def shutdown(self):
-            pass
-
-        def server_close(self):
-            pass
-
-    class _FakeThread:
-        def join(self, timeout=None):
-            pass
-
-    class _FakePool:
-        size = 1
+    _FakeServer, _FakeThread, _FakePool = _make_run_fakes()
 
     def _fake_build(data, voice):
         seen["llm"] = voice["llm"]["base_url"]
@@ -1190,21 +1169,7 @@ def test_run_builds_expected_components_with_fakes(manifest_path, monkeypatch, c
     blocking forever."""
     calls = []
 
-    class _FakeServer:
-        server_address = ("127.0.0.1", 8765)
-
-        def shutdown(self):
-            calls.append("shutdown")
-
-        def server_close(self):
-            calls.append("server_close")
-
-    class _FakeThread:
-        def join(self, timeout=None):
-            calls.append("join")
-
-    class _FakePool:
-        size = 3
+    _FakeServer, _FakeThread, _FakePool = _make_run_fakes(pool_size=3, calls=calls)
 
     def _fake_build(data, voice):
         calls.append("build")
@@ -2077,21 +2042,7 @@ def test_run_does_not_refuse_start_when_endpoints_return_401(tmp_path, monkeypat
 
     calls = []
 
-    class _FakeServer:
-        server_address = ("127.0.0.1", 0)
-
-        def shutdown(self):
-            calls.append("shutdown")
-
-        def server_close(self):
-            calls.append("server_close")
-
-    class _FakeThread:
-        def join(self, timeout=None):
-            calls.append("join")
-
-    class _FakePool:
-        size = 1
+    _FakeServer, _FakeThread, _FakePool = _make_run_fakes(address=("127.0.0.1", 0), calls=calls)
 
     def _fake_build(data, voice):
         calls.append("build")

@@ -9,6 +9,7 @@ from typing import Any, Callable, Mapping
 
 from .agentic import build_agentic_scenario, score_agentic_trace
 from .context import (
+    NATIVE_CONTEXT_CASES,
     build_native_context_case,
     score_context_response,
     summarize_context_degradation,
@@ -78,6 +79,13 @@ def run_context_suite(
 ) -> dict[str, Any]:
     """Execute deterministic context cases and return raw observations plus a curve."""
     suite = profile["suites"]["context"]
+    unsupported = sorted(set(suite["cases"]) - NATIVE_CONTEXT_CASES)
+    if unsupported:
+        raise BenchmarkJobError(
+            "unsupported_context_case",
+            "profile selects context cases without an executable adapter",
+            {"cases": unsupported},
+        )
     endpoint = spec["endpoint"]
     key = resolve_api_key(endpoint.get("auth_env"))
     timeout = min(float(spec["timeout_s"]), 900.0)
@@ -95,8 +103,6 @@ def run_context_suite(
     attempted = 0
     for bucket in suite["token_buckets"]:
         for case_type in suite["cases"]:
-            if not case_type.startswith("native-"):
-                continue
             for position in suite["positions"]:
                 for repetition in range(suite["repetitions"]):
                     if case_limit is not None and attempted >= case_limit:
@@ -329,23 +335,27 @@ def run_agentic_suite(
     observations = []
     request_ids = []
     for case_type in selected_cases:
-        scenario, expected = build_agentic_scenario(
-            case_type,
-            recovery_result=recovery_result,
-            session_turns=parameters.get("session_turns", 12),
-        )
-        observation, ids = _run_agentic_case(
-            scenario,
-            expected,
-            endpoint=endpoint,
-            key=key,
-            max_steps=suite["max_steps"],
-            max_tokens=suite["max_completion_tokens"],
-            timeout=min(float(spec["timeout_s"]), 900.0),
-            caller=caller,
-        )
-        observations.append(observation)
-        request_ids.extend(ids)
+        for repetition in range(suite["repetitions"]):
+            scenario, expected = build_agentic_scenario(
+                case_type,
+                recovery_result=recovery_result,
+                session_turns=parameters.get("session_turns", 12),
+            )
+            observation, ids = _run_agentic_case(
+                scenario,
+                expected,
+                endpoint=endpoint,
+                key=key,
+                max_steps=suite["max_steps"],
+                max_tokens=suite["max_completion_tokens"],
+                timeout=min(float(spec["timeout_s"]), 900.0),
+                caller=caller,
+            )
+            observation["repetition"] = repetition
+            observations.append(observation)
+            request_ids.extend(ids)
+            if case_limit is not None and len(observations) >= case_limit:
+                break
         if case_limit is not None and len(observations) >= case_limit:
             break
     if not observations:

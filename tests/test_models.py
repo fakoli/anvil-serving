@@ -16,6 +16,7 @@ import types
 import pytest
 
 from anvil_serving import cache_prune, cli, guard, models, serve_recipes
+from tests.conftest import enabled_cache_policy as _enabled_cache_policy
 
 
 @pytest.fixture(autouse=True)
@@ -1834,18 +1835,6 @@ def test_recipe_readiness_polls_loading_states_until_healthy():
     assert ready is True
     assert state == "running"
     assert sleeps == [2, 2]
-
-
-def _enabled_cache_policy():
-    return {
-        "enabled": True,
-        "distro": "docker-desktop",
-        "threshold_gb": 16.0,
-        "source_path": "host.toml",
-        "configured": True,
-        "applicable": True,
-        "schema_version": 1,
-    }
 
 
 def test_pull_validates_host_policy_before_download(monkeypatch, tmp_path, capsys):

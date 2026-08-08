@@ -70,6 +70,7 @@ import shlex
 import subprocess
 import tempfile
 import time
+from . import envfile
 from . import guard
 from . import host as host_ops
 from . import reservations
@@ -116,7 +117,6 @@ _ENGINES = {
     "vllm", "sglang", "llamacpp", "q36",
     "audio", "embedding", "reranker", "image",
 }
-_ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # ADR-0017 GPU residency reservations: the residency vocabulary for a serve's
 # declared VRAM reservation. "resident" is never evicted, "evictable" may be
 # stopped to make room, "on-demand" is started per task and may evict
@@ -307,33 +307,9 @@ def groups_summary(serves):
     }
 
 
-def _read_dotenv(path):
-    """Read a simple KEY=VALUE .env file without logging values.
-
-    Shell environment wins later; this only fills missing vars for lifecycle
-    commands launched from a manifest directory.
-    """
-    values = {}
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-    except FileNotFoundError:
-        return values
-    for raw in lines:
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        name, value = line.split("=", 1)
-        name = name.strip()
-        if not _ENV_NAME_RE.match(name):
-            continue
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-            value = value[1:-1]
-        else:
-            value = value.split(" #", 1)[0].rstrip()
-        values[name] = value
-    return values
+# Shared with controller/transport token resolution (ADR-0033): one dotenv
+# grammar for every durable-secret fallback path.
+_read_dotenv = envfile.read_dotenv
 
 
 def _serve_env(s):
@@ -498,6 +474,56 @@ def _normalize_reservation(s, raw):
         s["residency"] = normalized
 
 
+_SERVE_RUNTIMES = ("docker", "native")
+
+
+class NativeRuntimeNotSupported(ValueError):
+    """A `runtime = "native"` serve was declared before native lifecycle exists.
+
+    ADR-0034 makes `runtime` an explicit discriminator so a non-container serve
+    is expressible. The native lifecycle itself is not implemented: every serve
+    path here resolves a container, so accepting a native entry would surface as
+    a `KeyError` deep inside an unrelated command. Failing at manifest load
+    keeps the schema honest and the failure legible.
+    """
+
+
+def _normalize_serve_runtime(s, raw):
+    """Validate one serve entry's runtime discriminator (ADR-0034).
+
+    Normalizes exactly like the neighbouring `residency` check so a manifest
+    author gets the same forgiveness for both fields.
+    """
+    runtime = s["runtime"]
+    if not isinstance(runtime, str):
+        raise ValueError(
+            "serve entry runtime must be one of "
+            f"{list(_SERVE_RUNTIMES)}: {raw!r}"
+        )
+    normalized = runtime.strip().lower()
+    if normalized not in _SERVE_RUNTIMES:
+        raise ValueError(
+            "serve entry runtime must be one of "
+            f"{list(_SERVE_RUNTIMES)} (got {runtime!r}): {raw!r}"
+        )
+    s["runtime"] = runtime = normalized
+    if runtime == "docker":
+        if not s.get("container"):
+            raise ValueError(
+                "serve entry missing required field(s) container: %r" % (raw,)
+            )
+        return
+    if "container" in s:
+        raise ValueError(
+            'serve entry with runtime "native" must not declare container: %r'
+            % (raw,)
+        )
+    raise NativeRuntimeNotSupported(
+        'serve entry %r declares runtime "native", which is not implemented '
+        "yet; only \"docker\" serves can be loaded" % s["name"]
+    )
+
+
 def _normalize_mode_router_configs(s, raw, manifest_dir):
     """Validate the router profiles owned by a routed exclusive-mode serve."""
     fields = ("router_config", "rollback_router_config")
@@ -594,7 +620,7 @@ def load_manifest(path):
     for raw in data.get("serve", []):
         s = dict(raw)
         missing = [
-            field for field in ("name", "container", "port")
+            field for field in ("name", "runtime", "port")
             if field not in s or s.get(field) in ("", None)
         ]
         if not s.get("model") and not s.get("served_name"):
@@ -604,6 +630,7 @@ def load_manifest(path):
                 "serve entry missing required field(s) "
                 f"{', '.join(missing)}: {raw!r}"
             )
+        _normalize_serve_runtime(s, raw)
         if not isinstance(s.get("port"), int):
             raise ValueError(f"serve entry port must be an integer: {raw!r}")
         s["model"] = s.get("model") or s.get("served_name")
@@ -683,9 +710,15 @@ def load_promotions(path):
             )
         for field in ("router_config", "rollback_router_config"):
             value = str(plan[field]).replace("{dir}", mdir)
-            plan[field] = os.path.abspath(
+            resolved = os.path.abspath(
                 value if os.path.isabs(value) else os.path.join(mdir, value)
             )
+            if not os.path.isfile(resolved):
+                raise ValueError(
+                    "promotion entry %r %s does not exist: %s"
+                    % (plan["name"], field, resolved)
+                )
+            plan[field] = resolved
         plan.setdefault("candidate", None)
         affected = plan.get("affected_tiers")
         if (
@@ -909,11 +942,17 @@ def _router_base_url(plan):
     return urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
 
 
-def _transition_cli(router_url, action, tier_id, *, timeout=None, _run=subprocess.run):
+def _transition_cli(router_url, action, tier_id, *, timeout=None, reason=None,
+                    _run=subprocess.run):
     """One ADR-0018 router transition step (quiesce/drain/readmit/
     transition-status) through the deployed router's authenticated CLI
     boundary. Shared by promotion plans and reservation eviction — both
     compose the SAME transition; neither grows a second state authority.
+
+    ``reason`` labels a quiesce with its owning transaction (ADR-0033): a
+    router with persisted admission intent restores "eviction"/"operator"
+    quiescence after a restart but not "promotion", whose transaction owns its
+    quiescence end-to-end and re-asserts it on ``--resume``.
     """
     argv = [
         sys.executable, "-m", "anvil_serving.cli", "router", action,
@@ -923,13 +962,16 @@ def _transition_cli(router_url, action, tier_id, *, timeout=None, _run=subproces
         argv += ["--timeout", str(timeout)]
     if action in ("quiesce", "readmit"):
         argv.append("--confirm")
+    if action == "quiesce" and reason:
+        argv += ["--reason", reason]
     print("  gate: %s" % " ".join(argv))
     return _run(argv, text=True).returncode
 
 
 def _promotion_transition_cli(plan, action, tier_id, *, timeout=None, _run=subprocess.run):
     return _transition_cli(
-        _router_base_url(plan), action, tier_id, timeout=timeout, _run=_run
+        _router_base_url(plan), action, tier_id, timeout=timeout,
+        reason="promotion", _run=_run
     )
 
 
@@ -1766,7 +1808,7 @@ def resolve_recipe_activation(serves, promotions, registry, role, selector, *,
 
 
 def cmd_switch(serves, promotions, registry, role, selector, manifest_path, *,
-               resume=False, dry_run=False, _run=subprocess.run,
+               dry_run=False, _run=subprocess.run,
                _open=urllib.request.urlopen, _sleep=time.sleep):
     """Switch a deployment role to an activation-ready recipe."""
     try:
@@ -1832,7 +1874,7 @@ def cmd_switch(serves, promotions, registry, role, selector, manifest_path, *,
                 mutation_started = True
             rc = _cmd_promote_unlocked(
                 serves, promotions, plan_name, manifest_path,
-                rollback=rollback, resume=resume, dry_run=dry_run,
+                rollback=rollback, resume=False, dry_run=dry_run,
                 _run=_run, _open=_open, _sleep=_sleep,
             )
             if not dry_run:
@@ -1941,6 +1983,19 @@ def _serving_path_scope(serves, selected=()):
     ]
 
 
+def _run_or(argv, default, _run=subprocess.run, **kwargs):
+    """Run argv, returning `default` when the executable is missing.
+
+    Isolates the `except FileNotFoundError: return <sentinel>` pattern that
+    recurs around docker/nvidia-smi probes. Callers still handle a non-zero
+    returncode themselves.
+    """
+    try:
+        return _run(argv, **kwargs)
+    except FileNotFoundError:
+        return default
+
+
 def docker_state(container, _run=subprocess.run):
     """Container state, distinguishing genuine absence from a docker error.
 
@@ -1949,14 +2004,27 @@ def docker_state(container, _run=subprocess.run):
     permission denied — i.e. we could NOT determine state, so callers must not
     claim success).
     """
-    try:
-        r = _run(["docker", "inspect", "-f", "{{.State.Status}}", container],
-                 capture_output=True, text=True)
-    except FileNotFoundError:
+    r = _run_or(["docker", "inspect", "-f", "{{.State.Status}}", container],
+                None, _run, capture_output=True, text=True)
+    if r is None:
         return "error"  # docker not installed -> cannot manage containers
     if r.returncode != 0:
         return "absent" if "no such" in (r.stderr or "").lower() else "error"
     return (r.stdout or "").strip() or "unknown"
+
+
+def _docker_ps_lines(_run=subprocess.run):
+    """Stdout lines of `docker ps -a --format {{json .}}`, or ``None`` on
+    failure (docker missing or non-zero exit) — callers apply their own
+    failure default.
+    """
+    result = _run_or(
+        ["docker", "ps", "-a", "--format", "{{json .}}"],
+        None, _run, capture_output=True, text=True,
+    )
+    if result is None or result.returncode != 0:
+        return None
+    return (result.stdout or "").splitlines()
 
 
 def docker_states(containers, _run=subprocess.run):
@@ -1964,19 +2032,12 @@ def docker_states(containers, _run=subprocess.run):
     wanted = list(dict.fromkeys(str(container) for container in containers))
     if not wanted:
         return {}
-    try:
-        result = _run(
-            ["docker", "ps", "-a", "--format", "{{json .}}"],
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError:
-        return {container: "error" for container in wanted}
-    if result.returncode != 0:
+    lines = _docker_ps_lines(_run)
+    if lines is None:
         return {container: "error" for container in wanted}
 
     states = {container: "absent" for container in wanted}
-    for line in (result.stdout or "").splitlines():
+    for line in lines:
         if not line.strip():
             continue
         try:
@@ -1996,19 +2057,15 @@ def docker_compose_project(container, _run=subprocess.run):
     compose file.  The label is Docker's durable identity for an existing
     container; callers compare it with the explicit project in the launch argv.
     """
-    try:
-        result = _run(
-            [
-                "docker", "inspect", "-f",
-                '{{index .Config.Labels "com.docker.compose.project"}}',
-                container,
-            ],
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError:
-        return None
-    if result.returncode != 0:
+    result = _run_or(
+        [
+            "docker", "inspect", "-f",
+            '{{index .Config.Labels "com.docker.compose.project"}}',
+            container,
+        ],
+        None, _run, capture_output=True, text=True,
+    )
+    if result is None or result.returncode != 0:
         return None
     value = (result.stdout or "").strip()
     # Several older injected test runners return the state for every inspect
@@ -2022,17 +2079,10 @@ def _docker_port_occupants(ports, _run=subprocess.run):
     found = {port: [] for port in wanted}
     if not wanted:
         return found
-    try:
-        result = _run(
-            ["docker", "ps", "-a", "--format", "{{json .}}"],
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError:
+    lines = _docker_ps_lines(_run)
+    if lines is None:
         return found
-    if result.returncode != 0:
-        return found
-    for line in (result.stdout or "").splitlines():
+    for line in lines:
         try:
             row = json.loads(line)
         except (TypeError, json.JSONDecodeError):
@@ -2066,12 +2116,9 @@ def _health(port, path, _open=urllib.request.urlopen):
 
 
 def _gpu_lines(_run=subprocess.run):
-    try:
-        r = _run(["nvidia-smi", "--query-gpu=index,memory.used,memory.total",
-                  "--format=csv,noheader,nounits"], capture_output=True, text=True)
-    except FileNotFoundError:
-        return []
-    if r.returncode != 0:
+    r = _run_or(["nvidia-smi", "--query-gpu=index,memory.used,memory.total",
+                "--format=csv,noheader,nounits"], None, _run, capture_output=True, text=True)
+    if r is None or r.returncode != 0:
         return []
     return [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
 
@@ -2345,6 +2392,29 @@ def cmd_groups(serves, as_json=False):
     return 0
 
 
+def _docker_rm_f(container, _run, *, timeout=None, action="remove", label="removed",
+                  suffix="", fail_suffix=None):
+    """`docker rm -f` one container, returning ``(ok, message)`` to print.
+
+    Isolates the run/timeout/returncode handling repeated 4x in ``cmd_down``;
+    `label`/`suffix`/`fail_suffix` reproduce each call site's wording exactly.
+    """
+    if fail_suffix is None:
+        fail_suffix = suffix
+    kwargs = dict(capture_output=True, text=True)
+    if timeout is not None:
+        kwargs["timeout"] = timeout
+    try:
+        removed = _run(["docker", "rm", "-f", container], **kwargs)
+    except subprocess.TimeoutExpired:
+        return False, "  FAILED to %s %s within %ss" % (action, container, timeout)
+    if removed.returncode == 0:
+        return True, "  %s %s%s" % (label, container, suffix)
+    return False, "  FAILED to %s %s%s: %s" % (
+        action, container, fail_suffix, (removed.stderr or "").strip()
+    )
+
+
 def cmd_down(
     serves,
     names,
@@ -2416,20 +2486,12 @@ def cmd_down(
             print("  rm -f %s (%s)" % (s["container"], st))
             if dry_run:
                 continue
-            removed = _run(
-                ["docker", "rm", "-f", s["container"]],
-                capture_output=True,
-                text=True,
-            )
-            if removed.returncode == 0:
-                print("  removed %s" % s["container"])
+            ok, message = _docker_rm_f(s["container"], _run)
+            print(message)
+            if ok:
                 if not finish_detected_native_offload_cleanup():
                     rc = 1
             else:
-                print(
-                    "  FAILED to remove %s: %s"
-                    % (s["container"], (removed.stderr or "").strip())
-                )
                 rc = 1
             continue
         # running / paused / restarting / removing / unknown -> stop (frees the GPU).
@@ -2442,29 +2504,16 @@ def cmd_down(
             continue
         if force_remove and not keep_container:
             print("  rm -f %s (forced lifecycle release)" % s["container"])
-            try:
-                removed = _run(
-                    ["docker", "rm", "-f", s["container"]],
-                    capture_output=True,
-                    text=True,
-                    timeout=DOCKER_STOP_COMMAND_TIMEOUT_SECONDS,
-                )
-            except subprocess.TimeoutExpired:
-                print(
-                    "  FAILED to force-remove %s within %ss"
-                    % (s["container"], DOCKER_STOP_COMMAND_TIMEOUT_SECONDS)
-                )
-                rc = 1
-                continue
-            if removed.returncode == 0:
-                print("  force-removed %s" % s["container"])
+            ok, message = _docker_rm_f(
+                s["container"], _run,
+                timeout=DOCKER_STOP_COMMAND_TIMEOUT_SECONDS,
+                action="force-remove", label="force-removed",
+            )
+            print(message)
+            if ok:
                 if not finish_detected_native_offload_cleanup():
                     rc = 1
             else:
-                print(
-                    "  FAILED to force-remove %s: %s"
-                    % (s["container"], (removed.stderr or "").strip())
-                )
                 rc = 1
             continue
         try:
@@ -2486,29 +2535,17 @@ def cmd_down(
                 "  stop timed out after %ss; force-removing %s"
                 % (DOCKER_STOP_COMMAND_TIMEOUT_SECONDS, s["container"])
             )
-            try:
-                removed = _run(
-                    ["docker", "rm", "-f", s["container"]],
-                    capture_output=True,
-                    text=True,
-                    timeout=DOCKER_STOP_COMMAND_TIMEOUT_SECONDS,
-                )
-            except subprocess.TimeoutExpired:
-                print(
-                    "  FAILED to force-remove %s within %ss"
-                    % (s["container"], DOCKER_STOP_COMMAND_TIMEOUT_SECONDS)
-                )
-                rc = 1
-                continue
-            if removed.returncode == 0:
-                print("  force-removed %s after stop timeout" % s["container"])
+            ok, message = _docker_rm_f(
+                s["container"], _run,
+                timeout=DOCKER_STOP_COMMAND_TIMEOUT_SECONDS,
+                action="force-remove", label="force-removed",
+                suffix=" after stop timeout",
+            )
+            print(message)
+            if ok:
                 if not finish_detected_native_offload_cleanup():
                     rc = 1
             else:
-                print(
-                    "  FAILED to force-remove %s after stop timeout: %s"
-                    % (s["container"], (removed.stderr or "").strip())
-                )
                 rc = 1
             continue
         if r.returncode == 0:
@@ -2528,20 +2565,15 @@ def cmd_down(
                     if not finish_detected_native_offload_cleanup():
                         rc = 1
             else:
-                removed = _run(
-                    ["docker", "rm", "-f", s["container"]],
-                    capture_output=True,
-                    text=True,
+                ok, message = _docker_rm_f(
+                    s["container"], _run,
+                    label="stopped and removed", fail_suffix=" after stop",
                 )
-                if removed.returncode == 0:
-                    print("  stopped and removed %s" % s["container"])
+                print(message)
+                if ok:
                     if not finish_detected_native_offload_cleanup():
                         rc = 1
                 else:
-                    print(
-                        "  FAILED to remove %s after stop: %s"
-                        % (s["container"], (removed.stderr or "").strip())
-                    )
                     rc = 1
         else:
             print("  FAILED to stop %s: %s" % (s["container"], (r.stderr or "").strip()))
@@ -2562,12 +2594,9 @@ def _created_argv(container, _run=subprocess.run):
     treat 'unknown' as 'no drift' and never block on uncertainty.
     """
     tmpl = "{{range .Config.Cmd}}{{println .}}{{end}}{{range .Args}}{{println .}}{{end}}"
-    try:
-        r = _run(["docker", "inspect", "-f", tmpl, container],
-                 capture_output=True, text=True)
-    except FileNotFoundError:
-        return []
-    if r.returncode != 0:
+    r = _run_or(["docker", "inspect", "-f", tmpl, container],
+                None, _run, capture_output=True, text=True)
+    if r is None or r.returncode != 0:
         return []
     return [ln for ln in (r.stdout or "").splitlines() if ln.strip()]
 
@@ -2626,11 +2655,6 @@ def _explicit_compose_project(up):
 def _expected_compose_project(serve):
     """Return the durable Compose owner implied by a serve's stack."""
     return _stack_project(serve.get("stack", DEFAULT_STACK))
-
-
-def _compose_project_from_up(up):
-    """Compatibility helper: explicit Compose project or the serving default."""
-    return _explicit_compose_project(up) or DEFAULT_COMPOSE_PROJECT
 
 
 def _compose_up_with_project(up, project=DEFAULT_COMPOSE_PROJECT):
@@ -2865,7 +2889,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
             transition = _transition or (
                 lambda action, tier_id, timeout=None: _transition_cli(
                     router_url or DEFAULT_ROUTER_URL, action, tier_id,
-                    timeout=timeout, _run=_run))
+                    timeout=timeout, reason="eviction", _run=_run))
             evict_rc = _evict_victims(
                 reservation_scope, victims, dry_run=dry_run, drain_timeout=drain_timeout,
                 transition=transition, _run=_run)
@@ -3288,6 +3312,7 @@ def cmd_mode(
                 transition_action,
                 tier_id,
                 timeout=timeout,
+                reason="mode-transition",
                 _run=_run,
             )
         )
@@ -4349,7 +4374,7 @@ def main(argv=None):
             )
         rc = cmd_switch(
             serves, promotions, registry, a.names[0], selector,
-            os.path.abspath(manifest_path), resume=a.resume, dry_run=a.dry_run,
+            os.path.abspath(manifest_path), dry_run=a.dry_run,
         )
         return _finish_cache_reclaim(
             rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,

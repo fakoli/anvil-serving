@@ -107,14 +107,6 @@ class InternalRequest:
     dialect: str = ""
     raw: Dict[str, Any] = field(default_factory=dict)
 
-    @property
-    def last_user_text(self) -> str:
-        """Text of the most recent ``user`` message (empty if none)."""
-        for m in reversed(self.messages):
-            if m.role == "user":
-                return m.content
-        return ""
-
 
 @dataclass
 class StructuredResult:
@@ -214,13 +206,18 @@ def normalize_stop(value: Any) -> Optional[List[str]]:
 
 
 def estimate_tokens(texts: Sequence[str]) -> int:
-    """Cheap, deterministic token estimate (NOT a real tokenizer).
+    """Cheap, deterministic lower-bound token estimate (NOT a real tokenizer).
 
-    Used only to populate the ``usage`` blocks with plausible integers. Counts
-    whitespace-separated words across the given texts.
+    Used for ``usage`` blocks and the fail-closed context admission check.
+    ``max(words, utf8_bytes // 4)`` over the combined texts: the word count
+    alone undercounts CJK, code, and base64 payloads by large factors, while
+    bytes/4 is the common transformer-tokenizer floor for such content. Still
+    an estimate — genuinely borderline requests are the upstream's to reject.
     """
-    total = 0
+    words = 0
+    utf8_bytes = 0
     for t in texts:
         if t:
-            total += len(t.split())
-    return total
+            words += len(t.split())
+            utf8_bytes += len(t.encode("utf-8"))
+    return max(words, utf8_bytes // 4)

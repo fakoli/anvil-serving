@@ -214,7 +214,7 @@ def build_agentic_scenario(
         expected.update({
             "final": code,
             "history": copy.deepcopy(history),
-            "require_token_growth": True,
+            "require_token_growth": scenario_type == "long-session",
         })
     return scenario, expected
 
@@ -282,11 +282,13 @@ def score_agentic_trace(
     history_passed = True
     if expected.get("history") is not None:
         history_passed = history == expected["history"]
-        history_passed = history_passed and isinstance(growth, list) and len(growth) > 1
+        history_passed = history_passed and isinstance(growth, list) and bool(growth)
         history_passed = history_passed and all(
             isinstance(item, int) and not isinstance(item, bool) and item >= 0 for item in growth
         )
-        history_passed = history_passed and growth == sorted(growth) and growth[-1] > growth[0]
+        if expected.get("require_token_growth"):
+            history_passed = history_passed and len(growth) > 1
+            history_passed = history_passed and growth == sorted(growth) and growth[-1] > growth[0]
     failure = trace.get("failure")
     failure_code = failure.get("code") if isinstance(failure, Mapping) else None
     if failure_code == "reasoning_budget_exhausted":

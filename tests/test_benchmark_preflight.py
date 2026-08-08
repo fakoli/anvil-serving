@@ -38,7 +38,7 @@ def _spec(**changes):
         "worker": {"id": "benchmark-worker"},
         "submitted_at": "2026-08-03T12:00:00Z",
         "timeout_s": 600,
-        "parameters": {},
+        "parameters": {"model_host_id": "model-host"},
     }
     value.update(changes)
     return value
@@ -61,6 +61,22 @@ def test_records_worker_endpoint_and_unsupported_telemetry(tmp_path):
     assert artifact["observed"]["endpoint"]["configured_context"] == 650000
     assert artifact["side_effects"] == {"model_lifecycle": False, "route_mutation": False}
     assert artifact["observed"]["endpoint"]["authentication"] == "none"
+
+
+def test_missing_model_host_identity_fails_isolation_closed(tmp_path):
+    artifact = run_benchmark_preflight(
+        _spec(parameters={}),
+        run_root=str(tmp_path / "runs"),
+        opener=_opener(),
+    )
+
+    isolation = next(item for item in artifact["checks"] if item["name"] == "worker_isolation")
+    assert isolation == {
+        "name": "worker_isolation",
+        "passed": False,
+        "code": "model_host_identity_absent",
+        "detail": "model host identity was not declared",
+    }
 
 
 def test_missing_credentials_and_authorization_are_distinct(monkeypatch, tmp_path):

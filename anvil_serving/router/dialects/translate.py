@@ -34,6 +34,7 @@ import json
 from typing import Any, Dict, List, Mapping, Optional
 
 from ..internal import flatten_content
+from ..media_admission import _IMAGE_TYPES, _VIDEO_TYPES, has_block_type
 
 
 def _is_seq(v: Any) -> bool:
@@ -51,38 +52,12 @@ def has_image_artifacts(raw: Mapping[str, Any]) -> bool:
     request from the flattened form would silently drop the image the caller
     sent. Malformed entries are skipped, never raised.
     """
-    messages = raw.get("messages")
-    if not _is_seq(messages):
-        return False
-    for m in messages:
-        if not isinstance(m, Mapping):
-            continue
-        content = m.get("content")
-        if _is_seq(content):
-            for block in content:
-                if isinstance(block, Mapping) and block.get("type") in (
-                    "image_url", "input_image", "image",
-                ):
-                    return True
-    return False
+    return has_block_type(raw, _IMAGE_TYPES)
 
 
 def has_video_artifacts(raw: Mapping[str, Any]) -> bool:
     """True when the raw wire body carries video content worth preserving."""
-    messages = raw.get("messages")
-    if not _is_seq(messages):
-        return False
-    for message in messages:
-        if not isinstance(message, Mapping):
-            continue
-        content = message.get("content")
-        if _is_seq(content):
-            for block in content:
-                if isinstance(block, Mapping) and block.get("type") in (
-                    "video_url", "input_video", "video",
-                ):
-                    return True
-    return False
+    return has_block_type(raw, _VIDEO_TYPES)
 
 
 def has_tool_artifacts(raw: Mapping[str, Any]) -> bool:

@@ -35,9 +35,6 @@ from .security import _json_dumps, _sanitize_persisted_value, _strict_json_loads
 _IDEMPOTENCY_KEY_HEADER = "X-Anvil-Idempotency-Key"
 _IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _IDEMPOTENCY_CONTEXT_FIELDS = ("topology", "execution_host", "execution_runtime")
-_TOMBSTONE_BYTES_PER_RECORD = 16
-_TOMBSTONE_MIN_BYTES = 128
-_TOMBSTONE_HASH_COUNT = 7
 
 DEFAULT_IDEMPOTENCY_RETENTION_SECONDS = 24 * 60 * 60
 DEFAULT_IDEMPOTENCY_MAX_RECORDS = 1024
@@ -450,10 +447,6 @@ class OperationStore:
         self.max_records = int(max_records)
         self.max_result_bytes = int(max_result_bytes)
         self._clock = clock
-        self._tombstone_bytes = max(
-            _TOMBSTONE_MIN_BYTES,
-            self.max_records * _TOMBSTONE_BYTES_PER_RECORD,
-        )
         self._lock = threading.RLock()
         self._active_keys: set[str] = set()
         self._lease_owner = uuid.uuid4().hex
@@ -471,6 +464,10 @@ class OperationStore:
             ).fetchone()
             if row is not None:
                 record = self._record(row)
+                if record["status"] == "running":
+                    failed = self._fail_orphaned(connection, key, now, self._orphan_grace())
+                    if failed is not None:
+                        record = failed
                 connection.commit()
                 if record["fingerprint"] != fingerprint:
                     return "conflict", record
@@ -563,6 +560,104 @@ class OperationStore:
             self._expire_records(connection, now)
             connection.commit()
 
+    def _orphan_grace(self) -> float:
+        """Grace before a running record's lease counts as stale.
+
+        Several missed heartbeats, floored so scheduler jitter under load can
+        never orphan a live operation (ADR-0033).
+        """
+        interval = max(0.05, min(5.0, self.retention_seconds / 3.0))
+        return max(15.0, 4.0 * interval)
+
+    def _fail_orphaned(
+        self,
+        connection: sqlite3.Connection,
+        key: str,
+        now: float,
+        grace: float,
+    ) -> Optional[dict[str, Any]]:
+        """Fail-close one orphaned running record; None when it is live."""
+        if key in self._active_keys:
+            return None
+        lease = connection.execute(
+            "SELECT updated_at FROM operation_leases WHERE idempotency_key = ?", (key,)
+        ).fetchone()
+        if lease is not None and float(lease["updated_at"]) > now - grace:
+            return None
+        row = connection.execute(
+            "SELECT * FROM operation_records WHERE idempotency_key = ? AND status = 'running'",
+            (key,),
+        ).fetchone()
+        if row is None:
+            return None
+        envelope = {
+            "ok": False,
+            "request_id": row["request_id"],
+            "error": {
+                "code": "operation_interrupted",
+                "message": "controller restarted while this operation was running",
+                "details": {"key": key},
+            },
+        }
+        connection.execute(
+            """
+            UPDATE operation_records
+            SET status = 'failed', updated_at = ?, expires_at = ?,
+                response = ?, result = NULL, error = ?
+            WHERE idempotency_key = ? AND status = 'running'
+            """,
+            (
+                now,
+                now + self.retention_seconds,
+                _json_dumps(envelope),
+                _json_dumps(envelope["error"]),
+                key,
+            ),
+        )
+        connection.execute(
+            "DELETE FROM operation_leases WHERE idempotency_key = ?", (key,)
+        )
+        refreshed = connection.execute(
+            "SELECT * FROM operation_records WHERE idempotency_key = ?", (key,)
+        ).fetchone()
+        return self._record(refreshed) if refreshed is not None else None
+
+    def recover_interrupted(
+        self, *, grace_seconds: Optional[float] = None
+    ) -> list[dict[str, Any]]:
+        """Fail-close running records orphaned by a controller restart.
+
+        A running record with no in-process execution and an absent or stale
+        lease was interrupted. It becomes a typed ``operation_interrupted``
+        failure; the underlying action is never silently re-executed. Returns
+        metadata-only summaries for audit.
+        """
+        grace = (
+            self._orphan_grace()
+            if grace_seconds is None
+            else max(0.0, float(grace_seconds))
+        )
+        now = self._clock()
+        recovered: list[dict[str, Any]] = []
+        with self._lock, self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                "SELECT idempotency_key, request_id, created_at FROM operation_records"
+                " WHERE status = 'running'"
+            ).fetchall()
+            for row in rows:
+                key = row["idempotency_key"]
+                if self._fail_orphaned(connection, key, now, grace) is not None:
+                    recovered.append(
+                        {
+                            "key": key,
+                            "request_id": row["request_id"],
+                            "created_at": row["created_at"],
+                        }
+                    )
+            connection.commit()
+        return recovered
+
     def lookup(self, key: str) -> Optional[dict[str, Any]]:
         now = self._clock()
         with self._lock, self._connection() as connection:
@@ -615,38 +710,13 @@ class OperationStore:
             )
             connection.execute(
                 """
-                CREATE TABLE IF NOT EXISTS operation_tombstones (
-                    singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
-                    key_bits BLOB NOT NULL,
-                    fingerprint_bits BLOB NOT NULL,
-                    generation_started_at REAL NOT NULL DEFAULT 0,
-                    previous_key_bits BLOB NOT NULL DEFAULT X'',
-                    previous_fingerprint_bits BLOB NOT NULL DEFAULT X''
+                CREATE TABLE IF NOT EXISTS tombstones (
+                    idempotency_key TEXT PRIMARY KEY,
+                    fingerprint TEXT NOT NULL,
+                    expires_at REAL NOT NULL
                 )
                 """
             )
-            columns = {
-                row["name"] for row in connection.execute("PRAGMA table_info(operation_tombstones)")
-            }
-            for name, declaration in (
-                ("generation_started_at", "REAL NOT NULL DEFAULT 0"),
-                ("previous_key_bits", "BLOB NOT NULL DEFAULT X''"),
-                ("previous_fingerprint_bits", "BLOB NOT NULL DEFAULT X''"),
-            ):
-                if name not in columns:
-                    connection.execute(
-                        f"ALTER TABLE operation_tombstones ADD COLUMN {name} {declaration}"
-                    )
-            connection.execute(
-                """
-                INSERT OR IGNORE INTO operation_tombstones (
-                    singleton, key_bits, fingerprint_bits,
-                    generation_started_at, previous_key_bits, previous_fingerprint_bits
-                ) VALUES (1, ?, ?, 0, ?, ?)
-                """,
-                (bytes(self._tombstone_bytes),) * 4,
-            )
-            self._normalize_tombstones(connection)
             yield connection
         finally:
             connection.close()
@@ -672,7 +742,7 @@ class OperationStore:
         return record
 
     def _expire_records(self, connection: sqlite3.Connection, now: float) -> None:
-        self._rotate_tombstones(connection, now)
+        self._purge_tombstones(connection, now)
         connection.execute(
             "DELETE FROM operation_leases WHERE updated_at <= ?",
             (now - self.retention_seconds,),
@@ -689,24 +759,18 @@ class OperationStore:
         rows = [row for row in rows if row["idempotency_key"] not in self._active_keys]
         if not rows:
             return
-        tombstones = connection.execute(
-            "SELECT key_bits, fingerprint_bits FROM operation_tombstones WHERE singleton = 1"
-        ).fetchone()
-        key_bits = bytearray(tombstones["key_bits"])
-        fingerprint_bits = bytearray(tombstones["fingerprint_bits"])
-        for row in rows:
-            self._bloom_add(key_bits, row["idempotency_key"])
-            self._bloom_add(
-                fingerprint_bits,
-                self._tombstone_fingerprint(row["idempotency_key"], row["fingerprint"]),
-            )
-        connection.execute(
+        connection.executemany(
             """
-            UPDATE operation_tombstones
-            SET key_bits = ?, fingerprint_bits = ?
-            WHERE singleton = 1
+            INSERT INTO tombstones (idempotency_key, fingerprint, expires_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(idempotency_key) DO UPDATE SET
+                fingerprint = excluded.fingerprint,
+                expires_at = excluded.expires_at
             """,
-            (bytes(key_bits), bytes(fingerprint_bits)),
+            (
+                (row["idempotency_key"], row["fingerprint"], now + self.retention_seconds)
+                for row in rows
+            ),
         )
         connection.executemany(
             "DELETE FROM operation_records WHERE idempotency_key = ?",
@@ -754,111 +818,16 @@ class OperationStore:
         key: str,
         fingerprint: Optional[str] = None,
     ) -> bool:
-        self._rotate_tombstones(connection, self._clock())
+        self._purge_tombstones(connection, self._clock())
         row = connection.execute(
-            """
-            SELECT key_bits, fingerprint_bits, previous_key_bits,
-                   previous_fingerprint_bits
-            FROM operation_tombstones WHERE singleton = 1
-            """
+            "SELECT fingerprint FROM tombstones WHERE idempotency_key = ?", (key,)
         ).fetchone()
+        if row is None:
+            return False
         if fingerprint is None:
-            return any(
-                self._bloom_contains(row[name], key) for name in ("key_bits", "previous_key_bits")
-            )
-        value = self._tombstone_fingerprint(key, fingerprint)
-        return any(
-            self._bloom_contains(row[name], value)
-            for name in ("fingerprint_bits", "previous_fingerprint_bits")
-        )
-
-    def _normalize_tombstones(self, connection: sqlite3.Connection) -> None:
-        row = connection.execute(
-            "SELECT * FROM operation_tombstones WHERE singleton = 1"
-        ).fetchone()
-        empty = bytes(self._tombstone_bytes)
-        saturated = bytes([0xFF]) * self._tombstone_bytes
-        values = []
-        changed = False
-        for name in (
-            "key_bits",
-            "fingerprint_bits",
-            "previous_key_bits",
-            "previous_fingerprint_bits",
-        ):
-            value = bytes(row[name])
-            if len(value) != self._tombstone_bytes:
-                value = empty if name.startswith("previous_") and not value else saturated
-                changed = True
-            values.append(value)
-        if changed:
-            connection.execute(
-                """
-                UPDATE operation_tombstones
-                SET key_bits = ?, fingerprint_bits = ?, previous_key_bits = ?,
-                    previous_fingerprint_bits = ?
-                WHERE singleton = 1
-                """,
-                values,
-            )
-
-    def _rotate_tombstones(self, connection: sqlite3.Connection, now: float) -> None:
-        row = connection.execute(
-            "SELECT * FROM operation_tombstones WHERE singleton = 1"
-        ).fetchone()
-        started_at = float(row["generation_started_at"])
-        if started_at <= 0:
-            connection.execute(
-                "UPDATE operation_tombstones SET generation_started_at = ? WHERE singleton = 1",
-                (now,),
-            )
-            return
-        elapsed = now - started_at
-        if elapsed < self.retention_seconds:
-            return
-        empty = bytes(self._tombstone_bytes)
-        generations = int(elapsed // self.retention_seconds)
-        if generations == 1:
-            previous_key_bits = row["key_bits"]
-            previous_fingerprint_bits = row["fingerprint_bits"]
-        else:
-            previous_key_bits = empty
-            previous_fingerprint_bits = empty
-        connection.execute(
-            """
-            UPDATE operation_tombstones
-            SET key_bits = ?, fingerprint_bits = ?, generation_started_at = ?,
-                previous_key_bits = ?, previous_fingerprint_bits = ?
-            WHERE singleton = 1
-            """,
-            (
-                empty,
-                empty,
-                started_at + generations * self.retention_seconds,
-                previous_key_bits,
-                previous_fingerprint_bits,
-            ),
-        )
+            return True
+        return row["fingerprint"] == fingerprint
 
     @staticmethod
-    def _tombstone_fingerprint(key: str, fingerprint: str) -> str:
-        return key + "\x00" + fingerprint
-
-    @staticmethod
-    def _bloom_positions(value: str, bit_count: int) -> Iterator[int]:
-        digest = hashlib.sha256(value.encode("utf-8")).digest()
-        for index in range(_TOMBSTONE_HASH_COUNT):
-            start = index * 4
-            yield int.from_bytes(digest[start : start + 4], "big") % bit_count
-
-    @classmethod
-    def _bloom_add(cls, bits: bytearray, value: str) -> None:
-        for position in cls._bloom_positions(value, len(bits) * 8):
-            bits[position // 8] |= 1 << (position % 8)
-
-    @classmethod
-    def _bloom_contains(cls, bits: bytes, value: str) -> bool:
-        return all(
-            bits[position // 8] & (1 << (position % 8))
-            for position in cls._bloom_positions(value, len(bits) * 8)
-        )
+    def _purge_tombstones(connection: sqlite3.Connection, now: float) -> None:
+        connection.execute("DELETE FROM tombstones WHERE expires_at <= ?", (now,))

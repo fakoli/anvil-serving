@@ -37,46 +37,12 @@ from anvil_serving.voice.stages.tts import (
     resample_int16,
     stream_speech,
 )
+from tests.voice.conftest import FakeRun, fake_open_fails, fake_open_ok
 
 
 # --------------------------------------------------------------------------- #
 # fakes
 # --------------------------------------------------------------------------- #
-class FakeRun:
-    def __init__(self, responses):
-        self.responses = responses
-        self.calls = []
-
-    def __call__(self, argv, **kwargs):
-        self.calls.append(list(argv))
-        for prefix, rc, out, err in self.responses:
-            if argv[: len(prefix)] == prefix:
-                return SimpleNamespace(returncode=rc, stdout=out, stderr=err)
-        return SimpleNamespace(returncode=1, stdout="", stderr="no matcher for %r" % (argv,))
-
-
-class FakeOpenResponse:
-    def __init__(self, status: int):
-        self.status = status
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-    def getcode(self):
-        return self.status
-
-
-def fake_open_ok(url, timeout=None):
-    return FakeOpenResponse(200)
-
-
-def fake_open_fails(url, timeout=None):
-    raise OSError("connection refused")
-
-
 class FakeReadResponse:
     """Fake of an open urllib response supporting `.read(n)` in a loop --
     what `stream_speech` needs for incremental reads (no socket).
@@ -119,7 +85,7 @@ def _int16_bytes(values) -> bytes:
 def manifest_with_tts(tmp_path):
     p = tmp_path / "serves.toml"
     p.write_text(
-        '[[serve]]\nname = "tts"\ncontainer = "anvil-tts"\nport = 8091\n'
+        '[[serve]]\nname = "tts"\ncontainer = "anvil-tts"\nruntime = "docker"\nport = 8091\n'
         'model = "kokoro-82m"\nengine = "vllm"\n'
         'up = "echo bring-up-tts"\n',
         encoding="utf-8",
@@ -151,7 +117,7 @@ def test_bring_up_raises_serve_not_configured_when_manifest_missing(tmp_path):
 def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
     p = tmp_path / "serves.toml"
     p.write_text(
-        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nport = 8090\n'
+        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nruntime = "docker"\nport = 8090\n'
         'model = "parakeet"\nengine = "vllm"\n',
         encoding="utf-8",
     )

@@ -20,10 +20,10 @@ from anvil_serving.control_plane.mcp.tools import models as model_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "981b8934f60edf478303f4462bb87d1411fe01a0796b611715e18b5f3392fc7d"
+    "2a02fb92664f1b244a2b7dde7f4c907a3ba823db70d01ee85be2590d9f66f48f"
 )
 HANDLER_MAP_SHA256 = (
-    "b91d48b3e317b8b19045af99b1f858cfc9cf63a2e95999ec564d27f2d7cce466"
+    "8941680646b3d48905caba7c916afb3a085bf64e9127275350962f40549748c8"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -44,6 +44,8 @@ TOOL_NAMES = [
     "host_summary",
     "gpu_inventory",
     "host_shared_memory",
+    "operator_config_inventory",
+    "operator_config_export",
     "observability_collect",
     "host_manage",
     "models_inventory",
@@ -501,7 +503,7 @@ def test_remote_controller_request_uses_2026_http_endpoint_and_headers():
         def __exit__(self, *_args):
             return False
 
-        def read(self):
+        def read(self, *_args):
             return b'{"jsonrpc":"2.0","id":9,"result":{"resultType":"complete"}}'
 
     def opener(req, timeout):
@@ -523,3 +525,28 @@ def test_remote_controller_request_uses_2026_http_endpoint_and_headers():
     assert seen["headers"]["mcp-protocol-version"] == mcp.PROTOCOL_VERSION
     assert seen["headers"]["mcp-method"] == "tools/call"
     assert seen["headers"]["mcp-name"].startswith("=?base64?")
+
+
+def test_remote_controller_request_bounds_response_body():
+    request = _request("tools/list", request_id=10)
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, size):
+            return b"x" * size
+
+    with pytest.raises(mcp.ToolError) as exc_info:
+        mcp.remote_controller_request(
+            "http://127.0.0.1:8765",
+            request,
+            "secret",
+            opener=lambda _request, timeout: Response(),
+            max_response_bytes=32,
+        )
+
+    assert exc_info.value.code == "controller_response_too_large"

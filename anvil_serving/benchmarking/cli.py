@@ -12,6 +12,7 @@ import random
 import statistics
 import sys
 import time
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
@@ -606,14 +607,10 @@ def main(
     out_tot = metrics["output_tokens"]
     cfs = [cached_fraction(r["usage"]) for r in results]
     cfs = [c for c in cfs if c is not None]
-    context_distribution = {}
-    for context_tokens in planned_contexts:
-        key = str(context_tokens)
-        context_distribution[key] = context_distribution.get(key, 0) + 1
-    token_sources = {}
-    for result in results:
-        source = result.get("output_token_source", "unknown")
-        token_sources[source] = token_sources.get(source, 0) + 1
+    context_distribution = dict(Counter(str(tokens) for tokens in planned_contexts))
+    token_sources = dict(Counter(
+        result.get("output_token_source", "unknown") for result in results
+    ))
     print("-"*60)
     print(f"completed:        {len(results)}/{n} in {wall:.1f}s")
     if metrics["reasoning_chunks"]:

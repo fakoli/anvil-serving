@@ -29,6 +29,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from . import envfile
+
 
 DEFAULT_TIMEOUT_SECONDS = 10.0
 MAX_TIMEOUT_SECONDS = 7260.0
@@ -328,6 +330,7 @@ class ControllerTransport:
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         max_response_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
         opener: Optional[Callable[..., Any]] = None,
+        expected_node: Optional[str] = None,
     ) -> None:
         self.endpoint = _controller_endpoint(endpoint)
         if not isinstance(auth_env, str) or not _ENV_RE.fullmatch(auth_env):
@@ -341,6 +344,14 @@ class ControllerTransport:
         self.auth_env = auth_env
         self.allowed_operations = frozenset(allowed)
         self.environment = os.environ if environment is None else environment
+        # None marks the real process environment, which may fall back to the
+        # operator dotenv chain for durable tokens (ADR-0033); an injected
+        # mapping stays hermetic.
+        self._environment_injected = environment is not None
+        # ADR-0033 node identity: when declared, /health must assert this
+        # topology host id before the first dispatch (fail-closed, cached).
+        self.expected_node = expected_node
+        self._node_verified = False
         self.timeout_seconds = _bounded_timeout(timeout_seconds)
         self.max_response_bytes = _bounded_response_bytes(max_response_bytes)
         self._opener = opener or _urlopen_no_proxy_no_redirect
@@ -376,6 +387,8 @@ class ControllerTransport:
             if max_response_bytes is None
             else _bounded_response_bytes(max_response_bytes)
         )
+        if self.expected_node and not self._node_verified:
+            self._verify_node(token, timeout)
         payload: dict[str, object] = {
             "name": operation.tool_name or _mcp_operation_name(operation.name),
             "arguments": dict(operation.arguments),
@@ -546,13 +559,59 @@ class ControllerTransport:
             "operation-status", "controller", redact(response_data, token), len(raw)
         )
 
+    def _verify_node(self, token: str, timeout: float) -> None:
+        """Assert the controller's declared node identity before dispatch.
+
+        The controller analogue of the SSH host-key check: a transport with
+        ``expected_node`` refuses to dispatch to a controller that does not
+        assert that topology host id on ``/health``. Fail-closed, verified
+        once per transport instance.
+        """
+        request = urllib.request.Request(
+            self.endpoint + "/health",
+            headers={"Accept": "application/json", "Authorization": "Bearer " + token},
+        )
+        try:
+            with self._opener(request, timeout=timeout) as response:
+                raw = _read_bounded(response, 64 * 1024)
+        except urllib.error.HTTPError as exc:
+            raise _http_error(exc, token, 64 * 1024) from None
+        except (urllib.error.URLError, ConnectionRefusedError, socket.gaierror) as exc:
+            raise TransportError(
+                "controller_connect_failed",
+                "controller connection failed before dispatch",
+                details={"endpoint": self.endpoint, "error": redact(str(exc), token)},
+            ) from None
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            payload = None
+        observed = payload.get("node") if isinstance(payload, dict) else None
+        if observed != self.expected_node:
+            raise TransportError(
+                "controller_node_mismatch",
+                "controller did not assert the expected node identity",
+                execution_state="not_started",
+                details={
+                    "endpoint": self.endpoint,
+                    "expected_node": self.expected_node,
+                    "observed_node": observed if isinstance(observed, str) else None,
+                },
+            )
+        self._node_verified = True
+
     def _token(self) -> str:
-        token = (self.environment.get(self.auth_env) or "").strip()
+        token, _source = envfile.resolve_env_value(
+            self.auth_env, env=self.environment if self._environment_injected else None
+        )
         if not token:
             raise TransportError(
                 "missing_controller_token",
                 "controller token environment variable is unset or empty",
-                details={"auth_env": self.auth_env},
+                details={
+                    "auth_env": self.auth_env,
+                    "sources_checked": envfile.env_sources(self.auth_env),
+                },
             )
         return token
 

@@ -5,52 +5,24 @@ model card, issue, repository, video, or benchmark and wants it translated to
 Anvil Serving. The external recipe is a research prior. It is not proof that the
 model fits, runs correctly, performs well, or is safe to promote on this host.
 
-## Current carry-forward from 2026-08-02
+## Before starting another campaign
 
-Read this section before starting another recipe campaign.
+Point-in-time promotion state, open defects, and carry-forward context are
+recorded where they stay current, not inline in this durable guide:
 
-1. **Use the fixed managed native-offload cleanup path and retain the live
-   guard.** PR [#342](https://github.com/fakoli/anvil-serving/pull/342) fixes the
-   absent-container defect reported after PR #336. An absent serve requests the
-   existing fail-closed orphan-mmap reclaim only when its manifest explicitly
-   declares `native_kv_offload = true`; ordinary absent serves remain no-ops.
-   The [ticket](.tickets/2026-08-02-native-offload-absent-container-cleanup.md)
-   records the product resolution and the still-required bounded live
-   regression. Until that acceptance run is recorded, inspect `anvil-serving
-   host shared-memory status` before and after every native-offload experiment
-   and stop if ownership is blocked or ambiguous. Never replace the exact-path,
-   two-scan reclaim checks with a broad delete.
-2. **DeepSeek V4 Flash 0731 650K is the human-approved Primary.** The current
-   product record promotes the pinned r16 B12X/DSpark K5 profile at 650,000
-   served tokens, 16 admitted sequences, a 4,096-token batching budget, FP8 MLA KV,
-   and no CPU KV offload. It runs as exclusive TP=2 behind `llm.primary`, keeps
-   the managed Qwen profile at `llm.rollback`, and uses high reasoning as the
-   client default. This is recorded promotion evidence, not permission to
-   assume the same process is live now; reinspect the host before operating it.
-3. **Do not overstate the 256K result.** It is c1 capacity and offload evidence,
-   not 256K concurrency or a broad 256K coding-quality result. Remaining gates
-   include per-card reserve sampling, concurrency, broader coding/tool recovery,
-   and reasoning-budget recovery at long context.
-4. **The SM120 dense W8A8 tune is still open.** Follow
-   [the tuning ticket](.tickets/2026-08-01-deepseek-dspark-sm120-w8a8-tune.md)
-   and the kernel-tuning skill. Adopt a generated tune only after an exact
-   default-versus-tuned end-to-end A/B clears its thresholds.
-5. **Pinned 0731 NVFP4 comparisons remain useful.** The next material DeepSeek
-   comparisons are the pinned W4A16 and W4A4 profiles described in the
-   [model dossier](docs/benchmarks/models/deepseek-v4-flash.md). Keep DSpark or
-   another speculative method as a one-variable A/B against an otherwise
-   identical control.
-6. **The current Primary passed Pi/OpenClaw smokes; future candidates remain
-   deferred.** Pi on Dark, Pi on Mini, and OpenClaw on Mini passed the recorded
-   650K promotion smokes. Do not change those clients for a new candidate until
-   its direct benchmark work is complete or the operator asks explicitly.
+1. The private operator repository (selected through `ANVIL_SERVING_HOME`)
+   holds the active/promoted route assignments and live topology state.
+2. `docs/findings/README.md` lists dated public findings chronologically, and
+   the model dossiers under `docs/benchmarks/models/` carry each family's
+   latest qualified evidence and remaining gates.
+3. `.tickets/` records product defects; open tickets stay at the top level and
+   resolved tickets move to `.tickets/closed/`. Read the open tickets before
+   relying on a lifecycle path they touch.
 
-The latest repository evidence records `dual-gpu-exclusive` mode with the 650K
-Primary owning both GPU roles. The earlier native-offload campaign restored
-split mode with Omni on `dark-compute-b`; that state was superseded by the
-later promotion. Both are historical evidence, not permission to assume
-current state. Inspect the live mode, owners, router identity, and shared memory
-at the start of every session.
+Recorded evidence is never permission to assume current host state. Inspect
+the live mode, serve owners, router identity, and shared memory
+(`anvil-serving serves status`, `anvil-serving host shared-memory status`) at
+the start of every session.
 
 ## Read before touching the GPUs
 

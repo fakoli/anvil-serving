@@ -3,7 +3,6 @@
     "allowed_legacy_counts": {
       "benchmark": 0,
       "cache-prune": 0,
-      "calibrate": 0,
       "deploy": 0,
       "eval-benchmark-action-flag": 0,
       "external-bench": 0,
@@ -14,7 +13,6 @@
       "multiplexer": 0,
       "onboard": 0,
       "preflight": 0,
-      "profile": 0,
       "score": 0,
       "serve": 1,
       "voice-run-bridge": 0,
@@ -56,7 +54,6 @@
     "violation_counts": {
       "benchmark": 0,
       "cache-prune": 0,
-      "calibrate": 0,
       "deploy": 0,
       "eval-benchmark-action-flag": 0,
       "external-bench": 0,
@@ -67,7 +64,6 @@
       "multiplexer": 0,
       "onboard": 0,
       "preflight": 0,
-      "profile": 0,
       "score": 0,
       "serve": 0,
       "voice-run-bridge": 0,

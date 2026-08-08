@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 import ipaddress
-import os
 import socket
 import sys
 from http.server import ThreadingHTTPServer
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 from ... import mcp
+from ...graceful import DEFAULT_DRAIN_SECONDS, serve_until_signal
 from .catalog import CallToolFunc, ListToolsFunc
 from .http import (
     AuditLogger,
+    FileAuditLogger,
     JsonLoadsFunc,
     _MAX_BODY_BYTES,
     _READ_TIMEOUT_SECONDS,
+    _default_audit_logger,
     make_handler,
 )
 from .security import (
@@ -63,6 +65,7 @@ def make_server(
     list_tools_func: ListToolsFunc = mcp.list_tools,
     call_tool_func: CallToolFunc = mcp.call_tool,
     audit_logger: Optional[AuditLogger] = None,
+    audit_log_path: Optional[str] = None,
     max_body_bytes: int = _MAX_BODY_BYTES,
     read_timeout_seconds: float = _READ_TIMEOUT_SECONDS,
     idempotency_db_path: str = DEFAULT_IDEMPOTENCY_DB_PATH,
@@ -73,20 +76,23 @@ def make_server(
     resolver: Optional[Callable[..., Sequence[Any]]] = None,
     allowed_operations: Optional[Sequence[str]] = None,
     json_loads_func: JsonLoadsFunc = _strict_json_loads,
+    node_id: Optional[str] = None,
 ) -> ThreadingHTTPServer:
     """Return an unstarted controller server."""
-    effective_env = os.environ if env is None else env
+    # ``env=None`` stays None: the real process environment may fall back to
+    # the operator dotenv chain for the token (ADR-0033); injected mappings
+    # remain hermetic.
     assessment = validate_bind_safety(
         host,
         allow_public_bind=allow_public_bind,
         allow_unauthenticated_loopback=allow_unauthenticated_loopback,
         auth_token_env=auth_token_env,
-        env=effective_env,
+        env=env,
         resolver=resolver,
     )
     token = resolve_auth_token(
         auth_token_env,
-        env=effective_env,
+        env=env,
         required=assessment.requires_auth,
     )
     store = operation_store or OperationStore(
@@ -95,6 +101,20 @@ def make_server(
         max_records=idempotency_max_records,
         max_result_bytes=idempotency_max_result_bytes,
     )
+    if audit_logger is None and audit_log_path:
+        audit_logger = FileAuditLogger(audit_log_path)
+    # ADR-0033 boot reconciliation: operations interrupted by a crash become
+    # typed failures instead of blocking their idempotency keys until
+    # retention lapses. Runs for injected stores too; the pass is idempotent.
+    audit = audit_logger or _default_audit_logger
+    for interrupted in store.recover_interrupted():
+        audit(
+            {
+                "event": "operation_interrupted_recovered",
+                "key": interrupted["key"],
+                "request_id": interrupted["request_id"],
+            }
+        )
     handler = make_handler(
         list_tools_func=list_tools_func,
         call_tool_func=call_tool_func,
@@ -105,6 +125,7 @@ def make_server(
         operation_store=store,
         allowed_operations=allowed_operations,
         json_loads_func=json_loads_func,
+        node_id=node_id,
     )
     cls = server_class or _server_class_for_host(host)
     httpd = cls((host, port), handler)
@@ -123,6 +144,9 @@ def serve(
     allow_unauthenticated_loopback: bool = False,
     allowed_operations: Optional[Sequence[str]] = None,
     idempotency_db_path: str = DEFAULT_IDEMPOTENCY_DB_PATH,
+    drain_seconds: float = DEFAULT_DRAIN_SECONDS,
+    audit_log_path: Optional[str] = None,
+    node_id: Optional[str] = None,
     server_factory: Callable[..., ThreadingHTTPServer] = make_server,
 ) -> int:
     httpd = server_factory(
@@ -133,16 +157,13 @@ def serve(
         allow_unauthenticated_loopback=allow_unauthenticated_loopback,
         allowed_operations=allowed_operations,
         idempotency_db_path=idempotency_db_path,
+        audit_log_path=audit_log_path,
+        node_id=node_id,
     )
     actual_host, actual_port = httpd.server_address[:2]
     print(
         "anvil-serving controller listening on http://%s:%s" % (actual_host, actual_port),
         file=sys.stderr,
     )
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        return 0
-    finally:
-        httpd.server_close()
+    serve_until_signal(httpd, drain_seconds=drain_seconds)
     return 0

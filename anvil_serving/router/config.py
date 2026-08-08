@@ -57,6 +57,33 @@ _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 # charset (e.g. an AWS access key id ``AKIA…`` / ``ASIA…``). Reject those shapes
 # explicitly as defense-in-depth so a pasted key id can't masquerade as a name.
 _SECRET_SHAPED_RE = re.compile(r"^(AKIA|ASIA)[0-9A-Z]{16}$")
+
+
+def _validate_auth_env(value: object, label: str, *, detailed: bool = True) -> None:
+    """Raise :class:`ConfigError` unless ``value`` is a plausible env-var NAME.
+
+    Shared by every ``auth_env`` field ([server], tier, purpose model, audio
+    route): it must match the env-var name shape and must not itself look like
+    a credential literal — never the secret, only a reference to where it
+    lives. ``label`` identifies the field in the error message (e.g.
+    ``"tier 'primary': auth_env"``); ``detailed`` toggles the longer
+    "store a secret reference..." guidance some call sites include and others
+    keep terse.
+    """
+    if not isinstance(value, str) or not _ENV_NAME_RE.fullmatch(value):
+        suffix = "; store a secret reference, never the secret itself" if detailed else ""
+        raise ConfigError(
+            f"{label} must name an ENV VAR matching ^[A-Z][A-Z0-9_]*$ "
+            f"(got {value!r}){suffix}"
+        )
+    if _SECRET_SHAPED_RE.fullmatch(value):
+        suffix = "; store the env-var NAME, never the secret" if detailed else ""
+        raise ConfigError(
+            f"{label} {value!r} is shaped like a credential literal, "
+            f"not an env-var name{suffix}"
+        )
+
+
 # Keep optional per-audio-route limits no larger than the front door's default
 # body cap without importing front_door (which imports this module).
 _MAX_AUDIO_GATEWAY_BYTES = 32 * 1024 * 1024
@@ -311,9 +338,19 @@ class ServerConfig:
     loopback-only default — full back-compat. The secret literal is NEVER
     stored here, only the env-var NAME, mirroring the ``Tier.auth_env``
     contract above.
+
+    ``admission_state_path`` and ``decision_log_path`` are the opt-in ADR-0033
+    durability sinks: persisted tier-quiesce intent restored at boot, and an
+    append-only metadata-only JSONL of decision records. Both absent -> no
+    file I/O, identical to the pre-ADR-0033 router.
     """
 
     auth_env: Optional[str] = None
+    admission_state_path: Optional[str] = None
+    decision_log_path: Optional[str] = None
+
+
+_SERVER_KEYS = frozenset({"auth_env", "admission_state_path", "decision_log_path"})
 
 
 def load_server_config(path: str) -> ServerConfig:
@@ -335,27 +372,27 @@ def load_server_config(path: str) -> ServerConfig:
 
     server = data.get("server")
     if server is None:
-        return ServerConfig(auth_env=None)
+        return ServerConfig()
     if not isinstance(server, dict):
         raise ConfigError(f"[server] must be a table in {path}")
+    _reject_unknown_keys(server, _SERVER_KEYS, "[server]")
 
     auth_env = server.get("auth_env")
-    if auth_env is None:
-        return ServerConfig(auth_env=None)
+    if auth_env is not None:
+        _validate_auth_env(auth_env, "[server].auth_env")
 
-    if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
-        raise ConfigError(
-            f"[server].auth_env must name an ENV VAR matching "
-            f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret reference, "
-            f"never the secret itself"
-        )
-    if _SECRET_SHAPED_RE.fullmatch(auth_env):
-        raise ConfigError(
-            f"[server].auth_env {auth_env!r} is shaped like a credential "
-            f"literal, not an env-var name; store the env-var NAME, never the secret"
-        )
+    paths: dict[str, Optional[str]] = {}
+    for key in ("admission_state_path", "decision_log_path"):
+        value = server.get(key)
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            raise ConfigError(f"[server].{key} must be a non-empty file path")
+        paths[key] = os.path.expanduser(value) if isinstance(value, str) else None
 
-    return ServerConfig(auth_env=auth_env)
+    return ServerConfig(
+        auth_env=auth_env,
+        admission_state_path=paths["admission_state_path"],
+        decision_log_path=paths["decision_log_path"],
+    )
 
 
 def _parse_tier(raw: object) -> Tier:
@@ -408,17 +445,7 @@ def _parse_tier(raw: object) -> Tier:
         )
 
     auth_env = raw["auth_env"]
-    if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
-        raise ConfigError(
-            f"tier {tid!r}: auth_env must name an ENV VAR matching "
-            f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret reference, "
-            f"never the secret itself"
-        )
-    if _SECRET_SHAPED_RE.fullmatch(auth_env):
-        raise ConfigError(
-            f"tier {tid!r}: auth_env {auth_env!r} is shaped like a credential "
-            f"literal, not an env-var name; store the env-var NAME, never the secret"
-        )
+    _validate_auth_env(auth_env, f"tier {tid!r}: auth_env")
 
     # Optional: concrete provider model id to forward upstream instead of the
     # routing token.  Absent or None -> fall back to request.model at dispatch time.
@@ -650,18 +677,7 @@ def _parse_purpose_model(raw: object) -> PurposeModel:
 
     auth_env = raw.get("auth_env")
     if auth_env is not None:
-        if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"purpose model {pid!r}: auth_env must name an ENV VAR matching "
-                f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret "
-                f"reference, never the secret itself"
-            )
-        if _SECRET_SHAPED_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"purpose model {pid!r}: auth_env {auth_env!r} is shaped like a "
-                f"credential literal, not an env-var name; store the env-var "
-                f"NAME, never the secret"
-            )
+        _validate_auth_env(auth_env, f"purpose model {pid!r}: auth_env")
 
     raw_timeout = raw.get("timeout")
     timeout: Optional[float] = None
@@ -814,16 +830,7 @@ def _parse_audio_route(raw: object) -> AudioRoute:
 
     auth_env = raw.get("auth_env")
     if auth_env is not None:
-        if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"audio route {route_id!r}: auth_env must name an ENV VAR "
-                f"matching ^[A-Z][A-Z0-9_]*$ (got {auth_env!r})"
-            )
-        if _SECRET_SHAPED_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"audio route {route_id!r}: auth_env {auth_env!r} is shaped "
-                "like a credential literal, not an env-var name"
-            )
+        _validate_auth_env(auth_env, f"audio route {route_id!r}: auth_env", detailed=False)
 
     default = raw.get("default", False)
     if not isinstance(default, bool):

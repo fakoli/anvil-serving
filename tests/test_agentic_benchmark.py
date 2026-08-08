@@ -86,3 +86,14 @@ def test_long_session_preserves_full_history_and_token_growth():
     assert result["passed"] is True
     assert result["full_history"] == scenario["messages"]
     assert result["history_prompt_tokens"] == [100, 250, 500, 900]
+
+
+def test_context_recovery_accepts_one_measured_long_history_request():
+    scenario, expected = build_agentic_scenario("context-recovery", session_turns=8)
+    trace = passing_trace(expected)
+    trace["history_prompt_tokens"] = [900]
+
+    result = score_agentic_trace(scenario, expected, trace)
+
+    assert result["passed"] is True
+    assert result["stages"]["history"] == {"passed": True}

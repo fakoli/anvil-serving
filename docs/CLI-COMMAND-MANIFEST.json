@@ -607,10 +607,12 @@
           "recreate",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_manage"
@@ -791,10 +793,12 @@
           "service",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_manage"
@@ -975,10 +979,12 @@
           "dry_run",
           "no_verify"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "restart"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_manage"
@@ -1159,10 +1165,12 @@
           "dry_run",
           "no_verify"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "reload"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_manage"
@@ -1617,8 +1625,10 @@
         "allowed_arguments": [
           "container"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_status"
@@ -1780,10 +1790,12 @@
           "tier",
           "router_url"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "status"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_transition"
@@ -1965,10 +1977,12 @@
           "timeout",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "quiesce"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_transition"
@@ -2141,10 +2155,12 @@
           "timeout",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "drain"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_transition"
@@ -2326,10 +2342,12 @@
           "timeout",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "readmit"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_transition"
@@ -2484,8 +2502,10 @@
           "since",
           "follow"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "router_logs"
@@ -3059,10 +3079,12 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -3235,10 +3257,12 @@
           "keep_container",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -3399,10 +3423,12 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "rm"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -3563,10 +3589,12 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "adopt"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -3911,10 +3939,12 @@
           "resume",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "human_approved": true
         },
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "plan"
@@ -4186,10 +4216,12 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "status"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "serves_mode"
@@ -4342,10 +4374,12 @@
           "manifest",
           "restore_group"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "preview"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "target"
@@ -4539,12 +4573,14 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "human_approved": true
         },
         "fixed_arguments": {
           "action": "enter"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "target"
@@ -4738,12 +4774,14 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "human_approved": true
         },
         "fixed_arguments": {
           "action": "leave"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "target"
@@ -4886,8 +4924,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -5307,8 +5347,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [
           "names"
@@ -8473,10 +8515,12 @@
           "timeout_seconds",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "preflight_probe"
@@ -8971,12 +9015,14 @@
           "offline",
           "max_download_bytes"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "context"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_harness_prepare"
@@ -9156,10 +9202,12 @@
           "run_id",
           "ownership_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "context"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_harness_status"
@@ -9357,12 +9405,14 @@
           "run_id",
           "ownership_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "context"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_harness_cleanup"
@@ -9542,10 +9592,12 @@
           "spec_json",
           "requirements_json"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "context"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_preflight"
@@ -9753,12 +9805,14 @@
           "follow",
           "detach"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "context"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_submit"
@@ -9928,10 +9982,12 @@
         "allowed_arguments": [
           "run_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "context"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_status"
@@ -10131,10 +10187,12 @@
           "limit",
           "follow"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "context"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_logs"
@@ -10322,12 +10380,14 @@
         "allowed_arguments": [
           "run_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "context"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_cancel"
@@ -10507,10 +10567,12 @@
           "run_id",
           "path"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "context"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_artifact"
@@ -10876,12 +10938,14 @@
           "offline",
           "max_download_bytes"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "agentic"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_harness_prepare"
@@ -11061,10 +11125,12 @@
           "run_id",
           "ownership_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "agentic"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_harness_status"
@@ -11262,12 +11328,14 @@
           "run_id",
           "ownership_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "agentic"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_harness_cleanup"
@@ -11447,10 +11515,12 @@
           "spec_json",
           "requirements_json"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "agentic"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_preflight"
@@ -11658,12 +11728,14 @@
           "follow",
           "detach"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "agentic"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_submit"
@@ -11833,10 +11905,12 @@
         "allowed_arguments": [
           "run_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "agentic"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_status"
@@ -12036,10 +12110,12 @@
           "limit",
           "follow"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "agentic"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_logs"
@@ -12227,12 +12303,14 @@
         "allowed_arguments": [
           "run_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "agentic"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_cancel"
@@ -12412,10 +12490,12 @@
           "run_id",
           "path"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "agentic"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_artifact"
@@ -12781,12 +12861,14 @@
           "offline",
           "max_download_bytes"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "swe"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_harness_prepare"
@@ -12966,10 +13048,12 @@
           "run_id",
           "ownership_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "swe"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_harness_status"
@@ -13167,12 +13251,14 @@
           "run_id",
           "ownership_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "swe"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_harness_cleanup"
@@ -13352,10 +13438,12 @@
           "spec_json",
           "requirements_json"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "swe"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_preflight"
@@ -13563,12 +13651,14 @@
           "follow",
           "detach"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "swe"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_submit"
@@ -13738,10 +13828,12 @@
         "allowed_arguments": [
           "run_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "swe"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_status"
@@ -13941,10 +14033,12 @@
           "limit",
           "follow"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "swe"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_logs"
@@ -14132,12 +14226,14 @@
         "allowed_arguments": [
           "run_id"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "suite": "swe"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_cancel"
@@ -14317,10 +14413,12 @@
           "run_id",
           "path"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "suite": "swe"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_artifact"
@@ -15714,8 +15812,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "external_bench_sources"
@@ -16160,8 +16260,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "external_bench_list"
@@ -16302,8 +16404,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "external_bench_report"
@@ -16596,8 +16700,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "external_bench_compare"
@@ -17878,10 +17984,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_manage"
@@ -18047,10 +18155,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_manage"
@@ -18198,10 +18308,12 @@
           "ready_timeout",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "status"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_manage"
@@ -18349,10 +18461,12 @@
           "tail",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "logs"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_manage"
@@ -18785,10 +18899,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -18956,10 +19072,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -19127,10 +19245,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "restart"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -19279,10 +19399,12 @@
           "log_file",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "status"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -19432,10 +19554,12 @@
           "tail",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "logs"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "voice_proxy_manage"
@@ -21427,10 +21551,12 @@
           "voice_api_key_env",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "openclaw_sync"
@@ -21721,10 +21847,12 @@
           "dry_run",
           "timeout_seconds"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "openclaw_gateway_restart"
@@ -21998,8 +22126,10 @@
           "timeout_seconds",
           "max_output_bytes"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "openclaw_gateway_status"
@@ -22269,8 +22399,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "mcp-bridge",
         "positional_arguments": [],
         "tool": null
@@ -22411,8 +22543,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "mcp-bridge",
         "positional_arguments": [],
         "tool": null
@@ -22816,8 +22950,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "controller-status",
         "positional_arguments": [],
         "tool": null
@@ -22961,6 +23097,482 @@
     },
     {
       "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#operator-configuration-inventory-and-export",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": null,
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host config",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Inventory and safely export operator-owned configuration.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#operator-configuration-inventory-and-export",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.operator_config:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--home"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Operator config home to inspect.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--max-bytes"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum accepted candidate size.",
+          "value_name": "BYTES"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host config inventory",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "max_bytes"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "max_response_bytes": 1048576,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "operator_config_inventory"
+      },
+      "resource_role": "host",
+      "summary": "Classify operator-home files and verify dependency closure.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#operator-configuration-inventory-and-export",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.operator_config:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--home"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Operator config home to export.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--gateway-path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "OpenClaw JSON source for the Anvil-owned fragment.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Relative config path to export; repeat for a safe subset.",
+          "value_name": "RELATIVE_PATH"
+        },
+        {
+          "flags": [
+            "--max-bytes"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum accepted candidate size.",
+          "value_name": "BYTES"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host config export",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "max_bytes",
+          "paths"
+        ],
+        "argument_aliases": {
+          "path": "paths"
+        },
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "max_response_bytes": 1048576,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "operator_config_export"
+      },
+      "resource_role": "host",
+      "summary": "Export safe config and sanitized Anvil-owned gateway fragments.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#inspect-the-host",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -23086,8 +23698,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_summary"
@@ -23228,8 +23842,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "gpu_inventory"
@@ -23782,8 +24398,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_summary"
@@ -24187,8 +24805,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_shared_memory"
@@ -24348,12 +24968,14 @@
         "allowed_arguments": [
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "action": "reclaim-shared-memory"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_manage"
@@ -24519,12 +25141,14 @@
           "force",
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "action": "wsl-config"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_manage"
@@ -24687,12 +25311,14 @@
         "allowed_arguments": [
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "action": "restart-docker"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_manage"
@@ -24855,12 +25481,14 @@
         "allowed_arguments": [
           "dry_run"
         ],
+        "argument_aliases": {},
         "confirmed_arguments": {
           "confirm": true
         },
         "fixed_arguments": {
           "action": "reset-wsl"
         },
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "host_manage"
@@ -25163,8 +25791,10 @@
       "recovery_capable": false,
       "remote_operation": {
         "allowed_arguments": [],
+        "argument_aliases": {},
         "confirmed_arguments": {},
         "fixed_arguments": {},
+        "max_response_bytes": null,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "doctor_summary"
@@ -25837,6 +26467,135 @@
       "remote_operation": null,
       "resource_role": null,
       "summary": "Resolve one canonical command against a topology.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/control-plane.md#topology",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.topology_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "topology drift",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Compare the installed topology against a canonical fleet reference.",
       "transports": [],
       "visible": true
     },
@@ -28334,5 +29093,5 @@
       "visible": true
     }
   ],
-  "schema_version": 4
+  "schema_version": 5
 }

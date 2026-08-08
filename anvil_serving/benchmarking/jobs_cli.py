@@ -177,11 +177,11 @@ def run(argv: list[str]) -> dict:
             "detached": bool(args.detach or not args.follow),
         }
     record = store.status(args.run_id)
-    if record is not None and record["spec"]["suite"] != args.suite:
+    if record is None:
+        raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
+    if record["spec"]["suite"] != args.suite:
         raise BenchmarkJobError("suite_mismatch", "run belongs to a different suite")
     if args.action == "status":
-        if record is None:
-            raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
         return record
     if args.action == "logs":
         return store.logs(args.run_id, cursor=args.cursor, limit=args.limit)

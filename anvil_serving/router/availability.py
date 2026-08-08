@@ -87,8 +87,10 @@ class HttpHealthAvailability:
 
     The cache lock covers lookup and update only; the network call runs outside
     it so a slow probe for one tier never serializes unrelated tier checks.
-    Concurrent cache misses may issue duplicate probes, which is bounded by the
-    front-door concurrency limit and preferable to blocking the full router.
+    Concurrent cache misses are single-flighted per tier (ADR-0033): one thread
+    probes while the rest return the last-known result, or fail closed with
+    ``probe_pending`` when no result exists yet — never admitting to an
+    unprobed tier and never stampeding a struggling serve.
     """
 
     def __init__(
@@ -111,6 +113,38 @@ class HttpHealthAvailability:
         self._env = os.environ if env is None else env
         self._lock = threading.Lock()
         self._cache: Dict[str, tuple[float, AvailabilityResult]] = {}
+        self._probe_locks: Dict[str, threading.Lock] = {}
+
+    def _probe_lock(self, tier_id: str) -> threading.Lock:
+        with self._lock:
+            lock = self._probe_locks.get(tier_id)
+            if lock is None:
+                lock = self._probe_locks[tier_id] = threading.Lock()
+            return lock
+
+    def cached(self, tier_id: str) -> Optional[tuple[float, AvailabilityResult]]:
+        """The last cached ``(age_seconds, result)`` for ``tier_id``, if any."""
+        with self._lock:
+            entry = self._cache.get(tier_id)
+        if entry is None:
+            return None
+        return (max(0.0, self._clock() - entry[0]), entry[1])
+
+    def probe_now(self, tier: Tier) -> AvailabilityResult:
+        """Probe ``tier`` unconditionally and cache the stamped result."""
+        url = self._health_url(tier)
+        if url is None:
+            return AvailabilityResult(True, "ready", "availability_not_configured")
+        started = self._clock()
+        result = self._probe(url, tier)
+        result = replace(
+            result,
+            latency_ms=max(0, int(round((self._clock() - started) * 1000))),
+            checked_at=self._wall_clock(),
+        )
+        with self._lock:
+            self._cache[tier.id] = (self._clock(), result)
+        return result
 
     @staticmethod
     def _health_url(tier: Tier) -> Optional[str]:
@@ -130,19 +164,31 @@ class HttpHealthAvailability:
             if cached is not None and now - cached[0] < self._probe_interval:
                 return cached[1]
 
-        started = self._clock()
-        result = self._probe(url, tier)
-        # Stamp freshness metadata so a readiness snapshot reports when this serve
-        # was last probed and how long it took. Cached and returned together, so a
-        # subsequent cache hit reflects the ACTUAL last probe, not the read time.
-        result = replace(
-            result,
-            latency_ms=max(0, int(round((self._clock() - started) * 1000))),
-            checked_at=self._wall_clock(),
-        )
-        with self._lock:
-            self._cache[tier.id] = (self._clock(), result)
-        return result
+        probe_lock = self._probe_lock(tier.id)
+        if not probe_lock.acquire(blocking=False):
+            # Another thread is probing this tier right now. Serve the
+            # last-known result (even if just expired) rather than duplicating
+            # the probe; with no prior result, fail closed.
+            with self._lock:
+                cached = self._cache.get(tier.id)
+            if cached is not None:
+                return cached[1]
+            return AvailabilityResult(False, "unavailable", "probe_pending")
+        try:
+            # Re-check under the flight lock: the winner may have refreshed the
+            # cache while this thread waited on the non-blocking acquire.
+            now = self._clock()
+            with self._lock:
+                cached = self._cache.get(tier.id)
+                if cached is not None and now - cached[0] < self._probe_interval:
+                    return cached[1]
+            # Stamp freshness metadata so a readiness snapshot reports when
+            # this serve was last probed and how long it took. Cached and
+            # returned together, so a subsequent cache hit reflects the ACTUAL
+            # last probe, not the read time.
+            return self.probe_now(tier)
+        finally:
+            probe_lock.release()
 
     @staticmethod
     def _models_url(tier: Tier) -> str:
@@ -234,8 +280,40 @@ class HttpHealthAvailability:
                 self._cache.pop(tier_id, None)
 
 
+def safe_check(
+    availability,
+    tier: Tier,
+    *,
+    reason_prefix: str = "availability_check",
+    include_exception_name: bool = True,
+) -> AvailabilityResult:
+    """Call ``availability.check(tier)``, coercing any fault into an unavailable result.
+
+    Shared by every call site that needs a tier's readiness but must never let a
+    broken ``availability`` implementation (a raised exception, or a non-
+    :class:`AvailabilityResult` return) escape as a 500 or crash routing.
+    ``include_exception_name`` selects between the request-path reason
+    (``{reason_prefix}_{ExceptionName}``, useful for debugging a live fault) and
+    the fixed, content-free reason used by read-only status endpoints
+    (``{reason_prefix}_failed``).
+    """
+    try:
+        result = availability.check(tier)
+        if not isinstance(result, AvailabilityResult):
+            raise TypeError("non-AvailabilityResult")
+        return result
+    except Exception as exc:  # noqa: BLE001 - a broken availability must never propagate
+        reason = (
+            f"{reason_prefix}_{type(exc).__name__}"
+            if include_exception_name
+            else f"{reason_prefix}_failed"
+        )
+        return AvailabilityResult(False, "unavailable", reason)
+
+
 __all__ = [
     "AlwaysAvailable",
     "AvailabilityResult",
     "HttpHealthAvailability",
+    "safe_check",
 ]
