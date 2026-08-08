@@ -2368,6 +2368,136 @@ def cmd_status(
     return 0
 
 
+def _registry_path_of(serve):
+    """The `--registry` argument inside a serve's `up` command, if it has one.
+
+    `up` is already shlex-split at load, so this is a token scan rather than a
+    second parse of the command string.
+    """
+    up = serve.get("up") or []
+    for index, token in enumerate(up):
+        if token == "--registry" and index + 1 < len(up):
+            return up[index + 1]
+        if token.startswith("--registry="):
+            return token.split("=", 1)[1]
+    return None
+
+
+def _inside_linked_worktree(path, _run=subprocess.run):
+    """True when `path` resolves inside a linked git worktree.
+
+    A linked worktree reports a `--git-dir` under the main checkout's
+    `--git-common-dir`; for the main checkout the two are the same place. That
+    difference is the exact, cheap test, and it matters because a linked
+    worktree is disposable: `git worktree remove` deletes state a live serve
+    depends on.
+    """
+    directory = os.path.dirname(os.path.abspath(path))
+    if not os.path.isdir(directory):
+        return False
+    try:
+        common = _run(["git", "-C", directory, "rev-parse", "--git-common-dir"],
+                      capture_output=True, text=True)
+        own = _run(["git", "-C", directory, "rev-parse", "--git-dir"],
+                   capture_output=True, text=True)
+    except OSError:
+        return False
+    if common.returncode != 0 or own.returncode != 0:
+        return False
+
+    def _resolve(result):
+        value = result.stdout.strip()
+        if not value:
+            return None
+        return os.path.realpath(os.path.join(directory, value))
+
+    common_dir, own_dir = _resolve(common), _resolve(own)
+    return bool(common_dir and own_dir and common_dir != own_dir)
+
+
+def lint_manifest_set(serves, _run=subprocess.run):
+    """Report manifest defects that no other surface makes visible.
+
+    Each check exists because the defect it finds occurred live and every
+    command reported success while it was present. See
+    docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md.
+    """
+    findings = []
+
+    # Duplicate names AFTER container de-dup. Sharing a container across files
+    # is a supported mirror pattern, so it is not a defect; two surviving
+    # entries sharing a NAME is, because name selection then matches more than
+    # one serve and one of them silently wins.
+    by_name = {}
+    for serve in serves:
+        by_name.setdefault(serve["name"], []).append(serve)
+    for name, entries in sorted(by_name.items()):
+        if len(entries) < 2:
+            continue
+        findings.append({
+            "check": "duplicate-serve-name",
+            "severity": "error",
+            "serve": name,
+            "detail": "declared %d times with different containers (%s); name "
+                      "selection is ambiguous and one entry silently wins"
+                      % (len(entries), ", ".join(e["container"] for e in entries)),
+            "files": sorted({e.get("_manifest_file", "?") for e in entries}),
+        })
+
+    for serve in serves:
+        registry = _registry_path_of(serve)
+        if not registry:
+            continue
+        resolved = os.path.abspath(os.path.expanduser(registry))
+        if not os.path.isfile(resolved):
+            findings.append({
+                "check": "missing-registry",
+                "severity": "error",
+                "serve": serve["name"],
+                "detail": "up command names a recipe registry that does not "
+                          "exist: %s" % resolved,
+                "files": [serve.get("_manifest_file", "?")],
+            })
+            continue
+        if _inside_linked_worktree(resolved, _run=_run):
+            findings.append({
+                "check": "worktree-anchored-registry",
+                "severity": "warning",
+                "serve": serve["name"],
+                "detail": "recipe registry resolves inside a linked git "
+                          "worktree, which routine cleanup deletes: %s" % resolved,
+                "files": [serve.get("_manifest_file", "?")],
+            })
+
+    return {
+        "findings": findings,
+        "errors": sum(1 for f in findings if f["severity"] == "error"),
+        "warnings": sum(1 for f in findings if f["severity"] == "warning"),
+        "serves_checked": len(serves),
+    }
+
+
+def cmd_lint(serves, as_json=False, _run=subprocess.run):
+    """Report manifest defects; non-zero exit on errors so it can gate CI."""
+    report = lint_manifest_set(serves, _run=_run)
+    if as_json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 1 if report["errors"] else 0
+    if not report["findings"]:
+        print("serves lint: %d serves checked, no findings"
+              % report["serves_checked"])
+        return 0
+    for finding in report["findings"]:
+        print("%-8s %-27s %s" % (
+            finding["severity"].upper(), finding["check"], finding["serve"]))
+        print("         %s" % finding["detail"])
+        for path in finding["files"]:
+            print("         in %s" % path)
+    print("serves lint: %d serves checked, %d error(s), %d warning(s)" % (
+        report["serves_checked"], report["errors"], report["warnings"]))
+    return 1 if report["errors"] else 0
+
+
 def cmd_groups(serves, as_json=False):
     """List the groups defined across the manifest set and their member serves.
 
@@ -3868,8 +3998,8 @@ def cmd_probe(serves, names, *, text, image_path, timeout, _open=urllib.request.
 
 
 _ACTIONS = (
-    "status", "probe", "up", "down", "rm", "adopt", "logs", "groups", "switch",
-    "promote", "mode", "render",
+    "status", "probe", "up", "down", "rm", "adopt", "logs", "groups", "lint",
+    "switch", "promote", "mode", "render",
 )
 # Actions that accept `--group NAME` (repeatable) — they act across the whole
 # manifest set (serves*.toml in the manifest's dir), not just one file.
@@ -3884,6 +4014,7 @@ _ACTION_DESCRIPTIONS = {
     "adopt": "Bring externally-started serves under compose management.",
     "logs": "Show bounded or streaming docker logs for one serve.",
     "groups": "List serve groups across the manifest set and their members.",
+    "lint": "Report manifest defects that no other surface makes visible.",
     "switch": "Switch a deployment role to an activation-ready recipe.",
     "promote": "Promote a staged model recipe with preflight and full rollback.",
     "mode": "Preview or transact split and exclusive TP=2 operating modes.",
@@ -3942,7 +4073,7 @@ def _build_action_parser(action):
     elif action in {"logs", "probe"}:
         p.add_argument("names", nargs=1, metavar="NAME",
                        help="serve name/container to act on.")
-    elif action == "groups":
+    elif action in {"groups", "lint"}:
         p.set_defaults(names=[])
     else:
         p.add_argument("names", nargs="*",
@@ -3956,9 +4087,9 @@ def _build_action_parser(action):
                             "names; the reserved 'all' selects every serve.")
     else:
         p.set_defaults(groups=None)
-    if action == "groups":
+    if action in {"groups", "lint"}:
         p.add_argument("--json", action="store_true", dest="json_out",
-                       help="emit the group catalog as JSON for tooling.")
+                       help="emit the report as JSON for tooling.")
     else:
         p.set_defaults(json_out=False)
     if action in {"up", "down", "rm", "adopt", "switch", "promote", "mode"}:
@@ -4194,7 +4325,7 @@ def main(argv=None):
     # manifest SET. Plain positional-name operations keep selection scoped to
     # the named manifest, but admission/status still use the complete set so a
     # separate voice or ComfyUI manifest cannot become invisible GPU occupancy.
-    use_set = bool(a.groups) or a.action in {"groups", "mode"}
+    use_set = bool(a.groups) or a.action in {"groups", "lint", "mode"}
     try:
         if a.action == "mode" and not os.path.isfile(os.path.expanduser(manifest_path)):
             raise FileNotFoundError(manifest_path)
@@ -4223,6 +4354,8 @@ def main(argv=None):
 
     if a.action == "groups":
         return cmd_groups(serves, as_json=a.json_out)
+    if a.action == "lint":
+        return cmd_lint(serves, as_json=a.json_out)
     if a.action == "mode":
         if a.mode_action == "status":
             if a.target or a.restore_group:

@@ -28,6 +28,7 @@ called. Entries that omit `stack` retain the `serving` default.
 | `serves promote` | Preflight and promote a staged recipe with rollback. |
 | `serves mode status|preview|enter|leave` | Inspect or transact exclusive TP=2 ownership. |
 | `serves status` | Show bounded serve status. |
+| `serves lint` | Report manifest defects that no other surface makes visible. |
 | `serves probe` | Run one engine-aware functional request. |
 | `serves groups` | List serve groups and their members. |
 | `serves logs` | Read bounded serve logs. |
@@ -117,6 +118,33 @@ split group. If the target cannot be proven stopped, Anvil removes it so an
 unhealthy or restarting process cannot retain either GPU during restoration.
 The `serves_mode` MCP tool exposes the same structured plan; live remote
 entry/leave requires its separate human-approval gate.
+
+## Lint
+
+`serves lint` is static analysis over the loaded manifest set. It touches no
+Docker and no network, and it exits non-zero when it finds an error, so it can
+gate CI or a pre-promotion check.
+
+```bash
+anvil-serving serves lint
+```
+
+Add `--json` for the same report structurally, matching the status and group
+JSON conventions.
+
+Three checks, each added because the defect it finds occurred live while every
+other command reported success (see
+[Strategy: make divergence loud](../STRATEGY-MAKE-DIVERGENCE-LOUD.md)):
+
+| Check | Severity | What it catches |
+| --- | --- | --- |
+| `duplicate-serve-name` | error | Two entries sharing a `name` after container de-dup. Name selection becomes ambiguous and one entry silently wins, so an edit to the losing copy is invisible at runtime. |
+| `missing-registry` | error | A `--registry` path inside an `up` command that does not exist. Otherwise this surfaces only once a mode transaction is already running. |
+| `worktree-anchored-registry` | warning | A recipe registry resolving inside a linked git worktree, which `git worktree remove` deletes. |
+
+Sharing a **container** across files is not a defect — that is the supported
+read-only mirror pattern that `load_manifest_set` de-dupes deliberately. Only a
+duplicate `name` surviving that de-dup is reported.
 
 ## Functional probes
 
