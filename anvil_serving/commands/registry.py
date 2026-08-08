@@ -7,6 +7,7 @@ from dataclasses import replace
 from .control_plane import commands as control_plane_commands
 from .eval import commands as eval_commands
 from .family import CommandFamily
+from .fleet import commands as fleet_commands
 from .harness import commands as harness_commands
 from .host import commands as host_commands
 from .models import commands as model_commands
@@ -26,6 +27,7 @@ from .spec import (
 ROOT_ORDER = (
     "init",
     "router",
+    "fleet",
     "serves",
     "models",
     "eval",
@@ -81,6 +83,7 @@ def build_command_tree(
 FAMILIES = (
     host_commands,
     router_commands,
+    fleet_commands,
     serves_commands,
     model_commands,
     eval_commands,
