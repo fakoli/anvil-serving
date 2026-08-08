@@ -151,6 +151,7 @@ nav:
       - 'ADR-0031: Dual-era TypeScript MCP bridge': adr/0031-dual-era-typescript-mcp-bridge.md
       - 'ADR-0032: Public product, private operator state': adr/0032-public-product-private-operator-state.md
       - 'ADR-0033: Production durability and plane contract': adr/0033-production-durability-and-plane-contract.md
+      - 'ADR-0034: Fleet control plane and node runtime classes': adr/0034-fleet-control-plane-and-node-runtime-classes.md
   - Changelog: changelog.md
 
 markdown_extensions:
