@@ -36,6 +36,7 @@ def _set(tmp_path):
         [[serve]]
         name = "fast"
         container = "c-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -48,6 +49,7 @@ def _set(tmp_path):
         [[serve]]
         name = "emb"
         container = "c-emb"
+        runtime = "docker"
         port = 30005
         model = "emb-local"
         engine = "embedding"
@@ -60,6 +62,7 @@ def _set(tmp_path):
         [[serve]]
         name = "rer"
         container = "c-rer"
+        runtime = "docker"
         port = 30006
         model = "rer-local"
         engine = "reranker"
@@ -72,6 +75,7 @@ def _set(tmp_path):
         [[serve]]
         name = "heavy"
         container = "c-heavy"
+        runtime = "docker"
         port = 30002
         model = "primary-local"
         engine = "vllm"
@@ -82,6 +86,7 @@ def _set(tmp_path):
         [[serve]]
         name = "stt"
         container = "c-stt"
+        runtime = "docker"
         port = 30010
         model = "stt-local"
         engine = "audio"
@@ -91,6 +96,7 @@ def _set(tmp_path):
         [[serve]]
         name = "tts"
         container = "c-tts"
+        runtime = "docker"
         port = 30011
         model = "tts-local"
         engine = "audio"
@@ -116,6 +122,7 @@ def test_load_manifest_set_dedupes_by_container_preferring_up(tmp_path):
         [[serve]]
         name = "emb"
         container = "c-emb"
+        runtime = "docker"
         port = 30005
         model = "emb-local"
         engine = "embedding"
@@ -139,6 +146,7 @@ def test_load_manifest_set_ledger_not_double_counted(tmp_path):
         [[serve]]
         name = "fast"
         container = "c-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -225,6 +233,7 @@ def test_cmd_groups_empty_when_no_groups(tmp_path, capsys):
         [[serve]]
         name = "solo"
         container = "c-solo"
+        runtime = "docker"
         port = 30001
         model = "solo-local"
         engine = "vllm"
