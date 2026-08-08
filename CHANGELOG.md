@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-08-08
+
+### Added
+
+- `router fleet-status` — answers "is every configured capability actually
+  served, and where". Reads the router configuration and probes every declared
+  alias, purpose model, and audio route, exiting non-zero when a declared alias
+  has no reachable backing serve. Read-only; `--json` for tooling. Feature 3 of
+  `docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md`, closing the incident where the
+  router advertised three routes whose backing serves had been off for hours
+  with no signal anywhere.
+
+  Two deliberate behaviours: an endpoint answering `401` counts as reachable
+  (something is serving and asking for a token), and `host.docker.internal` is
+  translated to the host-relative `127.0.0.1` when probing, because the router
+  runs in a container and that alias does not resolve on the host — probing it
+  verbatim reported a healthy primary as unreachable. The translation is
+  reported in the detail column and the declared host stays visible, so it is
+  never silent. `localhost` is never substituted.
+
 ## [0.25.0] - 2026-08-08
 
 ### Added
