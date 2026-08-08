@@ -70,6 +70,7 @@ import shlex
 import subprocess
 import tempfile
 import time
+from . import envfile
 from . import guard
 from . import host as host_ops
 from . import reservations
@@ -116,7 +117,6 @@ _ENGINES = {
     "vllm", "sglang", "llamacpp", "q36",
     "audio", "embedding", "reranker", "image",
 }
-_ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # ADR-0017 GPU residency reservations: the residency vocabulary for a serve's
 # declared VRAM reservation. "resident" is never evicted, "evictable" may be
 # stopped to make room, "on-demand" is started per task and may evict
@@ -307,33 +307,9 @@ def groups_summary(serves):
     }
 
 
-def _read_dotenv(path):
-    """Read a simple KEY=VALUE .env file without logging values.
-
-    Shell environment wins later; this only fills missing vars for lifecycle
-    commands launched from a manifest directory.
-    """
-    values = {}
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-    except FileNotFoundError:
-        return values
-    for raw in lines:
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        name, value = line.split("=", 1)
-        name = name.strip()
-        if not _ENV_NAME_RE.match(name):
-            continue
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-            value = value[1:-1]
-        else:
-            value = value.split(" #", 1)[0].rstrip()
-        values[name] = value
-    return values
+# Shared with controller/transport token resolution (ADR-0033): one dotenv
+# grammar for every durable-secret fallback path.
+_read_dotenv = envfile.read_dotenv
 
 
 def _serve_env(s):
@@ -909,11 +885,17 @@ def _router_base_url(plan):
     return urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
 
 
-def _transition_cli(router_url, action, tier_id, *, timeout=None, _run=subprocess.run):
+def _transition_cli(router_url, action, tier_id, *, timeout=None, reason=None,
+                    _run=subprocess.run):
     """One ADR-0018 router transition step (quiesce/drain/readmit/
     transition-status) through the deployed router's authenticated CLI
     boundary. Shared by promotion plans and reservation eviction — both
     compose the SAME transition; neither grows a second state authority.
+
+    ``reason`` labels a quiesce with its owning transaction (ADR-0033): a
+    router with persisted admission intent restores "eviction"/"operator"
+    quiescence after a restart but not "promotion", whose transaction owns its
+    quiescence end-to-end and re-asserts it on ``--resume``.
     """
     argv = [
         sys.executable, "-m", "anvil_serving.cli", "router", action,
@@ -923,13 +905,16 @@ def _transition_cli(router_url, action, tier_id, *, timeout=None, _run=subproces
         argv += ["--timeout", str(timeout)]
     if action in ("quiesce", "readmit"):
         argv.append("--confirm")
+    if action == "quiesce" and reason:
+        argv += ["--reason", reason]
     print("  gate: %s" % " ".join(argv))
     return _run(argv, text=True).returncode
 
 
 def _promotion_transition_cli(plan, action, tier_id, *, timeout=None, _run=subprocess.run):
     return _transition_cli(
-        _router_base_url(plan), action, tier_id, timeout=timeout, _run=_run
+        _router_base_url(plan), action, tier_id, timeout=timeout,
+        reason="promotion", _run=_run
     )
 
 
@@ -2865,7 +2850,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
             transition = _transition or (
                 lambda action, tier_id, timeout=None: _transition_cli(
                     router_url or DEFAULT_ROUTER_URL, action, tier_id,
-                    timeout=timeout, _run=_run))
+                    timeout=timeout, reason="eviction", _run=_run))
             evict_rc = _evict_victims(
                 reservation_scope, victims, dry_run=dry_run, drain_timeout=drain_timeout,
                 transition=transition, _run=_run)
@@ -3288,6 +3273,7 @@ def cmd_mode(
                 transition_action,
                 tier_id,
                 timeout=timeout,
+                reason="mode-transition",
                 _run=_run,
             )
         )

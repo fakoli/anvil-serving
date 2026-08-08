@@ -2,11 +2,21 @@
 # qualification evidence. Use preflight and benchmark artifacts before exposure.
 [server]
 auth_env = "ANVIL_ROUTER_TOKEN"
+# ADR-0033 opt-in durability sinks on the anvil-router-state volume; enable in
+# a reviewed cutover.
+# admission_state_path = "/var/lib/anvil-router/admission-intent.json"
+# decision_log_path = "/var/lib/anvil-router/decisions.jsonl"
 
 [router]
 relay_timeout = 60
 availability_probe_interval = 5
 availability_probe_timeout = 1
+# ADR-0033 opt-in background prober: probes move off the request path onto a
+# jittered, backoff-aware daemon thread. Defaults derive from the interval
+# (backoff cap 8x, staleness bound 3x).
+# availability_prober = "background"
+# availability_probe_backoff_max = 40
+# availability_probe_staleness = 15
 
 # RTX PRO 6000: the sole primary LLM capability.
 [[router.tiers]]

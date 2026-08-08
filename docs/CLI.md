@@ -235,6 +235,7 @@ required operands, choices, and defaults.
 | `topology show` | Show a validated topology summary. | `read` / `bounded` | - |
 | `topology validate` | Validate a topology offline. | `read` / `bounded` | - |
 | `topology resolve` | Resolve one canonical command against a topology. | `read` / `bounded` | - |
+| `topology drift` | Compare the installed topology against a canonical fleet reference. | `read` / `bounded` | - |
 | `collectors` | Configure and inspect optional read-only collector adapters. | `read` / `bounded` | - |
 | `collectors configure` | Validate and optionally write adapter configuration. | `mutate` / `bounded` | `--output`<br>`--confirm` |
 | `collectors validate` | Validate adapter configuration without network access. | `read` / `bounded` | - |

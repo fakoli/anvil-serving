@@ -6,11 +6,16 @@ prompts, responses, audio, transcripts, synthesis text, or credentials.
 """
 from __future__ import annotations
 
+import dataclasses
+import json
+import os
 import re
+import sys
 import threading
+import time
 from collections import Counter, deque
 from dataclasses import dataclass
-from typing import Any, Deque, Iterable, Mapping, Optional, Tuple
+from typing import Any, Callable, Deque, Iterable, Mapping, Optional, Tuple
 
 #: Default ring-buffer capacity for :class:`DecisionLog`. One record per routed
 #: request; 10k bounds a long-running server's audit memory to the recent
@@ -61,6 +66,10 @@ class DecisionRecord:
     request_bytes: int = 0
     response_bytes: int = 0
     latency_ms: int = 0
+    # ADR-0033: wall-clock creation stamp for durable evidence. Stamped by
+    # :meth:`DecisionLog.record` when left at the zero default; aggregate views
+    # remain snapshots of the buffer, never historical windows.
+    unix_ts: float = 0.0
 
 
 def safe_correlation(value: Any) -> Optional[str]:
@@ -277,17 +286,41 @@ class DecisionLog:
     is done under it.
     """
 
-    def __init__(self, max_records: Optional[int] = DEFAULT_MAX_RECORDS) -> None:
+    def __init__(
+        self,
+        max_records: Optional[int] = DEFAULT_MAX_RECORDS,
+        *,
+        sink: Optional[Callable[[DecisionRecord], None]] = None,
+    ) -> None:
         if max_records is not None and max_records <= 0:
             raise ValueError(f"max_records must be positive or None, got {max_records!r}")
         # deque(maxlen=None) is unbounded — the explicit opt-out.
         self._records: Deque[DecisionRecord] = deque(maxlen=max_records)
         self._lock = threading.Lock()
+        # ADR-0033: optional durable sink (JSONL writer). Best-effort — a sink
+        # failure never fails the request that produced the record.
+        self._sink = sink
 
     def record(self, record: DecisionRecord) -> None:
-        """Append ``record`` to the log (thread-safe)."""
+        """Append ``record`` to the log, stamping ``unix_ts`` (thread-safe)."""
+        if not record.unix_ts:
+            record = dataclasses.replace(record, unix_ts=time.time())
         with self._lock:
             self._records.append(record)
+        if self._sink is not None:
+            try:
+                self._sink(record)
+            except Exception as exc:
+                print(
+                    "[anvil] warning decision sink write failed: %s" % type(exc).__name__,
+                    file=sys.stderr,
+                    flush=True,
+                )
+
+    @property
+    def capacity(self) -> Optional[int]:
+        """The ring-buffer cap, or ``None`` when unbounded."""
+        return self._records.maxlen
 
     @property
     def records(self) -> Tuple[DecisionRecord, ...]:
@@ -308,3 +341,54 @@ class DecisionLog:
     def summary(self, *, limit: int = 20) -> dict:
         """Safe recent-decision summary over the current immutable snapshot."""
         return summarize_decisions(self.records, limit=limit)
+
+
+#: Default size cap for one :class:`DecisionLogWriter` generation before the
+#: single-rotation ``os.replace`` to ``<path>.1``.
+DEFAULT_DECISION_LOG_MAX_BYTES = 64 * 1024 * 1024
+
+
+class DecisionLogWriter:
+    """Append-only, size-capped JSONL sink for decision records (ADR-0033).
+
+    One JSON object per line, from the record's own metadata-only fields —
+    the writer serializes :class:`DecisionRecord` dataclasses verbatim, so the
+    no-prompt/no-response/no-credential guarantee is the record contract's.
+    Rotation keeps exactly one previous generation (``<path>.1``).
+
+    Construction fails when the path is unwritable — a configured evidence
+    sink that cannot write is a boot error, not a silent downgrade. Later
+    write failures are reported by the caller and never fail requests.
+    """
+
+    def __init__(
+        self, path: str, *, max_bytes: int = DEFAULT_DECISION_LOG_MAX_BYTES
+    ) -> None:
+        if max_bytes < 1024:
+            raise ValueError("decision log max_bytes must be at least 1024")
+        self.path = path
+        self.max_bytes = int(max_bytes)
+        self._lock = threading.Lock()
+        directory = os.path.dirname(os.path.abspath(path))
+        if not os.path.isdir(directory):
+            raise OSError("decision log directory does not exist: %s" % directory)
+        with open(path, "a", encoding="utf-8"):
+            pass
+
+    def __call__(self, record: DecisionRecord) -> None:
+        payload = dataclasses.asdict(record)
+        line = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        with self._lock:
+            self._rotate_if_needed()
+            with open(self.path, "a", encoding="utf-8") as handle:
+                handle.write(line + "\n")
+                handle.flush()
+
+    def _rotate_if_needed(self) -> None:
+        try:
+            size = os.path.getsize(self.path)
+        except OSError:
+            return
+        if size < self.max_bytes:
+            return
+        os.replace(self.path, self.path + ".1")

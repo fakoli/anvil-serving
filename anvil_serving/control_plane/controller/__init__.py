@@ -9,7 +9,7 @@ direction is::
     http -> catalog, security, store
     catalog -> public anvil_serving.mcp
     store -> security
-    security -> errors
+    security -> errors, shared anvil_serving.envfile (durable token fallback)
 
 Internal controller modules must not import the compatibility facade or MCP
 internals.
