@@ -1,0 +1,16 @@
+{
+  "schema": "anvil-serving.benchmark-profile/v1",
+  "name": "scout",
+  "description": "Bounded curve scouting across representative context and agentic cases.",
+  "content_sha256": "8d5ec6c0d98188b200c7e47f3cc663cb2a4f1effc5c25bb4fb2bb009d9c7bdd8",
+  "adapters": {
+    "mini-swe-agent": {"kind": "git", "source": "https://github.com/SWE-agent/mini-swe-agent", "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"},
+    "swe-bench": {"kind": "git", "source": "https://github.com/SWE-bench/SWE-bench", "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"},
+    "worker-base": {"kind": "image", "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"}
+  },
+  "suites": {
+    "context": {"cases": ["native-needle", "native-order", "native-distractor"], "token_buckets": [8192, 32768, 131072, 262144], "positions": [0.1, 0.25, 0.5, 0.75, 0.9], "repetitions": 2, "timeout_s": 14400, "output_headroom_tokens": 4096, "scoring": {"baseline_bucket": 8192, "pass_rate_floor": 0.75, "max_relative_drop": 0.25}, "requirements": {"min_free_disk_bytes": 5368709120}, "adapters": []},
+    "agentic": {"cases": ["tool-sequence", "tool-recovery", "structured-edit", "debug-loop"], "repetitions": 2, "timeout_s": 7200, "max_steps": 24, "max_completion_tokens": 8192, "scoring": {"pass_rate_floor": 0.75}, "requirements": {"min_free_disk_bytes": 5368709120}, "adapters": []},
+    "swe": {"cases": ["swe-verified"], "repetitions": 1, "timeout_s": 21600, "instance_limit": 5, "max_steps": 60, "max_completion_tokens": 16384, "scoring": {"pass_rate_floor": 0.4}, "requirements": {"min_free_disk_bytes": 53687091200, "container_required": true}, "adapters": ["mini-swe-agent", "swe-bench", "worker-base"]}
+  }
+}

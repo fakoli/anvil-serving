@@ -78,6 +78,7 @@ nav:
   - Command index: CLI.md
   - Benchmarks:
       - Overview: benchmarks/index.md
+      - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
       - Model comparison table: benchmarks/comparison.md
       - Hardware:
           - RTX PRO 6000: benchmarks/hardware/rtx-pro-6000.md

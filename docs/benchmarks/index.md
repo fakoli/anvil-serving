@@ -34,6 +34,14 @@ Each **[model dossier](models/index.md)** is a stable, model-centered summary:
 current status, every measured configuration, working recipes, and links to the
 dated findings behind each conclusion.
 
+## Run context, agentic, and repository evaluations
+
+The [context, agentic, and SWE job guide](context-agentic-swe.md) describes the
+registered-worker workflow, bounded profiles through 640K, independent scoring,
+pinned mini-SWE-agent and official SWE-bench grading, cancellation, and the
+measured-versus-prior evidence boundary. The guide defines methodology and
+commands; it does not claim a live model result by itself.
+
 ## Production aliases and recent controls
 
 1. **DeepSeek V4 Flash 0731 r16 DSpark K5** — `current` exclusive TP=2 text

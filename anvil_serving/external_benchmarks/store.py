@@ -586,5 +586,3 @@ def list_bakeoff_runs(
         seen.add(key)
         latest.append(r)
     return latest
-
-
