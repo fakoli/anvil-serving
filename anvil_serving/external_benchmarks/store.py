@@ -588,33 +588,3 @@ def list_bakeoff_runs(
     return latest
 
 
-def record_verdict(
-    db_path: str | os.PathLike[str],
-    *,
-    run_id: str,
-    rubric: Mapping[str, Any],
-    total_score: float | None,
-    verdict: str,
-    reason: str | None = None,
-    baseline_run_id: str | None = None,
-) -> int:
-    init_db(db_path)
-    with connect(db_path) as conn:
-        cur = conn.execute(
-            """
-            INSERT INTO bakeoff_verdicts
-                (run_id, baseline_run_id, rubric_json, total_score, verdict,
-                 reason, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                run_id,
-                baseline_run_id,
-                json.dumps(dict(rubric), sort_keys=True),
-                total_score,
-                verdict,
-                reason,
-                utc_now(),
-            ),
-        )
-        return int(cur.lastrowid)

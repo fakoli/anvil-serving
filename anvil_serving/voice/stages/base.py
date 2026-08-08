@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import os
 import queue
 import threading
 import time
@@ -18,6 +19,18 @@ from typing import Any, Iterable, List, Optional
 
 logger = logging.getLogger(__name__)
 _TIMED_STAGE_NAMES = {"stt", "llm", "tts"}
+
+
+def bearer_headers(api_key_env: Optional[str]) -> dict[str, str]:
+    """``Authorization: Bearer`` header from an env-var reference, or ``{}``.
+
+    Shared by the STT/LLM/TTS stages so token-header construction cannot
+    silently diverge between them.
+    """
+    if not api_key_env:
+        return {}
+    token = (os.environ.get(api_key_env) or "").strip()
+    return {"Authorization": "Bearer %s" % token} if token else {}
 
 # Sentinel enqueued to tell a stage's thread to drain and stop. Forwarded to
 # every downstream queue so a pipeline shuts down stage-by-stage in order,
