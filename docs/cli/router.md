@@ -141,6 +141,40 @@ anvil-serving router readmit --tier primary-local --confirm
 Use `transition-status` between steps. The commands preserve the distinction between
 stopping new admissions, waiting for active work, and returning a tier to service.
 
+## Fleet status
+
+`router fleet-status` answers one question: **is every configured capability
+actually served, and where?**
+
+```bash
+anvil-serving router fleet-status
+```
+
+It reads the router configuration, probes every declared alias, purpose model,
+and audio route, and reports each as reachable or not. Read-only — no Docker,
+no mutation. `--json` emits the same report structurally; `--timeout` bounds
+each probe.
+
+It exits non-zero when a **declared alias** has no reachable backing serve,
+so it works as a pre-promotion or monitoring check. Purpose models and audio
+routes are reported but do not fail the command on their own.
+
+Two behaviours worth knowing:
+
+- **An authenticated endpoint answering `401` counts as reachable.** Something
+  is serving and asking for a token; treating that as down would report every
+  authenticated tier as broken.
+- **`host.docker.internal` is translated to `127.0.0.1` when probing.** The
+  router runs in a container, so its config names the Docker host by that
+  alias, which does not resolve on the host itself — probing it verbatim would
+  report a healthy serve as unreachable. The translation is faithful (same
+  machine) and is always reported in the detail column, and the declared host
+  stays visible, so it is never silent. `localhost` is never substituted.
+
+This exists because on 2026-08-08 the router advertised three routes whose
+backing serves had been off for hours with no signal anywhere. See
+[Strategy: make divergence loud](../STRATEGY-MAKE-DIVERGENCE-LOUD.md).
+
 ## Related references
 
 - [Thin capability gateway](../THIN-CAPABILITY-GATEWAY.md)
