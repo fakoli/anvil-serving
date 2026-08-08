@@ -144,7 +144,7 @@ def test_select_librispeech_is_deterministic_across_durations_and_speakers(tmp_p
     assert selected == corpus.select_librispeech_cases(records)
 
 
-def test_prepare_corpus_is_transactional_and_builds_30_cases(tmp_path, monkeypatch):
+def _seed_offline_librispeech(tmp_path, monkeypatch) -> Path:
     downloads = tmp_path / "downloads"
     downloads.mkdir()
     archives = {}
@@ -170,6 +170,11 @@ def test_prepare_corpus_is_transactional_and_builds_30_cases(tmp_path, monkeypat
             )
 
     monkeypatch.setattr(corpus, "_safe_extract", fake_extract)
+    return downloads
+
+
+def test_prepare_corpus_is_transactional_and_builds_30_cases(tmp_path, monkeypatch):
+    downloads = _seed_offline_librispeech(tmp_path, monkeypatch)
     output = tmp_path / "corpus"
     result = corpus.prepare_corpus(
         output,
@@ -184,15 +189,17 @@ def test_prepare_corpus_is_transactional_and_builds_30_cases(tmp_path, monkeypat
 
 
 def test_prepare_corpus_leaves_no_partial_output_on_synthesis_failure(tmp_path, monkeypatch):
-    monkeypatch.setattr(corpus, "_expected_md5s", lambda: {})
+    downloads = _seed_offline_librispeech(tmp_path, monkeypatch)
     output = tmp_path / "corpus"
-    with pytest.raises(CorpusError):
+    with pytest.raises(CorpusError, match="no PCM"):
         corpus.prepare_corpus(
             output,
             synthesize=lambda text: b"",
             transcode_flac=lambda source, destination: _wav(destination, 1600),
+            download_dir=downloads,
         )
     assert not output.exists()
+    assert not list(tmp_path.glob(".corpus.*"))
 
 
 def test_wer_is_normalized_but_cer_preserves_case_and_punctuation():
