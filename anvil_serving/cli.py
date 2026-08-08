@@ -327,11 +327,6 @@ def _handler_argv(path: Sequence[CommandNode]) -> tuple[str, ...]:
     return tuple(item.name for item in path[1:])
 
 
-def _hidden_leaf_help_flags(path: Sequence[CommandNode]) -> frozenset[str]:
-    """Options owned by the dispatcher rather than the leaf handler."""
-    return frozenset({flag for option in COMMAND_TREE.global_options for flag in option.flags})
-
-
 def _global_options_for_path(path: Sequence[CommandNode]) -> tuple[CommandOption, ...]:
     """Return dispatcher-owned options that the selected public leaf accepts."""
     node = path[-1]

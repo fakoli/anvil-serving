@@ -44,7 +44,7 @@ from typing import Any, Callable, Dict, Iterator, Mapping, Optional, Tuple
 from ...router.backends.sse import iter_sse_events
 from ..cancel_scope import CancelScope
 from ..messages import Transcription, VADAudio
-from .base import BaseStage
+from .base import BaseStage, bearer_headers
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8090/v1"
 DEFAULT_MODEL = "stt"
@@ -139,15 +139,6 @@ def build_transcription_fields(config: STTStageConfig) -> Dict[str, str]:
     return fields
 
 
-def _authorization_headers(config: STTStageConfig) -> Dict[str, str]:
-    headers: Dict[str, str] = {}
-    if config.api_key_env:
-        token = (os.environ.get(config.api_key_env) or "").strip()
-        if token:
-            headers["Authorization"] = "Bearer %s" % token
-    return headers
-
-
 def transcribe_file(
     path: os.PathLike[str] | str,
     config: STTStageConfig,
@@ -184,7 +175,7 @@ def transcribe_file(
         file_bytes=file_bytes,
     )
     headers = {"Content-Type": "multipart/form-data; boundary=%s" % boundary}
-    headers.update(_authorization_headers(config))
+    headers.update(bearer_headers(config.api_key_env))
     url = config.base_url.rstrip("/") + "/audio/transcriptions"
     response = (transport or _default_transport)(
         url,
@@ -269,7 +260,7 @@ def transcribe_stream(
     headers = {"Content-Type": "multipart/form-data; boundary=%s" % boundary}
     if config.stream:
         headers["Accept"] = "text/event-stream"
-    headers.update(_authorization_headers(config))
+    headers.update(bearer_headers(config.api_key_env))
 
     resp = (transport or _default_transport)(url, data=body, headers=headers, timeout=config.timeout)
     try:

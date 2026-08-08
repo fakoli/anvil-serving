@@ -2,9 +2,10 @@
 
 import json
 import math
-import os
 import time
 import urllib.request
+
+from ..preflight import resolve_api_key as resolve_api_key
 
 FILLER = "def helper_%d():\n    return compute(%d)  # routine specialist context\n"
 CHARS_PER_TOKEN = 3.0
@@ -236,16 +237,6 @@ def detect_max_model_len(base, model=None, key=None, timeout=15):
         value = chosen.get(key_name)
         if isinstance(value, int) and value > 0:
             return value
-    return None
-
-
-def resolve_api_key(api_key_env=None):
-    """Resolve auth for probes from an environment variable reference."""
-    if api_key_env:
-        value = os.environ.get(api_key_env)
-        if not value:
-            raise ValueError("environment variable %s is not set" % api_key_env)
-        return value
     return None
 
 

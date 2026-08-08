@@ -181,16 +181,6 @@ IdSource = Callable[[], str]
 
 
 @dataclass(frozen=True)
-class SessionCreated(ServerEvent):
-    session: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class SessionUpdated(ServerEvent):
-    session: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
 class ConversationItemCreated(ServerEvent):
     item: Dict[str, Any] = field(default_factory=dict)
 
@@ -225,18 +215,6 @@ class ResponseOutputItemDone(ServerEvent):
 
 
 @dataclass(frozen=True)
-class ResponseCreated(ServerEvent):
-    """``response.created`` -- ``response["id"]`` is the real, unique
-    per-response id (PUNCH-LIST #3) threaded through every later
-    ``response.output_audio.delta``/``response.output_audio_transcript.delta``/
-    ``response.done`` event for THIS response (see ``response_id`` on those
-    below, and ``service.py``'s ``_begin_response``, the one place that mints
-    it)."""
-
-    response: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
 class ResponseAudioTranscriptDelta(ServerEvent):
     """Text delta for the assistant's spoken reply (from an
     authoritative :class:`~anvil_serving.voice.messages.SpokenText`).
@@ -246,7 +224,9 @@ class ResponseAudioTranscriptDelta(ServerEvent):
     current OpenAI Realtime wire protocol's ``output_audio`` naming (the
     pre-GA ``response.audio.*`` names this unit originally shipped with).
     ``response_id`` correlates this delta back to the ``response.created``
-    that started it -- see :class:`ResponseCreated`.
+    that started it -- the real, unique per-response id (PUNCH-LIST #3)
+    minted once by ``service.py``'s ``_begin_response`` (``response.created``
+    itself is emitted there as a raw dict, not via this module).
     """
 
     delta: str = ""
@@ -283,7 +263,7 @@ class ResponseAudioDelta(ServerEvent):
     Wire type renamed ``response.audio.delta`` -> ``response.output_audio.delta``
     (PUNCH-LIST #3) -- see :class:`ResponseAudioTranscriptDelta`'s docstring
     for why. ``response_id`` correlates this delta back to its
-    ``response.created`` -- see :class:`ResponseCreated`.
+    ``response.created``.
     """
 
     delta: str = ""
@@ -297,7 +277,7 @@ class ResponseDone(ServerEvent):
     :class:`~anvil_serving.voice.messages.EndOfResponse`, OR minted directly
     by ``service.py``'s ``_on_response_cancel`` for a barge-in).
     ``response["id"]`` is the SAME id this response's own ``response.created``
-    carried -- see :class:`ResponseCreated`."""
+    carried."""
 
     response: Dict[str, Any] = field(default_factory=dict)
 
@@ -567,8 +547,9 @@ def dispatch_internal_event(
 
     ``response_id`` (PUNCH-LIST #3) is the CURRENT response's id -- threaded
     into every ``response.output_audio.delta``/``response.output_audio_transcript.delta``/
-    ``response.done`` event this call produces (see :class:`ResponseCreated`'s
-    docstring); message types unrelated to an assistant response (``SpeechEvent``,
+    ``response.done`` event this call produces (see
+    :class:`ResponseAudioTranscriptDelta`'s docstring); message types
+    unrelated to an assistant response (``SpeechEvent``,
     ``Transcription``) simply ignore it. ``None`` (the default) renders as an
     empty string on the wire rather than a Python ``None`` leaking into JSON.
     """
