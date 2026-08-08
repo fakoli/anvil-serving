@@ -5,7 +5,6 @@
       "allowed_legacy_counts": {
         "benchmark": 1,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 1,
@@ -16,7 +15,6 @@
         "multiplexer": 0,
         "onboard": 2,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 1,
         "voice-run-bridge": 4,
@@ -53,7 +51,6 @@
       "violation_counts": {
         "benchmark": 0,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 0,
@@ -64,7 +61,6 @@
         "multiplexer": 0,
         "onboard": 0,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 0,
         "voice-run-bridge": 0,
@@ -76,7 +72,6 @@
       "allowed_legacy_counts": {
         "benchmark": 2,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 1,
         "eval-benchmark-action-flag": 1,
         "external-bench": 1,
@@ -87,7 +82,6 @@
         "multiplexer": 0,
         "onboard": 2,
         "preflight": 0,
-        "profile": 0,
         "score": 1,
         "serve": 1,
         "voice-run-bridge": 7,
@@ -118,12 +112,12 @@
       "files_by_category": {
         "docs": 101,
         "examples": 78,
-        "implementation": 217,
+        "implementation": 216,
         "skills": 16,
-        "tests": 167,
-        "tooling": 32
+        "tests": 169,
+        "tooling": 34
       },
-      "files_scanned": 611,
+      "files_scanned": 614,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
@@ -132,7 +126,6 @@
       "violation_counts": {
         "benchmark": 0,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 0,
@@ -143,7 +136,6 @@
         "multiplexer": 0,
         "onboard": 0,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 0,
         "voice-run-bridge": 0,
@@ -155,7 +147,6 @@
       "allowed_legacy_counts": {
         "benchmark": 0,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 0,
@@ -166,7 +157,6 @@
         "multiplexer": 0,
         "onboard": 0,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 0,
         "voice-run-bridge": 0,
@@ -206,7 +196,6 @@
       "violation_counts": {
         "benchmark": 0,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 0,
@@ -217,7 +206,6 @@
         "multiplexer": 0,
         "onboard": 0,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 0,
         "voice-run-bridge": 0,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import os
 import re
 import socket
@@ -11,6 +12,7 @@ from typing import Any
 
 from ...operator_output import redact
 from ...paths import runtime_url
+from ..controller.security import _is_safe_private_ip, _is_tailscale_ip
 from .errors import ToolError
 
 
@@ -108,35 +110,18 @@ def redact_log_text(value: str) -> str:
 
 
 def is_tailscale_v4(addr: str) -> bool:
-    import ipaddress
-
     try:
         ip = ipaddress.ip_address(addr)
-        if ip.version == 4:
-            return ip in ipaddress.ip_network("100.64.0.0/10")
     except ValueError:
         return False
-    return False
+    return ip.version == 4 and _is_tailscale_ip(ip)
 
 
 def is_safe_probe_ip(addr: str) -> bool:
-    import ipaddress
-
-    ip = ipaddress.ip_address(addr)
-    if ip.is_unspecified or ip.is_link_local or ip.is_multicast or ip.is_reserved:
-        return False
-    if ip.version == 4:
-        rfc1918 = (
-            ipaddress.ip_network("10.0.0.0/8"),
-            ipaddress.ip_network("172.16.0.0/12"),
-            ipaddress.ip_network("192.168.0.0/16"),
-        )
-        return bool(
-            ip.is_loopback
-            or is_tailscale_v4(addr)
-            or any(ip in network for network in rfc1918)
-        )
-    return bool(ip.is_loopback or ip in ipaddress.ip_network("fc00::/7"))
+    # Same private/tailscale CIDR classification as the controller's bind
+    # safety check (control_plane/controller/security.py); shared here to
+    # avoid a second copy of the CIDR list drifting out of sync.
+    return _is_safe_private_ip(ipaddress.ip_address(addr))
 
 
 def runtime_probe_url(base_url: str) -> str:

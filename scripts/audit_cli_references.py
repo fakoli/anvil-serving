@@ -44,11 +44,9 @@ LEGACY_PATTERNS = {
     "multiplexer": r"multiplexer\b",
     "cache-prune": r"cache-prune\b",
     "score": r"score\b",
-    "profile": r"profile\b",
     "preflight": r"preflight\b",
     "benchmark": r"benchmark\b",
     "external-bench": r"external-bench\b",
-    "calibrate": r"calibrate\b",
     "gpus": r"gpus\b",
     "voice-sidecar": r"voice-sidecar\b",
     "onboard": r"onboard\b",
@@ -103,7 +101,7 @@ _BARE_LEGACY_RE = {
 _BARE_LEGACY_RE["benchmark"] = re.compile(r"`benchmark\s+external(?=\s|`|$)", re.IGNORECASE)
 _SKILL_BARE_RE = {
     name: re.compile(r"`" + LEGACY_PATTERNS[name] + r"(?=\s|`|$)", re.IGNORECASE)
-    for name in {"serve", "multiplexer", "profile", "preflight", "score"}
+    for name in {"serve", "multiplexer", "preflight", "score"}
 }
 _UNRELEASED_HEADING_RE = re.compile(r"^\[?unreleased\]?(?:\s|$)", re.IGNORECASE)
 
@@ -353,9 +351,7 @@ def _legacy_allowed(relative: Path, category: str, heading: str, h2_heading: str
         return True
     if category == "tests":
         return True
-    if value in {"anvil_serving/cli.py", "anvil_serving/command_tree.py"} or value.startswith(
-        "anvil_serving/commands/"
-    ):
+    if value == "anvil_serving/cli.py" or value.startswith("anvil_serving/commands/"):
         return True
     return False
 

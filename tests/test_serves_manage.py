@@ -6,21 +6,17 @@ GPU, and no network. Mirrors tests/test_serves.py's fake-`_run` style.
 import json
 import sys
 import textwrap
-import types
 
 import pytest
 
 from anvil_serving import guard, serves
+from tests.conftest import proc
 
 
 @pytest.fixture(autouse=True)
 def _isolated_host_policy(monkeypatch, tmp_path):
     """Keep a developer's enabled machine policy out of dispatch unit tests."""
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / ".anvil-serving"))
-
-
-def proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
 
 
 def _manifest(tmp_path, body):

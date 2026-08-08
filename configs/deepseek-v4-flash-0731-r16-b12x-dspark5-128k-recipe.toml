@@ -89,6 +89,6 @@ community = [
   "https://github.com/local-inference-lab/blackwell-llm-docker/blob/1dc0198b646d73a2fbb0dbafbb32875417150756/examples/docker-compose-ds4-v20-r16.yml",
 ]
 local = [
-  ".tickets/2026-08-01-deepseek-0731-r16-b12x-performance-spike.md",
+  ".tickets/closed/2026-08-01-deepseek-0731-r16-b12x-performance-spike.md",
   "configs/deepseek-v4-flash-0731-nvfp4-dspark5-w4a16-8k-recipe.toml",
 ]

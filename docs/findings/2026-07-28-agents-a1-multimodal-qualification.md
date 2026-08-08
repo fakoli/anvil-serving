@@ -210,7 +210,7 @@ The campaign added the versioned multimodal corpus/evidence CLI, video
 preflight, read-only cache inventory, opt-in router admission, exact-GPU recipe
 override, reusable LLM qualification skill, and reusable kernel-tuning skill.
 All fixes are recorded in the repository campaign ticket
-`.tickets/2026-07-28-agents-a1-multimodal-qualification.md`.
+`.tickets/closed/2026-07-28-agents-a1-multimodal-qualification.md`.
 The chronological
 [friction log](2026-07-28-agents-a1-multimodal-qualification-evidence/friction-log.json)
 retains failed starts and corrected validator/runtime behavior rather than

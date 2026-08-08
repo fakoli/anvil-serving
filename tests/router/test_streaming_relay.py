@@ -23,17 +23,8 @@ from anvil_serving.router.backends.sse import (
     OpenAIStreamAssembler,
     iter_sse_events,
 )
-from anvil_serving.router.config import Tier
 from anvil_serving.router.internal import InternalRequest, Message
-
-
-def _tier(dialect: str, privacy: str = "local", extra_body=None) -> Tier:
-    return Tier(
-        id=f"{dialect}-tier", base_url="https://api.example.test",
-        dialect=dialect, context_limit=200_000, privacy=privacy,
-        tool_support=True, auth_env="EXAMPLE_KEY", model="m",
-        extra_body=extra_body,
-    )
+from tests.router.helpers import make_tier as _tier
 
 
 def _request(stream: bool = True) -> InternalRequest:

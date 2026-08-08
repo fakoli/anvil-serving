@@ -16,10 +16,10 @@ failure was invisible. These tests pin:
 from __future__ import annotations
 
 from anvil_serving.router.backends.relay import RelayBackend
-from anvil_serving.router.config import Tier
 from anvil_serving.router.dialects.anthropic import AnthropicDialect
 from anvil_serving.router.dialects.openai import OpenAIDialect
 from anvil_serving.router.dialects.translate import has_image_artifacts
+from tests.router.helpers import make_tier as _tier
 
 PNG_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=="
 
@@ -39,19 +39,6 @@ ANTHROPIC_IMAGE_MESSAGES = [
         {"type": "text", "text": "OCR:"},
     ]},
 ]
-
-
-def _tier(dialect: str, privacy: str = "local") -> Tier:
-    return Tier(
-        id=f"{dialect}-tier",
-        base_url="https://api.example.test",
-        dialect=dialect,
-        context_limit=200_000,
-        privacy=privacy,
-        tool_support=True,
-        auth_env="EXAMPLE_KEY",
-        model="concrete-model",
-    )
 
 
 def _backend(dialect: str) -> RelayBackend:
