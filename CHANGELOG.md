@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2026-08-08
+
+### Added
+
+- `fleet version` — cross-host `anvil-serving` version skew. Without `--host`,
+  hosts are derived from the operator topology (every declared host except the
+  local one); `ssh -n -o BatchMode=yes <host> anvil-serving --version` probes
+  each remote host with a per-host timeout. Reports `ok` / `unreachable` /
+  `not-installed` / `timeout` per host plus skew against the local version;
+  `--json` for tooling. Exits non-zero on skew or a reachable host missing the
+  CLI; an unreachable-only fleet exits `0` (a sleeping host is an availability
+  gap, not proof of divergent code) and a fleet with no remote hosts declared
+  never exits non-zero. Feature 8 of `docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md`,
+  closing the incident where a fleet host two minors behind the operator host
+  resolved transports differently and produced an error naming the wrong
+  cause. First verb of the new `fleet` command family.
+
 ## [0.28.0] - 2026-08-08
 
 ### Added
