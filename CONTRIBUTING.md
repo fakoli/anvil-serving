@@ -113,7 +113,8 @@ silently change direction and never delete an ADR — supersede it.
   function, branch, and directed-import audit as a one-time historical comparison, run
   `python scripts/audit_modularization.py` directly. Its default before-ref is the
   pre-modularization `c3af271` baseline and its default after-ref is the current worktree.
-- CI runs the suite on `{ubuntu, windows}` × `{3.11, 3.12, 3.13}`, plus `ruff check .`, the
+- CI runs the suite on `{ubuntu, windows}` × `{3.11, 3.13}` (the support-envelope
+  boundaries), plus `ruff check .`, the
   deterministic active-reference audit, strict docs, and a wheel-build/clean-install smoke test
   on both Windows and Ubuntu. These gates do not read home-directory Anvil state or contact live
   Docker, SSH, Tailscale, GPU, model, or controller endpoints.
@@ -206,7 +207,7 @@ the broader machine-local-path and public-artifact audit remains tracked by issu
    `python scripts/audit_cli_references.py --check --scope full`,
    `python scripts/check_markdown_links.py --root .`, and
    `python -m mkdocs build --strict` locally and make sure they are green.
-4. Open a PR. CI runs the suite across `{ubuntu, windows}` x `{3.11, 3.12, 3.13}`, builds the
+4. Open a PR. CI runs the suite across `{ubuntu, windows}` x `{3.11, 3.13}`, builds the
    wheel, and smoke-tests a clean install on both operating systems - it must be green before
    merge.
 
