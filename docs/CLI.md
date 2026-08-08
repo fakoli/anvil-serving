@@ -129,6 +129,7 @@ required operands, choices, and defaults.
 | `serves probe` | Run an engine-aware functional serve probe. | `read` / `bounded` | - |
 | `serves groups` | List serve groups across the manifest set and their members. | `read` / `bounded` | - |
 | `serves lint` | Report manifest defects that no other surface makes visible. | `read` / `bounded` | - |
+| `serves rollback-check` | Prove every declared rollback is actually usable. | `read` / `bounded` | - |
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
