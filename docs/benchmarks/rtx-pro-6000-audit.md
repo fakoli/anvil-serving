@@ -100,6 +100,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/adr/0011-two-mode-operation.md`;
 `docs/adr/0017-gpu-residency-reservations.md`;
 `docs/adr/0018-router-transition-safety.md`;
+`docs/adr/0034-fleet-control-plane-and-node-runtime-classes.md`;
 `docs/benchmarks/rtx-pro-6000-audit.md`;
 `docs/findings/2026-07-12-green-context-mps-capability.md`;
 `docs/findings/2026-07-18-lifecycle-aware-wsl-cache-reclaim.md`;

@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- ADR-0034 records the fleet control-plane architecture: the operator runs on
+  the gateway host and is never in the inference path; the existing controller
+  becomes the per-node agent with a role-scoped operation catalog; multi-host
+  dispatch is typed controller RPC with no remote Docker socket and SSH as
+  recovery only. Node capability is declared along three orthogonal axes —
+  runtime class (`docker`/`native`), memory model (`discrete`/`unified`), and
+  availability class (`continuous`/`opportunistic`) — from which promotion
+  eligibility is *derived* rather than declared, so a non-reproducible host
+  cannot back a published claim. Fires the fleet trigger deferred in ADR-0033
+  §3.4 and amends its supervision row for the native runtime. Serve entries will
+  require an explicit `runtime` field; this is a deliberate breaking change.
+
 ## [0.23.1] - 2026-08-08
 
 ### Fixed
