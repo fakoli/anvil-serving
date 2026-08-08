@@ -2534,6 +2534,232 @@ def cmd_lint(serves, as_json=False, _run=subprocess.run):
     return 1 if report["errors"] else 0
 
 
+def _serve_by_name(serves, name):
+    matches = [s for s in serves if s["name"] == name]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _compose_invocation_of(serve):
+    """The compose shape of a serve's `up` command: (files, profiles, services).
+
+    `up` is already shlex-split at load, so this is a token scan, matching
+    `_registry_path_of` (including the `=` forms). Returns None for a serve
+    whose `up` names no compose file (a script/recipe-load command).
+
+    The whole shape matters, not just the file: a rollback serve gated behind
+    `--profile rollback` is EXCLUDED from `docker compose config` unless the
+    profile is passed, so checking the bare file silently skips exactly the
+    services a rollback check exists to verify. Likewise the service names
+    after `up` scope the image query to the serve actually being checked, and
+    overlay chains (`-f base.yml -f override.yml`) must all be forwarded or
+    the override's pinned image is never seen.
+    """
+    up = serve.get("up") or []
+    files, profiles, services = [], [], []
+    manifest_dir = serve.get("_manifest_dir") or ""
+
+    def _resolve(path):
+        if os.path.isabs(path):
+            return path
+        return os.path.join(manifest_dir, path) if manifest_dir else path
+
+    saw_up = False
+    index = 0
+    while index < len(up):
+        token = up[index]
+        if token in ("-f", "--file") and index + 1 < len(up):
+            files.append(_resolve(up[index + 1]))
+            index += 2
+            continue
+        if token.startswith("-f=") or token.startswith("--file="):
+            files.append(_resolve(token.split("=", 1)[1]))
+        elif token == "--profile" and index + 1 < len(up):
+            profiles.append(up[index + 1])
+            index += 2
+            continue
+        elif token.startswith("--profile="):
+            profiles.append(token.split("=", 1)[1])
+        elif token == "up":
+            saw_up = True
+        elif saw_up and not token.startswith("-"):
+            services.append(token)
+        index += 1
+    if not files:
+        return None
+    return tuple(files), tuple(profiles), tuple(services)
+
+
+def rollback_check_manifest_set(serves, promotions, restore_group=None, _run=subprocess.run):
+    """Prove every declared rollback is actually usable, read-only.
+
+    Two rollback paths were found broken live on 2026-08-08: a promotion
+    plan's `rollback_router_config` referenced a file that did not exist
+    (found by accident), and a restore-group serve's compose image was an
+    evicted nightly tag, so the documented rollback group could not start. A
+    rollback that cannot run is a false safety net. See
+    docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md (feature 4).
+    """
+    from .router.config import load as load_router_config
+
+    findings = []
+
+    # 1. Promotion plans: topology validation must never raise into the caller
+    # -- a broken plan is exactly the kind of finding this command exists to
+    # report, not a crash.
+    for plan in promotions:
+        try:
+            _validate_promotion_topology(serves, plan)
+        except Exception as exc:
+            findings.append({
+                "check": "promotion-topology",
+                "severity": "error",
+                "serve": plan.get("name", "?"),
+                "detail": str(exc),
+                "files": [],
+            })
+
+    # 2. Routed exclusive serves: rollback_router_config existence is already
+    # guaranteed at manifest load (_normalize_mode_router_configs); this
+    # checks it actually parses/validates as a router config.
+    for serve in serves:
+        path = serve.get("rollback_router_config")
+        if not path:
+            continue
+        try:
+            load_router_config(path)
+        except Exception as exc:
+            findings.append({
+                "check": "rollback-profile-invalid",
+                "severity": "error",
+                "serve": serve["name"],
+                "detail": "rollback_router_config failed to load: %s" % exc,
+                "files": [path],
+            })
+
+    # 3. Image presence for every serve a rollback depends on: each plan's
+    # `rollback` serve, plus every serve in --restore-group (when given).
+    dependents = []
+    for plan in promotions:
+        serve = _serve_by_name(serves, plan.get("rollback"))
+        if serve is not None:
+            dependents.append(("promotion %r rollback" % plan["name"], serve))
+    if restore_group:
+        members, unknown = select_groups(serves, [restore_group])
+        if unknown:
+            # A typo'd group silently checking nothing is itself a false
+            # safety net — the exact defect class this command exists to kill.
+            findings.append({
+                "check": "unknown-restore-group",
+                "severity": "error",
+                "serve": restore_group,
+                "detail": "restore group %r matches no serve in the manifest "
+                          "set; nothing was verified for it" % restore_group,
+                "files": [],
+            })
+        for serve in members:
+            dependents.append(("restore-group %r" % restore_group, serve))
+
+    compose_sources = {}
+    for label, serve in dependents:
+        invocation = _compose_invocation_of(serve)
+        if invocation is None:
+            findings.append({
+                "check": "image-unverifiable",
+                "severity": "info",
+                "serve": serve["name"],
+                "detail": "%s (%s) has no compose file in its up command; "
+                          "image presence cannot be verified" % (label, serve["name"]),
+                "files": [],
+            })
+            continue
+        source = "%s (%s)" % (label, serve["name"])
+        sources = compose_sources.setdefault(invocation, [])
+        if source not in sources:
+            sources.append(source)
+
+    try:
+        for invocation, sources in sorted(compose_sources.items()):
+            files, profiles, services = invocation
+            who = "; ".join(sources)
+            argv = ["docker", "compose"]
+            for compose_file in files:
+                argv += ["-f", compose_file]
+            for profile in profiles:
+                argv += ["--profile", profile]
+            argv += ["config", "--images", *services]
+            config = _run(argv, capture_output=True, text=True)
+            if config.returncode != 0:
+                findings.append({
+                    "check": "rollback-image-missing",
+                    "severity": "error",
+                    "serve": who,
+                    "detail": "%s failed: %s"
+                              % (" ".join(argv), (config.stderr or "").strip()),
+                    "files": list(files),
+                })
+                continue
+            seen_images = set()
+            for image in (line.strip() for line in config.stdout.splitlines()):
+                if not image or image in seen_images:
+                    continue
+                seen_images.add(image)
+                inspect = _run(["docker", "image", "inspect", image],
+                               capture_output=True, text=True)
+                if inspect.returncode != 0:
+                    findings.append({
+                        "check": "rollback-image-missing",
+                        "severity": "error",
+                        "serve": who,
+                        "detail": "image %s (from %s) is not present locally; "
+                                  "the rollback cannot start: %s"
+                                  % (image, " ".join(files),
+                                     (inspect.stderr or "").strip()),
+                        "files": list(files),
+                    })
+    except OSError as exc:
+        findings.append({
+            "check": "docker-unavailable",
+            "severity": "warning",
+            "serve": "-",
+            "detail": "docker is not available; rollback image presence could "
+                      "not be verified: %s" % exc,
+            "files": [],
+        })
+
+    return {
+        "findings": findings,
+        "errors": sum(1 for f in findings if f["severity"] == "error"),
+        "warnings": sum(1 for f in findings if f["severity"] == "warning"),
+        "infos": sum(1 for f in findings if f["severity"] == "info"),
+        "serves_checked": len(serves),
+        "promotions_checked": len(promotions),
+    }
+
+
+def cmd_rollback_check(serves, promotions, restore_group=None, as_json=False, _run=subprocess.run):
+    """Prove every declared rollback is usable; non-zero exit on errors."""
+    report = rollback_check_manifest_set(
+        serves, promotions, restore_group=restore_group, _run=_run)
+    if as_json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 1 if report["errors"] else 0
+    if not report["findings"]:
+        print("serves rollback-check: %d serve(s), %d promotion plan(s) checked, "
+              "no findings" % (report["serves_checked"], report["promotions_checked"]))
+        return 0
+    for finding in report["findings"]:
+        print("%-8s %-24s %s" % (
+            finding["severity"].upper(), finding["check"], finding["serve"]))
+        print("         %s" % finding["detail"])
+        for path in finding["files"]:
+            print("         in %s" % path)
+    print("serves rollback-check: %d serve(s), %d promotion plan(s) checked, "
+          "%d error(s), %d warning(s), %d info" % (
+              report["serves_checked"], report["promotions_checked"],
+              report["errors"], report["warnings"], report["infos"]))
+    return 1 if report["errors"] else 0
+
+
 def cmd_groups(serves, as_json=False):
     """List the groups defined across the manifest set and their member serves.
 
@@ -4035,7 +4261,7 @@ def cmd_probe(serves, names, *, text, image_path, timeout, _open=urllib.request.
 
 _ACTIONS = (
     "status", "probe", "up", "down", "rm", "adopt", "logs", "groups", "lint",
-    "switch", "promote", "mode", "render",
+    "rollback-check", "switch", "promote", "mode", "render",
 )
 # Actions that accept `--group NAME` (repeatable) — they act across the whole
 # manifest set (serves*.toml in the manifest's dir), not just one file.
@@ -4051,6 +4277,7 @@ _ACTION_DESCRIPTIONS = {
     "logs": "Show bounded or streaming docker logs for one serve.",
     "groups": "List serve groups across the manifest set and their members.",
     "lint": "Report manifest defects that no other surface makes visible.",
+    "rollback-check": "Prove every declared rollback is actually usable.",
     "switch": "Switch a deployment role to an activation-ready recipe.",
     "promote": "Promote a staged model recipe with preflight and full rollback.",
     "mode": "Preview or transact split and exclusive TP=2 operating modes.",
@@ -4109,7 +4336,7 @@ def _build_action_parser(action):
     elif action in {"logs", "probe"}:
         p.add_argument("names", nargs=1, metavar="NAME",
                        help="serve name/container to act on.")
-    elif action in {"groups", "lint"}:
+    elif action in {"groups", "lint", "rollback-check"}:
         p.set_defaults(names=[])
     else:
         p.add_argument("names", nargs="*",
@@ -4123,7 +4350,7 @@ def _build_action_parser(action):
                             "names; the reserved 'all' selects every serve.")
     else:
         p.set_defaults(groups=None)
-    if action in {"groups", "lint"}:
+    if action in {"groups", "lint", "rollback-check"}:
         p.add_argument("--json", action="store_true", dest="json_out",
                        help="emit the report as JSON for tooling.")
     else:
@@ -4196,6 +4423,14 @@ def _build_action_parser(action):
                  "container and logs before restoring the split stack",
         )
         p.add_argument("--router-url", metavar="URL", help="router transition base URL")
+    elif action == "rollback-check":
+        p.add_argument(
+            "--restore-group",
+            metavar="NAME",
+            help="also verify the compose image of every serve in this split "
+                 "restore group is present locally",
+        )
+        p.set_defaults(confirm=False, preserve_on_failure=False)
     else:
         p.set_defaults(
             confirm=False,
@@ -4361,7 +4596,7 @@ def main(argv=None):
     # manifest SET. Plain positional-name operations keep selection scoped to
     # the named manifest, but admission/status still use the complete set so a
     # separate voice or ComfyUI manifest cannot become invisible GPU occupancy.
-    use_set = bool(a.groups) or a.action in {"groups", "lint", "mode"}
+    use_set = bool(a.groups) or a.action in {"groups", "lint", "rollback-check", "mode"}
     # `lint` reports defects that the strict loader refuses, so it must load
     # leniently -- otherwise the command an operator reaches for when blocked
     # is the one that cannot run.
@@ -4399,6 +4634,22 @@ def main(argv=None):
         return cmd_groups(serves, as_json=a.json_out)
     if a.action == "lint":
         return cmd_lint(serves, as_json=a.json_out)
+    if a.action == "rollback-check":
+        # "Every declared rollback" means the whole manifest SET — a
+        # [[promotion]] in serves.voice.toml is as much a declared rollback as
+        # one in serves.toml. Mirrors load_manifest_set's per-file tolerance
+        # of absent candidates.
+        promotions = []
+        for path in manifest_set_paths(manifest_path):
+            try:
+                promotions.extend(load_promotions(path))
+            except FileNotFoundError:
+                continue
+            except Exception as exc:
+                print("bad promotion plan in %s: %s" % (path, exc), file=sys.stderr)
+                return 2
+        return cmd_rollback_check(
+            serves, promotions, restore_group=a.restore_group, as_json=a.json_out)
     if a.action == "mode":
         if a.mode_action == "status":
             if a.target or a.restore_group:

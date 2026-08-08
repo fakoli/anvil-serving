@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2026-08-08
+
+### Added
+
+- `serves rollback-check` — proves every declared rollback is actually usable,
+  read-only. For each promotion plan, validates its rollback topology; for
+  every routed exclusive serve, loads its `rollback_router_config` and reports
+  a finding if it fails to parse; and, for the serves a rollback depends on
+  (each plan's `rollback` serve, plus every serve in an optional
+  `--restore-group`), confirms the compose image is present locally via
+  `docker image inspect`. `--json` for tooling; exits non-zero on any error
+  finding. Feature 4 of `docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md`, closing two
+  live incidents: a promotion plan's `rollback_router_config` referencing a
+  file that did not exist, and a restore-group serve's compose image pinned to
+  a nightly tag evicted from Docker Hub.
+
 ## [0.26.0] - 2026-08-08
 
 ### Added
