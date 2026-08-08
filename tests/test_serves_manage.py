@@ -57,6 +57,7 @@ DUAL_MODE_MANIFEST = """
     [[serve]]
     name = "split-a"
     container = "split-a"
+    runtime = "docker"
     port = 30001
     model = "split-a-local"
     engine = "vllm"
@@ -70,6 +71,7 @@ DUAL_MODE_MANIFEST = """
     [[serve]]
     name = "split-b"
     container = "split-b"
+    runtime = "docker"
     port = 30002
     model = "split-b-local"
     engine = "vllm"
@@ -82,6 +84,7 @@ DUAL_MODE_MANIFEST = """
     [[serve]]
     name = "tp2"
     container = "tp2"
+    runtime = "docker"
     port = 30003
     model = "candidate-local"
     engine = "vllm"
@@ -397,6 +400,7 @@ def test_exclusive_mode_covers_legacy_unreserved_experiment_but_not_cpu_sidecar(
         [[serve]]
         name = "legacy-experiment"
         container = "legacy-experiment"
+        runtime = "docker"
         port = 39000
         model = "legacy-local"
         engine = "vllm"
@@ -405,6 +409,7 @@ def test_exclusive_mode_covers_legacy_unreserved_experiment_but_not_cpu_sidecar(
         [[serve]]
         name = "realtime-proxy"
         container = "realtime-proxy"
+        runtime = "docker"
         port = 8765
         model = "realtime-proxy"
         engine = "audio"
@@ -1023,6 +1028,7 @@ def test_main_down_forwards_keep_container(tmp_path, monkeypatch):
         [[serve]]
         name = "heavy"
         container = "sglang"
+        runtime = "docker"
         port = 30000
         model = "primary-local"
         engine = "sglang"
@@ -1053,6 +1059,7 @@ def test_main_rm_dispatches(tmp_path, monkeypatch):
         [[serve]]
         name = "heavy"
         container = "sglang"
+        runtime = "docker"
         port = 30000
         model = "primary-local"
         engine = "sglang"
@@ -1075,6 +1082,7 @@ def test_main_adopt_dispatches(tmp_path, monkeypatch):
         [[serve]]
         name = "heavy"
         container = "sglang"
+        runtime = "docker"
         port = 30000
         model = "primary-local"
         engine = "sglang"
@@ -1173,6 +1181,7 @@ def test_serves_logs_dispatched_from_main(tmp_path, monkeypatch):
         [[serve]]
         name = "heavy"
         container = "vllm-heavy"
+        runtime = "docker"
         port = 30002
         model = "primary-local"
         engine = "vllm"

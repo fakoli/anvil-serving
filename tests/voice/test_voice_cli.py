@@ -667,6 +667,7 @@ def test_managed_audio_readiness_comes_from_selected_serve_manifest(tmp_path):
 [[serve]]
 name = "stt"
 container = "anvil-voice-stt"
+runtime = "docker"
 port = 30010
 model = "tdt"
 engine = "audio"
