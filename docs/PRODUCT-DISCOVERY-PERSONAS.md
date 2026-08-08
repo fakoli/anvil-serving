@@ -155,7 +155,7 @@ Added to the program backlog, ranked by persona reach × leverage:
 
 | # | Feature | Persona | Builds on |
 | --- | --- | --- | --- |
-| 11 | `serves up-for <alias>` + `fleet-status --explain` | solo owner, fleet operator | alias→serve join (§2) |
+| 11 | `serves up-for <alias>` (join shipped 0.28.0; `--explain` open) | solo owner, fleet operator | alias→serve join (§2) |
 | 12 | Lint + rollback-check as implicit transaction gates | fleet operator | features 1, 4 |
 | 13 | Caller-visible bounded deny reasons | harness developer | decision log |
 | 14 | Evidence environment stamping | benchmark researcher | fleet-status + artifact schema |

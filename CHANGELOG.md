@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-08-08
+
+### Added
+
+- `serves up-for ALIAS` — resolves the alias -> tier -> serve chain
+  (`[router.model_routes]` alias to tier id, then the `[[serve]]` whose
+  `router_tier` matches it) and prints the resolution: tier, serve name,
+  container, port, exact `up` argv, and manifest provenance. `--confirm`
+  delegates to `serves up` for the resolved serve; `--dry-run` forwards.
+  Unknown alias exits 2 listing configured aliases; a tier with no backing
+  serve exits 1. A tier backed by more than one serve (a promoted primary
+  sharing `router_tier` with its rollback) is refused rather than
+  auto-selected — starting the wrong serve on a shared port is worse than
+  asking the operator to pick with `serves up NAME`. `--json` for tooling.
+  Feature 11 of `docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md`, derived from the
+  solo-GPU-owner persona in `docs/PRODUCT-DISCOVERY-PERSONAS.md` §1/§2.
+
 ## [0.27.0] - 2026-08-08
 
 ### Added
