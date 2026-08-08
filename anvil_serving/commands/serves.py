@@ -32,6 +32,29 @@ def commands() -> CommandNode:
                 ),
             ),
             _resource_node(
+                "up-for",
+                "Resolve a chat alias to its backing serve and start it.",
+                "anvil_serving.serves",
+                role="model-serve",
+                # The default invocation is a read-only resolution report; only
+                # --confirm mutates. A conditional gate (the switch --recipe
+                # pattern) demands confirmation exactly when --confirm is
+                # present, instead of gating the read path behind ceremony.
+                options=(
+                    _option("--dry-run", summary="Preview without mutating state."),
+                    _option(
+                        "--confirm",
+                        summary="Start the resolved serve (guarded mutation).",
+                        requires_confirmation=True,
+                    ),
+                    _option("--config", summary="Router config TOML.", value_name="PATH"),
+                ),
+                mutation="mutate",
+                gpu=True,
+                forward_confirm_flag=True,
+                docs_anchor="docs/cli/serves.md#start-by-alias",
+            ),
+            _resource_node(
                 "down",
                 "Stop and remove manifest-owned model serves.",
                 "anvil_serving.serves",
