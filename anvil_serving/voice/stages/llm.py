@@ -24,12 +24,11 @@ Wire contract (non-negotiable):
 * ``model`` defaults to the ``"llm.voice"`` direct alias. Physical placement
   is configured independently on one of Dark's symmetric compute roles.
 
-Stdlib-only: ``json``, ``os``, ``re``, ``urllib.request``/``urllib.error``.
+Stdlib-only: ``json``, ``re``, ``urllib.request``/``urllib.error``.
 """
 from __future__ import annotations
 
 import json
-import os
 import queue
 import re
 import threading
@@ -42,7 +41,7 @@ from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Seque
 from ...router.backends.sse import OpenAIStreamAssembler, iter_sse_events
 from ..cancel_scope import CancelScope
 from ..messages import EndOfResponse, GenerateRequest, LLMChunk, LLMToolCall
-from .base import BaseStage
+from .base import BaseStage, bearer_headers
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/v1"
 DEFAULT_MODEL = "llm.voice"
@@ -293,10 +292,7 @@ def _post_stream(
     appending ``/chat/completions`` (see :func:`stream_chat_completion`).
     """
     headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
-    if api_key_env:
-        token = (os.environ.get(api_key_env) or "").strip()
-        if token:
-            headers["Authorization"] = "Bearer %s" % token
+    headers.update(bearer_headers(api_key_env))
     data = json.dumps(body).encode("utf-8")
     return transport(url, data=data, headers=headers, timeout=timeout)
 
@@ -418,21 +414,6 @@ def _speakable_split_cut(text: str, max_chars: int) -> int:
     if cut <= 0:
         cut = max_chars
     return cut
-
-
-def _split_speakable_text(text: str, max_chars: int) -> List[str]:
-    """Split speakable text into TTS-sized chunks on word boundaries."""
-    remaining = _normalize_speakable(text)
-    chunks: List[str] = []
-    while len(remaining) > max_chars:
-        cut = _speakable_split_cut(remaining, max_chars)
-        chunk = remaining[:cut].strip()
-        if chunk:
-            chunks.append(chunk)
-        remaining = remaining[cut:].strip()
-    if remaining:
-        chunks.append(remaining)
-    return chunks
 
 
 @dataclass(frozen=True)

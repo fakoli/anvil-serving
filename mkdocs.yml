@@ -85,6 +85,7 @@ nav:
           - Index: benchmarks/models/index.md
           - RTX PRO 6000:
               - Qwen3.5 122B: benchmarks/models/qwen35-122b.md
+              - Inkling Small: benchmarks/models/inkling-small.md
               - Laguna S 2.1 and XS: benchmarks/models/laguna-s-2.1.md
               - GPT-OSS Puzzle 88B: benchmarks/models/gpt-oss-puzzle-88b.md
               - GPT-OSS Puzzle 88B operator recipe: benchmarks/gpt-oss-puzzle-88b-recipe.md
@@ -149,6 +150,7 @@ nav:
       - 'ADR-0030: Containerized Dark controller and MCP 2026': adr/0030-containerized-remote-controller-and-mcp-2026.md
       - 'ADR-0031: Dual-era TypeScript MCP bridge': adr/0031-dual-era-typescript-mcp-bridge.md
       - 'ADR-0032: Public product, private operator state': adr/0032-public-product-private-operator-state.md
+      - 'ADR-0033: Production durability and plane contract': adr/0033-production-durability-and-plane-contract.md
   - Changelog: changelog.md
 
 markdown_extensions:
