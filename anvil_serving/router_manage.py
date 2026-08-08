@@ -458,6 +458,12 @@ def _build_parser():
         if name == "up":
             item.add_argument("--env-file")
             item.add_argument("--recreate", action="store_true")
+    fleet = actions.add_parser("fleet-status")
+    fleet.add_argument("--config", help="router config TOML (default: config home).")
+    fleet.add_argument("--json", action="store_true", dest="json_out",
+                       help="emit the report as JSON for tooling.")
+    fleet.add_argument("--timeout", type=float, default=4.0,
+                       help="per-endpoint probe timeout in seconds (default: 4).")
     for name in ("restart", "reload"):
         item = actions.add_parser(name)
         item.add_argument("--container", default=DEFAULT_CONTAINER)
@@ -528,6 +534,9 @@ def main(argv=None):
         print(json.dumps({"applied": rc == 0, "dry_run": False, **plan}, sort_keys=True))
         return rc
     if args.action == "status": return cmd_status(args.container)
+    if args.action == "fleet-status":
+        return cmd_fleet_status(args.config, as_json=args.json_out,
+                                timeout=args.timeout)
     if args.action == "install-config":
         confirmed = guard.confirmation_authorized()
         try:
@@ -579,3 +588,144 @@ def main(argv=None):
         return 0
     if args.action == "logs": return cmd_logs(args.container, args.tail, args.since, args.follow)
     return cmd_token(args.container, reveal=args.reveal)
+
+
+# --- fleet status -----------------------------------------------------------
+# Feature 3 of docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md. On 2026-08-08 the router
+# advertised three voice/audio routes whose backing serves had been off for
+# hours and nothing anywhere said so. Answering "is every configured capability
+# actually served" required SSH to another host.
+
+def _probe_endpoint(url, timeout=4.0, _open=urllib.request.urlopen):
+    """Return (reachable, detail) for one endpoint. Never raises."""
+    try:
+        with _open(url, timeout=timeout) as response:
+            code = getattr(response, "status", None) or response.getcode()
+            return True, "HTTP %s" % code
+    except urllib.error.HTTPError as exc:
+        # An authenticated endpoint answering 401/403 is reachable and serving;
+        # only a transport failure means "nothing is there".
+        return True, "HTTP %s" % exc.code
+    except Exception as exc:  # noqa: BLE001 - any transport failure is "down"
+        return False, type(exc).__name__
+
+
+# The router runs in a container, so its config names the Docker host as
+# `host.docker.internal`. That name does not resolve on the host itself, so
+# probing it from here would report a healthy serve as unreachable. Translating
+# it to the host-relative loopback address is faithful -- it is the same
+# machine -- and the translation is reported so it is never silent.
+# CLAUDE.md: 127.0.0.1 is host-relative; never substitute `localhost`.
+_DOCKER_HOST_ALIAS = "host.docker.internal"
+_HOST_RELATIVE_LOOPBACK = "127.0.0.1"
+
+
+def _host_relative(url):
+    """Return (probe_url, translated) for a container-relative endpoint."""
+    parsed = urllib.parse.urlparse(url)
+    if (parsed.hostname or "").lower() != _DOCKER_HOST_ALIAS:
+        return url, False
+    netloc = _HOST_RELATIVE_LOOPBACK
+    if parsed.port:
+        netloc += ":%d" % parsed.port
+    return urllib.parse.urlunparse(parsed._replace(netloc=netloc)), True
+
+
+def _endpoint_host(base_url):
+    try:
+        return urllib.parse.urlparse(base_url).hostname or "?"
+    except ValueError:
+        return "?"
+
+
+def fleet_status(config, timeout=4.0, _probe=_probe_endpoint):
+    """Probe every configured capability and report which are actually served.
+
+    Reports aliases (the declared chat vocabulary), purpose models, and audio
+    routes. Read-only: no Docker, no mutation, no lifecycle.
+    """
+    rows = []
+    seen = {}
+
+    def _check(base_url, health_path):
+        url = base_url.rstrip("/")
+        if url.endswith("/v1"):
+            url = url[: -len("/v1")]
+        url += health_path if health_path.startswith("/") else "/" + health_path
+        probe_url, translated = _host_relative(url)
+        if probe_url not in seen:
+            seen[probe_url] = _probe(probe_url, timeout=timeout)
+        ok, detail = seen[probe_url]
+        if translated:
+            detail += " via host-relative loopback"
+        return probe_url, ok, detail
+
+    for alias, tier_id in sorted(dict(config.model_routes).items()):
+        try:
+            tier = config.tier(tier_id)
+        except Exception:  # noqa: BLE001 - an unresolvable tier is the finding
+            rows.append({"kind": "alias", "name": alias, "target": tier_id,
+                         "host": "?", "endpoint": "", "reachable": False,
+                         "detail": "alias maps to an undeclared tier"})
+            continue
+        url, ok, detail = _check(tier.base_url, getattr(tier, "health_path", "/health") or "/health")
+        rows.append({"kind": "alias", "name": alias, "target": tier_id,
+                     "host": _endpoint_host(tier.base_url), "endpoint": url,
+                     "reachable": ok, "detail": detail})
+
+    for purpose in getattr(config, "purpose_models", ()) or ():
+        url, ok, detail = _check(purpose.base_url, "/health")
+        rows.append({"kind": "purpose", "name": purpose.id, "target": purpose.model,
+                     "host": _endpoint_host(purpose.base_url), "endpoint": url,
+                     "reachable": ok, "detail": detail})
+
+    for route in getattr(config, "audio_routes", ()) or ():
+        url, ok, detail = _check(route.base_url, "/health")
+        rows.append({"kind": "audio", "name": route.id, "target": route.purpose,
+                     "host": _endpoint_host(route.base_url), "endpoint": url,
+                     "reachable": ok, "detail": detail})
+
+    unreachable = [r for r in rows if not r["reachable"]]
+    return {
+        "rows": rows,
+        "checked": len(rows),
+        "unreachable": len(unreachable),
+        "unreachable_aliases": sorted(
+            r["name"] for r in unreachable if r["kind"] == "alias"),
+    }
+
+
+def cmd_fleet_status(config_path_arg=None, as_json=False, timeout=4.0,
+                     _probe=_probe_endpoint):
+    """Report which configured capabilities have a reachable backing serve."""
+    from .doctor import resolve_default_config_path
+    from .router import config as router_config
+
+    path = config_path_arg or resolve_default_config_path()
+    if not path:
+        print("no router config found; pass --config PATH", file=sys.stderr)
+        return 2
+    try:
+        config = router_config.load(path)
+    except Exception as exc:  # noqa: BLE001 - surface the load failure verbatim
+        print("could not load router config %s: %s" % (path, exc), file=sys.stderr)
+        return 2
+
+    report = fleet_status(config, timeout=timeout, _probe=_probe)
+    report["config"] = str(path)
+    if as_json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 1 if report["unreachable_aliases"] else 0
+
+    print("%-9s %-16s %-22s %-16s %s" % ("KIND", "NAME", "TARGET", "HOST", "STATE"))
+    for row in report["rows"]:
+        print("%-9s %-16s %-22s %-16s %s" % (
+            row["kind"], row["name"], row["target"], row["host"],
+            "ok (%s)" % row["detail"] if row["reachable"]
+            else "UNREACHABLE (%s)" % row["detail"]))
+    print("\nfleet status: %d configured, %d unreachable" % (
+        report["checked"], report["unreachable"]))
+    if report["unreachable_aliases"]:
+        print("aliases with no reachable backing serve: %s"
+              % ", ".join(report["unreachable_aliases"]))
+    return 1 if report["unreachable_aliases"] else 0
