@@ -13,6 +13,9 @@ services:
     image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.22.0}
     container_name: anvil-serving-controller
     restart: unless-stopped
+    # ADR-0033: above the controller's 20s SIGTERM drain budget, so in-flight
+    # tool subprocesses finish before Docker escalates to SIGKILL.
+    stop_grace_period: 30s
     user: "999:999"
     group_add:
       # Docker Desktop exposes /var/run/docker.sock as root:root 0660.
@@ -66,6 +69,14 @@ services:
       - --allow-public-bind
       - --state-db
       - /var/lib/anvil-serving/controller-operations.sqlite3
+      # ADR-0033: durable JSONL audit sink on the operation-state volume; the
+      # same records still tee to stderr for `docker logs`.
+      - --audit-log
+      - /var/lib/anvil-serving/controller-audit.jsonl
+      # ADR-0033 node identity: asserted on /health; must match the topology's
+      # `expected_node` on the controller transports that target this host.
+      - --node-id
+      - fakoli-dark
       - --allow-operation
       - operation_contracts
       - --allow-operation

@@ -206,6 +206,10 @@ host = "fakoli-dark"
 runtime = "dark-docker"
 endpoint = "http://192.0.2.20:8766"
 auth_env = "ANVIL_CONTROLLER_TOKEN"
+# ADR-0033 multi-host identity seam: when declared, the controller must assert
+# this host id on /health (started with --node-id fakoli-dark) before any
+# dispatch. The controller analogue of the SSH host-key check.
+expected_node = "fakoli-dark"
 allowed_operations = [
   "router-up",
   "router-down",

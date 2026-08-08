@@ -823,6 +823,7 @@ def _dispatch_remote_tool(
             "auth_env": plan.transport_auth_env,
             "allowed_operations": plan.transport_allowed_operations,
             "timeout_seconds": _remote_transport_timeout(arguments, tool_name=remote.tool),
+            "expected_node": plan.transport_expected_node,
         }
         if remote.max_response_bytes is not None:
             controller_options["max_response_bytes"] = remote.max_response_bytes

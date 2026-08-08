@@ -73,6 +73,11 @@ def commands() -> tuple[CommandNode, ...]:
                     "Resolve one canonical command against a topology.",
                     handler=_handler("anvil_serving.topology_cli", argv_prefix=("resolve",)),
                 ),
+                _node(
+                    "drift",
+                    "Compare the installed topology against a canonical fleet reference.",
+                    handler=_handler("anvil_serving.topology_cli", argv_prefix=("drift",)),
+                ),
             ),
             docs_anchor="docs/cli/control-plane.md#topology",
         ),

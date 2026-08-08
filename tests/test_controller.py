@@ -190,10 +190,14 @@ def test_make_server_rejects_loopback_without_token_by_default():
     assert exc.value.code == "auth_token_required"
 
 
-def test_controller_cli_rejects_unauthenticated_loopback_flag():
-    with pytest.raises(SystemExit) as exc:
-        controller.main(["serve", "--allow-unauthenticated-loopback"])
-    assert exc.value.code == 2
+def test_controller_cli_unauthenticated_loopback_flag_is_explicit_opt_in():
+    # ADR-0033: the flag exists as a documented development opt-in, default
+    # off; bind safety still restricts it to strictly-loopback binds.
+    parser = controller._build_parser()
+    args = parser.parse_args(["serve", "--host", "127.0.0.1"])
+    assert args.allow_unauthenticated_loopback is False
+    args = parser.parse_args(["serve", "--allow-unauthenticated-loopback"])
+    assert args.allow_unauthenticated_loopback is True
 
 
 def test_controller_status_uses_bounded_authenticated_health_probe(monkeypatch, capsys):
@@ -1320,6 +1324,9 @@ def test_controller_idempotency_rejects_mismatch_and_reports_running_failed_and_
         controller._operation_fingerprint("fake", {"confirm": True}, CONTEXT),
         "original",
     )
+    # A fresh lease marks the record as genuinely in flight; without it the
+    # ADR-0033 boot reconciliation would rightly fail it as an orphan.
+    running_store._write_lease("running-1")
     with running_controller(call_tool_func=fake_call_tool, operation_store=running_store) as (
         host,
         port,
@@ -1611,3 +1618,233 @@ def test_idempotency_tombstone_generations_rotate_saturated_false_positives(tmp_
         "previous_fingerprint_bits",
     ):
         assert len(row[name]) == store._tombstone_bytes
+
+
+# --- ADR-0033: file-backed token resolution -------------------------------
+
+
+@pytest.fixture
+def token_only_in_config_env(tmp_path, monkeypatch):
+    """Token absent from the shell environment, present in $ANVIL_SERVING_HOME/.env."""
+    config_home = tmp_path / "anvil-home"
+    user_home = tmp_path / "user-home"
+    config_home.mkdir()
+    user_home.mkdir()
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+    monkeypatch.setenv("HOME", str(user_home))
+    monkeypatch.setenv("USERPROFILE", str(user_home))
+    monkeypatch.delenv("ANVIL_CONTROLLER_TOKEN", raising=False)
+    (config_home / ".env").write_text(
+        "ANVIL_CONTROLLER_TOKEN=%s\n" % TOKEN, encoding="utf-8"
+    )
+    return config_home
+
+
+def test_resolve_auth_token_falls_back_to_operator_dotenv(token_only_in_config_env):
+    assert controller.resolve_auth_token(required=True) == TOKEN
+
+
+def test_bind_safety_accepts_dotenv_backed_token(token_only_in_config_env):
+    assessment = controller.validate_bind_safety("127.0.0.1")
+    assert assessment.requires_auth is True
+
+
+def test_bind_safety_explicit_env_stays_hermetic(token_only_in_config_env):
+    with pytest.raises(controller.BindSafetyError) as exc:
+        controller.validate_bind_safety("127.0.0.1", env={})
+    assert exc.value.code == "auth_token_required"
+    assert exc.value.details["sources_checked"][0].startswith("environment variable ")
+
+
+def test_resolve_auth_token_missing_names_sources(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "empty-home"))
+    monkeypatch.setenv("HOME", str(tmp_path / "empty-user"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "empty-user"))
+    monkeypatch.delenv("ANVIL_CONTROLLER_TOKEN", raising=False)
+    with pytest.raises(controller.ControllerError) as exc:
+        controller.resolve_auth_token(required=True)
+    assert exc.value.code == "auth_token_missing"
+    sources = exc.value.details["sources_checked"]
+    assert sources[0] == "environment variable ANVIL_CONTROLLER_TOKEN"
+    assert len(sources) == 3
+
+
+def test_controller_status_succeeds_with_dotenv_only_token(token_only_in_config_env):
+    with running_controller() as (host, port):
+        exit_code = controller.status(
+            "http://%s:%s" % (host, port), max_response_bytes=1024 * 1024
+        )
+    assert exit_code == 0
+
+
+def test_controller_status_refusal_lists_checked_sources(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "empty-home"))
+    monkeypatch.setenv("HOME", str(tmp_path / "empty-user"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "empty-user"))
+    monkeypatch.delenv("ANVIL_CONTROLLER_TOKEN", raising=False)
+    exit_code = controller.status("http://127.0.0.1:1")
+    captured = capsys.readouterr()
+    assert exit_code == 3
+    assert "ANVIL_CONTROLLER_TOKEN" in captured.err
+    assert ".env" in captured.err
+
+
+def test_controller_status_injected_environment_stays_hermetic(token_only_in_config_env, capsys):
+    exit_code = controller.status("http://127.0.0.1:1", environment={})
+    captured = capsys.readouterr()
+    assert exit_code == 3
+    assert "unset or empty" in captured.err
+
+
+# --- ADR-0033: boot reconciliation of orphaned operations ------------------
+
+
+def test_recover_interrupted_fails_orphaned_running_records(tmp_path):
+    db_path = str(tmp_path / "operations.sqlite3")
+    store = controller.OperationStore(db_path)
+    assert store.claim("orphan-1", "f" * 64, "request-1")[0] == "claimed"
+
+    recovered = controller.OperationStore(db_path).recover_interrupted()
+    assert [item["key"] for item in recovered] == ["orphan-1"]
+    assert recovered[0]["request_id"] == "request-1"
+
+    record = controller.OperationStore(db_path).lookup("orphan-1")
+    assert record["status"] == "failed"
+    assert record["error"]["code"] == "operation_interrupted"
+    assert record["response"]["ok"] is False
+
+
+def test_recover_interrupted_skips_fresh_lease_and_active_keys(tmp_path):
+    db_path = str(tmp_path / "operations.sqlite3")
+    store = controller.OperationStore(db_path)
+    assert store.claim("leased", "a" * 64, "request-1")[0] == "claimed"
+    store._write_lease("leased")
+
+    # Fresh lease within the grace window: not an orphan.
+    assert controller.OperationStore(db_path).recover_interrupted() == []
+    assert controller.OperationStore(db_path).lookup("leased")["status"] == "running"
+
+    # Stale lease (grace forced to zero): recovered.
+    recovered = controller.OperationStore(db_path).recover_interrupted(grace_seconds=0)
+    assert [item["key"] for item in recovered] == ["leased"]
+
+    # In-process execution protects the key even without a lease.
+    store2 = controller.OperationStore(db_path)
+    assert store2.claim("active", "b" * 64, "request-2")[0] == "claimed"
+    store2._active_keys.add("active")
+    assert store2.recover_interrupted(grace_seconds=0) == []
+
+
+def test_claim_lazily_fails_orphaned_running_record(tmp_path):
+    db_path = str(tmp_path / "operations.sqlite3")
+    fingerprint = "c" * 64
+    store = controller.OperationStore(db_path)
+    assert store.claim("lazy-orphan", fingerprint, "request-1")[0] == "claimed"
+
+    # A later process replaying the key sees a typed failure, not a stale 202.
+    disposition, record = controller.OperationStore(db_path).claim(
+        "lazy-orphan", fingerprint, "request-2"
+    )
+    assert disposition == "existing"
+    assert record["status"] == "failed"
+    assert record["error"]["code"] == "operation_interrupted"
+
+
+def test_controller_orphaned_running_operation_fails_closed_after_restart(tmp_path):
+    calls = []
+    db_path = str(tmp_path / "operations.sqlite3")
+
+    def fake_call_tool(name, arguments=None):
+        calls.append((name, arguments))
+        return {"ok": True}
+
+    fingerprint = controller._operation_fingerprint("fake", {"confirm": True}, CONTEXT)
+    seeded = controller.OperationStore(db_path)
+    assert seeded.claim("interrupted-1", fingerprint, "original") == ("claimed", None)
+
+    audit_records = []
+    with running_controller(
+        call_tool_func=fake_call_tool,
+        idempotency_db_path=db_path,
+        audit_logger=audit_records.append,
+    ) as (host, port):
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/tools/call",
+            body={"name": "fake", "arguments": {"confirm": True}, "context": CONTEXT},
+            headers={"X-Anvil-Idempotency-Key": "interrupted-1", "X-Request-Id": "retry"},
+        )
+        assert status == 200
+        assert body["ok"] is False
+        assert body["error"]["code"] == "operation_interrupted"
+        status, _, record, _ = _request(host, port, "GET", "/operations/interrupted-1")
+        assert status == 200
+        assert record["status"] == "failed"
+
+        # A mismatched fingerprint replay still conflicts after recovery.
+        status, _, conflict, _ = _request(
+            host,
+            port,
+            "POST",
+            "/tools/call",
+            body={"name": "fake", "arguments": {"confirm": True, "x": 1}, "context": CONTEXT},
+            headers={"X-Anvil-Idempotency-Key": "interrupted-1", "X-Request-Id": "later"},
+        )
+        assert status == 409
+
+    assert calls == []
+    events = [r for r in audit_records if r.get("event") == "operation_interrupted_recovered"]
+    assert [e["key"] for e in events] == ["interrupted-1"]
+    assert events[0]["request_id"] == "original"
+
+
+# --- ADR-0033: durable JSONL audit sink ------------------------------------
+
+
+def test_controller_audit_log_file_sink(tmp_path):
+    audit_path = tmp_path / "audit.jsonl"
+    with running_controller(audit_log_path=str(audit_path)) as (host, port):
+        status, _, _, _ = _request(host, port, "GET", "/health")
+        assert status == 200
+    raw = audit_path.read_text(encoding="utf-8")
+    lines = [line for line in raw.strip().splitlines() if line]
+    assert lines, "audit file must contain at least one record"
+    record = json.loads(lines[-1])
+    assert record["operation"] == "health"
+    assert TOKEN not in raw
+
+
+def test_controller_audit_log_unwritable_is_boot_error(tmp_path):
+    missing_dir = tmp_path / "absent" / "audit.jsonl"
+    with pytest.raises(controller.ControllerError) as exc:
+        controller.make_server(
+            "127.0.0.1",
+            0,
+            allow_unauthenticated_loopback=True,
+            idempotency_db_path=str(tmp_path / "operations.sqlite3"),
+            audit_log_path=str(missing_dir),
+        )
+    assert exc.value.code == "audit_log_unwritable"
+
+
+def test_file_audit_logger_rotates_once(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    logger = controller.FileAuditLogger(str(path), max_bytes=1024)
+    for index in range(64):
+        logger({"event": "test", "index": index, "padding": "x" * 32})
+    assert path.exists()
+    assert (tmp_path / "audit.jsonl.1").exists()
+
+
+def test_controller_health_asserts_node_identity_when_declared():
+    with running_controller(node_id="fakoli-dark") as (host, port):
+        status, _, body, _ = _request(host, port, "GET", "/health")
+    assert status == 200
+    assert body["node"] == "fakoli-dark"
+
+    with running_controller() as (host, port):
+        status, _, body, _ = _request(host, port, "GET", "/health")
+    assert status == 200
+    assert "node" not in body

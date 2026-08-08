@@ -123,6 +123,15 @@ class OpenAIDialect:
             raw=dict(body),
         )
 
+    def stream_error(self, message: str = "stream interrupted") -> bytes:
+        """One terminal SSE error frame for a mid-stream failure (ADR-0033).
+
+        Deliberately no ``[DONE]`` afterwards, so clients can distinguish a
+        failed stream from a completed one. The message is a generic label,
+        never upstream exception text.
+        """
+        return _sse({"error": {"type": "upstream_error", "message": message}})
+
     def stream(
         self,
         request: InternalRequest,
