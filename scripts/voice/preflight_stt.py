@@ -42,11 +42,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 import wave
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -69,14 +66,11 @@ from anvil_serving.voice.benchmark import DEFAULT_REFERENCE_TEXT, synth_sample_p
 from anvil_serving.voice.serves._common import ServeNotConfigured  # noqa: E402
 from anvil_serving.voice.serves.stt import STTServe, STTServeConfig  # noqa: E402
 from anvil_serving.voice.stages.stt import STTClientError, STTStageConfig, transcribe_stream  # noqa: E402
-
-# Purely informational (local GPU context in the printed/--report output).
-# Guarded so importing this module -- or running it with --help -- never
-# requires a GPU or a CUDA-enabled torch build to even be installed.
-try:
-    import torch  # type: ignore
-except Exception:  # noqa: BLE001 - any import-time failure just means "no GPU info available"
-    torch = None
+from scripts.voice._preflight_common import (  # noqa: E402
+    container_info,
+    endpoint_health,
+    gpu_info,
+)
 
 
 # The review doc's s8 sm_120 table: parakeet.cpp is the "clean zero-drama
@@ -149,108 +143,6 @@ def parse_candidate_arg(raw: str) -> Candidate:
         container_name=fields.get("container_name") or fields.get("container"),
         stream=parse_bool(fields.get("stream", "true")),
     )
-
-
-def _run_probe(argv: List[str], *, timeout: float = 5.0) -> Dict[str, Any]:
-    try:
-        proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, check=False)
-    except FileNotFoundError as exc:
-        return {"ok": False, "detail": "%s not found" % argv[0], "error": str(exc)}
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "detail": "%s timed out" % argv[0]}
-    return {
-        "ok": proc.returncode == 0,
-        "returncode": proc.returncode,
-        "stdout": proc.stdout.strip(),
-        "stderr": proc.stderr.strip(),
-    }
-
-
-def nvidia_smi_info() -> Dict[str, Any]:
-    query = "name,compute_cap,memory.total,memory.used"
-    probe = _run_probe(["nvidia-smi", "--query-gpu=%s" % query, "--format=csv,noheader"], timeout=5.0)
-    if not probe.get("ok"):
-        return {"available": False, "source": "nvidia-smi", "detail": probe.get("detail") or probe.get("stderr", "")}
-    devices = []
-    for idx, line in enumerate(probe.get("stdout", "").splitlines()):
-        parts = [part.strip() for part in line.split(",")]
-        if len(parts) != 4:
-            continue
-        capability = parts[1].replace(".", "")
-        devices.append({
-            "index": idx,
-            "name": parts[0],
-            "capability": "sm_%s" % capability,
-            "memory_total": parts[2],
-            "memory_used": parts[3],
-        })
-    return {"available": bool(devices), "source": "nvidia-smi", "devices": devices}
-
-
-def gpu_info() -> Dict[str, Any]:
-    """Best-effort local-GPU context for the report; never raises."""
-    if torch is None:
-        smi = nvidia_smi_info()
-        if smi.get("available"):
-            smi["detail"] = "torch not importable; GPU context collected with nvidia-smi"
-            return smi
-        return {"available": False, "detail": "torch not importable and nvidia-smi unavailable"}
-    try:
-        if not torch.cuda.is_available():
-            smi = nvidia_smi_info()
-            if smi.get("available"):
-                smi["detail"] = "torch imported but no CUDA device visible; GPU context collected with nvidia-smi"
-                return smi
-            return {"available": False, "detail": "torch imported but no CUDA device visible"}
-        idx = torch.cuda.current_device()
-        major, minor = torch.cuda.get_device_capability(idx)
-        return {
-            "available": True,
-            "name": torch.cuda.get_device_name(idx),
-            "capability": "sm_%d%d" % (major, minor),
-        }
-    except Exception as exc:  # noqa: BLE001 - informational probe must never crash the run
-        smi = nvidia_smi_info()
-        if smi.get("available"):
-            smi["detail"] = "torch/CUDA probe raised; GPU context collected with nvidia-smi: %s" % exc
-            return smi
-        return {"available": False, "detail": "torch/CUDA probe raised: %s" % exc}
-
-
-def health_url_for_base(base_url: str) -> str:
-    root = base_url.rstrip("/")
-    if root.endswith("/v1"):
-        root = root[:-3]
-    return root.rstrip("/") + "/health"
-
-
-def endpoint_health(base_url: str, *, timeout: float) -> Dict[str, Any]:
-    url = health_url_for_base(base_url)
-    try:
-        with urllib.request.urlopen(url, timeout=min(timeout, 5.0)) as resp:  # noqa: S310 - configured local serve URL
-            status = resp.getcode()
-        return {"ready": 200 <= status < 300, "url": url, "status": status}
-    except urllib.error.HTTPError as exc:
-        return {"ready": False, "url": url, "status": exc.code, "detail": str(exc)}
-    except Exception as exc:  # noqa: BLE001 - readiness probe is diagnostic, never fatal
-        return {"ready": False, "url": url, "detail": str(exc)}
-
-
-def container_info(container_name: Optional[str]) -> Optional[Dict[str, Any]]:
-    if not container_name:
-        return None
-    template = "{{.State.Status}}\t{{.Config.Image}}\t{{.Name}}"
-    probe = _run_probe(["docker", "inspect", container_name, "--format", template], timeout=5.0)
-    if not probe.get("ok"):
-        return {"name": container_name, "available": False, "detail": probe.get("stderr") or probe.get("detail", "")}
-    parts = probe.get("stdout", "").split("\t")
-    return {
-        "name": container_name,
-        "available": True,
-        "status": parts[0] if len(parts) > 0 else "",
-        "image": parts[1] if len(parts) > 1 else "",
-        "docker_name": parts[2].lstrip("/") if len(parts) > 2 else "",
-    }
 
 
 def load_sample_pcm(path: str) -> "tuple[bytes, int]":

@@ -1,24 +1,22 @@
 """Tests for the bakeoff notebook — persistence (store), scoring/verdict
 (notebook), and the CLI sub-verb. Mirrors test_external_benchmarks._scratch."""
-import atexit
 import json
 import shutil
-from pathlib import Path
 
 import pytest
 
 from anvil_serving.external_benchmarks import cli, notebook, schema, store
 
-SCRATCH = Path(__file__).resolve().parents[1] / ".scratch_bakeoff_notebook"
-atexit.register(lambda: shutil.rmtree(SCRATCH, ignore_errors=True))
 
-
-def _scratch(name):
-    path = SCRATCH / name
-    if path.exists():
-        shutil.rmtree(path)
-    path.mkdir(parents=True)
-    return path
+@pytest.fixture
+def _scratch(tmp_path):
+    def make(name):
+        path = tmp_path / name
+        if path.exists():
+            shutil.rmtree(path)
+        path.mkdir(parents=True)
+        return path
+    return make
 
 
 def _evidence(candidate, *, run_id, voice=800.0, ipr=1.0, tool=True,
@@ -54,7 +52,7 @@ def _evidence(candidate, *, run_id, voice=800.0, ipr=1.0, tool=True,
 
 # --- schema ---------------------------------------------------------------------
 
-def test_v_tables_created():
+def test_v_tables_created(_scratch):
     db = _scratch("schema") / "nb.sqlite"
     store.init_db(db)
     assert "bakeoff_runs" in schema.EXPECTED_TABLES
@@ -63,7 +61,7 @@ def test_v_tables_created():
 
 # --- store: append + latest-per-candidate keying --------------------------------
 
-def test_record_and_latest_per_key():
+def test_record_and_latest_per_key(_scratch):
     db = _scratch("record") / "nb.sqlite"
     store.record_bakeoff_run(db, _evidence("cand-a", run_id="r1"),
                              task="fast", hardware="4090")
@@ -80,7 +78,7 @@ def test_record_and_latest_per_key():
     assert len(store.list_bakeoff_runs(db, latest_per_candidate=False)) == 3  # history kept
 
 
-def test_task_hardware_filter_scopes():
+def test_task_hardware_filter_scopes(_scratch):
     db = _scratch("scope") / "nb.sqlite"
     store.record_bakeoff_run(db, _evidence("a", run_id="r1"), task="fast", hardware="4090")
     store.record_bakeoff_run(db, _evidence("a", run_id="r2"), task="heavy", hardware="4090")
@@ -88,7 +86,7 @@ def test_task_hardware_filter_scopes():
     assert len(store.list_bakeoff_runs(db, hardware="4090")) == 2
 
 
-def test_record_rejects_evidence_without_identity():
+def test_record_rejects_evidence_without_identity(_scratch):
     db = _scratch("bad") / "nb.sqlite"
     bad = _evidence("x", run_id="r1")
     bad["identity"].pop("candidate_id")
@@ -97,7 +95,7 @@ def test_record_rejects_evidence_without_identity():
 
 
 @pytest.mark.parametrize("mutation", ["legacy", "diagnostic", "weak", "single"])
-def test_record_rejects_non_ranking_protocol_evidence(mutation):
+def test_record_rejects_non_ranking_protocol_evidence(mutation, _scratch):
     db = _scratch("protocol-" + mutation) / "nb.sqlite"
     evidence = _evidence("x", run_id="r1")
     if mutation == "legacy":
@@ -151,7 +149,7 @@ def test_pass_score_is_overridable():
     assert notebook.verdict(row, targets={"pass_score": 99.0})["result"] == "hold"
 
 
-def test_latest_keys_on_recording_order_not_started_at():
+def test_latest_keys_on_recording_order_not_started_at(_scratch):
     # a run recorded LATER but with an EARLIER/absent started_at is still latest
     db = _scratch("recency") / "nb.sqlite"
     early = _evidence("a", run_id="r-old")
@@ -164,7 +162,7 @@ def test_latest_keys_on_recording_order_not_started_at():
     assert len(latest) == 1 and latest[0]["run_id"] == "r-new"
 
 
-def test_no_fingerprint_pollution():
+def test_no_fingerprint_pollution(_scratch):
     db = _scratch("nofp") / "nb.sqlite"
     store.record_bakeoff_run(db, _evidence("a", run_id="r1"), task="fast", hardware="h")
     import sqlite3
@@ -187,7 +185,7 @@ def test_verdict_vs_baseline():
 
 # --- CLI ------------------------------------------------------------------------
 
-def test_cli_add_list_render(capsys):
+def test_cli_add_list_render(capsys, _scratch):
     db = _scratch("cli") / "nb.sqlite"
     ev_dir = _scratch("cli-ev")
     a = ev_dir / "a.json"

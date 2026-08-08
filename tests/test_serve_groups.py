@@ -9,13 +9,9 @@ GPU, and no network.
 import json
 import os
 import textwrap
-import types
 
 from anvil_serving import reservations, serves
-
-
-def proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
+from tests.conftest import proc
 
 
 def _write(path, body):

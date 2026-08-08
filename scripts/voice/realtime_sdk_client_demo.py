@@ -59,6 +59,7 @@ from anvil_serving.voice.stages.tts import (  # noqa: E402
     resample_int16,
     stream_speech,
 )
+from scripts.voice._findings import insert_finding_row  # noqa: E402
 
 DEFAULT_REALTIME_CONFIG = str(_REPO_ROOT / "examples" / "voice" / "fakoli-dark.toml")
 if not os.path.isfile(DEFAULT_REALTIME_CONFIG):
@@ -359,47 +360,32 @@ def _markdown_escape(value: Any) -> str:
 
 
 def append_finding_row(summary: Mapping[str, Any], paths: Mapping[str, str]) -> bool:
-    try:
-        if not FINDINGS_DOC.exists():
-            print("realtime_sdk_client_demo: findings doc missing: %s" % FINDINGS_DOC, file=sys.stderr)
-            return False
-        transcripts = "; ".join(summary.get("transcripts", []))
-        responses = summary.get("responses", [])
-        completed = next((r for r in responses if r.get("status") == "completed"), None)
-        ttfa = completed.get("ttfa_ms") if completed else None
-        latency = completed.get("latency_ms") if completed else None
-        row = (
-            "| %s | audio/audio | yes | %s | %d | %d | %s / %s | %s |"
-            % (
-                _markdown_escape(summary.get("timestamp_utc")),
-                _markdown_escape(transcripts or "(no transcript)"),
-                int(summary.get("event_count", 0)),
-                int(summary.get("output_audio_bytes", 0)),
-                _markdown_escape(ttfa),
-                _markdown_escape(latency),
-                _markdown_escape(paths.get("session_json")),
-            )
+    transcripts = "; ".join(summary.get("transcripts", []))
+    responses = summary.get("responses", [])
+    completed = next((r for r in responses if r.get("status") == "completed"), None)
+    ttfa = completed.get("ttfa_ms") if completed else None
+    latency = completed.get("latency_ms") if completed else None
+    row = (
+        "| %s | audio/audio | yes | %s | %d | %d | %s / %s | %s |"
+        % (
+            _markdown_escape(summary.get("timestamp_utc")),
+            _markdown_escape(transcripts or "(no transcript)"),
+            int(summary.get("event_count", 0)),
+            int(summary.get("output_audio_bytes", 0)),
+            _markdown_escape(ttfa),
+            _markdown_escape(latency),
+            _markdown_escape(paths.get("session_json")),
         )
-
-        lines = FINDINGS_DOC.read_text(encoding="utf-8").splitlines()
-        header_idx = next(
-            (i for i, line in enumerate(lines) if line.startswith("| timestamp (UTC) |")),
-            None,
-        )
-        if header_idx is None or header_idx + 1 >= len(lines) or not lines[header_idx + 1].startswith("|---"):
-            print("realtime_sdk_client_demo: findings doc has no session-log table", file=sys.stderr)
-            return False
-        insert_at = header_idx + 2
-        while insert_at < len(lines) and lines[insert_at].startswith("|"):
-            if lines[insert_at].startswith("| _TBD_ |"):
-                break
-            insert_at += 1
-        lines.insert(insert_at, row)
-        FINDINGS_DOC.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        return True
-    except OSError as exc:
-        print("realtime_sdk_client_demo: could not update findings doc: %s" % exc, file=sys.stderr)
-        return False
+    )
+    return insert_finding_row(
+        FINDINGS_DOC,
+        row,
+        script_name="realtime_sdk_client_demo",
+        require_session_log_heading=False,
+        missing_doc_message="realtime_sdk_client_demo: findings doc missing: %s" % FINDINGS_DOC,
+        no_table_message="realtime_sdk_client_demo: findings doc has no session-log table",
+        write_error_message=lambda exc: "realtime_sdk_client_demo: could not update findings doc: %s" % exc,
+    )
 
 
 def _save_capture(

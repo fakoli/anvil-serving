@@ -59,18 +59,9 @@ _RECIPE_MANAGED_LABEL = "io.anvil-serving.managed-by"
 _RECIPE_MODEL_LABEL = "io.anvil-serving.recipe.model"
 _RECIPE_REVISION_LABEL = "io.anvil-serving.recipe.revision"
 
-_VOLUME_CACHE_HELPER = r"""
-import json
-import os
-from pathlib import Path
-import shutil
-import sys
-
-action, cache_text, repo_id, revision = sys.argv[1:5]
-cache = Path(cache_text)
-owner, repo = repo_id.split("/", 1)
-root = cache / "hub" / ("models--" + owner + "--" + repo)
-
+# Shared by both embedded helper scripts below (spliced in, not run directly —
+# they're `python -c` payloads, not importable modules).
+_TREE_BYTES_SRC = """
 def tree_bytes(path):
     total = 0
     if not path.exists():
@@ -84,7 +75,20 @@ def tree_bytes(path):
             except OSError:
                 pass
     return total
+"""
 
+_VOLUME_CACHE_HELPER = r"""
+import json
+import os
+from pathlib import Path
+import shutil
+import sys
+
+action, cache_text, repo_id, revision = sys.argv[1:5]
+cache = Path(cache_text)
+owner, repo = repo_id.split("/", 1)
+root = cache / "hub" / ("models--" + owner + "--" + repo)
+""" + _TREE_BYTES_SRC + r"""
 def snapshot_id():
     direct = root / "snapshots" / revision
     if revision and direct.is_dir():
@@ -196,21 +200,7 @@ import sys
 
 cache = Path(sys.argv[1])
 hub = cache / "hub"
-
-def tree_bytes(path):
-    total = 0
-    if not path.exists():
-        return 0
-    for base, _dirs, files in os.walk(path, followlinks=False):
-        for name in files:
-            item = Path(base) / name
-            try:
-                if not item.is_symlink():
-                    total += item.stat().st_size
-            except OSError:
-                pass
-    return total
-
+""" + _TREE_BYTES_SRC + r"""
 def utc_timestamp(value):
     if value is None:
         return None
@@ -2057,15 +2047,6 @@ def _resolved_model_dirs(explicit="", *, environ=None):
     return resolved
 
 
-def _next_catalog_backup(path):
-    index = 1
-    while True:
-        candidate = "%s.anvil.bak.%s" % (path, index)
-        if not os.path.exists(candidate):
-            return candidate
-        index += 1
-
-
 class CatalogSyncBusy(RuntimeError):
     """Another process already owns the catalog replacement lock."""
 
@@ -2228,7 +2209,7 @@ def _sync_apply(output, roots, model_dirs):
     backup = None
     try:
         if os.path.exists(output):
-            backup = _next_catalog_backup(output)
+            backup = guard.next_backup(output)
             os.replace(output, backup)
         os.replace(staging, output)
         staging = None

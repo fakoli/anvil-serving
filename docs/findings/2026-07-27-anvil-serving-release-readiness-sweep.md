@@ -6,7 +6,7 @@ The installed `0.13.3` surface and the release candidate source passed the
 live model, purpose-service, recipe, audio, ComfyUI, model-cache, and ownership
 workflows in scope. Every release-significant gap discovered by this sweep was
 fixed in place and is tracked with its compatibility decision and evidence in
-`.tickets/2026-07-27-release-sweep-fixes.md`.
+`.tickets/closed/2026-07-27-release-sweep-fixes.md`.
 
 The source is ready for merge/release review after the complete repository
 gates below. Model promotion remains a separate human decision: Agents-A1 is a

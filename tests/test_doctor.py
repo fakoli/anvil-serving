@@ -2,15 +2,10 @@
 docker / nvidia-smi / HTTP are injected, so these run with no docker, no GPU,
 and no network.
 """
-import types
-
 import pytest
 
 from anvil_serving import doctor
-
-
-def proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
+from tests.conftest import proc
 
 
 CSV = "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
