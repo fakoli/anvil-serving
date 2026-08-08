@@ -124,6 +124,29 @@ def _serves_cli_argv(
     return argv
 
 
+def _apply_gate(
+    args: dict,
+    *,
+    eligible: bool = True,
+    requires_human: bool = False,
+    human_message: str = "",
+) -> tuple[bool, bool, bool]:
+    """Parse dry_run/confirm (and human_approved when required) and gate apply.
+
+    Returns ``(dry_run, confirm, apply_requested)``. Raises
+    ``human_approval_required`` when an apply is requested (``eligible`` and
+    ``confirm`` and not ``dry_run``) but human approval was not given.
+    """
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    apply_requested = eligible and confirm and not dry_run
+    if requires_human:
+        human_approved = _arg_bool(args.get("human_approved"), False, name="human_approved")
+        if apply_requested and not human_approved:
+            raise ToolError("human_approval_required", human_message)
+    return dry_run, confirm, apply_requested
+
+
 def _dedupe_serves(serves_list: list[dict]) -> list[dict]:
     seen = set()
     out = []
@@ -331,8 +354,7 @@ def tool_serves_manage(args: dict) -> dict:
         args.get("keep_container"), False, name="keep_container"
     )
     allow_literal = _arg_bool(args.get("allow_literal"), False, name="allow_literal")
-    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
-    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    dry_run, confirm, _ = _apply_gate(args)
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
 
     if compose and action != "up":
@@ -395,16 +417,14 @@ def tool_serves_promote(args: dict) -> dict:
     plan_name = _str_arg(args, "plan", required=True)
     rollback = _arg_bool(args.get("rollback"), False, name="rollback")
     resume = _arg_bool(args.get("resume"), False, name="resume")
-    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
-    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
-    human_approved = _arg_bool(args.get("human_approved"), False, name="human_approved")
+    dry_run, confirm, apply_requested = _apply_gate(
+        args,
+        requires_human=True,
+        human_message=(
+            "serve promotion apply requires confirm=true, dry_run=false, and human_approved=true"
+        ),
+    )
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 7200, min_value=1, max_value=14400)
-    apply_requested = confirm and not dry_run
-    if apply_requested and not human_approved:
-        raise ToolError(
-            "human_approval_required",
-            "serve promotion apply requires confirm=true, dry_run=false, and human_approved=true",
-        )
     argv = [
         sys.executable,
         "-m",
@@ -496,11 +516,6 @@ def tool_serves_mode(args: dict) -> dict:
 
     target = _str_arg(args, "target", required=True)
     restore_group = _str_arg(args, "restore_group", required=True)
-    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
-    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
-    human_approved = _arg_bool(
-        args.get("human_approved"), False, name="human_approved"
-    )
     timeout_seconds = _bounded_int_arg(
         args, "timeout_seconds", 1800, min_value=1, max_value=7200
     )
@@ -517,13 +532,15 @@ def tool_serves_mode(args: dict) -> dict:
     except ValueError as exc:
         raise ToolError("mode_plan_refused", str(exc))
 
-    apply_requested = action in {"enter", "leave"} and confirm and not dry_run
-    if apply_requested and not human_approved:
-        raise ToolError(
-            "human_approval_required",
+    _dry_run, _confirm, apply_requested = _apply_gate(
+        args,
+        eligible=action in {"enter", "leave"},
+        requires_human=True,
+        human_message=(
             "live mode mutation requires confirm=true, dry_run=false, and "
-            "human_approved=true",
-        )
+            "human_approved=true"
+        ),
+    )
     if action == "preview" or not apply_requested:
         return _ok({
             "applied": False,

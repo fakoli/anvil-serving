@@ -10,18 +10,27 @@ fake urlopen for the /v1/models probe.
 import hashlib
 import io
 import json
+import math
 import random
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
 import pytest
 
 from anvil_serving import benchmark as bm
 from anvil_serving.benchmarking import artifacts as benchmark_artifacts
+from anvil_serving.benchmarking import evaluation as benchmark_evaluation
+from anvil_serving.benchmarking import recipes as benchmark_recipes
 from anvil_serving.benchmarking import requests as benchmark_requests
 from anvil_serving.benchmarking import runner as benchmark_runner
 from anvil_serving.benchmarking import specs as benchmark_specs
+
+
+def _est_tokens(text):
+    """Test-local mirror of the removed production est_tokens helper."""
+    return math.ceil(len(text) / benchmark_requests.CHARS_PER_TOKEN)
 
 
 # ---- BUG 1: context clamp keeps prompts under a small serve's max_model_len -------
@@ -50,43 +59,43 @@ def test_control_evidence_retains_portable_relative_reference(monkeypatch, tmp_p
     assert digest == hashlib.sha256(raw).hexdigest()
 
 def test_ctx_cap_leaves_headroom_below_max_model_len():
-    cap = bm.ctx_cap(16384, 64, bm.DEFAULT_CTX_MARGIN)
-    assert cap == 16384 - 64 - bm.DEFAULT_CTX_MARGIN
+    cap = benchmark_requests.ctx_cap(16384, 64, benchmark_requests.DEFAULT_CTX_MARGIN)
+    assert cap == 16384 - 64 - benchmark_requests.DEFAULT_CTX_MARGIN
     assert cap < 16384
 
 
 def test_ctx_cap_none_when_no_limit_known():
     # 0 / None max_model_len -> no clamp -> legacy behavior preserved.
-    assert bm.ctx_cap(0, 64) is None
-    assert bm.ctx_cap(None, 64) is None
+    assert benchmark_requests.ctx_cap(0, 64) is None
+    assert benchmark_requests.ctx_cap(None, 64) is None
 
 
 def test_ctx_cap_rejects_a_window_without_prompt_headroom():
     with pytest.raises(ValueError, match="must exceed"):
-        bm.ctx_cap(1024, max_tokens=512, margin=512)
+        benchmark_requests.ctx_cap(1024, max_tokens=512, margin=512)
 
 
 def test_clamp_ctx_is_noop_without_cap():
     # When no cap is in effect, the sampled/fixed ctx passes through unchanged.
-    assert bm.clamp_ctx(262144, None) == 262144
+    assert benchmark_requests.clamp_ctx(262144, None) == 262144
 
 
 def test_sampled_and_fixed_ctx_never_exceed_max_model_len_minus_headroom():
-    max_model_len, max_tokens, margin = 16384, 64, bm.DEFAULT_CTX_MARGIN
-    cap = bm.ctx_cap(max_model_len, max_tokens, margin)
+    max_model_len, max_tokens, margin = 16384, 64, benchmark_requests.DEFAULT_CTX_MARGIN
+    cap = benchmark_requests.ctx_cap(max_model_len, max_tokens, margin)
     headroom_limit = max_model_len - max_tokens - margin
 
     rng = random.Random(0)
     for _ in range(2000):
         # mirror main(): sample the measured distribution, then clamp.
         r = rng.random()
-        raw = next((v for p, v in bm.SUBAGENT_CTX if r <= p), 262144)
-        ctx = bm.clamp_ctx(raw, cap)
+        raw = next((v for p, v in benchmark_runner.SUBAGENT_CTX if r <= p), 262144)
+        ctx = benchmark_requests.clamp_ctx(raw, cap)
         assert ctx <= headroom_limit
         assert ctx < max_model_len
 
     # a huge fixed --ctx-tokens is clamped too.
-    assert bm.clamp_ctx(262144, cap) <= headroom_limit
+    assert benchmark_requests.clamp_ctx(262144, cap) <= headroom_limit
 
 
 @pytest.mark.parametrize(
@@ -109,10 +118,10 @@ def test_make_prompt_unclamped_still_sizes_to_target():
     # No cap known -> still sized to the TARGET (BUG 3: an uncapped prompt used to
     # balloon ~2x past the target and 400 on serves that don't advertise max_model_len,
     # e.g. the recorded llama.cpp context-row failure). Trailing instruction survives.
-    prompt = bm.make_prompt("shared prefix", ctx_tokens=4000, uniq=7)
+    prompt = benchmark_requests.make_prompt("shared prefix", ctx_tokens=4000, uniq=7)
     assert prompt.endswith("summarize the above in one line.")
     assert "request 7" in prompt
-    assert abs(bm.est_tokens(prompt) - 4000) <= 400
+    assert abs(_est_tokens(prompt) - 4000) <= 400
 
 
 def test_make_prompt_sub_window_targets_scale_with_target():
@@ -121,14 +130,14 @@ def test_make_prompt_sub_window_targets_scale_with_target():
     records usage.prompt_tokens=261949 on BOTH rows) because filler was sized by a
     word heuristic that under-counts ~2x and then truncated at the WINDOW cap, not
     the per-target size. Each target must now produce its own prompt size."""
-    cap = bm.ctx_cap(262144, 64, bm.DEFAULT_CTX_MARGIN)
-    shared = (bm.FILLER % (0, 0)) * max(1, int(8000 * 0.75) // 6)
+    cap = benchmark_requests.ctx_cap(262144, 64, benchmark_requests.DEFAULT_CTX_MARGIN)
+    shared = (benchmark_requests.FILLER % (0, 0)) * max(1, int(8000 * 0.75) // 6)
     prompts = {}
     for target in (131072, 262144):
-        clamped = bm.clamp_ctx(target, cap)
-        prompt = bm.make_prompt(shared, clamped, target, max_prompt_tokens=cap)
+        clamped = benchmark_requests.clamp_ctx(target, cap)
+        prompt = benchmark_requests.make_prompt(shared, clamped, target, max_prompt_tokens=cap)
         # estimated size lands within 10% of the clamped per-target budget
-        assert abs(bm.est_tokens(prompt) - clamped) <= 0.10 * clamped
+        assert abs(_est_tokens(prompt) - clamped) <= 0.10 * clamped
         # the shared prefix must survive verbatim at the START (prefix-cache contract)
         assert prompt.startswith(shared)
         prompts[target] = prompt
@@ -138,33 +147,33 @@ def test_make_prompt_sub_window_targets_scale_with_target():
 def test_make_prompt_tiny_target_never_returns_whole_prefix():
     # A target smaller than the tail line must not flip the truncation slice index
     # negative (s[:-k] keeps everything BUT k chars — i.e. ~the whole 68k prefix).
-    shared = (bm.FILLER % (0, 0)) * 1000
+    shared = (benchmark_requests.FILLER % (0, 0)) * 1000
     with pytest.raises(ValueError, match="too small"):
-        bm.make_prompt(shared, 5, 0)
+        benchmark_requests.make_prompt(shared, 5, 0)
 
 
 def test_make_prompt_calibrated_chars_per_token_resizes():
     # A calibrated (larger) chars/token rate must grow the char budget so the REAL
     # token count lands on target instead of ~15% under the conservative default.
-    default = bm.make_prompt("x", 4000, 0)
-    calibrated = bm.make_prompt("x", 4000, 0, chars_per_token=3.5)
+    default = benchmark_requests.make_prompt("x", 4000, 0)
+    calibrated = benchmark_requests.make_prompt("x", 4000, 0, chars_per_token=3.5)
     assert len(default) == pytest.approx(4000 * 3.0, abs=100)
     assert len(calibrated) == pytest.approx(4000 * 3.5, abs=100)
 
 
 def test_default_16384_serve_does_not_overflow_window():
     # End-to-end of the sizing path main() takes for a 16384-ctx serve.
-    cap = bm.ctx_cap(16384, 64, bm.DEFAULT_CTX_MARGIN)
-    shared = (bm.FILLER % (0, 0)) * max(1, int(8000 * 0.75) // 6)
+    cap = benchmark_requests.ctx_cap(16384, 64, benchmark_requests.DEFAULT_CTX_MARGIN)
+    shared = (benchmark_requests.FILLER % (0, 0)) * max(1, int(8000 * 0.75) // 6)
     for ctx in (16000, 32768, 65536, 131072, 262144):
-        ctx = bm.clamp_ctx(ctx, cap)
-        prompt = bm.make_prompt(shared, ctx, 0, max_prompt_tokens=cap)
-        assert bm.est_tokens(prompt) <= cap < 16384
+        ctx = benchmark_requests.clamp_ctx(ctx, cap)
+        prompt = benchmark_requests.make_prompt(shared, ctx, 0, max_prompt_tokens=cap)
+        assert _est_tokens(prompt) <= cap < 16384
 
 
 def test_shared_prefix_matches_its_declared_estimated_size():
     shared = benchmark_requests.make_shared_prefix(8000)
-    assert bm.est_tokens(shared) == 8000
+    assert _est_tokens(shared) == 8000
     assert len(shared) == 8000 * benchmark_requests.CHARS_PER_TOKEN
 
 
@@ -172,29 +181,29 @@ def test_shared_prefix_matches_its_declared_estimated_size():
 
 def test_no_thinking_puts_enable_thinking_false_in_body():
     ctk = {"enable_thinking": False}  # exactly what main() builds for --no-thinking
-    body = bm.build_body("m", "hi", 64, chat_template_kwargs=ctk)
+    body = benchmark_requests.build_body("m", "hi", 64, chat_template_kwargs=ctk)
     assert body["chat_template_kwargs"] == {"enable_thinking": False}
 
 
 def test_body_has_no_chat_template_kwargs_by_default():
-    body = bm.build_body("m", "hi", 64)
+    body = benchmark_requests.build_body("m", "hi", 64)
     assert "chat_template_kwargs" not in body
     assert body["stream"] is True and body["max_tokens"] == 64
 
 
 def test_reasoning_effort_uses_top_level_openai_field():
-    body = bm.build_body("m", "hi", 640, reasoning_effort="high")
+    body = benchmark_requests.build_body("m", "hi", 640, reasoning_effort="high")
     assert body["reasoning_effort"] == "high"
 
 
 def test_max_reasoning_effort_is_forwarded_unchanged():
-    body = bm.build_body("m", "hi", 640, reasoning_effort="max")
+    body = benchmark_requests.build_body("m", "hi", 640, reasoning_effort="max")
     assert body["reasoning_effort"] == "max"
     assert "chat_template_kwargs" not in body
 
 
 def test_deterministic_regex_check_tolerates_harmless_answer_spacing():
-    result = bm.evaluate_text_checks(
+    result = benchmark_specs.evaluate_text_checks(
         "The answer is **FINAL = D**.",
         [{"name": "answer", "matches_regex": r"\bFINAL\s*=\s*D\b"}],
     )
@@ -203,7 +212,7 @@ def test_deterministic_regex_check_tolerates_harmless_answer_spacing():
 
 def test_final_answer_regex_rejects_conflicting_later_marker():
     check = {"name": "answer", "matches_regex": r"\bFINAL\s*=\s*B\b[*]*\s*$"}
-    assert bm.evaluate_text_checks("FINAL=B is not correct; FINAL=C", [check]) == [
+    assert benchmark_specs.evaluate_text_checks("FINAL=B is not correct; FINAL=C", [check]) == [
         {"name": "answer", "passed": False}
     ]
 
@@ -213,7 +222,7 @@ def test_timeout_triage_accepts_streaming_as_a_practical_latency_fix():
         item for item in benchmark_runner.INTELLIGENCE_PROMPTS
         if item["id"] == "parallel_timeout_triage"
     )
-    result = bm.evaluate_text_checks(
+    result = benchmark_specs.evaluate_text_checks(
         "The 3000 ms total exceeds the timeout; stream TTS while the LLM finishes.",
         prompt["checks"],
     )
@@ -228,18 +237,18 @@ def test_failure_class_distinguishes_visible_answer_budget_exhaustion():
         "reasoning_chars": 0,
         "reasoning_tokens": None,
     }
-    assert bm._failure_class(observation, checks_passed=False) == (
+    assert benchmark_evaluation.failure_class(observation, checks_passed=False) == (
         "visible_answer_budget_exhausted"
     )
 
     observation["reasoning_chars"] = 400
-    assert bm._failure_class(observation, checks_passed=False) == (
+    assert benchmark_evaluation.failure_class(observation, checks_passed=False) == (
         "completion_budget_exhausted_after_visible_output"
     )
 
 
 def test_response_observation_prefers_nonempty_reasoning_alias_and_ignores_whitespace_content():
-    observation = bm.response_observation({
+    observation = benchmark_requests.response_observation({
         "choices": [{
             "finish_reason": "length",
             "message": {
@@ -251,7 +260,7 @@ def test_response_observation_prefers_nonempty_reasoning_alias_and_ignores_white
     })
     assert observation["reasoning_field"] == "reasoning_content"
     assert observation["reasoning_chars"] == len("actual hidden reasoning")
-    assert bm._failure_class(observation, checks_passed=False) == (
+    assert benchmark_evaluation.failure_class(observation, checks_passed=False) == (
         "reasoning_budget_exhausted"
     )
 
@@ -271,7 +280,7 @@ def _fake_urlopen(payload):
 
 def test_detect_max_model_len_reads_model_card(monkeypatch):
     payload = {"object": "list", "data": [{"id": "coder", "max_model_len": 16384}]}
-    monkeypatch.setattr(bm.urllib.request, "urlopen", _fake_urlopen(payload))
+    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen(payload))
     assert bm.detect_max_model_len("http://x/v1", "coder") == 16384
 
 
@@ -279,7 +288,7 @@ def test_detect_max_model_len_returns_none_on_error(monkeypatch):
     def boom(req, timeout=15):
         raise OSError("connection refused")
 
-    monkeypatch.setattr(bm.urllib.request, "urlopen", boom)
+    monkeypatch.setattr(urllib.request, "urlopen", boom)
     assert bm.detect_max_model_len("http://x/v1", "coder") is None
 
 
@@ -311,7 +320,7 @@ def test_stream_chat_prefers_usage_tokens_over_sse_chunk_count(monkeypatch):
         def __exit__(self, *args):
             return False
 
-    monkeypatch.setattr(bm.urllib.request, "urlopen", lambda *args, **kwargs: _Stream())
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *args, **kwargs: _Stream())
     result = bm.stream_chat("http://127.0.0.1:30002/v1", "model", "prompt", None, 16)
     assert result["out_toks"] == 7
     assert result["content_chunks"] == 2
@@ -338,7 +347,7 @@ def test_stream_chat_records_reasoning_before_visible_content(monkeypatch):
         def __exit__(self, *args):
             return False
 
-    monkeypatch.setattr(bm.urllib.request, "urlopen", lambda *args, **kwargs: _Stream())
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *args, **kwargs: _Stream())
     result = bm.stream_chat("http://127.0.0.1:30002/v1", "model", "prompt", None, 16)
 
     assert result["reasoning_chunks"] == 1
@@ -579,7 +588,7 @@ def _fake_hardware(gpu_uuid=None):
 
 
 def test_build_recipe_assembles_measured_serve_and_fit():
-    r = bm.build_recipe(_recipe_args(), _STUB_SUMMARY,
+    r = benchmark_recipes.build_recipe(_recipe_args(), _STUB_SUMMARY,
                         capture=_fake_capture, hardware=_fake_hardware)
     assert r["model"] == "local-heavy"  # defaults to --model
     assert r["status"] == "verified"
@@ -600,7 +609,7 @@ def test_build_recipe_labels_concurrent_throughput_as_aggregate():
     be recorded under the single-stream field the registry treats as its headline
     (critic SHOULD-FIX: default benchmark concurrency is 20)."""
     summary = dict(_STUB_SUMMARY, concurrency=20)
-    r = bm.build_recipe(_recipe_args(), summary,
+    r = benchmark_recipes.build_recipe(_recipe_args(), summary,
                         capture=_fake_capture, hardware=_fake_hardware)
     m = r["measured"]
     assert "throughput_single_tok_s" not in m
@@ -609,13 +618,13 @@ def test_build_recipe_labels_concurrent_throughput_as_aggregate():
 
 
 def test_recipe_model_overrides_model_field():
-    r = bm.build_recipe(_recipe_args(recipe_model="openai/gpt-oss-120b"), _STUB_SUMMARY,
+    r = benchmark_recipes.build_recipe(_recipe_args(recipe_model="openai/gpt-oss-120b"), _STUB_SUMMARY,
                         capture=_fake_capture, hardware=_fake_hardware)
     assert r["model"] == "openai/gpt-oss-120b"
 
 
 def test_emit_recipe_to_stdout_is_a_parseable_recipe_block(capsys):
-    bm.emit_recipe(_recipe_args(recipe_out="-"), _STUB_SUMMARY,
+    benchmark_recipes.emit_recipe(_recipe_args(recipe_out="-"), _STUB_SUMMARY,
                    capture=_fake_capture, hardware=_fake_hardware)
     block = capsys.readouterr().out
     assert block.startswith("[[recipe]]")
@@ -623,14 +632,14 @@ def test_emit_recipe_to_stdout_is_a_parseable_recipe_block(capsys):
     assert parsed["model"] == "local-heavy"
     assert parsed["measured"]["throughput_single_tok_s"] == 183.2
     # the reconstructed docker run works off exactly this captured block.
-    cmd = bm._serve_recipes().reconstruct_docker_run(parsed)
+    cmd = benchmark_recipes.serve_recipes().reconstruct_docker_run(parsed)
     assert "vllm/vllm-openai:nightly local-heavy --kv-cache-dtype fp8" in cmd
 
 
 def test_emit_recipe_appends_to_file(tmp_path):
     reg = tmp_path / "serve-recipes.toml"
     reg.write_text('schema = "v1"\n', encoding="utf-8")
-    bm.emit_recipe(_recipe_args(recipe_out=str(reg)), _STUB_SUMMARY,
+    benchmark_recipes.emit_recipe(_recipe_args(recipe_out=str(reg)), _STUB_SUMMARY,
                    capture=_fake_capture, hardware=_fake_hardware)
     data = tomllib.loads(reg.read_text(encoding="utf-8"))
     assert data["recipe"][0]["model"] == "local-heavy"
@@ -691,9 +700,9 @@ def test_main_incomplete_run_skips_verified_recipe(monkeypatch, tmp_path, capsys
 # ---- Fast-tier bakeoff evidence mode -------------------------------------------
 
 def test_parse_context_targets_rejects_non_positive():
-    assert bm.parse_context_targets("32768, 65536") == [32768, 65536]
+    assert benchmark_specs.parse_context_targets("32768, 65536") == [32768, 65536]
     with pytest.raises(ValueError):
-        bm.parse_context_targets("0")
+        benchmark_specs.parse_context_targets("0")
 
 
 def test_bakeoff_evidence_records_identity_context_score_and_failures(monkeypatch, tmp_path):
@@ -1360,7 +1369,7 @@ def _one_eval(**over):
 ])
 def test_suite_file_rejects_malformed_specs(tmp_path, spec):
     with pytest.raises(ValueError):
-        bm.load_suite_spec(_write_spec(tmp_path, spec))
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, spec))
 
 
 @pytest.mark.parametrize("check", [
@@ -1388,7 +1397,7 @@ def test_suite_file_rejects_vacuous_or_broken_checks(tmp_path, check):
     check would report passed on EMPTY model output and sail through the notebook's
     no_failures hard gate). The loader must reject every such shape up front."""
     with pytest.raises(ValueError):
-        bm.load_suite_spec(_write_spec(tmp_path, _one_eval(checks=[check])))
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, _one_eval(checks=[check])))
 
 
 @pytest.mark.parametrize("overrides", [
@@ -1399,7 +1408,7 @@ def test_suite_file_rejects_vacuous_or_broken_checks(tmp_path, check):
 ])
 def test_suite_file_rejects_resource_exhausting_budgets(tmp_path, overrides):
     with pytest.raises(ValueError):
-        bm.load_suite_spec(_write_spec(tmp_path, _one_eval(**overrides)))
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, _one_eval(**overrides)))
 
 
 def test_suite_file_rejects_too_many_evals(tmp_path):
@@ -1408,12 +1417,12 @@ def test_suite_file_rejects_too_many_evals(tmp_path):
         for index in range(101)
     ])
     with pytest.raises(ValueError, match="more than 100"):
-        bm.load_suite_spec(_write_spec(tmp_path, spec))
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, spec))
 
 
 def test_suite_file_rejects_unexecuted_context_bucket(tmp_path):
     with pytest.raises(ValueError, match="context_bucket cannot be executed faithfully"):
-        bm.load_suite_spec(
+        benchmark_specs.load_suite_spec(
             _write_spec(tmp_path, _one_eval(context_bucket="64k"))
         )
 
@@ -1452,13 +1461,13 @@ def test_suite_file_rejects_unexecuted_context_bucket(tmp_path):
             evidence_use="ranking",
             validator_strength="independent_judge",
         ),
-        "independent_judge is not executable yet",
+        "validator_strength must be",
     ),
 ])
 def test_ranking_suite_validator_strength_is_structurally_enforced(
         tmp_path, spec, message):
     with pytest.raises(ValueError, match=message):
-        bm.load_suite_spec(_write_spec(tmp_path, spec))
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, spec))
 
 
 @pytest.mark.parametrize("spec", [
@@ -1496,7 +1505,7 @@ def test_ranking_suite_validator_strength_is_structurally_enforced(
     },
 ])
 def test_ranking_suite_accepts_executable_strong_validators(tmp_path, spec):
-    loaded = bm.load_suite_spec(_write_spec(tmp_path, spec))
+    loaded = benchmark_specs.load_suite_spec(_write_spec(tmp_path, spec))
 
     assert loaded["evidence_use"] == "ranking"
 
@@ -1563,7 +1572,7 @@ def test_suite_file_fixture_matches_session_evals_plugin_shape(monkeypatch, tmp_
     fixture = str(
         __import__("pathlib").Path(__file__).parent / "fixtures" / "session_evals" / "suite.json"
     )
-    spec = bm.load_suite_spec(fixture)
+    spec = benchmark_specs.load_suite_spec(fixture)
     assert spec["suite"] == "merge-safety"
 
     def fake_post_chat(base, model, key, messages, max_tokens=128, timeout=120,
@@ -1911,7 +1920,6 @@ def test_bakeoff_voice_suite_records_supplied_metrics(tmp_path):
     assert evidence["voice"] == {
         "status": "recorded",
         "stt_latency_ms": 100.0,
-        "llm_latency_ms": None,
         "tts_latency_ms": 300.0,
         "total_turn_latency_ms": 1234.0,
     }

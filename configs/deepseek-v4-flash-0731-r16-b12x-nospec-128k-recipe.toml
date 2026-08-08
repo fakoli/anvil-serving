@@ -83,5 +83,5 @@ community = [
 ]
 local = [
   "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-128k-recipe.toml",
-  ".tickets/2026-08-01-deepseek-0731-r16-b12x-performance-spike.md",
+  ".tickets/closed/2026-08-01-deepseek-0731-r16-b12x-performance-spike.md",
 ]

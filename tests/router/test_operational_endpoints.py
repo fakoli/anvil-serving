@@ -1,10 +1,7 @@
 """HTTP contracts for router metadata, telemetry, trace, and metrics endpoints."""
 from __future__ import annotations
 
-import http.client
 import json
-import threading
-from contextlib import contextmanager
 
 from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import RouterConfig, Tier
@@ -16,11 +13,12 @@ from anvil_serving.router.front_door import (
     REQUEST_TRACE_PREFIX,
     ROUTER_STATS_ENDPOINT,
     ROUTER_STATUS_ENDPOINT,
-    make_server,
 )
 from anvil_serving.router.model_capacity import MetricsSnapshot
 from anvil_serving.router.serve import RoutingBackend
 from tests.router.helpers import StaticBackend
+from tests.router.helpers import http_get as _http_get
+from tests.router.helpers import server_context
 
 TOKEN = "router-operations-token"
 
@@ -112,28 +110,12 @@ def _routing() -> RoutingBackend:
     return routing
 
 
-@contextmanager
 def _server():
-    httpd = make_server("127.0.0.1", 0, _routing(), auth_token=TOKEN)
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    try:
-        yield httpd.server_address[:2]
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-        thread.join(timeout=5)
+    return server_context(_routing(), token=TOKEN)
 
 
 def _get(host, port, path, *, token=TOKEN):
-    connection = http.client.HTTPConnection(host, port, timeout=5)
-    try:
-        headers = {} if token is None else {"Authorization": f"Bearer {token}"}
-        connection.request("GET", path, headers=headers)
-        response = connection.getresponse()
-        return response.status, dict(response.getheaders()), response.read()
-    finally:
-        connection.close()
+    return _http_get(host, port, path, token=token)
 
 
 def test_metadata_status_stats_trace_and_metrics_are_authenticated():

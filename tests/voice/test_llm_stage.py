@@ -10,7 +10,6 @@ No GPU, no torch, no network.
 """
 from __future__ import annotations
 
-import io
 import json
 
 import pytest
@@ -28,25 +27,12 @@ from anvil_serving.voice.stages.llm import (
     stream_chat_completion,
     strip_tts_hostile,
 )
+from tests.voice.conftest import FakeLineResponse as FakeResponse
 
 
 # --------------------------------------------------------------------------- #
 # fakes: an in-memory transport, mirroring test_streaming_relay.py's DI style
 # --------------------------------------------------------------------------- #
-class FakeResponse:
-    """Line-iterable fake of an open urllib response (no socket)."""
-
-    def __init__(self, payload: bytes):
-        self._fp = io.BytesIO(payload)
-        self.closed = False
-
-    def __iter__(self):
-        return iter(self._fp)
-
-    def close(self) -> None:
-        self.closed = True
-
-
 class FakeTransport:
     """Records every call and returns a canned SSE payload -- proves the LLM
     stage never has to touch a real socket, and lets tests assert exactly

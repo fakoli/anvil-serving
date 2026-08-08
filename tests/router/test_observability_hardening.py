@@ -1,5 +1,5 @@
-"""ADR-0033 observability hardening: mid-stream honesty, background prober,
-restart-detectable metrics, and the honest token estimator."""
+"""ADR-0033 observability hardening: mid-stream honesty, inline-probe
+single-flight, restart-detectable metrics, and the honest token estimator."""
 from __future__ import annotations
 
 import http.client
@@ -10,12 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from anvil_serving.router.availability import (
-    AvailabilityResult,
-    BackgroundAvailabilityProber,
-    HttpHealthAvailability,
-)
-from anvil_serving.router.config import ConfigError, load
+from anvil_serving.router.availability import HttpHealthAvailability
+from anvil_serving.router.config import load
 from anvil_serving.router.internal import estimate_tokens
 from anvil_serving.router.serve import build_server
 
@@ -102,20 +98,7 @@ def test_mid_stream_failure_emits_terminal_error_and_valid_chunked_close(tmp_pat
     assert "RuntimeError" not in text
 
 
-# --- 4A: background availability prober -------------------------------------
-
-
-class _FakeTier:
-    """Duck-typed tier for direct prober tests."""
-
-    def __init__(self, tier_id="primary"):
-        self.id = tier_id
-        self.privacy = "local"
-        self.health_path = "/health"
-        self.base_url = "http://127.0.0.1:31002/v1"
-        self.model_identity = False
-        self.model = "primary-model"
-        self.auth_env = "ANVIL_PRIMARY_KEY"
+# --- 4A: inline availability probe single-flight ----------------------------
 
 
 def _availability(tmp_path, opener, clock):
@@ -134,55 +117,6 @@ class _Response:
 
     def getcode(self):
         return self.status
-
-
-def test_prober_backoff_grows_and_caps_then_resets():
-    inner_calls = []
-
-    class Inner:
-        def probe_now(self, tier):
-            inner_calls.append(tier.id)
-            return AvailabilityResult(False, "unavailable", "health_transport_x")
-
-        def cached(self, tier_id):
-            return None
-
-        def check(self, tier):
-            return AvailabilityResult(False, "unavailable", "inline")
-
-        def invalidate(self, tier_id=None):
-            return None
-
-    prober = BackgroundAvailabilityProber(
-        Inner(), [_FakeTier()], interval=1.0, backoff_max=4.0, jitter=lambda: 1.0
-    )
-    delays = [prober._next_delay("primary", available=False) for _ in range(5)]
-    assert delays == [1.0, 2.0, 4.0, 4.0, 4.0]  # doubles then caps
-    assert prober._next_delay("primary", available=True) == 1.0  # success resets
-
-
-def test_prober_serves_fresh_cache_and_falls_through_when_stale(tmp_path):
-    clock = [0.0]
-    probes = []
-
-    def opener(request, timeout):
-        probes.append(request.full_url)
-        return _Response()
-
-    inner = _availability(tmp_path, opener, lambda: clock[0])
-    tier = load(_config(tmp_path)).tiers[0]
-    prober = BackgroundAvailabilityProber(
-        inner, [tier], interval=5.0, staleness=15.0, jitter=lambda: 1.0
-    )
-
-    inner.probe_now(tier)
-    assert len(probes) == 1
-    clock[0] = 10.0  # within staleness: served from cache, no new probe
-    assert prober.check(tier).available is True
-    assert len(probes) == 1
-    clock[0] = 30.0  # stale: falls through to the inline single-flight probe
-    assert prober.check(tier).available is True
-    assert len(probes) == 2
 
 
 def test_inline_single_flight_losers_get_last_known_or_fail_closed(tmp_path):
@@ -214,30 +148,6 @@ def test_inline_single_flight_losers_get_last_known_or_fail_closed(tmp_path):
     release.set()
     thread.join(timeout=5)
     assert winner_result["result"].available is True
-
-
-def test_background_mode_builds_and_stops(tmp_path):
-    config_path = _config(tmp_path, availability_prober="background")
-    server = build_server(config_path, host="127.0.0.1", port=0)
-    try:
-        availability = server.anvil_availability
-        assert isinstance(availability, BackgroundAvailabilityProber)
-    finally:
-        server.anvil_availability.stop()
-        server.server_close()
-
-
-def test_prober_config_keys_are_validated(tmp_path):
-    with pytest.raises(ConfigError, match="availability_prober"):
-        load(_config(tmp_path, availability_prober="sometimes"))
-    with pytest.raises(ConfigError, match="staleness"):
-        load(
-            _config(
-                tmp_path,
-                availability_probe_interval=10,
-                availability_probe_staleness=5,
-            )
-        )
 
 
 # --- 4C: restart-detectable metrics ------------------------------------------

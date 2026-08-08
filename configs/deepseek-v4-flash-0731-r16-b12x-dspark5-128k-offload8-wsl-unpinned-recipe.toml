@@ -91,5 +91,5 @@ community = [
 ]
 local = [
   "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-128k-offload8-recipe.toml",
-  ".tickets/2026-08-02-deepseek-r16-native-kv-offload-illegal-access.md",
+  ".tickets/closed/2026-08-02-deepseek-r16-native-kv-offload-illegal-access.md",
 ]

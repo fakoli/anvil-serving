@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-08-07
 - **Relates to:** ADR-0002, ADR-0012, ADR-0014, ADR-0018, ADR-0030, ADR-0031, ADR-0032;
-  `.tickets/2026-08-06-controller-token-not-persisted.md`,
-  `.tickets/2026-08-07-local-transport-runtime-equality-friction.md`
+  `.tickets/closed/2026-08-06-controller-token-not-persisted.md`,
+  `.tickets/closed/2026-08-07-local-transport-runtime-equality-friction.md`
 
 ## Context
 

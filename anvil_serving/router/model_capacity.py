@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Callable, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
-from .availability import AvailabilityResult
+from .availability import AvailabilityResult, safe_check
 from .config import RouterConfig, Tier, normalize_model_alias
 
 CAPACITY_PARAMS_KEY = "capacity"
@@ -169,13 +169,7 @@ def _capacity_params(tier: Tier) -> Mapping[str, object]:
 
 
 def _readiness(availability, tier: Tier) -> AvailabilityResult:
-    try:
-        result = availability.check(tier)
-        if isinstance(result, AvailabilityResult):
-            return result
-    except Exception:  # noqa: BLE001 - no raw readiness details in this endpoint
-        pass
-    return AvailabilityResult(False, "unavailable", "availability_check_failed")
+    return safe_check(availability, tier, include_exception_name=False)
 
 
 def _metrics(provider: MetricsProvider, tier: Tier) -> MetricsSnapshot:

@@ -15,8 +15,9 @@ recorded where they stay current, not inline in this durable guide:
 2. `docs/findings/README.md` lists dated public findings chronologically, and
    the model dossiers under `docs/benchmarks/models/` carry each family's
    latest qualified evidence and remaining gates.
-3. `.tickets/` records product defects; read the open tickets before relying
-   on a lifecycle path they touch.
+3. `.tickets/` records product defects; open tickets stay at the top level and
+   resolved tickets move to `.tickets/closed/`. Read the open tickets before
+   relying on a lifecycle path they touch.
 
 Recorded evidence is never permission to assume current host state. Inspect
 the live mode, serve owners, router identity, and shared memory

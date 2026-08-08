@@ -8,7 +8,6 @@ from __future__ import annotations
 import base64
 import json
 import queue
-import threading
 import urllib.error
 from types import SimpleNamespace
 
@@ -25,11 +24,6 @@ from anvil_serving.voice.messages import (
 )
 from anvil_serving.voice.pipeline import VoicePipeline
 from anvil_serving.voice.realtime.service import RealtimeService
-from anvil_serving.voice.realtime.service import (
-    RealtimeProxyLogs,
-    RealtimeProxyService,
-    RealtimeProxyStopTimeoutError,
-)
 from anvil_serving.voice.realtime_service import (
     ProxyProcessConfig,
     RealtimeProxyProcessService,
@@ -51,179 +45,6 @@ def _make_service():
     sent = []
     service = RealtimeService(pipeline=pipeline, send_event=sent.append, session_id="s1")
     return pipeline, service, sent
-
-
-class _BlockingServer:
-    def __init__(self):
-        self.started = threading.Event()
-        self.stopped = threading.Event()
-        self.closed = False
-
-    def serve_forever(self):
-        self.started.set()
-        self.stopped.wait(2)
-
-    def shutdown(self):
-        self.stopped.set()
-
-    def server_close(self):
-        self.closed = True
-
-
-def test_realtime_proxy_lifecycle_is_mini_owned_and_bounded():
-    server = _BlockingServer()
-    proxy = RealtimeProxyService(lambda: server, port=8765)
-
-    started = proxy.start()
-    assert started.owner == "mini"
-    assert started.running is True
-    assert server.started.wait(1)
-    assert proxy.status().host == "127.0.0.1"
-    assert proxy.stop(timeout=1).running is False
-    assert server.closed is True
-    assert proxy.logs() == RealtimeProxyLogs()
-
-
-def test_realtime_proxy_rejects_non_mini_ownership():
-    with pytest.raises(ValueError, match="owner"):
-        RealtimeProxyService(lambda: _BlockingServer(), owner="dark")
-
-
-@pytest.mark.parametrize("host", ["0.0.0.0", "::", "100.64.0.10"])
-def test_realtime_proxy_rejects_non_loopback_and_wildcard_binds(host):
-    with pytest.raises(ValueError, match="127.0.0.1"):
-        RealtimeProxyService(lambda: _BlockingServer(), host=host)
-
-
-def test_realtime_proxy_close_failure_is_typed_and_does_not_block_restart():
-    close_error = OSError("close failed")
-
-    class CloseFailingServer(_BlockingServer):
-        def server_close(self):
-            self.closed = True
-            raise close_error
-
-    first = CloseFailingServer()
-    second = _BlockingServer()
-    servers = iter((first, second))
-    proxy = RealtimeProxyService(lambda: next(servers))
-
-    proxy.start()
-    assert first.started.wait(1)
-    stopped = proxy.stop(timeout=1)
-    assert stopped.running is False
-    assert stopped.stopping is False
-    assert stopped.close_error is close_error
-    assert first.closed is True
-
-    restarted = proxy.restart(timeout=1)
-    assert restarted.running is True
-    assert restarted.close_error is None
-    assert second.started.wait(1)
-    assert proxy.stop(timeout=1).running is False
-    assert second.closed is True
-
-
-def test_realtime_proxy_foreground_run_reports_running_and_can_be_stopped():
-    server = _BlockingServer()
-    proxy = RealtimeProxyService(lambda: server)
-    runner = threading.Thread(target=proxy.run)
-
-    runner.start()
-    assert server.started.wait(1)
-    assert proxy.status().running is True
-    assert proxy.stop(timeout=1).running is False
-    runner.join(timeout=1)
-    assert not runner.is_alive()
-
-
-def test_realtime_proxy_restart_fails_if_old_runner_times_out():
-    release = threading.Event()
-    factory_calls = []
-
-    class HungServer(_BlockingServer):
-        def serve_forever(self):
-            self.started.set()
-            release.wait(2)
-
-        def shutdown(self):
-            pass
-
-    server = HungServer()
-
-    def factory():
-        factory_calls.append(1)
-        return server
-
-    proxy = RealtimeProxyService(factory)
-    proxy.start()
-    assert server.started.wait(1)
-    with pytest.raises(RealtimeProxyStopTimeoutError):
-        proxy.stop(timeout=0.01)
-    with pytest.raises(RealtimeProxyStopTimeoutError):
-        proxy.restart(timeout=0.01)
-    assert len(factory_calls) == 1
-    release.set()
-    assert server.stopped.wait(0.01) is False
-    for _ in range(100):
-        if not proxy.status().running:
-            break
-        threading.Event().wait(0.01)
-    assert proxy.status().running is False
-
-
-def test_realtime_proxy_stop_times_out_when_shutdown_blocks():
-    release_shutdown = threading.Event()
-    stop_finished = threading.Event()
-    stop_errors = queue.Queue()
-
-    class BlockingShutdownServer(_BlockingServer):
-        def shutdown(self):
-            release_shutdown.wait()
-            super().shutdown()
-
-    server = BlockingShutdownServer()
-    proxy = RealtimeProxyService(lambda: server)
-    proxy.start()
-    assert server.started.wait(1)
-
-    def stop_proxy():
-        try:
-            proxy.stop(timeout=0.01)
-        except BaseException as exc:
-            stop_errors.put(exc)
-        finally:
-            stop_finished.set()
-
-    stopper = threading.Thread(target=stop_proxy)
-    try:
-        stopper.start()
-        assert stop_finished.wait(1), "stop() remained blocked in server.shutdown()"
-        error = stop_errors.get_nowait()
-        assert isinstance(error, RealtimeProxyStopTimeoutError)
-        assert proxy.status().running is True
-        assert proxy.status().stopping is True
-    finally:
-        release_shutdown.set()
-        stopper.join(timeout=1)
-        server.stopped.wait(1)
-
-
-def test_realtime_proxy_immediate_start_stop_has_initialized_server():
-    server = _BlockingServer()
-    proxy = RealtimeProxyService(lambda: server)
-
-    proxy.start()
-    assert proxy.stop(timeout=1).running is False
-    assert server.closed is True
-
-
-@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), True, "1"])
-def test_realtime_proxy_stop_rejects_invalid_timeout(timeout):
-    proxy = RealtimeProxyService(lambda: _BlockingServer())
-
-    with pytest.raises(ValueError, match="timeout must be positive"):
-        proxy.stop(timeout=timeout)
 
 
 def test_persistent_proxy_dry_run_uses_canonical_foreground_command(tmp_path):
