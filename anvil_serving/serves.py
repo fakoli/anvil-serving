@@ -659,9 +659,15 @@ def load_promotions(path):
             )
         for field in ("router_config", "rollback_router_config"):
             value = str(plan[field]).replace("{dir}", mdir)
-            plan[field] = os.path.abspath(
+            resolved = os.path.abspath(
                 value if os.path.isabs(value) else os.path.join(mdir, value)
             )
+            if not os.path.isfile(resolved):
+                raise ValueError(
+                    "promotion entry %r %s does not exist: %s"
+                    % (plan["name"], field, resolved)
+                )
+            plan[field] = resolved
         plan.setdefault("candidate", None)
         affected = plan.get("affected_tiers")
         if (

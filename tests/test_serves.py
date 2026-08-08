@@ -1699,6 +1699,18 @@ def test_load_promotions_rejects_removed_profile_fields(tmp_path):
         serves.load_promotions(path)
 
 
+def test_load_promotions_rejects_missing_rollback_router_config(tmp_path):
+    # A rollback profile that does not exist must fail at manifest load, not at
+    # promotion time — see .tickets/2026-08-08-promotion-router-profiles-not-
+    # existence-validated.md. Every read-only surface loads the manifest, so
+    # this is where an unusable rollback becomes visible.
+    path = _promotion_manifest(tmp_path)
+    (tmp_path / "router-rollback.toml").unlink()
+
+    with pytest.raises(ValueError, match="rollback_router_config does not exist"):
+        serves.load_promotions(path)
+
+
 def test_install_router_config_validates_writes_atomically_and_restarts(tmp_path):
     config = tmp_path / "router.toml"
     config.write_text("[router]\n", encoding="utf-8")
