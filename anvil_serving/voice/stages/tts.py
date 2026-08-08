@@ -41,7 +41,7 @@ STATEFUL resampler carrying the fractional phase (and the trailing
 input sample, for interpolating across the boundary) across chunks for one
 utterance -- follow-up work, not implemented here.
 
-Stdlib-only: ``array``, ``base64``, ``json``, ``os``, ``socket``, ``ssl``,
+Stdlib-only: ``array``, ``base64``, ``json``, ``socket``, ``ssl``,
 ``urllib.request``/``urllib.error``.
 """
 from __future__ import annotations
@@ -50,7 +50,6 @@ import array
 import base64
 import http.client
 import json
-import os
 import re
 import socket
 import ssl
@@ -70,7 +69,7 @@ from ..messages import (
     TTSInput,
     TTSSynthesisFailed,
 )
-from .base import BaseStage
+from .base import BaseStage, bearer_headers
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8091/v1"
 DEFAULT_MODEL = "tts"
@@ -196,13 +195,6 @@ def _default_transport(url: str, *, data: bytes, headers: Mapping[str, str], tim
         raise TTSClientError("TTS stage: request to %s failed: %s" % (url, exc)) from exc
 
 
-def _bearer_headers(api_key_env: Optional[str]) -> Dict[str, str]:
-    if not api_key_env:
-        return {}
-    token = (os.environ.get(api_key_env) or "").strip()
-    return {"Authorization": "Bearer %s" % token} if token else {}
-
-
 def _response_status(resp: Any) -> Optional[int]:
     """Best-effort HTTP status extraction across response shapes.
 
@@ -256,7 +248,7 @@ def stream_speech(
     url = config.base_url.rstrip("/") + "/audio/speech"
     body = json.dumps(build_speech_request_body(text, config)).encode("utf-8")
     headers = {"Content-Type": "application/json", "Accept": "application/octet-stream"}
-    headers.update(_bearer_headers(config.api_key_env))
+    headers.update(bearer_headers(config.api_key_env))
 
     resp = (transport or _default_transport)(url, data=body, headers=headers, timeout=config.timeout)
     try:
@@ -337,7 +329,7 @@ def stream_cartesia_speech(text: str, config: TTSStageConfig) -> Iterator[bytes]
             host=host,
             port=port,
             path=path,
-            headers=_bearer_headers(config.api_key_env),
+            headers=bearer_headers(config.api_key_env),
         )
         conn.send_json(
             build_cartesia_speech_request_body(text, config, context_id=context_id, continue_=False)

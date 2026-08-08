@@ -2613,11 +2613,6 @@ def _expected_compose_project(serve):
     return _stack_project(serve.get("stack", DEFAULT_STACK))
 
 
-def _compose_project_from_up(up):
-    """Compatibility helper: explicit Compose project or the serving default."""
-    return _explicit_compose_project(up) or DEFAULT_COMPOSE_PROJECT
-
-
 def _compose_up_with_project(up, project=DEFAULT_COMPOSE_PROJECT):
     """Make Compose ownership independent of the selected file's directory."""
     if not _is_compose_up(up) or any(

@@ -13,23 +13,17 @@ from typing import Any
 
 from .errors import ToolError
 from .security import ENV_NAME_RE, redact_secret, safe_controller_url
+from ...transports import _NoRedirectHandler, _urlopen_no_proxy_no_redirect
+
+NoRedirectHandler = _NoRedirectHandler
 
 
 MAX_REMOTE_CONTROLLER_RESPONSE_BYTES = 1024 * 1024
 MAX_ERROR_BODY_BYTES = 4096
 
 
-class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
-
-
 def urlopen_no_proxy_no_redirect(req, timeout=30):
-    opener = urllib.request.build_opener(
-        urllib.request.ProxyHandler({}),
-        NoRedirectHandler(),
-    )
-    return opener.open(req, timeout=timeout)
+    return _urlopen_no_proxy_no_redirect(req, timeout)
 
 
 def http_error_details(
