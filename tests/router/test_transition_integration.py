@@ -206,6 +206,7 @@ def _eviction_manifest(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30003
         model = "auxiliary-local"
         engine = "vllm"
@@ -217,6 +218,7 @@ def _eviction_manifest(tmp_path):
         [[serve]]
         name = "exp"
         container = "vllm-exp"
+        runtime = "docker"
         port = 30002
         model = "primary-local"
         engine = "vllm"

@@ -4,7 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.24.0] - 2026-08-08
+
+### Changed
+
+- **BREAKING:** every `[[serve]]` entry must now declare `runtime`, either
+  `"docker"` or `"native"` (ADR-0034 §7). There is deliberately no default — an
+  implicit container assumption is what made a heterogeneous fleet
+  inexpressible, and defaulting would preserve that defect under a new name.
+  `container` is required when `runtime = "docker"` and rejected when
+  `runtime = "native"`. Existing manifests must add the field; all in-repo
+  manifests, examples, scaffold templates, and the `deploy` generator were
+  migrated.
+- `runtime = "native"` is accepted by the schema but rejected at manifest load
+  with `NativeRuntimeNotSupported` until the native lifecycle exists. Roughly 85
+  code sites resolve `serve["container"]`, so loading a native entry today would
+  surface as a `KeyError` inside an unrelated command. Failing at load keeps the
+  schema honest and the failure legible; removing the guard is the last step of
+  implementing native serving.
 
 ### Added
 
