@@ -1,6 +1,6 @@
 <div align="center">
 
-![anvil-serving - local model serving and a thin capability gateway](assets/banner.png)
+![anvil-serving - local model serving and a thin capability gateway](docs/assets/banner.png)
 
 # anvil-serving
 
