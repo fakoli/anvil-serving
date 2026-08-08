@@ -107,14 +107,6 @@ class InternalRequest:
     dialect: str = ""
     raw: Dict[str, Any] = field(default_factory=dict)
 
-    @property
-    def last_user_text(self) -> str:
-        """Text of the most recent ``user`` message (empty if none)."""
-        for m in reversed(self.messages):
-            if m.role == "user":
-                return m.content
-        return ""
-
 
 @dataclass
 class StructuredResult:

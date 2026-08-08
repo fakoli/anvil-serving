@@ -29,7 +29,7 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
-from .availability import AvailabilityResult
+from .availability import AvailabilityResult, safe_check
 from .config import PRIVACY_LOCAL, PURPOSE_EMBEDDING, RouterConfig, Tier
 
 #: Role label for every chat tier (``[[router.tiers]]``); heavy/fast are both
@@ -115,24 +115,6 @@ def _serve_probe_target(serve_id: str, base_url: str, auth_env: Optional[str]) -
     )
 
 
-def _safe_check(availability, tier: Tier) -> AvailabilityResult:
-    """Resolve one serve's readiness, failing closed to ``down`` on any fault.
-
-    A faulty availability implementation must never turn a health read into a
-    500 or leak an exception string; it becomes a content-free ``down`` row,
-    mirroring ``RoutingBackend._availability_snapshot``.
-    """
-    try:
-        result = availability.check(tier)
-        if not isinstance(result, AvailabilityResult):
-            raise TypeError("non-AvailabilityResult")
-        return result
-    except Exception as exc:  # noqa: BLE001 - readiness failure isolates the serve
-        return AvailabilityResult(
-            False, "unavailable", f"availability_check_{type(exc).__name__}"
-        )
-
-
 def build_tier_health(config: RouterConfig, availability) -> dict:
     """Return ``{"tiers": [row, ...]}`` for EVERY configured serve.
 
@@ -143,14 +125,14 @@ def build_tier_health(config: RouterConfig, availability) -> dict:
     """
     rows = []
     for tier in config.tiers:
-        rows.append(_row(tier.id, ROLE_LLM, _safe_check(availability, tier)))
+        rows.append(_row(tier.id, ROLE_LLM, safe_check(availability, tier)))
     for pm in config.purpose_models:
         role = "embeddings" if pm.kind == PURPOSE_EMBEDDING else pm.kind
         target = _serve_probe_target(f"purpose:{pm.id}", pm.base_url, pm.auth_env)
-        rows.append(_row(pm.id, role, _safe_check(availability, target)))
+        rows.append(_row(pm.id, role, safe_check(availability, target)))
     for route in config.audio_routes:
         target = _serve_probe_target(f"audio:{route.id}", route.base_url, route.auth_env)
-        rows.append(_row(route.id, route.purpose, _safe_check(availability, target)))
+        rows.append(_row(route.id, route.purpose, safe_check(availability, target)))
     return {"tiers": rows}
 
 

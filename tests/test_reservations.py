@@ -7,16 +7,12 @@ no network. Mirrors tests/test_serves_manage.py's fake-`_run` style.
 """
 import json
 import textwrap
-import types
 
 import pytest
 
 from anvil_serving import reservations, serves
 from anvil_serving.voice.serves import _common as voice_common
-
-
-def proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
+from tests.conftest import proc
 
 
 def _manifest(tmp_path, body):

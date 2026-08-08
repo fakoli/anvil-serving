@@ -41,6 +41,19 @@ def _chunk(cid: str, created: int, model: str,
     }
 
 
+def _tool_call_arguments_str(tc: Mapping[str, Any]) -> str:
+    """Serialize one backend tool call's ``arguments`` to the OpenAI wire string.
+
+    ``StructuredResult.tool_calls`` carries ``arguments`` as either an
+    already-parsed dict (JSON-encoded here) or a raw string (passed through,
+    or ``""`` when absent).
+    """
+    args = tc.get("arguments")
+    if isinstance(args, dict):
+        return json.dumps(args)
+    return str(args) if args is not None else ""
+
+
 def _caller_wants_usage(request: InternalRequest) -> bool:
     """Whether the caller asked for streaming usage (``stream_options.include_usage``).
 
@@ -207,11 +220,7 @@ class OpenAIDialect:
             for _tc_i, _tc in enumerate(_tool_calls):
                 _tc_id = _tc.get("id") or _new_id("call_")
                 _tc_name = _tc.get("name") or ""
-                _tc_args = _tc.get("arguments")
-                if isinstance(_tc_args, dict):
-                    _tc_args_str = json.dumps(_tc_args)
-                else:
-                    _tc_args_str = str(_tc_args) if _tc_args is not None else ""
+                _tc_args_str = _tool_call_arguments_str(_tc)
                 # Header chunk: id, type, name, empty arguments
                 yield _sse(_chunk(cid, created, model, {
                     "tool_calls": [{
@@ -260,17 +269,12 @@ class OpenAIDialect:
         if _tool_calls:
             tc_wire = []
             for _tc in _tool_calls:
-                _tc_args = _tc.get("arguments")
-                if isinstance(_tc_args, dict):
-                    _tc_args_str = json.dumps(_tc_args)
-                else:
-                    _tc_args_str = str(_tc_args) if _tc_args is not None else ""
                 tc_wire.append({
                     "id": _tc.get("id") or _new_id("call_"),
                     "type": "function",
                     "function": {
                         "name": _tc.get("name") or "",
-                        "arguments": _tc_args_str,
+                        "arguments": _tool_call_arguments_str(_tc),
                     },
                 })
             message["tool_calls"] = tc_wire

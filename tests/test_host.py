@@ -6,15 +6,11 @@ on any OS with no docker, no WSL, no prompts.
 import os
 import json
 import subprocess
-import types
 
 import pytest
 
 from anvil_serving import host
-
-
-def proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
+from tests.conftest import proc
 
 
 @pytest.fixture(autouse=True)

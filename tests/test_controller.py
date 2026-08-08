@@ -1578,7 +1578,13 @@ def test_persisted_sanitizer_handles_tuples_and_token_bearing_dict_keys():
     assert secret not in json.dumps(safe)
 
 
-def test_idempotency_tombstone_generations_rotate_saturated_false_positives(tmp_path):
+def test_idempotency_tombstone_is_purged_once_its_own_retention_elapses(tmp_path):
+    """Exact-membership tombstones (no bloom filter) still expire on schedule.
+
+    An expired record's tombstone blocks replay for one retention window, then
+    is purged and the key becomes freely reusable, exercised entirely through
+    the public store API (claim/lookup) plus the maintenance-path purge.
+    """
     now = [100.0]
     store = controller.OperationStore(
         str(tmp_path / "operations.sqlite3"),
@@ -1588,36 +1594,14 @@ def test_idempotency_tombstone_generations_rotate_saturated_false_positives(tmp_
     )
     fingerprint = controller._operation_fingerprint("fake", {"confirm": True}, CONTEXT)
 
-    assert store.lookup("initialize-generation") is None
-    saturated = bytes([0xFF]) * store._tombstone_bytes
-    empty = bytes(store._tombstone_bytes)
-    with store._connection() as connection:
-        connection.execute(
-            """
-            UPDATE operation_tombstones
-            SET key_bits = ?, fingerprint_bits = ?
-            WHERE singleton = 1
-            """,
-            (saturated, empty),
-        )
+    assert store.claim("recycled", fingerprint, "request-1")[0] == "claimed"
+    now[0] = 111.0  # record itself expires; tombstoned for another retention window
+    assert store.lookup("recycled")["status"] == "expired"
+    assert store.claim("recycled", fingerprint, "request-2")[0] == "expired"
 
-    assert store.claim("false-positive", fingerprint, "request-1")[0] == "conflict"
-    now[0] = 110.0
-    assert store.claim("previous-generation", fingerprint, "request-2")[0] == "conflict"
-    now[0] = 120.0
-    assert store.claim("rotation-recovered", fingerprint, "request-3")[0] == "claimed"
-
-    with store._connection() as connection:
-        row = connection.execute(
-            "SELECT * FROM operation_tombstones WHERE singleton = 1"
-        ).fetchone()
-    for name in (
-        "key_bits",
-        "fingerprint_bits",
-        "previous_key_bits",
-        "previous_fingerprint_bits",
-    ):
-        assert len(row[name]) == store._tombstone_bytes
+    now[0] = 122.0  # tombstone's own expiry (121.0) has passed; fully forgotten
+    assert store.lookup("recycled") is None
+    assert store.claim("recycled", fingerprint, "request-3")[0] == "claimed"
 
 
 # --- ADR-0033: file-backed token resolution -------------------------------
