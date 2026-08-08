@@ -554,7 +554,7 @@ def _gpu_role(topology: Topology, resource: Resource, command: CommandSpec) -> G
 
 # A host's native shell drives its own docker daemon; that is the only
 # cross-runtime pair that is genuinely local (ADR-0033;
-# .tickets/2026-08-07-local-transport-runtime-equality-friction.md).
+# .tickets/closed/2026-08-07-local-transport-runtime-equality-friction.md).
 _NATIVE_OPERATES_RUNTIME_ROLES = frozenset({"docker"})
 
 

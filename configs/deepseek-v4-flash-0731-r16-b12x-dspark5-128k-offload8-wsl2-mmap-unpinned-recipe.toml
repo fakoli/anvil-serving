@@ -92,5 +92,5 @@ community = [
 local = [
   "configs/runtime-patches/vllm/48518e91-wsl2-offload-mmap-unpinned/Dockerfile",
   "configs/runtime-patches/vllm/48518e91-wsl2-offload-mmap-unpinned/wsl2-offload-mmap-pin-control.patch",
-  ".tickets/2026-08-02-deepseek-r16-native-kv-offload-illegal-access.md",
+  ".tickets/closed/2026-08-02-deepseek-r16-native-kv-offload-illegal-access.md",
 ]

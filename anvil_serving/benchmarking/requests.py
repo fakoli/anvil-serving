@@ -1,20 +1,17 @@
 """Request construction, transport, and response normalization."""
 
 import json
-import math
 import time
 import urllib.request
 
-from ..preflight import resolve_api_key as resolve_api_key
+from ..preflight import (
+    resolve_api_key as resolve_api_key,
+    response_observation as response_observation,
+)
 
 FILLER = "def helper_%d():\n    return compute(%d)  # routine specialist context\n"
 CHARS_PER_TOKEN = 3.0
 DEFAULT_CTX_MARGIN = 1024
-
-
-def est_tokens(text):
-    """Conservative token estimate for a string."""
-    return math.ceil(len(text) / CHARS_PER_TOKEN)
 
 
 def ctx_cap(max_model_len, max_tokens, margin=DEFAULT_CTX_MARGIN):
@@ -34,6 +31,19 @@ def clamp_ctx(ctx, cap):
     return ctx if cap is None else min(ctx, cap)
 
 
+def _fill_lines(char_budget, *, offset=0):
+    """Repeat FILLER (offset by index) until the joined text reaches char_budget."""
+    lines = []
+    filled = 0
+    index = 0
+    while filled < char_budget:
+        line = FILLER % (offset + index, index)
+        lines.append(line)
+        filled += len(line)
+        index += 1
+    return "".join(lines)
+
+
 def make_prompt(shared_prefix, ctx_tokens, uniq, max_prompt_tokens=None,
                 chars_per_token=CHARS_PER_TOKEN):
     """Build a calibrated prompt without exceeding the requested token budget."""
@@ -44,15 +54,7 @@ def make_prompt(shared_prefix, ctx_tokens, uniq, max_prompt_tokens=None,
     char_budget = int(budget * chars_per_token) - len(shared_prefix) - len(tail) - 1
     if char_budget <= 0:
         return shared_prefix[: max(0, int(budget * chars_per_token) - len(tail))] + tail
-    lines = []
-    filled = 0
-    index = 0
-    while filled < char_budget:
-        line = FILLER % (uniq + index, index)
-        lines.append(line)
-        filled += len(line)
-        index += 1
-    filler = "".join(lines)[:max(0, char_budget)]
+    filler = _fill_lines(char_budget, offset=uniq)[:max(0, char_budget)]
     return shared_prefix + "\n" + filler + tail
 
 
@@ -61,15 +63,7 @@ def make_shared_prefix(target_tokens, *, chars_per_token=CHARS_PER_TOKEN):
     if target_tokens <= 0:
         return ""
     char_budget = int(target_tokens * chars_per_token)
-    lines = []
-    filled = 0
-    index = 0
-    while filled < char_budget:
-        line = FILLER % (index, index)
-        lines.append(line)
-        filled += len(line)
-        index += 1
-    return "".join(lines)[:char_budget]
+    return _fill_lines(char_budget)[:char_budget]
 
 
 def build_body(model, prompt, max_tokens, chat_template_kwargs=None, reasoning_effort=None):
@@ -92,44 +86,6 @@ def _choice_messages(response):
         if isinstance(choice, dict) and isinstance(choice.get("message"), dict):
             messages.append(choice["message"])
     return messages
-
-
-def _message_text(message):
-    content = message.get("content") if isinstance(message, dict) else ""
-    return content if isinstance(content, str) else ""
-
-
-def response_observation(response):
-    """Extract visible and reasoning-channel evidence from one chat response."""
-    choices = response.get("choices") if isinstance(response, dict) else None
-    choice = choices[0] if isinstance(choices, list) and choices else {}
-    choice = choice if isinstance(choice, dict) else {}
-    message = choice.get("message") if isinstance(choice.get("message"), dict) else {}
-    content = _message_text(message)
-    reasoning_field = None
-    reasoning = ""
-    for field in ("reasoning", "reasoning_content"):
-        value = message.get(field)
-        if isinstance(value, str):
-            if reasoning_field is None:
-                reasoning_field = field
-            if value:
-                reasoning_field = field
-                reasoning = value
-                break
-    usage = response.get("usage") if isinstance(response, dict) else None
-    details = usage.get("completion_tokens_details") if isinstance(usage, dict) else None
-    reasoning_tokens = details.get("reasoning_tokens") if isinstance(details, dict) else None
-    return {
-        "content": content,
-        "content_excerpt": content[:200],
-        "finish_reason": choice.get("finish_reason"),
-        "reasoning_field": reasoning_field,
-        "reasoning_chars": len(reasoning),
-        "reasoning_excerpt": reasoning[:200] if reasoning else "",
-        "reasoning_tokens": reasoning_tokens,
-        "usage": usage,
-    }
 
 
 def validate_function_tool_call(message, expected_name, required_args):

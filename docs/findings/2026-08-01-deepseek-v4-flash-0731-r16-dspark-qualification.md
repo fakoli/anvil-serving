@@ -219,6 +219,6 @@ normal split topology remain unchanged.
 The external prior and exact pinned runtime are recorded in the
 [source capture](2026-08-01-deepseek-v4-flash-0731-nvfp4-evidence/external-dzeeksa-r16-thread.json).
 The complete private attempt log and acceptance contract are retained in
-`.tickets/2026-08-01-deepseek-0731-r16-b12x-performance-spike.md`.
+`.tickets/closed/2026-08-01-deepseek-0731-r16-b12x-performance-spike.md`.
 The evidence directory totals approximately 0.57 MB; every raw file is below
 the 1 MiB per-file publication limit.

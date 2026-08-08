@@ -3,11 +3,41 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Iterator, Mapping
 
 
 _IMAGE_TYPES = frozenset(("image_url", "input_image", "image"))
 _VIDEO_TYPES = frozenset(("video_url", "input_video", "video"))
+
+
+def iter_content_block_types(raw: Mapping[str, Any]) -> Iterator[str]:
+    """Yield each message content block's ``type`` string, defensively.
+
+    Single source of truth for the ``messages[].content[]`` block walk shared
+    by media-count admission here and the tool/image/video artifact detectors
+    in :mod:`~anvil_serving.router.dialects.translate`. Malformed entries
+    (non-list ``messages``/``content``, a non-mapping block, a missing or
+    non-string ``type``) are skipped rather than raised.
+    """
+    messages = raw.get("messages")
+    if not isinstance(messages, (list, tuple)):
+        return
+    for message in messages:
+        if not isinstance(message, Mapping):
+            continue
+        content = message.get("content")
+        if not isinstance(content, (list, tuple)):
+            continue
+        for block in content:
+            if isinstance(block, Mapping):
+                block_type = block.get("type")
+                if isinstance(block_type, str):
+                    yield block_type
+
+
+def has_block_type(raw: Mapping[str, Any], types: frozenset) -> bool:
+    """True when any message content block's ``type`` is in ``types``."""
+    return any(block_type in types for block_type in iter_content_block_types(raw))
 
 
 @dataclass(frozen=True)
@@ -27,23 +57,11 @@ def count_media(raw: Mapping[str, Any]) -> tuple[int, int]:
 
     images = 0
     videos = 0
-    messages = raw.get("messages")
-    if not isinstance(messages, (list, tuple)):
-        return images, videos
-    for message in messages:
-        if not isinstance(message, Mapping):
-            continue
-        content = message.get("content")
-        if not isinstance(content, (list, tuple)):
-            continue
-        for block in content:
-            if not isinstance(block, Mapping):
-                continue
-            block_type = block.get("type")
-            if block_type in _IMAGE_TYPES:
-                images += 1
-            elif block_type in _VIDEO_TYPES:
-                videos += 1
+    for block_type in iter_content_block_types(raw):
+        if block_type in _IMAGE_TYPES:
+            images += 1
+        elif block_type in _VIDEO_TYPES:
+            videos += 1
     return images, videos
 
 
@@ -90,4 +108,10 @@ def evaluate_media_admission(
     return MediaAdmission(True, images, videos, visual_tokens, True, "allowed")
 
 
-__all__ = ["MediaAdmission", "count_media", "evaluate_media_admission"]
+__all__ = [
+    "MediaAdmission",
+    "count_media",
+    "evaluate_media_admission",
+    "has_block_type",
+    "iter_content_block_types",
+]

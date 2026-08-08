@@ -6,22 +6,19 @@ seams), so these run with no docker, no GPU, and no network.
 import os
 import subprocess
 import textwrap
-import types
 import json
 
 import pytest
 
 from anvil_serving import reservations, serves
+from tests.conftest import enabled_cache_policy as _enabled_cache_policy
+from tests.conftest import proc
 
 
 @pytest.fixture(autouse=True)
 def _isolated_host_policy(monkeypatch, tmp_path):
     """Never let a developer's enabled machine policy affect unit timing."""
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / ".anvil-serving"))
-
-
-def proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
 
 
 def _manifest(tmp_path, body):
@@ -2270,18 +2267,6 @@ def test_main_status_rejects_unknown_opt_in_before_polling(
 
 
 # ---- lifecycle-aware automatic WSL cache reclaim ---------------------------
-
-def _enabled_cache_policy():
-    return {
-        "enabled": True,
-        "distro": "docker-desktop",
-        "threshold_gb": 16.0,
-        "source_path": "host.toml",
-        "configured": True,
-        "applicable": True,
-        "schema_version": 1,
-    }
-
 
 def _lifecycle_manifest(tmp_path):
     return _manifest(tmp_path, """

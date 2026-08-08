@@ -23,11 +23,10 @@ import threading
 import time
 import json
 import os
-import random
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, replace
-from typing import Callable, Dict, Mapping, Optional, Sequence
+from typing import Callable, Dict, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
 from .config import PRIVACY_LOCAL, RouterConfig, Tier
@@ -281,125 +280,40 @@ class HttpHealthAvailability:
                 self._cache.pop(tier_id, None)
 
 
-class BackgroundAvailabilityProber:
-    """Jittered, backoff-aware background scheduler over HttpHealthAvailability.
+def safe_check(
+    availability,
+    tier: Tier,
+    *,
+    reason_prefix: str = "availability_check",
+    include_exception_name: bool = True,
+) -> AvailabilityResult:
+    """Call ``availability.check(tier)``, coercing any fault into an unavailable result.
 
-    ADR-0033: with the inline default, a hard-down serve costs
-    ``availability_probe_timeout`` on the request path at every cache expiry.
-    This prober moves the same probes onto one daemon thread: intervals are
-    jittered (0.8-1.2x) so tiers do not thunder together, and consecutive
-    failures back off exponentially up to ``backoff_max``. ``check`` serves the
-    last-known result while it is younger than ``staleness``; a stale or absent
-    result falls through to the inner single-flighted inline probe, so a
-    wedged prober degrades to exactly the pre-ADR-0033 behavior.
-
-    Explicitly not a fallback mechanism: it changes when the same probe runs,
-    never where traffic goes.
+    Shared by every call site that needs a tier's readiness but must never let a
+    broken ``availability`` implementation (a raised exception, or a non-
+    :class:`AvailabilityResult` return) escape as a 500 or crash routing.
+    ``include_exception_name`` selects between the request-path reason
+    (``{reason_prefix}_{ExceptionName}``, useful for debugging a live fault) and
+    the fixed, content-free reason used by read-only status endpoints
+    (``{reason_prefix}_failed``).
     """
-
-    def __init__(
-        self,
-        inner: HttpHealthAvailability,
-        tiers: Sequence[Tier],
-        *,
-        interval: float,
-        backoff_max: Optional[float] = None,
-        staleness: Optional[float] = None,
-        clock: Callable[[], float] = time.monotonic,
-        jitter: Optional[Callable[[], float]] = None,
-    ) -> None:
-        if interval <= 0:
-            raise ValueError("interval must be positive")
-        self._inner = inner
-        self._tiers = tuple(tiers)
-        self._interval = float(interval)
-        self._backoff_max = float(backoff_max) if backoff_max else 8.0 * self._interval
-        self._staleness = float(staleness) if staleness else 3.0 * self._interval
-        if self._staleness < self._interval:
-            raise ValueError("staleness must be >= interval")
-        self._clock = clock
-        self._jitter = jitter or (lambda: random.uniform(0.8, 1.2))
-        self._stop = threading.Event()
-        self._wake = threading.Event()
-        self._thread: Optional[threading.Thread] = None
-        self._due: Dict[str, float] = {}
-        self._failures: Dict[str, int] = {}
-        self._state_lock = threading.Lock()
-
-    def start(self) -> None:
-        if self._thread is not None:
-            return
-        self._thread = threading.Thread(
-            target=self._run, name="anvil-availability-prober", daemon=True
+    try:
+        result = availability.check(tier)
+        if not isinstance(result, AvailabilityResult):
+            raise TypeError("non-AvailabilityResult")
+        return result
+    except Exception as exc:  # noqa: BLE001 - a broken availability must never propagate
+        reason = (
+            f"{reason_prefix}_{type(exc).__name__}"
+            if include_exception_name
+            else f"{reason_prefix}_failed"
         )
-        self._thread.start()
-
-    def stop(self, timeout: float = 5.0) -> None:
-        self._stop.set()
-        self._wake.set()
-        if self._thread is not None:
-            self._thread.join(timeout=timeout)
-
-    def _next_delay(self, tier_id: str, available: bool) -> float:
-        with self._state_lock:
-            failures = self._failures.get(tier_id, 0)
-            failures = 0 if available else failures + 1
-            self._failures[tier_id] = failures
-        base = min(self._interval * (2 ** max(0, failures - 1)), self._backoff_max) \
-            if failures else self._interval
-        return base * self._jitter()
-
-    def _run(self) -> None:
-        for tier in self._tiers:
-            self._due[tier.id] = self._clock()
-        while not self._stop.is_set():
-            now = self._clock()
-            next_due = None
-            for tier in self._tiers:
-                due = self._due.get(tier.id, now)
-                if due <= now:
-                    try:
-                        result = self._inner.probe_now(tier)
-                        available = result.available
-                    except Exception:  # noqa: BLE001 - a probe crash never kills the loop
-                        available = False
-                    self._due[tier.id] = self._clock() + self._next_delay(
-                        tier.id, available
-                    )
-                due = self._due.get(tier.id, now)
-                next_due = due if next_due is None else min(next_due, due)
-            delay = 0.05 if next_due is None else max(0.05, next_due - self._clock())
-            self._wake.wait(timeout=min(delay, self._interval))
-            self._wake.clear()
-
-    def check(self, tier: Tier) -> AvailabilityResult:
-        cached = self._inner.cached(tier.id)
-        if cached is not None and cached[0] <= self._staleness:
-            return cached[1]
-        # Stale or missing: the prober is behind (or was just started). Fall
-        # through to the single-flighted inline probe so availability truth
-        # never depends on the background thread being alive.
-        return self._inner.check(tier)
-
-    def invalidate(self, tier_id: Optional[str] = None) -> None:
-        self._inner.invalidate(tier_id)
-        with self._state_lock:
-            if tier_id is None:
-                self._failures.clear()
-            else:
-                self._failures.pop(tier_id, None)
-        now = self._clock()
-        if tier_id is None:
-            for tier in self._tiers:
-                self._due[tier.id] = now
-        else:
-            self._due[tier_id] = now
-        self._wake.set()
+        return AvailabilityResult(False, "unavailable", reason)
 
 
 __all__ = [
     "AlwaysAvailable",
     "AvailabilityResult",
-    "BackgroundAvailabilityProber",
     "HttpHealthAvailability",
+    "safe_check",
 ]

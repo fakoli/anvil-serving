@@ -7,24 +7,11 @@ from anvil_serving.observability.probes.remote_controller import (
     collect_remote_telemetry,
 )
 from anvil_serving.observability.schema import CapabilityStatus, TelemetrySample
+from tests.conftest import Response
 
 
 TOKEN = "controller-secret-token"
 NOW = datetime(2026, 7, 11, 20, 0, tzinfo=timezone.utc)
-
-
-class Response:
-    def __init__(self, payload: bytes):
-        self.payload = payload
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_args):
-        return False
-
-    def read(self, size=-1):
-        return self.payload if size < 0 else self.payload[:size]
 
 
 def _remote_sample(*, age_seconds: float = 0) -> TelemetrySample:

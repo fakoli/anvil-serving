@@ -49,8 +49,6 @@ _STT_FORMATS: Mapping[str, Tuple[str, str]] = {
     "pcm16": ("audio/L16", "audio.pcm"),
     "webm_opus": ("audio/webm", "audio.webm"),
 }
-_TTS_RESPONSE_FORMATS = {"pcm16"}
-_KOKORO_RESPONSE_FORMATS = {"pcm16": "pcm"}
 _TTS_CONTENT_TYPES = {
     "pcm16": {"audio/pcm", "audio/l16", "application/octet-stream"},
 }
@@ -472,7 +470,7 @@ class AudioGateway:
                 413, "payload_too_large", "input exceeds the configured text limit"
             )
         requested_format = body.get("response_format")
-        if not isinstance(requested_format, str) or requested_format not in _TTS_RESPONSE_FORMATS:
+        if requested_format != "pcm16":
             raise AudioGatewayError(
                 400,
                 "invalid_request_error",
@@ -483,7 +481,8 @@ class AudioGateway:
             {
                 "model": route.model,
                 "input": text,
-                "response_format": _KOKORO_RESPONSE_FORMATS[requested_format],
+                # Kokoro's own "pcm16" spelling: "pcm".
+                "response_format": "pcm",
             }
         ).encode("utf-8")
         started = self._monotonic()

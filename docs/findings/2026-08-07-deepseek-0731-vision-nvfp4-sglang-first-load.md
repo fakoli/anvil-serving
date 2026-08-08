@@ -105,7 +105,7 @@ capacity or concurrency lane was run.
 
 Seven starts on 2026-08-07. Full narrative, stack traces, and the isolated
 repro attempts are retained in
-`.tickets/2026-08-07-deepseek-0731-vision-tp2-memfraction-fit.md`.
+`.tickets/closed/2026-08-07-deepseek-0731-vision-tp2-memfraction-fit.md`.
 
 | # | Config delta | Outcome |
 |---:|---|---|
@@ -308,6 +308,6 @@ startup logs are archived in the private operator repository under
   `probe_ocr_bigfont.png` and their generators.
 
 The attempt-by-attempt operator log is
-`.tickets/2026-08-07-deepseek-0731-vision-tp2-memfraction-fit.md`. Source
+`.tickets/closed/2026-08-07-deepseek-0731-vision-tp2-memfraction-fit.md`. Source
 preservation and the upstream translation table are in the
 [recipe intake note](2026-08-07-deepseek-0731-vision-nvfp4-recipe-intake.md).
