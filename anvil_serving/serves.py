@@ -2760,6 +2760,117 @@ def cmd_rollback_check(serves, promotions, restore_group=None, as_json=False, _r
     return 1 if report["errors"] else 0
 
 
+def resolve_alias_backers(config, serves, alias):
+    """Join alias -> tier -> serve, the walk `serves up-for` exists to do.
+
+    Pure and read-only: no argparse, no docker, no stdout/stderr. `config` is a
+    loaded `RouterConfig`; `serves` is a manifest SET. A serve is a candidate
+    when its `router_tier` equals the alias's resolved tier id -- ordinarily
+    exactly one, but a promoted primary and its rollback legitimately share a
+    `router_tier` (and a port), so more than one is possible. See
+    docs/PRODUCT-DISCOVERY-PERSONAS.md §2 and
+    docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md (feature 11).
+    """
+    from .router.config import normalize_model_alias
+
+    normalized = normalize_model_alias(alias)
+    tier_id = config.model_routes.get(normalized)
+    candidates = []
+    if tier_id is not None:
+        for serve in serves:
+            if serve.get("router_tier") == tier_id:
+                candidates.append({
+                    "name": serve["name"],
+                    "container": serve["container"],
+                    "port": serve.get("port"),
+                    "groups": list(serve.get("groups") or []),
+                    "up": list(serve.get("up") or []),
+                    "manifest_file": serve.get("_manifest_file"),
+                })
+    return {
+        "alias": alias,
+        "normalized_alias": normalized,
+        "tier_id": tier_id,
+        "known_aliases": sorted(config.model_routes),
+        "candidates": candidates,
+    }
+
+
+def cmd_up_for(config, serves, alias, config_path, as_json=False, confirm=False,
+               dry_run=False, ledger_serves=None, _run=subprocess.run):
+    """Resolve ALIAS -> tier -> serve and print the chain; `--confirm` starts it.
+
+    Closes the walk an operator does by hand today: `model_routes` maps alias
+    to tier, serve entries carry `router_tier` -- nothing joins them. Multiple
+    candidates (a promoted primary sharing its `router_tier` with a rollback
+    serve on the same port) are refused automatically: starting the wrong one
+    on a shared port is worse than asking the operator to pick with
+    `serves up NAME`.
+    """
+    result = resolve_alias_backers(config, serves, alias)
+
+    if result["tier_id"] is None:
+        message = "unknown alias %r; configured aliases: %s" % (
+            alias, ", ".join(result["known_aliases"]) or "(none)")
+        if as_json:
+            print(json.dumps({**result, "error": message}, indent=2, sort_keys=True))
+        else:
+            print(message, file=sys.stderr)
+        return 2
+
+    candidates = result["candidates"]
+    if not candidates:
+        message = (
+            "tier %r (alias %r) has no backing serve in the manifest set; the "
+            "serve manifest declares no [[serve]] with router_tier = %r"
+            % (result["tier_id"], alias, result["tier_id"])
+        )
+        if as_json:
+            print(json.dumps({**result, "error": message}, indent=2, sort_keys=True))
+        else:
+            print(message, file=sys.stderr)
+        return 1
+
+    if len(candidates) > 1:
+        message = (
+            "tier %r (alias %r) has %d backing serves; starting the wrong one "
+            "on a shared port is worse than guessing -- pick one explicitly "
+            "with `serves up NAME`" % (result["tier_id"], alias, len(candidates))
+        )
+        if as_json:
+            print(json.dumps({**result, "error": message}, indent=2, sort_keys=True))
+        else:
+            print(message, file=sys.stderr)
+            for candidate in candidates:
+                print("  %-20s container=%-24s port=%-6s groups=%s" % (
+                    candidate["name"], candidate["container"], candidate["port"],
+                    ", ".join(candidate["groups"]) or "-"), file=sys.stderr)
+        return 1
+
+    candidate = candidates[0]
+    if not confirm:
+        resolution = {**result, "resolved": candidate, "config": str(config_path)}
+        if as_json:
+            print(json.dumps(resolution, indent=2, sort_keys=True))
+        else:
+            print("alias:    %s -> %s" % (alias, result["normalized_alias"]))
+            print("tier:     %s" % result["tier_id"])
+            print("serve:    %s (container=%s, port=%s)" % (
+                candidate["name"], candidate["container"], candidate["port"]))
+            print("manifest: %s" % candidate["manifest_file"])
+            print("config:   %s" % config_path)
+            print("up:       %s" % (
+                " ".join(candidate["up"]) if candidate["up"]
+                else "(no compose up command declared)"))
+            print("\nrun with --confirm to start it: "
+                  "anvil-serving serves up-for %s --confirm" % alias)
+        return 0
+
+    return cmd_up(serves, [candidate["name"]], dry_run=dry_run,
+                  wait_for_readiness=not dry_run, ledger_serves=ledger_serves,
+                  _run=_run)
+
+
 def cmd_groups(serves, as_json=False):
     """List the groups defined across the manifest set and their member serves.
 
@@ -4261,7 +4372,7 @@ def cmd_probe(serves, names, *, text, image_path, timeout, _open=urllib.request.
 
 _ACTIONS = (
     "status", "probe", "up", "down", "rm", "adopt", "logs", "groups", "lint",
-    "rollback-check", "switch", "promote", "mode", "render",
+    "rollback-check", "up-for", "switch", "promote", "mode", "render",
 )
 # Actions that accept `--group NAME` (repeatable) — they act across the whole
 # manifest set (serves*.toml in the manifest's dir), not just one file.
@@ -4278,6 +4389,7 @@ _ACTION_DESCRIPTIONS = {
     "groups": "List serve groups across the manifest set and their members.",
     "lint": "Report manifest defects that no other surface makes visible.",
     "rollback-check": "Prove every declared rollback is actually usable.",
+    "up-for": "Resolve alias -> tier -> serve and start it with --confirm.",
     "switch": "Switch a deployment role to an activation-ready recipe.",
     "promote": "Promote a staged model recipe with preflight and full rollback.",
     "mode": "Preview or transact split and exclusive TP=2 operating modes.",
@@ -4336,6 +4448,9 @@ def _build_action_parser(action):
     elif action in {"logs", "probe"}:
         p.add_argument("names", nargs=1, metavar="NAME",
                        help="serve name/container to act on.")
+    elif action == "up-for":
+        p.add_argument("names", nargs=1, metavar="ALIAS",
+                       help="configured chat alias to resolve (for example: llm.primary).")
     elif action in {"groups", "lint", "rollback-check"}:
         p.set_defaults(names=[])
     else:
@@ -4350,12 +4465,12 @@ def _build_action_parser(action):
                             "names; the reserved 'all' selects every serve.")
     else:
         p.set_defaults(groups=None)
-    if action in {"groups", "lint", "rollback-check"}:
+    if action in {"groups", "lint", "rollback-check", "up-for"}:
         p.add_argument("--json", action="store_true", dest="json_out",
                        help="emit the report as JSON for tooling.")
     else:
         p.set_defaults(json_out=False)
-    if action in {"up", "down", "rm", "adopt", "switch", "promote", "mode"}:
+    if action in {"up", "down", "rm", "adopt", "switch", "promote", "mode", "up-for"}:
         p.add_argument("--dry-run", action="store_true",
                        help="print what would run without touching any container.")
     else:
@@ -4431,6 +4546,20 @@ def _build_action_parser(action):
                  "restore group is present locally",
         )
         p.set_defaults(confirm=False, preserve_on_failure=False)
+    elif action == "up-for":
+        p.add_argument(
+            "--config",
+            metavar="PATH",
+            help="router config TOML (default: operator config home, "
+                 "same resolution as `router fleet-status`).",
+        )
+        p.add_argument(
+            "--confirm",
+            action="store_true",
+            help="start the resolved serve (delegates to `serves up`); "
+                 "without it, only the resolution is printed.",
+        )
+        p.set_defaults(restore_group=None, preserve_on_failure=False)
     else:
         p.set_defaults(
             confirm=False,
@@ -4537,6 +4666,8 @@ def main(argv=None):
         cache_operation = "serves switch"
     elif a.action == "mode" and a.mode_action in {"enter", "leave"}:
         cache_operation = "serves mode %s" % a.mode_action
+    elif a.action == "up-for" and a.confirm:
+        cache_operation = "serves up-for"
     cache_policy = None
     cache_before = None
     if cache_operation is not None:
@@ -4596,7 +4727,7 @@ def main(argv=None):
     # manifest SET. Plain positional-name operations keep selection scoped to
     # the named manifest, but admission/status still use the complete set so a
     # separate voice or ComfyUI manifest cannot become invisible GPU occupancy.
-    use_set = bool(a.groups) or a.action in {"groups", "lint", "rollback-check", "mode"}
+    use_set = bool(a.groups) or a.action in {"groups", "lint", "rollback-check", "mode", "up-for"}
     # `lint` reports defects that the strict loader refuses, so it must load
     # leniently -- otherwise the command an operator reaches for when blocked
     # is the one that cannot run.
@@ -4650,6 +4781,27 @@ def main(argv=None):
                 return 2
         return cmd_rollback_check(
             serves, promotions, restore_group=a.restore_group, as_json=a.json_out)
+    if a.action == "up-for":
+        from .doctor import resolve_default_config_path
+        from .router import config as router_config
+
+        config_path = a.config or resolve_default_config_path()
+        if not config_path:
+            print("no router config found; pass --config PATH", file=sys.stderr)
+            return 2
+        try:
+            router_cfg = router_config.load(config_path)
+        except Exception as exc:  # noqa: BLE001 - surface the load failure verbatim
+            print("could not load router config %s: %s" % (config_path, exc), file=sys.stderr)
+            return 2
+        rc = cmd_up_for(
+            router_cfg, serves, a.names[0], config_path,
+            as_json=a.json_out, confirm=a.confirm, dry_run=a.dry_run,
+            ledger_serves=ledger_serves,
+        )
+        return _finish_cache_reclaim(
+            rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,
+        )
     if a.action == "mode":
         if a.mode_action == "status":
             if a.target or a.restore_group:
