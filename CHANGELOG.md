@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.1] - 2026-08-08
+
+### Fixed
+
+- `load_promotions` now rejects a `[[promotion]]` entry whose `router_config`
+  or `rollback_router_config` resolves to a file that does not exist, naming
+  the promotion and the resolved absolute path. Previously only `[[serve]]`
+  router profiles were existence-checked, so a promotion plan that named a
+  missing rollback profile loaded cleanly and every read-only surface
+  (`serves status`, `serves mode status`, `serves mode preview`) reported a
+  healthy manifest. The absence surfaced only once a promotion or switch was
+  already under way — the moment a working rollback matters most. See
+  `.tickets/2026-08-08-promotion-router-profiles-not-existence-validated.md`.
+
 ## [0.23.0] - 2026-08-08
 
 ### Added
