@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import json
 import os
 import sys
 import threading
@@ -19,7 +20,12 @@ from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
 
 from .admission import AdmissionLease, TierAdmission
 from .audio import AudioGateway
-from .availability import AlwaysAvailable, AvailabilityResult, HttpHealthAvailability
+from .availability import (
+    AlwaysAvailable,
+    AvailabilityResult,
+    HttpHealthAvailability,
+    safe_check,
+)
 from .backends import RelayBackend
 from .backends.relay import DiscoveryTransport, Transport, discover_single_model
 from .config import (
@@ -31,7 +37,13 @@ from .config import (
     load_server_config,
     normalize_model_alias,
 )
-from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, request_correlation
+from .decision_log import (
+    AttemptRecord,
+    DecisionLog,
+    DecisionLogWriter,
+    DecisionRecord,
+    request_correlation,
+)
 from .dialects.translate import has_tool_artifacts
 from .front_door import make_server
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult, estimate_tokens
@@ -51,9 +63,12 @@ from .router_telemetry import (
     aggregate_stats,
     find_request,
     render_capacity_prometheus,
+    render_process_prometheus,
     render_prometheus,
 )
 from .tier_health import build_tier_health
+from .. import envfile
+from ..graceful import serve_until_signal
 from ..paths import config_path as operator_config_path
 from ..paths import first_existing
 
@@ -224,6 +239,7 @@ class RoutingBackend:
         availability: Optional[object] = None,
         admission: Optional[TierAdmission] = None,
         capacity_metrics: Optional[MetricsProvider] = None,
+        decision_log: Optional[DecisionLog] = None,
     ) -> None:
         self._config = config
         self._backends: Dict[str, Backend] = {
@@ -238,20 +254,16 @@ class RoutingBackend:
         self._admission = admission or TierAdmission(tier.id for tier in config.tiers)
         self._capacity_metrics = capacity_metrics or fetch_vllm_metrics
         self._started_at = time.time()
-        self._decision_log = DecisionLog()
+        # `is None`, not truthiness: DecisionLog defines __len__, so an empty
+        # (sink-enabled) log is falsy and `or` would silently replace it.
+        self._decision_log = DecisionLog() if decision_log is None else decision_log
         self._thread_local: threading.local = threading.local()
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         return getattr(self._thread_local, "last_result", None)
 
     def _availability_for(self, tier: Tier) -> AvailabilityResult:
-        try:
-            result = self._availability.check(tier)
-            if not isinstance(result, AvailabilityResult):
-                raise TypeError("non-AvailabilityResult")
-            return result
-        except Exception as exc:  # readiness failures are isolated to this tier
-            return AvailabilityResult(False, "unavailable", f"availability_check_{type(exc).__name__}")
+        return safe_check(self._availability, tier)
 
     @staticmethod
     def _prompt_tokens(request: InternalRequest) -> int:
@@ -269,6 +281,7 @@ class RoutingBackend:
         reason: str,
         completion_tokens: int = 0,
         outcome: str = "error",
+        latency_ms: int = 0,
     ) -> None:
         prompt_tokens = self._prompt_tokens(request)
         self._decision_log.record(DecisionRecord(
@@ -281,6 +294,7 @@ class RoutingBackend:
             total_prompt_tokens=prompt_tokens,
             total_completion_tokens=completion_tokens,
             route=normalize_model_alias(request.model),
+            latency_ms=max(0, int(latency_ms)),
             **request_correlation(request),
         ))
 
@@ -319,6 +333,11 @@ class RoutingBackend:
         """Resolve once, check local constraints, then relay with no fallback."""
         self._thread_local.last_result = None
         self._thread_local.last_served_tier = None
+        started = time.monotonic()
+
+        def _elapsed_ms() -> int:
+            return max(0, int((time.monotonic() - started) * 1000))
+
         tier = self._config.route_tier(request.model)
         if tier is None:
             raise NoAvailableTierError(request.model, (), kind="unknown_model")
@@ -367,6 +386,7 @@ class RoutingBackend:
                 tier,
                 served=False,
                 reason=f"backend_error_{type(exc).__name__}",
+                latency_ms=_elapsed_ms(),
             )
             lease.release()
             raise
@@ -394,6 +414,7 @@ class RoutingBackend:
                     else "served"
                 ),
                 completion_tokens=completion_tokens, outcome="served",
+                latency_ms=_elapsed_ms(),
             )
 
         def relay() -> Iterator[str]:
@@ -402,10 +423,17 @@ class RoutingBackend:
                     fragments.append(delta)
                     yield delta
             except GeneratorExit:
-                self._record(request, tier, served=False, reason="client_disconnected")
+                self._record(
+                    request, tier, served=False, reason="client_disconnected",
+                    latency_ms=_elapsed_ms(),
+                )
                 raise
             except BaseException as exc:
-                self._record(request, tier, served=False, reason=f"backend_error_{type(exc).__name__}")
+                self._record(
+                    request, tier, served=False,
+                    reason=f"backend_error_{type(exc).__name__}",
+                    latency_ms=_elapsed_ms(),
+                )
                 raise
 
         return _AdmissionIterator(relay, lease, on_complete, resources=(upstream,))
@@ -452,6 +480,7 @@ class RoutingBackend:
         return (
             render_prometheus(self._decision_log.records, query)
             + render_capacity_prometheus(capacity)
+            + render_process_prometheus(self._started_at, self._decision_log.capacity)
         )
 
     def transition_status(self, tier_id: Optional[str] = None) -> dict:
@@ -517,6 +546,119 @@ class RoutingBackend:
         }
 
 
+def _load_admission_intent(path: str, tier_ids: tuple[str, ...]) -> dict[str, str]:
+    """Read persisted quiesce intent: ``{tier_id: reason_code}`` (ADR-0033).
+
+    A missing file means no intent. A corrupt file refuses to serve — silently
+    dropping operator intent is the failure this feature exists to prevent.
+    Tiers no longer in the config are skipped with a warning: quiesce state for
+    a removed tier is meaningless after a topology change.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            raw = json.load(handle)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as exc:
+        raise ConfigError(
+            f"admission intent file {path!r} is unreadable or corrupt ({exc}); "
+            f"fix or delete it before starting the router"
+        ) from exc
+    tiers = raw.get("tiers") if isinstance(raw, dict) else None
+    if not isinstance(tiers, dict):
+        raise ConfigError(
+            f"admission intent file {path!r} must contain a 'tiers' object; "
+            f"fix or delete it before starting the router"
+        )
+    intent: dict[str, str] = {}
+    for tier_id, entry in tiers.items():
+        state = entry.get("state") if isinstance(entry, dict) else None
+        reason = entry.get("reason") if isinstance(entry, dict) else None
+        if state != "quiesced":
+            continue
+        if tier_id not in tier_ids:
+            print(
+                f"[anvil] warning admission intent for unknown tier {tier_id!r} ignored",
+                file=sys.stderr,
+                flush=True,
+            )
+            continue
+        # "promotion" quiescence belongs to the promotion transaction, whose
+        # own router restart is the expected end of that quiescence and whose
+        # crash recovery (`--resume`, ADR-0018) re-asserts it. Restoring it
+        # here would leave every successful promotion's tier refusing traffic.
+        if reason == "promotion":
+            print(
+                f"[anvil] admission intent for {tier_id!r} (promotion) not restored: "
+                f"the promotion transaction owns that quiescence",
+                file=sys.stderr,
+                flush=True,
+            )
+            continue
+        intent[tier_id] = reason if isinstance(reason, str) and reason else "restored"
+    return intent
+
+
+def _write_admission_intent(path: str, admission: TierAdmission) -> None:
+    """Atomically persist the quiesced side of the admission state (ADR-0033).
+
+    Only quiesced tiers are recorded; reasons are the bounded content-free
+    codes admission already enforces. The file never records "admit" — after a
+    restart, readmission always re-passes the health+identity gate.
+    """
+    payload = {
+        "version": 1,
+        "tiers": {
+            snapshot.tier_id: {"state": "quiesced", "reason": snapshot.reason}
+            for snapshot in admission.snapshots()
+            if snapshot.quiesced
+        },
+    }
+    tmp_path = path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, sort_keys=True, separators=(",", ":"))
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp_path, path)
+
+
+def _durable_admission(path: str, config: RouterConfig) -> TierAdmission:
+    """Build a TierAdmission that restores and persists quiesce intent."""
+    tier_ids = tuple(tier.id for tier in config.tiers)
+    intent = _load_admission_intent(path, tier_ids)
+    holder: dict[str, TierAdmission] = {}
+
+    def _persist(_tier_id: str) -> None:
+        admission = holder.get("admission")
+        if admission is None:
+            return
+        try:
+            _write_admission_intent(path, admission)
+        except OSError as exc:
+            print(
+                "[anvil] warning admission intent write failed: %s" % type(exc).__name__,
+                file=sys.stderr,
+                flush=True,
+            )
+
+    admission = TierAdmission(tier_ids, on_state_change=_persist)
+    holder["admission"] = admission
+    for tier_id, reason in intent.items():
+        try:
+            admission.quiesce(tier_id, reason)
+        except ValueError:
+            admission.quiesce(tier_id, "restored")
+    # Probe writability now: a configured intent path that cannot be written
+    # is a boot error, not a silent downgrade.
+    try:
+        _write_admission_intent(path, admission)
+    except OSError as exc:
+        raise ConfigError(
+            f"admission intent path {path!r} is not writable: {exc}"
+        ) from exc
+    return admission
+
+
 def build_server(
     config_path: str,
     *,
@@ -537,10 +679,17 @@ def build_server(
     environ: Mapping[str, str] = os.environ if env is None else env
     auth_token: Optional[str] = None
     if server_config.auth_env:
-        auth_token = environ.get(server_config.auth_env) or None
+        # ADR-0033: the process environment wins; the real environment (no
+        # injected mapping) falls back to the operator dotenv chain so a
+        # rebooted host can authenticate without a live shell export.
+        auth_token, _source = envfile.resolve_env_value(
+            server_config.auth_env, env=env
+        )
         if not auth_token:
             raise ConfigError(
-                f"[server].auth_env names {server_config.auth_env!r} but it is not set (or empty)"
+                f"[server].auth_env names {server_config.auth_env!r} but it is not set "
+                f"(or empty); checked "
+                + ", ".join(envfile.env_sources(server_config.auth_env))
             )
     if config.audio_routes and auth_token is None:
         raise ConfigError(
@@ -557,12 +706,25 @@ def build_server(
     if capacity_metrics is None:
         def capacity_metrics(tier: Tier):
             return fetch_vllm_metrics(tier, env=environ)
+    if admission is None and server_config.admission_state_path:
+        admission = _durable_admission(server_config.admission_state_path, config)
+    decision_log: Optional[DecisionLog] = None
+    if server_config.decision_log_path:
+        try:
+            sink = DecisionLogWriter(server_config.decision_log_path)
+        except (OSError, ValueError) as exc:
+            raise ConfigError(
+                f"[server].decision_log_path {server_config.decision_log_path!r} "
+                f"is not writable: {exc}"
+            ) from exc
+        decision_log = DecisionLog(sink=sink)
     routing = RoutingBackend(
         config,
         backends,
         availability=availability,
         admission=admission,
         capacity_metrics=capacity_metrics,
+        decision_log=decision_log,
     )
 
     purpose: Optional[PurposeRouter] = None
@@ -632,13 +794,7 @@ def serve(
         f"  routes: {routes}",
         flush=True,
     )
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
+    serve_until_signal(httpd)
 
 
 def default_config_candidates() -> list[str]:

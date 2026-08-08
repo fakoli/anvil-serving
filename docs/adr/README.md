@@ -52,3 +52,5 @@ people and the chat logs.
 | [0030](0030-containerized-remote-controller-and-mcp-2026.md) | Containerized Dark controller and MCP 2026-only remote operation | Superseded by ADR-0031 |
 | [0031](0031-dual-era-typescript-mcp-bridge.md) | Dual-era TypeScript MCP bridge on Fakoli Mini | Accepted |
 | [0032](0032-public-product-private-operator-state.md) | Public product, private operator state | Accepted |
+| [0033](0033-production-durability-and-plane-contract.md) | Production durability model, plane contract, and controller-RPC fleet direction | Accepted |
+| [0034](0034-fleet-control-plane-and-node-runtime-classes.md) | Fleet control plane on the gateway host, and node runtime classes | Accepted |

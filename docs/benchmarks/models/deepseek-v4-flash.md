@@ -2,20 +2,22 @@
 
 ## Current status and review date
 
-`current` for the human-approved `llm.primary` alias. The pinned r16 B12X TP=2
-recipe uses DSpark K5, 650,000 served tokens, 4,096-token batching, 16 admitted
-sequences, and a router-enforced 32,768-token output cap. It passed ~640K
-retrieval, the complete low-reasoning Pi protocol gate, a matched 32K c1 run at
-141.6 tok/s median decode, and current high-reasoning smokes from Pi on Fakoli
-Dark, Pi on Fakoli Mini, and OpenClaw on Fakoli Mini. The former 1M/maxseq16
-candidate remains capacity evidence but is no longer client-facing: two real
-agent request shapes fatally exceeded the locked B12X workspace.
+The 2026-08-02 public record documents human approval of the r16 B12X TP=2
+DSpark K5 recipe for `llm.primary` at 650,000 served tokens, 4,096-token
+batching, 16 admitted sequences, and a router-enforced 32,768-token output cap.
+That envelope passed ~640K retrieval, the complete low-reasoning Pi protocol
+gate, a matched 32K c1 run at 141.6 tok/s median decode, and high-reasoning
+smokes from Pi on Fakoli Dark, Pi on Fakoli Mini, and OpenClaw on Fakoli Mini.
+Later public records document a 262,144-token retune and an r27 image upgrade;
+the active operator assignment is intentionally not asserted here. The former
+1M/maxseq16 candidate remains capacity evidence: two real agent request shapes
+fatally exceeded the locked B12X workspace.
 
 A derived WSL2 image now also qualifies native CPU KV offload at a 262,144
 served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
 the managed shared-memory lifecycle regression. This extends the capacity
 contract but does not replace the 131K profile as the preferred performance
-recipe. Review date: 2026-08-03.
+recipe. Review date: 2026-08-08.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
 not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
@@ -148,6 +150,16 @@ functional and repeated quality gates. Its final 32K capacity lane completed
 11/12 at 2.705-second TTFO, 29.106-second first-visible TTFT, 7,818 effective
 prefill tok/s, and 11.5 tok/s combined reasoning/visible decode.
 
+A separate vision-adapter package,
+`webbrain-one/DeepSeek-V4-Flash-0731-Vision-NVFP4` (rev `3a8f168c`,
+digest-pinned SGLang v0.5.16, marlin/marlin kernels, TP=2, 4,096 context,
+`--mem-fraction-static 0.97`), first-loaded and served on 2026-08-07 with
+`compatibility-only` and bounded `functional`/negative `quality` evidence:
+text-lane gates and image conditioning pass, but dense OCR and GUI-affordance
+reading confabulate against known ground truth, and the checkpoint has no
+chat template. See the
+[vision first-load finding](../../findings/2026-08-07-deepseek-0731-vision-nvfp4-sglang-first-load.md).
+
 Current `external-prior` evidence strengthens the research priority without
 expanding the local contract:
 
@@ -167,14 +179,42 @@ GGUF size ladder, DSpark caveats, and source classifications.
 
 ## Decision and promotion state
 
-`current`, human-approved. The 650K/maxseq16 r16 DSpark profile is the exclusive
-TP=2 Primary for one Pi/OpenClaw coding user, with high reasoning as the client
-default and `llm.rollback` preserved explicitly. The router's optional per-tier
-output cap is 32,768 and warns instead of rejecting an oversized caller budget.
+The 2026-08-02 public finding records human approval of the maxseq16 r16 DSpark
+profile as the exclusive TP=2 Primary for one Pi/OpenClaw coding user, with
+high reasoning as the client default and `llm.rollback` preserved explicitly.
+That is a dated promotion record, not a claim about the live operator
+assignment. The recorded router's optional per-tier output cap was 32,768 and
+warned instead of rejecting an oversized caller budget.
+
+2026-08-06 operator-directed retune: the pinned recipe now serves
+`MAX_MODEL_LEN=262144` with `MAX_NUM_BATCHED_TOKENS=8192` (previously
+650,000/4,096; serve and model names retain the historical `650k` suffix). The
+engine sized GPU KV cache at 272,040 tokens (1.04x concurrency at a full
+262,144-token request) and a same-day functional preflight (smoke, structured
+JSON, tool batch x20, tool-result continuation) passed. The ~640K retrieval,
+650K-envelope performance rows, and client smokes above are dated history from
+the prior envelope and do not transfer without fresh measurement.
+
+2026-08-07 image upgrade: the pinned recipe moved from the r16 to the
+digest-pinned r27 community image (official 0731 reasoning/tool prompt
+contract, tiered-offload lifetime fixes, InstantTensor registration fallback,
+`PYTHONHASHSEED=0`). KV cache re-sized to 272,107 tokens; a same-day
+functional preflight passed and a matched 4K/c16 capacity probe showed
+concurrency parity with the recorded r16 artifact (520 vs 513.5 aggregate
+tok/s). All r16-labeled performance figures on this page predate the image
+upgrade.
+
 The 1M profiles are experimental only. Remaining gates include restoring a
 policy-compliant reserve, sustained multi-turn high/max testing, fixing and
 requalifying the client-shaped 1M B12X workspace failure, and pinned 0731 NVFP4
 W4A16/W4A4 comparisons.
+
+2026-08-07 vision-adapter first load: `no-promotion`, evaluated separately
+from the text Primary. The WebBrain 0731 vision overlay loaded and served on
+TP=2 with grounded image conditioning, but OCR/GUI reading confabulated and
+the checkpoint exposes no chat template, so it cannot serve a router chat
+client. The 650K Primary was restored and its health verified in the same
+session; no alias, route, or promoted serve changed.
 
 ## Failures and gotchas
 
@@ -221,6 +261,7 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
+- [2026-08-07 vision-adapter (NVFP4) first load](../../findings/2026-08-07-deepseek-0731-vision-nvfp4-sglang-first-load.md)
 - [2026-08-03 context, agentic-recovery, and SWE-bench smoke](../../findings/2026-08-03-deepseek-context-agentic-swe-smoke.md)
 - [2026-08-02 650K/1M Pi qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md)
 - [2026-08-02 650K Primary promotion](../../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md)

@@ -9,7 +9,6 @@ are deterministic.
 """
 from __future__ import annotations
 
-import io
 import json
 
 import pytest
@@ -28,6 +27,8 @@ from anvil_serving.voice.benchmark import (
 from anvil_serving.voice.stages.llm import LLMStageConfig, LLMStreamToolCalls
 from anvil_serving.voice.stages.stt import STTStageConfig
 from anvil_serving.voice.stages.tts import TTSStageConfig
+from tests.voice.conftest import FakeLineResponse as _FakeLineResponse
+from tests.voice.conftest import FakeReadResponse as _FakeReadResponse
 
 
 def test_audio_benchmark_measures_tts_to_stt_without_llm():
@@ -639,30 +640,6 @@ def test_build_evidence_record_has_stable_json_schema_fields():
 # stream_speech via fake transports (no fake stream_fns) -- proves the three
 # modules actually compose through run_benchmark, not just the measurement math.
 # --------------------------------------------------------------------------- #
-class _FakeReadResponse:
-    def __init__(self, payload: bytes):
-        self._buf = io.BytesIO(payload)
-        self.closed = False
-
-    def read(self, *a, **kw):
-        return self._buf.read(*a, **kw)
-
-    def close(self):
-        self.closed = True
-
-
-class _FakeLineResponse:
-    def __init__(self, payload: bytes):
-        self._buf = io.BytesIO(payload)
-        self.closed = False
-
-    def __iter__(self):
-        return iter(self._buf)
-
-    def close(self):
-        self.closed = True
-
-
 class _FakeTransport:
     def __init__(self, response):
         self.response = response

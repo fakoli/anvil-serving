@@ -8,6 +8,9 @@ import threading
 import time
 from types import SimpleNamespace
 
+import pytest
+
+from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking.worker import execute_benchmark_job, launch_benchmark_job
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
@@ -24,7 +27,7 @@ def spec():
         "worker": {"id": "worker"},
         "submitted_at": "2026-08-03T12:00:00Z",
         "timeout_s": 600,
-        "parameters": {"case_limit": 1},
+        "parameters": {"case_limit": 1, "model_host_id": "model-host"},
     }
 
 
@@ -93,6 +96,22 @@ def test_detached_launcher_keeps_credentials_out_of_argv(tmp_path):
     assert "worker-run" in observed["argv"]
     assert all("TOKEN" not in item for item in observed["argv"])
     assert observed["kwargs"]["stdout"] is not None
+
+
+def test_detached_launcher_reports_typed_process_failure(tmp_path):
+    database = str(tmp_path / "jobs.db")
+    run_root = str(tmp_path / "runs")
+    BenchmarkJobStore(database, run_root=run_root).submit(spec())
+
+    with pytest.raises(BenchmarkJobError) as exc:
+        launch_benchmark_job(
+            path=database,
+            run_root=run_root,
+            run_id="worker-run",
+            popen=lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("blocked")),
+        )
+
+    assert exc.value.code == "worker_launch_failed"
 
 
 class EndpointHandler(BaseHTTPRequestHandler):

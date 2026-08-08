@@ -277,6 +277,24 @@ def test_controller_transport_bounds_response_and_classifies_partial_result():
     assert exc.value.may_have_executed is True
 
 
+def test_controller_transport_accepts_configured_response_above_default_bound():
+    body = json.dumps({"ok": True, "data": {"content": "x" * 71_000}}).encode("utf-8")
+    assert transports.DEFAULT_MAX_RESPONSE_BYTES < len(body) <= transports.MAX_RESPONSE_BYTES
+    transport = transports.ControllerTransport(
+        "http://100.64.0.10:8765",
+        auth_env="ANVIL_CONTROLLER_TOKEN",
+        allowed_operations=["host-config-export"],
+        environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        max_response_bytes=transports.MAX_RESPONSE_BYTES,
+        opener=lambda request, timeout: Response(body),
+    )
+
+    result = transport.execute(transports.Operation("host-config-export", {}))
+
+    assert result.data["data"]["content"] == "x" * 71_000
+    assert result.response_bytes == len(body)
+
+
 @pytest.mark.parametrize("body", [b"{}", b'{"ok":"yes"}'])
 def test_controller_transport_rejects_missing_or_malformed_ok(body):
     transport = transports.ControllerTransport(
@@ -957,3 +975,82 @@ def test_bounded_process_terminates_on_combined_output_overflow():
         transports._run_bounded_process(
             [subprocess.sys.executable, "-c", script], timeout=5, max_output_bytes=1024
         )
+
+
+# --- ADR-0033: controller node-identity verification ------------------------
+
+
+def _node_opener(node=None, calls=None):
+    def opener(request, timeout):
+        if calls is not None:
+            calls.append(request.full_url)
+        if request.full_url.endswith("/health"):
+            payload = {"status": "ok", "service": "anvil-serving-controller"}
+            if node is not None:
+                payload["node"] = node
+            return Response(json.dumps(payload).encode("utf-8"))
+        return Response(b'{"ok":true,"data":{}}')
+
+    return opener
+
+
+def test_expected_node_match_verifies_once_then_dispatches():
+    calls = []
+    transport = transports.ControllerTransport(
+        "http://100.64.0.10:8765",
+        auth_env="ANVIL_CONTROLLER_TOKEN",
+        allowed_operations=["router-status"],
+        environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        opener=_node_opener(node="fakoli-dark", calls=calls),
+        expected_node="fakoli-dark",
+    )
+    transport.execute(transports.Operation("router-status", {}))
+    transport.execute(transports.Operation("router-status", {}))
+
+    health_calls = [url for url in calls if url.endswith("/health")]
+    assert len(health_calls) == 1  # verified once, cached
+
+
+def test_expected_node_mismatch_fails_closed_before_dispatch():
+    calls = []
+    transport = transports.ControllerTransport(
+        "http://100.64.0.10:8765",
+        auth_env="ANVIL_CONTROLLER_TOKEN",
+        allowed_operations=["router-status"],
+        environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        opener=_node_opener(node="some-other-host", calls=calls),
+        expected_node="fakoli-dark",
+    )
+    with pytest.raises(transports.TransportError) as excinfo:
+        transport.execute(transports.Operation("router-status", {}))
+
+    assert excinfo.value.code == "controller_node_mismatch"
+    assert excinfo.value.execution_state == "not_started"
+    assert not any(url.endswith("/tools/call") for url in calls)
+
+
+def test_expected_node_absent_from_health_fails_closed():
+    transport = transports.ControllerTransport(
+        "http://100.64.0.10:8765",
+        auth_env="ANVIL_CONTROLLER_TOKEN",
+        allowed_operations=["router-status"],
+        environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        opener=_node_opener(node=None),
+        expected_node="fakoli-dark",
+    )
+    with pytest.raises(transports.TransportError) as excinfo:
+        transport.execute(transports.Operation("router-status", {}))
+    assert excinfo.value.code == "controller_node_mismatch"
+
+
+def test_no_expected_node_skips_verification():
+    calls = []
+    transport = transports.ControllerTransport(
+        "http://100.64.0.10:8765",
+        auth_env="ANVIL_CONTROLLER_TOKEN",
+        allowed_operations=["router-status"],
+        environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        opener=_node_opener(node="fakoli-dark", calls=calls),
+    )
+    transport.execute(transports.Operation("router-status", {}))
+    assert not any(url.endswith("/health") for url in calls)

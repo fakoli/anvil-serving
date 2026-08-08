@@ -19,6 +19,7 @@ vram_mib = 97887
 [[serve]]
 name = "split-a"
 container = "split-a"
+runtime = "docker"
 port = 30001
 model = "split-a-local"
 engine = "vllm"
@@ -29,6 +30,7 @@ groups = ["split-stack"]
 [[serve]]
 name = "split-b"
 container = "split-b"
+runtime = "docker"
 port = 30002
 model = "split-b-local"
 engine = "vllm"
@@ -39,6 +41,7 @@ groups = ["split-stack"]
 [[serve]]
 name = "tp2"
 container = "tp2"
+runtime = "docker"
 port = 30003
 model = "candidate-local"
 engine = "vllm"

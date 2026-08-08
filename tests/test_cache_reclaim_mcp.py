@@ -14,7 +14,7 @@ def _manifest(tmp_path):
     path.write_text(
         "[[serve]]\n"
         'name = "heavy"\n'
-        'container = "vllm-heavy"\n'
+        'container = "vllm-heavy"\nruntime = "docker"\n'
         "port = 30002\n"
         'model = "primary-local"\n'
         'engine = "vllm"\n'

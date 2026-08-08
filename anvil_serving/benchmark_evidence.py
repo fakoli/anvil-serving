@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import os
+from collections import Counter
 from pathlib import Path
 import sys
 from typing import Any, Iterable, Mapping, Sequence
@@ -148,7 +149,7 @@ def _suite_summary(name: str, raw: object) -> dict[str, Any]:
     )
     attempts = sum(attempt_counts)
     passed_attempts = sum(pass_counts)
-    failure_classes: dict[str, int] = {}
+    observed_failure_classes: list[str] = []
     for check in checks:
         raw_attempts = _list(check.get("attempts"))
         if len(raw_attempts) > MAX_ATTEMPTS_PER_CHECK:
@@ -158,7 +159,8 @@ def _suite_summary(name: str, raw: object) -> dict[str, Any]:
         for attempt in raw_attempts:
             failure_class = _text(_mapping(attempt).get("failure_class"))
             if failure_class:
-                failure_classes[failure_class] = failure_classes.get(failure_class, 0) + 1
+                observed_failure_classes.append(failure_class)
+    failure_classes = dict(Counter(observed_failure_classes))
     return {
         "name": _text(name) or "unnamed-suite",
         "status": _text(suite.get("status")),

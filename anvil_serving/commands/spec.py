@@ -14,16 +14,9 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 
-MANIFEST_SCHEMA_VERSION = 4
+MANIFEST_SCHEMA_VERSION = 5
 MANIFEST_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "CLI-COMMAND-MANIFEST.json"
 CLI_DOC = "docs/CLI.md"
-ROUTER_DOC = "docs/cli/router.md"
-SERVES_DOC = "docs/cli/serves.md"
-MODELS_DOC = "docs/cli/models.md"
-EVAL_DOC = "docs/cli/eval.md"
-HOST_DOC = "docs/cli/host.md"
-CONTROL_PLANE_DOC = "docs/cli/control-plane.md"
-VOICE_CLI_DOC = "docs/cli/voice.md"
 _MUTATION_CLASSES = frozenset({"read", "mutate", "process"})
 _TRANSPORTS = frozenset({"local", "controller", "ssh"})
 _EXECUTION_POLICIES = frozenset({"offline", "resource-owner"})
@@ -44,6 +37,7 @@ class HandlerRef:
     attribute: str = "main"
     argv_prefix: tuple[str, ...] | None = None
     forward_resolution_options: bool = False
+    forward_confirm_flag: bool = False
 
     def __post_init__(self) -> None:
         if self.argv_prefix is not None:
@@ -89,12 +83,15 @@ class RemoteOperation:
     confirmed_arguments: tuple[tuple[str, object], ...] = field(default_factory=tuple)
     allowed_arguments: tuple[str, ...] = field(default_factory=tuple)
     positional_arguments: tuple[str, ...] = field(default_factory=tuple)
+    argument_aliases: tuple[tuple[str, str], ...] = field(default_factory=tuple)
+    max_response_bytes: int | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "fixed_arguments", tuple(self.fixed_arguments))
         object.__setattr__(self, "confirmed_arguments", tuple(self.confirmed_arguments))
         object.__setattr__(self, "allowed_arguments", tuple(self.allowed_arguments))
         object.__setattr__(self, "positional_arguments", tuple(self.positional_arguments))
+        object.__setattr__(self, "argument_aliases", tuple(self.argument_aliases))
 
 
 @dataclass(frozen=True)
@@ -142,11 +139,6 @@ class CommandTree:
         object.__setattr__(self, "global_options", tuple(self.global_options))
 
 
-def _deferred_handler(*_args: object, **_kwargs: object) -> None:
-    """Marker handler for v2 paths whose concrete implementation lands later."""
-    raise RuntimeError("this v2 command is not wired into the dispatcher yet")
-
-
 def _option(
     *flags: str,
     summary: str,
@@ -169,17 +161,15 @@ def _handler(
     attribute: str = "main",
     argv_prefix: Iterable[str] | None = None,
     forward_resolution_options: bool = False,
+    forward_confirm_flag: bool = False,
 ) -> HandlerRef:
     return HandlerRef(
         module,
         attribute=attribute,
         argv_prefix=None if argv_prefix is None else tuple(argv_prefix),
         forward_resolution_options=forward_resolution_options,
+        forward_confirm_flag=forward_confirm_flag,
     )
-
-
-def _future_handler() -> HandlerRef:
-    return HandlerRef("anvil_serving.command_tree", "_deferred_handler")
 
 
 def _remote(
@@ -190,6 +180,8 @@ def _remote(
     confirmed: Iterable[tuple[str, object]] = (),
     allowed: Iterable[str] = (),
     positionals: Iterable[str] = (),
+    aliases: Iterable[tuple[str, str]] = (),
+    max_response_bytes: int | None = None,
 ) -> RemoteOperation:
     return RemoteOperation(
         mode=mode,
@@ -198,6 +190,8 @@ def _remote(
         confirmed_arguments=tuple(confirmed),
         allowed_arguments=tuple(allowed),
         positional_arguments=tuple(positionals),
+        argument_aliases=tuple(aliases),
+        max_response_bytes=max_response_bytes,
     )
 
 
@@ -249,7 +243,7 @@ def _node(
 def _resource_node(
     name: str,
     summary: str,
-    module: str | None,
+    module: str,
     *,
     role: str,
     coowned_roles: Iterable[str] = (),
@@ -260,6 +254,7 @@ def _resource_node(
     argv_prefix: Iterable[str] | None = None,
     handler_attribute: str = "main",
     forward_resolution_options: bool = False,
+    forward_confirm_flag: bool = False,
     output_policy: str = "bounded",
     docs_anchor: str = CLI_DOC,
     remote_operation: RemoteOperation | None = None,
@@ -275,9 +270,8 @@ def _resource_node(
             attribute=handler_attribute,
             argv_prefix=argv_prefix,
             forward_resolution_options=forward_resolution_options,
-        )
-        if module
-        else _future_handler(),
+            forward_confirm_flag=forward_confirm_flag,
+        ),
         resource_role=role,
         coowned_resource_roles=coowned_roles,
         transports=(
@@ -404,6 +398,14 @@ def _validate_nodes(
         _validate_policy(node, label)
         if not node.children and node.handler is None:
             raise CommandTreeError(f"command {label!r} has no handler")
+        if (
+            node.handler is not None
+            and node.handler.forward_confirm_flag
+            and "--confirm" not in declared_flags
+        ):
+            raise CommandTreeError(
+                f"command {label!r} forwards --confirm without declaring the option"
+            )
         if node.handler is not None and resolve_handlers:
             node.handler.resolve()
         _validate_nodes(
@@ -490,6 +492,18 @@ def _validate_policy(node: CommandNode, label: str) -> None:
         raise CommandTreeError(f"command {label!r} has duplicate allowed remote arguments")
     if len(remote.positional_arguments) != len(set(remote.positional_arguments)):
         raise CommandTreeError(f"command {label!r} has duplicate remote positional arguments")
+    alias_names = [name for name, _target in remote.argument_aliases]
+    alias_targets = [target for _name, target in remote.argument_aliases]
+    if (
+        len(alias_names) != len(set(alias_names))
+        or any(not name or not target for name, target in remote.argument_aliases)
+        or any(target not in remote.allowed_arguments for target in alias_targets)
+    ):
+        raise CommandTreeError(f"command {label!r} has invalid remote argument aliases")
+    if remote.max_response_bytes is not None and (
+        isinstance(remote.max_response_bytes, bool) or remote.max_response_bytes <= 0
+    ):
+        raise CommandTreeError(f"command {label!r} has an invalid remote response bound")
 
 
 def manifest_data(tree: CommandTree | None = None) -> dict[str, object]:
@@ -548,6 +562,8 @@ def _remote_operation_data(remote: RemoteOperation | None) -> dict[str, object] 
         "confirmed_arguments": dict(remote.confirmed_arguments),
         "allowed_arguments": list(remote.allowed_arguments),
         "positional_arguments": list(remote.positional_arguments),
+        "argument_aliases": dict(remote.argument_aliases),
+        "max_response_bytes": remote.max_response_bytes,
     }
 
 

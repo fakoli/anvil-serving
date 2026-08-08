@@ -6,20 +6,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving import cli, collectors
-
-
-class Response:
-    def __init__(self, payload: bytes):
-        self.payload = payload
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_args):
-        return False
-
-    def read(self, size=-1):
-        return self.payload if size < 0 else self.payload[:size]
+from tests.conftest import Response
 
 
 def _config(**overrides):

@@ -4,7 +4,173 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.24.0] - 2026-08-08
+
+### Changed
+
+- **BREAKING:** every `[[serve]]` entry must now declare `runtime`, either
+  `"docker"` or `"native"` (ADR-0034 §7). There is deliberately no default — an
+  implicit container assumption is what made a heterogeneous fleet
+  inexpressible, and defaulting would preserve that defect under a new name.
+  `container` is required when `runtime = "docker"` and rejected when
+  `runtime = "native"`. Existing manifests must add the field; all in-repo
+  manifests, examples, scaffold templates, and the `deploy` generator were
+  migrated.
+- `runtime = "native"` is accepted by the schema but rejected at manifest load
+  with `NativeRuntimeNotSupported` until the native lifecycle exists. Roughly 85
+  code sites resolve `serve["container"]`, so loading a native entry today would
+  surface as a `KeyError` inside an unrelated command. Failing at load keeps the
+  schema honest and the failure legible; removing the guard is the last step of
+  implementing native serving.
+
+### Added
+
+- ADR-0034 records the fleet control-plane architecture: the operator runs on
+  the gateway host and is never in the inference path; the existing controller
+  becomes the per-node agent with a role-scoped operation catalog; multi-host
+  dispatch is typed controller RPC with no remote Docker socket and SSH as
+  recovery only. Node capability is declared along three orthogonal axes —
+  runtime class (`docker`/`native`), memory model (`discrete`/`unified`), and
+  availability class (`continuous`/`opportunistic`) — from which promotion
+  eligibility is *derived* rather than declared, so a non-reproducible host
+  cannot back a published claim. Fires the fleet trigger deferred in ADR-0033
+  §3.4 and amends its supervision row for the native runtime. Serve entries will
+  require an explicit `runtime` field; this is a deliberate breaking change.
+
+## [0.23.1] - 2026-08-08
+
+### Fixed
+
+- `load_promotions` now rejects a `[[promotion]]` entry whose `router_config`
+  or `rollback_router_config` resolves to a file that does not exist, naming
+  the promotion and the resolved absolute path. Previously only `[[serve]]`
+  router profiles were existence-checked, so a promotion plan that named a
+  missing rollback profile loaded cleanly and every read-only surface
+  (`serves status`, `serves mode status`, `serves mode preview`) reported a
+  healthy manifest. The absence surfaced only once a promotion or switch was
+  already under way — the moment a working rollback matters most. See
+  `.tickets/2026-08-08-promotion-router-profiles-not-existence-validated.md`.
+
+## [0.23.0] - 2026-08-08
+
+### Added
+
+- The controller's host publish port is now overridable via a single `ANVIL_CONTROLLER_PUBLISH` spec (`<host-ip>:<host-port>:8765`, default `127.0.0.1:8765`), so an operator can move the loopback publish off a host port already claimed by another service while keeping the container-internal `8765` canonical. Documented in `examples/fakoli-dark/.env.example`, the operator playbook, and the hardened-controller test. Tailscale Serve must be pointed at the chosen host port, and any prior route on the old host port should be removed.
+
+- `GET /v1/models/capabilities` extends the per-tier `compat` declarations with
+  two more fields that use the exact OpenClaw keys: `supportsStrictMode` (a bool)
+  and `supportedReasoningEfforts` (an ordered set of lowercase effort labels such
+  as `["low", "high", "max"]`). Both are strictly allowlisted per tier and feed
+  the canonical config hash. This lets an operator author an accurate OpenClaw
+  `compat` block (strict-mode structured output and supported reasoning efforts)
+  instead of guessing. OpenClaw treats the effort list as a membership set (order
+  is cosmetic) and does not auto-read this endpoint.
+
+- Read-only `host config inventory` and `host config export` commands, with
+  matching MCP/controller tools, now provide metadata-only operator-home
+  discovery and bounded export of allowlisted Anvil configuration plus a
+  sanitized Anvil-owned OpenClaw fragment. Explicit path selection closes
+  supported direct dependencies without requiring a whole-home export.
+
+### Removed
+
+- Production-cleanup dead-code sweep, verified against the command registry,
+  MCP tool dispatch, entry points, and dynamic-dispatch sites before removal:
+  the unused `cli._hidden_leaf_help_flags`, `config.load`,
+  `external_benchmarks.store.record_verdict`,
+  `observability.benchmark.overhead.process_cpu_percent`,
+  `serves._compose_project_from_up`, and `voice.stages.llm._split_speakable_text`
+  helpers; the never-constructed `SessionCreated`/`SessionUpdated`/
+  `ResponseCreated` realtime event dataclasses (those wire events are emitted
+  as raw dicts by the realtime service); and the never-reachable
+  `commands.spec._future_handler`/`_deferred_handler` placeholder path
+  (`_resource_node` now requires a concrete handler module).
+- Top-level `assets/` duplicates of `docs/assets/` (byte-identical PNGs);
+  README and the tailnet runbook now reference `docs/assets/`. Session-retro
+  artifacts under `post-session-findings/` moved to the private operator
+  repository per ADR-0032.
+- Repo-wide over-engineering audit cuts, each verified caller-free before
+  removal: the superseded `RealtimeProxyState`/`RealtimeProxyLogs`/
+  `RealtimeProxyService` lifecycle family in `voice.realtime.service` (the
+  live path is `RealtimeProxyProcessService`); the never-enabled background
+  availability prober and its `availability_prober`/
+  `availability_probe_backoff_max`/`availability_probe_staleness` router
+  config keys (the inline single-flight prober is the only implementation);
+  the `anvil_serving.command_tree` compatibility module (zero importers); the
+  zero-caller re-exports in the `controller`, `mcp`, and `benchmark` facades,
+  which now declare exactly their supported surfaces; unused command
+  option/doc-path constants, `InternalRequest.last_user_text`,
+  `AttemptRecord.detail`, `est_tokens`, the unimplemented `independent_judge`
+  validator strength, the always-`None` voice `llm_latency_ms` metric, and
+  `cmd_switch`'s dead `resume` parameter; and the dormant `profile`/
+  `calibrate` legacy vocabulary in the CLI-reference audit.
+
+### Changed
+
+- Consolidated duplicated helpers onto single canonical homes: the
+  no-proxy/no-redirect `urllib` opener now lives only in `transports`
+  (collectors and the MCP controller client import it), `resolve_api_key`
+  lives only in `preflight` (re-exported unchanged from
+  `benchmarking.requests`), and the voice STT/LLM/TTS stages share one
+  `bearer_headers` helper in `voice.stages.base`. Public facade names and
+  signatures are unchanged.
+- Controller idempotency-key expiry tracking replaced its probabilistic
+  bloom-filter tombstone generations with an exact SQLite `tombstones` table
+  (same replay-block semantics, one `SELECT`/`DELETE` instead of bit
+  arithmetic; the store is already bounded by `max_records`).
+- Second round of DRY consolidations onto single canonical homes: shared
+  `docker rm`/`docker ps`/missing-binary wrappers in `serves`; catalog backups
+  reuse `guard.next_backup`; router auth-env validation, safe availability
+  checks, media block scanning, and dialect tool-argument decoding each have
+  one helper; control-plane private/tailnet IP classification and MCP
+  mutation-gate logic are single-sourced; `preflight` imports the benchmarking
+  artifact helpers and is the canonical `response_observation` home;
+  frequency counts use `collections.Counter`; the voice preflight/findings
+  script helpers moved to shared `scripts/voice/_preflight_common.py` and
+  `_findings.py`; duplicated test fakes consolidated into `tests/conftest.py`
+  and a new `tests/voice/conftest.py`.
+- CI now runs the CLI-reference audit once per trigger in a dedicated
+  `docs-audit` job instead of eight times across the test/build matrices.
+- `.tickets/` is reorganized: 37 resolved tickets moved to `.tickets/closed/`,
+  21 open tickets remain at the top level, and all references (docs, configs,
+  `targets.py`, `START_HERE.md`) now point at the new locations.
+
+### Fixed
+
+- The canonical CLI now forwards the consumed `--confirm` flag into the legacy
+  `serves mode enter` / `serves mode leave` handler argv via an explicit
+  `HandlerRef.forward_confirm_flag` declaration, making the leaf argparse gate
+  authoritative instead of relying on the dispatcher's thread-local
+  confirmation scope (the `confirmation_authorized()` fallback remains as
+  defense in depth). A spec validator rejects the declaration on handlers that
+  do not define a `--confirm` option, so it cannot spread to
+  `confirmation_scope`-style handlers. JSON mode still never prompts and still
+  requires explicit confirmation.
+
+### Security
+
+- Operator configuration export fails closed for YAML, unknown or secret
+  files, malformed secret references, credential-bearing values, capability
+  URLs, symlinks/junctions, concurrent filesystem mutation, and dependencies
+  outside the captured operator-home snapshot unless they are declared portable
+  product registries recorded without reading. POSIX capture is anchored to a
+  directory descriptor; Windows holds a non-reparse, no-delete-share root
+  handle; export reuses the exact bytes captured by inventory.
+
+## [0.22.0] - 2026-08-04
+
+### Added
+
+- The OpenAI streaming dialect now emits a trailing `usage` chunk when the caller
+  requests `stream_options.include_usage: true`, fixing the missing streaming
+  usage that broke OpenClaw-style context-window metering (#345). Real upstream
+  counts are used when the relay surfaces them; estimates fall back exactly like
+  the non-streaming path. The default (non-usage) streaming path remains fully
+  lazy, so time-to-first-token and backpressure are unaffected.
+- `GET /v1/models/capabilities` now exposes a `compat` block per tier, currently
+  carrying `supportsUsageInStreaming` (an allowlisted bool declared under
+  `tier.params.capabilities.compat`). This mirrors OpenClaw's provider-model
+  `compat` shape so a client can discover that a tier emits streaming usage.
 
 ## [0.21.1] - 2026-08-02
 

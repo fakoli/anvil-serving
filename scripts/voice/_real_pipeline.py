@@ -74,18 +74,6 @@ class RealPipelineConfig:
     vad_model: Optional[Any] = None  # None -> FakeVADModel (see stages/vad.py); pass SimpleEnergyVADModel for real mic input
 
 
-def stage_config_from_manifest_table(table: Mapping[str, Any], cls: type) -> Any:
-    """Build an ``STTStageConfig``/``LLMStageConfig``/``TTSStageConfig`` from a
-    validated voice-manifest ``[voice.<stt|llm|tts>]`` table (see
-    ``anvil_serving/voice/config.py``).
-
-    Kept here as a thin re-export (the real implementation is
-    ``anvil_serving.voice.pipeline.stage_config_from_table`` now) so existing
-    imports of this name keep working.
-    """
-    return stage_config_from_table(table, cls)
-
-
 def real_pipeline_config_from_manifest(
     data: Mapping[str, Any], *, vad_config: Optional[VADConfig] = None, vad_model: Optional[Any] = None,
 ) -> RealPipelineConfig:

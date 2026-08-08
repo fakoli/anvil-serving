@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 
 from anvil_serving.router.backends.relay import RelayBackend
-from anvil_serving.router.config import Tier
 from anvil_serving.router.dialects.anthropic import AnthropicDialect
 from anvil_serving.router.dialects.openai import OpenAIDialect
 from anvil_serving.router.dialects.translate import (
@@ -25,19 +24,7 @@ from anvil_serving.router.dialects.translate import (
     openai_tool_choice_to_anthropic,
     openai_tools_to_anthropic,
 )
-
-
-def _tier(dialect: str, privacy: str = "local") -> Tier:
-    return Tier(
-        id=f"{dialect}-tier",
-        base_url="https://api.example.test",
-        dialect=dialect,
-        context_limit=200_000,
-        privacy=privacy,
-        tool_support=True,
-        auth_env="EXAMPLE_KEY",
-        model="concrete-model",
-    )
+from tests.router.helpers import make_tier as _tier
 
 
 def _backend(dialect: str) -> RelayBackend:

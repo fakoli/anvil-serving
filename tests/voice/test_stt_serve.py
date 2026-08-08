@@ -29,78 +29,19 @@ from anvil_serving.voice.stages.stt import (
     pcm_to_wav,
     transcribe_stream,
 )
+from tests.voice.conftest import (
+    FakeLineResponse,
+    FakeOpenResponse,
+    FakeReadResponse,
+    FakeRun,
+    fake_open_fails,
+    fake_open_ok,
+)
 
 
 # --------------------------------------------------------------------------- #
 # fakes
 # --------------------------------------------------------------------------- #
-class FakeRun:
-    """Stands in for `subprocess.run`: matches an argv PREFIX against a table
-    of canned `(returncode, stdout, stderr)` responses, in order."""
-
-    def __init__(self, responses):
-        self.responses = responses
-        self.calls = []
-
-    def __call__(self, argv, **kwargs):
-        self.calls.append(list(argv))
-        for prefix, rc, out, err in self.responses:
-            if argv[: len(prefix)] == prefix:
-                return SimpleNamespace(returncode=rc, stdout=out, stderr=err)
-        return SimpleNamespace(returncode=1, stdout="", stderr="no matcher for %r" % (argv,))
-
-
-class FakeOpenResponse:
-    def __init__(self, status: int):
-        self.status = status
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-    def getcode(self):
-        return self.status
-
-
-def fake_open_ok(url, timeout=None):
-    return FakeOpenResponse(200)
-
-
-def fake_open_fails(url, timeout=None):
-    raise OSError("connection refused")
-
-
-class FakeLineResponse:
-    """Line-iterable fake of an open urllib response (no socket) -- what
-    `iter_sse_events` needs (`for raw in fp`)."""
-
-    def __init__(self, payload: bytes):
-        self._fp = io.BytesIO(payload)
-        self.closed = False
-
-    def __iter__(self):
-        return iter(self._fp)
-
-    def close(self) -> None:
-        self.closed = True
-
-
-class FakeReadResponse:
-    """Fake of a non-streaming response: just `.read()`/`.close()`."""
-
-    def __init__(self, payload: bytes):
-        self._fp = io.BytesIO(payload)
-        self.closed = False
-
-    def read(self, *a, **kw):
-        return self._fp.read(*a, **kw)
-
-    def close(self) -> None:
-        self.closed = True
-
-
 class FakeTransport:
     def __init__(self, response):
         self.response = response
@@ -121,7 +62,7 @@ def _sse_transcript(*events: dict, done_event: dict) -> bytes:
 def manifest_with_stt(tmp_path):
     p = tmp_path / "serves.toml"
     p.write_text(
-        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nport = 8090\n'
+        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nruntime = "docker"\nport = 8090\n'
         'model = "parakeet"\nengine = "vllm"\n'
         'up = "echo bring-up-stt"\n',
         encoding="utf-8",
@@ -153,7 +94,7 @@ def test_bring_up_raises_serve_not_configured_when_manifest_missing(tmp_path):
 def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
     p = tmp_path / "serves.toml"
     p.write_text(
-        '[[serve]]\nname = "tts"\ncontainer = "anvil-tts"\nport = 8091\n'
+        '[[serve]]\nname = "tts"\ncontainer = "anvil-tts"\nruntime = "docker"\nport = 8091\n'
         'model = "kokoro-82m"\nengine = "vllm"\n',
         encoding="utf-8",
     )

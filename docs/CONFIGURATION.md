@@ -173,6 +173,27 @@ auth_env = "ANVIL_ROUTER_TOKEN"
 send its resolved value as a bearer token or `x-api-key`. Expose non-loopback
 routers only with token authentication.
 
+### Token persistence contract
+
+Token configuration names environment variables; the values must also survive a
+host reboot. Store each token line in the gitignored operator `.env` chain —
+`$ANVIL_SERVING_HOME/.env`, then `~/.env` — and treat the process environment
+as an override, never the only copy. Router and controller token resolution
+reads the shell environment first and falls back through that chain, so a
+freshly rebooted host can authenticate without re-exporting variables in a
+live shell. Refusals name every location that was checked. Values never appear
+in tracked files (ADR-0032).
+
+### Durability sinks (ADR-0033)
+
+| Key | Default | Meaning |
+|---|---:|---|
+| `admission_state_path` | unset | Opt-in persisted tier-quiesce intent. Quiesced tiers (except promotion-owned quiescence) are restored quiesced at boot; readmission still requires the health+identity gate. A corrupt file refuses to serve. |
+| `decision_log_path` | unset | Opt-in append-only, metadata-only JSONL of decision records (timestamped), size-capped with one rotated generation. |
+
+Both point at writable paths on the router state volume in containerized
+deployments. Unset keys mean no file I/O.
+
 ## `[router]`
 
 | Key | Default | Meaning |
@@ -230,7 +251,18 @@ images reports context admissibility only when total `image_tokens` is supplied.
 `params.capabilities` is the allowlisted client-facing declaration used by
 `GET /v1/models/capabilities`: `modalities`, nested `thinking` fields
 (`supported`, `default`, `caller_override`, and optional `max_tokens`),
-`images_per_request`, and `video_per_request`.
+`images_per_request`, `video_per_request`, and a nested `compat` block. The
+`compat` block carries OpenClaw-compatible capability declarations:
+`supportsUsageInStreaming`, `supportsStrictMode`, and `supportedReasoningEfforts`
+(the exact OpenClaw key, an ordered set of lowercase effort labels such as
+`["low", "high", "max"]` that a tier honors). Set `supportsUsageInStreaming` to
+`true` when a tier's streaming path can emit a usage chunk (so metering clients
+look for one), `supportsStrictMode` to `true` when a tier honors strict
+JSON-schema structured output, and enumerate the reasoning-effort levels the tier
+honors under `supportedReasoningEfforts`. OpenClaw treats the effort list as a
+membership set, not an ordered ladder; order is cosmetic. This is a declaration
+surface: an operator maps these to the model's `compat` in OpenClaw config
+(OpenClaw does not auto-read this endpoint).
 
 `params.fingerprint` supplies optional identity evidence for
 `GET /v1/models/fingerprints`: `model_revision`, `engine_version`,

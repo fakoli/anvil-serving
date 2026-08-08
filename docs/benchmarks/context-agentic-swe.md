@@ -53,6 +53,12 @@ preflight failure, not a model failure.
 Profiles are content-addressed JSON under `configs/benchmarks/`. A result is
 interpretable only with its profile SHA-256 and adapter identities.
 
+The shipped context profiles execute the deterministic native cases listed in
+their profile. RULER and MRCR records are supported as normalized evidence
+inputs, but they are not silently substituted for or claimed by these profiles;
+an external-adapter profile must explicitly pin and execute them before a run
+can report those benchmark names.
+
 | Profile | Context buckets | Positions × repetitions | Agentic scope | SWE Verified instances | Intended use |
 |---|---|---:|---|---:|---|
 | `smoke` | 8K, 32K | 3 × 1 | tool sequence and one recovery fixture | 1 | Wiring and short functional gate |

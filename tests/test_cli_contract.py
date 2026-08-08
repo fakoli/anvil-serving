@@ -34,6 +34,16 @@ def _guarded_paths() -> tuple[tuple[str, ...], ...]:
     )
 
 
+def _leaf(path: tuple[str, ...]) -> CommandNode:
+    nodes = COMMAND_TREE.nodes
+    node = None
+    for name in path:
+        node = next(candidate for candidate in nodes if candidate.name == name)
+        nodes = node.children
+    assert node is not None
+    return node
+
+
 def _action_group_paths() -> tuple[tuple[str, ...], ...]:
     return tuple(
         tuple(node.name for node in path)
@@ -109,7 +119,12 @@ def test_explicit_confirmation_is_consumed_before_guarded_handler_dispatch(monke
 
     assert cli.main([*path, "--confirm"]) == 0
     assert len(calls) == 1
-    assert "--confirm" not in calls[0]
+    if _leaf(path).handler.forward_confirm_flag:
+        # Declared legacy handlers gate on their own argparse --confirm; the
+        # dispatcher restores exactly one consumed token in argv.
+        assert calls[0].count("--confirm") == 1
+    else:
+        assert "--confirm" not in calls[0]
 
 
 def test_interactive_confirmation_dispatches_without_forwarding_policy_flag(monkeypatch):

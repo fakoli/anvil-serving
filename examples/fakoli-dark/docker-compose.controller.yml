@@ -10,9 +10,12 @@ services:
     build:
       context: ../..
       target: controller
-    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.21.1}
+    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.22.0}
     container_name: anvil-serving-controller
     restart: unless-stopped
+    # ADR-0033: above the controller's 20s SIGTERM drain budget, so in-flight
+    # tool subprocesses finish before Docker escalates to SIGKILL.
+    stop_grace_period: 30s
     user: "999:999"
     group_add:
       # Docker Desktop exposes /var/run/docker.sock as root:root 0660.
@@ -28,7 +31,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "${ANVIL_CONTROLLER_PUBLISH:-127.0.0.1}:8765:8765"
+      # Single publish spec of the form <host-ip>:<host-port>:8765. Defaults to
+      # loopback:8765 to match the controller's fixed container-internal 8765.
+      # Override ANVIL_CONTROLLER_PUBLISH (e.g. "127.0.0.1:18765") when 8765 is
+      # already claimed on the host by another service, and point Tailscale Serve
+      # at the chosen host port. The host port must not equal the container 8765.
+      - "${ANVIL_CONTROLLER_PUBLISH:-127.0.0.1:8765}:8765"
     environment:
       ANVIL_CONTROLLER_TOKEN: ${ANVIL_CONTROLLER_TOKEN:?set ANVIL_CONTROLLER_TOKEN}
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
@@ -61,6 +69,14 @@ services:
       - --allow-public-bind
       - --state-db
       - /var/lib/anvil-serving/controller-operations.sqlite3
+      # ADR-0033: durable JSONL audit sink on the operation-state volume; the
+      # same records still tee to stderr for `docker logs`.
+      - --audit-log
+      - /var/lib/anvil-serving/controller-audit.jsonl
+      # ADR-0033 node identity: asserted on /health; must match the topology's
+      # `expected_node` on the controller transports that target this host.
+      - --node-id
+      - fakoli-dark
       - --allow-operation
       - operation_contracts
       - --allow-operation

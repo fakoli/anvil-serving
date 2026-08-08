@@ -81,6 +81,23 @@ tailnet ACL, restricted tool catalog, and absence of home/SSH/GitHub mounts are
 the actual security boundary. Git and SSH credentials are deliberately not
 available in the image.
 
+## Durability model
+
+Every class of runtime state has exactly one authoritative home (ADR-0033). Secrets are
+file-backed references in the operator home; the process environment overrides but is never
+the only copy. Desired state is git-tracked operator config, with the `anvil-router-cfg`
+volume holding the installed copy mutated only through the promote pipeline. The controller's
+operation ledger lives on its durable volume and is reconciled at boot: an operation
+interrupted by a crash is marked failed with a typed error, never silently re-executed.
+Operator intent (tier quiescence) may be persisted opt-in on a router state volume;
+readmission always re-passes the fail-closed health and identity gate. Docker itself is the
+supervision ledger — no pidfiles, no registry service, no self-healing daemon. Everything
+else — availability results, admission counters, in-flight requests — is process memory, and
+restart is the reset.
+
+Both long-lived servers drain gracefully on SIGTERM within a bounded budget before Docker's
+`stop_grace_period` expires, which is what makes restart-as-reload a legitimate mechanism.
+
 ## Operator command architecture
 
 The public CLI is assembled from explicit command families under
@@ -160,12 +177,18 @@ returns the result in the caller's negotiated wire format.
 The gateway has no workload classifier, intent presets, quality profile,
 policy engine, residency selector, verification chain, circuit-breaker
 fallback, cloud route, or routing calibration loop. A selected tier that cannot
-serve returns an error rather than changing the request's capability.
+serve returns an error rather than changing the request's capability. There is
+likewise no fleet registry service and no background reconciler daemon: the
+topology file is the registry, and Docker restart policy is the supervisor.
 
 ## Evidence and observability
 
 `DecisionLog` records routing metadata without request/response content:
 normalized alias, selected tier, timing, token counters where available, and
-terminal outcome. It provides audit evidence, not a feedback signal for future
-routing. Benchmark results and preflight artifacts remain the source of truth
-for changes to the configured mapping.
+terminal outcome. Records carry a creation timestamp and can be persisted
+opt-in to a bounded, append-only JSONL sink on the router state volume;
+aggregate views remain snapshots of the in-memory buffer, not historical
+windows. The controller's audit stream can likewise tee to a bounded file on
+its state volume. All of it is audit evidence, not a feedback signal for
+future routing. Benchmark results and preflight artifacts remain the source of
+truth for changes to the configured mapping.

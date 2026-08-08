@@ -86,8 +86,12 @@ def _requirements(value: Mapping[str, Any] | None) -> dict[str, Any]:
             "bad_preflight_requirements", "container_required must be a boolean"
         )
     model_host_id = raw.get("model_host_id")
-    if model_host_id is not None and not isinstance(model_host_id, str):
-        raise BenchmarkJobError("bad_preflight_requirements", "model_host_id must be a string")
+    if model_host_id is not None and (
+        not isinstance(model_host_id, str) or not model_host_id.strip()
+    ):
+        raise BenchmarkJobError(
+            "bad_preflight_requirements", "model_host_id must be a non-empty string"
+        )
     return {
         "min_free_disk_bytes": minimum,
         "platforms": sorted(set(item.lower() for item in platforms)),
@@ -95,7 +99,7 @@ def _requirements(value: Mapping[str, Any] | None) -> dict[str, Any]:
         "container_required": container_required,
         "harness_assets": list(assets),
         "harness_locks": normalized_locks,
-        "model_host_id": model_host_id,
+        "model_host_id": model_host_id.strip() if isinstance(model_host_id, str) else None,
     }
 
 
@@ -178,6 +182,9 @@ def run_benchmark_preflight(
     """Observe endpoint and worker readiness without changing model lifecycle."""
     normalized = validate_job_spec(spec)
     required = _requirements(requirements)
+    declared_model_host = normalized.get("parameters", {}).get("model_host_id")
+    if required["model_host_id"] is None and isinstance(declared_model_host, str):
+        required["model_host_id"] = declared_model_host.strip() or None
     worker_id = normalized["worker"]["id"]
     worker_platform = sys.platform.lower()
     architecture = platform.machine().lower()
@@ -191,13 +198,22 @@ def run_benchmark_preflight(
     free_disk = int(disk_usage(run_path).free)
     docker = container_binary if container_binary is not None else shutil.which("docker")
     checks = []
-    isolated = not required["model_host_id"] or required["model_host_id"] != worker_id
+    model_host_id = required["model_host_id"]
+    isolated = bool(model_host_id) and model_host_id != worker_id
+    isolation_code = None
+    isolation_detail = "worker differs from model host"
+    if not model_host_id:
+        isolation_code = "model_host_identity_absent"
+        isolation_detail = "model host identity was not declared"
+    elif not isolated:
+        isolation_code = "worker_not_isolated"
+        isolation_detail = "worker matches model host"
     checks.append(
         _check(
             "worker_isolation",
             isolated,
-            None if isolated else "worker_not_isolated",
-            "worker differs from model host" if isolated else "worker matches model host",
+            isolation_code,
+            isolation_detail,
         )
     )
     platform_ok = not required["platforms"] or worker_platform in required["platforms"]
