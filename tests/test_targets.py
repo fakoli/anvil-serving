@@ -461,3 +461,159 @@ def test_gpu_role_reserve_mib_requires_capacity_and_must_fit_within_it():
         error.path == "gpu_roles[0].reserve_mib" and error.code == "value"
         for error in errors
     )
+
+
+# --- ADR-0033: same-host locality rule and per-host role scoping ------------
+
+
+def _topology_with_dark_native() -> dict:
+    data = _topology_data()
+    data["runtimes"].append({"id": "dark-native", "host": "dark", "role": "native"})
+    return data
+
+
+def test_native_shell_operates_same_host_docker_resource_locally():
+    plan = resolve_execution_plan(
+        parse_topology(_topology_with_dark_native()),
+        _spec("router-status", "router"),
+        command_host="host:dark",
+        command_runtime="runtime:dark-native",
+    )
+
+    assert plan.transport == "local"
+    assert plan.transport_id is None
+
+
+def test_docker_identity_does_not_operate_native_execution_locally():
+    data = _topology_with_dark_native()
+    data["resources"].append(
+        {
+            "id": "dark-host",
+            "role": "host",
+            "host": "dark",
+            "runtime": "dark-native",
+            "workload": "service",
+        }
+    )
+    with pytest.raises(TargetResolutionError):
+        resolve_execution_plan(
+            parse_topology(data),
+            _spec("host-status", "host", transports=("local",)),
+            command_host="host:dark",
+            command_runtime="runtime:dark-docker",
+            transport="local",
+        )
+
+
+def test_voice_host_shape_resolves_local_without_command_runtime_override():
+    """The 2026-08-07 ticket repro: native identity, docker resources, and no
+    transport declared for the host's own docker runtime."""
+    data = _topology_with_dark_native()
+    data["command_host"] = "host:dark"
+    data["command_runtime"] = "runtime:dark-native"
+    data["resources"].append(
+        {
+            "id": "dark-stt",
+            "role": "stt-serve",
+            "host": "dark",
+            "runtime": "dark-docker",
+            "workload": "stt",
+            "endpoint": "http://127.0.0.1:30010/v1",
+            "endpoint_kind": "host-relative-loopback",
+        }
+    )
+    data["transports"] = []
+
+    plan = resolve_execution_plan(
+        parse_topology(data),
+        _spec("voice-audio-status", "stt-serve", transports=("local", "controller")),
+    )
+
+    assert plan.transport == "local"
+
+
+def test_duplicate_role_resolves_to_command_hosts_own_resource():
+    data = _topology_with_dark_native()
+    data["resources"].append(
+        {
+            "id": "operator-realtime-proxy",
+            "role": "realtime-proxy",
+            "host": "operator",
+            "runtime": "operator-native",
+            "endpoint": "http://127.0.0.1:8765/v1",
+            "endpoint_kind": "host-relative-loopback",
+            "workload": "service",
+        }
+    )
+    topology = parse_topology(data)
+    spec = _spec("voice-proxy-status", "realtime-proxy", transports=("local", "controller"))
+
+    plan = resolve_execution_plan(
+        topology, spec, command_host="host:operator", command_runtime="runtime:operator-native"
+    )
+    assert plan.resource.id == "operator-realtime-proxy"
+    assert plan.transport == "local"
+
+    plan = resolve_execution_plan(
+        topology, spec, command_host="host:mini", command_runtime="runtime:mini-native"
+    )
+    assert plan.resource.id == "realtime-proxy"
+
+
+def test_duplicate_role_with_no_local_owner_errors_naming_hosts():
+    data = _topology_with_dark_native()
+    data["resources"].append(
+        {
+            "id": "second-router",
+            "role": "router",
+            "host": "mini",
+            "runtime": "mini-native",
+            "endpoint": "http://100.64.0.11:8000/v1",
+            "workload": "service",
+        }
+    )
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(
+            parse_topology(data),
+            _spec("router-status", "router"),
+        )
+    message = str(excinfo.value)
+    assert "'dark'" in message and "'mini'" in message
+    assert "--target" in message
+
+
+def test_duplicate_role_explicit_target_still_overrides():
+    data = _topology_with_dark_native()
+    data["resources"].append(
+        {
+            "id": "operator-realtime-proxy",
+            "role": "realtime-proxy",
+            "host": "operator",
+            "runtime": "operator-native",
+            "endpoint": "http://127.0.0.1:8765/v1",
+            "endpoint_kind": "host-relative-loopback",
+            "workload": "service",
+        }
+    )
+    plan = resolve_execution_plan(
+        parse_topology(data),
+        _spec("voice-proxy-status", "realtime-proxy", transports=("local", "controller")),
+        target="host:mini",
+        command_host="host:mini",
+        command_runtime="runtime:mini-native",
+    )
+    assert plan.resource.id == "realtime-proxy"
+
+
+def test_expected_node_flows_into_the_execution_plan():
+    data = _topology_data()
+    for transport in data["transports"]:
+        if transport["id"] == "dark-controller":
+            transport["expected_node"] = "dark"
+    plan = resolve_execution_plan(
+        parse_topology(data),
+        _spec("router-status", "router", transports=("controller",)),
+        target="host:dark",
+    )
+    assert plan.transport == "controller"
+    assert plan.transport_expected_node == "dark"

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import urllib.request
 from typing import Any, Callable, Mapping, Optional, Sequence
 
+from ...envfile import env_sources, resolve_env_value
+from ...graceful import DEFAULT_DRAIN_SECONDS
 from .catalog import _mcp_tool_name
 from .errors import ControllerError
 from .http import DEFAULT_MAX_BODY_BYTES
@@ -49,6 +50,36 @@ def _build_parser() -> argparse.ArgumentParser:
         "--state-db",
         default=DEFAULT_IDEMPOTENCY_DB_PATH,
         help="durable controller operation-state database path",
+    )
+    serve_parser.add_argument(
+        "--drain-seconds",
+        type=float,
+        default=DEFAULT_DRAIN_SECONDS,
+        help="bounded in-flight drain budget on SIGTERM (default: 20)",
+    )
+    serve_parser.add_argument(
+        "--audit-log",
+        default=None,
+        help=(
+            "durable JSONL audit sink (tees to stderr); place it on the "
+            "operation-state volume (default: stderr only)"
+        ),
+    )
+    serve_parser.add_argument(
+        "--node-id",
+        default=None,
+        help=(
+            "topology host id this controller asserts on /health; clients "
+            "with a matching transport expected_node verify it before dispatch"
+        ),
+    )
+    serve_parser.add_argument(
+        "--allow-unauthenticated-loopback",
+        action="store_true",
+        help=(
+            "permit an unauthenticated strictly-loopback bind (development "
+            "only; non-loopback binds always require the token)"
+        ),
     )
     status_parser = subparsers.add_parser("status", help="probe controller health")
     status_parser.add_argument("--url", default=DEFAULT_STATUS_URL)
@@ -112,12 +143,11 @@ def status(
             file=sys.stderr,
         )
         return 2
-    effective_env = os.environ if environment is None else environment
-    token = (effective_env.get(auth_token_env) or "").strip()
+    token, _source = resolve_env_value(auth_token_env, env=environment)
     if not token:
         print(
-            "controller status: token environment variable %s is unset or empty"
-            % auth_token_env,
+            "controller status: token %s is unset or empty; checked %s"
+            % (auth_token_env, ", ".join(env_sources(auth_token_env))),
             file=sys.stderr,
         )
         return 3
@@ -184,9 +214,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                 port=args.port,
                 auth_token_env=args.auth_token_env,
                 allow_public_bind=args.allow_public_bind,
-                allow_unauthenticated_loopback=False,
+                allow_unauthenticated_loopback=args.allow_unauthenticated_loopback,
                 allowed_operations=args.allow_operation,
                 idempotency_db_path=args.state_db,
+                drain_seconds=args.drain_seconds,
+                audit_log_path=args.audit_log,
+                node_id=args.node_id,
             )
         except ControllerError as exc:
             print(

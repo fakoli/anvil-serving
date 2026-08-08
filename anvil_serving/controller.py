@@ -28,7 +28,9 @@ from .control_plane.controller.cli import (
 from .control_plane.controller.errors import ControllerError
 from .control_plane.controller.http import (
     AuditLogger,
+    FileAuditLogger,
     JsonLoadsFunc,
+    DEFAULT_AUDIT_LOG_MAX_BYTES,
     DEFAULT_MAX_BODY_BYTES,
     DEFAULT_READ_TIMEOUT_SECONDS,
     _MAX_BODY_BYTES,
@@ -115,6 +117,7 @@ __all__ = [
     "DEFAULT_READ_TIMEOUT_SECONDS",
     "DEFAULT_STATUS_MAX_RESPONSE_BYTES",
     "DEFAULT_STATUS_URL",
+    "FileAuditLogger",
     "IPv6ThreadingHTTPServer",
     "OperationStore",
     "main",
