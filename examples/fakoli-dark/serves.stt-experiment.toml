@@ -4,6 +4,7 @@
 [[serve]]
 name = "nemotron35-asr"
 container = "anvil-stt-nemotron35"
+runtime = "docker"
 port = 39041
 model = "/models/nemotron-3.5-asr-streaming-0.6b"
 engine = "audio"
@@ -14,6 +15,7 @@ up = "docker compose -f {dir}/docker-compose.stt-experiment.yml up -d --build ne
 [[serve]]
 name = "qwen3-asr-0.6b"
 container = "anvil-stt-qwen3-asr-0.6b"
+runtime = "docker"
 port = 39042
 model = "qwen3-asr-0.6b"
 engine = "audio"

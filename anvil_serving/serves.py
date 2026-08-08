@@ -474,6 +474,56 @@ def _normalize_reservation(s, raw):
         s["residency"] = normalized
 
 
+_SERVE_RUNTIMES = ("docker", "native")
+
+
+class NativeRuntimeNotSupported(ValueError):
+    """A `runtime = "native"` serve was declared before native lifecycle exists.
+
+    ADR-0034 makes `runtime` an explicit discriminator so a non-container serve
+    is expressible. The native lifecycle itself is not implemented: every serve
+    path here resolves a container, so accepting a native entry would surface as
+    a `KeyError` deep inside an unrelated command. Failing at manifest load
+    keeps the schema honest and the failure legible.
+    """
+
+
+def _normalize_serve_runtime(s, raw):
+    """Validate one serve entry's runtime discriminator (ADR-0034).
+
+    Normalizes exactly like the neighbouring `residency` check so a manifest
+    author gets the same forgiveness for both fields.
+    """
+    runtime = s["runtime"]
+    if not isinstance(runtime, str):
+        raise ValueError(
+            "serve entry runtime must be one of "
+            f"{list(_SERVE_RUNTIMES)}: {raw!r}"
+        )
+    normalized = runtime.strip().lower()
+    if normalized not in _SERVE_RUNTIMES:
+        raise ValueError(
+            "serve entry runtime must be one of "
+            f"{list(_SERVE_RUNTIMES)} (got {runtime!r}): {raw!r}"
+        )
+    s["runtime"] = runtime = normalized
+    if runtime == "docker":
+        if not s.get("container"):
+            raise ValueError(
+                "serve entry missing required field(s) container: %r" % (raw,)
+            )
+        return
+    if "container" in s:
+        raise ValueError(
+            'serve entry with runtime "native" must not declare container: %r'
+            % (raw,)
+        )
+    raise NativeRuntimeNotSupported(
+        'serve entry %r declares runtime "native", which is not implemented '
+        "yet; only \"docker\" serves can be loaded" % s["name"]
+    )
+
+
 def _normalize_mode_router_configs(s, raw, manifest_dir):
     """Validate the router profiles owned by a routed exclusive-mode serve."""
     fields = ("router_config", "rollback_router_config")
@@ -570,7 +620,7 @@ def load_manifest(path):
     for raw in data.get("serve", []):
         s = dict(raw)
         missing = [
-            field for field in ("name", "container", "port")
+            field for field in ("name", "runtime", "port")
             if field not in s or s.get(field) in ("", None)
         ]
         if not s.get("model") and not s.get("served_name"):
@@ -580,6 +630,7 @@ def load_manifest(path):
                 "serve entry missing required field(s) "
                 f"{', '.join(missing)}: {raw!r}"
             )
+        _normalize_serve_runtime(s, raw)
         if not isinstance(s.get("port"), int):
             raise ValueError(f"serve entry port must be an integer: {raw!r}")
         s["model"] = s.get("model") or s.get("served_name")

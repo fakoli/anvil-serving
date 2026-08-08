@@ -75,6 +75,7 @@ LEDGER_MANIFEST = """
     [[serve]]
     name = "fast"
     container = "vllm-fast"
+    runtime = "docker"
     port = 30003
     model = "auxiliary-local"
     engine = "vllm"
@@ -86,6 +87,7 @@ LEDGER_MANIFEST = """
     [[serve]]
     name = "stt"
     container = "anvil-voice-stt"
+    runtime = "docker"
     port = 30010
     model = "tdt_ctc-110m"
     engine = "audio"
@@ -97,6 +99,7 @@ LEDGER_MANIFEST = """
     [[serve]]
     name = "embed"
     container = "vllm-embed"
+    runtime = "docker"
     port = 30020
     model = "qwen3-embedding-4b"
     engine = "vllm"
@@ -108,6 +111,7 @@ LEDGER_MANIFEST = """
     [[serve]]
     name = "plain"
     container = "vllm-plain"
+    runtime = "docker"
     port = 30030
     model = "plain-local"
     engine = "vllm"
@@ -131,6 +135,7 @@ def test_load_manifest_without_gpu_roles_attaches_nothing(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30003
         model = "auxiliary-local"
         engine = "vllm"
@@ -160,6 +165,7 @@ def test_load_manifest_rejects_invalid_gpu_roles_rows(tmp_path, row, match):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30003
         model = "auxiliary-local"
         engine = "vllm"
@@ -181,6 +187,7 @@ def test_load_manifest_rejects_duplicate_gpu_role_ids(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30003
         model = "auxiliary-local"
         engine = "vllm"
@@ -286,6 +293,7 @@ def test_reservation_on_role_without_declared_capacity_is_unenforced(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30003
         model = "auxiliary-local"
         engine = "vllm"
@@ -307,6 +315,7 @@ def test_manifest_without_reservation_fields_runs_no_extra_docker_probe(tmp_path
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30003
         model = "auxiliary-local"
         engine = "vllm"
@@ -434,6 +443,7 @@ EVICTION_MANIFEST = """
     [[serve]]
     name = "fast"
     container = "vllm-fast"
+    runtime = "docker"
     port = 30003
     model = "auxiliary-local"
     engine = "vllm"
@@ -445,6 +455,7 @@ EVICTION_MANIFEST = """
     [[serve]]
     name = "exp"
     container = "vllm-exp"
+    runtime = "docker"
     port = 30040
     model = "exp-local"
     engine = "vllm"
@@ -457,6 +468,7 @@ EVICTION_MANIFEST = """
     [[serve]]
     name = "stt"
     container = "anvil-voice-stt"
+    runtime = "docker"
     port = 30010
     model = "tdt_ctc-110m"
     engine = "audio"
@@ -647,6 +659,7 @@ def test_plan_eviction_picks_the_fewest_victims_largest_first(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30003
         model = "auxiliary-local"
         engine = "vllm"
@@ -657,6 +670,7 @@ def test_plan_eviction_picks_the_fewest_victims_largest_first(tmp_path):
         [[serve]]
         name = "exp-small"
         container = "vllm-exp-small"
+        runtime = "docker"
         port = 30041
         model = "exp-small"
         engine = "vllm"
@@ -667,6 +681,7 @@ def test_plan_eviction_picks_the_fewest_victims_largest_first(tmp_path):
         [[serve]]
         name = "exp-big"
         container = "vllm-exp-big"
+        runtime = "docker"
         port = 30042
         model = "exp-big"
         engine = "vllm"
@@ -697,6 +712,7 @@ def test_load_manifest_rejects_blank_router_tier(tmp_path):
             [[serve]]
             name = "exp"
             container = "vllm-exp"
+            runtime = "docker"
             port = 30040
             model = "exp-local"
             engine = "vllm"
@@ -727,6 +743,7 @@ def test_dual_gpu_exclusive_reservation_is_accounted_on_both_roles(tmp_path):
         [[serve]]
         name = "tp2"
         container = "vllm-tp2"
+        runtime = "docker"
         port = 30000
         model = "candidate-local"
         engine = "vllm"
@@ -779,6 +796,7 @@ def test_dual_gpu_exclusive_manifest_fails_closed(tmp_path, body, message):
             [[serve]]
             name = "tp2"
             container = "vllm-tp2"
+            runtime = "docker"
             port = 30000
             model = "candidate-local"
             engine = "vllm"
