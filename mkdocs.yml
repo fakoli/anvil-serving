@@ -54,6 +54,7 @@ nav:
       - Architecture: ARCHITECTURE.md
       - 'Strategy: make divergence loud': STRATEGY-MAKE-DIVERGENCE-LOUD.md
       - 'Product discovery: personas': PRODUCT-DISCOVERY-PERSONAS.md
+      - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
       - Thin capability gateway: THIN-CAPABILITY-GATEWAY.md
       - Configuration reference: CONFIGURATION.md
       - Embeddings & reranking: PURPOSE-MODELS.md
