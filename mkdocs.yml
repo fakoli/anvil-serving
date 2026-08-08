@@ -53,6 +53,7 @@ nav:
   - Route through the gateway:
       - Architecture: ARCHITECTURE.md
       - 'Strategy: make divergence loud': STRATEGY-MAKE-DIVERGENCE-LOUD.md
+      - 'Product discovery: personas': PRODUCT-DISCOVERY-PERSONAS.md
       - Thin capability gateway: THIN-CAPABILITY-GATEWAY.md
       - Configuration reference: CONFIGURATION.md
       - Embeddings & reranking: PURPOSE-MODELS.md

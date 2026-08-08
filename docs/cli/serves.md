@@ -29,6 +29,7 @@ called. Entries that omit `stack` retain the `serving` default.
 | `serves mode status|preview|enter|leave` | Inspect or transact exclusive TP=2 ownership. |
 | `serves status` | Show bounded serve status. |
 | `serves lint` | Report manifest defects that no other surface makes visible. |
+| `serves rollback-check` | Prove every declared rollback is actually usable. |
 | `serves probe` | Run one engine-aware functional request. |
 | `serves groups` | List serve groups and their members. |
 | `serves logs` | Read bounded serve logs. |
@@ -150,6 +151,42 @@ blocked must not be the one that breaks.
 Sharing a **container** across files is not a defect — that is the supported
 read-only mirror pattern that `load_manifest_set` de-dupes deliberately. Only a
 duplicate `name` surviving that de-dup is reported.
+
+## Rollback check
+
+`serves rollback-check` proves every declared rollback path is actually
+usable. It touches no container state — it reads the manifest set and
+promotion plans, validates router configs, and asks Docker whether images are
+present locally.
+
+```bash
+anvil-serving serves rollback-check
+anvil-serving serves rollback-check --restore-group split-default
+```
+
+It exists because two rollback paths were found broken live on 2026-08-08,
+each only by accident:
+
+- a promotion plan's `rollback_router_config` referenced a router profile file
+  that did not exist;
+- the split-restore `primary` serve's compose image was a nightly tag
+  (`vllm/vllm-openai:nightly-...`) evicted from Docker Hub, so the documented
+  rollback group could not start.
+
+A rollback that cannot run is a false safety net. Add `--json` for the same
+report structurally, matching `lint`'s conventions.
+
+| Check | Severity | What it catches |
+| --- | --- | --- |
+| `promotion-topology` | error | A promotion plan whose target/rollback router configs no longer validate against each other (mismatched tiers, ports, or model identity). |
+| `rollback-profile-invalid` | error | A routed exclusive serve's `rollback_router_config` exists but fails to parse/validate as a router config. |
+| `rollback-image-missing` | error | A compose image that a promotion plan's rollback serve, or a `--restore-group` serve, depends on is not present locally (`docker image inspect` fails) — the exact shape of the evicted-nightly-tag incident. |
+| `image-unverifiable` | info | A dependent serve's `up` command has no compose file (for example a `models recipes load` command), so image presence cannot be checked. Not an error — some rollbacks legitimately have no compose image. |
+| `docker-unavailable` | warning | Docker itself could not be reached; image checks were skipped rather than failing the whole report. |
+| `unknown-restore-group` | error | A `--restore-group` that matches no serve. Silently verifying nothing is itself a false safety net. |
+
+Only `error`-severity findings fail the exit code; `warning` and `info` are
+reported but never block.
 
 ## Functional probes
 

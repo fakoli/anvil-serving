@@ -222,6 +222,13 @@ def commands() -> CommandNode:
                 docs_anchor="docs/cli/serves.md#lint",
             ),
             _resource_node(
+                "rollback-check",
+                "Prove every declared rollback is actually usable.",
+                "anvil_serving.serves",
+                role="model-serve",
+                docs_anchor="docs/cli/serves.md#rollback-check",
+            ),
+            _resource_node(
                 "logs",
                 "Read bounded model serve logs.",
                 "anvil_serving.serves",
