@@ -5,7 +5,6 @@
       "allowed_legacy_counts": {
         "benchmark": 1,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 1,
@@ -16,7 +15,6 @@
         "multiplexer": 0,
         "onboard": 2,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 1,
         "voice-run-bridge": 4,
@@ -31,7 +29,7 @@
         "eval-usage": 0,
         "host-gpus": 2,
         "init": 21,
-        "mcp-serve": 13,
+        "mcp-serve": 14,
         "mcp-tools": 3,
         "models-cache-prune": 4,
         "models-recipes": 32,
@@ -45,15 +43,14 @@
         "voice-sidecar": 7
       },
       "files_by_category": {
-        "docs": 101,
+        "docs": 103,
         "tooling": 6
       },
-      "files_scanned": 107,
+      "files_scanned": 109,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 0,
@@ -64,7 +61,6 @@
         "multiplexer": 0,
         "onboard": 0,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 0,
         "voice-run-bridge": 0,
@@ -76,7 +72,6 @@
       "allowed_legacy_counts": {
         "benchmark": 2,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 1,
         "eval-benchmark-action-flag": 1,
         "external-bench": 1,
@@ -87,7 +82,6 @@
         "multiplexer": 0,
         "onboard": 2,
         "preflight": 0,
-        "profile": 0,
         "score": 1,
         "serve": 1,
         "voice-run-bridge": 7,
@@ -102,10 +96,10 @@
         "eval-usage": 8,
         "host-gpus": 5,
         "init": 38,
-        "mcp-serve": 16,
+        "mcp-serve": 17,
         "mcp-tools": 4,
         "models-cache-prune": 9,
-        "models-recipes": 52,
+        "models-recipes": 54,
         "models-score": 5,
         "router-run": 35,
         "serves-multiplex": 4,
@@ -116,14 +110,14 @@
         "voice-sidecar": 29
       },
       "files_by_category": {
-        "docs": 101,
-        "examples": 80,
-        "implementation": 225,
+        "docs": 103,
+        "examples": 81,
+        "implementation": 227,
         "skills": 16,
-        "tests": 179,
-        "tooling": 32
+        "tests": 186,
+        "tooling": 34
       },
-      "files_scanned": 633,
+      "files_scanned": 647,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
@@ -132,7 +126,6 @@
       "violation_counts": {
         "benchmark": 0,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 0,
@@ -143,7 +136,6 @@
         "multiplexer": 0,
         "onboard": 0,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 0,
         "voice-run-bridge": 0,
@@ -155,7 +147,6 @@
       "allowed_legacy_counts": {
         "benchmark": 0,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 0,
@@ -166,7 +157,6 @@
         "multiplexer": 0,
         "onboard": 0,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 0,
         "voice-run-bridge": 0,
@@ -206,7 +196,6 @@
       "violation_counts": {
         "benchmark": 0,
         "cache-prune": 0,
-        "calibrate": 0,
         "deploy": 0,
         "eval-benchmark-action-flag": 0,
         "external-bench": 0,
@@ -217,7 +206,6 @@
         "multiplexer": 0,
         "onboard": 0,
         "preflight": 0,
-        "profile": 0,
         "score": 0,
         "serve": 0,
         "voice-run-bridge": 0,

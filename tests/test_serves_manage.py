@@ -6,21 +6,17 @@ GPU, and no network. Mirrors tests/test_serves.py's fake-`_run` style.
 import json
 import sys
 import textwrap
-import types
 
 import pytest
 
 from anvil_serving import guard, serves
+from tests.conftest import proc
 
 
 @pytest.fixture(autouse=True)
 def _isolated_host_policy(monkeypatch, tmp_path):
     """Keep a developer's enabled machine policy out of dispatch unit tests."""
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / ".anvil-serving"))
-
-
-def proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
 
 
 def _manifest(tmp_path, body):
@@ -61,6 +57,7 @@ DUAL_MODE_MANIFEST = """
     [[serve]]
     name = "split-a"
     container = "split-a"
+    runtime = "docker"
     port = 30001
     model = "split-a-local"
     engine = "vllm"
@@ -74,6 +71,7 @@ DUAL_MODE_MANIFEST = """
     [[serve]]
     name = "split-b"
     container = "split-b"
+    runtime = "docker"
     port = 30002
     model = "split-b-local"
     engine = "vllm"
@@ -86,6 +84,7 @@ DUAL_MODE_MANIFEST = """
     [[serve]]
     name = "tp2"
     container = "tp2"
+    runtime = "docker"
     port = 30003
     model = "candidate-local"
     engine = "vllm"
@@ -401,6 +400,7 @@ def test_exclusive_mode_covers_legacy_unreserved_experiment_but_not_cpu_sidecar(
         [[serve]]
         name = "legacy-experiment"
         container = "legacy-experiment"
+        runtime = "docker"
         port = 39000
         model = "legacy-local"
         engine = "vllm"
@@ -409,6 +409,7 @@ def test_exclusive_mode_covers_legacy_unreserved_experiment_but_not_cpu_sidecar(
         [[serve]]
         name = "realtime-proxy"
         container = "realtime-proxy"
+        runtime = "docker"
         port = 8765
         model = "realtime-proxy"
         engine = "audio"
@@ -492,6 +493,47 @@ def test_mode_entry_accepts_dispatcher_confirmation_scope(
         ) == 0
 
     assert "mode entered: tp2" in capsys.readouterr().out
+
+
+def test_canonical_cli_enters_and_leaves_synthetic_exclusive_mode(
+    tmp_path, monkeypatch, capsys,
+):
+    # The documented canonical command: the dispatcher consumes --confirm and
+    # forwards it back in argv (forward_confirm_flag), so the legacy leaf
+    # parser sees confirm=True on both transitions.
+    from anvil_serving import cli
+
+    path = _manifest(tmp_path, DUAL_MODE_MANIFEST)
+    states = {
+        "split-a": "absent",
+        "split-b": "absent",
+        "tp2": "absent",
+        serves.DEFAULT_ROUTER_CONTAINER: "exited",
+    }
+    run = _mode_run(states)
+    seen_confirm = []
+    real_cmd_mode = serves.cmd_mode
+
+    def cmd_mode_with_fake_docker(*args, **kwargs):
+        seen_confirm.append(kwargs.get("confirm"))
+        return real_cmd_mode(*args, _run=run, **kwargs)
+
+    monkeypatch.setattr(serves, "cmd_mode", cmd_mode_with_fake_docker)
+
+    def fake_up(serves_list, names, **kwargs):
+        for name in names:
+            states[name] = "running"
+        return 0
+
+    monkeypatch.setattr(serves, "cmd_up", fake_up)
+
+    tail = ["tp2", "--restore-group", "split-stack", "--manifest", path, "--confirm"]
+    assert cli.main(["serves", "mode", "enter", *tail]) == 0
+    assert "mode entered: tp2" in capsys.readouterr().out
+
+    assert cli.main(["serves", "mode", "leave", *tail]) == 0
+    assert "mode left: restored split group split-stack" in capsys.readouterr().out
+    assert seen_confirm == [True, True]
 
 
 def test_failed_mode_entry_restores_split_stack_in_transaction_order(
@@ -986,6 +1028,7 @@ def test_main_down_forwards_keep_container(tmp_path, monkeypatch):
         [[serve]]
         name = "heavy"
         container = "sglang"
+        runtime = "docker"
         port = 30000
         model = "primary-local"
         engine = "sglang"
@@ -1016,6 +1059,7 @@ def test_main_rm_dispatches(tmp_path, monkeypatch):
         [[serve]]
         name = "heavy"
         container = "sglang"
+        runtime = "docker"
         port = 30000
         model = "primary-local"
         engine = "sglang"
@@ -1038,6 +1082,7 @@ def test_main_adopt_dispatches(tmp_path, monkeypatch):
         [[serve]]
         name = "heavy"
         container = "sglang"
+        runtime = "docker"
         port = 30000
         model = "primary-local"
         engine = "sglang"
@@ -1136,6 +1181,7 @@ def test_serves_logs_dispatched_from_main(tmp_path, monkeypatch):
         [[serve]]
         name = "heavy"
         container = "vllm-heavy"
+        runtime = "docker"
         port = 30002
         model = "primary-local"
         engine = "vllm"

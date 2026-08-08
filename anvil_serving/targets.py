@@ -139,6 +139,9 @@ class ExecutionPlan:
     capacity: CapacityDecision | None = None
     transport_auth_env: str | None = None
     transport_allowed_operations: tuple[str, ...] = ()
+    # ADR-0033 controller-RPC groundwork: node identity the selected controller
+    # must assert on /health before dispatch, when the transport declares it.
+    transport_expected_node: str | None = None
 
     @property
     def endpoint(self) -> str | None:
@@ -290,7 +293,9 @@ def preflight_execution_plan(
         topology, command_host=command_host, command_runtime=command_runtime, environment=environment
     )
     selected_target = _target_host(topology, target)
-    resource = _resource_owner(topology, command.resource_role, selected_target)
+    resource = _resource_owner(
+        topology, command.resource_role, selected_target, command_host=identity.host
+    )
     resource_host = _host(topology, resource.host, "resource host")
     resource_runtime = _runtime(topology, resource.runtime, "resource runtime")
     if resource_runtime.host != resource_host.id:
@@ -415,6 +420,9 @@ def finalize_execution_plan(
         transport_allowed_operations=(
             selected_transport_record.allowed_operations if selected_transport_record else ()
         ),
+        transport_expected_node=(
+            selected_transport_record.expected_node if selected_transport_record else None
+        ),
     )
 
 
@@ -473,17 +481,39 @@ def _command_identity(
     return identity
 
 
-def _resource_owner(topology: Topology, role: str | None, target: Host | None = None) -> Resource:
+def _resource_owner(
+    topology: Topology,
+    role: str | None,
+    target: Host | None = None,
+    *,
+    command_host: Host | None = None,
+) -> Resource:
     assert role is not None
     matches = tuple(
         resource
         for resource in topology.resources
         if resource.role == role and (target is None or resource.host == target.id)
     )
+    if len(matches) > 1 and target is None and command_host is not None:
+        # ADR-0033: resource roles are unique per host, not globally. With no
+        # explicit --target, the command identity's own host disambiguates —
+        # and only that host; this never guesses among remote owners.
+        local_matches = tuple(
+            resource for resource in matches if resource.host == command_host.id
+        )
+        if len(local_matches) == 1:
+            return local_matches[0]
     if len(matches) != 1:
         target_suffix = f" on target {target.id!r}" if target is not None else ""
+        owners = sorted({resource.host for resource in matches})
+        owner_suffix = (
+            f"; owners on hosts {owners!r}, select with --target host:<id>"
+            if len(matches) > 1
+            else ""
+        )
         raise TargetResolutionError(
             f"resource role {role!r}{target_suffix} has {len(matches)} declared owners"
+            + owner_suffix
         )
     return matches[0]
 
@@ -522,6 +552,12 @@ def _gpu_role(topology: Topology, resource: Resource, command: CommandSpec) -> G
     return role
 
 
+# A host's native shell drives its own docker daemon; that is the only
+# cross-runtime pair that is genuinely local (ADR-0033;
+# .tickets/closed/2026-08-07-local-transport-runtime-equality-friction.md).
+_NATIVE_OPERATES_RUNTIME_ROLES = frozenset({"docker"})
+
+
 def _select_transport(
     topology: Topology,
     command: CommandSpec,
@@ -530,7 +566,14 @@ def _select_transport(
     execution_runtime: Runtime,
     requested: str,
 ) -> tuple[str, Transport | None]:
-    local = identity.host.id == execution_host.id and identity.runtime.id == execution_runtime.id
+    same_host = identity.host.id == execution_host.id
+    local = same_host and (
+        identity.runtime.id == execution_runtime.id
+        or (
+            identity.runtime.role == "native"
+            and execution_runtime.role in _NATIVE_OPERATES_RUNTIME_ROLES
+        )
+    )
     selected = requested
     if requested == "auto":
         selected = "local" if local else "controller"
@@ -540,7 +583,11 @@ def _select_transport(
         )
     if selected == "local":
         if not local:
-            raise TargetResolutionError("local transport requires the command host and runtime to own the target")
+            raise TargetResolutionError(
+                "local transport requires the command host to own the target and "
+                "the runtimes to match (a native shell may operate its own "
+                "host's docker runtime)"
+            )
         return selected, None
     if selected == "ssh" and not command.recovery_capable:
         raise TargetResolutionError(f"command {command.name!r} is not recovery-capable")

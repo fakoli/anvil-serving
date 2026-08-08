@@ -23,17 +23,8 @@ from anvil_serving.router.backends.sse import (
     OpenAIStreamAssembler,
     iter_sse_events,
 )
-from anvil_serving.router.config import Tier
 from anvil_serving.router.internal import InternalRequest, Message
-
-
-def _tier(dialect: str, privacy: str = "local", extra_body=None) -> Tier:
-    return Tier(
-        id=f"{dialect}-tier", base_url="https://api.example.test",
-        dialect=dialect, context_limit=200_000, privacy=privacy,
-        tool_support=True, auth_env="EXAMPLE_KEY", model="m",
-        extra_body=extra_body,
-    )
+from tests.router.helpers import make_tier as _tier
 
 
 def _request(stream: bool = True) -> InternalRequest:
@@ -296,3 +287,50 @@ def test_assemblers_skip_malformed_events():
     an = AnthropicStreamAssembler()
     assert an.feed("content_block_delta", "not json") is None
     assert an.feed(None, '{"type": "content_block_delta", "delta": 5}') is None
+
+
+# --------------------------------------------------------------------------- #
+# End-to-end: relay backend -> get_last_structured -> OpenAI dialect.stream
+# --------------------------------------------------------------------------- #
+def test_openai_streaming_usage_flows_to_dialect_usage_chunk():
+    """A live streaming request with include_usage yields a real-usage chunk.
+
+    Proves the full path the #345 fix relies on: ``relay._generate_streaming``
+    sets ``stream_options.include_usage`` upstream, the SSE assembler turns the
+    upstream's trailing usage into ``StructuredResult.usage``, and
+    ``OpenAIDialect.stream`` (via ``get_last_structured``) renders it as a final
+    ``chat.completion.chunk`` carrying the REAL counts.
+    """
+    from anvil_serving.router.dialects.openai import OpenAIDialect
+
+    payload = _openai_sse(
+        {"choices": [{"index": 0, "delta": {"content": "ok"}}]},
+        {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]},
+        {"choices": [], "usage": {"prompt_tokens": 12, "completion_tokens": 2}},
+    )
+    backend = RelayBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
+                           stream_transport=FakeStreamTransport(payload))
+    request = _request(stream=True)
+    request.raw = {"stream": True, "stream_options": {"include_usage": True}}
+    deltas = list(backend.generate(request))
+    assert deltas == ["ok"]
+
+    d = OpenAIDialect()
+    chunks = b"".join(d.stream(request, deltas, get_structured=backend.get_last_structured)).decode()
+    # Parse into chunk dicts.
+    parsed = []
+    for line in chunks.split("data: "):
+        line = line.strip()
+        if not line or line == "[DONE]":
+            continue
+        parsed.append(json.loads(line))
+    # The final content chunk before [DONE] must carry the real usage.
+    usage_chunks = [c for c in parsed if c.get("usage") is not None]
+    assert len(usage_chunks) == 1
+    # padding chunk
+    assert parsed[-1]["choices"] == []
+    assert usage_chunks[0]["usage"] == {
+        "prompt_tokens": 12,
+        "completion_tokens": 2,
+        "total_tokens": 14,
+    }

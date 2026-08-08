@@ -90,3 +90,22 @@ def test_suite_mismatch_fails_closed(monkeypatch, tmp_path):
     )
     assert result["ok"] is False
     assert result["error"]["code"] == "suite_mismatch"
+
+
+def test_missing_stage_artifact_returns_typed_not_found(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("ANVIL_BENCHMARK_JOB_DB", str(tmp_path / "jobs.sqlite3"))
+    monkeypatch.setenv("ANVIL_BENCHMARK_RUN_ROOT", str(tmp_path / "runs"))
+
+    assert cli.main([
+        "eval",
+        "benchmark",
+        "context",
+        "artifact",
+        "--run-id",
+        "missing-run",
+        "--path",
+        "evidence/0-context.json",
+    ]) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "job_not_found"

@@ -17,8 +17,6 @@ import hashlib
 import json
 import mimetypes
 import os
-import sys
-import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -26,55 +24,19 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 try:
     from .model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
+    from .benchmarking.artifacts import (
+        atomic_write_json as _atomic_write_json,
+        console_safe as _console_safe,
+        validate_write_target,
+    )
 except ImportError:  # direct ``python anvil_serving/preflight.py`` compatibility
     from model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
+    from benchmarking.artifacts import (
+        atomic_write_json as _atomic_write_json,
+        console_safe as _console_safe,
+        validate_write_target,
+    )
 
-
-def _console_safe(value):
-    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
-    return str(value).encode(encoding, errors="backslashreplace").decode(encoding)
-
-
-def _atomic_write_json(path, value):
-    out = os.path.abspath(os.path.expanduser(path))
-    parent = os.path.dirname(out) or os.getcwd()
-    if not os.path.isdir(parent):
-        raise OSError("output directory does not exist: %s" % parent)
-    temporary = None
-    try:
-        with tempfile.NamedTemporaryFile(
-                mode="w", encoding="utf-8", newline="\n", dir=parent,
-                prefix=".%s." % os.path.basename(out), suffix=".tmp", delete=False) as handle:
-            temporary = handle.name
-            json.dump(value, handle, indent=2, ensure_ascii=True)
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, out)
-        temporary = None
-    finally:
-        if temporary is not None:
-            try:
-                os.unlink(temporary)
-            except FileNotFoundError:
-                pass
-
-
-def _validate_output_path(path):
-    """Fail before live probes when an output target cannot be replaced safely."""
-    if not path or path == "-":
-        return None
-    out = os.path.abspath(os.path.expanduser(path))
-    parent = os.path.dirname(out) or os.getcwd()
-    if not os.path.isdir(parent):
-        raise OSError("output directory does not exist: %s" % parent)
-    if os.path.islink(out):
-        raise OSError("output path cannot be a symbolic link: %s" % out)
-    if os.path.exists(out) and not os.path.isfile(out):
-        raise OSError("output path is not a regular file: %s" % out)
-    if not os.access(parent, os.W_OK):
-        raise OSError("output directory is not writable: %s" % parent)
-    return out
 
 def chat(base, model, messages, key=None, max_tokens=256, temperature=0.0,
          tools=None, tool_choice=None, timeout=900, chat_template_kwargs=None,
@@ -682,7 +644,7 @@ def t_video(base, model, key, data_url, video_identity, expectations, *,
 def resolve_api_key(api_key_env=None):
     """Resolve auth for probes from an environment variable reference."""
     if api_key_env:
-        value = os.environ.get(api_key_env)
+        value = (os.environ.get(api_key_env) or "").strip()
         if not value:
             raise ValueError("environment variable %s is not set" % api_key_env)
         return value
@@ -811,7 +773,7 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
     if not allowed_finish_reasons:
         ap.error("--allowed-finish-reasons cannot be empty")
     try:
-        _validate_output_path(a.json_out)
+        validate_write_target(a.json_out)
     except OSError as exc:
         ap.error(str(exc))
     from .eval import resolve_endpoint_target

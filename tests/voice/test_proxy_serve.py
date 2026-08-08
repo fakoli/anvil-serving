@@ -16,50 +16,14 @@ import pytest
 
 from anvil_serving.voice.serves._common import ServeNotConfigured
 from anvil_serving.voice.serves.proxy import ProxyServe, ProxyServeConfig
-
-
-class FakeRun:
-    """Matches an argv PREFIX against canned ``(returncode, stdout, stderr)``."""
-
-    def __init__(self, responses):
-        self.responses = responses
-        self.calls = []
-
-    def __call__(self, argv, **kwargs):
-        self.calls.append(list(argv))
-        for prefix, rc, out, err in self.responses:
-            if argv[: len(prefix)] == prefix:
-                return SimpleNamespace(returncode=rc, stdout=out, stderr=err)
-        return SimpleNamespace(returncode=1, stdout="", stderr="no matcher for %r" % (argv,))
-
-
-class FakeOpenResponse:
-    def __init__(self, status: int):
-        self.status = status
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-    def getcode(self):
-        return self.status
-
-
-def fake_open_ok(url, timeout=None):
-    return FakeOpenResponse(200)
-
-
-def fake_open_fails(url, timeout=None):
-    raise OSError("connection refused")
+from tests.voice.conftest import FakeOpenResponse, FakeRun, fake_open_fails
 
 
 @pytest.fixture
 def manifest_with_proxy(tmp_path):
     p = tmp_path / "serves.voice.toml"
     p.write_text(
-        '[[serve]]\nname = "realtime-proxy"\ncontainer = "anvil-voice-proxy"\n'
+        '[[serve]]\nname = "realtime-proxy"\ncontainer = "anvil-voice-proxy"\nruntime = "docker"\n'
         'port = 8765\nmodel = "anvil-realtime-proxy"\nengine = "audio"\nhealth = "/usage"\n'
         'up = "echo bring-up-proxy"\n',
         encoding="utf-8",
@@ -92,7 +56,7 @@ def test_bring_up_raises_serve_not_configured_when_manifest_missing(tmp_path):
 def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
     p = tmp_path / "serves.toml"
     p.write_text(
-        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nport = 8090\n'
+        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nruntime = "docker"\nport = 8090\n'
         'model = "parakeet"\nengine = "audio"\n',
         encoding="utf-8",
     )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import math
 import re
 
@@ -60,6 +61,16 @@ def test_context_runner_calibrates_with_endpoint_usage_and_scores_exactly():
     assert result["request_ids"]
 
 
+def test_context_runner_rejects_unimplemented_profile_cases():
+    profile = copy.deepcopy(load_profile("smoke"))
+    profile["suites"]["context"]["cases"] = ["ruler-niah"]
+
+    with pytest.raises(BenchmarkJobError) as exc:
+        run_context_suite(profile, spec("context"), caller=context_caller)
+
+    assert exc.value.code == "unsupported_context_case"
+
+
 class AgentCaller:
     def __call__(self, base, model, key, messages, max_tokens, timeout, tools=None, **_kwargs):
         tool_messages = [item for item in messages if item["role"] == "tool"]
@@ -104,6 +115,20 @@ def test_agentic_runner_injects_failed_result_then_scores_retry():
     assert observation["stages"]["recovery"]["passed"] is True
     assert [call["arguments"]["attempt"] for call in observation["tool_calls"]] == ["1", "2"]
     assert len(result["request_ids"]) == 3
+
+
+def test_agentic_runner_executes_every_profile_repetition():
+    profile = copy.deepcopy(load_profile("smoke"))
+    profile["suites"]["agentic"]["repetitions"] = 2
+
+    result = run_agentic_suite(
+        profile,
+        spec("agentic", recovery_result="error", case_ids=["tool-recovery"]),
+        caller=AgentCaller(),
+    )
+
+    assert [item["repetition"] for item in result["observations"]] == [0, 1]
+    assert result["summary"]["attempted"] == 2
 
 
 @pytest.mark.parametrize("case_ids", [[], ["tool-recovery", "tool-recovery"], ["unknown"]])

@@ -327,11 +327,6 @@ def _handler_argv(path: Sequence[CommandNode]) -> tuple[str, ...]:
     return tuple(item.name for item in path[1:])
 
 
-def _hidden_leaf_help_flags(path: Sequence[CommandNode]) -> frozenset[str]:
-    """Options owned by the dispatcher rather than the leaf handler."""
-    return frozenset({flag for option in COMMAND_TREE.global_options for flag in option.flags})
-
-
 def _global_options_for_path(path: Sequence[CommandNode]) -> tuple[CommandOption, ...]:
     """Return dispatcher-owned options that the selected public leaf accepts."""
     node = path[-1]
@@ -657,7 +652,9 @@ def _remote_arguments(
         raise UsageError(f"declared controller tool {remote.tool!r} is unavailable")
     schema = tool["inputSchema"]
     properties = schema.get("properties", {})
+    argument_aliases = dict(remote.argument_aliases)
     arguments = dict(remote.fixed_arguments)
+    fixed_argument_names = set(arguments)
     positional: list[str] = []
     index = 0
     after_separator = False
@@ -673,6 +670,7 @@ def _remote_arguments(
             continue
         flag, separator, inline = token.partition("=")
         field = flag[2:].replace("-", "_") if flag.startswith("--") else ""
+        field = argument_aliases.get(field, field)
         field_schema = properties.get(field)
         if (
             not field
@@ -681,10 +679,12 @@ def _remote_arguments(
         ):
             raise UsageError(f"{flag} is not supported for remote {node.name}; use focused help")
 
-        if field in arguments:
+        if field in fixed_argument_names:
             raise UsageError(f"{flag} is fixed by the canonical command path")
         schema_type = field_schema.get("type")
         types = schema_type if isinstance(schema_type, list) else [schema_type]
+        if field in arguments and "array" not in types:
+            raise UsageError(f"{flag} may not be repeated")
         if "boolean" in types:
             if separator:
                 raise UsageError(f"{flag} does not accept a value")
@@ -814,12 +814,15 @@ def _dispatch_remote_tool(
                 "resolved controller transport is missing endpoint or token configuration",
                 code="controller_transport_incomplete",
             )
-        controller = ControllerTransport(
-            plan.transport_endpoint,
-            auth_env=plan.transport_auth_env,
-            allowed_operations=plan.transport_allowed_operations,
-            timeout_seconds=_remote_transport_timeout(arguments, tool_name=remote.tool),
-        )
+        controller_options: dict[str, object] = {
+            "auth_env": plan.transport_auth_env,
+            "allowed_operations": plan.transport_allowed_operations,
+            "timeout_seconds": _remote_transport_timeout(arguments, tool_name=remote.tool),
+            "expected_node": plan.transport_expected_node,
+        }
+        if remote.max_response_bytes is not None:
+            controller_options["max_response_bytes"] = remote.max_response_bytes
+        controller = ControllerTransport(plan.transport_endpoint, **controller_options)
     ssh = _ssh_recovery_transport(plan) if plan.transport == "ssh" or allow_ssh_fallback else None
     operation = Operation(plan.command.name, arguments, tool_name=remote.tool)
     ssh_operation = Operation(plan.command.name, {})
@@ -1205,6 +1208,12 @@ def _dispatch(
     prefix = _handler_argv(path)
     if node.handler.forward_resolution_options:
         rest = (*rest, *_resolution_options_argv(resolution_options))
+    if node.handler.forward_confirm_flag and confirmed:
+        # The dispatcher consumed --confirm, but this legacy local handler
+        # gates on its own argparse option; restore exactly one token before
+        # any literal `--` separator.
+        separator = rest.index("--") if "--" in rest else len(rest)
+        rest = (*rest[:separator], "--confirm", *rest[separator:])
     try:
         with guard.confirmation_scope(confirmed):
             result = handler([*prefix, *rest])

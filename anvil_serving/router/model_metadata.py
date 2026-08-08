@@ -16,8 +16,9 @@ from typing import Mapping, Optional
 
 from anvil_serving import __version__
 
-from .availability import AvailabilityResult
+from .availability import AvailabilityResult, safe_check
 from .config import RouterConfig, Tier, normalize_model_alias
+from .model_capacity import _nonnegative_int
 
 
 CAPABILITIES_PARAMS_KEY = "capabilities"
@@ -56,6 +57,39 @@ def _safe_modalities(value: object) -> list[str]:
     return sorted({item for item in value if isinstance(item, str) and _MODALITY_RE.fullmatch(item)})
 
 
+def _compat(value: object) -> Optional[dict]:
+    """Allowlist the OpenClaw-compatible ``compat`` capability declarations.
+
+    Currently emits ``supportsUsageInStreaming`` and ``supportsStrictMode`` (both
+    bools).  Everything else in the source mapping is intentionally dropped so
+    arbitrary ``params`` values never leak into the public capabilities payload.
+    """
+    if not isinstance(value, Mapping):
+        return None
+    result: dict[str, object] = {}
+    supports = value.get("supportsUsageInStreaming")
+    if isinstance(supports, bool):
+        result["supportsUsageInStreaming"] = supports
+    strict = value.get("supportsStrictMode")
+    if isinstance(strict, bool):
+        result["supportsStrictMode"] = strict
+    # Reasoning-effort ladder. Uses the EXACT OpenClaw compat key and accepts a
+    # list as a SET: order is not semantically meaningful to OpenClaw (it treats
+    # the list as a membership set), so we preserve source order for readability
+    # but document that consumers must not read it as an ordered ladder.
+    efforts = value.get("supportedReasoningEfforts")
+    if isinstance(efforts, (list, tuple)):
+        seen = set()
+        cleaned = []
+        for e in efforts:
+            if isinstance(e, str) and e not in seen and _MODALITY_RE.fullmatch(e):
+                seen.add(e)
+                cleaned.append(e)
+        if cleaned:
+            result["supportedReasoningEfforts"] = cleaned
+    return result or None
+
+
 def _thinking(value: object) -> Optional[dict]:
     if not isinstance(value, Mapping):
         return None
@@ -75,20 +109,8 @@ def _thinking(value: object) -> Optional[dict]:
     return result or None
 
 
-def _nonnegative_int(value: object) -> Optional[int]:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        return None
-    return value
-
-
 def _readiness(availability: object, tier: Tier) -> AvailabilityResult:
-    try:
-        result = availability.check(tier)  # type: ignore[attr-defined]
-        if isinstance(result, AvailabilityResult):
-            return result
-    except Exception:  # noqa: BLE001 - endpoint must not expose probe failures
-        pass
-    return AvailabilityResult(False, "unavailable", "availability_check_failed")
+    return safe_check(availability, tier, include_exception_name=False)
 
 
 def _safe_readiness(availability: object, tier: Tier) -> dict:
@@ -150,6 +172,7 @@ def build_model_capabilities(
             "tools": {"supported": tier.tool_support},
             "modalities": _safe_modalities(capabilities.get("modalities")),
             "thinking": _thinking(capabilities.get("thinking")),
+            "compat": _compat(capabilities.get("compat")),
             "limits": {
                 "max_output_tokens": tier.max_output_tokens,
                 "images_per_request": _nonnegative_int(capabilities.get("images_per_request")),
@@ -221,6 +244,7 @@ def _canonical_public_config(config: RouterConfig) -> bytes:
             "capabilities": {
                 "modalities": _safe_modalities(capabilities.get("modalities")),
                 "thinking": _thinking(capabilities.get("thinking")),
+                "compat": _compat(capabilities.get("compat")),
                 "images_per_request": _nonnegative_int(capabilities.get("images_per_request")),
                 "video_per_request": _nonnegative_int(capabilities.get("video_per_request")),
             },

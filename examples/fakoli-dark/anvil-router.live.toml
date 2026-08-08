@@ -2,6 +2,10 @@
 # qualification evidence. Use preflight and benchmark artifacts before exposure.
 [server]
 auth_env = "ANVIL_ROUTER_TOKEN"
+# ADR-0033 opt-in durability sinks on the anvil-router-state volume; enable in
+# a reviewed cutover.
+# admission_state_path = "/var/lib/anvil-router/admission-intent.json"
+# decision_log_path = "/var/lib/anvil-router/decisions.jsonl"
 
 [router]
 relay_timeout = 60
@@ -38,6 +42,7 @@ video_limit = 1
 [router.tiers.params.capabilities]
 modalities = ["text", "image", "video"]
 thinking = { supported = true, default = "disabled", caller_override = false }
+compat = { supportsUsageInStreaming = true, supportsStrictMode = true, supportedReasoningEfforts = ["low", "high", "max"] }
 images_per_request = 4
 video_per_request = 1
 

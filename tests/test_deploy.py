@@ -172,6 +172,7 @@ def test_deploy_append_serve_entry_extends_pre_engine_manifest(tmp_path):
             [[serve]]
             name = "legacy"
             container = "vllm-legacy"
+            runtime = "docker"
             port = 30000
             model = "legacy-local"
             up = "docker compose -f old.yml up -d vllm"
@@ -218,7 +219,8 @@ def test_deploy_cli_emits_manifest_and_tier_stub(tmp_path, monkeypatch, capsys):
     parsed = deploy._serves.load_manifest(str(manifest_path))
     assert len(parsed) == 1
     assert parsed[0] == {
-        "name": "primary-local", "container": "sglang", "port": 30000,
+        "name": "primary-local", "container": "sglang", "runtime": "docker",
+        "port": 30000,
             "model": "qwen35-awq-local", "served_name": "qwen35-awq-local",
             "engine": "sglang", "stack": "serving", "health": "/health",
         "_manifest_dir": str(tmp_path),

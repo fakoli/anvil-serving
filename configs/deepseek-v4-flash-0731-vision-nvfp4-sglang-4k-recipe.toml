@@ -1,0 +1,102 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+# DeepSeek V4 Flash 0731 Vision (MoonViT + NVFP4) — first-load correctness lane.
+# Experimental community adapter; the assembled 0731 package has never been
+# GPU-validated anywhere (VISION_ADAPTER_MANIFEST.json:
+# gpu_validated_for_this_0731_package = false). This host is the first loader.
+# Challenger for vision.* aliases only. no-promotion.
+
+[[recipe]]
+model = "webbrain-one/DeepSeek-V4-Flash-0731-Vision-NVFP4"
+status = "unverified"
+source = "2026-08-07 intake of the WebBrain 0731 vision overlay (exact MJPansa 0731 NVFP4 text mirror + frozen MoonViT tower + trained PatchMerger projector); see docs/findings/2026-08-07-deepseek-0731-vision-nvfp4-recipe-intake.md"
+family = "deepseek-v4"
+total_params_b = 304
+active_params_b = 13
+
+[recipe.download]
+repo = "webbrain-one/DeepSeek-V4-Flash-0731-Vision-NVFP4"
+revision = "3a8f168ccafeb4304b7490f773ad1bd18852e215"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink; exclusive TP2 only. ~175.6 GB mixed FP8/NVFP4 text weights TP2-shard to ~88 GB/card; first-load fit is itself a gate. Upstream verified profile was B200 TP=4; nothing about this lane transfers from it."
+
+[recipe.serve]
+engine = "sglang"
+allow_cuda_visible_devices_index = true
+image = "lmsysorg/sglang@sha256:7b6a35df9839fd593a94a1eaee82d7777f472225d9f3ad1f8a2e0cb2bd1785d0"
+# Digest pin of lmsysorg/sglang:v0.5.16-cu130. Tag v0.5.16 == pinned source
+# commit fdebc938f7f4d16fe6b9f55dcd9a767cf0899ea1 (GitHub compare: identical),
+# so the checkpoint's sglang_ext patches the image's installed package in
+# place (verified patchable in-image 2026-08-07); no source build. Offline
+# hermetic Kimi processor load verified in-image (transformers 5.12.1).
+entrypoint = [
+  "bash", "-lc",
+  "python -m deepseek_vision_sglang.patch --apply && LP=/sgl-workspace/sglang/python/sglang/srt/layers/logits_processor.py && if [ \"$(grep -c 'enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,' $LP)\" = \"1\" ]; then sed -i 's/enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,/enabled=False,/' $LP && echo 'anvil patch: multimem logits gatherer disabled (NCCL fallback)'; elif grep -q 'enabled=False,' $LP; then echo 'anvil patch: multimem gatherer already disabled'; else echo 'anvil patch: logits gatherer anchor drift' >&2 && exit 3; fi && exec python -m sglang.launch_server --model-path \"$MODEL_PATH\" --tp-size 2 --context-length \"$CONTEXT_LENGTH\" --mem-fraction-static \"$MEM_FRACTION_STATIC\" --host 0.0.0.0 --port \"$PORT\" --trust-remote-code --enable-multimodal --limit-mm-data-per-request '{\"image\":1}' --disable-cuda-graph --skip-server-warmup --disable-custom-all-reduce --chunked-prefill-size 8192 --fp4-gemm-backend \"$FP4_GEMM_BACKEND\" --moe-runner-backend \"$MOE_RUNNER_BACKEND\" --served-model-name \"$SERVED_MODEL_NAME\"",
+]
+model_env = "MODEL"
+named_volumes = [
+  "deepseek-0731-vision-jit:/root/.cache/tvm-ffi",
+]
+quantization = "Mixed precision from the 0731 source: routed experts NVFP4 (group 16), attention/shared-experts/head/MTP FP8-family formats preserved; confirm from startup logs"
+context_tokens = 4096
+port = 39070
+startup_timeout_seconds = 4200
+served_model_name = "deepseek-v4-flash-0731-vision-nvfp4-sglang-tp2-4k"
+ipc = "host"
+shm_size = "32gb"
+ulimits = [
+  "memlock=-1",
+  "nofile=1048576:1048576",
+  "stack=67108864",
+]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_OPT_FP8_WO_A_GEMM=0",
+  "SGLANG_ENABLE_JIT_DEEPGEMM=0",
+  "FLASHINFER_DISABLE_VERSION_CHECK=1",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "MODEL_PATH=/root/.cache/huggingface/hub/models--webbrain-one--DeepSeek-V4-Flash-0731-Vision-NVFP4/snapshots/3a8f168ccafeb4304b7490f773ad1bd18852e215",
+  "PYTHONPATH=/root/.cache/huggingface/hub/models--webbrain-one--DeepSeek-V4-Flash-0731-Vision-NVFP4/snapshots/3a8f168ccafeb4304b7490f773ad1bd18852e215/sglang_ext",
+  "SGLANG_EXTERNAL_MODEL_PACKAGE=deepseek_vision_sglang.models",
+  "SGLANG_EXTERNAL_MM_MODEL_ARCH=DeepseekV4ForCausalLM",
+  "SGLANG_EXTERNAL_MM_PROCESSOR_PACKAGE=deepseek_vision_sglang.processors",
+  "CONTEXT_LENGTH=4096",
+  "MEM_FRACTION_STATIC=0.97",
+  "PORT=39070",
+  "FP4_GEMM_BACKEND=marlin",
+  "MOE_RUNNER_BACKEND=marlin",
+  "SERVED_MODEL_NAME=deepseek-v4-flash-0731-vision-nvfp4-sglang-tp2-4k",
+  "HF_HUB_OFFLINE=1",
+]
+flags = []
+note = "First correctness lane, deliberately conservative per upstream docs/SGLANG_DEPLOYMENT.md: 4096 context, one image/request (<=512 merged image tokens), CUDA graph disabled, warmup skipped, native /generate endpoint only (no OpenAI image parts upstream). Kernel profile: marlin/marlin is the only community-confirmed-correct sm_120 NVFP4 pair at v0.5.16; the upstream blackwell-native flashinfer_trtllm pair is SM100-gated and confirmed broken on sm_120 (sglang#18954, flashinfer#2577, cutlass#3096), and auto must never be used (selects the NaN-producing flashinfer_cutlass path). Candidate second lane: --fp4-gemm-backend flashinfer_cudnn, marlin MoE. 2026-08-07 research deltas applied: SGLANG_OPT_FP8_WO_A_GEMM=0 (sglang#32311: force-enabled on SM120, double-materializes the ~176 GB checkpoint in host RAM and hangs under WSL2), SGLANG_ENABLE_JIT_DEEPGEMM=0 (DeepGEMM lightning-indexer has no SM120 implementation, sglang#23657), --disable-custom-all-reduce + NCCL_P2P_DISABLE=1 (sglang#15181 is this exact GPU pair), --chunked-prefill-size 8192. Known residual risk: DeepSeek V4 sparse/indexer attention on sm_120 at this tag has open upstream issues; the tag ships flash_mla_with_kvcache_sm120 as a dense fallback and first load will tell. Source-verified at v0.5.16 (2026-08-07): SGLANG_EXTERNAL_* env vars are first-class, every sglang_ext import resolves, both patch.py anchors match exactly once, and the ext processor maps to architecture DeepseekV4ForCausalLM. Mandatory startup-log gate: a line containing 'Ignore import error when loading deepseek_vision_sglang' means the ext import was silently swallowed and the TEXT-ONLY native model got registered — treat as failed load, never as a working server. --disable-cuda-graph is deprecated-but-functional at this exact tag (kept deliberately; re-verify spelling before any engine upgrade). The TokenizerManager process opens its own CUDA context + nvJPEG buffers on GPU 0 outside --mem-fraction-static accounting: if GPU 0 alone OOMs, step MEM_FRACTION_STATIC down before other changes. Image probes must be RGB (PNG preferred): non-RGB JPEG GPU decode has open upstream bugs (sglang#24699, #26751, #33464). MEM_FRACTION_STATIC=0.97: the engine-measured weight floor for this checkpoint at TP=2 is 0.9411 (~88 GB/card, far above the upstream 0.85 default), 0.96 still failed pool allocation, and 0.97 is the first value that serves; see the attempt ladder in .tickets/closed/2026-08-07-deepseek-0731-vision-tp2-memfraction-fit.md. HF_HUB_OFFLINE=1 (enforced by the managed loader for complete-cache loads); the multimodal processor loads the pinned moonshotai/Kimi-K2.6 tower processor (trust_remote_code) from cache, so its json/py/tokenizer files must be pre-pulled into the same volume at the pinned revision before first load. NCCL env copied from the qualified vLLM TP=2 DeepSeek lanes as a prior; SGLang may not need all of it — record what startup logs show. VLLM_* env deliberately not carried over (different engine)."
+
+[recipe.fit]
+suited = ["qualification", "vision-ocr", "vision-general"]
+rationale = "Only candidate path to image input on the qualified 0731 backbone family. Vision quality envelope is narrow (100K-example projector, OCR/GUI grounding explicitly unvalidated upstream); evidence ladder must include text-parity smoke, one known image, and fresh GUI/screenshot probes before any router discussion."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/webbrain-one/DeepSeek-V4-Flash-0731-Vision-NVFP4/tree/3a8f168ccafeb4304b7490f773ad1bd18852e215",
+  "https://huggingface.co/MJPansa/DeepSeek-V4-Flash-0731-NVFP4/tree/64d64cd89bc63a66aa46506da89d7821f7491c62",
+  "https://huggingface.co/moonshotai/Kimi-K2.6/tree/7eb5002f6aadc958aed6a9177b7ed26bb94011bb",
+]
+community = [
+  "https://huggingface.co/webbrain-one/DeepSeek-V4-Flash-Vision-NVFP4",
+  "https://huggingface.co/baseten/GLM-5.2-Vision-NVFP4",
+]
+local = [
+  "docs/findings/2026-08-07-deepseek-0731-vision-nvfp4-recipe-intake.md",
+]

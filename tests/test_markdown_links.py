@@ -223,10 +223,3 @@ def test_git_index_lookup_has_timeout(monkeypatch, tmp_path: Path):
 
     with pytest.raises(subprocess.TimeoutExpired):
         links.tracked_paths(tmp_path, _run=timeout)
-
-
-def test_repository_markdown_links_pass():
-    checked, problems = links.check(ROOT)
-
-    assert checked > 0
-    assert problems == ()

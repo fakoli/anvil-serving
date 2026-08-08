@@ -192,20 +192,15 @@ def load_suite_spec(path):
         raise ValueError("suite file evidence_use must be 'diagnostic' or 'ranking'")
     validator_strength = spec.get("validator_strength", "deterministic_marker")
     if validator_strength not in {
-            "deterministic_marker", "exact_choice", "typed_structure", "independent_judge"}:
+            "deterministic_marker", "exact_choice", "typed_structure"}:
         raise ValueError(
             "suite file validator_strength must be deterministic_marker, exact_choice, "
-            "typed_structure, or independent_judge"
+            "or typed_structure"
         )
     if evidence_use == "ranking" and validator_strength == "deterministic_marker":
         raise ValueError(
             "ranking suites need validator_strength exact_choice or typed_structure; "
             "substring/regex markers are diagnostic only"
-        )
-    if validator_strength == "independent_judge":
-        raise ValueError(
-            "validator_strength independent_judge is not executable yet; use an "
-            "exact_choice or typed_structure validator, or keep the suite diagnostic-only"
         )
     seen_ids = set()
     for i, item in enumerate(evals):

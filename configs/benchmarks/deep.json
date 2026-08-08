@@ -2,16 +2,14 @@
   "schema": "anvil-serving.benchmark-profile/v1",
   "name": "deep",
   "description": "Full long-context degradation and software-engineering qualification campaign.",
-  "content_sha256": "690b4ba6e1c986af8909460ea1a1c05e67d96fd4ac7da846f6aae88b468b4982",
+  "content_sha256": "85be6c33707c2db471df932239e20f190123dcb7146046c0a8c7b8350e3be713",
   "adapters": {
-    "ruler": {"kind": "git", "source": "https://github.com/NVIDIA/RULER", "revision": "c3f5e3b4f87f97e048793bb510a3a6b19a46bf3a"},
-    "mrcr": {"kind": "dataset", "source": "https://huggingface.co/datasets/openai/mrcr", "revision": "f4c69fae7cf81f7ca26b9fee34b392a50f6b8a1d"},
     "mini-swe-agent": {"kind": "git", "source": "https://github.com/SWE-agent/mini-swe-agent", "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"},
     "swe-bench": {"kind": "git", "source": "https://github.com/SWE-bench/SWE-bench", "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"},
     "worker-base": {"kind": "image", "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"}
   },
   "suites": {
-    "context": {"cases": ["native-needle", "native-order", "native-distractor", "ruler-niah", "mrcr"], "token_buckets": [8192, 32768, 65536, 131072, 262144, 524288, 640000], "positions": [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95], "repetitions": 3, "timeout_s": 43200, "output_headroom_tokens": 8192, "scoring": {"baseline_bucket": 8192, "pass_rate_floor": 0.7, "max_relative_drop": 0.3}, "requirements": {"min_free_disk_bytes": 21474836480}, "adapters": ["ruler", "mrcr"]},
+    "context": {"cases": ["native-needle", "native-order", "native-distractor"], "token_buckets": [8192, 32768, 65536, 131072, 262144, 524288, 640000], "positions": [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95], "repetitions": 3, "timeout_s": 43200, "output_headroom_tokens": 8192, "scoring": {"baseline_bucket": 8192, "pass_rate_floor": 0.7, "max_relative_drop": 0.3}, "requirements": {"min_free_disk_bytes": 21474836480}, "adapters": []},
     "agentic": {"cases": ["tool-sequence", "tool-recovery", "structured-edit", "debug-loop", "context-recovery"], "repetitions": 3, "timeout_s": 21600, "max_steps": 48, "max_completion_tokens": 16384, "scoring": {"pass_rate_floor": 0.7}, "requirements": {"min_free_disk_bytes": 10737418240}, "adapters": []},
     "swe": {"cases": ["swe-verified"], "repetitions": 1, "timeout_s": 86400, "instance_limit": 25, "max_steps": 100, "max_completion_tokens": 32768, "scoring": {"pass_rate_floor": 0.4}, "requirements": {"min_free_disk_bytes": 107374182400, "container_required": true}, "adapters": ["mini-swe-agent", "swe-bench", "worker-base"]}
   }

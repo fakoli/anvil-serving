@@ -480,6 +480,12 @@ def _build_parser():
         if action in ("quiesce", "readmit"):
             item.add_argument("--confirm", action="store_true")
             item.add_argument("--dry-run", action="store_true")
+        if action == "quiesce":
+            item.add_argument(
+                "--reason",
+                default="operator",
+                help="content-free quiesce reason code (e.g. promotion, eviction)",
+            )
     install = actions.add_parser("install-config")
     install.add_argument("--config", required=True)
     install.add_argument("--router-url")
@@ -553,6 +559,7 @@ def main(argv=None):
                     getattr(args, "dry_run", False) or not confirmed
                     if action in ("quiesce", "readmit") else False
                 ),
+                reason=getattr(args, "reason", "operator"),
             )
         except ValueError as exc:
             print("router transition failed: %s" % exc, file=sys.stderr)

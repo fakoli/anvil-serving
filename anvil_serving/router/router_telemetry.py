@@ -253,6 +253,28 @@ def render_prometheus(
     return "\n".join(lines) + "\n"
 
 
+def render_process_prometheus(started_at: float, buffer_capacity: Optional[int]) -> str:
+    """Render restart-detectability gauges (ADR-0033).
+
+    ``anvil_router_process_start_time_seconds`` lets scrapers mask or annotate
+    the resets every buffer gauge legitimately undergoes on restart, and the
+    buffer capacity exposes when eviction saturation makes the snapshot a
+    trailing window rather than a session total.
+    """
+    lines = [
+        "# HELP anvil_router_process_start_time_seconds Unix time the router process started.",
+        "# TYPE anvil_router_process_start_time_seconds gauge",
+        "anvil_router_process_start_time_seconds %.3f" % float(started_at),
+    ]
+    if buffer_capacity is not None:
+        lines += [
+            "# HELP anvil_router_decision_buffer_capacity Maximum records the decision ring buffer retains.",
+            "# TYPE anvil_router_decision_buffer_capacity gauge",
+            "anvil_router_decision_buffer_capacity %d" % buffer_capacity,
+        ]
+    return "\n".join(lines) + "\n"
+
+
 def render_capacity_prometheus(snapshot: Mapping[str, Any]) -> str:
     """Render safe per-alias model-capacity gauges from a capacity snapshot."""
     specs = (

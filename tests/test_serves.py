@@ -6,22 +6,19 @@ seams), so these run with no docker, no GPU, and no network.
 import os
 import subprocess
 import textwrap
-import types
 import json
 
 import pytest
 
 from anvil_serving import reservations, serves
+from tests.conftest import enabled_cache_policy as _enabled_cache_policy
+from tests.conftest import proc
 
 
 @pytest.fixture(autouse=True)
 def _isolated_host_policy(monkeypatch, tmp_path):
     """Never let a developer's enabled machine policy affect unit timing."""
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / ".anvil-serving"))
-
-
-def proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
 
 
 def _manifest(tmp_path, body):
@@ -91,6 +88,7 @@ def test_load_manifest_parses_up_into_argv_list(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-gptoss"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -110,7 +108,7 @@ def test_load_manifest_up_keeps_spaced_dir_as_one_token(tmp_path):
     path = str(d / "serves.toml")
     with open(path, "w", encoding="utf-8") as f:
         f.write(
-            '[[serve]]\nname="x"\ncontainer="x"\nport=1\nmodel="x"\n'
+            '[[serve]]\nname="x"\ncontainer="x"\nruntime="docker"\nport=1\nmodel="x"\n'
             'engine="vllm"\nup="bash {dir}/s.sh"\n'
         )
     (s,) = serves.load_manifest(path)
@@ -123,7 +121,83 @@ def test_load_manifest_rejects_missing_required_fields(tmp_path):
     with pytest.raises(ValueError) as exc:
         serves.load_manifest(path)
     msg = str(exc.value)
-    assert "container" in msg and "port" in msg and "model/served_name" in msg
+    # `container` is no longer unconditionally required — it is required only
+    # for runtime = "docker" (ADR-0034), so the unconditional set is what a
+    # bare entry must be told about.
+    assert "runtime" in msg and "port" in msg and "model/served_name" in msg
+
+
+def _runtime_entry(tmp_path, body):
+    return _manifest(tmp_path, "[[serve]]\n" + body)
+
+
+def test_load_manifest_rejects_unknown_runtime(tmp_path):
+    path = _runtime_entry(tmp_path, (
+        'name = "x"\ncontainer = "c"\nruntime = "podman"\nport = 1\nmodel = "m"\n'
+    ))
+    with pytest.raises(ValueError, match="runtime must be one of"):
+        serves.load_manifest(path)
+
+
+@pytest.mark.parametrize("declared", [" Docker ", "DOCKER", "\tdocker "])
+def test_load_manifest_normalizes_runtime_like_residency(tmp_path, declared):
+    # `residency` strips and lowercases; `runtime` sits beside it in the same
+    # validator, so it forgives the same input rather than surprising an author
+    # who learned the convention from the adjacent field.
+    path = _runtime_entry(tmp_path, (
+        f'name = "x"\ncontainer = "c"\nruntime = "{declared}"\n'
+        'port = 1\nmodel = "m"\n'
+    ))
+    (s,) = serves.load_manifest(path)
+    assert s["runtime"] == "docker"
+
+
+def test_load_manifest_normalizes_native_runtime_before_rejecting(tmp_path):
+    # Normalization must happen before the not-implemented guard, or a
+    # differently-cased native entry would fall through to the unknown-value
+    # error and misreport why it was refused.
+    path = _runtime_entry(tmp_path, (
+        'name = "x"\nruntime = " NATIVE "\nport = 1\nmodel = "m"\n'
+    ))
+    with pytest.raises(serves.NativeRuntimeNotSupported, match="not implemented"):
+        serves.load_manifest(path)
+
+
+def test_load_manifest_rejects_non_string_runtime(tmp_path):
+    path = _runtime_entry(tmp_path, (
+        'name = "x"\ncontainer = "c"\nruntime = 1\nport = 1\nmodel = "m"\n'
+    ))
+    with pytest.raises(ValueError, match="runtime must be one of"):
+        serves.load_manifest(path)
+
+
+def test_load_manifest_rejects_docker_runtime_without_container(tmp_path):
+    path = _runtime_entry(tmp_path, (
+        'name = "x"\nruntime = "docker"\nport = 1\nmodel = "m"\n'
+    ))
+    with pytest.raises(ValueError, match="missing required field.*container"):
+        serves.load_manifest(path)
+
+
+def test_load_manifest_rejects_native_runtime_declaring_container(tmp_path):
+    # The container field is meaningless for a native serve; accepting it would
+    # let a manifest imply a lifecycle the runtime does not have.
+    path = _runtime_entry(tmp_path, (
+        'name = "x"\ncontainer = "c"\nruntime = "native"\nport = 1\nmodel = "m"\n'
+    ))
+    with pytest.raises(ValueError, match="must not declare container"):
+        serves.load_manifest(path)
+
+
+def test_load_manifest_rejects_native_runtime_as_unimplemented(tmp_path):
+    # ADR-0034 defines the discriminator; the native lifecycle is not built.
+    # Failing at load keeps the schema honest instead of surfacing a KeyError
+    # from one of the ~85 places that resolve serve["container"].
+    path = _runtime_entry(tmp_path, (
+        'name = "mlx-primary"\nruntime = "native"\nport = 1\nmodel = "m"\n'
+    ))
+    with pytest.raises(serves.NativeRuntimeNotSupported, match="not implemented"):
+        serves.load_manifest(path)
 
 
 @pytest.mark.parametrize(
@@ -141,6 +215,7 @@ def test_load_manifest_infers_pre_engine_entries(tmp_path, container, up, expect
         [[serve]]
         name = "legacy"
         container = "{container}"
+        runtime = "docker"
         port = 30000
         model = "legacy-local"
         up = "{up}"
@@ -154,6 +229,7 @@ def test_load_manifest_accepts_audio_engine_for_non_llm_serves(tmp_path):
         [[serve]]
         name = "stt"
         container = "anvil-voice-stt"
+        runtime = "docker"
         port = 30010
         model = "tdt_ctc-110m"
         engine = "audio"
@@ -271,6 +347,7 @@ def test_load_manifest_maps_stack_to_compose_project(tmp_path):
         name = "stt"
         stack = "voice-audio"
         container = "anvil-voice-stt"
+        runtime = "docker"
         port = 30010
         model = "tdt_ctc-110m"
         engine = "audio"
@@ -287,6 +364,7 @@ def test_load_manifest_rejects_stack_project_disagreement(tmp_path):
         name = "stt"
         stack = "voice-audio"
         container = "anvil-voice-stt"
+        runtime = "docker"
         port = 30010
         model = "tdt_ctc-110m"
         engine = "audio"
@@ -303,6 +381,7 @@ def test_load_manifest_rejects_invalid_stack_slug(tmp_path, stack):
         name = "stt"
         stack = "{stack}"
         container = "anvil-voice-stt"
+        runtime = "docker"
         port = 30010
         model = "tdt_ctc-110m"
         engine = "audio"
@@ -322,6 +401,7 @@ def test_load_manifest_accepts_purpose_model_engines(tmp_path, name, engine):
         [[serve]]
         name = "{name}"
         container = "vllm-qwen3-{name}"
+        runtime = "docker"
         port = 30005
         model = "qwen3-{name}-0.6b"
         engine = "{engine}"
@@ -338,6 +418,7 @@ def test_load_manifest_accepts_and_normalizes_reservation_fields(tmp_path):
         [[serve]]
         name = "stt"
         container = "anvil-voice-stt"
+        runtime = "docker"
         port = 30010
         model = "tdt_ctc-110m"
         engine = "audio"
@@ -356,6 +437,7 @@ def test_load_manifest_normalizes_on_demand_residency_spelling(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -371,6 +453,7 @@ def test_load_manifest_rejects_invalid_residency_with_clear_error(tmp_path, resi
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -388,6 +471,7 @@ def test_load_manifest_rejects_non_positive_integer_vram_mib(tmp_path, vram):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -403,6 +487,7 @@ def test_load_manifest_rejects_non_boolean_native_kv_offload(tmp_path, value):
         [[serve]]
         name = "candidate"
         container = "vllm-candidate"
+        runtime = "docker"
         port = 30001
         model = "candidate-local"
         engine = "vllm"
@@ -432,6 +517,7 @@ def test_load_manifest_rejects_missing_exclusive_router_dependency(
         [[serve]]
         name = "candidate"
         container = "vllm-candidate"
+        runtime = "docker"
         port = 30001
         model = "candidate-local"
         engine = "vllm"
@@ -453,6 +539,7 @@ def test_load_manifest_rejects_empty_or_non_string_gpu_role(tmp_path, gpu_role):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -468,6 +555,7 @@ def test_load_manifest_without_reservation_fields_gets_default_stack(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-gptoss"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -478,6 +566,7 @@ def test_load_manifest_without_reservation_fields_gets_default_stack(tmp_path):
     assert s == {
         "name": "fast",
         "container": "vllm-gptoss",
+        "runtime": "docker",
         "port": 30001,
         "model": "auxiliary-local",
             "served_name": "auxiliary-local",
@@ -496,6 +585,7 @@ def test_load_manifest_parses_groups_field(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -512,6 +602,7 @@ def test_load_manifest_groups_absent_adds_no_key(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -525,6 +616,7 @@ def test_load_manifest_groups_dedupes_preserving_order(tmp_path):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -540,6 +632,7 @@ def test_load_manifest_rejects_invalid_groups(tmp_path, groups):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -555,6 +648,7 @@ def test_load_manifest_rejects_reserved_group_all(tmp_path, reserved):
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30001
         model = "auxiliary-local"
         engine = "vllm"
@@ -569,6 +663,7 @@ def test_load_manifest_rejects_conflicting_legacy_engine_markers(tmp_path):
         [[serve]]
         name = "legacy"
         container = "vllm-old-model"
+        runtime = "docker"
         port = 30000
         model = "legacy-local"
         up = "docker compose -f old.yml up -d sglang"
@@ -583,6 +678,7 @@ def test_load_manifest_rejects_malformed_explicit_engine(tmp_path, engine):
         [[serve]]
         name = "bad"
         container = "vllm-model"
+        runtime = "docker"
         port = 30000
         model = "bad-local"
         engine = "{engine}"
@@ -596,6 +692,7 @@ def test_load_manifest_normalizes_llamacpp_alias_and_served_name(tmp_path):
         [[serve]]
         name = "gguf"
         container = "llamacpp"
+        runtime = "docker"
         port = 39015
         served_name = "devstral-gguf"
         engine = "llama.cpp"
@@ -681,6 +778,7 @@ def test_load_manifest_accepts_image_engine(tmp_path):
         [[serve]]
         name = "comfyui"
         container = "comfyui"
+        runtime = "docker"
         port = 8188
         model = "comfyui-v0.27.1"
         engine = "image"
@@ -767,6 +865,7 @@ def test_cmd_up_loads_manifest_adjacent_dotenv_without_overriding_shell(tmp_path
         [[serve]]
         name = "gepard"
         container = "gepard-fast-tts"
+        runtime = "docker"
         port = 39111
         model = "gepard-1.0"
         engine = "vllm"
@@ -812,6 +911,7 @@ def test_manifest_dotenv_isolation_survives_repeated_loads_and_object_churn(tmp_
             [[serve]]
             name = "{name}"
             container = "vllm-{name}"
+            runtime = "docker"
             port = 30000
             model = "{name}-local"
         """)
@@ -832,6 +932,7 @@ def test_manifest_dotenv_shell_value_wins_without_printing_secret(tmp_path, monk
         [[serve]]
         name = "secure"
         container = "vllm-secure"
+        runtime = "docker"
         port = 30000
         model = "secure-local"
     """)
@@ -859,6 +960,7 @@ def test_cmd_up_loads_home_dotenv_as_fallback(tmp_path, monkeypatch):
         [[serve]]
         name = "gepard"
         container = "gepard-fast-tts"
+        runtime = "docker"
         port = 39111
         model = "gepard-1.0"
         engine = "vllm"
@@ -894,6 +996,7 @@ def test_cmd_up_prefers_config_home_dotenv_over_home_fallback(tmp_path, monkeypa
         [[serve]]
         name = "gepard"
         container = "gepard-fast-tts"
+        runtime = "docker"
         port = 39111
         model = "gepard-1.0"
         engine = "vllm"
@@ -1604,6 +1707,7 @@ def _promotion_manifest(tmp_path):
         [[serve]]
         name = "candidate"
         container = "candidate-c"
+        runtime = "docker"
         port = 39031
         model = "candidate-model"
         engine = "vllm"
@@ -1611,6 +1715,7 @@ def _promotion_manifest(tmp_path):
         [[serve]]
         name = "heavy"
         container = "heavy-c"
+        runtime = "docker"
         port = 30002
         model = "new-heavy"
         engine = "vllm"
@@ -1619,6 +1724,7 @@ def _promotion_manifest(tmp_path):
         [[serve]]
         name = "old-heavy"
         container = "old-heavy-c"
+        runtime = "docker"
         port = 30002
         model = "old-heavy"
         engine = "vllm"
@@ -1699,6 +1805,18 @@ def test_load_promotions_rejects_removed_profile_fields(tmp_path):
     )
 
     with pytest.raises(ValueError, match="removed profile field"):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_missing_rollback_router_config(tmp_path):
+    # A rollback profile that does not exist must fail at manifest load, not at
+    # promotion time — see .tickets/2026-08-08-promotion-router-profiles-not-
+    # existence-validated.md. Every read-only surface loads the manifest, so
+    # this is where an unusable rollback becomes visible.
+    path = _promotion_manifest(tmp_path)
+    (tmp_path / "router-rollback.toml").unlink()
+
+    with pytest.raises(ValueError, match="rollback_router_config does not exist"):
         serves.load_promotions(path)
 
 
@@ -1960,6 +2078,7 @@ STATUS_LEDGER_MANIFEST = """
     [[serve]]
     name = "fast"
     container = "vllm-fast"
+    runtime = "docker"
     port = 30003
     model = "auxiliary-local"
     engine = "vllm"
@@ -1971,6 +2090,7 @@ STATUS_LEDGER_MANIFEST = """
     [[serve]]
     name = "stt"
     container = "anvil-voice-stt"
+    runtime = "docker"
     port = 30010
     model = "tdt_ctc-110m"
     engine = "audio"
@@ -1982,6 +2102,7 @@ STATUS_LEDGER_MANIFEST = """
     [[serve]]
     name = "plain"
     container = "vllm-plain"
+    runtime = "docker"
     port = 30030
     model = "plain-local"
     engine = "vllm"
@@ -2040,6 +2161,7 @@ def test_cmd_status_without_gpu_roles_prints_no_reservation_section(tmp_path, ca
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30003
         model = "auxiliary-local"
         engine = "vllm"
@@ -2085,6 +2207,7 @@ def test_status_human_and_structured_outputs_agree_on_exclusive_mode(
         [[serve]]
         name = "split-a"
         container = "split-a"
+        runtime = "docker"
         port = 30001
         model = "split-a-local"
         engine = "vllm"
@@ -2094,6 +2217,7 @@ def test_status_human_and_structured_outputs_agree_on_exclusive_mode(
         [[serve]]
         name = "split-b"
         container = "split-b"
+        runtime = "docker"
         port = 30002
         model = "split-b-local"
         engine = "vllm"
@@ -2103,6 +2227,7 @@ def test_status_human_and_structured_outputs_agree_on_exclusive_mode(
         [[serve]]
         name = "tp2"
         container = "tp2"
+        runtime = "docker"
         port = 30003
         model = "candidate-local"
         engine = "vllm"
@@ -2143,6 +2268,7 @@ def test_operating_mode_reports_unreachable_docker_as_unresolved(tmp_path):
         [[serve]]
         name = "split-a"
         container = "split-a"
+        runtime = "docker"
         port = 30001
         model = "split-a-local"
         engine = "vllm"
@@ -2170,6 +2296,7 @@ def test_status_summary_without_gpu_roles_has_empty_ledger_and_no_extra_probes(t
         [[serve]]
         name = "fast"
         container = "vllm-fast"
+        runtime = "docker"
         port = 30003
         model = "auxiliary-local"
         engine = "vllm"
@@ -2187,6 +2314,7 @@ def test_status_summary_skips_untagged_candidate_until_named(tmp_path):
         [[serve]]
         name = "primary"
         container = "vllm-primary"
+        runtime = "docker"
         port = 30002
         model = "primary-local"
         engine = "vllm"
@@ -2195,6 +2323,7 @@ def test_status_summary_skips_untagged_candidate_until_named(tmp_path):
         [[serve]]
         name = "candidate"
         container = "vllm-candidate"
+        runtime = "docker"
         port = 39002
         model = "candidate-local"
         engine = "vllm"
@@ -2222,6 +2351,7 @@ def test_main_status_positional_name_opts_candidate_in(tmp_path, monkeypatch):
         [[serve]]
         name = "primary"
         container = "vllm-primary"
+        runtime = "docker"
         port = 30002
         model = "primary-local"
         groups = ["llm-stack"]
@@ -2229,6 +2359,7 @@ def test_main_status_positional_name_opts_candidate_in(tmp_path, monkeypatch):
         [[serve]]
         name = "candidate"
         container = "vllm-candidate"
+        runtime = "docker"
         port = 39002
         model = "candidate-local"
     """)
@@ -2255,6 +2386,7 @@ def test_main_status_rejects_unknown_opt_in_before_polling(
         [[serve]]
         name = "primary"
         container = "vllm-primary"
+        runtime = "docker"
         port = 30002
         model = "primary-local"
         groups = ["llm-stack"]
@@ -2271,23 +2403,12 @@ def test_main_status_rejects_unknown_opt_in_before_polling(
 
 # ---- lifecycle-aware automatic WSL cache reclaim ---------------------------
 
-def _enabled_cache_policy():
-    return {
-        "enabled": True,
-        "distro": "docker-desktop",
-        "threshold_gb": 16.0,
-        "source_path": "host.toml",
-        "configured": True,
-        "applicable": True,
-        "schema_version": 1,
-    }
-
-
 def _lifecycle_manifest(tmp_path):
     return _manifest(tmp_path, """
         [[serve]]
         name = "heavy"
         container = "vllm-heavy"
+        runtime = "docker"
         port = 30002
         model = "primary-local"
         engine = "vllm"

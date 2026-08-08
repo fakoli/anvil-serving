@@ -300,7 +300,12 @@ def launch_benchmark_job(
     }
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-    process = popen(argv, **kwargs)
+    try:
+        process = popen(argv, **kwargs)
+    except OSError as exc:
+        raise BenchmarkJobError(
+            "worker_launch_failed", "detached benchmark worker could not be launched"
+        ) from exc
     store = BenchmarkJobStore(path, run_root=run_root)
     record = store.status(run_id)
     if record is None:

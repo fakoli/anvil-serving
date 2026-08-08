@@ -35,6 +35,7 @@ video_limit = 0
 [router.tiers.params.capabilities]
 modalities = ["text", "image"]
 thinking = { supported = true, default = "enabled", caller_override = true }
+compat = { supportsStrictMode = true }
 images_per_request = 1
 video_per_request = 0
 
