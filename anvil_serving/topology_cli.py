@@ -54,6 +54,7 @@ def _parser() -> argparse.ArgumentParser:
         ("show", "show a validated topology summary"),
         ("validate", "validate topology and overlay files offline"),
         ("resolve", "resolve one canonical command without executing it"),
+        ("drift", "compare the installed topology against a canonical fleet reference"),
     ):
         leaf = actions.add_parser(action, help=help_text)
         leaf.add_argument(
@@ -65,6 +66,12 @@ def _parser() -> argparse.ArgumentParser:
             ),
         )
         leaf.add_argument("--topology-overlay", help="partial deployment overlay TOML")
+        if action == "drift":
+            leaf.add_argument(
+                "--canonical",
+                required=True,
+                help="canonical fleet topology TOML (the private-repo source of truth)",
+            )
         if action == "resolve":
             leaf.add_argument("--command", required=True, help="canonical leaf, e.g. 'host status'")
             leaf.add_argument("--command-host")
@@ -76,9 +83,68 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+#: Per-host installed views may differ from the canonical fleet topology only
+#: in their command identity and their own topology id (ADR-0033).
+_DRIFT_ALLOWED_TOP_LEVEL = frozenset({"id", "command_host", "command_runtime"})
+
+
+def _drift_report(installed, canonical) -> dict:
+    """Metadata-only diff of two validated topologies (ADR-0033).
+
+    Reports section/id/field names, never values, and never auto-fixes:
+    cutover of a live host's installed file remains a reviewed operation.
+    """
+    differences: list[dict] = []
+    sections = ("hosts", "runtimes", "gpu_roles", "resources", "transports", "capacity_policies")
+    for section in sections:
+        installed_by_id = {item.id: asdict(item) for item in getattr(installed, section)}
+        canonical_by_id = {item.id: asdict(item) for item in getattr(canonical, section)}
+        for item_id in sorted(set(canonical_by_id) - set(installed_by_id)):
+            differences.append(
+                {"section": section, "id": item_id, "kind": "missing_in_installed"}
+            )
+        for item_id in sorted(set(installed_by_id) - set(canonical_by_id)):
+            differences.append(
+                {"section": section, "id": item_id, "kind": "missing_in_canonical"}
+            )
+        for item_id in sorted(set(installed_by_id) & set(canonical_by_id)):
+            fields = sorted(
+                name
+                for name, value in installed_by_id[item_id].items()
+                if canonical_by_id[item_id].get(name) != value
+            )
+            if fields:
+                differences.append(
+                    {
+                        "section": section,
+                        "id": item_id,
+                        "kind": "field_mismatch",
+                        "fields": fields,
+                    }
+                )
+    return {
+        "in_sync": not differences,
+        "differences": differences,
+        "allowed_per_host_differences": sorted(_DRIFT_ALLOWED_TOP_LEVEL),
+    }
+
+
 def run(argv=None) -> dict:
     args = _parser().parse_args(argv)
     topology_path = resolve_topology_path(args.topology)
+    if args.action == "drift":
+        installed = load_topology(topology_path, args.topology_overlay)
+        canonical = load_topology(resolve_topology_path(args.canonical))
+        report = _drift_report(installed, canonical)
+        report.update(
+            {
+                "topology_path": topology_path,
+                "canonical_path": resolve_topology_path(args.canonical),
+                "installed_topology": installed.id,
+                "canonical_topology": canonical.id,
+            }
+        )
+        return report
     if args.action == "validate":
         result = load_topology_result(topology_path, args.topology_overlay)
         return {
@@ -131,7 +197,11 @@ def run(argv=None) -> dict:
 def main(argv=None) -> int:
     result = run(argv)
     print(json.dumps(result, indent=2, sort_keys=True))
-    return 0 if result.get("valid", True) else 2
+    if not result.get("valid", True):
+        return 2
+    if result.get("in_sync") is False:
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

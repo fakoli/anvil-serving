@@ -89,6 +89,14 @@ class AnthropicDialect:
             raw=dict(body),
         )
 
+    def stream_error(self, message: str = "stream interrupted") -> bytes:
+        """One terminal Anthropic ``event: error`` frame for a mid-stream
+        failure (ADR-0033). The message is a generic label, never upstream
+        exception text."""
+        return _event(
+            "error", {"type": "error", "error": {"type": "api_error", "message": message}}
+        )
+
     def stream(
         self,
         request: InternalRequest,
