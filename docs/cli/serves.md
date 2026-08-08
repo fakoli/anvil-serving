@@ -142,6 +142,11 @@ other command reported success (see
 | `missing-registry` | error | A `--registry` path inside an `up` command that does not exist. Otherwise this surfaces only once a mode transaction is already running. |
 | `worktree-anchored-registry` | warning | A recipe registry resolving inside a linked git worktree, which `git worktree remove` deletes. |
 
+`load_manifest_set` **refuses** a duplicate name outright, so a shadowed
+edit can no longer reach a live command. `serves lint` deliberately loads
+leniently and still reports the defect — the command you reach for when
+blocked must not be the one that breaks.
+
 Sharing a **container** across files is not a defect — that is the supported
 read-only mirror pattern that `load_manifest_set` de-dupes deliberately. Only a
 duplicate `name` surviving that de-dup is reported.

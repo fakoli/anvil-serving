@@ -209,7 +209,7 @@ def manifest_set_paths(manifest_path):
     return paths
 
 
-def load_manifest_set(manifest_path):
+def load_manifest_set(manifest_path, *, reject_duplicates=True):
     """Load + de-dupe the serves across the whole manifest set (serve-groups §2).
 
     De-dup is BY CONTAINER (a serve can be mirrored across files — e.g. the
@@ -236,7 +236,43 @@ def load_manifest_set(manifest_path):
                 # A lifecycle-owning entry supersedes a read-only mirror while
                 # keeping the incumbent's position (dict reassignment).
                 by_container[key] = s
-    return list(by_container.values())
+    resolved = list(by_container.values())
+    if reject_duplicates:
+        _reject_duplicate_serve_names(resolved)
+    return resolved
+
+
+def _reject_duplicate_serve_names(serves):
+    """Refuse two surviving entries that share a `name`.
+
+    De-dup above is BY CONTAINER, so a read-only mirror collapses into its
+    lifecycle-owning entry and is not affected. Two entries that survive with
+    the same name are a different thing: name selection matches both, one
+    silently wins, and an edit to the loser is invisible at runtime. That
+    shadowing caused two live incidents in six days, the second leaving a
+    promoted serve unmanageable because `serves down` resolved the wrong
+    container. `serves lint` reports this without raising, so an operator can
+    see the whole set of offenders before this refusal blocks them.
+    """
+    by_name = {}
+    for serve in serves:
+        by_name.setdefault(serve["name"], []).append(serve)
+    duplicates = {n: e for n, e in by_name.items() if len(e) > 1}
+    if not duplicates:
+        return
+    detail = "; ".join(
+        "%r in %s (containers: %s)" % (
+            name,
+            ", ".join(sorted({e.get("_manifest_file", "?") for e in entries})),
+            ", ".join(e["container"] for e in entries),
+        )
+        for name, entries in sorted(duplicates.items())
+    )
+    raise ValueError(
+        "duplicate serve name(s) across the manifest set: %s. Each serve must "
+        "be declared once; run `anvil-serving serves lint` to see every "
+        "finding." % detail
+    )
 
 
 def resolve_group(serves, group):
@@ -4326,10 +4362,17 @@ def main(argv=None):
     # the named manifest, but admission/status still use the complete set so a
     # separate voice or ComfyUI manifest cannot become invisible GPU occupancy.
     use_set = bool(a.groups) or a.action in {"groups", "lint", "mode"}
+    # `lint` reports defects that the strict loader refuses, so it must load
+    # leniently -- otherwise the command an operator reaches for when blocked
+    # is the one that cannot run.
+    lenient = a.action == "lint"
     try:
         if a.action == "mode" and not os.path.isfile(os.path.expanduser(manifest_path)):
             raise FileNotFoundError(manifest_path)
-        serves = load_manifest_set(manifest_path) if use_set else load_manifest(manifest_path)
+        serves = (
+            load_manifest_set(manifest_path, reject_duplicates=not lenient)
+            if use_set else load_manifest(manifest_path)
+        )
     except FileNotFoundError:
         search_hint = (
             a.manifest
