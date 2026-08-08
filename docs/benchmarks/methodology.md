@@ -137,6 +137,27 @@ workers are submitted, so thread scheduling cannot change which context lengths
 the run attempts. Prefix-cache bursts share a byte-identical bounded prefix and
 retain a unique request suffix.
 
+**Effective context.** The context-degradation workflow calibrates prompt size
+from endpoint-reported token usage, places independently hidden targets at the
+profile's declared positions, and retains every raw observation. Effective
+context is the highest attempted bucket that still meets both the profile's
+pass-rate floor and maximum relative drop from its attempted baseline. It is
+not the advertised window, the configured engine limit, or an unattempted
+interpolation. Missing engine prefill/decode telemetry stays unavailable rather
+than being inferred from wall-clock latency.
+
+**Agentic stage score.** Deterministic agentic fixtures score protocol, tool
+arguments, result incorporation, recovery, history, reasoning, and final answer
+independently. Tool results come from the harness, never from the model under
+test. A malformed call, reasoning-budget exhaustion, incorrect recovery, and
+worker failure are separate outcomes.
+
+**Official SWE resolution.** An agent trajectory and patch are intermediate
+evidence. SWE resolution is complete only when the pinned official SWE-bench
+grader emits a report for the exact explicitly selected instance. Agent,
+dataset, image, prediction, and grader identities remain bound in the artifact.
+See [the durable job workflow](context-agentic-swe.md).
+
 ## Evaluation pipeline
 
 ```mermaid

@@ -13,6 +13,9 @@ the gateway's alias map.
 | Command | Purpose |
 | --- | --- |
 | `eval preflight` | Run functional compatibility checks against an endpoint. |
+| `eval benchmark context` | Run durable context-degradation jobs on a registered worker. |
+| `eval benchmark agentic` | Run deterministic agentic and recovery jobs. |
+| `eval benchmark swe` | Run pinned mini-SWE-agent plus the official SWE-bench grader. |
 | `eval benchmark capacity` | Measure throughput and latency. |
 | `eval benchmark multimodal` | Run a hash-pinned image/video/mixed-media corpus. |
 | `eval benchmark quality` | Run a repeatable quality suite with retained evidence. |
@@ -65,6 +68,14 @@ Use `--dry-run` to resolve and validate either workload without probing the
 endpoint or writing an artifact. Flags take precedence over a referenced serves
 manifest, which takes precedence over the bundled reference manifest. A direct
 target requires both `--base-url` and `--model`.
+
+The context, agentic, and SWE family root is the plan/dry-run surface; each
+family also provides explicit `prepare`, `preflight`, `submit`, `status`,
+`logs`, `cancel`, and `artifact` operations. Submission is
+durable and launches an isolated worker process; `--detach` returns after that
+launch. Use the controller transport for a registered remote worker rather
+than SSH. The complete specification, profile costs, evidence semantics, and
+examples are in [Context, agentic, and SWE benchmark jobs](../benchmarks/context-agentic-swe.md).
 
 ## Benchmark evidence
 

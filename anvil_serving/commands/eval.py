@@ -2,7 +2,215 @@
 
 from .family import command_family
 from .common import CONFIRM_OPTIONS
-from .spec import CommandNode, _node, _handler, _remote, _resource_node
+from .spec import CommandNode, _node, _handler, _option, _remote, _resource_node
+
+
+_JOB_READ_OPTIONS = (
+    _option("--run-id", summary="Portable benchmark run identifier.", value_name="ID"),
+)
+
+
+def _benchmark_suite(name: str, summary: str) -> CommandNode:
+    common_remote = {"fixed": (("suite", name),)}
+    return _node(
+        name,
+        summary,
+        handler=_handler(
+            "anvil_serving.benchmarking.jobs_cli", argv_prefix=(name, "plan")
+        ),
+        options=(
+            _option(
+                "--profile",
+                summary="Versioned benchmark profile.",
+                value_name="smoke|scout|deep",
+            ),
+            _option(
+                "--observed-context",
+                summary="Observed model context capacity used to enforce output headroom.",
+                value_name="TOKENS",
+            ),
+        ),
+        children=(
+            _resource_node(
+                "prepare",
+                f"Prepare digest-pinned {name} harness assets on the benchmark worker.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                mutation="mutate",
+                options=CONFIRM_OPTIONS + (
+                    _option("--run-id", summary="Portable benchmark run identifier.", value_name="ID"),
+                    _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
+                    _option("--offline", summary="Require exact assets to exist in cache."),
+                    _option(
+                        "--max-download-bytes",
+                        summary="Maximum prepared repository bytes.",
+                        value_name="BYTES",
+                    ),
+                ),
+                argv_prefix=(name, "prepare"),
+                remote_operation=_remote(
+                    "benchmark_harness_prepare",
+                    fixed=(("suite", name),),
+                    confirmed=(("confirm", True),),
+                    allowed=(
+                        "profile",
+                        "run_id",
+                        "ownership_id",
+                        "offline",
+                        "max_download_bytes",
+                    ),
+                ),
+            ),
+            _resource_node(
+                "assets",
+                f"Inspect prepared {name} harness assets.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                options=(
+                    _option("--run-id", summary="Portable benchmark run identifier.", value_name="ID"),
+                    _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
+                ),
+                argv_prefix=(name, "assets"),
+                remote_operation=_remote(
+                    "benchmark_harness_status",
+                    fixed=(("suite", name),),
+                    allowed=("run_id", "ownership_id"),
+                ),
+            ),
+            _resource_node(
+                "cleanup",
+                f"Clean only the owned work directory for a {name} benchmark run.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                mutation="mutate",
+                options=_JOB_READ_OPTIONS
+                + CONFIRM_OPTIONS
+                + (
+                    _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
+                ),
+                argv_prefix=(name, "cleanup"),
+                remote_operation=_remote(
+                    "benchmark_harness_cleanup",
+                    fixed=(("suite", name),),
+                    confirmed=(("confirm", True),),
+                    allowed=("run_id", "ownership_id"),
+                ),
+            ),
+            _resource_node(
+                "preflight",
+                f"Validate the endpoint and worker for a {name} benchmark job.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                options=(
+                    _option(
+                        "--spec-json",
+                        summary="Portable benchmark job specification JSON.",
+                        value_name="JSON",
+                    ),
+                    _option(
+                        "--requirements-json",
+                        summary="Worker and harness requirement JSON.",
+                        value_name="JSON",
+                    ),
+                ),
+                argv_prefix=(name, "preflight"),
+                remote_operation=_remote(
+                    "benchmark_job_preflight",
+                    fixed=(("suite", name),),
+                    allowed=("spec_json", "requirements_json"),
+                ),
+            ),
+            _resource_node(
+                "submit",
+                f"Submit a durable {name} benchmark job.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                mutation="mutate",
+                options=CONFIRM_OPTIONS + (
+                    _option(
+                        "--spec-json",
+                        summary="Portable benchmark job specification JSON.",
+                        value_name="JSON",
+                    ),
+                    _option("--follow", summary="Follow the submitted job."),
+                    _option("--detach", summary="Return after durable submission."),
+                ),
+                argv_prefix=(name, "submit"),
+                remote_operation=_remote(
+                    "benchmark_job_submit",
+                    confirmed=(("confirm", True),),
+                    allowed=("spec_json", "follow", "detach"),
+                    **common_remote,
+                ),
+            ),
+            _resource_node(
+                "status",
+                f"Read durable {name} benchmark job status.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                options=_JOB_READ_OPTIONS,
+                argv_prefix=(name, "status"),
+                remote_operation=_remote(
+                    "benchmark_job_status",
+                    allowed=("run_id",),
+                    **common_remote,
+                ),
+            ),
+            _resource_node(
+                "logs",
+                f"Read bounded cursor logs for a {name} benchmark job.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                options=_JOB_READ_OPTIONS + (
+                    _option("--cursor", summary="First log cursor.", value_name="N"),
+                    _option("--limit", summary="Maximum returned log entries.", value_name="N"),
+                    _option("--follow", summary="Continue following job logs.", output_policy="follow"),
+                ),
+                argv_prefix=(name, "logs"),
+                output_policy="follow",
+                remote_operation=_remote(
+                    "benchmark_job_logs",
+                    allowed=("run_id", "cursor", "limit", "follow"),
+                    **common_remote,
+                ),
+            ),
+            _resource_node(
+                "cancel",
+                f"Cancel a {name} benchmark job after recording partial evidence.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                mutation="mutate",
+                options=_JOB_READ_OPTIONS + CONFIRM_OPTIONS,
+                argv_prefix=(name, "cancel"),
+                remote_operation=_remote(
+                    "benchmark_job_cancel",
+                    confirmed=(("confirm", True),),
+                    allowed=("run_id",),
+                    **common_remote,
+                ),
+            ),
+            _resource_node(
+                "artifact",
+                f"Read the terminal or partial {name} benchmark artifact.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                options=_JOB_READ_OPTIONS + (
+                    _option(
+                        "--path",
+                        summary="Digest-bound stage evidence path from the job artifact.",
+                        value_name="PATH",
+                    ),
+                ),
+                argv_prefix=(name, "artifact"),
+                remote_operation=_remote(
+                    "benchmark_job_artifact",
+                    allowed=("run_id", "path"),
+                    **common_remote,
+                ),
+            ),
+        ),
+        docs_anchor="docs/cli/eval.md#benchmark",
+    )
 
 
 @command_family(category="Quality loop")
@@ -59,6 +267,15 @@ def commands() -> CommandNode:
                 "benchmark",
                 "Run or import benchmark evidence.",
                 children=(
+                    _benchmark_suite(
+                        "context", "Measure retrieval and reasoning degradation by context depth."
+                    ),
+                    _benchmark_suite(
+                        "agentic", "Run deterministic tool-use and software-solving scenarios."
+                    ),
+                    _benchmark_suite(
+                        "swe", "Run pinned repository problem-solving benchmarks."
+                    ),
                     _resource_node(
                         "capacity",
                         "Measure endpoint latency, throughput, context, and cache behavior.",
