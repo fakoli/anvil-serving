@@ -254,3 +254,31 @@ def test_windows_host_falls_back_to_python_launcher(tmp_path):
     assert row["differs"] == 0 and row["missing"] == 0
     assert any("python3" in a for a in calls) and any(
         "python" in a and "python3" not in a for a in calls)
+
+
+def test_remote_wrapper_is_quoted_and_banners_filtered(tmp_path):
+    # Observed live: ssh joins argv with spaces for the REMOTE shell to
+    # re-split, so cmd.exe handed python only "import" from the wrapper; and
+    # the client-side post-quantum advisory banner masqueraded as the failure
+    # detail. The wrapper must ship quoted, and "** " banner lines must never
+    # be reported as the reason a host is unreachable.
+    (tmp_path / "a.toml").write_text("x = 1\n", encoding="utf-8")
+    from anvil_serving import fleet
+    names = ["a.toml"]
+    hashes = fleet._repo_hashes(str(tmp_path), names)
+    seen = []
+
+    def _run(argv, **_k):
+        seen.append(argv)
+        class R:
+            returncode = 1
+            stdout = ""
+            stderr = ("** WARNING: connection is not using a post-quantum key "
+                      "exchange algorithm.\nreal error: no such host")
+        return R()
+
+    row = fleet.probe_drift_host("w", hashes, names, _run=_run)
+    payload = seen[0][-1]
+    assert payload.startswith('"') and payload.endswith('"')
+    assert row["state"] == "unreachable"
+    assert row["detail"] == "real error: no such host"
