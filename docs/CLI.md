@@ -114,6 +114,7 @@ required operands, choices, and defaults.
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `fleet` | Cross-host visibility across the declared operator topology. | `read` / `bounded` | - |
 | `fleet version` | Report anvil-serving version skew across declared fleet hosts. | `read` / `bounded` | `--host`<br>`--timeout` |
+| `fleet drift` | Compare each host's live operator home against its repository snapshot. | `read` / `bounded` | `--repo`<br>`--host`<br>`--home`<br>`--timeout` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
 | `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
