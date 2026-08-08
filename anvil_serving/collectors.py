@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from .operator_output import redact
+from .transports import _urlopen_no_proxy_no_redirect
 
 
 SCHEMA_VERSION = 1
@@ -202,16 +203,6 @@ def _validate_endpoint(value: object) -> tuple[str, bool]:
     if not private:
         raise ValueError("collector endpoint must be loopback or private/tailnet scoped")
     return value.rstrip("/"), loopback
-
-
-def _urlopen_no_proxy_no_redirect(request, timeout: float):
-    class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
-            return None
-
-    return urllib.request.build_opener(
-        urllib.request.ProxyHandler({}), NoRedirect()
-    ).open(request, timeout=timeout)
 
 
 def _load_config(path: str) -> CollectorConfig:
