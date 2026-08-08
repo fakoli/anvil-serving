@@ -215,6 +215,13 @@ def commands() -> CommandNode:
                 role="model-serve",
             ),
             _resource_node(
+                "lint",
+                "Report manifest defects that no other surface makes visible.",
+                "anvil_serving.serves",
+                role="model-serve",
+                docs_anchor="docs/cli/serves.md#lint",
+            ),
+            _resource_node(
                 "logs",
                 "Read bounded model serve logs.",
                 "anvil_serving.serves",
