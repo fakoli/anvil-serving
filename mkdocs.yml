@@ -52,6 +52,7 @@ nav:
       - Model settings example: MODEL-SETTINGS-EXAMPLE.md
   - Route through the gateway:
       - Architecture: ARCHITECTURE.md
+      - 'Strategy: make divergence loud': STRATEGY-MAKE-DIVERGENCE-LOUD.md
       - Thin capability gateway: THIN-CAPABILITY-GATEWAY.md
       - Configuration reference: CONFIGURATION.md
       - Embeddings & reranking: PURPOSE-MODELS.md
