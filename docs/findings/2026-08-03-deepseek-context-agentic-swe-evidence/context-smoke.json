@@ -1,0 +1,38 @@
+{
+  "schema_version": "anvil-serving-benchmark-publication/v1",
+  "observed_at": "2026-08-03",
+  "run_id": "deepseek-context-smoke-20260803-01",
+  "benchmark_kind": "context",
+  "profile": "smoke",
+  "endpoint": "http://100.64.0.10:8000/v1",
+  "model": {
+    "checkpoint": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "served_name": "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-tp2-650k"
+  },
+  "topology": {
+    "worker": "AI-MBP25",
+    "serve_host": "Fakoli Dark",
+    "gpu": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q",
+    "tensor_parallel_size": 2,
+    "served_context_tokens": 650000
+  },
+  "result": {
+    "status": "completed",
+    "attempted_cases": 1,
+    "passed_cases": 1,
+    "requested_context_tokens": 8192,
+    "observed_prompt_tokens": 6102,
+    "effective_context_tokens": 8192,
+    "latency_ms": 1176.679,
+    "completion_tokens_per_second": 37.393,
+    "stop_reason": "stop",
+    "interpretation": "The 8K smoke bucket passed. No statement about degradation above 8K is supported by this run."
+  },
+  "integrity": {
+    "spec_sha256": "1766b747168f9d0a147ce5bd8a9bd1a25ec1cb89ca085698133859347d45e1d5",
+    "artifact_sha256": "47d4666edfd777ffa23cbb9c1de8d259dce2b7ca08f0f53b203d7706d491b6ed",
+    "stage_sha256": "0dcb42be3aea2fd483a8fc41f059e4955cc325f6f142c5afaa4e57fd6f729797",
+    "profile_sha256": "34c5ea22aeba9ae3bdff7530632959f293f5a77896f4a389431790891596dd4d"
+  }
+}

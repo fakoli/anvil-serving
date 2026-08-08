@@ -2,20 +2,22 @@
 
 ## Current status and review date
 
-`current` for the human-approved `llm.primary` alias. The pinned r16 B12X TP=2
-recipe uses DSpark K5, 650,000 served tokens, 4,096-token batching, 16 admitted
-sequences, and a router-enforced 32,768-token output cap. It passed ~640K
-retrieval, the complete low-reasoning Pi protocol gate, a matched 32K c1 run at
-141.6 tok/s median decode, and current high-reasoning smokes from Pi on Fakoli
-Dark, Pi on Fakoli Mini, and OpenClaw on Fakoli Mini. The former 1M/maxseq16
-candidate remains capacity evidence but is no longer client-facing: two real
-agent request shapes fatally exceeded the locked B12X workspace.
+The 2026-08-02 public record documents human approval of the r16 B12X TP=2
+DSpark K5 recipe for `llm.primary` at 650,000 served tokens, 4,096-token
+batching, 16 admitted sequences, and a router-enforced 32,768-token output cap.
+That envelope passed ~640K retrieval, the complete low-reasoning Pi protocol
+gate, a matched 32K c1 run at 141.6 tok/s median decode, and high-reasoning
+smokes from Pi on Fakoli Dark, Pi on Fakoli Mini, and OpenClaw on Fakoli Mini.
+Later public records document a 262,144-token retune and an r27 image upgrade;
+the active operator assignment is intentionally not asserted here. The former
+1M/maxseq16 candidate remains capacity evidence: two real agent request shapes
+fatally exceeded the locked B12X workspace.
 
 A derived WSL2 image now also qualifies native CPU KV offload at a 262,144
 served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
 the managed shared-memory lifecycle regression. This extends the capacity
 contract but does not replace the 131K profile as the preferred performance
-recipe. Review date: 2026-08-02.
+recipe. Review date: 2026-08-08.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
 not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
@@ -118,6 +120,15 @@ The GPU-only Pi-context lane adds `functional` and `capacity` evidence:
   tool-result continuation, and Responses.
 - Its matched 32K c1 run completed 3/3 in 16.6 seconds at 5.59-second median
   E2E, 8,793 effective prefill tok/s, and 141.6 tok/s median decode.
+
+The 2026-08-03 remote benchmark-worker smoke adds bounded infrastructure and
+quality evidence. An 8K native context case passed 1/1, but no larger context
+bucket was attempted. In the tool-error scenario, the model followed the tool
+protocol, incorporated results, and retried correctly, then failed the
+reasoning and final-answer checks. One pinned SWE-bench Verified instance,
+`django__django-11099`, resolved under the official grader. This qualifies the
+remote harness path for a scout campaign; it is not a representative SWE-bench
+score and does not change the current routing decision.
 - The first 1M profile admitted one sequence and recovered a 985K needle, but
   a three-tool burst fatally exceeded its locked B12X workspace. It is rejected
   for Pi agentic use.
@@ -168,10 +179,12 @@ GGUF size ladder, DSpark caveats, and source classifications.
 
 ## Decision and promotion state
 
-`current`, human-approved. The maxseq16 r16 DSpark profile is the exclusive
-TP=2 Primary for one Pi/OpenClaw coding user, with high reasoning as the client
-default and `llm.rollback` preserved explicitly. The router's optional per-tier
-output cap is 32,768 and warns instead of rejecting an oversized caller budget.
+The 2026-08-02 public finding records human approval of the maxseq16 r16 DSpark
+profile as the exclusive TP=2 Primary for one Pi/OpenClaw coding user, with
+high reasoning as the client default and `llm.rollback` preserved explicitly.
+That is a dated promotion record, not a claim about the live operator
+assignment. The recorded router's optional per-tier output cap was 32,768 and
+warned instead of rejecting an oversized caller budget.
 
 2026-08-06 operator-directed retune: the pinned recipe now serves
 `MAX_MODEL_LEN=262144` with `MAX_NUM_BATCHED_TOKENS=8192` (previously
@@ -249,6 +262,7 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 ## Dated run history
 
 - [2026-08-07 vision-adapter (NVFP4) first load](../../findings/2026-08-07-deepseek-0731-vision-nvfp4-sglang-first-load.md)
+- [2026-08-03 context, agentic-recovery, and SWE-bench smoke](../../findings/2026-08-03-deepseek-context-agentic-swe-smoke.md)
 - [2026-08-02 650K/1M Pi qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md)
 - [2026-08-02 650K Primary promotion](../../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md)
 - [2026-08-02 native KV offload and 256K qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md)

@@ -644,7 +644,7 @@ def t_video(base, model, key, data_url, video_identity, expectations, *,
 def resolve_api_key(api_key_env=None):
     """Resolve auth for probes from an environment variable reference."""
     if api_key_env:
-        value = os.environ.get(api_key_env)
+        value = (os.environ.get(api_key_env) or "").strip()
         if not value:
             raise ValueError("environment variable %s is not set" % api_key_env)
         return value

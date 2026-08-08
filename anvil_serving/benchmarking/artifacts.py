@@ -1,7 +1,12 @@
-"""Validation and atomic writes for benchmark artifacts."""
+"""Validation, integrity checks, and atomic writes for benchmark artifacts."""
 
+import copy
+import datetime as dt
+import hashlib
+import ipaddress
 import json
 import os
+import re
 import sys
 import tempfile
 from typing import Any
@@ -15,6 +20,64 @@ class BenchmarkArtifactError(Exception):
         self.code = code
         self.message = message
         self.details = details or {}
+
+
+CROSS_SUITE_EVIDENCE_SCHEMA = "anvil-serving.benchmark-evidence/v1"
+EVIDENCE_KINDS = frozenset({"measured", "external_prior"})
+EVIDENCE_COMPLETENESS = frozenset({"completed", "incomplete", "failed", "cancelled"})
+EVIDENCE_FAILURE_CLASSES = frozenset({
+    "routing",
+    "authentication",
+    "serving_runtime",
+    "resource_exhaustion",
+    "worker_runtime",
+    "harness",
+    "model_behavior",
+    "grading",
+    "cancellation",
+})
+REQUIRED_MEASURED_IDENTITIES = frozenset({
+    "model",
+    "served_model",
+    "runtime",
+    "image",
+    "hardware",
+    "topology",
+    "context",
+    "concurrency",
+    "harnesses",
+    "dataset",
+})
+PROMOTION_DISCLAIMER = "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+FAILURE_CLASS_ALIASES = {
+    "route_failure": "routing",
+    "model_mismatch": "routing",
+    "missing_credential": "authentication",
+    "authorization_denied": "authentication",
+    "model_failure": "model_behavior",
+    "reasoning_failure": "model_behavior",
+    "protocol_failure": "model_behavior",
+    "resource_exhaustion": "resource_exhaustion",
+    "timeout": "worker_runtime",
+    "infrastructure_failure": "worker_runtime",
+    "image_failure": "worker_runtime",
+    "broken_harness": "harness",
+    "harness_failure": "harness",
+    "test_failure": "grading",
+    "grader_failure": "grading",
+    "cancelled": "cancellation",
+}
+_HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+_SECRET_KEY_RE = re.compile(
+    r"(?:authorization|proxy-authorization|api[_-]?key|access[_-]?token|password|secret|credential|cookie)",
+    re.IGNORECASE,
+)
+_SECRET_VALUE_RE = re.compile(
+    r"(?:\bBearer\s+\S+|\bsk-[A-Za-z0-9_-]{12,}|\bhf_[A-Za-z0-9]{12,}|\bgithub_pat_[A-Za-z0-9_]{12,})",
+    re.IGNORECASE,
+)
+_IPV4_RE = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
+_TAILNET_RE = re.compile(r"(?i)\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.ts\.net\b")
 
 
 def atomic_write_json(path, value):
@@ -48,6 +111,246 @@ def atomic_write_json(path, value):
                 os.unlink(temporary)
             except FileNotFoundError:
                 pass
+
+
+def evidence_file_reference(path: str, *, root: str) -> dict[str, Any]:
+    """Return a relative, content-bound reference to retained stage evidence."""
+    root_path = real_path(root)
+    target = real_path(path)
+    if not os.path.isfile(target) or not path_is_within(target, root_path):
+        raise BenchmarkArtifactError(
+            "unsafe_evidence_reference",
+            "evidence reference must be a file within the declared artifact root",
+        )
+    digest = hashlib.sha256()
+    size = 0
+    with open(target, "rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            size += len(chunk)
+            digest.update(chunk)
+    return {
+        "path": os.path.relpath(target, root_path).replace("\\", "/"),
+        "sha256": digest.hexdigest(),
+        "bytes": size,
+    }
+
+
+def normalize_evidence_failure_class(value: str) -> str:
+    """Map suite-level failure detail into the stable cross-suite taxonomy."""
+    if value in EVIDENCE_FAILURE_CLASSES:
+        return value
+    normalized = FAILURE_CLASS_ALIASES.get(value)
+    if normalized is None:
+        raise BenchmarkArtifactError(
+            "bad_failure_class", f"unknown benchmark failure class {value!r}"
+        )
+    return normalized
+
+
+def _redact_private_networks(text: str) -> str:
+    def replace_ip(match: re.Match[str]) -> str:
+        value = match.group(0)
+        try:
+            address = ipaddress.ip_address(value)
+        except ValueError:
+            return value
+        if value in {"127.0.0.1", "100.64.0.10"}:
+            return value
+        if address.is_private or address.is_loopback or address in ipaddress.ip_network("100.64.0.0/10"):
+            return "100.64.0.10"
+        return value
+
+    return _TAILNET_RE.sub("100.64.0.10", _IPV4_RE.sub(replace_ip, text))
+
+
+def sanitize_publishable_evidence(value: Any) -> Any:
+    """Return a deep redacted copy suitable for public evidence validation."""
+    def sanitize(item: Any, *, parent: str = "") -> Any:
+        if isinstance(item, dict):
+            result = {}
+            for key, child in item.items():
+                key_text = str(key)
+                if _SECRET_KEY_RE.search(key_text):
+                    result[key_text] = "[REDACTED]"
+                elif parent.lower() in {"env", "environment_values", "headers"}:
+                    result[key_text] = "[REDACTED]"
+                else:
+                    result[key_text] = sanitize(child, parent=key_text)
+            return result
+        if isinstance(item, list):
+            return [sanitize(child, parent=parent) for child in item]
+        if isinstance(item, str):
+            redacted = _SECRET_VALUE_RE.sub("[REDACTED]", item)
+            return _redact_private_networks(redacted)
+        return copy.deepcopy(item)
+
+    return sanitize(value)
+
+
+def _validate_reference(value: Any, *, root: str | None, verify_files: bool) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != {"path", "sha256", "bytes"}:
+        raise BenchmarkArtifactError("bad_evidence_reference", "stage evidence reference is invalid")
+    path = value.get("path")
+    digest = value.get("sha256")
+    size = value.get("bytes")
+    if (
+        not isinstance(path, str)
+        or not path
+        or os.path.isabs(path)
+        or "\x00" in path
+        or ".." in re.split(r"[/\\]+", path)
+        or real_path(path, base=root or os.getcwd()) == real_path(root or os.getcwd())
+        or not isinstance(digest, str)
+        or not _HEX64_RE.fullmatch(digest)
+        or not isinstance(size, int)
+        or isinstance(size, bool)
+        or size < 0
+    ):
+        raise BenchmarkArtifactError("bad_evidence_reference", "stage evidence reference is invalid")
+    if verify_files:
+        if not root:
+            raise BenchmarkArtifactError("missing_evidence_root", "file hash validation requires artifact_root")
+        target = real_path(path, base=root)
+        if not path_is_within(target, real_path(root)) or not os.path.isfile(target):
+            raise BenchmarkArtifactError("unsafe_evidence_reference", "referenced evidence file is absent or outside its root")
+        observed = evidence_file_reference(target, root=root)
+        if observed["sha256"] != digest or observed["bytes"] != size:
+            raise BenchmarkArtifactError("evidence_digest_mismatch", "referenced evidence content does not match")
+    return copy.deepcopy(value)
+
+
+def validate_cross_suite_evidence(
+    value: Any,
+    *,
+    artifact_root: str | None = None,
+    verify_files: bool = True,
+    publishable: bool = False,
+) -> dict[str, Any]:
+    """Validate measured/prior separation, completeness, stages, and file hashes."""
+    if not isinstance(value, dict) or value.get("schema") != CROSS_SUITE_EVIDENCE_SCHEMA:
+        raise BenchmarkArtifactError("bad_evidence_schema", "cross-suite evidence schema is invalid")
+    evidence = copy.deepcopy(value)
+    kind = evidence.get("evidence_kind")
+    if kind not in EVIDENCE_KINDS:
+        raise BenchmarkArtifactError("bad_evidence_kind", "evidence kind must be measured or external_prior")
+    promotion = evidence.get("promotion")
+    if not isinstance(promotion, dict) or promotion.get("authorized") is not False or promotion.get("message") != PROMOTION_DISCLAIMER:
+        raise BenchmarkArtifactError("missing_promotion_boundary", "evidence must preserve the human promotion boundary")
+    if publishable and sanitize_publishable_evidence(evidence) != evidence:
+        raise BenchmarkArtifactError("unsafe_publishable_evidence", "evidence contains secrets or private topology")
+    if kind == "external_prior":
+        if "run" in evidence or "stages" in evidence or "identities" in evidence:
+            raise BenchmarkArtifactError("prior_claims_measurement", "external priors cannot carry local run identities or stages")
+        source = evidence.get("source")
+        if not isinstance(source, dict) or not isinstance(source.get("url"), str) or not source["url"].startswith("https://"):
+            raise BenchmarkArtifactError("bad_external_prior", "external prior requires an HTTPS source")
+        if evidence.get("locally_measured") is not False:
+            raise BenchmarkArtifactError("prior_claims_measurement", "external prior must state locally_measured=false")
+        return evidence
+
+    completeness = evidence.get("completeness")
+    if completeness not in EVIDENCE_COMPLETENESS:
+        raise BenchmarkArtifactError("bad_evidence_completeness", "measured evidence completeness is invalid")
+    created_at = evidence.get("created_at")
+    try:
+        parsed_created_at = dt.datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise BenchmarkArtifactError("bad_evidence_timestamp", "measured evidence created_at is invalid") from exc
+    if parsed_created_at.tzinfo is None or parsed_created_at.utcoffset() is None:
+        raise BenchmarkArtifactError("bad_evidence_timestamp", "measured evidence created_at requires a UTC offset")
+    run = evidence.get("run")
+    if not isinstance(run, dict) or not all(isinstance(run.get(key), str) and run[key] for key in (
+        "run_id", "ownership_id", "suite", "profile", "spec_sha256"
+    )) or not _HEX64_RE.fullmatch(run["spec_sha256"]):
+        raise BenchmarkArtifactError("missing_evidence_identity", "measured run identity is incomplete")
+    identities = evidence.get("identities")
+    if not isinstance(identities, dict) or set(identities) != REQUIRED_MEASURED_IDENTITIES:
+        raise BenchmarkArtifactError("missing_evidence_identity", "measured artifact identities are incomplete")
+    if any(value is None for value in identities.values()):
+        raise BenchmarkArtifactError("missing_evidence_identity", "identity unavailability must be explicit")
+    stages = evidence.get("stages")
+    if not isinstance(stages, list) or not stages:
+        raise BenchmarkArtifactError("missing_evidence_stage", "measured artifact requires ordered stages")
+    for sequence, stage in enumerate(stages):
+        if not isinstance(stage, dict) or stage.get("sequence") != sequence:
+            raise BenchmarkArtifactError("bad_stage_order", "evidence stages must be contiguous and ordered")
+        if stage.get("status") not in {"completed", "failed", "cancelled", "incomplete"}:
+            raise BenchmarkArtifactError("bad_stage_status", "evidence stage status is invalid")
+        if not isinstance(stage.get("name"), str) or not stage["name"]:
+            raise BenchmarkArtifactError("bad_stage_status", "evidence stage name is required")
+        references = stage.get("evidence")
+        if not isinstance(references, list):
+            raise BenchmarkArtifactError("bad_evidence_reference", "stage evidence must be a reference list")
+        stage["evidence"] = [
+            _validate_reference(item, root=artifact_root, verify_files=verify_files)
+            for item in references
+        ]
+    failure = evidence.get("failure")
+    if completeness == "completed":
+        if failure is not None or any(stage["status"] != "completed" for stage in stages):
+            raise BenchmarkArtifactError("false_completion", "completed evidence requires successful stages and no failure")
+    else:
+        summary = evidence.get("summary")
+        if isinstance(summary, dict) and (
+            summary.get("completed") is True or summary.get("status") in {"completed", "passed"}
+        ):
+            raise BenchmarkArtifactError("false_completion", "partial evidence cannot make completed-run assertions")
+    if failure is not None:
+        if not isinstance(failure, dict) or failure.get("class") not in EVIDENCE_FAILURE_CLASSES:
+            raise BenchmarkArtifactError("bad_failure_class", "benchmark failure taxonomy is invalid")
+    elif completeness in {"failed", "cancelled"}:
+        raise BenchmarkArtifactError("missing_failure", "failed and cancelled evidence require failure identity")
+    return evidence
+
+
+def build_measured_evidence(
+    *,
+    run: dict[str, Any],
+    identities: dict[str, Any],
+    stages: list[dict[str, Any]],
+    completeness: str,
+    summary: dict[str, Any],
+    failure: dict[str, Any] | None = None,
+    created_at: str | None = None,
+    artifact_root: str | None = None,
+    verify_files: bool = True,
+) -> dict[str, Any]:
+    """Build and validate the common envelope for a locally measured run."""
+    normalized_failure = copy.deepcopy(failure)
+    if normalized_failure is not None and isinstance(normalized_failure.get("class"), str):
+        normalized_failure["class"] = normalize_evidence_failure_class(
+            normalized_failure["class"]
+        )
+    value = {
+        "schema": CROSS_SUITE_EVIDENCE_SCHEMA,
+        "evidence_kind": "measured",
+        "completeness": completeness,
+        "created_at": created_at or dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "run": copy.deepcopy(run),
+        "identities": copy.deepcopy(identities),
+        "stages": copy.deepcopy(stages),
+        "summary": copy.deepcopy(summary),
+        "failure": normalized_failure,
+        "promotion": {"authorized": False, "message": PROMOTION_DISCLAIMER},
+    }
+    return validate_cross_suite_evidence(
+        value,
+        artifact_root=artifact_root,
+        verify_files=verify_files,
+    )
+
+
+def build_external_prior_record(*, source: dict[str, Any], claims: dict[str, Any]) -> dict[str, Any]:
+    """Build an explicitly non-measured record for a dated external benchmark prior."""
+    value = {
+        "schema": CROSS_SUITE_EVIDENCE_SCHEMA,
+        "evidence_kind": "external_prior",
+        "locally_measured": False,
+        "source": copy.deepcopy(source),
+        "claims": copy.deepcopy(claims),
+        "promotion": {"authorized": False, "message": PROMOTION_DISCLAIMER},
+    }
+    return validate_cross_suite_evidence(value, verify_files=False)
 
 
 def validate_write_target(path, *, label="output"):

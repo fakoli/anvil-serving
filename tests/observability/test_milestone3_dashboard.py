@@ -15,14 +15,19 @@ from anvil_serving.observability.retention import BENCHMARK_PROFILE, RetentionSt
 from anvil_serving.observability.schema import CapabilityStatus, TelemetrySample
 
 
-NOW = datetime.now(timezone.utc)
-
-
-def _sample(metric: str, capability: str, value: float, *, labels=()):
+def _sample(
+    metric: str,
+    capability: str,
+    value: float,
+    *,
+    labels=(),
+    observed_at: datetime | None = None,
+):
+    observed = observed_at or datetime.now(timezone.utc)
     return TelemetrySample(
         metric=metric,
-        source_timestamp=NOW,
-        collection_timestamp=NOW,
+        source_timestamp=observed,
+        collection_timestamp=observed,
         host_id="dark",
         collector_id="fixture",
         capability=capability,
@@ -34,22 +39,36 @@ def _sample(metric: str, capability: str, value: float, *, labels=()):
     )
 
 
-def _snapshot():
+def _snapshot(observed_at: datetime | None = None):
+    observed = observed_at or datetime.now(timezone.utc)
     samples = [
-        _sample("host.cpu.utilization", "cpu", 20),
-        _sample("host.memory.used", "physical-memory", 1000),
-        _sample("host.paging.rate", "paging", 1),
-        _sample("host.disk.throughput", "disk-activity", 2),
-        _sample("host.network.throughput", "network-activity", 3),
-        _sample("boundary.memory.used", "memory", 400),
-        _sample("gpu.utilization", "utilization", 50, labels=(("gpu_index", "0"),)),
-        _sample("gpu.memory.used", "dedicated-vram", 500, labels=(("gpu_index", "0"),)),
-        _sample("gpu.memory.shared.used", "shared-gpu-memory", 100),
+        _sample("host.cpu.utilization", "cpu", 20, observed_at=observed),
+        _sample("host.memory.used", "physical-memory", 1000, observed_at=observed),
+        _sample("host.paging.rate", "paging", 1, observed_at=observed),
+        _sample("host.disk.throughput", "disk-activity", 2, observed_at=observed),
+        _sample("host.network.throughput", "network-activity", 3, observed_at=observed),
+        _sample("boundary.memory.used", "memory", 400, observed_at=observed),
+        _sample(
+            "gpu.utilization",
+            "utilization",
+            50,
+            labels=(("gpu_index", "0"),),
+            observed_at=observed,
+        ),
+        _sample(
+            "gpu.memory.used",
+            "dedicated-vram",
+            500,
+            labels=(("gpu_index", "0"),),
+            observed_at=observed,
+        ),
+        _sample("gpu.memory.shared.used", "shared-gpu-memory", 100, observed_at=observed),
         _sample(
             "container.memory.used",
             "memory",
             200,
             labels=(("container_name", "router"), ("attribution", "configured")),
+            observed_at=observed,
         ),
         _sample(
             "service.health",
@@ -61,11 +80,12 @@ def _snapshot():
                 ("served_identity", "anvil-router"),
                 ("owning_host", "dark"),
             ),
+            observed_at=observed,
         ),
     ]
     return {
         "schema_version": 1,
-        "generated_at": NOW.isoformat().replace("+00:00", "Z"),
+        "generated_at": observed.isoformat().replace("+00:00", "Z"),
         "capabilities": [
             "host-resources",
             "boundary-resources",
@@ -87,8 +107,14 @@ def _snapshot():
 
 
 def test_supported_dashboard_serves_current_history_and_interpretation_read_only() -> None:
+    observed_at = datetime.now(timezone.utc)
     store = RetentionStore()
-    store.add(_snapshot(), observed_at=NOW, probe_duration_seconds=0.1, expected_interval_seconds=2)
+    store.add(
+        _snapshot(observed_at),
+        observed_at=observed_at,
+        probe_duration_seconds=0.1,
+        expected_interval_seconds=2,
+    )
     server = create_dashboard_server(TelemetryRegistry(), port=0, retention=store)
     thread = run_server_in_thread(server)
     base = f"http://127.0.0.1:{server.server_address[1]}"
