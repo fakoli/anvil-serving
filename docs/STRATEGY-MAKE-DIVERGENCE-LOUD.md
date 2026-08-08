@@ -112,18 +112,40 @@ stands — automatic repair would recreate silence in a new form).
 
 Ordered by value density. Each names the incident it closes.
 
-| # | Feature | Closes | Size |
-| --- | --- | --- | --- |
-| 1 | `serves lint` — static manifest defect detection | duplicate shadowing ×2, dangling profiles, worktree-anchored paths | S |
-| 2 | Aggregator rejects duplicate name/container | duplicate shadowing (prevention half) | S |
-| 3 | `fleet status` — per-alias cross-host reachability | unbacked voice routes | M |
-| 4 | `serves rollback-check` — prove rollbacks are usable | missing profile, evicted image tag | M |
-| 5 | Registry-path validation at manifest load | stale registry surfacing mid-transaction | S |
-| 6 | Worktree-anchor detection | recipe + CLI + operator home in scratch checkouts | S |
-| 7 | `fleet drift` — live home vs repository snapshot | undetected config drift | M |
-| 8 | `fleet version` — cross-host version skew | mid-mod silently on an old code path | S |
-| 9 | Native runtime lifecycle | MLX unlock; ADR-0034 §7 completion | L |
-| 10 | `fleet bootstrap` — install/upgrade a node agent | no node agent on three of four hosts | L |
+| # | Feature | Closes | Size | Status |
+| --- | --- | --- | --- | --- |
+| 1 | `serves lint` — static manifest defect detection | duplicate shadowing ×2, missing registries, worktree-anchored paths | S | **shipped** 0.25.0 |
+| 2 | Aggregator rejects duplicate serve names | duplicate shadowing (prevention half) | S | **shipped** 0.25.0 |
+| 3 | `router fleet-status` — per-alias reachability | unbacked voice routes | M | **shipped** 0.26.0 |
+| 4 | `serves rollback-check` — prove rollbacks are usable | missing profile, evicted image tag | M | open |
+| 5 | Registry-path validation at manifest load | stale registry surfacing mid-transaction | S | **revised — see below** |
+| 6 | Worktree-anchor detection in `doctor` | CLI + operator home in scratch checkouts | S | partial (registries covered by 1) |
+| 7 | `fleet drift` — live home vs repository snapshot | undetected config drift | M | open |
+| 8 | `fleet version` — cross-host version skew | a host silently on an old code path | S | open |
+| 9 | Native runtime lifecycle | MLX unlock; ADR-0034 §7 completion | L | open |
+| 10 | `fleet bootstrap` — install/upgrade a node agent | no node agent on three of four hosts | L | open |
+
+### Feature 5 was revised during execution
+
+As specified, feature 5 hard-rejected a missing `--registry` path at manifest
+load. On inspection that is the wrong design, and the difference from feature 2
+is instructive.
+
+A duplicate serve name is **never** legitimate — there is no workflow where two
+entries should share a name, so refusing it has no false positives. A registry
+file that does not exist yet **can** be legitimate: an operator may author a
+serve entry before creating its recipe, or keep an entry for a serve they have
+not set up on this host. Hard rejection would block those workflows and, worse,
+would block *every other* serves command over one unrelated entry.
+
+Detection already ships: `serves lint` reports `missing-registry` as an error
+and exits non-zero, which is usable as a gate without holding the whole manifest
+hostage. The remaining work is to make the failure legible at the point of use —
+`serves up` naming the missing registry before it starts a transaction — rather
+than to refuse at load.
+
+This is the program's own rule applied honestly: detection beats prevention, and
+prevention is only correct where the rejected state has no legitimate form.
 
 ### 1. `serves lint`
 
