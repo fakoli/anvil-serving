@@ -118,6 +118,7 @@ _TRANSPORT_FIELDS = frozenset(
         "host_key_fingerprint",
         "known_hosts_path",
         "allow_unauthenticated_loopback",
+        "expected_node",
     }
 )
 
@@ -206,6 +207,9 @@ class Transport:
     host_key_fingerprint: str | None = None
     known_hosts_path: str | None = None
     allow_unauthenticated_loopback: bool = False
+    # ADR-0033 controller-RPC groundwork: the topology host id this controller
+    # endpoint must assert on /health. Must equal ``host`` when declared.
+    expected_node: str | None = None
 
 
 @dataclass(frozen=True)
@@ -249,11 +253,23 @@ class Topology:
     def capacity_policy(self, policy_id: str) -> CapacityPolicy:
         return _index(self.capacity_policies, policy_id, "capacity policy")
 
-    def resource_owner(self, role: str) -> Resource:
+    def resource_owner(self, role: str, *, host: str | None = None) -> Resource:
+        """Resolve a role's owning resource; roles are unique per host (ADR-0033).
+
+        ``host`` filters multiple global owners down to one host's declaration.
+        Without it, a globally unique role resolves as before and duplicates
+        raise, naming the owning hosts.
+        """
         matches = tuple(resource for resource in self.resources if resource.role == role)
+        if host is not None and len(matches) > 1:
+            matches = tuple(resource for resource in matches if resource.host == host)
         if len(matches) != 1:
+            owners = sorted({resource.host for resource in matches})
+            owner_suffix = f"; owners on hosts {owners!r}" if len(matches) > 1 else ""
             raise TopologyResolutionError(
-                f"resource role {role!r} has {len(matches)} declared owners; select a target explicitly"
+                f"resource role {role!r} has {len(matches)} declared owners"
+                + owner_suffix
+                + "; select a target explicitly"
             )
         return matches[0]
 
@@ -622,6 +638,14 @@ def _parse_transports(raw: object, errors: list[TopologyError]) -> list[tuple[in
         allow_unauthenticated_loopback = _optional_bool(
             record, "allow_unauthenticated_loopback", path, errors, False
         )
+        expected_node = _optional_string(record, "expected_node", path, errors)
+        if expected_node is not None and host is not None and expected_node != host:
+            _error(
+                errors,
+                f"{path}.expected_node",
+                f"must equal the transport host ({host!r})",
+                "value",
+            )
         if None not in (transport_id, kind, host, runtime, endpoint):
             parsed.append(
                 (
@@ -637,6 +661,7 @@ def _parse_transports(raw: object, errors: list[TopologyError]) -> list[tuple[in
                         fingerprint,
                         known_hosts,
                         allow_unauthenticated_loopback,
+                        expected_node,
                     ),
                 )
             )

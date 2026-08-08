@@ -1886,3 +1886,141 @@ def test_shared_generic_mapping_dag_is_visited_once_per_container():
     result = validate_topology(data)
     assert any(error.path == "metadata" and error.code == "unknown" for error in result.errors)
     assert not any(error.code in {"depth", "resource"} for error in result.errors)
+
+
+# --- ADR-0033: expected_node and per-host resource-role scoping -------------
+
+
+def test_expected_node_must_equal_the_transport_host():
+    data = _topology()
+    data["transports"][0]["expected_node"] = "gateway-host"
+
+    paths = _paths(validate_topology(data))
+    assert any(path.endswith(".expected_node") for path in paths)
+
+
+def test_expected_node_matching_host_validates_and_parses():
+    data = _topology()
+    data["transports"][0]["expected_node"] = data["transports"][0]["host"]
+    assert validate_topology(data).ok
+    topology = parse_topology(data)
+    transport = next(t for t in topology.transports if t.expected_node is not None)
+    assert transport.expected_node == transport.host
+
+
+def test_resource_owner_host_filter_disambiguates_per_host_duplicates():
+    data = _topology()
+    original = next(r for r in data["resources"] if r["role"] == "realtime-proxy")
+    data["resources"].append(
+        {
+            "id": "operator-realtime-proxy",
+            "role": "realtime-proxy",
+            "host": "operator",
+            "runtime": "operator-native",
+            "endpoint": "http://127.0.0.1:8765/v1",
+            "endpoint_kind": "host-relative-loopback",
+            "workload": "service",
+        }
+    )
+    topology = parse_topology(data)
+
+    assert topology.resource_owner("realtime-proxy", host="operator").id == (
+        "operator-realtime-proxy"
+    )
+    assert topology.resource_owner("realtime-proxy", host=original["host"]).id == (
+        original["id"]
+    )
+    with pytest.raises(TopologyResolutionError) as excinfo:
+        topology.resource_owner("realtime-proxy")
+    assert "owners on hosts" in str(excinfo.value)
+
+
+def test_topology_drift_reports_metadata_only_differences(tmp_path):
+    import json as _json
+
+    from anvil_serving import topology_cli
+
+    def _write(path, data):
+        lines = [
+            'schema_version = 1',
+            f'id = "{data["id"]}"',
+            f'command_host = "{data["command_host"]}"',
+            f'command_runtime = "{data["command_runtime"]}"',
+        ]
+        for host in data["hosts"]:
+            lines += [
+                "[[hosts]]",
+                f'id = "{host}"',
+                'roles = ["operator"]',
+                'address = "127.0.0.1"',
+            ]
+        for runtime, host in data["runtimes"]:
+            lines += [
+                "[[runtimes]]",
+                f'id = "{runtime}"',
+                f'host = "{host}"',
+                'role = "native"',
+            ]
+        for resource, host, runtime in data["resources"]:
+            lines += [
+                "[[resources]]",
+                f'id = "{resource}"',
+                'role = "host"',
+                f'host = "{host}"',
+                f'runtime = "{runtime}"',
+                'workload = "service"',
+            ]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    canonical = tmp_path / "fleet.toml"
+    installed = tmp_path / "installed.toml"
+    _write(
+        canonical,
+        {
+            "id": "fleet",
+            "command_host": "host:seat",
+            "command_runtime": "runtime:seat-native",
+            "hosts": ["seat", "extra"],
+            "runtimes": [("seat-native", "seat"), ("extra-native", "extra")],
+            "resources": [("seat-host", "seat", "seat-native"), ("extra-host", "extra", "extra-native")],
+        },
+    )
+    _write(
+        installed,
+        {
+            "id": "seat-view",
+            "command_host": "host:seat",
+            "command_runtime": "runtime:seat-native",
+            "hosts": ["seat"],
+            "runtimes": [("seat-native", "seat")],
+            "resources": [("seat-host", "seat", "seat-native")],
+        },
+    )
+
+    report = topology_cli.run(
+        ["drift", "--topology", str(installed), "--canonical", str(canonical)]
+    )
+    assert report["in_sync"] is False
+    kinds = {(d["section"], d["id"], d["kind"]) for d in report["differences"]}
+    assert ("hosts", "extra", "missing_in_installed") in kinds
+    assert ("resources", "extra-host", "missing_in_installed") in kinds
+    # Values never appear in the report — only section/id/field names.
+    assert "127.0.0.1" not in _json.dumps(report["differences"])
+
+    # An identical view (id/command identity differences only) is in sync.
+    _write(
+        installed,
+        {
+            "id": "seat-view",
+            "command_host": "host:seat",
+            "command_runtime": "runtime:seat-native",
+            "hosts": ["seat", "extra"],
+            "runtimes": [("seat-native", "seat"), ("extra-native", "extra")],
+            "resources": [("seat-host", "seat", "seat-native"), ("extra-host", "extra", "extra-native")],
+        },
+    )
+    report = topology_cli.run(
+        ["drift", "--topology", str(installed), "--canonical", str(canonical)]
+    )
+    assert report["in_sync"] is True
+    assert report["differences"] == []

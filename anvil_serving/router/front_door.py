@@ -456,15 +456,44 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     ),
                     response_model=requested_model,
                 )
-                for frame in frames:
-                    if not frame:
-                        continue  # never emit a zero-length chunk (ends the stream)
+                def _write_frame(frame: bytes) -> None:
                     if chunked:
                         # One write per event (wfile is unbuffered): size + frame + CRLF.
                         self.wfile.write(b"%x\r\n" % len(frame) + frame + b"\r\n")
                     else:
                         self.wfile.write(frame)
                     self.wfile.flush()  # push each SSE event to the client immediately
+
+                try:
+                    for frame in frames:
+                        if not frame:
+                            continue  # never emit a zero-length chunk (ends the stream)
+                        _write_frame(frame)
+                except (BrokenPipeError, ConnectionError):
+                    raise  # client is gone; nothing left to signal
+                except Exception as exc:
+                    # ADR-0033 mid-stream honesty: a backend failure after the
+                    # 200 was committed must not read as a complete response.
+                    # Emit one generic terminal error frame (never upstream
+                    # exception text), always close the chunked body, and drop
+                    # the connection so length-blind clients also see the end.
+                    print(
+                        "[anvil] stream error after headers: %s"
+                        % type(exc).__name__,
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    error_frame_fn = getattr(dialect, "stream_error", None)
+                    try:
+                        if callable(error_frame_fn):
+                            _write_frame(error_frame_fn())
+                        if chunked:
+                            self.wfile.write(b"0\r\n\r\n")
+                            self.wfile.flush()
+                    except OSError:
+                        pass  # client disconnected while we signalled failure
+                    self.close_connection = True
+                    return
                 if chunked:
                     self.wfile.write(b"0\r\n\r\n")  # chunked terminator
                     self.wfile.flush()

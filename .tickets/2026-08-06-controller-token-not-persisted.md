@@ -1,6 +1,23 @@
 # Controller token exists only in the container environment, so CLI probes fail closed
 
-**Status:** Open
+**Status:** Resolved 2026-08-07 (ADR-0033 §1)
+
+## Resolution
+
+Token resolution now shares the CLI's file-backed dotenv chain (extracted to
+`anvil_serving/envfile.py`): shell environment first, then
+`$ANVIL_SERVING_HOME/.env`, then `~/.env`. Wired into the controller server
+bind check and `resolve_auth_token`, `controller status`, the router's
+`[server].auth_env` resolution, and `ControllerTransport` dispatch. Refusals
+now enumerate every location checked. Injected environments stay hermetic
+(explicit `env=` never falls back to files). The operator step that remains:
+add the token line to the gitignored `%ANVIL_SERVING_HOME%\.env` on each host
+(values never enter Git; see docs/CONFIGURATION.md "Token persistence
+contract").
+
+---
+
+Original report follows.
 
 ## Problem
 

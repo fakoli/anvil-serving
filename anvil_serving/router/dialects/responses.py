@@ -328,6 +328,11 @@ class ResponsesDialect:
         response_id = _new_id("resp_")
         return {"id": response_id, "object": "response", "created_at": int(time.time()), "status": "completed", "model": response_model or request.model, "output": self._output(response_id, text, structured), "usage": self._usage(request, text, structured)}
 
+    def stream_error(self, message: str = "stream interrupted") -> bytes:
+        """One terminal ``event: error`` frame for a mid-stream failure
+        (ADR-0033). Generic label only, never upstream exception text."""
+        return _event("error", {"error": {"type": "upstream_error", "message": message}})
+
     def stream(self, request: InternalRequest, deltas: Iterable[str], *, get_structured: Optional[Callable[[], Any]] = None, response_model: Optional[str] = None) -> Iterator[bytes]:
         response_id = _new_id("resp_")
         created_at = int(time.time())

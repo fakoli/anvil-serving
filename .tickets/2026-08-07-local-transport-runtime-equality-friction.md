@@ -1,6 +1,29 @@
 # Local transport requires command runtime == resource runtime, breaking same-host docker operations
 
-**Status:** Open (design gap; reproduced 2026-08-07 on a single-GPU voice host)
+**Status:** Resolved 2026-08-07 (ADR-0033 §3)
+
+## Resolution
+
+`_select_transport` now classifies a plan as local when the hosts match and
+either the runtimes match or the command identity is `native` and the
+execution runtime role is one a native shell genuinely operates (today:
+`docker` — `_NATIVE_OPERATES_RUNTIME_ROLES` in `anvil_serving/targets.py`).
+The asymmetry is deliberate: a docker-runtime identity does not operate native
+execution. The loopback-controller alternative was considered and rejected as
+the primary fix (it adds a running process per host and still fails when the
+controller is down); `controller serve --allow-unauthenticated-loopback` now
+exists as the documented development opt-in.
+
+The related `resource_owner()` friction is also fixed: roles are unique per
+host, and with multiple global owners and no `--target`, resolution prefers
+the command identity's own host (never guessing among remote hosts; the error
+now enumerates owning hosts). Regression coverage:
+`tests/test_targets.py::test_voice_host_shape_resolves_local_without_command_runtime_override`
+reproduces this ticket's exact shape.
+
+---
+
+Original report follows.
 
 ## Problem
 

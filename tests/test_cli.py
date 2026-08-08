@@ -554,6 +554,7 @@ def test_cli_remote_router_restart_dispatches_typed_operation(tmp_path, monkeypa
             "auth_env": "ANVIL_CONTROLLER_TOKEN",
             "allowed_operations": ("router-restart",),
             "timeout_seconds": 60.0,
+            "expected_node": None,
         },
     )
     assert seen["execute_kwargs"]["idempotency_key"].startswith("cli-")
@@ -613,6 +614,7 @@ def test_cli_remote_config_export_maps_path_and_allows_bounded_large_response(
             "auth_env": "ANVIL_CONTROLLER_TOKEN",
             "allowed_operations": ("host-config-export",),
             "timeout_seconds": 60.0,
+            "expected_node": None,
             "max_response_bytes": 1024 * 1024,
         },
     )
