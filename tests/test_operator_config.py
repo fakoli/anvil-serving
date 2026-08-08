@@ -275,8 +275,24 @@ def test_windows_export_rejects_same_inode_rewrite_with_restored_mtime(
     def mutating_descriptor(path, expected_identity):
         nonlocal mutated
         if Path(path) == candidate and not mutated:
-            candidate.write_text("value = 2\n", encoding="utf-8")
-            os.utime(candidate, ns=(before.st_atime_ns, before.st_mtime_ns))
+            # NTFS timestamps advance in coarse timer ticks (~15.6 ms). A
+            # rewrite landing in the same tick as the original creation keeps
+            # ChangeTime identical, so the same-size + restored-mtime rewrite
+            # would be indistinguishable from the enumerated identity. Rewrite
+            # until ChangeTime actually moves so the test always exercises the
+            # detection path.
+            deadline = time.monotonic() + 5.0
+            while True:
+                candidate.write_text("value = 2\n", encoding="utf-8")
+                os.utime(candidate, ns=(before.st_atime_ns, before.st_mtime_ns))
+                if (
+                    operator_config._windows_file_identity(candidate)
+                    != expected_identity
+                ):
+                    break
+                if time.monotonic() > deadline:
+                    pytest.fail("ChangeTime tick never advanced past enumeration")
+                time.sleep(0.02)
             mutated = True
         return real_descriptor(path, expected_identity)
 
