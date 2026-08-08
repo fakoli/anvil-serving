@@ -134,6 +134,17 @@ def commands() -> CommandNode:
                 remote_operation=_remote("router_status", allowed=("container",)),
             ),
             _resource_node(
+                "fleet-status",
+                "Report which configured capabilities have a reachable backing serve.",
+                "anvil_serving.router_manage",
+                role="router",
+                options=(
+                    _option("--config", summary="Router config TOML.", value_name="PATH"),
+                    _option("--timeout", summary="Per-endpoint probe timeout (s).", value_name="SECONDS"),
+                ),
+                docs_anchor="docs/cli/router.md#fleet-status",
+            ),
+            _resource_node(
                 "transition-status",
                 "Show router tier transition state.",
                 "anvil_serving.router_manage",
