@@ -117,11 +117,11 @@ Ordered by value density. Each names the incident it closes.
 | 1 | `serves lint` — static manifest defect detection | duplicate shadowing ×2, missing registries, worktree-anchored paths | S | **shipped** 0.25.0 |
 | 2 | Aggregator rejects duplicate serve names | duplicate shadowing (prevention half) | S | **shipped** 0.25.0 |
 | 3 | `router fleet-status` — per-alias reachability | unbacked voice routes | M | **shipped** 0.26.0 |
-| 4 | `serves rollback-check` — prove rollbacks are usable | missing profile, evicted image tag | M | open |
+| 4 | `serves rollback-check` — prove rollbacks are usable | missing profile, evicted image tag | M | **shipped** 0.27.0 |
 | 5 | Registry-path validation at manifest load | stale registry surfacing mid-transaction | S | **revised — see below** |
 | 6 | Worktree-anchor detection in `doctor` | CLI + operator home in scratch checkouts | S | partial (registries covered by 1) |
 | 7 | `fleet drift` — live home vs repository snapshot | undetected config drift | M | open |
-| 8 | `fleet version` — cross-host version skew | a host silently on an old code path | S | open |
+| 8 | `fleet version` — cross-host version skew | a host silently on an old code path | S | **shipped** 0.28.x |
 | 9 | Native runtime lifecycle | MLX unlock; ADR-0034 §7 completion | L | open |
 | 10 | `fleet bootstrap` — install/upgrade a node agent | no node agent on three of four hosts | L | open |
 

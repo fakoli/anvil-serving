@@ -21,6 +21,7 @@ called. Entries that omit `stack` retain the `serving` default.
 | --- | --- |
 | `serves render` | Render a model serve definition. |
 | `serves up` | Start manifest-owned serves. |
+| `serves up-for` | Resolve a chat alias to its backing serve and start it. |
 | `serves down` | Stop and remove manifest-owned serve containers. |
 | `serves rm` | Remove a manifest-owned serve. |
 | `serves adopt` | Adopt an existing serve into manifest ownership. |
@@ -89,6 +90,35 @@ Use `--keep-container` when retaining the stopped container and its logs is inte
 `serves up` returns only after the selected serve's declared health endpoint is
 ready. A failed or timed-out readiness check fails the command instead of
 reporting a successful start.
+
+## Start by alias
+
+Answering "how do I start what `llm.primary` needs" means reading the router
+config's `[router.model_routes]` for the tier, then the serve manifest for the
+`[[serve]]` whose `router_tier` matches it — the join key exists in the data,
+but nothing walks it. `serves up-for ALIAS` does:
+
+```bash
+anvil-serving serves up-for llm.primary
+anvil-serving serves up-for llm.primary --confirm
+anvil-serving serves up-for llm.voice --config ./router.toml --json
+```
+
+Without `--confirm`, it only resolves and prints the chain — alias, tier,
+serve name, container, port, the exact `up` argv, and the manifest file it
+came from — closing the four-file read in one command. `--confirm` delegates
+to `serves up` for the resolved serve; `--dry-run` forwards to it. An unknown
+alias exits 2 and lists the configured aliases; a tier with no backing serve
+in the manifest set exits 1.
+
+A tier can legitimately back more than one serve — a promoted primary and its
+rollback commonly share `router_tier` (and a port), since the rollback config
+routes the same alias to the same tier id. `up-for` refuses to guess between
+them: it prints every candidate serve with its `groups` and exits 1, requiring
+`serves up NAME` to pick explicitly. Auto-selecting the wrong one on a shared
+port is worse than asking — the same "detection beats prevention" judgment
+`rollback-check` and `lint` already make (see
+[Strategy: make divergence loud](../STRATEGY-MAKE-DIVERGENCE-LOUD.md)).
 
 ## Split and exclusive TP=2 modes
 
