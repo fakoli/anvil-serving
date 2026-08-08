@@ -87,6 +87,7 @@ from anvil_serving.voice.stages.base import PIPELINE_END  # noqa: E402
 from anvil_serving.voice.stages.tts import resample_int16  # noqa: E402
 from anvil_serving.voice.stages.vad import SpeechEvent, VADConfig  # noqa: E402
 
+from scripts.voice._findings import insert_finding_row  # noqa: E402
 from scripts.voice._real_pipeline import (  # noqa: E402
     RealVoicePipeline,
     SimpleEnergyVADModel,
@@ -193,42 +194,7 @@ def append_finding_row(row: str) -> bool:
     Best-effort: a missing/unwritable findings doc must not crash a run that
     otherwise completed -- print a warning and move on.
     """
-    try:
-        row = row.rstrip("\n")
-        if not FINDINGS_DOC.exists():
-            print("local_loop_demo: findings doc does not exist: %s" % FINDINGS_DOC, file=sys.stderr)
-            return False
-
-        lines = FINDINGS_DOC.read_text(encoding="utf-8").splitlines()
-        try:
-            session_idx = lines.index("## Session log")
-        except ValueError:
-            print("local_loop_demo: findings doc has no Session log heading", file=sys.stderr)
-            return False
-        header_idx = next(
-            (
-                i for i in range(session_idx + 1, len(lines))
-                if lines[i].startswith("| timestamp (UTC) |")
-            ),
-            None,
-        )
-        if header_idx is None or header_idx + 1 >= len(lines) or not lines[header_idx + 1].startswith("|---"):
-            print("local_loop_demo: findings doc has no session-log markdown table", file=sys.stderr)
-            return False
-
-        table_end = header_idx + 2
-        while table_end < len(lines) and lines[table_end].startswith("|"):
-            if lines[table_end].startswith("| _TBD_ |"):
-                lines.insert(table_end, row)
-                FINDINGS_DOC.write_text("\n".join(lines) + "\n", encoding="utf-8")
-                return True
-            table_end += 1
-        lines.insert(table_end, row)
-        FINDINGS_DOC.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        return True
-    except OSError as exc:
-        print("local_loop_demo: could not append to %s: %s" % (FINDINGS_DOC, exc), file=sys.stderr)
-        return False
+    return insert_finding_row(FINDINGS_DOC, row, script_name="local_loop_demo")
 
 
 def default_capture_prefix() -> str:

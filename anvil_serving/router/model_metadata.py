@@ -16,8 +16,9 @@ from typing import Mapping, Optional
 
 from anvil_serving import __version__
 
-from .availability import AvailabilityResult
+from .availability import AvailabilityResult, safe_check
 from .config import RouterConfig, Tier, normalize_model_alias
+from .model_capacity import _nonnegative_int
 
 
 CAPABILITIES_PARAMS_KEY = "capabilities"
@@ -108,20 +109,8 @@ def _thinking(value: object) -> Optional[dict]:
     return result or None
 
 
-def _nonnegative_int(value: object) -> Optional[int]:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        return None
-    return value
-
-
 def _readiness(availability: object, tier: Tier) -> AvailabilityResult:
-    try:
-        result = availability.check(tier)  # type: ignore[attr-defined]
-        if isinstance(result, AvailabilityResult):
-            return result
-    except Exception:  # noqa: BLE001 - endpoint must not expose probe failures
-        pass
-    return AvailabilityResult(False, "unavailable", "availability_check_failed")
+    return safe_check(availability, tier, include_exception_name=False)
 
 
 def _safe_readiness(availability: object, tier: Tier) -> dict:

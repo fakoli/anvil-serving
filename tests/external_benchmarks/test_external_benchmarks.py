@@ -1,4 +1,3 @@
-import atexit
 import hashlib
 import json
 import shutil
@@ -24,19 +23,20 @@ from anvil_serving.external_benchmarks.sources.rtx6kpro import Rtx6kproAdapter
 
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "external_benchmarks"
-SCRATCH = Path(__file__).resolve().parents[1] / ".scratch_external_benchmarks"
-atexit.register(lambda: shutil.rmtree(SCRATCH, ignore_errors=True))
 
 
-def _scratch(name):
-    path = SCRATCH / name
-    if path.exists():
-        shutil.rmtree(path)
-    path.mkdir(parents=True)
-    return path
+@pytest.fixture
+def _scratch(tmp_path):
+    def make(name):
+        path = tmp_path / name
+        if path.exists():
+            shutil.rmtree(path)
+        path.mkdir(parents=True)
+        return path
+    return make
 
 
-def test_schema_initialization_creates_expected_tables():
+def test_schema_initialization_creates_expected_tables(_scratch):
     db = _scratch("schema") / "benchmarks.sqlite"
     store.init_db(db)
     with sqlite3.connect(db) as conn:
@@ -49,7 +49,7 @@ def test_schema_initialization_creates_expected_tables():
     assert set(schema.EXPECTED_TABLES).issubset(names)
 
 
-def test_import_mode_stores_raw_snapshot_and_sha256():
+def test_import_mode_stores_raw_snapshot_and_sha256(_scratch):
     db = _scratch("import") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
     rc = cli.main(["import", "--source", "millstone", "--file", str(fixture), "--db", str(db)])
@@ -64,7 +64,7 @@ def test_import_mode_stores_raw_snapshot_and_sha256():
     assert Path(row["raw_path"]).read_bytes() == fixture.read_bytes()
 
 
-def test_store_snapshot_uses_unique_raw_paths_for_same_second(monkeypatch):
+def test_store_snapshot_uses_unique_raw_paths_for_same_second(monkeypatch, _scratch):
     db = _scratch("unique-snapshot") / "benchmarks.sqlite"
     raw = b'{"benchmarks":[]}'
     monkeypatch.setattr(store.time, "strftime", lambda *args: "20260101T000000Z")
@@ -102,7 +102,7 @@ def test_raw_root_for_current_directory_db_stays_beside_db():
     )
 
 
-def test_import_marks_snapshot_failed_when_insert_rows_raises(monkeypatch, capsys):
+def test_import_marks_snapshot_failed_when_insert_rows_raises(monkeypatch, capsys, _scratch):
     db = _scratch("insert-failure") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
 
@@ -275,7 +275,7 @@ def test_rtx6kpro_mtp_and_nomtp_notes_differ():
     assert mtp["methodology_notes"] != nomtp["methodology_notes"]
 
 
-def test_rtx6kpro_import_markdown_fails_non_destructively(capsys):
+def test_rtx6kpro_import_markdown_fails_non_destructively(capsys, _scratch):
     db = _scratch("rtx6kpro-md-failure") / "benchmarks.sqlite"
     fixture = FIXTURES / "rtx6kpro_summary.md"
     rc = cli.main(["import", "--source", "rtx6kpro", "--file", str(fixture), "--db", str(db)])
@@ -291,7 +291,7 @@ def test_rtx6kpro_import_markdown_fails_non_destructively(capsys):
     assert Path(row["raw_path"]).read_bytes() == fixture.read_bytes()
 
 
-def test_rtx6kpro_list_filters_by_source_and_gpu(capsys):
+def test_rtx6kpro_list_filters_by_source_and_gpu(capsys, _scratch):
     db = _scratch("rtx6kpro-list") / "benchmarks.sqlite"
     fixture = FIXTURES / "rtx6kpro_qwen_vllm_mtp.json"
     assert cli.main(["import", "--source", "rtx6kpro", "--file", str(fixture), "--db", str(db)]) == 0
@@ -313,7 +313,7 @@ def test_rtx6kpro_list_filters_by_source_and_gpu(capsys):
     assert "qwen3.5-397b-a17b-awq" in out
 
 
-def test_rtx6kpro_compare_finds_exact_match_and_warns_for_nomtp(capsys):
+def test_rtx6kpro_compare_finds_exact_match_and_warns_for_nomtp(capsys, _scratch):
     db = _scratch("rtx6kpro-compare") / "benchmarks.sqlite"
     fixture = FIXTURES / "rtx6kpro_qwen_vllm_nomtp.json"
     local = FIXTURES / "local_benchmark_rtx6kpro_nextn.json"
@@ -389,7 +389,7 @@ def test_number_normalization_handles_k_suffixes_by_metric_type():
     assert row["throughput_tok_s"] == 1200.0
 
 
-def test_report_command_emits_markdown_with_expected_columns(capsys):
+def test_report_command_emits_markdown_with_expected_columns(capsys, _scratch):
     db = _scratch("report") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
     assert cli.main(["import", "--source", "millstone", "--file", str(fixture), "--db", str(db)]) == 0
@@ -401,7 +401,7 @@ def test_report_command_emits_markdown_with_expected_columns(capsys):
     assert "qwen3.6-35b-a3b-mtp" in out
 
 
-def test_compare_command_warns_when_speculative_decoding_differs(capsys):
+def test_compare_command_warns_when_speculative_decoding_differs(capsys, _scratch):
     db = _scratch("compare-warning") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
     local = FIXTURES / "local_benchmark_sample.json"
@@ -415,7 +415,7 @@ def test_compare_command_warns_when_speculative_decoding_differs(capsys):
     assert "Local run used prompt/prefix cache" in out
 
 
-def test_compare_command_finds_exact_match(capsys):
+def test_compare_command_finds_exact_match(capsys, _scratch):
     db = _scratch("compare-exact") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
     local = FIXTURES / "local_benchmark_sample.json"
@@ -428,7 +428,7 @@ def test_compare_command_finds_exact_match(capsys):
     assert "| throughput_tok_s | 520.00 | 410.00 | +26.8% |" in out
 
 
-def test_external_bench_compare_api_returns_structured_exact_result():
+def test_external_bench_compare_api_returns_structured_exact_result(_scratch):
     db = _scratch("compare-api") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
     local = FIXTURES / "local_benchmark_sample.json"
@@ -445,7 +445,7 @@ def test_external_bench_compare_api_returns_structured_exact_result():
     assert row["throughput_tok_s"] == 410.0
 
 
-def test_compare_gpu_arg_fills_missing_local_gpu(capsys):
+def test_compare_gpu_arg_fills_missing_local_gpu(capsys, _scratch):
     db = _scratch("compare-gpu-fallback") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
     local = _scratch("compare-gpu-local") / "local.json"
@@ -473,7 +473,7 @@ def test_compare_gpu_arg_fills_missing_local_gpu(capsys):
     assert "GPU differs" not in out
 
 
-def test_compare_reports_nearest_external_rows_when_no_exact_match(capsys):
+def test_compare_reports_nearest_external_rows_when_no_exact_match(capsys, _scratch):
     db = _scratch("compare-nearest") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
     local = _scratch("compare-nearest-local") / "local.json"
@@ -518,7 +518,7 @@ def test_benchmark_external_help_uses_canonical_usage(capsys):
     assert "compare" in out
 
 
-def test_eval_benchmark_external_dispatches_and_removed_roots_refuse(capsys):
+def test_eval_benchmark_external_dispatches_and_removed_roots_refuse(capsys, _scratch):
     db = _scratch("eval-benchmark-external") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
     local = FIXTURES / "local_benchmark_sample.json"
@@ -537,7 +537,7 @@ def test_eval_benchmark_external_dispatches_and_removed_roots_refuse(capsys):
     assert "unknown command: benchmark" in capsys.readouterr().err
 
 
-def test_external_import_requires_confirmation_but_dry_run_never_writes(capsys):
+def test_external_import_requires_confirmation_but_dry_run_never_writes(capsys, _scratch):
     root = _scratch("import-confirm")
     db = root / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
@@ -552,7 +552,7 @@ def test_external_import_requires_confirmation_but_dry_run_never_writes(capsys):
     assert not db.exists()
 
 
-def test_external_import_refuses_oversized_input_before_db_write(monkeypatch, capsys):
+def test_external_import_refuses_oversized_input_before_db_write(monkeypatch, capsys, _scratch):
     root = _scratch("import-limit")
     source = root / "large.json"
     source.write_bytes(b"12345")
@@ -565,7 +565,7 @@ def test_external_import_refuses_oversized_input_before_db_write(monkeypatch, ca
     assert not db.exists()
 
 
-def test_external_export_is_atomic_and_backs_up_existing_target():
+def test_external_export_is_atomic_and_backs_up_existing_target(_scratch):
     root = _scratch("export-atomic")
     db = root / "benchmarks.sqlite"
     store.init_db(db)

@@ -42,6 +42,25 @@ def _input_tokens(request: InternalRequest) -> int:
     return estimate_tokens(texts)
 
 
+def _tool_call_input(tc: Mapping[str, Any]) -> Dict[str, Any]:
+    """Best-effort ``dict`` for one backend tool call's ``arguments``.
+
+    A backend's ``StructuredResult.tool_calls`` carries ``arguments`` as
+    either an already-parsed dict or a raw JSON string; this normalizes both
+    into the Anthropic ``tool_use.input`` object, falling back to ``{}`` for
+    anything absent or unparsable.
+    """
+    args = tc.get("arguments")
+    if isinstance(args, dict):
+        return args
+    if isinstance(args, str) and args.strip():
+        try:
+            return json.loads(args)
+        except (ValueError, TypeError):
+            return {}
+    return {}
+
+
 def _anthropic_stop_reason(raw: Optional[str]) -> str:
     """Map a raw upstream ``finish_reason`` to the Anthropic wire ``stop_reason``.
 
@@ -180,16 +199,7 @@ class AnthropicDialect:
                 _block_idx = _tc_idx + 1
                 _tc_id = _tc.get("id") or _new_id("toolu_")
                 _tc_name = _tc.get("name") or ""
-                _tc_args = _tc.get("arguments")
-                if isinstance(_tc_args, dict):
-                    _tc_input_dict = _tc_args
-                elif isinstance(_tc_args, str) and _tc_args.strip():
-                    try:
-                        _tc_input_dict = json.loads(_tc_args)
-                    except (ValueError, TypeError):
-                        _tc_input_dict = {}
-                else:
-                    _tc_input_dict = {}
+                _tc_input_dict = _tool_call_input(_tc)
                 yield _event("content_block_start", {
                     "type": "content_block_start",
                     "index": _block_idx,
@@ -248,21 +258,11 @@ class AnthropicDialect:
             content.append({"type": "text", "text": text})
         if _tool_calls:
             for _tc in _tool_calls:
-                _tc_args = _tc.get("arguments")
-                if isinstance(_tc_args, dict):
-                    _tc_input = _tc_args
-                elif isinstance(_tc_args, str) and _tc_args.strip():
-                    try:
-                        _tc_input = json.loads(_tc_args)
-                    except (ValueError, TypeError):
-                        _tc_input = {}
-                else:
-                    _tc_input = {}
                 content.append({
                     "type": "tool_use",
                     "id": _tc.get("id") or _new_id("toolu_"),
                     "name": _tc.get("name") or "",
-                    "input": _tc_input,
+                    "input": _tool_call_input(_tc),
                 })
         if not content:
             # Ensure at least one content block (e.g. tool-only response with empty text)

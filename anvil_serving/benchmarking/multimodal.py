@@ -20,6 +20,7 @@ from typing import Any
 from ..model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
 from ..preflight import chat, resolve_api_key, response_observation
 from .artifacts import atomic_write_json, path_is_within, real_path, validate_write_target
+from .runner import percentile
 
 MANIFEST_SCHEMA = "multimodal-corpus/v1"
 EVIDENCE_SCHEMA = "multimodal-benchmark-evidence/v1"
@@ -38,14 +39,6 @@ _HEX_40 = re.compile(r"[0-9a-f]{40}")
 
 def _sha256(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
-
-
-def _percentile(values: list[float], fraction: float) -> float | None:
-    if not values:
-        return None
-    ordered = sorted(values)
-    index = max(0, math.ceil(fraction * len(ordered)) - 1)
-    return ordered[index]
 
 
 def _read_json(path: str) -> tuple[dict[str, Any], bytes]:
@@ -509,8 +502,8 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
                 "latency_p50_seconds": statistics.median(
                     item["seconds"] for item in group
                 ),
-                "latency_p95_seconds": _percentile(
-                    [item["seconds"] for item in group], 0.95
+                "latency_p95_seconds": percentile(
+                    [item["seconds"] for item in group], 95
                 ),
             }
             for key, group in sorted(rows.items())

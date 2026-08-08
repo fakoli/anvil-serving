@@ -825,7 +825,6 @@ def run_bakeoff(
     voice_section = {
         "status": "not_run",
         "stt_latency_ms": a.stt_latency_ms,
-        "llm_latency_ms": None,
         "tts_latency_ms": a.tts_latency_ms,
         "total_turn_latency_ms": a.voice_latency_ms,
     }

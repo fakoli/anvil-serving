@@ -766,13 +766,8 @@ def test_decoded_semicolons_inside_parameter_values_cannot_hide_credentials(enco
     assert any(error.code == "credential" for error in errors)
 
 
-@pytest.mark.parametrize(
-    "key",
-    [
-        "access\u034fKey\ufe0fId",
-    ],
-)
-def test_cgj_and_variation_selectors_cannot_hide_compound_credential_keys(key):
+def test_cgj_and_variation_selectors_cannot_hide_compound_credential_keys():
+    key = "access\u034fKey\ufe0fId"
     data = _topology()
     data["resources"][0][key] = "ordinary-value"
 

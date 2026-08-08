@@ -5,13 +5,8 @@ to guarantee the router is up before starting serves (serves are only reachable
 behind it). Docker + HTTP are injected (`_run`/`_open`), so these run with no
 docker and no network.
 """
-import types
-
 from anvil_serving import serves
-
-
-def proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
+from tests.conftest import proc
 
 
 class FakeRun:

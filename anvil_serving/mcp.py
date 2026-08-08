@@ -1,4 +1,13 @@
-"""Public MCP compatibility and explicit tool-family composition facade."""
+"""Public MCP compatibility and explicit tool-family composition facade.
+
+Tool implementations live in :mod:`anvil_serving.control_plane.mcp.tools` and
+reach callers through the composed ``TOOLS`` catalog and ``call_tool``/
+``list_tools`` below. This module additionally re-exports a handful of
+``tool_*`` names directly (``tool_openclaw_sync``, ``tool_router_manage``,
+``tool_serves_mode``, ``tool_voice_manage``, ``tool_voice_proxy_manage``) plus
+``validate_workflow_packet`` for their real callers through this facade;
+other tool functions are reachable only via ``call_tool``/``TOOLS``.
+"""
 
 # Re-exported compatibility names and subprocess are intentionally module globals.
 # ruff: noqa: F401
@@ -21,12 +30,8 @@ from .control_plane.mcp.catalog import (
     list_tools as _list_catalog_tools,
 )
 from .control_plane.mcp.controller_client import (
-    NoRedirectHandler as _NoRedirectHandler,
-    controller_auth_headers,
-    http_error_details as _http_error_details,
     remote_controller_request,
     resolve_controller_token,
-    urlopen_no_proxy_no_redirect as _urlopen_no_proxy_no_redirect,
 )
 from .control_plane.mcp.errors import ToolError
 from .control_plane.mcp.errors import fail as _failure_envelope
@@ -36,16 +41,8 @@ from .control_plane.mcp.evidence import (
 from .control_plane.mcp.protocol import (
     handle_proxy_request as _handle_proxy_protocol_request,
     handle_request as _handle_protocol_request,
-    jsonrpc_error as _jsonrpc_error,
-    tool_result as _tool_result,
 )
-from .control_plane.mcp.runtime import (
-    capture as _capture,
-    command_preview as _command_preview,
-    read_spooled_text as _read_spooled_text,
-    run_argv as _run_argv,
-    run_argv_spooled as _run_argv_spooled,
-)
+from .control_plane.mcp.runtime import run_argv as _run_argv
 from .control_plane.mcp.node_bridge import run_node_bridge as _run_node_bridge
 from .control_plane.mcp.security import (
     redact_error_details as _redact_error_details,
@@ -57,63 +54,18 @@ from .control_plane.mcp.stdio import (
     serve_stdio as _serve_stdio_loop,
 )
 from .control_plane.mcp.tools import TOOLS
-from .control_plane.mcp.tools.benchmarks import (
-    tool_benchmark_artifact,
-    tool_benchmark_probe,
-    tool_preflight_probe,
-)
-from .control_plane.mcp.tools.external_benchmarks import (
-    tool_external_bench_compare,
-    tool_external_bench_list,
-    tool_external_bench_report,
-    tool_external_bench_sources,
-)
-from .control_plane.mcp.tools.host import (
-    tool_doctor_summary,
-    tool_gpu_inventory,
-    tool_host_manage,
-    tool_operator_config_export,
-    tool_operator_config_inventory,
-    tool_host_shared_memory,
-    tool_host_summary,
-    tool_observability_collect,
-)
-from .control_plane.mcp.tools.models import (
-    tool_cache_prune_plan,
-    tool_models_inventory,
-)
-from .control_plane.mcp.tools.openclaw import (
-    tool_openclaw_gateway_restart,
-    tool_openclaw_gateway_status,
-    tool_openclaw_sync,
-)
+from .control_plane.mcp.tools.openclaw import tool_openclaw_sync
 from .control_plane.mcp.tools.operations import (
     _tool_operation_contracts,
     operation_declarations as _operation_declarations,
 )
-from .control_plane.mcp.tools.router import (
-    tool_decision_summary,
-    tool_router_logs,
-    tool_router_manage,
-    tool_router_status,
-    tool_router_transition,
-)
-from .control_plane.mcp.tools.serves import (
-    tool_reservation_status,
-    tool_serves_logs,
-    tool_serves_manage,
-    tool_serves_mode,
-    tool_serves_promote,
-    tool_serves_status,
-)
+from .control_plane.mcp.tools.router import tool_router_manage
+from .control_plane.mcp.tools.serves import tool_serves_mode
 from .control_plane.mcp.tools.voice import (
     tool_voice_manage,
     tool_voice_proxy_manage,
 )
-from .control_plane.mcp.tools.workflow import (
-    tool_workflow_packet_validate,
-    validate_workflow_packet,
-)
+from .control_plane.mcp.tools.workflow import validate_workflow_packet
 from .operator_output import CONTEXT_FIELDS, context_from_plan
 
 

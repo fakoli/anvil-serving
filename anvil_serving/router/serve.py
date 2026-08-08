@@ -23,8 +23,8 @@ from .audio import AudioGateway
 from .availability import (
     AlwaysAvailable,
     AvailabilityResult,
-    BackgroundAvailabilityProber,
     HttpHealthAvailability,
+    safe_check,
 )
 from .backends import RelayBackend
 from .backends.relay import DiscoveryTransport, Transport, discover_single_model
@@ -263,13 +263,7 @@ class RoutingBackend:
         return getattr(self._thread_local, "last_result", None)
 
     def _availability_for(self, tier: Tier) -> AvailabilityResult:
-        try:
-            result = self._availability.check(tier)
-            if not isinstance(result, AvailabilityResult):
-                raise TypeError("non-AvailabilityResult")
-            return result
-        except Exception as exc:  # readiness failures are isolated to this tier
-            return AvailabilityResult(False, "unavailable", f"availability_check_{type(exc).__name__}")
+        return safe_check(self._availability, tier)
 
     @staticmethod
     def _prompt_tokens(request: InternalRequest) -> int:
@@ -709,15 +703,6 @@ def build_server(
         raise ConfigError("no serviceable direct model-route tiers")
     if availability is None:
         availability = AlwaysAvailable() if injected else HttpHealthAvailability(config, env=env)
-        if not injected and config.availability_prober == "background":
-            availability = BackgroundAvailabilityProber(
-                availability,
-                config.tiers,
-                interval=config.availability_probe_interval,
-                backoff_max=config.availability_probe_backoff_max,
-                staleness=config.availability_probe_staleness,
-            )
-            availability.start()
     if capacity_metrics is None:
         def capacity_metrics(tier: Tier):
             return fetch_vllm_metrics(tier, env=environ)
@@ -809,12 +794,7 @@ def serve(
         f"  routes: {routes}",
         flush=True,
     )
-    def _stop_background_prober() -> None:
-        stopper = getattr(getattr(httpd, "anvil_availability", None), "stop", None)
-        if callable(stopper):
-            stopper()
-
-    serve_until_signal(httpd, on_shutdown=_stop_background_prober)
+    serve_until_signal(httpd)
 
 
 def default_config_candidates() -> list[str]:

@@ -57,6 +57,33 @@ _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 # charset (e.g. an AWS access key id ``AKIA…`` / ``ASIA…``). Reject those shapes
 # explicitly as defense-in-depth so a pasted key id can't masquerade as a name.
 _SECRET_SHAPED_RE = re.compile(r"^(AKIA|ASIA)[0-9A-Z]{16}$")
+
+
+def _validate_auth_env(value: object, label: str, *, detailed: bool = True) -> None:
+    """Raise :class:`ConfigError` unless ``value`` is a plausible env-var NAME.
+
+    Shared by every ``auth_env`` field ([server], tier, purpose model, audio
+    route): it must match the env-var name shape and must not itself look like
+    a credential literal — never the secret, only a reference to where it
+    lives. ``label`` identifies the field in the error message (e.g.
+    ``"tier 'primary': auth_env"``); ``detailed`` toggles the longer
+    "store a secret reference..." guidance some call sites include and others
+    keep terse.
+    """
+    if not isinstance(value, str) or not _ENV_NAME_RE.fullmatch(value):
+        suffix = "; store a secret reference, never the secret itself" if detailed else ""
+        raise ConfigError(
+            f"{label} must name an ENV VAR matching ^[A-Z][A-Z0-9_]*$ "
+            f"(got {value!r}){suffix}"
+        )
+    if _SECRET_SHAPED_RE.fullmatch(value):
+        suffix = "; store the env-var NAME, never the secret" if detailed else ""
+        raise ConfigError(
+            f"{label} {value!r} is shaped like a credential literal, "
+            f"not an env-var name{suffix}"
+        )
+
+
 # Keep optional per-audio-route limits no larger than the front door's default
 # body cap without importing front_door (which imports this module).
 _MAX_AUDIO_GATEWAY_BYTES = 32 * 1024 * 1024
@@ -92,9 +119,6 @@ _ROUTER_KEYS = frozenset({
     "availability_probe_interval",
     "availability_probe_timeout",
     "availability_probe_max_bytes",
-    "availability_prober",
-    "availability_probe_backoff_max",
-    "availability_probe_staleness",
     "purpose_models",
     "audio_routes",
     "audio_max_input_bytes",
@@ -269,18 +293,6 @@ class RouterConfig:
     availability_probe_interval: float = 5.0
     availability_probe_timeout: float = 1.0
     availability_probe_max_bytes: int = 64 * 1024
-    # ADR-0033 opt-in background prober. "inline" (default) probes lazily on
-    # the request path exactly as before; "background" moves probing to a
-    # jittered, backoff-aware daemon thread and serves last-known state within
-    # the staleness bound. Never a fallback mechanism: it changes when the
-    # same probe runs, never where traffic goes.
-    availability_prober: str = "inline"
-    # Per-tier exponential backoff cap for consecutive background-probe
-    # failures; None derives 8x the probe interval.
-    availability_probe_backoff_max: Optional[float] = None
-    # Maximum age of a background result served without an inline re-probe;
-    # None derives 3x the probe interval. Must be >= the interval.
-    availability_probe_staleness: Optional[float] = None
     # gpu-reservations:T010 (ADR-0017 §7) — purpose-model serves routed by model
     # name on /v1/embeddings and /v1/rerank. Additive and default-empty: an
     # absent [[router.purpose_models]] list leaves the front door exactly as
@@ -367,17 +379,7 @@ def load_server_config(path: str) -> ServerConfig:
 
     auth_env = server.get("auth_env")
     if auth_env is not None:
-        if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"[server].auth_env must name an ENV VAR matching "
-                f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret reference, "
-                f"never the secret itself"
-            )
-        if _SECRET_SHAPED_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"[server].auth_env {auth_env!r} is shaped like a credential "
-                f"literal, not an env-var name; store the env-var NAME, never the secret"
-            )
+        _validate_auth_env(auth_env, "[server].auth_env")
 
     paths: dict[str, Optional[str]] = {}
     for key in ("admission_state_path", "decision_log_path"):
@@ -443,17 +445,7 @@ def _parse_tier(raw: object) -> Tier:
         )
 
     auth_env = raw["auth_env"]
-    if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
-        raise ConfigError(
-            f"tier {tid!r}: auth_env must name an ENV VAR matching "
-            f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret reference, "
-            f"never the secret itself"
-        )
-    if _SECRET_SHAPED_RE.fullmatch(auth_env):
-        raise ConfigError(
-            f"tier {tid!r}: auth_env {auth_env!r} is shaped like a credential "
-            f"literal, not an env-var name; store the env-var NAME, never the secret"
-        )
+    _validate_auth_env(auth_env, f"tier {tid!r}: auth_env")
 
     # Optional: concrete provider model id to forward upstream instead of the
     # routing token.  Absent or None -> fall back to request.model at dispatch time.
@@ -685,18 +677,7 @@ def _parse_purpose_model(raw: object) -> PurposeModel:
 
     auth_env = raw.get("auth_env")
     if auth_env is not None:
-        if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"purpose model {pid!r}: auth_env must name an ENV VAR matching "
-                f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret "
-                f"reference, never the secret itself"
-            )
-        if _SECRET_SHAPED_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"purpose model {pid!r}: auth_env {auth_env!r} is shaped like a "
-                f"credential literal, not an env-var name; store the env-var "
-                f"NAME, never the secret"
-            )
+        _validate_auth_env(auth_env, f"purpose model {pid!r}: auth_env")
 
     raw_timeout = raw.get("timeout")
     timeout: Optional[float] = None
@@ -849,16 +830,7 @@ def _parse_audio_route(raw: object) -> AudioRoute:
 
     auth_env = raw.get("auth_env")
     if auth_env is not None:
-        if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"audio route {route_id!r}: auth_env must name an ENV VAR "
-                f"matching ^[A-Z][A-Z0-9_]*$ (got {auth_env!r})"
-            )
-        if _SECRET_SHAPED_RE.fullmatch(auth_env):
-            raise ConfigError(
-                f"audio route {route_id!r}: auth_env {auth_env!r} is shaped "
-                "like a credential literal, not an env-var name"
-            )
+        _validate_auth_env(auth_env, f"audio route {route_id!r}: auth_env", detailed=False)
 
     default = raw.get("default", False)
     if not isinstance(default, bool):
@@ -1126,27 +1098,6 @@ def load(path: str) -> RouterConfig:
             f"256 through 1048576 in {path}"
         )
 
-    availability_prober = router.get("availability_prober", "inline")
-    if availability_prober not in ("inline", "background"):
-        raise ConfigError(
-            f"[router].availability_prober must be 'inline' or 'background' in {path}"
-        )
-    availability_probe_backoff_max: Optional[float] = None
-    if "availability_probe_backoff_max" in router:
-        availability_probe_backoff_max = _positive_seconds(
-            "availability_probe_backoff_max", availability_probe_interval
-        )
-    availability_probe_staleness: Optional[float] = None
-    if "availability_probe_staleness" in router:
-        availability_probe_staleness = _positive_seconds(
-            "availability_probe_staleness", availability_probe_interval
-        )
-        if availability_probe_staleness < availability_probe_interval:
-            raise ConfigError(
-                f"[router].availability_probe_staleness must be >= "
-                f"availability_probe_interval in {path}"
-            )
-
     return RouterConfig(
         tiers=tuple(tiers),
         model_routes=MappingProxyType(model_routes),
@@ -1155,9 +1106,6 @@ def load(path: str) -> RouterConfig:
         availability_probe_interval=availability_probe_interval,
         availability_probe_timeout=availability_probe_timeout,
         availability_probe_max_bytes=raw_probe_max_bytes,
-        availability_prober=availability_prober,
-        availability_probe_backoff_max=availability_probe_backoff_max,
-        availability_probe_staleness=availability_probe_staleness,
         purpose_models=tuple(purpose_models),
         audio_routes=tuple(audio_routes),
         audio_max_input_bytes=audio_max_input_bytes,

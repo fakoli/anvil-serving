@@ -94,5 +94,5 @@ local = [
   "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload8-wsl2-mmap-unpinned-recipe.toml",
   "configs/runtime-patches/vllm/48518e91-wsl2-offload-mmap-unpinned/Dockerfile",
   "configs/runtime-patches/vllm/48518e91-wsl2-offload-mmap-unpinned/wsl2-offload-mmap-pin-control.patch",
-  ".tickets/2026-08-02-deepseek-r16-native-kv-offload-illegal-access.md",
+  ".tickets/closed/2026-08-02-deepseek-r16-native-kv-offload-illegal-access.md",
 ]

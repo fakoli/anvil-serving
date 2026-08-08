@@ -17,13 +17,6 @@ from typing import Callable, Iterable
 MANIFEST_SCHEMA_VERSION = 5
 MANIFEST_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "CLI-COMMAND-MANIFEST.json"
 CLI_DOC = "docs/CLI.md"
-ROUTER_DOC = "docs/cli/router.md"
-SERVES_DOC = "docs/cli/serves.md"
-MODELS_DOC = "docs/cli/models.md"
-EVAL_DOC = "docs/cli/eval.md"
-HOST_DOC = "docs/cli/host.md"
-CONTROL_PLANE_DOC = "docs/cli/control-plane.md"
-VOICE_CLI_DOC = "docs/cli/voice.md"
 _MUTATION_CLASSES = frozenset({"read", "mutate", "process"})
 _TRANSPORTS = frozenset({"local", "controller", "ssh"})
 _EXECUTION_POLICIES = frozenset({"offline", "resource-owner"})

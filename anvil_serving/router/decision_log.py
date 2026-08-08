@@ -39,7 +39,6 @@ class AttemptRecord:
     prompt_tokens: int
     completion_tokens: int
     outcome: str
-    detail: str = ""
 
 
 @dataclass(frozen=True)
