@@ -315,8 +315,12 @@ def probe_drift_host(host_id: str, repo_hashes: dict, names: list[str], *,
     result = None
     stderr_first = ""
     for launcher in ("python3", "python"):
+        # The wrapper contains a space ("import base64;..."), and ssh joins
+        # argv with spaces for the REMOTE shell to re-split -- on Windows,
+        # cmd.exe hands python only the first token (observed live). Quote it
+        # client-side; harmless on POSIX remotes.
         argv = ["ssh", "-n", "-o", "BatchMode=yes", host_id, launcher, "-c",
-                wrapper]
+                '"%s"' % wrapper]
         try:
             result = _run(argv, capture_output=True, text=True, timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -325,7 +329,11 @@ def probe_drift_host(host_id: str, repo_hashes: dict, names: list[str], *,
         except FileNotFoundError:
             return {"host": host_id, "state": "unreachable",
                     "detail": "ssh is not available locally", "files": []}
-        stderr_first = next(iter((result.stderr or "").strip().splitlines()), "")
+        stderr_lines = [
+            line for line in (result.stderr or "").strip().splitlines()
+            if not line.startswith("** ")  # client-side ssh advisory banners
+        ]
+        stderr_first = next(iter(stderr_lines), "")
         if result.returncode == 0:
             break
         lowered = (result.stderr or "").lower()
