@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-08-08
+
+### Added
+
+- `serves lint` — static analysis over the loaded manifest set, with no Docker
+  or network access, exiting non-zero on errors so it can gate CI or a
+  pre-promotion check. Three checks, each added because the defect it finds
+  occurred live while every other command reported success:
+  `duplicate-serve-name`, `missing-registry`, and
+  `worktree-anchored-registry`. `--json` emits the same report structurally.
+  Feature 1 of the program in `docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md`.
+
+### Changed
+
+- **BREAKING:** `load_manifest_set` now refuses two surviving entries that
+  share a `name`, naming both files and their containers. De-dup remains BY
+  CONTAINER, so the supported read-only mirror pattern is unaffected — only a
+  duplicate name surviving that de-dup is rejected, because name selection
+  matches both and one silently wins. That shadowing caused two live incidents
+  in six days, the second leaving a promoted serve unmanageable because
+  `serves down` resolved the wrong container. `serves lint` loads leniently and
+  still reports the defect, so the command an operator reaches for when blocked
+  is not the one that breaks. Feature 2 of the same program.
+
 ## [0.24.0] - 2026-08-08
 
 ### Changed

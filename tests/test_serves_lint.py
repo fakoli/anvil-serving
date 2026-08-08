@@ -7,6 +7,8 @@ docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md.
 import json
 import textwrap
 
+import pytest
+
 from anvil_serving import serves
 
 
@@ -29,6 +31,15 @@ def _entry(name, container, up=""):
     """
 
 
+def _lenient(path):
+    """Load a manifest set the strict loader refuses.
+
+    `serves lint` exists to report duplicate names, so it must be able to read
+    a set that `load_manifest_set` rejects.
+    """
+    return serves.load_manifest_set(path, reject_duplicates=False)
+
+
 def _never_worktree(*_a, **_k):
     raise AssertionError("git must not be consulted for this case")
 
@@ -48,7 +59,7 @@ def test_duplicate_name_across_files_is_an_error(tmp_path):
     main = _write(tmp_path, "serves.toml", _entry("dup", "container-old"))
     _write(tmp_path, "serves.extra.toml", _entry("dup", "container-new"))
 
-    report = serves.lint_manifest_set(serves.load_manifest_set(main))
+    report = serves.lint_manifest_set(_lenient(main))
     dupes = [f for f in report["findings"] if f["check"] == "duplicate-serve-name"]
     assert len(dupes) == 1
     assert dupes[0]["severity"] == "error"
@@ -138,7 +149,7 @@ def test_cmd_lint_exits_nonzero_on_errors(tmp_path, capsys):
     main = _write(tmp_path, "serves.toml", _entry("dup", "c1"))
     _write(tmp_path, "serves.extra.toml", _entry("dup", "c2"))
 
-    assert serves.cmd_lint(serves.load_manifest_set(main)) == 1
+    assert serves.cmd_lint(_lenient(main)) == 1
     assert "duplicate-serve-name" in capsys.readouterr().out
 
 
@@ -155,7 +166,33 @@ def test_cmd_lint_json_is_machine_readable(tmp_path, capsys):
     main = _write(tmp_path, "serves.toml", _entry("dup", "c1"))
     _write(tmp_path, "serves.extra.toml", _entry("dup", "c2"))
 
-    assert serves.cmd_lint(serves.load_manifest_set(main), as_json=True) == 1
+    assert serves.cmd_lint(_lenient(main), as_json=True) == 1
     report = json.loads(capsys.readouterr().out)
     assert report["errors"] == 1
     assert report["findings"][0]["check"] == "duplicate-serve-name"
+
+
+def test_strict_loader_rejects_duplicate_names(tmp_path):
+    # Feature 2: prevention. The strict loader refuses what lint reports, so a
+    # shadowed edit can no longer reach a live command.
+    main = _write(tmp_path, "serves.toml", _entry("dup", "c1"))
+    _write(tmp_path, "serves.extra.toml", _entry("dup", "c2"))
+
+    with pytest.raises(ValueError, match="duplicate serve name"):
+        serves.load_manifest_set(main)
+
+    # ...and the message points at the tool that shows the whole picture.
+    try:
+        serves.load_manifest_set(main)
+    except ValueError as exc:
+        assert "serves lint" in str(exc)
+        assert "c1" in str(exc) and "c2" in str(exc)
+
+
+def test_strict_loader_still_accepts_container_mirrors(tmp_path):
+    main = _write(tmp_path, "serves.toml", _entry("m", "shared", up='up = "echo go"'))
+    _write(tmp_path, "serves.mirror.toml", _entry("m", "shared"))
+
+    (only,) = serves.load_manifest_set(main)
+    assert only["name"] == "m"
+    assert only["up"] == ["echo", "go"]
