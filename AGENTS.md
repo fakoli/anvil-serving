@@ -9,7 +9,7 @@
 A local-model serving and benchmark substrate plus a thin capability gateway
 (`anvil_serving/router/`).
 (`eval usage`, `models sync`, `serves render`, `eval preflight`, `eval benchmark run`,
-`serves multiplex`, plus `init`, `doctor`, and `host gpus`). The router is shipped (v0.7.x): token-authed
+`serves multiplex`, plus `init`, `doctor`, and `host gpus`). The router is shipped: token-authed
 containerized service, cross-dialect tool translation, true upstream SSE streaming,
 readiness, admission, and metadata-only decisions. The canonical product description is
 `README.md`; do not contradict it.

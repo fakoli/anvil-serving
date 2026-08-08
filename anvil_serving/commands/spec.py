@@ -146,11 +146,6 @@ class CommandTree:
         object.__setattr__(self, "global_options", tuple(self.global_options))
 
 
-def _deferred_handler(*_args: object, **_kwargs: object) -> None:
-    """Marker handler for v2 paths whose concrete implementation lands later."""
-    raise RuntimeError("this v2 command is not wired into the dispatcher yet")
-
-
 def _option(
     *flags: str,
     summary: str,
@@ -182,10 +177,6 @@ def _handler(
         forward_resolution_options=forward_resolution_options,
         forward_confirm_flag=forward_confirm_flag,
     )
-
-
-def _future_handler() -> HandlerRef:
-    return HandlerRef("anvil_serving.command_tree", "_deferred_handler")
 
 
 def _remote(
@@ -259,7 +250,7 @@ def _node(
 def _resource_node(
     name: str,
     summary: str,
-    module: str | None,
+    module: str,
     *,
     role: str,
     coowned_roles: Iterable[str] = (),
@@ -287,9 +278,7 @@ def _resource_node(
             argv_prefix=argv_prefix,
             forward_resolution_options=forward_resolution_options,
             forward_confirm_flag=forward_confirm_flag,
-        )
-        if module
-        else _future_handler(),
+        ),
         resource_role=role,
         coowned_resource_roles=coowned_roles,
         transports=(

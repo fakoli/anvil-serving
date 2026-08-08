@@ -6,6 +6,34 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Removed
+
+- Production-cleanup dead-code sweep, verified against the command registry,
+  MCP tool dispatch, entry points, and dynamic-dispatch sites before removal:
+  the unused `cli._hidden_leaf_help_flags`, `config.load`,
+  `external_benchmarks.store.record_verdict`,
+  `observability.benchmark.overhead.process_cpu_percent`,
+  `serves._compose_project_from_up`, and `voice.stages.llm._split_speakable_text`
+  helpers; the never-constructed `SessionCreated`/`SessionUpdated`/
+  `ResponseCreated` realtime event dataclasses (those wire events are emitted
+  as raw dicts by the realtime service); and the never-reachable
+  `commands.spec._future_handler`/`_deferred_handler` placeholder path
+  (`_resource_node` now requires a concrete handler module).
+- Top-level `assets/` duplicates of `docs/assets/` (byte-identical PNGs);
+  README and the tailnet runbook now reference `docs/assets/`. Session-retro
+  artifacts under `post-session-findings/` moved to the private operator
+  repository per ADR-0032.
+
+### Changed
+
+- Consolidated duplicated helpers onto single canonical homes: the
+  no-proxy/no-redirect `urllib` opener now lives only in `transports`
+  (collectors and the MCP controller client import it), `resolve_api_key`
+  lives only in `preflight` (re-exported unchanged from
+  `benchmarking.requests`), and the voice STT/LLM/TTS stages share one
+  `bearer_headers` helper in `voice.stages.base`. Public facade names and
+  signatures are unchanged.
+
 ### Fixed
 
 - The canonical CLI now forwards the consumed `--confirm` flag into the legacy

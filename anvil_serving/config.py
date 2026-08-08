@@ -33,16 +33,3 @@ def hf_cache_roots(extra=None):
         if p not in seen and os.path.isdir(p):
             seen.add(p); out.append(p)
     return out
-
-def load(path=None):
-    """Load optional TOML config; returns a dict with sane defaults."""
-    cfg = dict(claude_logs=claude_logs_dir(), hf_extra_roots=[], model_dirs=[],
-               gpu_index=0, served_model_name="local-specialist")
-    if path and os.path.isfile(path):
-        try:
-            import tomllib
-            with open(path, "rb") as f: cfg.update(tomllib.load(f))
-        except Exception as e:
-            import sys
-            print("warn: could not read config:", e, file=sys.stderr)
-    return cfg

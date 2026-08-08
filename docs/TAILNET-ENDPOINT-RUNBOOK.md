@@ -171,7 +171,7 @@ An OCR request is a chat completion naming the `vision.ocr` alias with an `image
 part; the router sends it to the resident PaddleOCR-VL serve — no separate OCR endpoint.
 
 ```
-$ python ocr_probe.py assets/explainer-quality-gate.png   # model="vision.ocr" + data: image_url
+$ python ocr_probe.py docs/assets/explainer-quality-gate.png   # model="vision.ocr" + data: image_url
 # HTTP 200  model=vision.ocr  finish_reason=stop
 # usage={prompt_tokens:1215, completion_tokens:15, total_tokens:1230}
 # extracted: "measured score 98% / GATE / QUALITY ..."
