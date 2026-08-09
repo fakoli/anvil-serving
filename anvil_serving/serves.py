@@ -2774,13 +2774,59 @@ def preflight_check_reports(serves, promotions, restore_group=None, _run=subproc
     }
 
 
+def _finding_is_relevant(finding, involved, restore_group):
+    """Is `finding` about this transaction's blast radius, or some other serve?
+
+    Only called for error-severity findings; warning/info findings are never
+    blocking regardless of relevance (they always print as advisory context).
+
+    check name               | `serve` holds                | relevance
+    ------------------------ | ------------------------------ | -------------------------------------------
+    duplicate-serve-name     | the duplicated NAME            | blocks-always (structural: breaks name
+                              |                                 | resolution itself, everywhere)
+    missing-registry         | serve name                      | blocks-if-involved
+    promotion-topology       | PROMOTION PLAN name, not a      | blocks-if-involved; the promote call site
+                              | serve name                      | adds the resolved plan's NAME to
+                              |                                 | `involved`, so a topology error on the
+                              |                                 | plan actually being promoted blocks.
+                              |                                 | Other plans' topology errors are advisory.
+    rollback-profile-invalid | serve name                      | blocks-if-involved
+    unknown-restore-group    | the --restore-group value       | blocks-always when --restore-group was
+                              |                                 | passed (nothing was verified for it)
+    rollback-image-missing   | "label (name); label2 (n2)"     | blocks-if-involved (matched by "(name)"
+                              | joined string                   | substring against the involved set --
+                              |                                 | see rollback_check_manifest_set's `who`)
+    """
+    check = finding["check"]
+    serve = finding.get("serve") or ""
+    if check == "duplicate-serve-name" or not serve or serve == "-":
+        return True
+    if check == "unknown-restore-group":
+        return bool(restore_group)
+    if check == "rollback-image-missing":
+        return any("(%s)" % name in serve for name in involved)
+    return serve in involved
+
+
 def _preflight_gate(serves, promotions, *, restore_group=None, skip=False,
-                    label, _run=subprocess.run):
+                    involved=frozenset(), label, _run=subprocess.run):
     """Run the implicit lint + rollback-check gate before `promote`/`mode
     enter` begin their transaction (docs/FEATURE-EXECUTION-PLAYBOOK.md gate
-    sequence). An error-severity finding from either check aborts before any
-    mutation; warnings are printed but never block. `label` names the calling
-    transaction ("promote" / "mode enter") in every message this prints.
+    sequence). Both checks always run over the FULL manifest set -- scoping
+    happens only at the abort decision, so a defect anywhere is still
+    reported (detection stays loud everywhere; see
+    docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md and
+    docs/FEATURE-EXECUTION-PLAYBOOK.md).
+
+    Only an error-severity finding relevant to `involved` (the serve names
+    this transaction actually touches -- see `_finding_is_relevant`) aborts
+    the transaction. An error about an unrelated serve (e.g. a stale
+    `missing-registry` on a serve nobody is touching) is printed as advisory
+    and does not block: refusing every command over one unrelated manifest
+    entry is exactly what feature 5's revision in
+    STRATEGY-MAKE-DIVERGENCE-LOUD.md rejects. Warning/info findings never
+    block. `label` names the calling transaction ("promote" / "mode enter")
+    in every message this prints.
 
     Returns 3 when the transaction must abort, None when it may proceed.
     """
@@ -2798,18 +2844,44 @@ def _preflight_gate(serves, promotions, *, restore_group=None, skip=False,
     warnings = reports["lint"]["warnings"] + reports["rollback_check"]["warnings"]
     if not findings:
         return None
+
+    blocking, advisory = [], []
+    for finding in findings:
+        if finding["severity"] == "error" and _finding_is_relevant(
+            finding, involved, restore_group
+        ):
+            blocking.append(finding)
+        else:
+            advisory.append(finding)
+
     # Everything the gate prints goes to stderr: it is refusal/advisory
     # diagnostics, not transaction output, and the --json envelope only
     # carries stderr for a nonzero exit -- findings on stdout would be
     # invisible to a JSON-mode caller exactly when they block it.
     infos = len(findings) - errors - warnings
-    print("preflight checks for %s: %d error(s), %d warning(s), %d info" % (
-        label, errors, warnings, infos), file=sys.stderr)
-    _print_findings(findings, check_width=27, file=sys.stderr)
-    if errors:
+    print("preflight checks for %s: %d error(s), %d warning(s), %d info "
+          "(%d blocking, %d advisory)" % (
+              label, errors, warnings, infos, len(blocking), len(advisory)),
+          file=sys.stderr)
+    for finding in blocking:
+        _print_findings([finding], check_width=27, file=sys.stderr)
+    for finding in advisory:
+        marker = (
+            "ADVISORY (outside this transaction): "
+            if finding["severity"] == "error" else ""
+        )
+        print("%s%-8s %-27s %s" % (
+            marker, finding["severity"].upper(), finding["check"],
+            finding["serve"]), file=sys.stderr)
+        print("         %s" % finding["detail"], file=sys.stderr)
+        for path in finding["files"]:
+            print("         in %s" % path, file=sys.stderr)
+    if blocking:
         print(
             "%s refused before any mutation: %d preflight check error(s) "
-            "(rerun with --skip-preflight-checks to override)" % (label, errors),
+            "blocking this transaction (%d additional advisory finding(s); "
+            "rerun with --skip-preflight-checks to override)" % (
+                label, len(blocking), len(advisory)),
             file=sys.stderr,
         )
         return 3
@@ -4907,9 +4979,15 @@ def main(argv=None):
                 except Exception as exc:
                     print("bad promotion plan in %s: %s" % (path, exc), file=sys.stderr)
                     return 2
+            # This transaction's blast radius: the exclusive target plus
+            # every serve tagged with the restore group it will fail back to.
+            mode_involved = {a.target} | {
+                s["name"] for s in resolve_group(serves, a.restore_group)
+            }
             gate_rc = _preflight_gate(
                 serves, mode_promotions, restore_group=a.restore_group,
-                skip=a.skip_preflight_checks, label="mode enter",
+                skip=a.skip_preflight_checks, involved=mode_involved,
+                label="mode enter",
             )
             if gate_rc is not None:
                 return gate_rc
@@ -5021,12 +5099,33 @@ def main(argv=None):
         # `ledger_serves` is already the manifest SET the same command loaded
         # above; `promotions` above is the same load `rollback-check` would
         # otherwise repeat, so neither is re-loaded for the gate.
-        gate_rc = _preflight_gate(
-            ledger_serves, promotions, restore_group=None,
-            skip=a.skip_preflight_checks, label="promote",
-        )
-        if gate_rc is not None:
-            return gate_rc
+        #
+        # Resolve the plan the same way cmd_promote itself will (must match
+        # exactly one [[promotion]] entry). An unknown/ambiguous plan name
+        # skips the gate entirely and falls through to cmd_promote's own
+        # "must match exactly one" refusal -- the gate has no plan to scope
+        # to, and re-reporting that as a lint/rollback-check abort would be
+        # misleading (issue #377 finding 8b).
+        plan_matches = [p for p in promotions if p["name"] == a.names[0]]
+        if len(plan_matches) == 1:
+            plan = plan_matches[0]
+            promote_involved = {
+                name for name in (plan.get("target"), plan.get("rollback"))
+                if name
+            }
+            # promotion-topology findings carry the PLAN name in their
+            # `serve` field; including the resolved plan's name makes a
+            # topology error on the plan being promoted block (exit 3)
+            # instead of printing as advisory -- which for this plan it is
+            # not.
+            promote_involved.add(plan["name"])
+            gate_rc = _preflight_gate(
+                ledger_serves, promotions, restore_group=None,
+                skip=a.skip_preflight_checks, involved=promote_involved,
+                label="promote",
+            )
+            if gate_rc is not None:
+                return gate_rc
         rc = cmd_promote(
             serves, promotions, a.names[0], os.path.abspath(manifest_path),
             rollback=a.rollback, resume=a.resume, dry_run=a.dry_run,
