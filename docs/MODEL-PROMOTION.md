@@ -25,6 +25,18 @@ anvil-serving serves promote <promotion-plan> --confirm
 The dry run is not a formality — it is where you confirm the resolved recipe, target role, and
 rollback target are the ones you intend, before anything mutates.
 
+Before either form starts, `serves promote` runs `serves lint` and
+`serves rollback-check` (the dry run too, since both are read-only). Serve
+checks cover the whole manifest set; the promotion plans checked are those of
+the named manifest — the same plans the promotion itself executes. An
+`error`-severity finding — a missing recipe registry, a
+broken rollback router config, a rollback image no longer present locally —
+refuses the transaction with exit `3` before a container is touched, printing
+the findings in the same format `lint`/`rollback-check` use on their own.
+Override with `--skip-preflight-checks`, which prints an unmistakable warning
+to stderr naming exactly what was skipped; see
+[`serves` — preflight gate on promote and mode enter](cli/serves.md#preflight-gate-on-promote-and-mode-enter).
+
 If the candidate fails its gate, the transaction restores the previous state rather than
 leaving a half-promoted role. Roll back deliberately with the same command surface:
 
