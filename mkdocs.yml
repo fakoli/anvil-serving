@@ -157,6 +157,7 @@ nav:
       - 'ADR-0032: Public product, private operator state': adr/0032-public-product-private-operator-state.md
       - 'ADR-0033: Production durability and plane contract': adr/0033-production-durability-and-plane-contract.md
       - 'ADR-0034: Fleet control plane and node runtime classes': adr/0034-fleet-control-plane-and-node-runtime-classes.md
+      - 'ADR-0035: Fleet configuration reconciliation': adr/0035-fleet-configuration-reconciliation.md
   - Changelog: changelog.md
 
 markdown_extensions:
