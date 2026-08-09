@@ -528,7 +528,12 @@ def test_canonical_cli_enters_and_leaves_synthetic_exclusive_mode(
     monkeypatch.setattr(serves, "cmd_up", fake_up)
 
     tail = ["tp2", "--restore-group", "split-stack", "--manifest", path, "--confirm"]
-    assert cli.main(["serves", "mode", "enter", *tail]) == 0
+    # `--skip-preflight-checks`: the real preflight gate has no `_run`
+    # injection seam at the dispatcher level, and DUAL_MODE_MANIFEST's
+    # split-a/split-b `up` names a compose file this test never creates on
+    # disk -- irrelevant to what "enter" is exercising here (the confirm-flag
+    # round trip through the declarative CLI).
+    assert cli.main(["serves", "mode", "enter", *tail, "--skip-preflight-checks"]) == 0
     assert "mode entered: tp2" in capsys.readouterr().out
 
     assert cli.main(["serves", "mode", "leave", *tail]) == 0
@@ -964,12 +969,18 @@ def test_main_mode_enter_forwards_preserve_on_failure(tmp_path, monkeypatch):
 
     monkeypatch.setattr(serves, "cmd_mode", fake)
 
+    # `--skip-preflight-checks`: the preflight gate runs for real (it has no
+    # `_run` injection seam of its own at the dispatcher level) and
+    # DUAL_MODE_MANIFEST's split-a/split-b `up` names a compose file that
+    # does not exist on disk in this test — irrelevant to what this test
+    # covers (forwarding of --preserve-on-failure to cmd_mode).
     assert serves.main([
         "mode", "enter", "tp2",
         "--restore-group", "split-stack",
         "--manifest", path,
         "--preserve-on-failure",
         "--confirm",
+        "--skip-preflight-checks",
     ]) == 0
     assert seen == {
         "action": "enter",

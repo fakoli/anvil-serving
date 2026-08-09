@@ -2513,6 +2513,19 @@ def lint_manifest_set(serves, _run=subprocess.run):
     }
 
 
+def _print_findings(findings, check_width=27, file=None):
+    """Shared finding-printing loop for lint, rollback-check, and the preflight
+    gate -- one format, so an operator sees identical detail from every
+    surface that reports the same kind of finding."""
+    for finding in findings:
+        print("%-8s %-*s %s" % (
+            finding["severity"].upper(), check_width, finding["check"],
+            finding["serve"]), file=file)
+        print("         %s" % finding["detail"], file=file)
+        for path in finding["files"]:
+            print("         in %s" % path, file=file)
+
+
 def cmd_lint(serves, as_json=False, _run=subprocess.run):
     """Report manifest defects; non-zero exit on errors so it can gate CI."""
     report = lint_manifest_set(serves, _run=_run)
@@ -2523,12 +2536,7 @@ def cmd_lint(serves, as_json=False, _run=subprocess.run):
         print("serves lint: %d serves checked, no findings"
               % report["serves_checked"])
         return 0
-    for finding in report["findings"]:
-        print("%-8s %-27s %s" % (
-            finding["severity"].upper(), finding["check"], finding["serve"]))
-        print("         %s" % finding["detail"])
-        for path in finding["files"]:
-            print("         in %s" % path)
+    _print_findings(report["findings"], check_width=27)
     print("serves lint: %d serves checked, %d error(s), %d warning(s)" % (
         report["serves_checked"], report["errors"], report["warnings"]))
     return 1 if report["errors"] else 0
@@ -2747,17 +2755,65 @@ def cmd_rollback_check(serves, promotions, restore_group=None, as_json=False, _r
         print("serves rollback-check: %d serve(s), %d promotion plan(s) checked, "
               "no findings" % (report["serves_checked"], report["promotions_checked"]))
         return 0
-    for finding in report["findings"]:
-        print("%-8s %-24s %s" % (
-            finding["severity"].upper(), finding["check"], finding["serve"]))
-        print("         %s" % finding["detail"])
-        for path in finding["files"]:
-            print("         in %s" % path)
+    _print_findings(report["findings"], check_width=24)
     print("serves rollback-check: %d serve(s), %d promotion plan(s) checked, "
           "%d error(s), %d warning(s), %d info" % (
               report["serves_checked"], report["promotions_checked"],
               report["errors"], report["warnings"], report["infos"]))
     return 1 if report["errors"] else 0
+
+
+def preflight_check_reports(serves, promotions, restore_group=None, _run=subprocess.run):
+    """Both preflight reports a mutating transaction gates on: lint +
+    rollback-check. Pure and read-only, like the two checks it wraps.
+    """
+    return {
+        "lint": lint_manifest_set(serves, _run=_run),
+        "rollback_check": rollback_check_manifest_set(
+            serves, promotions, restore_group=restore_group, _run=_run),
+    }
+
+
+def _preflight_gate(serves, promotions, *, restore_group=None, skip=False,
+                    label, _run=subprocess.run):
+    """Run the implicit lint + rollback-check gate before `promote`/`mode
+    enter` begin their transaction (docs/FEATURE-EXECUTION-PLAYBOOK.md gate
+    sequence). An error-severity finding from either check aborts before any
+    mutation; warnings are printed but never block. `label` names the calling
+    transaction ("promote" / "mode enter") in every message this prints.
+
+    Returns 3 when the transaction must abort, None when it may proceed.
+    """
+    if skip:
+        print(
+            "preflight checks SKIPPED (--skip-preflight-checks): lint and "
+            "rollback-check were NOT run for this %s" % label,
+            file=sys.stderr,
+        )
+        return None
+    reports = preflight_check_reports(
+        serves, promotions, restore_group=restore_group, _run=_run)
+    findings = reports["lint"]["findings"] + reports["rollback_check"]["findings"]
+    errors = reports["lint"]["errors"] + reports["rollback_check"]["errors"]
+    warnings = reports["lint"]["warnings"] + reports["rollback_check"]["warnings"]
+    if not findings:
+        return None
+    # Everything the gate prints goes to stderr: it is refusal/advisory
+    # diagnostics, not transaction output, and the --json envelope only
+    # carries stderr for a nonzero exit -- findings on stdout would be
+    # invisible to a JSON-mode caller exactly when they block it.
+    infos = len(findings) - errors - warnings
+    print("preflight checks for %s: %d error(s), %d warning(s), %d info" % (
+        label, errors, warnings, infos), file=sys.stderr)
+    _print_findings(findings, check_width=27, file=sys.stderr)
+    if errors:
+        print(
+            "%s refused before any mutation: %d preflight check error(s) "
+            "(rerun with --skip-preflight-checks to override)" % (label, errors),
+            file=sys.stderr,
+        )
+        return 3
+    return None
 
 
 def resolve_alias_backers(config, serves, alias):
@@ -4608,6 +4664,16 @@ def _build_action_parser(action):
                        help="resume an interrupted promotion from an already-running target")
     else:
         p.set_defaults(recipe=None, registry=None, rollback=False, resume=False)
+    if action in {"promote", "mode"}:
+        p.add_argument(
+            "--skip-preflight-checks",
+            action="store_true",
+            help="skip the implicit lint + rollback-check gate this transaction "
+                 "runs before its first mutation (loudly logged to stderr; "
+                 "`mode` only accepts this with `enter`).",
+        )
+    else:
+        p.set_defaults(skip_preflight_checks=False)
     return p
 
 
@@ -4822,6 +4888,31 @@ def main(argv=None):
                 file=sys.stderr,
             )
             return 2
+        if a.skip_preflight_checks and a.mode_action != "enter":
+            print(
+                "--skip-preflight-checks is only valid with mode enter",
+                file=sys.stderr,
+            )
+            return 2
+        if a.mode_action == "enter":
+            # A first load: standalone `rollback-check` loads promotions itself
+            # (mode's own dispatch never has), mirroring its per-file tolerance
+            # of an absent candidate across the manifest SET.
+            mode_promotions = []
+            for path in manifest_set_paths(manifest_path):
+                try:
+                    mode_promotions.extend(load_promotions(path))
+                except FileNotFoundError:
+                    continue
+                except Exception as exc:
+                    print("bad promotion plan in %s: %s" % (path, exc), file=sys.stderr)
+                    return 2
+            gate_rc = _preflight_gate(
+                serves, mode_promotions, restore_group=a.restore_group,
+                skip=a.skip_preflight_checks, label="mode enter",
+            )
+            if gate_rc is not None:
+                return gate_rc
         rc = cmd_mode(
             serves,
             a.mode_action,
@@ -4924,6 +5015,18 @@ def main(argv=None):
         except Exception as exc:
             print("bad promotion plan in %s: %s" % (manifest_path, exc), file=sys.stderr)
             return 2
+        # Preflight checks are read-only and cheap, so the gate covers every
+        # promote invocation -- rollback and resume mutate too, and both
+        # benefit from the same pre-mutation evidence a fresh promotion gets.
+        # `ledger_serves` is already the manifest SET the same command loaded
+        # above; `promotions` above is the same load `rollback-check` would
+        # otherwise repeat, so neither is re-loaded for the gate.
+        gate_rc = _preflight_gate(
+            ledger_serves, promotions, restore_group=None,
+            skip=a.skip_preflight_checks, label="promote",
+        )
+        if gate_rc is not None:
+            return gate_rc
         rc = cmd_promote(
             serves, promotions, a.names[0], os.path.abspath(manifest_path),
             rollback=a.rollback, resume=a.resume, dry_run=a.dry_run,

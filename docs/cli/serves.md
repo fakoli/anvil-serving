@@ -148,7 +148,9 @@ target, retains the stopped/exited container and its logs, and then restores the
 split group. If the target cannot be proven stopped, Anvil removes it so an
 unhealthy or restarting process cannot retain either GPU during restoration.
 The `serves_mode` MCP tool exposes the same structured plan; live remote
-entry/leave requires its separate human-approval gate.
+entry/leave requires its separate human-approval gate. `mode enter` refuses
+before any mutation on a lint/rollback-check error; see
+[Preflight gate on promote and mode enter](#preflight-gate-on-promote-and-mode-enter).
 
 ## Lint
 
@@ -170,7 +172,7 @@ other command reported success (see
 | Check | Severity | What it catches |
 | --- | --- | --- |
 | `duplicate-serve-name` | error | Two entries sharing a `name` after container de-dup. Name selection becomes ambiguous and one entry silently wins, so an edit to the losing copy is invisible at runtime. |
-| `missing-registry` | error | A `--registry` path inside an `up` command that does not exist. Otherwise this surfaces only once a mode transaction is already running. |
+| `missing-registry` | error | A `--registry` path inside an `up` command that does not exist. `serves promote` and `serves mode enter` both refuse to start over this before touching a container (see below). |
 | `worktree-anchored-registry` | warning | A recipe registry resolving inside a linked git worktree, which `git worktree remove` deletes. |
 
 `load_manifest_set` **refuses** a duplicate name outright, so a shadowed
@@ -217,6 +219,35 @@ report structurally, matching `lint`'s conventions.
 
 Only `error`-severity findings fail the exit code; `warning` and `info` are
 reported but never block.
+
+## Preflight gate on promote and mode enter
+
+`serves promote` and `serves mode enter` both run `lint` and `rollback-check`
+before their first mutation — the same reports described above, printed in
+the same format (to stderr, so a `--json` caller sees them in the error
+envelope). Serve checks cover the whole manifest set for both transactions.
+The promotion plans checked differ: `promote` gates on the plans of the
+manifest it was invoked on — exactly the plans the transaction itself
+executes — while `mode enter` (like standalone `rollback-check`) loads
+promotion plans from every file in the set. Any `error`-severity finding
+aborts the transaction with exit `3` before a container is touched;
+`--dry-run` still runs the gate, since both checks are read-only. `mode
+enter`'s rollback-check uses its own `--restore-group`; `promote` has none, so
+its rollback-check runs without one. `warning`/`info` findings are printed but
+never block.
+
+```bash
+anvil-serving serves promote PROMOTION_PLAN --confirm
+anvil-serving serves mode enter TP2_SERVE --restore-group split-stack \
+  --manifest ./serves.toml --confirm
+```
+
+Pass `--skip-preflight-checks` to run the transaction anyway; doing so prints
+an unmistakable warning to stderr naming exactly what was skipped. `serves
+mode leave|preview|status` are not gated — `--skip-preflight-checks` is
+rejected (exit `2`) on anything but `mode enter`. The standalone `serves
+lint`/`serves rollback-check` commands are unchanged and remain available on
+their own.
 
 ## Functional probes
 
@@ -300,8 +331,10 @@ anvil-serving serves promote PROMOTION_PLAN --confirm
 ```
 
 `PROMOTION_PLAN` names a `[[promotion]]` entry in the selected serves manifest.
-Promotion stages the candidate, runs preflight, and preserves a rollback path. It is
-separate from [`models recipes load`](models.md#load-a-recipe), which starts a named
+Promotion stages the candidate, runs preflight, and preserves a rollback path,
+refusing before any mutation on a lint/rollback-check error; see
+[Preflight gate on promote and mode enter](#preflight-gate-on-promote-and-mode-enter).
+It is separate from [`models recipes load`](models.md#load-a-recipe), which starts a named
 local container but never promotes router policy. Recipe-loaded candidates are
 inspected and removed through
 [`models recipes status|logs|unload`](models.md#operate-a-loaded-recipe), not

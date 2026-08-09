@@ -4691,6 +4691,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--skip-preflight-checks"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Skip the implicit lint + rollback-check gate (loudly logged; local invocation only).",
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -5324,6 +5333,15 @@
           "requires_confirmation": false,
           "summary": "Router transition base URL.",
           "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--skip-preflight-checks"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Skip the implicit lint + rollback-check gate (loudly logged; local invocation only).",
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
