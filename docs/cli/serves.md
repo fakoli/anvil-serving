@@ -398,7 +398,13 @@ poll_interval = 5
 Before printing anything, the derived plan is run through the same
 `_validate_promotion_topology` check `promote` itself uses; a derivation the
 validator would reject is refused up front with the validator's message
-("derived promotion plan refused: ...") instead of ever being emitted.
+("derived promotion plan refused: ...") instead of ever being emitted. Every
+refusal goes to stderr -- stdout carries exclusively the TOML block, emitted
+as UTF-8 (TOML's required encoding), so `> plan-fragment.toml` redirects are
+always safe, including on Windows consoles with a non-UTF-8 code page. A
+config path containing a literal `{dir}` component is refused: the manifest
+loader substitutes that token with the manifest directory on reload, so an
+emitted block would resolve to the wrong path.
 `--derive` is entirely read-only and does not accept `--rollback`, `--resume`,
 `--dry-run`, or `--skip-preflight-checks`. Pass `--out PATH` to write the block
 to a file instead of stdout; `--out` never overwrites an existing file -- it

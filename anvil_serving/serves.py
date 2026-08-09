@@ -872,17 +872,6 @@ _PROMOTION_DEFAULTS = (
 )
 
 
-class _NoAffectedTiersError(ValueError):
-    """No configured router tier's ``model`` matches the target's served name.
-
-    A ``ValueError`` subclass (so callers that only care about "derivation
-    failed" can catch ``ValueError``), kept distinct so `cmd_promote_derive`
-    can route this specific hard error to stderr: a zero-tier match is a
-    silent no-op success waiting to happen, which this repo treats as a
-    defect rather than an ordinary refusal (issue #381).
-    """
-
-
 def derive_promotion_plan(
     serves, target_name, rollback_name, router_config, rollback_router_config,
 ):
@@ -895,14 +884,13 @@ def derive_promotion_plan(
     exist. `target_name`/`rollback_name` must each match exactly one manifest
     serve (`_exact_serve`). `affected_tiers` is the sorted set of tier ids in
     the PROMOTED router config whose `model` equals the target serve's
-    `served_name`; an empty result raises `_NoAffectedTiersError` rather than
-    silently emitting a no-op plan. The six numeric fields
-    `load_promotions` would otherwise `setdefault` are emitted explicitly, so
-    the returned plan is already complete. Before returning, the plan is
-    validated with the existing `_validate_promotion_topology` -- pure
-    library code: returns a dict on success, raises `ValueError` (or the
-    `_NoAffectedTiersError` subclass) on any input the topology cannot
-    support, and never prints.
+    `served_name`; an empty result is refused rather than silently emitting a
+    no-op plan. The six numeric fields `load_promotions` would otherwise
+    `setdefault` are emitted explicitly, so the returned plan is already
+    complete. Before returning, the plan is validated with the existing
+    `_validate_promotion_topology` -- pure library code: returns a dict on
+    success, raises `ValueError` on any input the topology cannot support,
+    and never prints.
     """
     from .router.config import load as load_router_config
 
@@ -914,6 +902,16 @@ def derive_promotion_plan(
     ):
         if not os.path.isfile(path):
             raise ValueError("promotion %s does not exist: %s" % (label, path))
+        # `load_promotions` substitutes the literal token "{dir}" with the
+        # manifest directory unconditionally -- a real path component named
+        # `{dir}` would survive derivation and then resolve to a different,
+        # wrong path on reload. Refuse instead of emitting a mangled plan.
+        if "{dir}" in path:
+            raise ValueError(
+                "promotion %s path contains the literal '{dir}' placeholder, "
+                "which load_promotions would substitute on reload: %s"
+                % (label, path)
+            )
 
     target = _exact_serve(serves, target_name)
     _exact_serve(serves, rollback_name)  # must match exactly one serve too
@@ -923,9 +921,9 @@ def derive_promotion_plan(
         tier.id for tier in promoted.tiers if tier.model == target["served_name"]
     )
     if not affected_tiers:
-        raise _NoAffectedTiersError(
-            "no tier in %s has model %r matching target %r served name %r"
-            % (router_config, target["served_name"], target_name, target["served_name"])
+        raise ValueError(
+            "no tier in %s serves target %r (served name %r)"
+            % (router_config, target_name, target["served_name"])
         )
 
     plan = {
@@ -986,23 +984,31 @@ def cmd_promote_derive(
     """Derive and print (or, with `out`, write) a `[[promotion]]` block.
 
     Read-only unless `out` is given. `out` never overwrites an existing
-    file -- refuses with exit 1 and leaves the file untouched.
+    file -- refuses with exit 1 and leaves the file untouched. Every refusal
+    goes to stderr so stdout stays exclusively the machine-readable TOML
+    block (unlike cmd_promote's interactive stdout narration, this command's
+    stdout is designed to be redirected into a manifest).
     """
     try:
         plan = derive_promotion_plan(
             serves, target_name, rollback_name, router_config, rollback_router_config,
         )
-    except _NoAffectedTiersError as exc:
-        print("derived promotion plan refused: %s" % exc, file=sys.stderr)
-        return 1
     except ValueError as exc:
-        # Mirrors cmd_promote's own "promotion refused: %s" precedent
-        # (serves.py _cmd_promote_unlocked) -- plain stdout, exit 1.
-        print("derived promotion plan refused: %s" % exc)
+        print("derived promotion plan refused: %s" % exc, file=sys.stderr)
         return 1
     block = _render_promotion_toml(plan)
     if out is None:
-        print(block, end="")
+        # TOML is UTF-8 by definition; emit bytes so a console code page
+        # (cp1252) can never crash a `> plan.toml` redirect over a
+        # non-ASCII path. Fall back to print() for replaced stdouts
+        # without a buffer.
+        buffer = getattr(sys.stdout, "buffer", None)
+        if buffer is None:
+            print(block, end="")
+        else:
+            sys.stdout.flush()
+            buffer.write(block.encode("utf-8"))
+            buffer.flush()
         return 0
     # Exclusive create ("x"), not exists+open: fail loud, never silently
     # clobber (the host.py backup-write precedent), with no TOCTOU window.
