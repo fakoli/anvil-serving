@@ -526,6 +526,12 @@ def test_canonical_cli_enters_and_leaves_synthetic_exclusive_mode(
         return 0
 
     monkeypatch.setattr(serves, "cmd_up", fake_up)
+    # This test is about the canonical --confirm round trip through both
+    # transitions, not the preflight gate; DUAL_MODE_MANIFEST's compose `up`
+    # has no real compose.yml on disk, so a real rollback-check would hit
+    # docker. The gate has its own dedicated tests, and it is not gated on
+    # `leave` at all.
+    monkeypatch.setattr(serves, "_preflight_gate", lambda *_args, **_kwargs: True)
 
     tail = ["tp2", "--restore-group", "split-stack", "--manifest", path, "--confirm"]
     assert cli.main(["serves", "mode", "enter", *tail]) == 0
@@ -963,6 +969,11 @@ def test_main_mode_enter_forwards_preserve_on_failure(tmp_path, monkeypatch):
         return 0
 
     monkeypatch.setattr(serves, "cmd_mode", fake)
+    # This test is about --preserve-on-failure forwarding, not the preflight
+    # gate; DUAL_MODE_MANIFEST's compose `up` has no real compose.yml on
+    # disk, so a real rollback-check would hit docker. The gate has its own
+    # dedicated tests.
+    monkeypatch.setattr(serves, "_preflight_gate", lambda *_args, **_kwargs: True)
 
     assert serves.main([
         "mode", "enter", "tp2",

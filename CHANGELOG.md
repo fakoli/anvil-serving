@@ -4,6 +4,44 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-08-08
+
+### Added
+
+- `serves promote` and `serves mode enter` now run `serves lint` and
+  `serves rollback-check` as an implicit precondition before their
+  transaction starts. Both checks run over the full manifest set, but the
+  gate only aborts on an error-severity finding relevant to *this*
+  transaction (the promotion plan's target/rollback serve, or the mode
+  target plus `--restore-group` members) — an error elsewhere in the
+  manifest prints as advisory and does not block, so one unrelated stale
+  entry cannot refuse every other command over it. Blocking aborts before
+  the first mutation (exit code 3), and all gate output — blocking findings,
+  advisory findings, and a passing gate with any warning/info findings —
+  goes to stderr, so `--json`/`--quiet` still carry the report. Both checks
+  are read-only, so `--dry-run` runs the gate too. `mode enter
+  --restore-group X` forwards `X` to the rollback-check; `promote` loads its
+  rollback-check from the resolved plan's own manifest file instead of the
+  whole set. `--skip-preflight-checks` bypasses the gate on either command
+  (valid only with `mode enter`, never `leave`/`preview`/`status`); using it
+  prints a loud `WARNING:` line so the bypass is never silent. Closes the gap
+  where a transaction could complete against a manifest set that would fail
+  lint or rollback-check, since the two checks existed standalone but were
+  never wired as a precondition. See `docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md`.
+
+### Changed
+
+- **Behavior change:** `serves mode enter TARGET --restore-group TYPO` now
+  exits **3** instead of the **2** it exited before the preflight gate
+  existed. The typo'd group produces an `unknown-restore-group` finding,
+  which always blocks the gate (silently verifying nothing is itself a false
+  safety net) — this is the gate's own abort code, and it is still reported
+  loudly on stderr, not a silent regression.
+- **Behavior change:** a `promotion-topology` error on the plan being
+  promoted (e.g. its `rollback` names no manifest entry) now aborts at the
+  gate with exit **3** instead of falling through to `cmd_promote`'s
+  exit-1 refusal. Topology errors on *other* plans remain advisory.
+
 ## [0.30.0] - 2026-08-08
 
 ### Added

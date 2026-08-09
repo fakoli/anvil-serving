@@ -2502,6 +2502,10 @@ def test_switch_and_promote_reclaim_once_without_a_second_readiness_wait(
         serves.serve_recipes, "load_registry",
         lambda _path: {"schema": "x", "recipe": []},
     )
+    # This test is about the cache-reclaim postcondition, not the preflight
+    # gate (which would otherwise choke on the deliberately incomplete fake
+    # promotion plan above); the gate itself has its own dedicated tests.
+    monkeypatch.setattr(serves, "_preflight_gate", lambda *_args, **_kwargs: True)
     if argv[0] == "promote":
         monkeypatch.setattr(serves, "cmd_promote", lambda *_args, **_kwargs: 0)
     else:

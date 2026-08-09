@@ -150,6 +150,35 @@ unhealthy or restarting process cannot retain either GPU during restoration.
 The `serves_mode` MCP tool exposes the same structured plan; live remote
 entry/leave requires its separate human-approval gate.
 
+Before entry starts (including a dry run), `mode enter` runs `serves lint`
+and `serves rollback-check` against the FULL manifest set, forwarding
+`--restore-group` to the rollback-check. Both checks always run and every
+finding is printed to stderr, but the gate only **aborts** on an
+error-severity finding relevant to this transaction: the exclusive target,
+every serve tagged with `--restore-group`, or a structural defect (a
+duplicate serve name, or an unknown restore group when one was passed). An
+error elsewhere in the manifest — a stale `missing-registry` on a serve
+nobody is touching, for example — is printed with an `ADVISORY (outside this
+transaction):` marker and does not block; refusing every command over one
+unrelated manifest entry is exactly the failure mode
+[Strategy: make divergence loud](../STRATEGY-MAKE-DIVERGENCE-LOUD.md)'s
+feature-5 revision rejects. A passing gate that has any findings at all
+(warnings, infos, or advisory errors — including `docker-unavailable`,
+meaning the rollback image check did not actually run) still prints them; a
+clean pass with no findings prints nothing. An abort exits 3, with the
+findings on stderr so `--json`/`--quiet` still carry the report. Pass
+`--skip-preflight-checks` to bypass the gate entirely; doing so prints a loud
+`WARNING:` line so the bypass is never silent. The flag is only accepted with
+`enter` — `leave`, `preview`, and `status` are not gated (though the shared
+`mode` parser advertises the flag in their `--help` too, matching the
+existing `--preserve-on-failure` precedent; passing it there is rejected at
+runtime, exit 2).
+
+A typo'd `--restore-group` now exits 3 (an `unknown-restore-group` finding
+always blocks, since silently verifying nothing is a false safety net)
+rather than the 2 it exited before this gate existed — a deliberate behavior
+change; see the `[0.31.0]` CHANGELOG entry.
+
 ## Lint
 
 `serves lint` is static analysis over the loaded manifest set. It touches no
@@ -313,6 +342,24 @@ operations inherit the behavior because they execute the same resource-owner CLI
 new MCP tool or schema field is added. See
 [`host.toml` configuration](../CONFIGURATION.md#machine-policy-hosttoml) and
 [ADR-0023](../adr/0023-lifecycle-aware-wsl-cache-reclaim.md).
+
+Before either transaction starts (including `--dry-run`, `--rollback`, and
+`--resume`), `promote` also runs `serves lint` and `serves rollback-check`.
+Unlike standalone `serves rollback-check` (which walks the whole manifest
+set), the rollback-check here is loaded from `PROMOTION_PLAN`'s own manifest
+file — narrower than the standalone command, by design, to match the
+transaction's actual blast radius. Both checks run over the full set and
+every finding is printed to stderr, but only an error-severity finding on the
+plan's target or rollback serve (or a structural defect, such as a duplicate
+serve name) aborts, exit code 3. An error on an unrelated serve prints with
+an `ADVISORY (outside this transaction):` marker and does not block. If
+`PROMOTION_PLAN` does not match exactly one `[[promotion]]` entry, the gate
+is skipped entirely and `serves promote`'s own "must match exactly one
+`[[promotion]]` plan" refusal reports it instead. A passing gate with any
+findings (warnings, infos, or advisory errors) still prints them; a clean
+pass prints nothing. Pass `--skip-preflight-checks` to bypass the gate
+entirely; doing so prints a loud `WARNING:` line so the bypass is never
+silent.
 
 ## Multiplexing
 

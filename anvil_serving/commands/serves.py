@@ -123,7 +123,13 @@ def commands() -> CommandNode:
                 "Promote a staged model recipe with preflight and full rollback.",
                 "anvil_serving.serves",
                 role="model-serve",
-                options=CONFIRM_OPTIONS,
+                options=CONFIRM_OPTIONS
+                + (
+                    _option(
+                        "--skip-preflight-checks",
+                        summary="Bypass the lint + rollback-check gate (logged loudly).",
+                    ),
+                ),
                 mutation="mutate",
                 gpu=True,
                 remote_operation=_remote(
@@ -192,6 +198,17 @@ def commands() -> CommandNode:
                                     summary="Router transition base URL.",
                                     value_name="URL",
                                 ),
+                            )
+                            + (
+                                (
+                                    _option(
+                                        "--skip-preflight-checks",
+                                        summary="Bypass the lint + rollback-check gate "
+                                                "(logged loudly).",
+                                    ),
+                                )
+                                if action == "enter"
+                                else ()
                             ),
                             mutation="mutate",
                             gpu=True,
