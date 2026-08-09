@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.1] - 2026-08-09
+
+### Fixed
+
+- `serves promote --derive` hardening (adversarial-review follow-ups to
+  #381/#392): every refusal now goes to stderr so stdout carries exclusively
+  the machine-readable `[[promotion]]` block (previously topology-validator
+  refusals printed to stdout while zero-tier refusals printed to stderr); the
+  block is emitted as UTF-8 bytes so a Windows console code page can no
+  longer crash a `> plan.toml` redirect over a non-ASCII path; a config path
+  containing a literal `{dir}` component is refused instead of emitting a
+  block the manifest loader would mangle on reload (it substitutes that token
+  with the manifest directory unconditionally); the zero-affected-tiers
+  refusal message no longer repeats the served name.
+
 ## [0.32.0] - 2026-08-08
 
 ### Added

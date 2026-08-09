@@ -11,11 +11,10 @@ under `[router.model_routes] llm.primary`.
 two --*-config paths, computes `affected_tiers` from the PROMOTED config,
 fills in the six numeric defaults `load_promotions` would otherwise
 `setdefault`, and validates the result with the existing
-`_validate_promotion_topology` before returning -- a derivation the
-validator rejects is refused exactly like `cmd_promote`'s own
-"promotion refused: %s" precedent, printed to stdout. A zero-tier match is
-treated as a stricter defect (silent no-op success) and is refused to
-stderr instead (`_NoAffectedTiersError`).
+`_validate_promotion_topology` before returning. Every refusal (validator
+rejection, zero-tier match, unreadable/`{dir}`-tainted path) goes to
+stderr: stdout is exclusively the machine-readable TOML block, emitted as
+UTF-8 bytes so a Windows console code page cannot crash a redirect.
 """
 import textwrap
 import tomllib
@@ -138,11 +137,12 @@ def test_derive_refuses_mismatched_rollback_model(tmp_path, capsys):
     rc = _derive(tmp_path, manifest_path, promoted_cfg, rollback_cfg)
 
     assert rc == 1
-    out = capsys.readouterr().out
+    captured = capsys.readouterr()
     assert (
         "rollback router config tier 'primary-local' model does not match "
         "rollback 'old-heavy'"
-    ) in out
+    ) in captured.err
+    assert captured.out == ""  # stdout stays exclusively the TOML block
 
 
 # ---- 3. --out refuses to overwrite an existing file -------------------------
@@ -322,6 +322,38 @@ def test_derive_out_missing_parent_dir_fails_cleanly(tmp_path, capsys):
 
     assert rc == 1
     assert "cannot write" in capsys.readouterr().err
+
+
+def test_derive_refuses_literal_dir_placeholder_in_path(tmp_path, capsys):
+    """A real directory named `{dir}` must be refused: `load_promotions`
+    substitutes the token unconditionally on reload, so an emitted block
+    would resolve to a different, wrong path."""
+    manifest_path = _derive_manifest(tmp_path)
+    placeholder_dir = tmp_path / "{dir}"
+    placeholder_dir.mkdir()
+    promoted_cfg = _router_config(placeholder_dir, "router-promoted.toml", "new-heavy")
+    rollback_cfg = _router_config(tmp_path, "router-rollback.toml", "old-heavy")
+
+    rc = _derive(tmp_path, manifest_path, promoted_cfg, rollback_cfg)
+
+    assert rc == 1
+    assert "{dir}" in capsys.readouterr().err
+
+
+def test_derive_handles_non_ascii_config_paths(tmp_path, capsys):
+    """Config paths a Windows console code page cannot encode must still
+    derive: stdout is UTF-8 bytes, never the console encoding."""
+    manifest_path = _derive_manifest(tmp_path)
+    cfg_dir = tmp_path / "cfg-ünïcode"
+    cfg_dir.mkdir()
+    promoted_cfg = _router_config(cfg_dir, "router-promoted.toml", "new-heavy")
+    rollback_cfg = _router_config(cfg_dir, "router-rollback.toml", "old-heavy")
+
+    rc = _derive(tmp_path, manifest_path, promoted_cfg, rollback_cfg)
+
+    assert rc == 0
+    parsed = tomllib.loads(capsys.readouterr().out)["promotion"][0]
+    assert parsed["router_config"] == promoted_cfg
 
 
 def test_render_escapes_control_characters(tmp_path):
