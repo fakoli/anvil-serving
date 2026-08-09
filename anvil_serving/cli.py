@@ -985,10 +985,22 @@ def _policy_positionals(node: CommandNode, policy_args: Sequence[str]) -> tuple[
 
 def _requires_confirmation(node: CommandNode, policy_args: Sequence[str]) -> bool:
     has_conditional_gate = any(option.requires_confirmation for option in node.options)
+    # `serves promote --derive` is a read-only derivation (issue #381, feature
+    # 16), not the guarded mutation `promote`'s plain `--confirm` otherwise
+    # gates -- mirrors the `positional_switch_gate` precedent below: carve the
+    # read-only shape out of the mutation gate rather than making `--confirm`
+    # conditional on it.
+    promote_derive_read = (
+        node.name == "promote"
+        and node.handler is not None
+        and node.handler.module == "anvil_serving.serves"
+        and "--derive" in policy_args
+    )
     mutation_gate = (
         node.mutation_class == "mutate"
         and not has_conditional_gate
         and any("--confirm" in option.flags for option in node.options)
+        and not promote_derive_read
     )
     option_gate = any(
         option.requires_confirmation

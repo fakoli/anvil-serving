@@ -4700,6 +4700,42 @@
           "requires_confirmation": false,
           "summary": "Skip the implicit lint + rollback-check gate (loudly logged; local invocation only).",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--derive"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Derive and print a [[promotion]] plan from TARGET and ROLLBACK (read-only).",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--router-config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Promoted-state router config for --derive.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--rollback-router-config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Rollback-state router config for --derive.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--out"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Write the derived block here; refuses to overwrite.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
