@@ -361,6 +361,49 @@ new MCP tool or schema field is added. See
 [`host.toml` configuration](../CONFIGURATION.md#machine-policy-hosttoml) and
 [ADR-0023](../adr/0023-lifecycle-aware-wsl-cache-reclaim.md).
 
+### Derive a plan instead of hand-writing one
+
+```bash
+anvil-serving serves promote --derive heavy old-heavy \
+  --router-config router-promoted.toml \
+  --rollback-router-config router-rollback.toml
+```
+
+`--derive TARGET ROLLBACK` generates a complete `[[promotion]]` block from two
+already-declared `[[serve]]` entries and their promoted/rollback router configs,
+instead of hand-writing one. `affected_tiers` is the sorted set of tier ids in the
+PROMOTED router config whose `model` matches `TARGET`'s `served_name`; a router
+config where no tier matches is refused rather than silently emitting a plan that
+promotes nothing. The six numeric fields `load_promotions` would otherwise apply as
+defaults (`drain_timeout`, `needle_ctx`, `tool_batch`, `startup_timeout`,
+`rollback_startup_timeout`, `poll_interval`) are emitted explicitly, so the block is
+already complete:
+
+```toml
+[[promotion]]
+name = "heavy-promotion"
+target = "heavy"
+rollback = "old-heavy"
+affected_tiers = ["primary-local"]
+router_config = "/abs/path/router-promoted.toml"
+rollback_router_config = "/abs/path/router-rollback.toml"
+drain_timeout = 120
+needle_ctx = 32768
+tool_batch = 20
+startup_timeout = 600
+rollback_startup_timeout = 600
+poll_interval = 5
+```
+
+Before printing anything, the derived plan is run through the same
+`_validate_promotion_topology` check `promote` itself uses; a derivation the
+validator would reject is refused up front with the validator's message
+("derived promotion plan refused: ...") instead of ever being emitted.
+`--derive` is entirely read-only and does not accept `--rollback`, `--resume`,
+`--dry-run`, or `--skip-preflight-checks`. Pass `--out PATH` to write the block
+to a file instead of stdout; `--out` never overwrites an existing file -- it
+refuses and leaves the file untouched.
+
 ## Multiplexing
 
 ```bash
