@@ -997,3 +997,80 @@ def test_automatic_reclaim_reports_drop_failure_and_renderer_warns(capsys):
     assert result["outcome"] == "failed"
     host.render_cache_reclaim_result(result)
     assert "WARNING" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------- #
+# host_summary — macOS unified-memory shape (2026-08-08)
+# --------------------------------------------------------------------------- #
+
+_DARWIN_VM_STAT = """Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                              100000.
+Pages inactive:                           50000.
+Pages speculative:                        10000.
+Pages active:                            200000.
+"""
+
+
+def _darwin_runner(outputs):
+    """Runner stub keyed on the exact argv; unknown commands fail like a missing tool."""
+
+    def run(argv, capture_output=True, text=True, timeout=None, check=False):
+        key = " ".join(argv)
+        out = outputs.get(key)
+
+        class _Completed:
+            returncode = 0 if out is not None else 1
+            stdout = out or ""
+            stderr = "" if out is not None else "missing"
+
+        return _Completed()
+
+    return run
+
+
+def test_host_summary_darwin_reports_unified_memory(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "darwin")
+    monkeypatch.setattr(host, "cache_reclaim_policy_summary", lambda path=None: {"applicable": False})
+    outputs = {
+        "sysctl -n hw.memsize": str(48 * 1024**3),
+        "vm_stat": _DARWIN_VM_STAT,
+        "memory_pressure -Q": "System-wide memory free percentage: 59%",
+        "sysctl vm.swapusage": "vm.swapusage: total = 2048.00M  used = 512.00M  free = 1536.00M  (encrypted)",
+        "hostname": "mac.local",
+        "scutil --get ComputerName": "Mac",
+        "scutil --get LocalHostName": "Mac",
+        "sysctl -n hw.model": "Mac16,5",
+        "sw_vers -productVersion": "27.0",
+    }
+    summary = host.host_summary(_run=_darwin_runner(outputs))
+    assert summary["platform"] == "macos"
+    assert summary["host_ram_gb"] == 48.0
+    # memory_pressure -Q overrides the vm_stat-derived ratio: 100 - 59 = 41.0
+    assert summary["unified_memory"]["memory_pressure_percent"] == 41.0
+    assert summary["unified_memory"]["swap_used_gb"] == 0.5
+    assert summary["identity"]["hardware_model"] == "Mac16,5"
+    # Windows-only concepts are explicit nulls, never absent (cmd_doctor indexes them).
+    assert summary["wsl_vm_memory_gb"] is None
+    assert summary["gpus"] == []
+    assert summary["windows_reserve"]["ceiling_gb"] is None
+    checks = {c["name"]: c for c in summary["checks"]}
+    assert checks["host_ram"]["ok"] is True
+    assert checks["unified_memory_sample"]["ok"] is True
+
+
+def test_host_summary_darwin_degrades_when_sampling_fails(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "darwin")
+    monkeypatch.setattr(host, "cache_reclaim_policy_summary", lambda path=None: {"applicable": False})
+    summary = host.host_summary(_run=_darwin_runner({}))
+    assert summary["platform"] == "macos"
+    assert summary["host_ram_gb"] is None
+    checks = {c["name"]: c for c in summary["checks"]}
+    assert checks["host_ram"]["ok"] is False
+    assert checks["unified_memory_sample"]["ok"] is False
+    assert checks["unified_memory_sample"]["detail"]
+
+
+def test_host_summary_windows_declares_platform(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    summary = host.host_summary(_run=_darwin_runner({}))
+    assert summary["platform"] == "windows"

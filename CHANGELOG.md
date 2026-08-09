@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.2] - 2026-08-08
+
+### Fixed
+
+- `host status` / `host doctor` (`host_summary`) returned an all-null
+  Windows/WSL-shaped payload on macOS nodes — every probe read as degraded on a
+  healthy host. macOS now reports its unified-memory snapshot through the
+  existing observability primitives, Windows-only fields (`wsl_vm_memory_gb`,
+  `windows_reserve`, discrete `gpus`) are explicit nulls so existing consumers
+  never break, and the payload declares `platform` so remote callers interpret
+  the shape without guessing from null patterns. `host doctor` prints a
+  unified-memory report on macOS. Observed on the first macOS node-agent
+  dispatch (48 GB M4 Max evaluation worker).
+
 ## [0.31.1] - 2026-08-08
 
 ### Fixed
