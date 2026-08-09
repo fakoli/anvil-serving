@@ -32,7 +32,14 @@ the named manifest — the same plans the promotion itself executes. An
 `error`-severity finding — a missing recipe registry, a
 broken rollback router config, a rollback image no longer present locally —
 refuses the transaction with exit `3` before a container is touched, printing
-the findings in the same format `lint`/`rollback-check` use on their own.
+the findings in the same format `lint`/`rollback-check` use on their own —
+**but only when the finding is about the plan actually being promoted** (its
+target, its rollback, or the plan's own topology). A finding about some other
+serve in the manifest set — a scaffold entry nobody is touching yet, another
+plan's rollback image — prints as advisory and does not block; one unrelated
+defect must never refuse every promotion. A plan name that resolves to zero or
+more than one `[[promotion]]` entry skips this gate entirely and reports as
+`promote`'s own "must match exactly one" refusal instead.
 Override with `--skip-preflight-checks`, which prints an unmistakable warning
 to stderr naming exactly what was skipped; see
 [`serves` — preflight gate on promote and mode enter](cli/serves.md#preflight-gate-on-promote-and-mode-enter).
