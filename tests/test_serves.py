@@ -2484,12 +2484,19 @@ def test_readiness_timeout_skips_reclaim_but_preserves_success(tmp_path, monkeyp
 
 
 @pytest.mark.parametrize(("argv", "operation"), [
-    (["promote", "heavy-v2"], "serves promote"),
-    (["promote", "heavy-v2", "--rollback"], "serves promote --rollback"),
+    (["promote", "heavy-v2", "--skip-preflight-checks"], "serves promote"),
+    (
+        ["promote", "heavy-v2", "--rollback", "--skip-preflight-checks"],
+        "serves promote --rollback",
+    ),
     (["switch", "heavy", "org/model"], "serves switch"),
 ])
 def test_switch_and_promote_reclaim_once_without_a_second_readiness_wait(
         tmp_path, monkeypatch, argv, operation):
+    # `--skip-preflight-checks` keeps this focused on the cache-reclaim
+    # readiness-wait behavior: the fake `load_promotions` below returns a
+    # promotion plan too sparse for the real preflight gate's rollback-check
+    # to validate, and that is not what this test is exercising.
     manifest = _lifecycle_manifest(tmp_path)
     policy = _enabled_cache_policy()
     events = []
