@@ -142,6 +142,17 @@ def test_top_level_version_reports_installed_version(flag, capsys):
     assert capsys.readouterr().out == "anvil-serving %s\n" % cli.__version__
 
 
+def test_package_version_matches_pyproject():
+    import tomllib
+
+    with open(_REPO_ROOT / "pyproject.toml", "rb") as fh:
+        pyproject = tomllib.load(fh)
+    assert cli.__version__ == pyproject["project"]["version"], (
+        "anvil_serving/__init__.py __version__ and pyproject.toml version "
+        "must be bumped together"
+    )
+
+
 def test_command_manifest_is_terminal_and_machine_readable(capsys):
     assert cli.main(["--command-manifest"]) == 0
     payload = json.loads(capsys.readouterr().out)
