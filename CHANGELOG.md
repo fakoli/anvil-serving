@@ -4,6 +4,35 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0] - 2026-08-09
+
+### Added
+
+- `serves up` now runs a post-start storage write guard on every docker serve,
+  between container start and the readiness wait. Docker donates an image
+  directory's ownership to a named volume only while the volume is still
+  empty; any bring-up that pre-creates a volume's subpath layout (required
+  whenever compose mounts subpaths) defeats that donation, leaving the
+  directories root-owned while the image runs as a non-root user — a serve
+  that answers its health endpoint while every write fails (sqlite `unable to
+  open database file`, `PermissionError` per request). The guard probes each
+  RW named-volume mount as the container's real runtime identity (via
+  `docker exec id`, not `Config.User`), then resolves a denied mount three
+  ways: an unshared volume is repaired (chown to the runtime identity as
+  root, container restarted so failed init re-runs, re-verified); a volume
+  declared in the serve's `shared_volumes` is never auto-chowned — ownership
+  belongs to the deployment that declared the sharing, so the guard fails the
+  serve and prints the manual command; a volume shared at runtime but NOT
+  declared is reported as a topology fault in its own right. Bind mounts
+  (host filesystem, not ours to re-own) and read-only mounts (fail a write
+  probe by design) are skipped, as are containers running as root and image
+  classes without a shell (noted, not failed). A serve left unable to write
+  fails its `up` and skips its readiness wait.
+- New optional serve-manifest field `shared_volumes = ["volume", ...]`:
+  the explicit deployment-level declaration that this serve deliberately
+  shares the named volumes with other containers. Same shape rules as
+  `groups`; absent field leaves existing manifests parsing unchanged.
+
 ## [0.33.1] - 2026-08-09
 
 ### Fixed

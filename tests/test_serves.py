@@ -1417,6 +1417,8 @@ def test_cmd_up_absent_runs_up_argv_list_no_shell():
     def run(argv, shell=False, **k):
         if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
             return proc(1, "", "No such object")  # absent
+        if isinstance(argv, list) and argv[:1] == ["docker"]:
+            return proc(0)  # post-start storage write check probes
         ran["argv"], ran["shell"] = argv, shell
         return proc(0)
 
@@ -1678,6 +1680,154 @@ def test_cmd_up_recreate_rescues_dead_container():
     assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
     assert ["docker", "rm", "-f", "vllm-gptoss"] in run.calls
     assert ["bash", "serve-fast.sh"] in run.calls
+
+
+# ---- post-start storage write guard -----------------------------------------
+
+def _storage_run(uid="1000", gid="1000", mounts=None, denied=(),
+                 denied_after_repair=(), volume_users=(), chown_rc=0,
+                 restart_rc=0, id_rc=0):
+    """A fake _run for the storage guard: `docker inspect` -> running,
+    `docker exec ... id` -> uid/gid, `docker inspect -f {{json .Mounts}}` ->
+    mounts, touch probes -> denied (then denied_after_repair once a chown
+    ran), `docker ps -a --filter volume=` -> volume_users."""
+    calls = []
+    repaired = []
+    if mounts is None:
+        mounts = [{"Type": "volume", "Name": "data", "RW": True,
+                   "Destination": "/app/user"}]
+
+    def run(argv, **k):
+        calls.append(argv)
+        if argv[:3] == ["docker", "ps", "-a"]:
+            if any(str(a).startswith("volume=") for a in argv):
+                return proc(0, "\n".join(volume_users) + "\n")
+            return proc(0, json.dumps({"Names": "vllm", "State": "running"}) + "\n")
+        if argv[:2] == ["docker", "inspect"]:
+            if "{{json .Mounts}}" in argv:
+                return proc(0, json.dumps(mounts) + "\n")
+            return proc(0, "running\n")
+        if argv[:2] == ["docker", "exec"] and "id -u; id -g" in argv:
+            return proc(id_rc, "%s\n%s\n" % (uid, gid))
+        if argv[:2] == ["docker", "exec"] and argv[2] == "--user":
+            repaired.append(argv)
+            return proc(chown_rc)
+        if argv[:2] == ["docker", "exec"] and any("touch" in str(a) for a in argv):
+            active = denied_after_repair if repaired else denied
+            probed = argv[-1]
+            return proc(1 if any(d in probed for d in active) else 0)
+        if argv[:2] == ["docker", "restart"]:
+            return proc(restart_rc)
+        return proc(0)
+
+    run.calls = calls
+    return run
+
+
+def _storage_serve(**extra):
+    return [{"name": "t", "container": "vllm", "port": 1, "health": "/health",
+             "up": ["docker", "compose", "up", "-d", "t"], **extra}]
+
+
+def test_cmd_up_storage_all_writable_is_quiet_success(capsys):
+    run = _storage_run()
+    assert serves.cmd_up(_storage_serve(), [], _run=run) == 0
+    out = capsys.readouterr().out
+    assert "1/1 volume mounts writable (uid 1000)" in out
+    assert not any(a[:3] == ["docker", "exec", "--user"] for a in run.calls)
+
+
+def test_cmd_up_storage_repairs_unshared_volume_and_restarts(capsys):
+    # The 2026-08-09 ComfyUI defect: pre-created volume dirs stay root-owned,
+    # image runs 1000:1000, health answers while every write fails. Unshared
+    # volume -> chown as root, restart so failed init re-runs, re-verify.
+    run = _storage_run(denied=("/app/user",), denied_after_repair=())
+    assert serves.cmd_up(_storage_serve(), [], _run=run) == 0
+    out = capsys.readouterr().out
+    assert "not writable by uid 1000 -> repairing" in out
+    assert "chowned /app/user to 1000:1000 and restarted vllm" in out
+    assert ["docker", "exec", "--user", "0", "vllm",
+            "chown", "-R", "1000:1000", "/app/user"] in run.calls
+    assert ["docker", "restart", "vllm"] in run.calls
+
+
+def test_cmd_up_storage_repair_reverify_failure_fails_closed(capsys):
+    run = _storage_run(denied=("/app/user",), denied_after_repair=("/app/user",))
+    assert serves.cmd_up(_storage_serve(), [], _run=run) == 1
+    assert "still cannot write" in capsys.readouterr().out
+
+
+def test_cmd_up_storage_declared_shared_volume_is_never_auto_chowned(capsys):
+    # shared_volumes is the deployment's explicit sharing declaration; the
+    # guard reports and prints the manual command but must not re-own it.
+    run = _storage_run(denied=("/app/user",), volume_users=("other-tenant",))
+    serv = _storage_serve(shared_volumes=["data"])
+    assert serves.cmd_up(serv, [], _run=run) == 1
+    out = capsys.readouterr().out
+    assert "declared shared_volumes" in out
+    assert "docker exec --user 0 vllm chown -R 1000:1000 /app/user" in out
+    assert not any(a[:3] == ["docker", "exec", "--user"] for a in run.calls)
+
+
+def test_cmd_up_storage_undeclared_sharing_is_a_topology_fault(capsys):
+    run = _storage_run(denied=("/app/user",), volume_users=("other-tenant",))
+    assert serves.cmd_up(_storage_serve(), [], _run=run) == 1
+    out = capsys.readouterr().out
+    assert "NOT declared in this serve's shared_volumes" in out
+    assert "other-tenant" in out
+    assert not any(a[:3] == ["docker", "exec", "--user"] for a in run.calls)
+
+
+def test_cmd_up_storage_root_container_skips_probes():
+    run = _storage_run(uid="0", gid="0")
+    assert serves.cmd_up(_storage_serve(), [], _run=run) == 0
+    assert not any("touch" in str(a) for c in run.calls for a in c)
+
+
+def test_cmd_up_storage_unprobeable_image_skips_with_note(capsys):
+    # scratch/distroless (no sh): the guard can neither probe nor repair that
+    # image class, so it notes the gap and does not brick the bring-up.
+    run = _storage_run(id_rc=1)
+    assert serves.cmd_up(_storage_serve(), [], _run=run) == 0
+    assert "write check skipped" in capsys.readouterr().out
+
+
+def test_cmd_up_storage_skips_bind_and_readonly_mounts():
+    mounts = [
+        {"Type": "bind", "Source": "C:/host", "RW": True, "Destination": "/app/host"},
+        {"Type": "volume", "Name": "ro-vol", "RW": False, "Destination": "/app/ro"},
+    ]
+    run = _storage_run(mounts=mounts)
+    assert serves.cmd_up(_storage_serve(), [], _run=run) == 0
+    assert not any("touch" in str(a) for c in run.calls for a in c)
+
+
+def test_load_manifest_normalizes_shared_volumes(tmp_path):
+    p = _manifest(tmp_path, """
+        [[serve]]
+        name = "t"
+        container = "c"
+        runtime = "docker"
+        port = 1
+        model = "m"
+        shared_volumes = [" data ", "data", "models"]
+    """)
+    serve = serves.load_manifest(p)[0]
+    assert serve["shared_volumes"] == ["data", "models"]
+
+
+def test_load_manifest_rejects_bad_shared_volumes(tmp_path):
+    p = _manifest(tmp_path, """
+        [[serve]]
+        name = "t"
+        container = "c"
+        runtime = "docker"
+        port = 1
+        model = "m"
+        shared_volumes = ["ok", ""]
+    """)
+    with pytest.raises(ValueError, match="shared_volumes"):
+        serves.load_manifest(p)
 
 
 # ---- guarded promotion ------------------------------------------------------

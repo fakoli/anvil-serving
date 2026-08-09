@@ -633,6 +633,39 @@ def _normalize_groups(s, raw):
     s["groups"] = normalized
 
 
+def _normalize_shared_volumes(s, raw):
+    """Validate/normalize the optional `shared_volumes` field on one serve entry.
+
+    Sharing a named volume between containers is a DEPLOYMENT decision, so it
+    is declared here, not inferred: `shared_volumes` lists the volume names
+    this serve deliberately shares with other containers. The `serves up`
+    storage guard never auto-repairs ownership on a declared-shared volume
+    (whose uid is the deployment's call, made where the sharing is declared),
+    and treats runtime sharing of an UNDECLARED volume as a topology fault to
+    report. Same shape rules as `groups`: optional list of non-empty strings,
+    absent key left untouched.
+    """
+    if "shared_volumes" not in s:
+        return
+    volumes = s.get("shared_volumes")
+    if not isinstance(volumes, list):
+        raise ValueError(
+            f"serve entry shared_volumes must be a list of non-empty volume "
+            f"names: {raw!r}"
+        )
+    normalized = []
+    for member in volumes:
+        if not isinstance(member, str) or not member.strip():
+            raise ValueError(
+                f"serve entry shared_volumes must be a list of non-empty "
+                f"volume names: {raw!r}"
+            )
+        name = member.strip()
+        if name not in normalized:
+            normalized.append(name)
+    s["shared_volumes"] = normalized
+
+
 def load_manifest(path):
     """Parse the serves manifest into a list of serve dicts.
 
@@ -702,6 +735,7 @@ def load_manifest(path):
                 f"{unknown_roles}: {raw!r}"
             )
         _normalize_groups(s, raw)
+        _normalize_shared_volumes(s, raw)
         if gpu_role_budgets:
             s[reservations.GPU_ROLES_KEY] = gpu_role_budgets
         s["_manifest_dir"] = mdir
@@ -3622,6 +3656,164 @@ def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
     return rc
 
 
+_STORAGE_PROBE_NAME = ".anvil-serving-write-probe"
+
+
+def _container_mount_plan(container, _run):
+    """(uid, gid, volume mounts) of a running container, or None when unprobeable.
+
+    `docker exec` (not `Config.User`, which may be empty or a name the host
+    can't resolve) answers what identity the workload ACTUALLY runs as. A
+    container without `sh` (scratch/distroless) can't be probed — or repaired —
+    this way, so the caller treats None as "note it and move on" rather than
+    failing bring-ups for an image class the check cannot see into.
+    """
+    ident = _run_or(["docker", "exec", container, "sh", "-c", "id -u; id -g"],
+                    None, _run, capture_output=True, text=True)
+    if ident is None or ident.returncode != 0:
+        return None
+    parts = ident.stdout.split()
+    if len(parts) < 2 or not all(p.isdigit() for p in parts[:2]):
+        return None
+    mounts_raw = _run_or(["docker", "inspect", "-f", "{{json .Mounts}}", container],
+                         None, _run, capture_output=True, text=True)
+    if mounts_raw is None or mounts_raw.returncode != 0:
+        return None
+    try:
+        mounts = json.loads(mounts_raw.stdout or "null") or []
+    except ValueError:
+        return None
+    # Named volumes only: bind mounts reach into the HOST filesystem (on the
+    # reference fleet that is a 9P path into Windows) which is not ours to
+    # chown, and a read-only mount fails a write probe by design.
+    volumes = [m for m in mounts
+               if m.get("Type") == "volume" and m.get("RW") and m.get("Destination")]
+    return int(parts[0]), int(parts[1]), volumes
+
+
+def _volume_other_users(volume, container, _run):
+    """Names of OTHER containers (any state) that mount `volume`."""
+    r = _run_or(["docker", "ps", "-a", "--filter", "volume=%s" % volume,
+                 "--format", "{{.Names}}"], None, _run,
+                capture_output=True, text=True)
+    if r is None or r.returncode != 0:
+        return []
+    return [n for n in r.stdout.split() if n and n != container]
+
+
+def _storage_write_check(s, _run):
+    """Post-start guard: the container must be able to WRITE its volume mounts.
+
+    Docker copies an image directory's contents and their uid/gid into a named
+    volume only while that volume is still EMPTY. Any bring-up that pre-creates
+    a volume's layout (required whenever compose mounts subpaths — docker does
+    not create missing subpaths on mount) defeats that donation, leaving the
+    directories root-owned while the image runs as a non-root user. The failure
+    mode is nasty precisely because readiness cannot see it: the ComfyUI tenant
+    answered /system_stats while every write failed (sqlite "unable to open
+    database file", PermissionError on /app/user/default per UI request).
+
+    So: probe every RW named-volume mount as the container's real runtime
+    identity. A denied mount resolves three ways:
+
+    - backing volume declared in the serve's `shared_volumes` -> the sharing
+      is a deployment decision and so is the ownership; refuse auto-repair
+      and print the manual command.
+    - backing volume shared at runtime but NOT declared -> topology fault:
+      report the undeclared sharing itself (declare it or separate the
+      storage); never silently re-own storage another tenant mounts.
+    - unshared -> repair (chown to the runtime identity via `docker exec
+      --user 0`), restart the container so failed init re-runs, re-verify.
+
+    Prints its own evidence; returns False when the serve is left unable to
+    write (the caller fails that serve and skips its readiness wait).
+    """
+    container = s["container"]
+    plan = _container_mount_plan(container, _run)
+    if plan is None:
+        print("  storage: cannot probe %s runtime identity/mounts "
+              "(no shell in image?) -- write check skipped" % container)
+        return True
+    uid, gid, volumes = plan
+    if uid == 0 or not volumes:
+        return True
+
+    def _denied(paths):
+        failed = []
+        for dest in paths:
+            probe = "%s/%s" % (dest.rstrip("/"), _STORAGE_PROBE_NAME)
+            r = _run_or(["docker", "exec", container, "sh", "-c",
+                         "touch '%s' && rm -f '%s'" % (probe, probe)],
+                        None, _run, capture_output=True, text=True)
+            if r is None or r.returncode != 0:
+                failed.append(dest)
+        return failed
+
+    denied = _denied([m["Destination"] for m in volumes])
+    if not denied:
+        print("  storage: %d/%d volume mounts writable (uid %d)"
+              % (len(volumes), len(volumes), uid))
+        return True
+
+    declared_shared = set(s.get("shared_volumes") or [])
+    declared, undeclared = {}, {}
+    for mount in volumes:
+        if mount["Destination"] not in denied:
+            continue
+        volume = mount.get("Name", "")
+        if volume in declared_shared:
+            declared.setdefault(volume, []).append(mount["Destination"])
+            continue
+        others = _volume_other_users(volume, container, _run)
+        if others:
+            undeclared.setdefault(volume, set()).update(others)
+    if declared or undeclared:
+        print("  FAILED: %s cannot write %s as uid %d"
+              % (container, " ".join(denied), uid))
+        for volume, dests in sorted(declared.items()):
+            print("    volume %s (%s) is declared shared_volumes: ownership "
+                  "is the deployment's decision -- fix it where the sharing "
+                  "is declared, e.g.:" % (volume, " ".join(dests)))
+            print("    docker exec --user 0 %s chown -R %d:%d %s"
+                  % (container, uid, gid, " ".join(dests)))
+        for volume, others in sorted(undeclared.items()):
+            print("    volume %s is shared with %s but NOT declared in this "
+                  "serve's shared_volumes -- undeclared sharing is a topology "
+                  "fault: declare it (and decide its ownership) or give this "
+                  "serve its own volume"
+                  % (volume, ", ".join(sorted(others))))
+        return False
+
+    print("  storage: %s not writable by uid %d -> repairing"
+          % (" ".join(denied), uid))
+    repair = _run_or(["docker", "exec", "--user", "0", container,
+                      "chown", "-R", "%d:%d" % (uid, gid)] + denied,
+                     None, _run, capture_output=True, text=True)
+    if repair is None or repair.returncode != 0:
+        print("  FAILED: could not chown %s to %d:%d: %s" % (
+            " ".join(denied), uid, gid,
+            ((repair.stderr or repair.stdout) if repair else "docker missing").strip()))
+        return False
+    # Restart so whatever failed during the broken boot (sqlite init, config
+    # writes) re-runs against the repaired storage; `docker restart` blocks
+    # until the container is running again.
+    restarted = _run_or(["docker", "restart", container], None, _run,
+                        capture_output=True, text=True)
+    if restarted is None or restarted.returncode != 0:
+        print("  FAILED: chowned %s but could not restart %s: %s" % (
+            " ".join(denied), container,
+            ((restarted.stderr or restarted.stdout) if restarted else "docker missing").strip()))
+        return False
+    still = _denied(denied)
+    if still:
+        print("  FAILED: %s still cannot write %s after repair -- "
+              "inspect the volume contents manually" % (container, " ".join(still)))
+        return False
+    print("  storage: chowned %s to %d:%d and restarted %s; all mounts writable"
+          % (" ".join(denied), uid, gid, container))
+    return True
+
+
 def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
            evict=False, drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
            _transition=None, wait_for_readiness=False,
@@ -3818,6 +4010,13 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                 rc = 1
                 break
         else:
+            # Storage guard BEFORE the readiness wait: a serve can answer its
+            # health endpoint while unable to write its volumes (the 2026-08-09
+            # ComfyUI defect), and if a repair restart is needed it must happen
+            # before we start the readiness clock, not after it passes.
+            if not _storage_write_check(s, _run):
+                rc = 1
+                continue
             if wait_for_readiness:
                 print(
                     "  waiting up to %ss for %s%s"
