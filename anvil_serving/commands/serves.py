@@ -130,6 +130,26 @@ def commands() -> CommandNode:
                         summary="Skip the implicit lint + rollback-check gate "
                                  "(loudly logged; local invocation only).",
                     ),
+                    _option(
+                        "--derive",
+                        summary="Derive and print a [[promotion]] plan from "
+                                 "TARGET and ROLLBACK (read-only).",
+                    ),
+                    _option(
+                        "--router-config",
+                        summary="Promoted-state router config for --derive.",
+                        value_name="PATH",
+                    ),
+                    _option(
+                        "--rollback-router-config",
+                        summary="Rollback-state router config for --derive.",
+                        value_name="PATH",
+                    ),
+                    _option(
+                        "--out",
+                        summary="Write the derived block here; refuses to overwrite.",
+                        value_name="PATH",
+                    ),
                 ),
                 mutation="mutate",
                 gpu=True,

@@ -1,2 +1,2 @@
 """anvil-serving — right-size and run a local LLM serving tier from your coding-agent usage."""
-__version__ = "0.31.2"
+__version__ = "0.32.0"

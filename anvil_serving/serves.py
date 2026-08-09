@@ -862,6 +862,163 @@ def _validate_promotion_topology(serves, plan):
     return True
 
 
+_PROMOTION_DEFAULTS = (
+    ("drain_timeout", 120),
+    ("needle_ctx", 32768),
+    ("tool_batch", 20),
+    ("startup_timeout", 600),
+    ("rollback_startup_timeout", 600),
+    ("poll_interval", 5),
+)
+
+
+class _NoAffectedTiersError(ValueError):
+    """No configured router tier's ``model`` matches the target's served name.
+
+    A ``ValueError`` subclass (so callers that only care about "derivation
+    failed" can catch ``ValueError``), kept distinct so `cmd_promote_derive`
+    can route this specific hard error to stderr: a zero-tier match is a
+    silent no-op success waiting to happen, which this repo treats as a
+    defect rather than an ordinary refusal (issue #381).
+    """
+
+
+def derive_promotion_plan(
+    serves, target_name, rollback_name, router_config, rollback_router_config,
+):
+    """Derive a complete ``[[promotion]]`` plan dict from two serves and their
+    promoted/rollback router configs (issue #381, feature 16: `serves promote
+    --derive`).
+
+    Resolves both config paths with `os.path.abspath` (relative inputs are
+    resolved against the current working directory) and requires each to
+    exist. `target_name`/`rollback_name` must each match exactly one manifest
+    serve (`_exact_serve`). `affected_tiers` is the sorted set of tier ids in
+    the PROMOTED router config whose `model` equals the target serve's
+    `served_name`; an empty result raises `_NoAffectedTiersError` rather than
+    silently emitting a no-op plan. The six numeric fields
+    `load_promotions` would otherwise `setdefault` are emitted explicitly, so
+    the returned plan is already complete. Before returning, the plan is
+    validated with the existing `_validate_promotion_topology` -- pure
+    library code: returns a dict on success, raises `ValueError` (or the
+    `_NoAffectedTiersError` subclass) on any input the topology cannot
+    support, and never prints.
+    """
+    from .router.config import load as load_router_config
+
+    router_config = os.path.abspath(router_config)
+    rollback_router_config = os.path.abspath(rollback_router_config)
+    for label, path in (
+        ("router_config", router_config),
+        ("rollback_router_config", rollback_router_config),
+    ):
+        if not os.path.isfile(path):
+            raise ValueError("promotion %s does not exist: %s" % (label, path))
+
+    target = _exact_serve(serves, target_name)
+    _exact_serve(serves, rollback_name)  # must match exactly one serve too
+
+    promoted = load_router_config(router_config)
+    affected_tiers = sorted(
+        tier.id for tier in promoted.tiers if tier.model == target["served_name"]
+    )
+    if not affected_tiers:
+        raise _NoAffectedTiersError(
+            "no tier in %s has model %r matching target %r served name %r"
+            % (router_config, target["served_name"], target_name, target["served_name"])
+        )
+
+    plan = {
+        "name": "%s-promotion" % target_name,
+        "target": target_name,
+        "rollback": rollback_name,
+        "affected_tiers": affected_tiers,
+        "router_config": router_config,
+        "rollback_router_config": rollback_router_config,
+    }
+    for field, value in _PROMOTION_DEFAULTS:
+        plan[field] = value
+
+    _validate_promotion_topology(serves, plan)
+    return plan
+
+
+def _render_promotion_toml(plan):
+    """Hand-render one ``[[promotion]]`` block as TOML text (stdlib only --
+    no `tomli_w`). Returns a string ending in exactly one trailing newline.
+
+    Field order: name, target, rollback, affected_tiers, router_config,
+    rollback_router_config, then the six numeric defaults in
+    `_PROMOTION_DEFAULTS` order. Strings are TOML basic strings with
+    backslash/double-quote escaping (load-bearing on Windows paths).
+    """
+    def _basic_string(value):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        # Control characters are illegal raw in a TOML basic string; a serve
+        # name or tier id carrying one must not yield rc 0 plus a block
+        # tomllib cannot parse back. \uXXXX escapes round-trip identically.
+        escaped = "".join(
+            ch if ch >= " " and ch != "\x7f" else "\\u%04X" % ord(ch)
+            for ch in escaped
+        )
+        return '"%s"' % escaped
+
+    lines = [
+        "[[promotion]]",
+        "name = %s" % _basic_string(plan["name"]),
+        "target = %s" % _basic_string(plan["target"]),
+        "rollback = %s" % _basic_string(plan["rollback"]),
+        "affected_tiers = [%s]" % ", ".join(
+            _basic_string(tier) for tier in plan["affected_tiers"]
+        ),
+        "router_config = %s" % _basic_string(plan["router_config"]),
+        "rollback_router_config = %s" % _basic_string(plan["rollback_router_config"]),
+    ]
+    for field, _default in _PROMOTION_DEFAULTS:
+        lines.append("%s = %d" % (field, plan[field]))
+    return "\n".join(lines) + "\n"
+
+
+def cmd_promote_derive(
+    serves, target_name, rollback_name, router_config, rollback_router_config,
+    out=None,
+):
+    """Derive and print (or, with `out`, write) a `[[promotion]]` block.
+
+    Read-only unless `out` is given. `out` never overwrites an existing
+    file -- refuses with exit 1 and leaves the file untouched.
+    """
+    try:
+        plan = derive_promotion_plan(
+            serves, target_name, rollback_name, router_config, rollback_router_config,
+        )
+    except _NoAffectedTiersError as exc:
+        print("derived promotion plan refused: %s" % exc, file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        # Mirrors cmd_promote's own "promotion refused: %s" precedent
+        # (serves.py _cmd_promote_unlocked) -- plain stdout, exit 1.
+        print("derived promotion plan refused: %s" % exc)
+        return 1
+    block = _render_promotion_toml(plan)
+    if out is None:
+        print(block, end="")
+        return 0
+    # Exclusive create ("x"), not exists+open: fail loud, never silently
+    # clobber (the host.py backup-write precedent), with no TOCTOU window.
+    try:
+        with open(out, "x", encoding="utf-8", newline="\n") as handle:
+            handle.write(block)
+    except FileExistsError:
+        print("refusing to overwrite existing file: %s" % out, file=sys.stderr)
+        return 1
+    except OSError as exc:
+        print("cannot write %s: %s" % (out, exc), file=sys.stderr)
+        return 1
+    print("wrote derived promotion plan to %s" % out)
+    return 0
+
+
 _DIRECT_CONFIG_VALIDATOR = (
     "import os,sys,tempfile; "
     "from anvil_serving.router.config import load,load_server_config; "
@@ -4566,8 +4723,9 @@ def _build_action_parser(action):
         )
         p.set_defaults(names=[])
     elif action == "promote":
-        p.add_argument("names", nargs=1, metavar="PLAN",
-                       help="the [[promotion]] plan name from the manifest")
+        p.add_argument("names", nargs="*", metavar="PLAN_OR_TARGET",
+                       help="the [[promotion]] plan name from the manifest; "
+                            "or, with --derive, the TARGET and ROLLBACK serve names")
     elif action == "switch":
         p.add_argument("names", nargs=1, metavar="ROLE",
                        help="deployment role to switch (for example: heavy)")
@@ -4734,8 +4892,27 @@ def _build_action_parser(action):
                        help="restore the plan's rollback serve and router state")
         p.add_argument("--resume", action="store_true",
                        help="resume an interrupted promotion from an already-running target")
+        p.add_argument(
+            "--derive", action="store_true",
+            help="derive and print a [[promotion]] block from TARGET and "
+                 "ROLLBACK instead of executing a plan",
+        )
+        p.add_argument(
+            "--router-config", metavar="PATH",
+            help="promoted-state router config TOML for --derive",
+        )
+        p.add_argument(
+            "--rollback-router-config", metavar="PATH",
+            help="rollback-state router config TOML for --derive",
+        )
+        p.add_argument(
+            "--out", metavar="PATH",
+            help="write the derived [[promotion]] block here; refuses to overwrite an existing file",
+        )
     else:
-        p.set_defaults(recipe=None, registry=None, rollback=False, resume=False)
+        p.set_defaults(recipe=None, registry=None, rollback=False, resume=False,
+                       derive=False, router_config=None, rollback_router_config=None,
+                       out=None)
     if action in {"promote", "mode"}:
         p.add_argument(
             "--skip-preflight-checks",
@@ -4790,6 +4967,65 @@ def main(argv=None):
         )
         return 2
 
+    # `serves promote --derive` is a read-only derivation of a [[promotion]]
+    # block from TARGET/ROLLBACK, not an execution of an existing plan --
+    # keep its argument shape and the ordinary PLAN-name form from silently
+    # accepting each other's options (issue #381, feature 16).
+    if a.action == "promote":
+        if a.derive:
+            if len(a.names) != 2:
+                print(
+                    "serves promote --derive requires exactly two positionals: "
+                    "TARGET ROLLBACK",
+                    file=sys.stderr,
+                )
+                return 2
+            rejected = [
+                flag for flag, present in (
+                    ("--rollback", a.rollback),
+                    ("--resume", a.resume),
+                    ("--dry-run", a.dry_run),
+                    ("--skip-preflight-checks", a.skip_preflight_checks),
+                )
+                if present
+            ]
+            if rejected:
+                print(
+                    "serves promote --derive does not accept %s"
+                    % ", ".join(rejected),
+                    file=sys.stderr,
+                )
+                return 2
+            if not a.router_config or not a.rollback_router_config:
+                print(
+                    "serves promote --derive requires --router-config and "
+                    "--rollback-router-config",
+                    file=sys.stderr,
+                )
+                return 2
+        else:
+            if len(a.names) != 1:
+                print(
+                    "serves promote requires exactly one positional: PLAN "
+                    "(use --derive for TARGET ROLLBACK)",
+                    file=sys.stderr,
+                )
+                return 2
+            extra = [
+                flag for flag, present in (
+                    ("--router-config", a.router_config),
+                    ("--rollback-router-config", a.rollback_router_config),
+                    ("--out", a.out),
+                )
+                if present
+            ]
+            if extra:
+                print(
+                    "serves promote %s requires --derive" % ", ".join(extra),
+                    file=sys.stderr,
+                )
+                return 2
+
     # Persistent host policy is validated before any covered operation can
     # start the router or touch a container. Ad-hoc Compose and switch-choice
     # listing are intentionally outside the v1 lifecycle boundary.
@@ -4798,7 +5034,7 @@ def main(argv=None):
         cache_operation = "serves up"
     elif a.action == "adopt":
         cache_operation = "serves adopt"
-    elif a.action == "promote":
+    elif a.action == "promote" and not a.derive:
         cache_operation = "serves promote --rollback" if a.rollback else "serves promote"
     elif a.action == "switch" and (a.recipe_selector or a.recipe):
         cache_operation = "serves switch"
@@ -5088,6 +5324,15 @@ def main(argv=None):
             readiness_targets=_select(serves, a.names),
         )
     if a.action == "promote":
+        if a.derive:
+            # Read-only: derives a fresh [[promotion]] block instead of
+            # executing one, so it runs before `load_promotions` (a malformed
+            # EXISTING plan elsewhere in the manifest must not block deriving
+            # a new one) and before the preflight gate (nothing is mutated).
+            return cmd_promote_derive(
+                serves, a.names[0], a.names[1], a.router_config,
+                a.rollback_router_config, out=a.out,
+            )
         try:
             promotions = load_promotions(manifest_path)
         except Exception as exc:

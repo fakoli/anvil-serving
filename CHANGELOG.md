@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2026-08-08
+
+### Added
+
+- `serves promote --derive TARGET ROLLBACK --router-config PATH
+  --rollback-router-config PATH [--out PATH]` (#381, feature 16): generates a
+  complete `[[promotion]]` TOML block from two already-declared serves and
+  their promoted/rollback router configs, instead of hand-writing one.
+  `affected_tiers` is derived from the tiers in the promoted router config
+  whose `model` matches the target serve's `served_name` -- a router config
+  where zero tiers match is refused as a hard error rather than silently
+  emitting a no-op plan. Before printing anything, the derived plan is run
+  through the existing `_validate_promotion_topology` -- the same gate
+  `serves promote` itself uses -- so a derivation the validator would reject
+  is refused up front with the validator's message, symmetric with
+  `cmd_promote`'s own "promotion refused" precedent. Read-only by default;
+  `--out PATH` writes the block to a file but refuses to overwrite one that
+  already exists, leaving it untouched.
+
 ## [0.31.2] - 2026-08-08
 
 ### Fixed
