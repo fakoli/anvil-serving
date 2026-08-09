@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0] - 2026-08-08
+
+### Added
+
+- ADR-0035 — fleet configuration reconciliation: the private operator
+  repository is the fleet's configuration state store (no coordination
+  service), drift is inspected and reported on a schedule but never
+  auto-fixed, and the controller gains the typed last-mile verbs
+  `config-install` (fingerprint -> backup -> derive per-host view ->
+  install -> diff receipt, confirm-gated, with domain-aware coupled process
+  actions) and `config-adopt` (live -> repository capture). Version
+  convergence is artifact distribution against a repository-named canonical
+  pin; per-client controller tokens (ADR-0033 §3.4) become a prerequisite
+  for the write verb.
+
 ## [0.32.1] - 2026-08-09
 
 ### Fixed
