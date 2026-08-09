@@ -223,13 +223,19 @@ class AnthropicDialect:
                     "index": _block_idx,
                 })
 
+        # Relay upstream prompt-cache accounting on the closing usage block
+        # (the wire allows cumulative usage fields on message_delta). Only when
+        # upstream reported it — absent, never zero-filled, and never estimated.
+        _delta_usage: Dict[str, int] = {"output_tokens": output_tokens}
+        if _usage is not None and "cache_read_input_tokens" in _usage:
+            _delta_usage["cache_read_input_tokens"] = _usage["cache_read_input_tokens"]
         yield _event("message_delta", {
             "type": "message_delta",
             "delta": {
                 "stop_reason": _anthropic_stop_reason(_finish_reason),
                 "stop_sequence": None,
             },
-            "usage": {"output_tokens": output_tokens},
+            "usage": _delta_usage,
         })
         yield _event("message_stop", {"type": "message_stop"})
 
