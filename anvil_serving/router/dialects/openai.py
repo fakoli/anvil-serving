@@ -76,7 +76,7 @@ def _caller_wants_usage(request: InternalRequest) -> bool:
 
 
 def _usage_chunk(cid: str, created: int, model: str,
-                 usage: Dict[str, int]) -> Dict[str, Any]:
+                 usage: Dict[str, Any]) -> Dict[str, Any]:
     """Build the trailing OpenAI ``include_usage`` chunk (empty ``choices``)."""
     return {
         "id": cid,
@@ -199,20 +199,27 @@ class OpenAIDialect:
         # the relay surfaced them; fall back to estimates, counting the joined text
         # so chunk boundaries do not skew the count (matches ``render()``).
         if emit_usage:
+            _cached: Optional[int] = None
             if _usage is not None:
                 prompt = int(_usage.get("input_tokens", 0))
                 completion = int(_usage.get("output_tokens", 0))
+                _cached = _usage.get("cache_read_input_tokens")
             else:
                 prompt_texts: List[str] = [
                     m.content for m in request.messages
                 ]
                 prompt = estimate_tokens(prompt_texts)
                 completion = estimate_tokens(["".join(collected or [])])
-            _usage_wire = {
+            _usage_wire: Dict[str, Any] = {
                 "prompt_tokens": prompt,
                 "completion_tokens": completion,
                 "total_tokens": prompt + completion,
             }
+            # Relay upstream prompt-cache accounting (e.g. vLLM with
+            # --enable-prompt-tokens-details) only when it was reported —
+            # never a zero-filled details block, and never an estimate.
+            if _cached is not None:
+                _usage_wire["prompt_tokens_details"] = {"cached_tokens": int(_cached)}
 
         # 3) Tool-call chunks (if any).  Two chunks per call: header (id/name) then
         #    arguments.  Consolidated streaming — full arguments in one chunk.
@@ -280,13 +287,23 @@ class OpenAIDialect:
             message["tool_calls"] = tc_wire
 
         # Real upstream counts when the backend surfaced them; else estimates.
+        _cached: Optional[int] = None
         if _usage is not None:
             prompt = _usage["input_tokens"]
             completion = _usage["output_tokens"]
+            _cached = _usage.get("cache_read_input_tokens")
         else:
             prompt_texts: List[str] = [m.content for m in request.messages]
             prompt = estimate_tokens(prompt_texts)
             completion = estimate_tokens([text])
+        usage_wire: Dict[str, Any] = {
+            "prompt_tokens": prompt,
+            "completion_tokens": completion,
+            "total_tokens": prompt + completion,
+        }
+        # Only when upstream reported it — absent, never zero-filled.
+        if _cached is not None:
+            usage_wire["prompt_tokens_details"] = {"cached_tokens": int(_cached)}
         return {
             "id": _new_id("chatcmpl-"),
             "object": "chat.completion",
@@ -299,11 +316,7 @@ class OpenAIDialect:
                     "finish_reason": _openai_finish_reason(_finish_reason),
                 }
             ],
-            "usage": {
-                "prompt_tokens": prompt,
-                "completion_tokens": completion,
-                "total_tokens": prompt + completion,
-            },
+            "usage": usage_wire,
         }
 
     def render_error(self, status: int, etype: str, message: str) -> Dict[str, Any]:

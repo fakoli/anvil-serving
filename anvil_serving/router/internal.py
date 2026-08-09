@@ -128,9 +128,15 @@ class StructuredResult:
 
     ``usage``: the upstream's REAL token accounting, normalized to
     ``{"input_tokens": int, "output_tokens": int}`` (Anthropic wire names;
-    OpenAI's ``prompt_tokens``/``completion_tokens`` are mapped in).  ``None``
-    when the upstream reported none. Harnesses use these numbers for context
-    management, so passing the real counts through matters.
+    OpenAI's ``prompt_tokens``/``completion_tokens`` are mapped in).  When the
+    upstream also reports prompt-cache accounting (OpenAI-compatible engines
+    such as vLLM with ``--enable-prompt-tokens-details`` emit
+    ``prompt_tokens_details.cached_tokens``; Anthropic emits
+    ``cache_read_input_tokens``), the optional ``cache_read_input_tokens`` key
+    carries it — absent, never zero-filled, when the upstream omits it.
+    ``None`` when the upstream reported no usage at all. Harnesses use these
+    numbers for context management and cache-hit visibility, so passing the
+    real counts through matters.
     """
 
     finish_reason: Optional[str] = None
