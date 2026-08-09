@@ -2,6 +2,28 @@
 
 **Status:** Open — blocks ADR-0034 step 3; live routing gap on the reference topology
 
+> **2026-08-09 update — voice relocated (see ADR-0036 draft).** The voice
+> capability (STT/TTS + the low-latency voice LLM) moved off this host to
+> `ai-mbp25` by operator action, so the framing below is partially superseded:
+>
+> - **Gap 2 is now a repoint, not a bring-up.** The serving host's router
+>   advertises `llm.voice` and both audio routes at endpoints on a host that
+>   will not serve voice again. The fix is repointing (or parking) those routes
+>   to the new owner's declared endpoints, confirm-gated per ADR-0035 — not
+>   restarting serves here.
+> - **Gap 1 retargets to two hosts.** The node agent is required on `ai-mbp25`
+>   (the voice owner, catalog scoped to voice + benchmark operations) and on
+>   this host under its new qualification/ComfyUI role (catalog scoped to
+>   serve-lifecycle + benchmark operations). An empty host remains the ideal
+>   first deployment target per ADR-0034 sequencing.
+> - **Verification impact resolves differently.** `runtime = "docker"`
+>   live-verification on this host can now be completed with a qualification
+>   or ComfyUI serve instead of the departed voice stack.
+>
+> The underlying finding stands unchanged: nothing reports the divergence
+> between declared routes and what any host actually serves, and a host that
+> returns empty is indistinguishable from one that is down.
+
 ## Problem
 
 Two related gaps, observed together on 2026-08-08.
