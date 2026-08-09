@@ -5,6 +5,9 @@
 - **Relates to:** ADR-0017; ADR-0027; ADR-0028; ADR-0030; ADR-0031; ADR-0032
 - **Fires the deferred trigger in:** ADR-0033 §3.4 (fleet registry, relay, per-client tokens)
 - **Amends:** ADR-0033 §1, the *Supervision* row of the durability table
+- **Amended by:** [ADR-0036](0036-voice-relocation-and-qualification-host.md) —
+  §5 voice ownership (voice relocated off the single-GPU host) and the §6
+  reference-instance role assignments
 
 This ADR is written for a project intended to be publicly usable. Product
 concepts below are stated generically; Fakoli Dark / Mid-Mod / Mini / AI-MBP25
