@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-08-08
+
+### Added
+
+- `serves promote` and `serves mode enter` now run the existing `serves lint`
+  + `serves rollback-check` reports before their first mutation — including
+  `--dry-run` and `promote --rollback`/`--resume`, since both checks are
+  read-only. Serve checks cover the whole manifest set for both; the promotion
+  plans checked are the named manifest's for `promote` (the same plans the
+  transaction executes) and the full set's for `mode enter`. Any
+  `error`-severity finding aborts the transaction with exit `3` before a
+  container is touched, printing findings to stderr in the same format the
+  standalone commands use (stderr so a `--json` caller sees them in the error
+  envelope). `mode enter` now also loads promotions itself (a first load
+  previously absent from that dispatch path) and forwards its own
+  `--restore-group` into the rollback-check; the gate applies to `mode enter`
+  only, not `leave`/`preview`/`status`. The new `--skip-preflight-checks` flag
+  overrides, printing an unmistakable warning to stderr; passing it to any
+  `mode` action but `enter` is a usage error (exit `2`). The standalone
+  `serves lint`/`serves rollback-check` commands are unchanged. Closes the gap
+  where a `missing-registry` or `rollback-image-missing` defect a lint run
+  would have caught was instead discovered mid-promotion or
+  mid-mode-transition. Feature 12 of the divergence program
+  (`docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md`), specified in issue #377.
+
 ## [0.30.0] - 2026-08-08
 
 ### Added
