@@ -229,12 +229,26 @@ envelope). Serve checks cover the whole manifest set for both transactions.
 The promotion plans checked differ: `promote` gates on the plans of the
 manifest it was invoked on — exactly the plans the transaction itself
 executes — while `mode enter` (like standalone `rollback-check`) loads
-promotion plans from every file in the set. Any `error`-severity finding
-aborts the transaction with exit `3` before a container is touched;
-`--dry-run` still runs the gate, since both checks are read-only. `mode
-enter`'s rollback-check uses its own `--restore-group`; `promote` has none, so
-its rollback-check runs without one. `warning`/`info` findings are printed but
-never block.
+promotion plans from every file in the set. `--dry-run` still runs the gate,
+since both checks are read-only. `mode enter`'s rollback-check uses its own
+`--restore-group`; `promote` has none, so its rollback-check runs without one.
+
+The abort decision is **scoped**, not whole-set: only an `error`-severity
+finding relevant to this transaction's own serves — `promote`'s resolved
+plan's target and rollback (plus the plan name itself, so a
+`promotion-topology` error on the plan being promoted still blocks); `mode
+enter`'s target plus every serve tagged with `--restore-group` — aborts with
+exit `3` before a container is touched. An `error` finding about a serve
+outside that set (for example a stale `missing-registry` on an unrelated
+scaffold entry) prints to stderr as `ADVISORY (outside this transaction):`
+and does **not** block; refusing every command over one unrelated manifest
+entry is exactly what a not-yet-created registry file legitimately being work
+in progress would otherwise force. `warning`/`info` findings are always
+advisory and are printed but never block. An unresolvable `promote` plan name
+(no match, or more than one) skips the gate entirely and falls through to
+`promote`'s own "must match exactly one `[[promotion]]` plan" refusal — there
+is no plan to scope to, and reporting that as a lint/rollback-check abort
+would be misleading.
 
 ```bash
 anvil-serving serves promote PROMOTION_PLAN --confirm
@@ -246,8 +260,8 @@ Pass `--skip-preflight-checks` to run the transaction anyway; doing so prints
 an unmistakable warning to stderr naming exactly what was skipped. `serves
 mode leave|preview|status` are not gated — `--skip-preflight-checks` is
 rejected (exit `2`) on anything but `mode enter`. The standalone `serves
-lint`/`serves rollback-check` commands are unchanged and remain available on
-their own.
+lint`/`serves rollback-check` commands are unchanged, still report over the
+whole manifest set with no scoping, and remain available on their own.
 
 ## Functional probes
 

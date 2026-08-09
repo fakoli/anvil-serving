@@ -4,6 +4,37 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.1] - 2026-08-08
+
+### Fixed
+
+- The `serves promote`/`serves mode enter` preflight gate (#387, feature 12)
+  aborted on ANY `error`-severity `lint`/`rollback-check` finding across the
+  *whole* manifest set, not just the transaction's own serves. Live REPRO on
+  a fresh `anvil-serving init` home: `serves promote any-plan --dry-run`
+  exited `3` over `missing-registry` findings on two untouched scaffold
+  entries plus a `rollback-image-missing` finding on the scaffold's own plan
+  — refusing every promotion over defects the transaction never touches,
+  exactly what feature 5's revision in `docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md`
+  rejects. The gate is now scoped: `_preflight_gate` takes an `involved` set
+  of serve names (see `_finding_is_relevant`'s check → relevance table), and
+  only a relevant `error` finding blocks. An irrelevant `error` finding
+  prints to stderr with an `ADVISORY (outside this transaction):` marker
+  instead of aborting. `warning`/`info` findings remain always-advisory.
+- An unknown/ambiguous `promote` plan name previously still ran the gate over
+  the whole manifest set and could abort with exit `3` on an unrelated
+  finding before `promote` ever reported the "must match exactly one
+  `[[promotion]]` plan" refusal for the typo itself. `promote`'s dispatch now
+  resolves the plan first; on zero or multiple matches the gate is skipped
+  entirely and falls through to that refusal (exit `1`).
+
+### Changed
+
+- A `promotion-topology` finding on the plan actually being promoted now
+  aborts `promote` with exit `3` at the gate (it is inside the transaction's
+  own blast radius) instead of only surfacing once `cmd_promote` re-validates
+  topology itself.
+
 ## [0.31.0] - 2026-08-08
 
 ### Added
