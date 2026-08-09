@@ -54,3 +54,4 @@ people and the chat logs.
 | [0032](0032-public-product-private-operator-state.md) | Public product, private operator state | Accepted |
 | [0033](0033-production-durability-and-plane-contract.md) | Production durability model, plane contract, and controller-RPC fleet direction | Accepted |
 | [0034](0034-fleet-control-plane-and-node-runtime-classes.md) | Fleet control plane on the gateway host, and node runtime classes | Accepted |
+| [0035](0035-fleet-configuration-reconciliation.md) | Fleet configuration reconciliation: git as the state store, controller-mediated install and adopt | Accepted |
