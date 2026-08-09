@@ -52,6 +52,7 @@ nav:
       - Model settings example: MODEL-SETTINGS-EXAMPLE.md
   - Route through the gateway:
       - Architecture: ARCHITECTURE.md
+      - Fleet state & replication: FLEET-STATE.md
       - 'Strategy: make divergence loud': STRATEGY-MAKE-DIVERGENCE-LOUD.md
       - 'Product discovery: personas': PRODUCT-DISCOVERY-PERSONAS.md
       - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md

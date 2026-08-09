@@ -7,6 +7,10 @@
   operations; transport policy)
 - **Schedules:** the per-client-token work deferred in ADR-0033 §3.4
 
+Companion design document: [Fleet state: relationships, planes, and what
+replicates](../FLEET-STATE.md) — the gateway hierarchy, the binding rule,
+and the full replication matrix.
+
 This ADR is written for a project intended to be publicly usable. The
 four-host reference instance appears only as motivation; concrete host names,
 addresses, and route assignments remain private operator state per ADR-0032.
