@@ -96,6 +96,15 @@ class OpenAIStreamAssembler:
             if (isinstance(i, int) and not isinstance(i, bool) and i >= 0
                     and isinstance(o, int) and not isinstance(o, bool) and o >= 0):
                 self._usage = {"input_tokens": i, "output_tokens": o}
+                # vLLM --enable-prompt-tokens-details: prefix-cache hits ride
+                # in the trailing usage chunk. Absent (not zero-filled) when
+                # the engine does not report them.
+                details = usage.get("prompt_tokens_details")
+                cached = (details.get("cached_tokens")
+                          if isinstance(details, Mapping) else None)
+                if (isinstance(cached, int) and not isinstance(cached, bool)
+                        and cached >= 0):
+                    self._usage["cache_read_input_tokens"] = cached
         choices = obj.get("choices")
         if not isinstance(choices, list) or not choices:
             return None
@@ -150,8 +159,8 @@ class AnthropicStreamAssembler:
     registered at ``content_block_start`` and their ``input_json_delta``
     fragments accumulated per block index (parsed to a dict at :meth:`result`,
     matching the buffered path's already-parsed ``input``); ``message_start``
-    carries ``input_tokens`` and ``message_delta`` the ``stop_reason`` +
-    ``output_tokens``.
+    carries ``input_tokens`` (plus any ``cache_read_input_tokens``) and
+    ``message_delta`` the ``stop_reason`` + ``output_tokens``.
     """
 
     def __init__(self) -> None:
@@ -159,6 +168,7 @@ class AnthropicStreamAssembler:
         self._finish_reason: Optional[str] = None
         self._input_tokens: Optional[int] = None
         self._output_tokens: Optional[int] = None
+        self._cache_read_tokens: Optional[int] = None
         self._tools: Dict[int, Dict[str, Any]] = {}  # index -> {id,name,parts}
 
     @staticmethod
@@ -175,6 +185,8 @@ class AnthropicStreamAssembler:
             usage = msg.get("usage") if isinstance(msg, Mapping) else None
             if isinstance(usage, Mapping):
                 self._input_tokens = self._int(usage.get("input_tokens"))
+                self._cache_read_tokens = self._int(
+                    usage.get("cache_read_input_tokens"))
             return None
         if etype == "content_block_start":
             block = obj.get("content_block")
@@ -210,6 +222,9 @@ class AnthropicStreamAssembler:
                 out = self._int(usage.get("output_tokens"))
                 if out is not None:
                     self._output_tokens = out
+                cr = self._int(usage.get("cache_read_input_tokens"))
+                if cr is not None:
+                    self._cache_read_tokens = cr
             return None
         if etype == "message_stop":
             self.done = True
@@ -241,6 +256,8 @@ class AnthropicStreamAssembler:
         if self._input_tokens is not None and self._output_tokens is not None:
             usage = {"input_tokens": self._input_tokens,
                      "output_tokens": self._output_tokens}
+            if self._cache_read_tokens is not None:
+                usage["cache_read_input_tokens"] = self._cache_read_tokens
         return StructuredResult(
             finish_reason=self._finish_reason,
             tool_calls=tool_calls,

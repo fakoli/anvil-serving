@@ -383,19 +383,28 @@ class RelayBackend:
 
         # Real token accounting, normalized to Anthropic wire names. None when
         # the upstream reported none (the dialects then keep their estimates).
-        def _usage_from(raw_usage: Any, in_key: str, out_key: str) -> Optional[Dict[str, int]]:
+        def _count(v: Any) -> Optional[int]:
+            return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None
+
+        def _usage_from(raw_usage: Any, in_key: str, out_key: str,
+                        cached: Any = None) -> Optional[Dict[str, int]]:
             if not isinstance(raw_usage, Mapping):
                 return None
-            i, o = raw_usage.get(in_key), raw_usage.get(out_key)
-            if (
-                isinstance(i, int) and not isinstance(i, bool) and i >= 0
-                and isinstance(o, int) and not isinstance(o, bool) and o >= 0
-            ):
-                return {"input_tokens": i, "output_tokens": o}
-            return None
+            i, o = _count(raw_usage.get(in_key)), _count(raw_usage.get(out_key))
+            if i is None or o is None:
+                return None
+            usage = {"input_tokens": i, "output_tokens": o}
+            c = _count(cached)
+            if c is not None:
+                usage["cache_read_input_tokens"] = c
+            return usage
 
         if self._tier.dialect == DIALECT_ANTHROPIC:
-            usage = _usage_from(data.get("usage"), "input_tokens", "output_tokens")
+            raw_usage = data.get("usage")
+            cached = (raw_usage.get("cache_read_input_tokens")
+                      if isinstance(raw_usage, Mapping) else None)
+            usage = _usage_from(raw_usage, "input_tokens", "output_tokens",
+                                cached=cached)
             finish_reason = data.get("stop_reason")
             blocks = data.get("content") or []
             tool_calls: Optional[List[Dict[str, Any]]] = None
@@ -414,8 +423,14 @@ class RelayBackend:
                 finish_reason=finish_reason, tool_calls=tool_calls, usage=usage,
             )
 
-        # openai-compatible
-        usage = _usage_from(data.get("usage"), "prompt_tokens", "completion_tokens")
+        # openai-compatible. vLLM (--enable-prompt-tokens-details) and other
+        # engines report prefix-cache hits under prompt_tokens_details.
+        raw_usage = data.get("usage")
+        details = (raw_usage.get("prompt_tokens_details")
+                   if isinstance(raw_usage, Mapping) else None)
+        cached = details.get("cached_tokens") if isinstance(details, Mapping) else None
+        usage = _usage_from(raw_usage, "prompt_tokens", "completion_tokens",
+                            cached=cached)
         choices = data.get("choices") or []
         if not choices or not isinstance(choices[0], Mapping):
             return StructuredResult(usage=usage)
