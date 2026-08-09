@@ -301,15 +301,21 @@ class ResponsesDialect:
         return request
 
     @staticmethod
-    def _usage(request: InternalRequest, text: str, structured: Any) -> dict[str, int]:
+    def _usage(request: InternalRequest, text: str, structured: Any) -> dict[str, Any]:
         usage = getattr(structured, "usage", None) if structured is not None else None
+        cached = None
         if usage is not None:
             input_tokens = int(usage.get("input_tokens", 0))
             output_tokens = int(usage.get("output_tokens", 0))
+            cached = usage.get("cache_read_input_tokens")
         else:
             input_tokens = estimate_tokens([message.content for message in request.messages])
             output_tokens = estimate_tokens([text])
-        return {"input_tokens": input_tokens, "output_tokens": output_tokens, "total_tokens": input_tokens + output_tokens}
+        wire: dict[str, Any] = {"input_tokens": input_tokens, "output_tokens": output_tokens, "total_tokens": input_tokens + output_tokens}
+        # Responses wire name for prompt-cache hits; only when upstream reported it.
+        if cached is not None:
+            wire["input_tokens_details"] = {"cached_tokens": int(cached)}
+        return wire
 
     @staticmethod
     def _output(response_id: str, text: str, structured: Any) -> list[dict[str, Any]]:

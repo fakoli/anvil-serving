@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.1] - 2026-08-09
+
+### Fixed
+
+- The gateway no longer drops upstream prompt-cache accounting when rebuilding
+  usage blocks. vLLM serves launched with `--enable-prompt-tokens-details`
+  report prefix-cache hits as `usage.prompt_tokens_details.cached_tokens`;
+  the relay now normalizes that (and Anthropic upstreams'
+  `cache_read_input_tokens`) into the internal usage record on both the
+  buffered and streaming paths, and each dialect re-renders its own wire
+  vocabulary: OpenAI Chat Completions `prompt_tokens_details.cached_tokens`,
+  Anthropic Messages `cache_read_input_tokens`, Responses
+  `input_tokens_details.cached_tokens`. The field is relayed only when the
+  upstream reported it — never zero-filled, never estimated — so callers can
+  still distinguish "no cache accounting" from a 0% hit rate. Previously
+  harnesses saw `cacheRead: 0` while the engine reported a >90% prefix-cache
+  hit rate.
+
 ## [0.33.0] - 2026-08-08
 
 ### Added
