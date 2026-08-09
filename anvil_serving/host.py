@@ -760,8 +760,75 @@ def _fmt(gb):
     return "?" if gb is None else ("%.1f GB" % gb)
 
 
+def _darwin_host_summary(_run=subprocess.run):
+    """macOS shape of `host status`: unified memory via the observability primitives.
+
+    Before 2026-08-08 a macOS node answered `host_summary` with the Windows/WSL
+    payload — every probe null on a healthy host (first observed on the first
+    macOS node-agent dispatch). macOS has no WSL VM, no Windows reserve, and no
+    discrete GPU pool, so those fields are returned as EXPLICIT nulls (existing
+    consumers like `cmd_doctor` index them unconditionally) and the real signal
+    comes from the unified-memory snapshot. `platform` lets remote callers
+    interpret the shape without guessing from null patterns.
+    """
+    from .observability.macos_primitives import (
+        macos_identity_snapshot,
+        macos_memory_snapshot,
+    )
+
+    identity = macos_identity_snapshot(runner=_run)
+    memory = {}
+    sample_error = None
+    try:
+        memory = macos_memory_snapshot(runner=_run)
+    except (OSError, ValueError, PermissionError, subprocess.SubprocessError) as exc:
+        sample_error = str(exc)
+
+    def _gb(value):
+        return None if value is None else round(value / 1024**3, 1)
+
+    total_gb = _gb(memory.get("memory_total_bytes"))
+    pressure = memory.get("memory_pressure_percent")
+    unified = {
+        "total_gb": total_gb,
+        "used_gb": _gb(memory.get("memory_used_bytes")),
+        "available_gb": _gb(memory.get("memory_available_bytes")),
+        "memory_pressure_percent": None if pressure is None else round(pressure, 1),
+        "swap_used_gb": _gb(memory.get("swap_used_bytes")),
+    }
+    checks = [
+        {"name": "host_ram", "ok": total_gb is not None, "value_gb": total_gb},
+        {"name": "unified_memory_sample", "ok": bool(memory), "detail": sample_error},
+    ]
+    return {
+        "mutates": False,
+        "platform": "macos",
+        "host_ram_gb": total_gb,
+        "unified_memory": unified,
+        "identity": {
+            key: identity.get(key)
+            for key in ("hardware_model", "os_version", "computer_name")
+        },
+        # Windows-only concepts, explicitly null on macOS (see docstring).
+        "wsl_vm_memory_gb": None,
+        "docker": {"available": None, "memory_cap_gb": None},
+        "gpus": [],
+        "recommended_wsl_memory_gb": None,
+        "windows_reserve": {
+            "minimum_gb": None,
+            "recommended_gb": None,
+            "recommended_would_leave_gb": None,
+            "ceiling_gb": None,
+        },
+        "cache_reclaim": cache_reclaim_policy_summary(),
+        "checks": checks,
+    }
+
+
 def host_summary(_run=subprocess.run):
-    """Return read-only WSL/Docker/GPU host checks as structured data."""
+    """Return read-only host checks as structured data (platform-aware shape)."""
+    if sys.platform == "darwin":
+        return _darwin_host_summary(_run=_run)
     host = _host_total_gb(_run=_run)
     wsl = _wsl_vm_memory_gb(_run=_run)
     gpus = _gpus(_run=_run)
@@ -789,6 +856,7 @@ def host_summary(_run=subprocess.run):
     ]
     return {
         "mutates": False,
+        "platform": "windows",
         "host_ram_gb": host,
         "wsl_vm_memory_gb": wsl,
         "docker": {
@@ -914,6 +982,16 @@ def _next_backup(path):
 def cmd_doctor(_run=subprocess.run):
     summary = host_summary(_run=_run)
     host = summary["host_ram_gb"]
+    if summary.get("platform") == "macos":
+        unified = summary["unified_memory"]
+        print("host RAM (unified):    %s" % _fmt(host))
+        print("unified memory used:   %s" % _fmt(unified["used_gb"]))
+        print("unified memory avail:  %s" % _fmt(unified["available_gb"]))
+        if unified["memory_pressure_percent"] is not None:
+            print("memory pressure:       %.1f%%" % unified["memory_pressure_percent"])
+        print("\n(no WSL VM, Windows reserve, or discrete GPU pool on macOS;"
+              " model memory shares the unified pool with the OS)")
+        return 0
     wsl = summary["wsl_vm_memory_gb"]
     print("host RAM (physical):   %s" % _fmt(host))
     print("WSL VM memory cap:     %s" % (
