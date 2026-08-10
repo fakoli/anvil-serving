@@ -129,6 +129,10 @@ required operands, choices, and defaults.
 | `serves mode preview` | Preview exclusive entry without mutating GPU workloads. | `read` / `bounded` | `--restore-group` |
 | `serves mode enter` | Enter exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url`<br>`--skip-preflight-checks` |
 | `serves mode leave` | Leave exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url` |
+| `serves profile` | List, preview, or apply a declared serving topology profile. | `read` / `bounded` | - |
+| `serves profile list` | List declared serving topology profiles. | `read` / `bounded` | - |
+| `serves profile preview` | Preview a declared serving profile without mutation. | `read` / `bounded` | - |
+| `serves profile apply` | Apply a declared serving profile transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves status` | Show model serve status. | `read` / `bounded` | - |
 | `serves probe` | Run an engine-aware functional serve probe. | `read` / `bounded` | - |
 | `serves groups` | List serve groups across the manifest set and their members. | `read` / `bounded` | - |

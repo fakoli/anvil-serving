@@ -175,6 +175,55 @@ def test_openclaw_voice_sync_replaces_existing_consult_thinking_level(tmp_path):
     assert payload["talk"]["consultBootstrapContextMode"] == "lightweight"
 
 
+def test_openclaw_sync_refreshes_anvil_models_without_erasing_other_providers(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps(
+            {
+                "agents": {"defaults": {"models": {
+                    "anthropic/claude-sonnet": {},
+                    "anvil/llm.stale": {},
+                }}},
+                "models": {"providers": {
+                    "anvil": {"apiKey": {
+                        "source": "file", "provider": "default", "id": "/anvil/routerToken",
+                    }},
+                    "other": {"models": []},
+                }},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={"llm.primary": "heavy", "llm.thinking": "fast"},
+        tiers={"fast": _Tier(262144), "heavy": _Tier(262144)},
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert [
+        model["id"] for model in payload["models"]["providers"]["anvil"]["models"]
+    ] == ["llm.primary", "llm.thinking"]
+    assert payload["agents"]["defaults"]["models"] == {
+        "anthropic/claude-sonnet": {},
+        "anvil/llm.primary": {},
+        "anvil/llm.thinking": {},
+    }
+    assert payload["models"]["providers"]["anvil"]["apiKey"] == {
+        "source": "file", "provider": "default", "id": "/anvil/routerToken",
+    }
+    assert "other" in payload["models"]["providers"]
+
+
 def test_openclaw_voice_sync_falls_back_to_chat_consult_model(capsys):
     cfg = _Config(
         model_routes={"llm.primary": "heavy"},

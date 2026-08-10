@@ -28,6 +28,7 @@ called. Entries that omit `stack` retain the `serving` default.
 | `serves switch` | Switch a deployment role to an activation-ready recipe. |
 | `serves promote` | Preflight and promote a staged recipe with rollback. |
 | `serves mode status|preview|enter|leave` | Inspect or transact exclusive TP=2 ownership. |
+| `serves profile list|preview|apply` | Select a declared split or exclusive serving profile. |
 | `serves status` | Show bounded serve status. |
 | `serves lint` | Report manifest defects that no other surface makes visible. |
 | `serves rollback-check` | Prove every declared rollback is actually usable. |
@@ -151,6 +152,57 @@ The `serves_mode` MCP tool exposes the same structured plan; live remote
 entry/leave requires its separate human-approval gate. `mode enter` refuses
 before any mutation on a lint/rollback-check error; see
 [Preflight gate on promote and mode enter](#preflight-gate-on-promote-and-mode-enter).
+
+## Serving profiles
+
+A serving profile is a small operator-owned TOML selector that binds one
+exclusive TP=2 target to one named split restore group. It does not duplicate
+model flags, GPU UUIDs, router routes, or lifecycle commands: those remain in
+the serves manifest and its router profiles. This keeps a profile switch from
+becoming a second implementation of the same serve.
+
+```toml
+schema = "anvil-serving/serve-profiles/v1"
+
+[[profile]]
+id = "deepseek-0731-tp2"
+mode = "dual-gpu-exclusive"
+exclusive_target = "tp2-deepseek-v4-flash-0731"
+restore_group = "qwen35-thinkingcap-split"
+startup_timeout = 1200
+
+[[profile]]
+id = "qwen35-thinkingcap-split"
+mode = "split"
+exclusive_target = "tp2-deepseek-v4-flash-0731"
+restore_group = "qwen35-thinkingcap-split"
+startup_timeout = 1200
+```
+
+Use the CLI from the same operator session:
+
+```bash
+anvil-serving serves profile list
+anvil-serving serves profile preview qwen35-thinkingcap-split
+anvil-serving serves profile apply qwen35-thinkingcap-split --confirm
+anvil-serving serves profile apply deepseek-0731-tp2 --confirm
+```
+
+`profile apply` delegates to the existing guarded mode transaction. Entering
+the exclusive profile runs the same lint and rollback checks as `mode enter`;
+leaving it drains the routed tier, installs its declared rollback router
+profile, restores the named split group, and readmits only the explicitly
+mapped tiers. A split profile can only be applied by leaving its declared
+exclusive owner. If the host is already split, the command refuses rather than
+assuming which router profile or resident set is active. There is no automatic
+model fallback or request classifier. `startup_timeout` is an optional finite
+positive readiness bound in seconds (default 600); `poll_interval` optionally
+sets the positive readiness polling interval (default 5).
+
+For a confirmed apply, the first `Ctrl-C` is deferred so the in-flight
+success-or-rollback transaction can finish. Pressing `Ctrl-C` a second time
+forces an emergency exit and can leave detached lifecycle work in progress;
+inspect `serves mode status` before taking another action.
 
 ## Lint
 
