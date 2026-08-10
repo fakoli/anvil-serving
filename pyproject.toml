@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anvil-serving"
-version = "0.34.0"
+version = "0.34.1"
 description = "A local-model serving and benchmark toolkit with a thin capability gateway."
 readme = "README.md"
 license = "MIT"

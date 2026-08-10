@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.1] - 2026-08-10
+
+### Fixed
+
+- `harness sync openclaw` now advertises `image` input for router aliases whose
+  explicit capability metadata includes the image modality. Text-only aliases
+  remain text-only, and video is never inferred or enabled by the sync.
+
 ## [0.34.0] - 2026-08-10
 
 ### Added
