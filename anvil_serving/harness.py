@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 import ipaddress
 import json
 import os
@@ -81,6 +82,16 @@ def _title(value):
     return " ".join(part.capitalize() for part in value.replace("_", "-").split("-"))
 
 
+def _openclaw_input(tier):
+    result = ["text"]
+    params = getattr(tier, "params", None)
+    capabilities = params.get("capabilities", {}) if isinstance(params, Mapping) else {}
+    modalities = capabilities.get("modalities", []) if isinstance(capabilities, Mapping) else []
+    if isinstance(modalities, list) and "image" in modalities:
+        result.append("image")
+    return result
+
+
 def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN", **_ignored):
     """Render ordinary OpenAI-compatible OpenClaw models for direct aliases."""
     _validate_env(api_key_env, "api_key_env")
@@ -92,7 +103,7 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
             "id": alias,
             "name": "Anvil · " + _title(alias),
             "reasoning": True,
-            "input": ["text"],
+            "input": _openclaw_input(config.tier(tier_id)),
             "contextWindow": config.tier(tier_id).context_limit,
             "maxTokens": 8192,
         }

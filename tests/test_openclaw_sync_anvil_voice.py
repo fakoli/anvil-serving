@@ -6,8 +6,9 @@ from anvil_serving.voice import config as voice_config
 
 
 class _Tier:
-    def __init__(self, context_limit):
+    def __init__(self, context_limit, modalities=None):
         self.context_limit = context_limit
+        self.params = {"capabilities": {"modalities": modalities or ["text"]}}
 
 
 class _Config:
@@ -197,7 +198,10 @@ def test_openclaw_sync_refreshes_anvil_models_without_erasing_other_providers(tm
     )
     cfg = _Config(
         model_routes={"llm.primary": "heavy", "llm.thinking": "fast"},
-        tiers={"fast": _Tier(262144), "heavy": _Tier(262144)},
+        tiers={
+            "fast": _Tier(262144, ["text", "image"]),
+            "heavy": _Tier(262144, ["text", "image"]),
+        },
     )
 
     rc = harness.cmd_sync_openclaw(
@@ -213,6 +217,9 @@ def test_openclaw_sync_refreshes_anvil_models_without_erasing_other_providers(tm
     assert [
         model["id"] for model in payload["models"]["providers"]["anvil"]["models"]
     ] == ["llm.primary", "llm.thinking"]
+    assert [
+        model["input"] for model in payload["models"]["providers"]["anvil"]["models"]
+    ] == [["text", "image"], ["text", "image"]]
     assert payload["agents"]["defaults"]["models"] == {
         "anthropic/claude-sonnet": {},
         "anvil/llm.primary": {},
