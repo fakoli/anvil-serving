@@ -16,6 +16,11 @@ The generated provider uses the router base URL, an environment-variable referen
 token, and the configured model alias. Do not hand-edit Anvil-owned provider keys when the
 sync command can render them.
 
+When merging into an existing OpenClaw document, sync refreshes only the
+`anvil/*` allowlist entries, preserves unrelated provider models, and retains
+an existing structured file/env SecretRef for the Anvil provider. It never
+replaces a structured SecretRef with a plaintext token.
+
 ## Contract
 
 - The gateway calls `POST /v1/chat/completions` or `POST /v1/messages` with an explicit alias.

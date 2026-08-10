@@ -103,7 +103,9 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
             "baseUrl": base_url, "apiKey": "${%s}" % api_key_env,
             "api": "openai-completions", "models": models,
         }}},
-        "agents": {"defaults": {"models": {model["id"]: {} for model in models}}},
+        "agents": {"defaults": {"models": {
+            "anvil/%s" % model["id"]: {} for model in models
+        }}},
     }
 
 
@@ -201,9 +203,21 @@ def _merge_provider(existing, rendered):
     result = json.loads(json.dumps(existing)) if isinstance(existing, dict) else {}
     models = result.setdefault("models", {})
     models["mode"] = "merge"
-    models.setdefault("providers", {})["anvil"] = rendered["models"]["providers"]["anvil"]
+    providers = models.setdefault("providers", {})
+    previous_anvil = providers.get("anvil", {})
+    rendered_anvil = rendered["models"]["providers"]["anvil"]
+    if isinstance(previous_anvil, dict) and isinstance(previous_anvil.get("apiKey"), dict):
+        rendered_anvil["apiKey"] = previous_anvil["apiKey"]
+    providers["anvil"] = rendered_anvil
     defaults = result.setdefault("agents", {}).setdefault("defaults", {})
-    defaults["models"] = rendered["agents"]["defaults"]["models"]
+    allowed = defaults.setdefault("models", {})
+    if not isinstance(allowed, dict):
+        allowed = {}
+        defaults["models"] = allowed
+    for model_id in tuple(allowed):
+        if model_id.startswith("anvil/"):
+            allowed.pop(model_id)
+    allowed.update(rendered["agents"]["defaults"]["models"])
     # Delete the only Anvil-owned compatibility path. Other installed plugins remain.
     plugins = result.get("plugins")
     if isinstance(plugins, dict):
