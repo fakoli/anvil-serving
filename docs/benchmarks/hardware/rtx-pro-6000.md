@@ -38,6 +38,7 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 | Candidate | Repeated quality | Capacity and context evidence | Decision |
 |---|---|---|---|
+| DeepSeek V4 Flash 0731, r33 B12X target-only/no-spec, batch 4,096 | functional preflight 6/6 at high reasoning; same repeated broad-quality suite not rerun | 119,503 actual prompt tokens; 17.364 s TTFT, 7,344 effective prefill tok/s, 75.20 decode tok/s; minimum-rank KV 15.99 GiB; engine reports 553,243 KV tokens with unresolved byte/token-accounting caveat | healthy direct-only A/B winner for capacity; next arm GPU-only 393K; `no-promotion` |
 | DeepSeek V4 Flash 0731, r33 B12X target-only/no-spec | intelligence 6/6, session 3/3, tools 3/3 at high reasoning; functional preflight 6/6 | 119,503 actual prompt tokens; 17.445 s TTFT, 7,537 effective prefill tok/s, 73.86 decode tok/s; 283,917-token GPU KV allocation; context-target calibration caveat retained | priority `challenger`, `no-promotion`; 393K FP8-KV plus 16 GiB host-offload recipe translated but not loaded |
 | Qwen3.5 122B NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.32 s TTFT and 67.5 tok/s decode; 128K 4/4 at 14.59 s and 65.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
 | Nemotron 3 Super 120B NVFP4, TP=2 + EP=2 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.84 s and 59.5 tok/s; 60K 4/4 at 5.58 s and 60.0 tok/s | `no-promotion` |
@@ -96,6 +97,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
+| DeepSeek V4 Flash 0731 r33 B12X target-only, batch 4,096, TP=2 | 131,072 measured; GPU-only 393,216 next | 1 | FP8 DS-MLA KV; 119,503 actual prompt tokens passed; lowering batch tokens reduced activation 34.1% and increased minimum-rank KV 15.27 to 15.99 GiB; engine reports 553,243 tokens, but >300K remains unproven pending a configured long-context request |
 | DeepSeek V4 Flash 0731 r33 B12X target-only, TP=2 | 131,072 measured; 393,216 translated only | 1 | FP8 DS-MLA KV; 119,503 actual prompt tokens at 73.86 decode tok/s; 283,917-token GPU KV pool cannot support 393K without host capacity; translated recipe adds 16 GiB native offload |
 | Agents-A1 FP8 multimodal | 262,144 | c1 at 262K; earlier 131K c32 | 188 tok/s decode at 8K c1; 156 tok/s decode and 32.97 s TTFT at 240K; 51.93 GiB KV; generated MoE tune rejected |
 | Agents-A1 NVFP4 compact text | 131,072 | 16 | 198 tok/s at 8K c16; 128K c4 pass; vision excluded |
@@ -112,6 +114,13 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Recent changes
 
+- 2026-08-10: a matched r33 A/B halved `max_num_batched_tokens` from 8,192
+  to 4,096. Fresh bracketed starts reproduced the 8,192 baseline and measured
+  a 34.1% activation reduction plus a 0.72 GiB minimum-rank KV increase. The
+  4,096 arm passed the same 6/6 functional and 119,503-prompt-token capacity
+  gates and was left healthy/direct-only. Its 553,243 reported KV tokens are
+  not treated as >300K proof because KV bytes increased only 4.715%; the next
+  gate is a GPU-only 393K configured serve and actual >300K request.
 - 2026-08-10: the digest-pinned r33 B12X target-only control passed the full
   functional preflight, repeated high-reasoning intelligence/session/tool
   checks, and a 119,503-prompt-token request at 73.86 decode tok/s. The engine
