@@ -1,0 +1,96 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "deepseek-ai/DeepSeek-V4-Flash-0731"
+status = "verified"
+source = "2026-08-10 north-star r33 K5, 393216-token, max-seq-16 candidate translated from the pinned upstream r33 release"
+family = "deepseek-v4"
+total_params_b = 304
+active_params_b = 13
+
+[recipe.download]
+repo = "deepseek-ai/DeepSeek-V4-Flash-0731"
+revision = "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+volume = "deepseek-v4-0731-r16-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink; exclusive TP2 only. Capacity is sharded, not unified."
+
+[recipe.serve]
+engine = "vllm-r33-b12x"
+allow_cuda_visible_devices_index = true
+image = "voipmonitor/vllm@sha256:fdde59fed7f9fc12f9fd5ef1b3b3ea8d5097bf10ebad54b348497102c3a83f82"
+entrypoint = ["/usr/local/bin/serve-ds4-flash.sh"]
+model_env = "MODEL"
+named_volumes = [
+  "deepseek-v4-0731-r33-northstar-jit:/cache",
+  "deepseek-v4-0731-r33-northstar-tmp:/container-tmp",
+]
+quantization = "Released 0731 checkpoint through B12X W4A8 kernels; NVFP4 MoE weights, FP8 activations/dense path, and FP8 DS-MLA KV"
+context_tokens = 393216
+port = 39075
+startup_timeout_seconds = 1800
+served_model_name = "deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-tp2-393k"
+ipc = "host"
+shm_size = "32gb"
+ulimits = [
+  "memlock=-1",
+  "nofile=1048576:1048576",
+  "stack=67108864",
+]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "PORT=39075",
+  "MODE=dspark",
+  "BACKEND=b12x-a8",
+  "TP_SIZE=2",
+  "DCP_SIZE=1",
+  "DSPARK_DEPTH_MODE=fixed",
+  "DSPARK_TOKENS=5",
+  "DRAFT_SAMPLE_METHOD=probabilistic",
+  "REJECTION_SAMPLE_METHOD=standard",
+  "ALLREDUCE_MODE=auto",
+  "B12X_PCIE_TP2_REMOTE_PUSH=0",
+  "GRAPH=auto",
+  "MAX_NUM_SEQS=16",
+  "MAX_MODEL_LEN=393216",
+  "MAX_NUM_BATCHED_TOKENS=4096",
+  "GPU_MEMORY_UTILIZATION=0.975",
+  "LOAD_FORMAT=instanttensor",
+  "INSTANTTENSOR_BACKEND=BUFFERED",
+  "KV_OFFLOADING_SIZE=0",
+  "MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SPEC_MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SERVED_MODEL_NAME=deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-tp2-393k",
+]
+flags = []
+note = "Human-approved 2026-08-11 Primary profile: fixed probabilistic DSpark K5, max-seq-16 admission, a 393216-token envelope, 4096-token batching, FP8 DS-MLA KV, zero CPU/filesystem KV offload, and automatic r33 TP2 all-reduce. Startup identity, managed exclusive ownership, routed functional gates, direct capacity through 359900 actual prompt tokens, and post-restart OpenClaw basic/tool paths passed. WSL resolved SHM/direct/direct with PyNCCL and no custom allreduce; direct P2P eligibility is not a claim that peer transport was selected. Routed and OpenClaw requests above 300000 tokens, broad 393K concurrency, and SWE scoring remain open qualification items."
+
+[recipe.fit]
+suited = ["qualification", "long-context", "speculative-decoding", "coding-agent", "concurrency"]
+rationale = "Tests the desired full-feature r33 deployment first: greater-than-300K context, K5 performance, max-seq-16 admission, direct P2P eligibility, and GPU-only KV while retaining the quality-prioritized released checkpoint and FP8 KV."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731/tree/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+]
+community = [
+  "https://github.com/local-inference-lab/rtx6kpro/blob/6c111c20c2bf2efec038e4daf14fc67030717e46/models/ds4dspark-v20-r33.md",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/426da51285d0666508003b03a75a442139fb7979/examples/docker-compose-ds4-v20-r33.yml",
+]
+local = [
+  "configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-batch4096-131k-recipe.toml",
+  "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml",
+]
