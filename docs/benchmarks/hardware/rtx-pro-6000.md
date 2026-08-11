@@ -2,7 +2,7 @@
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark, Windows 11 with
-Docker Desktop/WSL2. **Reviewed:** 2026-08-08.
+Docker Desktop/WSL2. **Reviewed:** 2026-08-10.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -38,6 +38,7 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 | Candidate | Repeated quality | Capacity and context evidence | Decision |
 |---|---|---|---|
+| DeepSeek V4 Flash 0731, r33 B12X target-only/no-spec | intelligence 6/6, session 3/3, tools 3/3 at high reasoning; functional preflight 6/6 | 119,503 actual prompt tokens; 17.445 s TTFT, 7,537 effective prefill tok/s, 73.86 decode tok/s; 283,917-token GPU KV allocation; context-target calibration caveat retained | priority `challenger`, `no-promotion`; 393K FP8-KV plus 16 GiB host-offload recipe translated but not loaded |
 | Qwen3.5 122B NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.32 s TTFT and 67.5 tok/s decode; 128K 4/4 at 14.59 s and 65.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
 | Nemotron 3 Super 120B NVFP4, TP=2 + EP=2 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.84 s and 59.5 tok/s; 60K 4/4 at 5.58 s and 60.0 tok/s | `no-promotion` |
 | Laguna S 2.1 NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 1.97 s and 70.9 tok/s; 240K 4/4 at 31.85 s and 66.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
@@ -95,6 +96,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
+| DeepSeek V4 Flash 0731 r33 B12X target-only, TP=2 | 131,072 measured; 393,216 translated only | 1 | FP8 DS-MLA KV; 119,503 actual prompt tokens at 73.86 decode tok/s; 283,917-token GPU KV pool cannot support 393K without host capacity; translated recipe adds 16 GiB native offload |
 | Agents-A1 FP8 multimodal | 262,144 | c1 at 262K; earlier 131K c32 | 188 tok/s decode at 8K c1; 156 tok/s decode and 32.97 s TTFT at 240K; 51.93 GiB KV; generated MoE tune rejected |
 | Agents-A1 NVFP4 compact text | 131,072 | 16 | 198 tok/s at 8K c16; 128K c4 pass; vision excluded |
 | Qwen3.5 122B NVFP4 | 262,144 | 1 | BF16 KV; near-ceiling prefill is slow |
@@ -110,6 +112,14 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Recent changes
 
+- 2026-08-10: the digest-pinned r33 B12X target-only control passed the full
+  functional preflight, repeated high-reasoning intelligence/session/tool
+  checks, and a 119,503-prompt-token request at 73.86 decode tok/s. The engine
+  exposed 283,917 GPU KV tokens, below the 393K target; a quality-first 393K
+  recipe retains FP8 DS-MLA KV and adds 16 GiB native host offload but was not
+  loaded. Requested context targets were non-monotonic versus API-reported
+  prompt tokens, so a benchmark-integrity ticket remains open. No route or
+  promotion changed.
 - 2026-08-07: a WebBrain DeepSeek 0731 vision-adapter (NVFP4) package
   first-loaded and served on TP=2 via SGLang, marlin/marlin kernels, and
   `--mem-fraction-static 0.97` against an engine-measured KV floor of 0.9411.

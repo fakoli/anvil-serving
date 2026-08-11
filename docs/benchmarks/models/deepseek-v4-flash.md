@@ -17,7 +17,10 @@ A derived WSL2 image now also qualifies native CPU KV offload at a 262,144
 served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
 the managed shared-memory lifecycle regression. This extends the capacity
 contract but does not replace the 131K profile as the preferred performance
-recipe. Review date: 2026-08-08.
+recipe. A digest-pinned r33 target-only control subsequently qualified the same
+checkpoint at a 131,072-token envelope and reached 119,503 actual prompt
+tokens. Its translated 393,216-token FP8-KV recipe was not loaded. Review date:
+2026-08-10.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
 not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
@@ -74,8 +77,28 @@ JIT, and temporary build data use named Docker volumes.
 - [Native-offload and 256K qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md)
 - [650K/1M Pi qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md)
 - [650K Primary promotion](../../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md)
+- [r33 target-only 131K recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-131k-recipe.toml)
+- [r33 quality-first 393K candidate](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-393k-recipe.toml)
+- [r33 quality-control qualification](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md)
 
 ## Evidence by measurement class
+
+The r33 target-only control adds `functional`, `capacity`, and bounded
+`quality` evidence on the same released checkpoint:
+
+- Functional preflight passed 6/6, including 20/20 typed tool calls, streaming
+  tool use, tool-result continuation, and the Responses API.
+- High-reasoning intelligence passed 6/6 attempts, session recall 3/3, and
+  tools 3/3. Low/high/max prompt fingerprints measured 6/85/98 prompt tokens.
+- A single 119,503-prompt-token request measured 17.445-second TTFT, 7,537
+  effective prefill tok/s, and 73.86 decode tok/s. A short coding smoke passed
+  after each context probe.
+- The engine exposed 15.27 GiB or 283,917 GPU KV tokens. That cannot support a
+  393,216-token request without another capacity tier. The prepared 393K arm
+  retains FP8 DS-MLA KV and adds 16 GiB native host offload; it was not loaded.
+- Requested context targets were non-monotonic against API-reported prompt
+  tokens. Capacity claims therefore use only the reported actual size, and a
+  harness-integrity ticket remains open.
 
 The r16 revision has `functional`, `capacity`, and bounded `quality` evidence:
 
@@ -218,8 +241,17 @@ concurrency parity with the recorded r16 artifact (520 vs 513.5 aggregate
 tok/s). All r16-labeled performance figures on this page predate the image
 upgrade.
 
-The 1M profiles are experimental only. Remaining gates include restoring a
-policy-compliant reserve, sustained multi-turn high/max testing, fixing and
+2026-08-10 r33 quality control: the exact released checkpoint passed the
+target-only/no-spec 131K control on a digest-pinned r33 B12X runtime. The
+largest validated request contained 119,503 actual prompt tokens. The
+quality-first 393K candidate keeps FP8 KV and adds host capacity rather than
+introducing NVFP4 KV before a matched quality A/B. No route or promotion
+changed.
+
+The 1M profiles are experimental only. The current exclusive AI-only policy
+has no separate video-workload reserve gate; the historical 3 GiB reserve
+failures below remain point-in-time evidence from mixed-use policy. Remaining
+gates include sustained multi-turn high/max testing, fixing and
 requalifying the client-shaped 1M B12X workspace failure, and pinned 0731 NVFP4
 W4A16/W4A4 comparisons.
 
@@ -242,6 +274,8 @@ Both r16 profiles fail the 3 GiB reported-free reserve. Per-context sampling
 found only 1,179-1,203 MiB free on `dark-compute-a` and 2,031 MiB on
 `dark-compute-b`. WSL/WDDM global allocation differs from native Linux, but a
 successful request does not authorize silently weakening the gate.
+That gate was tied to mixed graphics/video operation and is not part of the
+2026-08-10 exclusive AI-only r33 acceptance policy.
 
 Moving Windows display output to the AMD iGPU allowed the previously failing
 maxseq16 graph envelope to start. The 650K profile reported only 797/805 MiB
@@ -275,6 +309,8 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
+- [2026-08-10 r33 target-only quality control](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md)
+- [2026-08-10 community configuration refresh](../../findings/2026-08-10-deepseek-v4-flash-0731-community-config-refresh.md)
 - [2026-08-07 vision-adapter (NVFP4) first load](../../findings/2026-08-07-deepseek-0731-vision-nvfp4-sglang-first-load.md)
 - [2026-08-03 context, agentic-recovery, and SWE-bench smoke](../../findings/2026-08-03-deepseek-context-agentic-swe-smoke.md)
 - [2026-08-02 650K/1M Pi qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md)
