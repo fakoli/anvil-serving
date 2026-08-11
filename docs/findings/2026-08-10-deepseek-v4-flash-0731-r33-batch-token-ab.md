@@ -5,8 +5,9 @@
 **Evidence:** `external-prior`, local `functional`, `capacity`, and bounded
 `performance`
 
-**Decision:** keep the 4,096-token candidate live and direct-only; use it as
-the basis for the next GPU-only 393K qualification arm; `no-promotion`
+**Decision:** the 4,096-token candidate was healthy and direct-only at campaign
+close; use it as the basis for the next GPU-only 393K qualification arm;
+`no-promotion`
 
 ## Outcome
 
@@ -91,7 +92,7 @@ the near-doubling of reported KV tokens. The mismatch between +4.715% KV bytes
 and +94.861% reported tokens is retained explicitly rather than normalized
 away.
 
-## Next qualification arm and live state
+## Next qualification arm and campaign closeout
 
 The next clean experiment is GPU-only: 393,216 configured tokens,
 `max_num_seqs=1`, batch 4,096, FP8 DS-MLA KV, target-only, and zero host
@@ -100,11 +101,12 @@ then process an actual prompt above 300,000 tokens and pass post-probe
 functional checks. If that fails, the already prepared native-offload path
 remains the fallback rather than the first variable.
 
-The 4,096/131K candidate was returned to healthy exclusive TP=2 ownership and
-left running for follow-up. A post-reload smoke, JSON, 3/3 typed-tool, and
-tool-result-continuation gate passed, and shared-memory inspection found zero
-reclaimable files. It remains direct-only. No router alias, promoted
-assignment, or rollback contract changed.
+At campaign close, the 4,096/131K candidate was healthy in exclusive TP=2. A
+post-reload smoke, JSON, 3/3 typed-tool, and tool-result-continuation gate
+passed, and shared-memory inspection found zero reclaimable files. It was
+direct-only at that boundary; the post-session owner and operating mode remain
+private operator state. No router alias, promoted assignment, or rollback
+contract changed.
 
 The sanitized machine-readable comparison is
 [comparison.json](2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab-evidence/comparison.json).

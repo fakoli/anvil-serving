@@ -2,16 +2,13 @@
 
 ## Current status and review date
 
-The 2026-08-02 public record documents human approval of the r16 B12X TP=2
-DSpark K5 recipe for `llm.primary` at 650,000 served tokens, 4,096-token
-batching, 16 admitted sequences, and a router-enforced 32,768-token output cap.
-That envelope passed ~640K retrieval, the complete low-reasoning Pi protocol
-gate, a matched 32K c1 run at 141.6 tok/s median decode, and high-reasoning
-smokes from Pi on Fakoli Dark, Pi on Fakoli Mini, and OpenClaw on Fakoli Mini.
-Later public records document a 262,144-token retune and an r27 image upgrade;
-the active operator assignment is intentionally not asserted here. The former
-1M/maxseq16 candidate remains capacity evidence: two real agent request shapes
-fatally exceeded the locked B12X workspace.
+The 2026-08-11 public record documents human approval of the r33 B12X TP=2
+DSpark K5 recipe for `llm.primary` at 393,216 tokens, 4,096-token batching,
+and 16 admitted sequences. It passed a direct 359,900-actual-token request,
+exact managed routing, and OpenClaw/Hermes client requests after both clients
+were aligned to 393,216 context, 32,768 output, and high reasoning.
+The legacy routed nominal-320K needle failed closed because its byte estimate
+exceeded 393,216, so routed, OpenClaw, and Hermes >300K remain open qualification items.
 
 A derived WSL2 image now also qualifies native CPU KV offload at a 262,144
 served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
@@ -21,9 +18,10 @@ recipe. A digest-pinned r33 target-only control subsequently qualified the same
 checkpoint at a 131,072-token envelope and reached 119,503 actual prompt
 tokens. A matched batch-token A/B then reduced profiled activation memory by
 34.1% and increased minimum-rank KV allocation by 0.72 GiB while retaining
-the same functional and 119,503-token capacity gates. Its reported 553,243 KV
-tokens remain an engine estimate rather than >300K request proof. Review date:
-2026-08-10.
+the same functional and 119,503-token capacity gates. The promoted DSpark arm
+reported 725,543 GPU KV tokens and passed 238,507-, 339,310-, and
+359,900-actual-token direct requests without host offload. Review date:
+2026-08-11.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
 not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
@@ -83,10 +81,20 @@ JIT, and temporary build data use named Docker volumes.
 - [r33 target-only 131K recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-131k-recipe.toml)
 - [r33 target-only 131K batch-4096 control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-batch4096-131k-recipe.toml)
 - [r33 quality-first 393K candidate](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-393k-recipe.toml)
+- [r33 promoted DSpark 393K recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-393k-recipe.toml)
 - [r33 quality-control qualification](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md)
 - [r33 batch-token A/B](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md)
+- [r33 393K Primary promotion](../../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md)
 
 ## Evidence by measurement class
+
+The promoted r33 DSpark profile adds `functional`, `capacity`, and bounded
+`quality` evidence: exact managed routing passed, the direct context ladder
+reached 359,900 actual prompt tokens, and OpenClaw/Hermes client-path requests
+passed after safe gateway restarts. It uses FP8 DS-MLA KV with no host
+offload and reported 725,543 GPU KV tokens. Routed, OpenClaw, and Hermes >300K remain
+unproven because the legacy routed needle generated a conservative 450,028-
+token admission estimate and failed 413.
 
 The r33 target-only control adds `functional`, `capacity`, and bounded
 `quality` evidence on the same released checkpoint:
@@ -262,9 +270,16 @@ quality-first 393K candidate keeps FP8 KV and adds host capacity rather than
 introducing NVFP4 KV before a matched quality A/B. No route or promotion
 changed.
 
+2026-08-11 r33 393K promotion: after human approval, the GPU-only DSpark K5
+profile became `llm.primary`. Direct capacity reached 359,900 actual prompt
+tokens; OpenClaw and Hermes were updated/restarted at 393,216 context,
+32,768 output, and high reasoning.
+The managed split restoration group is Agents-A1 plus Omni; Qwen was not
+started. Routed/OpenClaw/Hermes >300K and SWE scoring remain open.
+
 2026-08-10 batch-token A/B: the otherwise matched 4,096-token arm reduced
 profiled activation pressure, increased GPU KV allocation, passed the same
-bounded gates, and was left healthy/direct-only. It is the preferred basis
+bounded gates, and was healthy/direct-only at campaign close. It is the preferred basis
 for a GPU-only 393K experiment, but no route or promotion changed and no
 request above 300K has yet run.
 
@@ -329,6 +344,7 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
+- [2026-08-11 r33 393K Primary promotion](../../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md)
 - [2026-08-10 r33 batch-token A/B](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md)
 - [2026-08-10 r33 target-only quality control](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md)
 - [2026-08-10 community configuration refresh](../../findings/2026-08-10-deepseek-v4-flash-0731-community-config-refresh.md)
