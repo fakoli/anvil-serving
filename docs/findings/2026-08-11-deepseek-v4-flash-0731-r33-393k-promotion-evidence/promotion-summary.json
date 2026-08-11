@@ -1,0 +1,135 @@
+{
+  "schema": "anvil-serving-benchmark-evidence/v1",
+  "captured_at": "2026-08-11",
+  "evidence_labels": ["functional", "capacity", "quality"],
+  "decision": "current",
+  "model": {
+    "source": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "served_name": "deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-tp2-393k"
+  },
+  "runtime": {
+    "image_digest": "sha256:fdde59fed7f9fc12f9fd5ef1b3b3ea8d5097bf10ebad54b348497102c3a83f82",
+    "quantization": "B12X W4A8 mixed NVFP4-MoE/FP8",
+    "kv_cache_dtype": "FP8 DS-MLA",
+    "speculative_decode": "DSpark fixed probabilistic K5",
+    "tensor_parallel_size": 2,
+    "context_tokens": 393216,
+    "max_num_seqs": 16,
+    "max_num_batched_tokens": 4096,
+    "gpu_memory_utilization": 0.975,
+    "kv_offload_gib": 0,
+    "reported_gpu_kv_tokens": 725543,
+    "reported_full_context_concurrency": 1.845
+  },
+  "hardware": {
+    "host_label": "Fakoli Dark",
+    "gpus": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q, 96 GB each",
+    "interconnect": "PCIe without NVLink",
+    "mode": "dual-gpu-exclusive"
+  },
+  "direct_capacity": {
+    "largest_actual_prompt_tokens": 359900,
+    "ttft_seconds": 65.2,
+    "effective_prefill_tokens_per_second": 5599,
+    "output_tokens": 158,
+    "post_probe_functional_gate": "pass"
+  },
+  "routed_preflight": {
+    "smoke": "pass",
+    "json": "pass",
+    "typed_tools": "3/3 pass",
+    "streaming_tools": "pass",
+    "tool_result_continuation": "pass",
+    "responses_api": "pass",
+    "legacy_nominal_320k_needle": "fail_http_413",
+    "legacy_needle_bytes": 1800115,
+    "router_fail_closed_estimate_tokens": 450028,
+    "reasoning_evidence_required": "fail_on_trivial_prompts",
+    "interpretation": "The legacy byte-based needle exceeded the configured 393216-token admission estimate. Routed over-300K capacity requires the calibrated context job; this failure does not negate the direct 359900-token pass."
+  },
+  "openclaw": {
+    "version": "2026.7.1-2",
+    "provider_model": "anvil/llm.primary",
+    "configured_context_window_before": 262144,
+    "configured_context_window_after": 393216,
+    "configured_max_output_tokens_before": 8192,
+    "configured_max_output_tokens_after": 32768,
+    "config_validation": "pass",
+    "safe_gateway_restart": "pass",
+    "gateway_health_after_restart": "pass",
+    "basic_agent_run": {
+      "status": "pass",
+      "run_id": "2a0968e4-27b6-4652-a32e-dd466f3b6887",
+      "provider": "anvil",
+      "model": "llm.primary",
+      "context_token_budget": 393216,
+      "fallback_used": false
+    },
+    "tool_loop": {
+      "status": "pass",
+      "run_id": "df38095f-1029-4d62-9ac3-ca7368e6d6d4",
+      "tool_action_audit": "started_and_succeeded",
+      "fallback_used": false
+    },
+    "corrected_budget_smoke": {
+      "status": "pass",
+      "session_key": "agent:main:config-393k-32k-smoke-20260811",
+      "expected_text": "OPENCLAW_393K_32K_READY",
+      "observed_text": "OPENCLAW_393K_32K_READY",
+      "thinking": "high",
+      "context_token_budget": 393216,
+      "gateway_config_audit": "pass",
+      "gateway_rpc_health": "pass"
+    }
+  },
+  "hermes": {
+    "version": "0.20.0",
+    "provider": "custom",
+    "model": "llm.primary",
+    "configured_context_window_before": 262144,
+    "configured_context_window_after": 393216,
+    "configured_max_output_tokens_before": null,
+    "configured_max_output_tokens_after": 32768,
+    "reasoning_effort_before": "none",
+    "reasoning_effort_after": "high",
+    "active_sessions_before_restart": 0,
+    "gateway_restart": "pass",
+    "operator_upgrade_restart": {
+      "settings_preserved": true,
+      "gateway_state_immediately_after_upgrade": "unloaded",
+      "supported_gateway_start": "pass",
+      "launchd_supervision_after_start": "pass",
+      "auto_start_and_restart": true
+    },
+    "one_shot_smoke": {
+      "status": "pass",
+      "expected_text": "HERMES_393K_32K_HIGH_READY",
+      "observed_text": "HERMES_393K_32K_HIGH_READY",
+      "api_calls": 1
+    },
+    "post_upgrade_smoke": {
+      "status": "pass",
+      "expected_text": "HERMES_POST_UPGRADE_393K_32K_HIGH_READY",
+      "observed_text": "HERMES_POST_UPGRADE_393K_32K_HIGH_READY",
+      "api_calls": 1
+    }
+  },
+  "remote_swe_smoke": {
+    "worker": "remote benchmark worker",
+    "controller_version": "0.33.1",
+    "status": "not_submitted",
+    "blocker": "profile_unavailable: benchmark profile cannot be loaded",
+    "root_cause": "The installed wheel does not include repository-level configs/benchmarks profile JSON files."
+  },
+  "known_product_gaps": [
+    ".tickets/2026-08-11-exclusive-promotion-preflight-and-recovery.md",
+    ".tickets/2026-08-11-benchmark-profiles-missing-from-installed-wheel.md"
+  ],
+  "publication_safety": {
+    "private_addresses": false,
+    "gpu_uuids": false,
+    "operator_paths": false,
+    "credentials": false
+  }
+}

@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-02.**
+**Last evidence review: 2026-08-11.**
 
 ## Start with the numbers
 
@@ -44,28 +44,29 @@ commands; it does not claim a live model result by itself.
 
 ## Production aliases and recent controls
 
-1. **DeepSeek V4 Flash 0731 r16 DSpark K5** — `current` exclusive TP=2 text
-   Primary at 650K, high reasoning by default, with a 32,768 output cap.
-2. **Qwen3.5 122B A10B NVFP4** — immediate managed `rollback`.
-3. **Agents-A1 official FP8** — previous multimodal Primary; thinking disabled.
-4. **Laguna S 2.1 NVFP4** — additional managed `rollback`.
-5. **GPT-OSS Puzzle 88B** — additional pinned `rollback`; repeated strict
-   unified-diff formatting passed only 2/3.
-6. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
+1. **DeepSeek V4 Flash 0731 r33 DSpark K5** — `current` exclusive TP=2 text
+   Primary at 393,216 tokens, 16 sequences, and 4,096-token batching.
+2. **Qwen3.5 122B A10B NVFP4** — retained qualified recipe, but not started or
+   selected by this promotion's restoration contract.
+3. **Agents-A1 official FP8 plus the Omni stack** — declared managed split
+   restoration group for leaving the exclusive profile.
+4. **DeepSeek r16 650K** — prior Primary and retained historical capacity
+   evidence. **Laguna S 2.1 NVFP4** and **GPT-OSS Puzzle 88B** are additional
+   rollback-era recipes, not this profile's immediate restoration contract.
+5. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
    controls, not the current rollback order.
-7. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
+6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
 
-The 2026-08-01 dual-PRO campaign itself did not reroute production. On
-2026-08-02, after the separate human gate and client verification, the 650K
-DeepSeek profile became Primary. It passed 640K retrieval, the complete Pi
-protocol gate, Dark and Mini Pi smokes, and a Mini OpenClaw high-reasoning smoke.
-The 1M/maxseq16 profile was removed after two fatal real-client B12X workspace
-failures; even a 5,120 output cap did not protect its 19,118-token Pi prompt.
-The 650K deployment explicitly waives the 3 GiB free-VRAM policy and is valid
-only as a single-user exclusive TP=2 serve. See the
+On 2026-08-11, after a separate human gate, the r33 393K profile became
+Primary. It passed exact managed routing, a direct 359,900-actual-token request,
+and OpenClaw/Hermes client paths after both were aligned to 393,216 context,
+32,768 output, and high reasoning. The legacy routed
+nominal-320K needle was conservatively estimated above the route limit and
+failed 413, so routed, OpenClaw, and Hermes >300K remain open rather than inferred from
+the direct result. See the
 [model dossier](models/deepseek-v4-flash.md) and
-[promotion record](../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md).
+[promotion record](../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md).
 
 ## How to read the evidence
 

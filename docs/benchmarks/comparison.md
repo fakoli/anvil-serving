@@ -50,10 +50,12 @@ dated finding before treating a row as a single experiment. Full rules:
 
 These rows used both 96 GB cards over PCIe without NVLink. Each candidate was
 the sole inference owner; ordinary split-mode, Omni, voice, router, and other
-model workloads were offline. The campaign changed no production alias.
+model workloads were offline. The original campaign changed no production
+alias; later rows record separately approved promotions.
 
 | Model / config | Status | Quant · KV | Served · validated context | Reasoning contract | First-output latency | Effective prefill | Completion rate · decode | Recipe |
 | --- | --- | --- | --- | --- | --- | ---: | --- | --- |
+| [DeepSeek V4 Flash 0731, r33 DSpark K5, 393K/maxseq16](models/deepseek-v4-flash.md) | `current` human-approved Primary | B12X W4A8 NVFP4 MoE / FP8 dense · FP8 DS-MLA KV | 393,216 · 359,900 actual tokens direct | high-reasoning quality prior; routed functional pass with retained reasoning-evidence caveat | 65.2 s TTFT @359,900 tok | 5,599 tok/s | direct capacity pass; OpenClaw/Hermes 393K/32K/high client paths pass; client >300K open | [pinned recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-393k-recipe.toml) |
 | [Qwen3.5 122B A10B NVFP4](models/qwen35-122b.md) | `no-promotion` TP=2; single-card profile remains `rollback` | ModelOpt NVFP4 · BF16 KV | 262,144 · 128K | off for matched gates | 2.32 s TTFT @29,804 tok; 14.59 s @125,444 tok | 12,821 / 8,570 tok/s | 12/12 @32K · 67.5 tok/s; 4/4 @128K · 65.0 tok/s | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
 | [Nemotron 3 Super 120B NVFP4](models/nemotron3-super-120b.md) | `no-promotion` | NVFP4 · FP8 KV · EP=2 | 65,536 · 60K | off for matched gates | 2.84 s TTFT @28,438 tok; 5.58 s @53,820 tok | 10,025 / 9,646 tok/s | 12/12 @32K · 59.5 tok/s; 4/4 @60K · 60.0 tok/s | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
 | [Laguna S 2.1 NVFP4](models/laguna-s-2.1.md) | `no-promotion` TP=2; single-card profile remains `rollback` | NVFP4 · FP8 KV | 262,144 · 240K | **must be off** | 1.97 s TTFT @29,834 tok; 31.85 s @231,457 tok | **15,134 / 7,252 tok/s** | 12/12 @32K · **70.9 tok/s**; 4/4 @240K · 66.0 tok/s | [campaign registry](https://github.com/fakoli/anvil-serving/blob/main/configs/tp2-model-campaign-recipes.toml) |
@@ -91,7 +93,9 @@ MiB in its separate run. After qualification, the 1M/maxseq16 profile also
 crashed on two real agent shapes: 703.64 and 687.83 MiB workspaces were required
 against 514.25 MiB available. The second used a 19,118-token Pi prompt and a
 5,120 output cap, so router output clamping is not a sufficient 1M mitigation.
-The 650K row is now the human-approved Primary and retains the reserve waiver.
+The r16 650K row is historical promotion/capacity evidence. The r33 393K row
+is now the human-approved Primary and uses the operator-approved AI-only policy
+without a separate video-workload reserve gate.
 
 The native-offload row uses a narrowly derived WSL2 image and a different
 262,144-token admission ceiling. Its cold 250K result is capacity evidence,
@@ -111,9 +115,9 @@ advisory only.
 
 | Model / config | Status | Quant · KV | Context · adm. | Thinking | TTFT | Output rate | Recipe |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [DeepSeek V4 Flash 0731, r16 DSpark K5, 650K/maxseq16](models/deepseek-v4-flash.md) | `current` exclusive TP=2 | B12X W4A8/FP8 · FP8 MLA KV | 650,000 · 16 seqs | high default; low/high/max selectable | 2.66 s TTFO; 5.46 s visible TTFT @32K | 141.6 tok/s median decode @32K/c1 | [promotion](../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md) |
-| [Agents-A1 official FP8 multimodal](models/agents-a1.md) | previous Primary | compressed-tensors FP8 · FP8 KV | 262,144 · c1 | **must be off** | 0.25 / 0.53 s @8K c1 · 32.97 / 33.44 s @231K c1 | 188.1 tok/s decode @8K · 155.8 tok/s decode @231K | [promotion](../findings/2026-07-29-agents-a1-primary-promotion.md) |
-| [Qwen3.5 122B A10B NVFP4](models/qwen35-122b.md) | `rollback` | ModelOpt NVFP4 · **BF16 KV** | 262,144 · c1 | default **on**, per-request disable | 0.15 / 0.26 s p50/p95 @8K c1 · 68.91 s @231K, c1 matched lane | 60.3 tok/s decode @231K · 59.45 `agg` @8K c1 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml) |
+| [DeepSeek V4 Flash 0731, r33 DSpark K5, 393K/maxseq16](models/deepseek-v4-flash.md) | `current` exclusive TP=2 | B12X W4A8/FP8 · FP8 DS-MLA KV | 393,216 · 16 seqs | high-reasoning client path | 65.2 s TTFT @359,900 actual tok | 5,599 tok/s effective prefill | [promotion](../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md) |
+| [Qwen3.5 122B A10B NVFP4](models/qwen35-122b.md) | retained qualified recipe; not immediate restore | ModelOpt NVFP4 · **BF16 KV** | 262,144 · c1 | default **on**, per-request disable | 0.15 / 0.26 s p50/p95 @8K c1 · 68.91 s @231K, c1 matched lane | 60.3 tok/s decode @231K · 59.45 `agg` @8K c1 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml) |
+| [Agents-A1 official FP8 multimodal](models/agents-a1.md) plus Omni | managed split restoration | compressed-tensors FP8 · FP8 KV | 262,144 · c1 | **must be off** | 0.25 / 0.53 s @8K c1 · 32.97 / 33.44 s @231K c1 | 188.1 tok/s decode @8K · 155.8 tok/s decode @231K | [promotion-era evidence](../findings/2026-07-29-agents-a1-primary-promotion.md) |
 | [Laguna S 2.1 NVFP4](models/laguna-s-2.1.md) | `rollback` | NVFP4 · FP8 KV | 262,144 | **must be off** | 0.07 / 0.55 s @c1 · 3.44 / 4.37 s @c8 · quality ctx 2.26 / 21.15 / 50.64 s @32K/128K/240K | 75.46 `agg` @c1 · 83.24 `agg` @c8 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L1229) |
 | [GPT-OSS Puzzle 88B](models/gpt-oss-puzzle-88b.md) | `rollback` | MXFP4 + Marlin MoE · FP8 KV | 131,072 · 8 seqs | `reasoning_effort` (`low` for gates) | 0.393 / 0.956 s @8K c1 · 0.766 / 1.075 s @8K c8 · 25.906 s @128K | 3.85 / 17.85 `agg` — **only 20 / 86 output tokens; not a decode rate** | [full recipe](gpt-oss-puzzle-88b-recipe.md) |
 
