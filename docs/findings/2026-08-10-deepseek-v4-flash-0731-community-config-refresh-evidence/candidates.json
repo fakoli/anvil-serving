@@ -1,0 +1,1011 @@
+{
+  "schema": "anvil-serving-community-recipe-research/v1",
+  "subject": "DeepSeek V4 Flash 0731 community configuration refresh",
+  "captured_at": "2026-08-10",
+  "campaign_kind": "discovery-and-decision-support-only",
+  "checkpoint": {
+    "repository": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "substitution_allowed": false
+  },
+  "local_mutations": {
+    "model_downloads": false,
+    "container_pulls": false,
+    "serve_lifecycle_changes": false,
+    "router_or_mode_changes": false,
+    "live_benchmarks": false,
+    "promotion_changes": false
+  },
+  "recorded_baseline": {
+    "evidence_date": "2026-08-02",
+    "profile_role": "human-approved recorded Primary profile; not re-observed live in this campaign",
+    "runtime_line": "gilded-gnosis-v20 r16",
+    "tensor_parallel_size": 2,
+    "data_parallel_size": 1,
+    "quantization": "B12X W4A8; NVFP4 MoE and dense FP8",
+    "kv_cache": "FP8 DS-MLA",
+    "speculative_decoding": "DSpark fixed K5",
+    "max_model_len": 650000,
+    "max_num_seqs": 16,
+    "max_num_batched_tokens": 4096,
+    "gpu_memory_utilization": 0.975,
+    "cpu_kv_offload": "disabled",
+    "promotion_state_after_campaign": "unchanged"
+  },
+  "hardware_targets": [
+    {
+      "id": "dual-rtx-pro-6000",
+      "topology": "two equal discrete RTX PRO 6000 Blackwell Max-Q GPUs, TP=2 over PCIe, no NVLink",
+      "translation_constraints": [
+        "Aggregate VRAM is TP-sharded capacity, not unified memory.",
+        "DGX Spark RoCE and unified-memory controls are not copied directly.",
+        "WSL2 native host/file KV offload requires managed mmap lifecycle proof.",
+        "Exclusive AI-only qualification has no separate video-workload VRAM reserve gate; both-card memory use, startup stability, and endpoint health are still measured."
+      ]
+    },
+    {
+      "id": "dual-dgx-spark",
+      "topology": "two GB10 DGX Spark systems, TP=2 over an explicitly selected RoCE path",
+      "translation_constraints": [
+        "CPU offload does not create a separate capacity tier from unified system memory.",
+        "NIC, socket, and GID selection are deployment-owned values and are omitted here.",
+        "One-million-token profiles require explicit operating-system and startup headroom."
+      ]
+    }
+  ],
+  "evidence_policy": {
+    "labels": {
+      "external-creator-measurement": "Measured by a recipe or runtime creator on external hardware; not locally reproduced.",
+      "community-report": "Self-reported community result without complete independent reproduction.",
+      "official-upstream-change": "Auditable upstream code or merged pull request; hardware applicability still requires qualification.",
+      "social-discovery": "Announcement or discussion used to discover a stronger primary source."
+    },
+    "promotion_rule": "No candidate can be promoted without a pinned managed recipe, local dual-PRO qualification where applicable, independent protocol and quality gates, recorded memory and stability evidence, rollback, and human approval."
+  },
+  "candidate_count": 11,
+  "candidates": [
+    {
+      "id": "pro-r33-k5-131k-auto-allreduce",
+      "title": "Pinned r33 K5 with automatic FlashInfer PCIe IPC all-reduce",
+      "target_hardware": ["dual-rtx-pro-6000"],
+      "evidence_label": "external-creator-measurement",
+      "decision_action": "compatibility-spike",
+      "priority": 1,
+      "source_ids": ["src-r33-doc", "src-r33-validation", "src-vllm-46995"],
+      "configuration": {
+        "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+        "image": "voipmonitor/vllm:gilded-gnosis-v20-vllmfa13d33-b12x06db0f4-fi1ac6942-cu132-20260809-r33",
+        "image_digest": "sha256:fdde59fed7f9fc12f9fd5ef1b3b3ea8d5097bf10ebad54b348497102c3a83f82",
+        "tensor_parallel_size": 2,
+        "decode_context_parallel_size": 1,
+        "quantization": "B12X W4A8; NVFP4 MoE and dense FP8",
+        "kv_cache": "FP8 DS-MLA",
+        "speculative_decoding": "DSpark fixed K5",
+        "max_model_len": 131072,
+        "max_num_seqs": 16,
+        "max_num_batched_tokens": 8192,
+        "gpu_memory_utilization": 0.975,
+        "allreduce_mode": "auto; source selects FlashInfer PCIe IPC at TP=2",
+        "remote_push": false,
+        "graph_mode": "auto",
+        "instant_tensor_mode": "BUFFERED"
+      },
+      "reported_results": {
+        "hardware_scope": "external native-Linux multi-GPU host; not the Anvil Serving dual-PRO WSL2 host",
+        "c1_decode_tokens_per_second": 180.6,
+        "c4_aggregate_decode_tokens_per_second": 397.1,
+        "c8_aggregate_decode_tokens_per_second": 580.7,
+        "prefill_8k_tokens_per_second": 12849,
+        "comparison_warning": "Creator methodology and prompts are not matched to the recorded local r16 campaign."
+      },
+      "applicability_to_dual_pro": "Direct architecture and PCIe topology candidate, subject to SM120/WSL2 compatibility and measured memory/stability proof.",
+      "known_gaps": [
+        "No local managed-recipe translation or WSL2 startup result.",
+        "No matched r16 versus r33 comparison.",
+        "No independent Anvil agent-protocol or long-context quality result."
+      ],
+      "required_local_gates": [
+        "Managed recipe load/status/log/unload path with exact digest.",
+        "Matched r16/r33 C1, C4, C8, prefill, both-card memory use, and endpoint health.",
+        "Tool translation, structured output, consecutive-assistant history, and tool-result recovery.",
+        "Same-image target-only control and restoration proof."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "pro-r33-k5-131k-b12x-allreduce",
+      "title": "Pinned r33 K5 with forced B12X all-reduce",
+      "target_hardware": ["dual-rtx-pro-6000"],
+      "evidence_label": "external-creator-measurement",
+      "decision_action": "benchmark",
+      "priority": 2,
+      "source_ids": ["src-r33-doc", "src-r33-validation"],
+      "configuration": {
+        "inherits": "pro-r33-k5-131k-auto-allreduce",
+        "allreduce_mode": "b12x forced",
+        "remote_push": false
+      },
+      "reported_results": {
+        "summary": "The r33 source retains B12X as an override and does not establish a universal winner over automatic FlashInfer PCIe IPC."
+      },
+      "applicability_to_dual_pro": "One-variable control for the direct dual-PRO candidate.",
+      "known_gaps": [
+        "No matched local PCIe A/B.",
+        "Remote-push optimization has not shown a consistent benefit and remains disabled."
+      ],
+      "required_local_gates": [
+        "Hold every field except all-reduce implementation constant.",
+        "Capture C1/C4/C8 decode, prefill, NCCL/IPC logs, CPU load, both-card memory use, and endpoint health."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "pro-r33-target-only-control",
+      "title": "Pinned r33 target-only no-speculative-decoding control",
+      "target_hardware": ["dual-rtx-pro-6000"],
+      "evidence_label": "external-creator-measurement",
+      "decision_action": "control",
+      "priority": 3,
+      "source_ids": ["src-r33-doc", "src-r33-validation"],
+      "configuration": {
+        "inherits": "pro-r33-k5-131k-auto-allreduce",
+        "runtime_mode": "dspark-mtp0",
+        "speculative_decoding": "disabled"
+      },
+      "reported_results": {
+        "summary": "The source provides target-only modes; this record does not derive a performance delta from non-matched rows."
+      },
+      "applicability_to_dual_pro": "Required independent control for every K5 qualification.",
+      "known_gaps": ["No matched local r33 K5 versus target-only result."],
+      "required_local_gates": [
+        "Use identical prompt corpus, sampling, context, graph, all-reduce, and concurrency.",
+        "Compare accepted-token behavior, visible-answer correctness, latency, throughput, memory use, and endpoint health."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "pro-r33-native-l1-l2-500k",
+      "title": "Pinned r33 native host-L1 and file-L2 offload at 500K",
+      "target_hardware": ["dual-rtx-pro-6000"],
+      "evidence_label": "external-creator-measurement",
+      "decision_action": "conditional-compatibility-spike",
+      "priority": 4,
+      "source_ids": ["src-r33-doc", "src-r33-validation"],
+      "configuration": {
+        "inherits": "pro-r33-k5-131k-auto-allreduce",
+        "max_model_len": 500000,
+        "max_num_batched_tokens": 4096,
+        "native_host_l1_gib": 16,
+        "native_file_l2": "bounded deployment-owned filesystem path",
+        "tiered_offload": true
+      },
+      "reported_results": {
+        "summary": "The r30-r33 source line reports repaired native tiered-offload final-store lifecycle and a 500K/C256 stress case completing 1792 of 1792 requests."
+      },
+      "applicability_to_dual_pro": "Structurally relevant because host RAM is distinct from discrete GPU VRAM, but WSL2 mapping and managed cleanup differ from native Linux.",
+      "known_gaps": [
+        "The external stress result is not a 500K coding-quality result.",
+        "Anvil Serving absent-container cleanup and WSL2 mmap behavior require bounded regression proof before use."
+      ],
+      "required_local_gates": [
+        "Pass managed absent-container and two-scan shared-memory cleanup regression.",
+        "Snapshot shared-memory ownership before and after unload and failure.",
+        "Prove cold long-context capacity, CPU-to-GPU reload counters, stable memory ownership, and answer quality."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "pro-community-c24-256k-offload128",
+      "title": "Community dual-PRO 256K, C24, 128 GiB CPU KV offload lead",
+      "target_hardware": ["dual-rtx-pro-6000"],
+      "evidence_label": "community-report",
+      "decision_action": "watch",
+      "priority": 8,
+      "source_ids": ["src-reddit-dual-pro-c24", "src-reddit-dual-pro-discussion"],
+      "configuration": {
+        "model_revision": "not published",
+        "runtime_revision": "not published",
+        "tensor_parallel_size": 2,
+        "max_model_len": 256000,
+        "max_num_seqs": 24,
+        "reported_kv_pool_tokens": 482004,
+        "cpu_kv_offload_gib": 128
+      },
+      "reported_results": {
+        "hardware_scope": "community dual RTX PRO 6000 native-Linux report",
+        "c1_decode_tokens_per_second_range": [209, 286],
+        "c4_per_user_decode_tokens_per_second": 138,
+        "c8_per_user_decode_tokens_per_second": 111,
+        "c16_per_user_decode_tokens_per_second": 75,
+        "c24_per_user_decode_tokens_per_second": 57,
+        "c24_aggregate_decode_tokens_per_second_approximate": 1000,
+        "single_retrieval_tokens_reported": 543000
+      },
+      "applicability_to_dual_pro": "Hardware-similar concurrency lead, but insufficiently pinned for execution or comparison.",
+      "known_gaps": [
+        "No immutable recipe, image digest, exact model revision, prompts, acceptance policy, or raw artifacts.",
+        "The reported 543K retrieval exceeds the stated 256K profile and needs configuration reconciliation."
+      ],
+      "required_local_gates": [
+        "Obtain an immutable recipe and reconcile effective context.",
+        "Start with a bounded C1/C4/C8/C16/C24 queueing test; do not copy unpinned offload flags.",
+        "Measure both-card memory use, host memory, mmap lifecycle, latency distribution, endpoint health, and answer acceptance."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "spark-tony-1m-nvfp4-k5",
+      "title": "Tony Dinh dual-Spark 1M NVFP4 KV K5 recipe",
+      "target_hardware": ["dual-dgx-spark"],
+      "evidence_label": "external-creator-measurement",
+      "decision_action": "benchmark",
+      "priority": 5,
+      "source_ids": ["src-tony-repo", "src-reddit-tony-roce", "src-nvidia-forum-tony"],
+      "configuration": {
+        "source_revision": "f277b3dfa718a5962bed64e69e7e640a5384ec2f",
+        "model_revision": "official FP8 0731 checkpoint; exact hash must be captured by a future managed translation",
+        "tensor_parallel_size": 2,
+        "max_model_len": 1048576,
+        "max_num_seqs": 6,
+        "max_num_batched_tokens": 8192,
+        "gpu_memory_utilization": 0.78,
+        "kv_cache": "NVFP4 DS-MLA",
+        "speculative_decoding": "K5",
+        "network": "explicit deployment-owned RoCE HCA, socket, and GID selection",
+        "required_patches": [
+          "cold-prefill garble fix",
+          "shared-expert loader fix"
+        ],
+        "second_engine_startup_timeout_seconds": 3600
+      },
+      "reported_results": {
+        "patch4_acceptance_percent_before": 25.7,
+        "patch4_acceptance_percent_after": 60.2,
+        "patch4_mean_generation_tokens_per_second_before": 32.7,
+        "patch4_mean_generation_tokens_per_second_after": 55.4,
+        "warning": "Creator reports the effect as content dependent."
+      },
+      "applicability_to_dual_pro": "Patch and K5 behavior are research leads; RoCE binding, unified-memory reserve, and Spark container assumptions do not transfer to PCIe-attached discrete GPUs.",
+      "known_gaps": [
+        "External repository includes deployment-specific network examples that are intentionally omitted.",
+        "No local Anvil managed recipe or independent quality result."
+      ],
+      "required_local_gates": [
+        "Replace network values with manifest-owned deployment settings.",
+        "Pin the model revision and image digest.",
+        "Test cold-prefill, agent history, continuous batching, one-million-token reserve, and node-failure recovery."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "spark-mia-1m-regular-graphs",
+      "title": "MiaAI dual-Spark 1M regular-graph variant",
+      "target_hardware": ["dual-dgx-spark"],
+      "evidence_label": "external-creator-measurement",
+      "decision_action": "benchmark",
+      "priority": 6,
+      "source_ids": ["src-mia-repo"],
+      "configuration": {
+        "source_revision": "a4ce87a2a73a22358eae3f9d07e8e06db87f8cee",
+        "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+        "image": "ghcr.io/anemll/dspark-vllm-gx10:0.1.1",
+        "image_digest": null,
+        "image_pin_status": "mutable tag; digest required before execution",
+        "tensor_parallel_size": 2,
+        "max_model_len": 1048576,
+        "max_num_seqs": 6,
+        "max_num_batched_tokens": 8192,
+        "gpu_memory_utilization": 0.8,
+        "kv_cache": "NVFP4 DS-MLA",
+        "speculative_decoding": "K5",
+        "breakable_cuda_graph": false,
+        "graph_interpretation": "regular graphs"
+      },
+      "reported_results": {
+        "c1_decode_tokens_per_second_before": 74.55,
+        "c1_decode_tokens_per_second_after": 95.9,
+        "c2_aggregate_decode_tokens_per_second_before": 134.2,
+        "c2_aggregate_decode_tokens_per_second_after": 151.8,
+        "c4_aggregate_decode_tokens_per_second": 263.7,
+        "c6_aggregate_decode_tokens_per_second": 340.5,
+        "long_request_tokens_completed": 900000
+      },
+      "applicability_to_dual_pro": "Graph-mode hypothesis is testable, but the numbers and unified-memory reserve are Spark-specific.",
+      "known_gaps": [
+        "Container is not content-addressed in the public recipe.",
+        "No independent reproduction or matched agent-quality A/B."
+      ],
+      "required_local_gates": [
+        "Resolve the mutable image tag to an approved digest.",
+        "Compare regular and breakable graphs with the same prompts and effective graph capture.",
+        "Capture startup time, fallback/graph-break logs, reserve, decode, prefill, and agent correctness."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "spark-eugr-fp8-k5-mns8",
+      "title": "eugr dual-Spark FP8 KV K5 control recipe",
+      "target_hardware": ["dual-dgx-spark"],
+      "evidence_label": "community-report",
+      "decision_action": "control-watch",
+      "priority": 7,
+      "source_ids": ["src-eugr-recipe"],
+      "configuration": {
+        "source_revision": "e5f3cf9e5320d9a424966a801570bf452405d122",
+        "tensor_parallel_size": 2,
+        "gpu_memory_utilization": 0.85,
+        "max_model_len": "auto; effective value must be recorded",
+        "max_num_seqs": 8,
+        "max_num_batched_tokens": 8192,
+        "kv_cache": "FP8",
+        "speculative_decoding": "K5",
+        "block_size": 256,
+        "graph_mode": "FULL_AND_PIECEWISE",
+        "graph_capture_cap": 64,
+        "instant_tensor": true,
+        "quantization": "B12X"
+      },
+      "reported_results": {
+        "summary": "The public recipe does not attach a matched 0731 performance or quality result."
+      },
+      "applicability_to_dual_pro": "Useful FP8-KV control and simpler flag inventory; Spark architecture and auto-context assumptions still require translation.",
+      "known_gaps": [
+        "No exact effective context, image digest, matched measurement, or long-context reserve.",
+        "High reasoning is a mutable application default rather than a benchmark-controlled parameter."
+      ],
+      "required_local_gates": [
+        "Render and record every auto-derived value before execution.",
+        "Pin image and model revisions.",
+        "Use the same FP8-versus-NVFP4 prompt corpus, context, and acceptance gate."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "spark-team-200k-c16",
+      "title": "Dual-Spark 200K, C16 team-throughput lane",
+      "target_hardware": ["dual-dgx-spark"],
+      "evidence_label": "community-report",
+      "decision_action": "benchmark",
+      "priority": 9,
+      "source_ids": ["src-tony-repo", "src-mia-repo", "src-reddit-tony-roce"],
+      "configuration": {
+        "derivation": "bounded comparison lane derived from the maintained dual-Spark recipe family",
+        "tensor_parallel_size": 2,
+        "max_model_len": 200000,
+        "max_num_seqs": 16,
+        "max_num_batched_tokens": 8192,
+        "kv_cache": "NVFP4 DS-MLA",
+        "speculative_decoding": "K5",
+        "required_patches": [
+          "cold-prefill garble fix",
+          "shared-expert loader fix",
+          "concurrency-safe verifier handling"
+        ]
+      },
+      "reported_results": {
+        "summary": "No source provides a complete matched 200K/C16 0731 result for this exact composite candidate."
+      },
+      "applicability_to_dual_pro": "The test shape is portable, but expected memory behavior and transport are not.",
+      "known_gaps": [
+        "Composite candidate, not a verbatim immutable upstream recipe.",
+        "No continuous-batching acceptance result under independent arrivals."
+      ],
+      "required_local_gates": [
+        "Write a new pinned managed recipe rather than combining source snippets at runtime.",
+        "Exercise independent arrival times, cancellation, cold prefill, mixed prompt lengths, and tool-result recovery.",
+        "Measure aggregate throughput, per-request decode, time-to-first-token, tail latency, reserve, and acceptance."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "pro-r33-quality-393k-fp8-target-only",
+      "title": "Dual-PRO r33 quality-first 393K FP8-KV target-only hypothesis",
+      "target_hardware": "two equal RTX PRO 6000 Blackwell Max-Q GPUs",
+      "evidence_label": "experiment-design",
+      "decision_action": "preferred first over-300K qualification arm",
+      "source_ids": ["src-r33-doc", "src-vllm-50684", "src-nvidia-modelopt-kv"],
+      "configuration": {
+        "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+        "runtime": "local-inference-lab r33 family",
+        "runtime_revision": "6c111c20c2bf2efec038e4daf14fc67030717e46",
+        "image": "voipmonitor/vllm@sha256:fdde59fed7f9fc12f9fd5ef1b3b3ea8d5097bf10ebad54b348497102c3a83f82",
+        "image_digest": "sha256:fdde59fed7f9fc12f9fd5ef1b3b3ea8d5097bf10ebad54b348497102c3a83f82",
+        "topology": "exclusive TP=2 over two discrete PCIe GPUs",
+        "quantization": "released mixed MXFP4 routed experts plus dense FP8",
+        "kv_cache": "FP8 DS-MLA",
+        "max_model_len": 393216,
+        "max_num_seqs": 1,
+        "max_num_batched_tokens": 4096,
+        "native_host_kv_offload_gib": 16,
+        "native_filesystem_l2": "disabled for the first qualification arm",
+        "video_workload_vram_reserve_mib_per_gpu": 0,
+        "hard_vram_reserve_gate": false,
+        "speculative_decoding": "disabled for the first quality/capacity arm",
+        "reasoning_effort": "low, high, and max fingerprints verified against the checkpoint encoder",
+        "graph_mode": "r33 automatic graph policy, with an eager fallback retained for diagnosis",
+        "all_reduce": "r33 automatic selection; do not add an all-reduce A/B until the quality arm passes"
+      },
+      "reported_results": {
+        "summary": "This exact 393,216-token r33 arm has not been run. The context point is an experiment design selected to exceed 300K while requiring materially less KV capacity than a 650K or 1M profile."
+      },
+      "applicability_to_dual_pro": "Direct target topology and checkpoint, but the new runtime/context combination remains unqualified under WSL2.",
+      "known_gaps": [
+        "No local r33 cold-capacity or stability result at 393,216 tokens.",
+        "No matched long-context coding-quality result at or above 300K.",
+        "The active vLLM reasoning-effort bug must be absent or patched before quality comparison."
+      ],
+      "required_local_gates": [
+        "Verify low/high/max prompt-token fingerprints before model-quality scoring.",
+        "Prove a cold prompt above 300K plus explicit output headroom, visible final answer, both-card memory sampling, and continued endpoint health.",
+        "Run target-only first, then add K5 as an otherwise-identical losslessness and acceptance A/B.",
+        "Run repeated coding, terminal, tool-result recovery, long-context retrieval, and context-rot cases before any performance tuning."
+      ],
+      "promotion_state": "no-change"
+    },
+    {
+      "id": "pro-auroter-w4a16-fp8kv-256k-quality-isolation",
+      "title": "Auroter exact-0731 NVFP4 W4A16 weights with FP8 KV quality-isolation arm",
+      "target_hardware": "RTX PRO 6000 Blackwell; published creator run used four cards, dual-card fit is unproven",
+      "evidence_label": "external-creator-measurement",
+      "decision_action": "precision challenger after the native-weight 393K control",
+      "source_ids": ["src-auroter-nvfp4", "src-nvidia-modelopt-kv"],
+      "configuration": {
+        "model": "auroter/DeepSeek-V4-Flash-0731-NVFP4",
+        "model_revision": "17e0f9da8257371654d458ba518659aa99954c86",
+        "runtime": "stock vLLM 0.26.0 in the creator report",
+        "topology": "published TP=4/SM120; translate to exclusive TP=2 before use",
+        "quantization": "NVFP4 routed-expert weights with native-dtype activations through the W4A16 Marlin path",
+        "kv_cache": "FP8",
+        "max_model_len": 262144,
+        "max_num_seqs": 1,
+        "speculative_decoding": "disabled for precision isolation"
+      },
+      "reported_results": {
+        "hardware": "four RTX PRO 6000 Blackwell Workstation Edition cards",
+        "perplexity": "5.160 and 5.182 for NVFP4 W4A16 versus 5.178 and 5.189 for source MXFP4 W4A16; creator attributes the spread to batching nondeterminism",
+        "throughput": "119.5 tok/s C1 and 661 tok/s C8 aggregate for W4A16; not a dual-card result",
+        "quality_note": "The same artifact's native W4A4 path measured 5.297 perplexity, about 2.5% higher, for a creator-reported 4-6% throughput gain."
+      },
+      "applicability_to_dual_pro": "Exact checkpoint and SM120 kernel-path evidence, but card count, fit, engine details, and maximum context differ from the target.",
+      "known_gaps": [
+        "Does not meet the requested over-300K context target as published.",
+        "No dual-card capacity, stability, or agent-quality result.",
+        "W4A16 weight evidence does not establish NVFP4 KV-cache quality."
+      ],
+      "required_local_gates": [
+        "First reproduce the 256K W4A16/FP8-KV arm against an otherwise-identical native-weight/FP8-KV control.",
+        "Reject W4A4 for the quality-first lane unless task-level gates show no meaningful regression.",
+        "Only attempt 393K after dual-card fit, memory stability, and lifecycle behavior are proven."
+      ],
+      "promotion_state": "no-change"
+    }
+  ],
+  "cross_cutting_findings": [
+    {
+      "id": "runtime-progression",
+      "finding": "r29-r33 adds verifier-concurrency, graph-capture, tiered-offload lifecycle, and PCIe IPC all-reduce changes that are more material than a single flag tweak.",
+      "source_ids": ["src-r33-doc", "src-r33-validation"]
+    },
+    {
+      "id": "k5-consensus",
+      "finding": "K5 is the common mixed-workload choice across r33 and the maintained dual-Spark recipes; K7 remains a conditional predictable-code experiment.",
+      "source_ids": ["src-r33-doc", "src-tony-repo", "src-mia-repo"]
+    },
+    {
+      "id": "topology-nontransfer",
+      "finding": "Dual-Spark unified memory and RoCE controls cannot be copied as dual-PRO WSL2 PCIe capacity or transport claims.",
+      "source_ids": ["src-reddit-spark-headroom", "src-reddit-tony-roce"]
+    },
+    {
+      "id": "protocol-gate",
+      "finding": "Consecutive-assistant histories, repeated tool rounds, malformed patch recovery, and visible-answer integrity remain mandatory independent gates.",
+      "source_ids": ["src-vllm-50686", "src-reddit-tool-use"]
+    },
+    {
+      "id": "weight-cache-precision-separation",
+      "finding": "NVFP4 weights and NVFP4 KV cache are independent decisions. NVIDIA's W4A4/W4A16 documentation leaves KV precision under vLLM's kv_cache_dtype, and NVIDIA's own adjacent-checkpoint NVFP4 recipe still uses FP8 KV.",
+      "source_ids": ["src-nvidia-modelopt-kv", "src-nvidia-nvfp4-preview"]
+    },
+    {
+      "id": "quality-first-precision-order",
+      "finding": "For quality-first selection, retain FP8 KV initially. Exact-0731 creator data supports testing NVFP4 W4A16 weights as a separate challenger, while the same source reports about 2.5% higher perplexity for W4A4 in exchange for only 4-6% more throughput on its SM120 stack.",
+      "source_ids": ["src-auroter-nvfp4", "src-nvidia-modelopt-kv"]
+    },
+    {
+      "id": "reasoning-template-confound",
+      "finding": "Runtime and provider reasoning-template bugs can silently map low, high, and max to the wrong checkpoint prefix. Quality comparisons are invalid until the encoded prompt fingerprint is verified.",
+      "source_ids": ["src-vllm-50684", "src-reddit-reasoning-provider"]
+    },
+    {
+      "id": "configured-versus-exercised-context",
+      "finding": "A configured 1M window is not proof of a successful 1M request. Community reports repeatedly describe lower actually exercised contexts, limited OS reserve, or failures after 100K even when a larger window is configured.",
+      "source_ids": ["src-reddit-localllm-q8", "src-reddit-spark-headroom", "src-reddit-ollama-loops"]
+    },
+    {
+      "id": "harness-and-provider-confound",
+      "finding": "The same checkpoint receives materially different user reports across Codex, OpenCode, Pi, Hermes, Ollama Cloud, and direct APIs. Harness, template, provider routing, output caps, and tool-loop controls must be held fixed before attributing quality to quantization.",
+      "source_ids": ["src-reddit-deepseek-opencode", "src-reddit-local-quant-bench", "src-reddit-hermes-negative", "src-reddit-ollama-loops"]
+    },
+    {
+      "id": "precision-label-drift",
+      "finding": "Community labels such as full precision and lossless are not reliable configuration fields. One high-visibility r/LocalLLM post calls a Q8_K_XL GGUF with Q8 KV full precision even though it is a converted representation; exact artifact and component dtypes must be captured directly.",
+      "source_ids": ["src-reddit-localllm-q8", "src-reddit-unsloth-precision"]
+    }
+  ],
+  "quality_priority": {
+    "operator_priority": "quality, then stability, then performance",
+    "requested_context_floor": 300000,
+    "preferred_first_arm": "pro-r33-quality-393k-fp8-target-only",
+    "selection_reason": "It preserves the released 0731 weight representation and FP8 KV, disables speculation for the first quality/capacity pass, exceeds 300K at a 393,216-token configured window, and isolates runtime/context behavior before adding faster mechanisms.",
+    "precision_order": [
+      "Released 0731 weights plus FP8 DS-MLA KV as the quality control.",
+      "Auroter exact-0731 NVFP4 W4A16 weights plus FP8 KV as a weight-format challenger after its dual-card fit is proven.",
+      "K5 speculative decoding only after an otherwise-identical target-only control passes.",
+      "NVFP4 KV only as a matched cache-precision A/B after the FP8-KV arm passes.",
+      "NVFP4 W4A4 remains deferred because the available exact-0731 creator result reports a measurable perplexity increase for a modest throughput gain."
+    ],
+    "required_quality_controls": [
+      "Exact model, tokenizer, runtime, image, weight artifact, and cache dtype receipts.",
+      "Low/high/max prompt-token fingerprints against the checkpoint reference encoder.",
+      "Same harness, system prompt, tool schema, sampling, output cap, and context material across arms.",
+      "Cold prompts above 300K with explicit output headroom and visible-answer validation.",
+      "Repeated coding, terminal, structured output, tool-result recovery, long-context retrieval, and context-rot probes.",
+      "Both-card memory use, endpoint health, tail latency, cancellation, repeated load/unload, and clean managed rollback."
+    ],
+    "unproven_claims": [
+      "No matched exact-0731 FP8-KV versus NVFP4-KV quality comparison above 300K was found.",
+      "No exact-0731 dual-RTX-PRO r33 quality result above 300K was found.",
+      "No community report establishes that an NVFP4 KV failure is caused by cache precision rather than template, provider, harness, graph, or speculative-decoding behavior."
+    ]
+  },
+  "community_channel_pass": {
+    "captured_at": "2026-08-10",
+    "method": "Subreddit-specific searches for the exact checkpoint, target hardware, context, precision, runtime, tools, reasoning, and quality; retained claims were cross-checked against creator repositories or official runtime documentation when available.",
+    "subreddits_reviewed": [
+      {
+        "name": "r/LocalLLaMA",
+        "role": "largest broad local-inference channel in this pass",
+        "retained_source_ids": ["src-reddit-spark-headroom", "src-reddit-local-quant-bench"],
+        "decision_impact": "Long-context reserve, local quant benchmark, and failure discovery."
+      },
+      {
+        "name": "r/LocalLLM",
+        "role": "broad local-model channel",
+        "retained_source_ids": ["src-reddit-localllm-q8"],
+        "decision_impact": "Concrete cross-engine recipe and a warning that community precision labels need artifact-level verification."
+      },
+      {
+        "name": "r/DeepSeek",
+        "role": "model-specific usage and integration channel",
+        "retained_source_ids": ["src-reddit-reasoning-provider", "src-reddit-deepseek-opencode", "src-reddit-production-code"],
+        "decision_impact": "Reasoning-template conformance, harness dependence, and real-work anecdotes; no local precision A/B."
+      },
+      {
+        "name": "r/LocalAIServers",
+        "role": "team-serving and hardware channel",
+        "retained_source_ids": ["src-reddit-dual-pro-c24"],
+        "decision_impact": "Most hardware-similar high-concurrency dual-PRO lead, but not reproducible enough to qualify."
+      },
+      {
+        "name": "r/BlackwellPerformance",
+        "role": "Blackwell-specific configuration channel",
+        "retained_source_ids": ["src-reddit-dual-pro-discussion"],
+        "decision_impact": "Direct SM120/dual-PRO discovery; creator repositories remain the stronger technical sources."
+      },
+      {
+        "name": "r/Vllm",
+        "role": "runtime-specific failure channel",
+        "retained_source_ids": ["src-reddit-tool-use"],
+        "decision_impact": "Malformed tool-call evidence elevated protocol recovery to a hard gate."
+      },
+      {
+        "name": "r/unsloth",
+        "role": "quantization and llama.cpp conversion channel",
+        "retained_source_ids": ["src-reddit-tony-roce", "src-reddit-unsloth-precision"],
+        "decision_impact": "Network recipe discovery and precision-label correction; not target-runtime qualification."
+      },
+      {
+        "name": "r/LocalAIStack",
+        "role": "cross-engine local-serving channel",
+        "retained_source_ids": ["src-reddit-local-stack-q8"],
+        "decision_impact": "AMD/llama.cpp Q8 control and tuning lead only; different hardware and engine."
+      },
+      {
+        "name": "r/opencode",
+        "role": "coding-harness channel",
+        "retained_source_ids": ["src-reddit-deepseek-opencode"],
+        "decision_impact": "Shows checkpoint identity and quality can be obscured by provider aliases and harness behavior."
+      },
+      {
+        "name": "r/ollama",
+        "role": "client and hosted-backend failure channel",
+        "retained_source_ids": ["src-reddit-ollama-loops"],
+        "decision_impact": "Long-session looping and opaque-backend evidence; cannot isolate quantization."
+      },
+      {
+        "name": "r/hermesagent",
+        "role": "long-horizon agent-harness channel",
+        "retained_source_ids": ["src-reddit-hermes-negative"],
+        "decision_impact": "Strongly contradictory user experiences reinforce matched-harness gates."
+      },
+      {
+        "name": "r/AIProgrammingHardware",
+        "role": "hardware-recipe discovery channel",
+        "retained_source_ids": [],
+        "decision_impact": "Posts largely summarize YouTube or GitHub sources; those original sources are preferred and this subreddit is not treated as independent corroboration."
+      },
+      {
+        "name": "r/nvidia and r/DGX searches",
+        "role": "vendor-hardware discovery check",
+        "retained_source_ids": [],
+        "decision_impact": "No stronger exact-0731 target-topology evidence was found than the retained developer-forum, GitHub, and specialist-subreddit sources."
+      }
+    ],
+    "retention_rule": "Popularity, generic praise, price discussion, and model self-identification were excluded unless a post contained a concrete configuration, failure signature, benchmark method, or reproducible integration observation.",
+    "negative_result": "The expanded Reddit pass found no controlled exact-0731 FP8-KV versus NVFP4-KV quality A/B above 300K and no pinned dual-PRO r33 over-300K quality run."
+  },
+  "sources": [
+    {
+      "id": "src-r33-doc",
+      "type": "github-documentation",
+      "evidence_label": "external-creator-measurement",
+      "title": "DeepSeek V4 Flash r33 recipe and validation guide",
+      "url": "https://github.com/local-inference-lab/rtx6kpro/blob/6c111c20c2bf2efec038e4daf14fc67030717e46/models/ds4dspark-v20-r33.md",
+      "revision": "6c111c20c2bf2efec038e4daf14fc67030717e46",
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Direct Blackwell multi-GPU runtime source; external native-Linux topology.",
+      "decision_impact": "Primary dual-PRO compatibility-spike source.",
+      "publication_note": "Source contains deployment examples; operator-specific values are not reproduced here."
+    },
+    {
+      "id": "src-r33-validation",
+      "type": "github-raw-evidence",
+      "evidence_label": "external-creator-measurement",
+      "title": "r33 remote-GPU validation JSON",
+      "url": "https://github.com/local-inference-lab/blackwell-llm-docker/blob/426da51285d0666508003b03a75a442139fb7979/validation/gilded-gnosis-v20-r33-remote-gpu.json",
+      "revision": "426da51285d0666508003b03a75a442139fb7979",
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Pinned external measurement and image receipt.",
+      "decision_impact": "Preserves claimed r33 throughput and exact image digest without treating it as local evidence.",
+      "publication_note": "Raw source contains operator-specific addressing; no such value is reproduced here."
+    },
+    {
+      "id": "src-tony-repo",
+      "type": "github-recipe",
+      "evidence_label": "external-creator-measurement",
+      "title": "DeepSeek V4 Flash 0731 1M NVFP4 KV on two DGX Sparks",
+      "url": "https://github.com/tonyd2wild/DeepSeek-v4-Flash-0731-DSpark-1M-NVFP4-KV-2x-DGX-Spark/tree/f277b3dfa718a5962bed64e69e7e640a5384ec2f",
+      "revision": "f277b3dfa718a5962bed64e69e7e640a5384ec2f",
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Direct dual-DGX-Spark recipe and patch set.",
+      "decision_impact": "Defines the strongest explicit 1M Spark candidate and network/startup considerations.",
+      "publication_note": "Deployment-specific network examples are intentionally omitted."
+    },
+    {
+      "id": "src-mia-repo",
+      "type": "github-recipe",
+      "evidence_label": "external-creator-measurement",
+      "title": "MiaAI DeepSeek V4 Flash on two DGX Sparks",
+      "url": "https://github.com/MiaAI-Lab/DeepSeek-v4-Flash-DSpark-2x-DGX-Spark/tree/a4ce87a2a73a22358eae3f9d07e8e06db87f8cee",
+      "revision": "a4ce87a2a73a22358eae3f9d07e8e06db87f8cee",
+      "published_or_observed_at": "2026-08-04",
+      "age_class": "current",
+      "hardware_engine_relevance": "Direct dual-DGX-Spark 1M graph-mode experiment.",
+      "decision_impact": "Adds regular-versus-breakable graph A/B and independent long-request evidence."
+    },
+    {
+      "id": "src-eugr-recipe",
+      "type": "github-recipe",
+      "evidence_label": "community-report",
+      "title": "spark-vllm-docker DeepSeek V4 Flash 0731 recipe",
+      "url": "https://github.com/eugr/spark-vllm-docker/blob/e5f3cf9e5320d9a424966a801570bf452405d122/recipes/deepseek-v4-flash-0731.yaml",
+      "revision": "e5f3cf9e5320d9a424966a801570bf452405d122",
+      "published_or_observed_at": "2026-08-09",
+      "age_class": "current",
+      "hardware_engine_relevance": "Direct dual-DGX-Spark FP8-KV recipe.",
+      "decision_impact": "Supplies a simpler FP8 quality/control lane without a performance claim."
+    },
+    {
+      "id": "src-vllm-46995",
+      "type": "github-pull-request",
+      "evidence_label": "official-upstream-change",
+      "title": "Native DeepSeek V4 support in vLLM",
+      "url": "https://github.com/vllm-project/vllm/pull/46995",
+      "revision": "merged-2026-07-01",
+      "published_or_observed_at": "2026-07-01",
+      "age_class": "recent",
+      "hardware_engine_relevance": "Official upstream architecture and graph-capture implementation; examples use larger Blackwell hardware.",
+      "decision_impact": "Corroborates runtime direction but does not qualify either target topology."
+    },
+    {
+      "id": "src-vllm-x",
+      "type": "x-announcement",
+      "evidence_label": "social-discovery",
+      "title": "vLLM DeepSeek V4 native support announcement",
+      "url": "https://x.com/vllm_project/status/2072545387639189798",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "recent",
+      "hardware_engine_relevance": "Official social announcement; technical claims are grounded in PR 46995.",
+      "decision_impact": "Discovery trail only; not used as the sole support for a configuration claim."
+    },
+    {
+      "id": "src-vllm-50686",
+      "type": "github-pull-request",
+      "evidence_label": "official-upstream-change",
+      "title": "DeepSeek V4 consecutive assistant message encoding fix",
+      "url": "https://github.com/vllm-project/vllm/pull/50686",
+      "revision": "open-as-observed-2026-08-10",
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Protocol correctness across all target hardware.",
+      "decision_impact": "Adds a required regression gate; not represented as merged upstream behavior."
+    },
+    {
+      "id": "src-reddit-tony-roce",
+      "type": "reddit-community-report",
+      "evidence_label": "community-report",
+      "title": "Best way to run Unsloth DeepSeek V4 0731 on two Sparks",
+      "url": "https://www.reddit.com/r/unsloth/comments/1vd0z8k/best_way_to_run_unsloths_deepseek_v4_0731_on_2x/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Dual-Spark field report for RoCE binding, K5, and patch requirements.",
+      "decision_impact": "Raises explicit network selection and cold-prefill patch gates."
+    },
+    {
+      "id": "src-nvidia-forum-tony",
+      "type": "community-website",
+      "evidence_label": "community-report",
+      "title": "NVIDIA developer forum dual-Spark DeepSeek V4 thread",
+      "url": "https://forums.developer.nvidia.com/t/deepseek-v4-flash-dspark-on-2x-dgx-spark-gb10-big-single-stream-speed-boost-60-67-tok-s-1m-context-now-with-concurrency/374846",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Dual-DGX-Spark community deployment discussion.",
+      "decision_impact": "Corroborating discovery source for the pinned Tony repository; not independent validation."
+    },
+    {
+      "id": "src-reddit-spark-headroom",
+      "type": "reddit-community-report",
+      "evidence_label": "community-report",
+      "title": "Serving DeepSeek V4 Flash 0731 on two DGX Sparks",
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1vig3tw/serving_deepseek_v4_flash_0731_on_2x_dgx_spark_57/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Unified-memory headroom and cache-tier field report.",
+      "decision_impact": "Prevents treating CPU offload as separate Spark capacity and raises reserve gates."
+    },
+    {
+      "id": "src-reddit-dual-pro-c24",
+      "type": "reddit-community-report",
+      "evidence_label": "community-report",
+      "title": "Dual RTX PRO 6000 DeepSeek V4 serving report",
+      "url": "https://www.reddit.com/r/LocalAIServers/comments/1vgzvjs/built_a_2x_rtx_pro_6000_box_to_serve_deepseek/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Hardware-similar native-Linux TP=2 field report.",
+      "decision_impact": "Defines a C24/256K/offload watch lane, not a runnable candidate."
+    },
+    {
+      "id": "src-reddit-dual-pro-discussion",
+      "type": "reddit-community-report",
+      "evidence_label": "community-report",
+      "title": "Dual RTX PRO 6000 rigs discussion",
+      "url": "https://www.reddit.com/r/BlackwellPerformance/comments/1ve0ejm/dual_rtx_pro_6000_rigs/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Hardware-similar discovery discussion with anecdotal runtime comparisons.",
+      "decision_impact": "Discovery signal only; no number from this source is used as local evidence."
+    },
+    {
+      "id": "src-reddit-tool-use",
+      "type": "reddit-community-report",
+      "evidence_label": "community-report",
+      "title": "DeepSeek V4 Flash 0731 vLLM tool-use help thread",
+      "url": "https://www.reddit.com/r/Vllm/comments/1vdwopg/looking_for_help_with_deepseekv4flash0731_on_vllm/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Dual-Spark K5/NVFP4 agent-protocol failure report.",
+      "decision_impact": "Adds malformed patch and tool-result recovery gates."
+    },
+    {
+      "id": "src-auroter-nvfp4",
+      "type": "hugging-face-model-card",
+      "evidence_label": "external-creator-measurement",
+      "title": "Exact-0731 NVFP4 routed-expert conversion and SM120 measurements",
+      "url": "https://huggingface.co/auroter/DeepSeek-V4-Flash-0731-NVFP4/tree/17e0f9da8257371654d458ba518659aa99954c86",
+      "revision": "17e0f9da8257371654d458ba518659aa99954c86",
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Exact checkpoint and RTX PRO 6000 SM120 evidence, but published on four workstation cards rather than two Max-Q cards.",
+      "decision_impact": "Supports a W4A16/FP8-KV precision challenger and argues against W4A4 in the quality-first lane without task-level proof."
+    },
+    {
+      "id": "src-nvidia-nvfp4-preview",
+      "type": "official-model-card",
+      "evidence_label": "official-adjacent-checkpoint-measurement",
+      "title": "NVIDIA DeepSeek V4 Flash NVFP4 model card",
+      "url": "https://huggingface.co/nvidia/DeepSeek-V4-Flash-NVFP4",
+      "revision": "modelopt-0.44.0-preview-checkpoint",
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Official B200/GB300 NVFP4 evidence for the earlier preview checkpoint; not exact 0731 or target hardware.",
+      "decision_impact": "Shows near-baseline adjacent-checkpoint benchmark scores at up to 384K while the verified vLLM command still uses FP8 KV."
+    },
+    {
+      "id": "src-nvidia-modelopt-kv",
+      "type": "official-documentation",
+      "evidence_label": "official-runtime-contract",
+      "title": "NVIDIA ModelOpt real-quant architecture and KV-cache behavior",
+      "url": "https://docs.nvidia.com/nemo/rl/nightly/design-docs/modelopt-real-quant-architecture.html",
+      "revision": "observed-2026-08-10",
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Format contract across Blackwell deployments.",
+      "decision_impact": "Establishes that W4A4/W4A16 weight quantization and KV-cache dtype are independent controls."
+    },
+    {
+      "id": "src-nvidia-te-nvfp4",
+      "type": "official-documentation",
+      "evidence_label": "official-format-contract",
+      "title": "NVIDIA Transformer Engine NVFP4 format documentation",
+      "url": "https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/features/low_precision_training/nvfp4/nvfp4.html",
+      "revision": "transformer-engine-2.17.0",
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Defines Blackwell E2M1 data with block-16 FP8 scales and a global FP32 scale.",
+      "decision_impact": "Explains why NVFP4 can preserve more usable range than a naive 4-bit representation without implying FP8-equivalent quality."
+    },
+    {
+      "id": "src-vllm-50684",
+      "type": "github-pull-request",
+      "evidence_label": "official-upstream-open-change",
+      "title": "DeepSeek V4 reasoning-effort and message-level tools fixes",
+      "url": "https://github.com/vllm-project/vllm/pull/50684",
+      "revision": "195d4c8-open-as-observed-2026-08-10",
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Protocol correctness across all vLLM hardware; independently reproduced in the thread on dual DGX Spark and four L40S cards.",
+      "decision_impact": "Requires prompt-token fingerprinting before comparing reasoning quality; open status is not treated as shipped behavior."
+    },
+    {
+      "id": "src-reddit-reasoning-provider",
+      "type": "reddit-community-report",
+      "evidence_label": "community-reproduction",
+      "title": "OpenRouter reasoning effort levels are broken for V4 Flash",
+      "url": "https://www.reddit.com/r/DeepSeek/comments/1vdqjwr/openrouter_reasoning_effort_levels_are_broken_for/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Provider conformance rather than local hardware.",
+      "decision_impact": "Supplies a minimal 6/85/98 prompt-token fingerprint and demonstrates provider-side quality confounding."
+    },
+    {
+      "id": "src-reddit-localllm-q8",
+      "type": "reddit-community-report",
+      "evidence_label": "community-report",
+      "title": "DeepSeek V4 Flash 0731 Q8 on two Radeon 7900 XTX cards with host offload",
+      "url": "https://www.reddit.com/r/LocalLLM/comments/1vjy7n8/deepseekv4flash_0731_full_precision_lossless_on/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Different AMD/llama.cpp topology; concrete Q8 weight, Q8 KV, CPU-offload, batch, and DSpark-drafter configuration.",
+      "decision_impact": "Cross-engine quality-oriented control and evidence that configured 1M, exercised context, and precision labels must be recorded separately."
+    },
+    {
+      "id": "src-reddit-unsloth-precision",
+      "type": "reddit-creator-announcement",
+      "evidence_label": "external-creator-claim",
+      "title": "Unsloth 0731 GGUF precision clarification",
+      "url": "https://www.reddit.com/r/unsloth/comments/1vbw4q1/deepseek_v4_flash_0731_out_now/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "llama.cpp conversion semantics rather than vLLM target topology.",
+      "decision_impact": "Warns that FP8-to-Q8 conversion is not bitwise lossless and that artifact names alone are insufficient precision evidence."
+    },
+    {
+      "id": "src-reddit-deepseek-opencode",
+      "type": "reddit-community-report",
+      "evidence_label": "community-report",
+      "title": "DeepSeek V4 Flash 0731 with OpenCode discussion",
+      "url": "https://www.reddit.com/r/DeepSeek/comments/1vdzmbp/deepseekv4flash0731_opencode/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Harness-level quality reports, not local serving configuration.",
+      "decision_impact": "Shows materially different user outcomes across harnesses and reinforces fixed-harness quality comparisons."
+    },
+    {
+      "id": "src-reddit-production-code",
+      "type": "reddit-community-report",
+      "evidence_label": "community-anecdote",
+      "title": "DeepSeek V4 Flash 0731 production-code experience thread",
+      "url": "https://www.reddit.com/r/DeepSeek/comments/1vck4is/has_anyone_actually_used_deepseek_v4_flash_0731/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Real-work task anecdotes with opaque providers and harnesses.",
+      "decision_impact": "Supplies corpus ideas for multi-project refactors, audits, reverse engineering, and repeated correction; not benchmark evidence."
+    },
+    {
+      "id": "src-reddit-local-quant-bench",
+      "type": "reddit-community-benchmark",
+      "evidence_label": "community-measurement",
+      "title": "Updated local DeepSeek V4 Flash 0731 SlopCodeBench",
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1vjiypj/updated_benchmark_deepseek_v4_flash_on/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Different quant, Apple hardware, and harness; task-quality methodology lead only.",
+      "decision_impact": "Shows that changing from OpenCode to Pi can offset or exceed an apparent quantization loss, making harness a required controlled variable."
+    },
+    {
+      "id": "src-reddit-ollama-loops",
+      "type": "reddit-community-failure-report",
+      "evidence_label": "community-report",
+      "title": "DeepSeek V4 Flash 0731 long-session doom-loop reports on Ollama Cloud",
+      "url": "https://www.reddit.com/r/ollama/comments/1vjmzh4/doom_loop_anyone_else_having_deepseek_v4_flash/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Opaque hosted backend plus a few local corroborating anecdotes; precision and engine are not controlled.",
+      "decision_impact": "Adds long-context repetition, tool-loop, output-cap, and backend-receipt probes while explicitly avoiding a quantization conclusion."
+    },
+    {
+      "id": "src-reddit-hermes-negative",
+      "type": "reddit-community-report",
+      "evidence_label": "community-report",
+      "title": "Contradictory DeepSeek V4 Flash 0731 Hermes Agent experiences",
+      "url": "https://www.reddit.com/r/hermesagent/comments/1vcin3u/i_dont_get_the_hype_deepseek_v4_flash_0731/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "Harness/provider quality discussion; exact backend is inconsistent across replies.",
+      "decision_impact": "Reinforces provider, system-prompt, context, and harness controls before model or precision attribution."
+    },
+    {
+      "id": "src-reddit-local-stack-q8",
+      "type": "reddit-community-report",
+      "evidence_label": "community-report",
+      "title": "DeepSeek V4 Flash 0731 llama.cpp tuning on r/LocalAIStack",
+      "url": "https://www.reddit.com/r/LocalAIStack/comments/1vckkbs/deepseek_v4_flash_0731_llamacpp_tips/",
+      "revision": null,
+      "published_or_observed_at": "2026-08-10",
+      "age_class": "current",
+      "hardware_engine_relevance": "AMD/llama.cpp hybrid offload, not dual Spark or dual PRO vLLM.",
+      "decision_impact": "Cross-engine recipe lead for batch, ubatch, Q8 KV, and telemetry; excluded from target performance ranking."
+    }
+  ],
+  "research_limits": [
+    "External throughput uses non-matched prompts, runtimes, contexts, acceptance rules, and hardware; no cross-source ranking is valid.",
+    "Reddit and forum numbers are self-reported unless linked to immutable raw artifacts.",
+    "X was used as a discovery trail; the auditable technical claim is linked to GitHub.",
+    "Subreddit search coverage is broad but not exhaustive; deleted, private, unindexed, Discord-only, image-only, and search-engine-inaccessible discussions may be absent.",
+    "No exact-0731 controlled FP8-KV versus NVFP4-KV quality comparison above 300K was found.",
+    "Provider and harness reports cannot isolate weight or KV precision without checkpoint, template, reasoning-prefix, output-cap, and backend receipts.",
+    "No local current-state observation was needed or performed because the campaign made no operational change.",
+    "The candidate ledger is a dated snapshot and must be refreshed before execution if source heads, images, or pull-request states move."
+  ],
+  "publication_safety": {
+    "credentials_included": false,
+    "operator_network_identifiers_included": false,
+    "gpu_uuids_included": false,
+    "operator_local_paths_included": false,
+    "redaction_note": "Some source pages include operator-specific network or host examples. This record retains only public source URLs and generic configuration semantics."
+  },
+  "restore_plan": {
+    "required_for_this_campaign": false,
+    "reason": "No local service, route, mode, model, cache, or GPU state was changed.",
+    "future_live_campaign_requirement": "Snapshot mode, serve owners, router aliases, both GPUs, cache/downloader, and shared-memory ownership; restore the recorded pre-run state after qualification."
+  }
+}
