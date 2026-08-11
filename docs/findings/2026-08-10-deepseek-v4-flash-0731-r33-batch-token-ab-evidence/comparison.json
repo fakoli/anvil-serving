@@ -129,15 +129,15 @@
     ],
     "next_test": "Prepare a separate GPU-only 393216-token, max-seq-1, batch-4096, FP8-KV, target-only arm with zero host offload; require healthy startup, a reported KV pool at least 393216 tokens, an actual prompt above 300000 tokens, post-probe functional checks, and no route or promotion change."
   },
-  "final_live_state": {
+  "campaign_closeout": {
     "candidate": "batch4096-131k",
-    "health": "healthy",
-    "ownership": "exclusive TP=2",
+    "health_at_close": "healthy",
+    "qualification_mode": "exclusive TP=2",
     "post_reload_smoke": "smoke, JSON, 3/3 typed tools, and tool-result continuation passed",
     "shared_memory_reclaimable_bytes": 0,
     "route_changed": false,
     "promotion_changed": false,
-    "left_running_for_follow_up": true
+    "post_session_owner": "private operator state"
   },
   "repository_validation": {
     "benchmark_docs_skill_tests": "7 passed",
