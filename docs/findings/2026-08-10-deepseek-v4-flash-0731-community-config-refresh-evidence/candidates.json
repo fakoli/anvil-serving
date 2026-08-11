@@ -409,7 +409,7 @@
         "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
         "runtime": "local-inference-lab r33 family",
         "runtime_revision": "6c111c20c2bf2efec038e4daf14fc67030717e46",
-        "image": "ghcr.io/local-inference-lab/vllm-blackwell:gilded-gnosis-v20-r33",
+        "image": "voipmonitor/vllm@sha256:fdde59fed7f9fc12f9fd5ef1b3b3ea8d5097bf10ebad54b348497102c3a83f82",
         "image_digest": "sha256:fdde59fed7f9fc12f9fd5ef1b3b3ea8d5097bf10ebad54b348497102c3a83f82",
         "topology": "exclusive TP=2 over two discrete PCIe GPUs",
         "quantization": "released mixed MXFP4 routed experts plus dense FP8",

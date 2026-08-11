@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-02.**
+**Last evidence review: 2026-08-10.**
 
 ## Start with the numbers
 
