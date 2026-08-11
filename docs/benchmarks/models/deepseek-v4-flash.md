@@ -19,7 +19,10 @@ the managed shared-memory lifecycle regression. This extends the capacity
 contract but does not replace the 131K profile as the preferred performance
 recipe. A digest-pinned r33 target-only control subsequently qualified the same
 checkpoint at a 131,072-token envelope and reached 119,503 actual prompt
-tokens. Its translated 393,216-token FP8-KV recipe was not loaded. Review date:
+tokens. A matched batch-token A/B then reduced profiled activation memory by
+34.1% and increased minimum-rank KV allocation by 0.72 GiB while retaining
+the same functional and 119,503-token capacity gates. Its reported 553,243 KV
+tokens remain an engine estimate rather than >300K request proof. Review date:
 2026-08-10.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
@@ -78,8 +81,10 @@ JIT, and temporary build data use named Docker volumes.
 - [650K/1M Pi qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md)
 - [650K Primary promotion](../../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md)
 - [r33 target-only 131K recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-131k-recipe.toml)
+- [r33 target-only 131K batch-4096 control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-batch4096-131k-recipe.toml)
 - [r33 quality-first 393K candidate](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-393k-recipe.toml)
 - [r33 quality-control qualification](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md)
+- [r33 batch-token A/B](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md)
 
 ## Evidence by measurement class
 
@@ -99,6 +104,15 @@ The r33 target-only control adds `functional`, `capacity`, and bounded
 - Requested context targets were non-monotonic against API-reported prompt
   tokens. Capacity claims therefore use only the reported actual size, and a
   harness-integrity ticket remains open.
+
+The matched r33 batch-token arm adds `functional`, `capacity`, and bounded
+`performance` evidence. Reducing only `max_num_batched_tokens` from 8,192 to
+4,096 lowered peak activation from 1.73 to 1.14 GiB per rank and raised the
+minimum-rank KV allocation from 15.27 to 15.99 GiB. It passed 6/6 functional
+checks and the same 119,503-actual-token request. The engine reported 553,243
+KV tokens, but the 94.861% reported-token increase does not reconcile with the
+4.715% KV-byte increase. A configured 393K start and actual >300K request are
+therefore still required before claiming over-300K GPU-only capacity.
 
 The r16 revision has `functional`, `capacity`, and bounded `quality` evidence:
 
@@ -248,6 +262,12 @@ quality-first 393K candidate keeps FP8 KV and adds host capacity rather than
 introducing NVFP4 KV before a matched quality A/B. No route or promotion
 changed.
 
+2026-08-10 batch-token A/B: the otherwise matched 4,096-token arm reduced
+profiled activation pressure, increased GPU KV allocation, passed the same
+bounded gates, and was left healthy/direct-only. It is the preferred basis
+for a GPU-only 393K experiment, but no route or promotion changed and no
+request above 300K has yet run.
+
 The 1M profiles are experimental only. The current exclusive AI-only policy
 has no separate video-workload reserve gate; the historical 3 GiB reserve
 failures below remain point-in-time evidence from mixed-use policy. Remaining
@@ -309,6 +329,7 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
+- [2026-08-10 r33 batch-token A/B](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md)
 - [2026-08-10 r33 target-only quality control](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md)
 - [2026-08-10 community configuration refresh](../../findings/2026-08-10-deepseek-v4-flash-0731-community-config-refresh.md)
 - [2026-08-07 vision-adapter (NVFP4) first load](../../findings/2026-08-07-deepseek-0731-vision-nvfp4-sglang-first-load.md)
