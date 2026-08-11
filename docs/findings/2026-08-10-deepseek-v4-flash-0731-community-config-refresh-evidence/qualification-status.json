@@ -1,0 +1,165 @@
+{
+  "schema": "anvil-serving.deepseek-r33-qualification-status/v1",
+  "updated_at_utc": "2026-08-11T04:30:00Z",
+  "checkpoint": {
+    "repository": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "substitution_allowed": false
+  },
+  "hardware": {
+    "topology": "two equal RTX PRO 6000 Blackwell Max-Q GPUs, exclusive TP=2 over PCIe without NVLink",
+    "aggregate_vram_gib": 192,
+    "aggregate_vram_is_unified": false
+  },
+  "operator_priority": [
+    "quality",
+    "stability",
+    "performance"
+  ],
+  "memory_policy": {
+    "mode": "exclusive-ai-only",
+    "video_workload_vram_reserve_mib_per_gpu": 0,
+    "hard_vram_reserve_gate": false,
+    "vllm_gpu_memory_utilization": 0.975,
+    "allocator_note": "The vLLM fraction leaves internal runtime space for weights, graphs, kernels, and transient allocations; it is not a video-workload reserve.",
+    "acceptance_evidence": [
+      "startup health",
+      "both-card memory use",
+      "endpoint health after requests",
+      "host-memory ownership for native KV offload",
+      "clean mmap lifecycle"
+    ]
+  },
+  "control_observation": {
+    "observed_status": "healthy at final campaign observation",
+    "direct_endpoint": "http://127.0.0.1:39070/v1",
+    "served_model": "deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-tp2-131k",
+    "image": "voipmonitor/vllm@sha256:fdde59fed7f9fc12f9fd5ef1b3b3ea8d5097bf10ebad54b348497102c3a83f82",
+    "runtime_version": "0.11.2.dev280+gilded.gnosis.v20.vllmfa13d33.b12x06db0f4.fi1ac6942.cu132.20260809.r33",
+    "max_model_len": 131072,
+    "max_num_seqs": 1,
+    "max_num_batched_tokens": 8192,
+    "speculative_decoding": "disabled",
+    "weight_kernel_path": "B12X W4A8 with NVFP4 MoE weights and FP8 activations/dense path",
+    "kv_cache": "FP8 DS-MLA",
+    "router_observation": "direct-only qualification; no route or promotion changed during the campaign"
+  },
+  "local_gates": [
+    {
+      "id": "cache-integrity",
+      "status": "passed",
+      "result": "exact checkpoint snapshot complete with zero incomplete files or broken symlinks"
+    },
+    {
+      "id": "cold-start",
+      "status": "passed",
+      "result": "managed mode entry reached health in 323.5 seconds"
+    },
+    {
+      "id": "reasoning-prefix-fingerprint",
+      "status": "passed",
+      "result": {
+        "low_prompt_tokens": 6,
+        "high_prompt_tokens": 85,
+        "max_prompt_tokens": 98
+      }
+    },
+    {
+      "id": "protocol-preflight",
+      "status": "passed",
+      "result": "6 of 6 checks passed: smoke, JSON, 20 of 20 tool calls, streaming tool call, tool-result continuation, and Responses API"
+    },
+    {
+      "id": "repeated-quality-high",
+      "status": "passed-with-harness-caveat",
+      "result": {
+        "intelligence": "2 checks, 3 of 3 attempts each",
+        "session_recall": "3 of 3 attempts",
+        "tool_calling": "3 of 3 attempts",
+        "context_32768_target": "passed with 23910 observed prompt tokens",
+        "original_context_120000_target": "HTTP 400 Bad Request",
+        "post_failure_short_coding_smoke": "passed"
+      },
+      "decision": "Retain the HTTP 400 as a real failed attempt. Subsequent capacity requests and coding smokes passed, so it is not classified as a persistent endpoint or model failure."
+    },
+    {
+      "id": "near-limit-context-capacity",
+      "status": "passed",
+      "result": {
+        "largest_observed_prompt_tokens": 119503,
+        "requested_target_tokens": 119500,
+        "ttft_ms": 17444.79,
+        "end_to_end_ms": 17885.79,
+        "effective_prefill_tokens_per_second": 7537.34,
+        "decode_tokens_per_second": 73.86,
+        "post_run_short_coding_smoke": "passed"
+      },
+      "claim_limit": "This proves a single-request 119503-token capacity point on the 131072-token control, not 300K capacity or concurrency."
+    },
+    {
+      "id": "context-target-calibration",
+      "status": "harness-caveat",
+      "result": {
+        "target_117500_actual_prompt_tokens": 87207,
+        "target_118500_actual_prompt_tokens": 118830,
+        "target_119500_actual_prompt_tokens": 119503,
+        "target_120000_replay_clamped_to": 119808,
+        "target_120000_replay_actual_prompt_tokens": 88939
+      },
+      "decision": "Use API-reported prompt tokens, never the requested target label, for context claims. Track deterministic calibration as a harness defect."
+    },
+    {
+      "id": "gpu-kv-capacity",
+      "status": "measured",
+      "result": {
+        "available_gpu_kv_gib": 15.27,
+        "gpu_kv_cache_tokens": 283917,
+        "configured_context_tokens": 131072,
+        "reported_concurrency_at_configured_context": 2.17
+      }
+    },
+    {
+      "id": "no-offload-over-300k",
+      "status": "blocked-before-load",
+      "result": "The measured 283917-token GPU KV pool is below the requested 300000-token floor and below 393216; removing a video reserve cannot change this result because that reserve gate is already disabled."
+    },
+    {
+      "id": "native-offload-absent-container-cleanup",
+      "status": "passed",
+      "result": "The managed absent-container path dry-ran and then reclaimed exactly one unmapped 4096-byte vLLM mmap fixture through the two-scan guard; the postcondition was clean and the control remained healthy."
+    }
+  ],
+  "next_candidate": {
+    "status": "translated-not-loaded",
+    "reason_not_loaded": "The 131K r33 control was retained for continued operator testing.",
+    "public_recipe": "configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-393k-recipe.toml",
+    "served_model": "deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-tp2-393k",
+    "max_model_len": 393216,
+    "max_num_seqs": 1,
+    "max_num_batched_tokens": 4096,
+    "speculative_decoding": "disabled",
+    "kv_cache": "FP8 DS-MLA",
+    "native_host_kv_offload_gib": 16,
+    "native_filesystem_l2": "disabled",
+    "quality_rationale": "Retains the released checkpoint and FP8 KV; adds host capacity instead of moving the cache to NVFP4 before a controlled quality comparison."
+  },
+  "lifecycle_observations": {
+    "rollback_attempt": "A pre-request mode-leave attempt failed during final router readmission after the transaction had run for about 543 seconds. Inspection showed the r33 control still healthy and the prior split owners absent.",
+    "decision": "No route or promotion change. A 393K load requires a later explicitly reviewed lifecycle transaction."
+  },
+  "promotion_state": "no-promotion",
+  "raw_evidence": {
+    "retention": "private operator evidence store",
+    "public_record_kind": "sanitized decision summary with content hashes",
+    "sha256": {
+      "r33_131k_preflight_json": "F2E97D285EFB6BB2ED74620EA76006A02B798F0EDF5DF5F4A4831B5ED2F69511",
+      "r33_131k_quality_high_json": "F83B95DFF27495E3E745C30E2F40724E6169E12B89385AC1EFBB1A385544E774",
+      "r33_131k_reasoning_fingerprint_json": "88DEC7E0F0013984F5955264D3CCFF52300A425DD72C4F0F3179C3C02F756505",
+      "r33_131k_context_boundary_high_json": "D5E8A20BD4683760C97BC3D401BA1FB1E5EDB36F225943E070D2C79BD0856514",
+      "r33_131k_context_edge_high_json": "77CC5C7F325B8ABD8FC66C9F29AD04965CCE91FA84FE840F2DF7A11C98F8F58C",
+      "r33_131k_context_120k_replay_high_json": "969712F2A6B7979EE6DB81C8F80724E67F11A1B042ACB4B7E32129D979F4307F",
+      "native_offload_absent_acceptance_json": "66D1C9F7632444EFDDCF893017BB187554065492FDA5FF98E483D9C34F33DF01"
+    },
+    "claim_limit": "This record does not claim that the 393216-token candidate has loaded or exercised a prompt above 300000 tokens."
+  }
+}
