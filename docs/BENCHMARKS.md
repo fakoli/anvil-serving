@@ -8,18 +8,20 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained production-alias chain is DeepSeek V4 Flash 0731 r16 DSpark K5
-at 650K (`current`, exclusive TP=2, high reasoning default), Qwen3.5 122B NVFP4
-(immediate managed `rollback`), and Agents-A1 official FP8 as the previous
-multimodal Primary. Laguna S 2.1 and GPT-OSS Puzzle remain additional managed
-rollback profiles; Gemma 4 and ThinkingCap remain historical controls. Fakoli
+The maintained Primary is DeepSeek V4 Flash 0731 r33 DSpark K5 at 393,216
+tokens (`current`, exclusive TP=2). Qwen3.5 122B NVFP4 remains a qualified
+rollback-era recipe but is not the immediate restoration contract. The
+declared managed restoration group is the split Agents-A1 plus Omni stack. The
+earlier r16 650K profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical or
+rollback-era recipes but are not the immediate restoration contract for this
+profile. Gemma 4 and ThinkingCap remain historical controls. Fakoli
 Dark has two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
 now-removed RTX 5090 while the PRO 6000 was protected. Older sections below
 preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-02**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-11**.
 
 ## Read these results correctly
 
@@ -103,6 +105,24 @@ output clamping alone cannot make the 1M profile safe. The promoted 650K serve
 still waives the standing 3 GiB reported-free VRAM policy and therefore remains
 an explicit single-user, exclusive TP=2 deployment. See the
 [promotion record](findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md).
+
+### DeepSeek 0731 r33 393K Primary promotion
+
+After a separate human gate on 2026-08-11, the digest-pinned r33 B12X/DSpark
+K5 profile became `llm.primary` at 393,216 tokens, maxseq16, and 4,096-token
+batching. It retains FP8 DS-MLA KV and uses no host offload. The engine reported
+725,543 GPU KV tokens. A calibrated direct ladder passed through 359,900 actual
+prompt tokens; the largest row measured 65.2-second TTFT and 5,599 effective
+prefill tok/s.
+
+OpenClaw and Hermes now target `llm.primary` with 393,216 context, 32,768
+maximum output tokens, and high reasoning. Their gateways restarted and
+isolated client-path markers passed. These are not client requests above 300K. The
+legacy routed nominal-320K needle generated a byte-based 450,028-token
+admission estimate and correctly failed 413, so a calibrated routed context
+job remains open. The requested SWE smoke also remains unscored because the
+installed worker wheel could not load its benchmark profiles. See the
+[promotion record](findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md).
 
 ## RTX 5090 Omni choices (as of 2026-07-27)
 
