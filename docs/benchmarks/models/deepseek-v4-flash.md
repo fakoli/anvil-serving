@@ -172,10 +172,24 @@ expanding the local contract:
   conversion receipt; Auroter has the strongest four-RTX-PRO performance
   prior. Neither is local TP=2 qualification.
 
+The 2026-08-10 community refresh adds a quality-first decision order without
+expanding the local contract. It keeps FP8 KV for the first over-300K r33 arm,
+separates NVFP4 weights from NVFP4 KV, treats Auroter W4A16/FP8-KV as a later
+precision challenger, and defers W4A4 and NVFP4 KV until matched task-quality
+gates pass. The proposed 393,216-token target-only arm is an unmeasured
+experiment design, not a replacement for the recorded r16 profiles. The same
+refresh also records active vLLM reasoning-template defects and broad Reddit
+channel coverage; prompt-token fingerprints and a fixed harness are required
+before any precision comparison.
+
 See the [deep research update](../../findings/2026-08-01-deepseek-v4-flash-0731-research-update.md)
 and its [source registry](../../findings/2026-08-01-deepseek-v4-flash-0731-research-evidence/source-registry.json)
 for the benchmark deltas, architecture, runtime matrix, conversion identities,
 GGUF size ladder, DSpark caveats, and source classifications.
+See the
+[2026-08-10 community configuration refresh](../../findings/2026-08-10-deepseek-v4-flash-0731-community-config-refresh.md)
+and its machine-readable candidate ledger for the r33 candidates, precision
+decision, source classifications, subreddit coverage, and required gates.
 
 ## Decision and promotion state
 
