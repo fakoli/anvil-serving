@@ -72,6 +72,7 @@ import subprocess
 import tempfile
 import time
 from . import envfile
+from .events import LifecycleEventError, emit_lifecycle_event
 from . import guard
 from . import host as host_ops
 from . import reservations
@@ -101,6 +102,20 @@ SERVE_PROFILES_SCHEMA = "anvil-serving/serve-profiles/v1"
 
 # States meaning the container exists but is already stopped (nothing to free).
 _STOPPED = ("exited", "created", "dead")
+
+
+def _record_lifecycle_event(kind, payload):
+    try:
+        emit_lifecycle_event(kind, payload)
+    except LifecycleEventError as exc:
+        print(
+            "lifecycle change applied but event was not recorded: %s" % exc,
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
 _ENGINE_ALIASES = {
     "llama.cpp": "llamacpp",
     "llama-cpp": "llamacpp",
@@ -1998,11 +2013,40 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
     lock = nullcontext() if dry_run else _switch_role_lock("promotion")
     try:
         with lock:
-            return _cmd_promote_unlocked(
+            result = _cmd_promote_unlocked(
                 serves, promotions, name, manifest_path,
                 rollback=rollback, resume=resume, dry_run=dry_run,
                 _run=_run, _open=_open, _sleep=_sleep,
             )
+            if result == 0 and not dry_run:
+                plan = next(item for item in promotions if item["name"] == name)
+                target_name = plan["rollback"] if rollback else plan["target"]
+                rollback_name = plan["target"] if rollback else plan["rollback"]
+                target = _exact_serve(serves, target_name)
+                rollback_serve = _exact_serve(serves, rollback_name)
+                base_payload = {
+                    "promotion": name,
+                    "model": target.get("served_name", target.get("model")),
+                }
+                if rollback:
+                    base_payload["restored_model"] = base_payload.pop("model")
+                else:
+                    base_payload["context"] = plan.get("needle_ctx")
+                    base_payload["rollback"] = rollback_serve.get(
+                        "served_name", rollback_serve.get("model")
+                    )
+                for tier in plan["affected_tiers"]:
+                    emit_lifecycle_event(
+                        "promote.rolled_back" if rollback else "promote.applied",
+                        {**base_payload, "tier": tier},
+                    )
+            return result
+    except LifecycleEventError as exc:
+        print(
+            "promotion applied but lifecycle event was not recorded: %s" % exc,
+            file=sys.stderr,
+        )
+        return 1
     except RuntimeError as exc:
         print("promotion refused: %s" % exc, file=sys.stderr)
         return 1
@@ -3355,6 +3399,15 @@ def cmd_down(
             if not native_offload:
                 return True
             return finish_native_offload_cleanup()
+
+        def record_down(graceful):
+            nonlocal rc
+            if not _record_lifecycle_event(
+                "serve.down",
+                {"serve": s["name"], "graceful": graceful},
+            ):
+                rc = 1
+
         if st in _STOPPED:
             if keep_container:
                 print("  %s: %s (kept for logs/restart)" % (s["container"], st))
@@ -3391,6 +3444,7 @@ def cmd_down(
             if ok:
                 if not finish_detected_native_offload_cleanup():
                     rc = 1
+                record_down(False)
             else:
                 rc = 1
             continue
@@ -3423,6 +3477,7 @@ def cmd_down(
             if ok:
                 if not finish_detected_native_offload_cleanup():
                     rc = 1
+                record_down(False)
             else:
                 rc = 1
             continue
@@ -3442,6 +3497,7 @@ def cmd_down(
                     print("  stopped and kept %s" % s["container"])
                     if not finish_detected_native_offload_cleanup():
                         rc = 1
+                    record_down(True)
             else:
                 ok, message = _docker_rm_f(
                     s["container"], _run,
@@ -3451,6 +3507,7 @@ def cmd_down(
                 if ok:
                     if not finish_detected_native_offload_cleanup():
                         rc = 1
+                    record_down(True)
                 else:
                     rc = 1
         else:
@@ -3902,6 +3959,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                 rc = 1
                 break
         else:
+            ready = True
             if wait_for_readiness:
                 print(
                     "  waiting up to %ss for %s%s"
@@ -3922,6 +3980,32 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                             readiness_timeout,
                         )
                     )
+                    ready = False
+                    rc = 1
+            if steps and ready and (recreate or st != "running"):
+                # Record serve.up only when the container was not already
+                # running before this invocation, EXCEPT for an explicit
+                # --recreate, which provably removes and recreates the
+                # container (docker rm -f + up) — a real lifecycle change.
+                # For a compose serve whose container was already running
+                # without --recreate, `docker compose up -d` is a cheap
+                # drift-recreate-or-no-op; we cannot tell from the CLI
+                # whether the container actually changed, so we must not
+                # create a false serve.up history entry for an already-
+                # running state.
+                gpu_roles = s.get("gpu_roles")
+                if gpu_roles is None and s.get("gpu_role"):
+                    gpu_roles = [s["gpu_role"]]
+                if not _record_lifecycle_event(
+                    "serve.up",
+                    {
+                        "serve": s["name"],
+                        "model": s.get("served_name", s.get("model")),
+                        "port": s["port"],
+                        "gpu_roles": gpu_roles or [],
+                        "residency": s.get("residency"),
+                    },
+                ):
                     rc = 1
     return rc
 
@@ -4521,7 +4605,7 @@ def cmd_profile(
     with _defer_first_profile_interrupt(
         action == "apply" and not dry_run and confirm
     ):
-        return cmd_mode(
+        result = cmd_mode(
             serves,
             "preview" if action == "preview" else transition,
             profile["exclusive_target"],
@@ -4534,6 +4618,18 @@ def cmd_profile(
             router_url=router_url,
             _run=_run,
         )
+        if result == 0 and action == "apply" and not dry_run:
+            if not _record_lifecycle_event(
+                "profile.enter" if transition == "enter" else "profile.leave",
+                {
+                    "profile": profile["id"],
+                    "mode": profile["mode"],
+                    "exclusive_target": profile["exclusive_target"],
+                    "restore_group": profile["restore_group"],
+                },
+            ):
+                return 1
+        return result
 
 
 def cmd_rm(serves, names, dry_run=False, assume_yes=False, _run=subprocess.run,

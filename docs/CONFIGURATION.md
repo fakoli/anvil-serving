@@ -31,6 +31,45 @@ target as a numbered `.anvil.bak.N` file before `init` replaces it.
 Content-identical files are left untouched, so repeated runs do not create
 redundant backups, including for `.env.example`.
 
+## Lifecycle events (`events.toml`)
+
+Lifecycle event recording is optional and disabled when
+`$ANVIL_SERVING_HOME/events.toml` is absent or its `[events]` table does not set
+`enabled = true`. When enabled, successful state changes from `serves up`,
+`serves down`, `serves profile apply`, and `serves promote` invoke the
+stdlib-only `anvil-events` CLI. Dry runs, failed operations, already-satisfied
+serves, and no-op profile transitions do not create false history.
+
+```toml
+[events]
+enabled = true
+command = "anvil-events"
+host = "node-a"
+producer = "node-a:anvil-serving"
+nats_url_env = "ANVIL_EVENTS_NATS_URL"
+```
+
+`command` is one executable name or path and is invoked without a shell. `host`
+and `producer` are public event-envelope identities; real operator identity
+belongs only in the private operator home. `nats_url_env` names the environment
+variable containing the broker URL. Do not add a `nats_url` value to TOML; the
+loader rejects inline transport configuration. For example, an operator may
+place `ANVIL_EVENTS_NATS_URL=nats://127.0.0.1:4222` in the gitignored `.env`
+chain described below.
+
+The child CLI writes the event to its fsync-backed local outbox before attempting
+the NATS send. A successful invocation therefore means **recorded locally**, not
+delivered or acknowledged by the broker. Network failure leaves the record
+pending and creates `event.degraded` through `anvil-events`. If the executable
+is missing, times out, or cannot write the outbox, the lifecycle action may
+already be applied; the command returns non-zero and reports that the change was
+applied but its event was not recorded.
+
+The seam records the frozen lifecycle kinds `serve.up`, `serve.down`,
+`profile.enter`, `profile.leave`, `promote.applied`, and
+`promote.rolled_back`. A multi-tier promotion emits one promotion record per
+declared affected tier while the promotion lock is still held.
+
 By default, `init` asks `nvidia-smi` for stable GPU UUIDs and total memory, then
 assigns the two largest distinct cards to Compute A and Compute B. Equal-VRAM
 cards use canonical UUID ordering, not runtime index, so a reboot cannot swap
