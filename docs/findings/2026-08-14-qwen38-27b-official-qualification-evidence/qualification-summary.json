@@ -1,0 +1,137 @@
+{
+  "schema": "anvil-serving.qwen38-27b-qualification-summary/v1",
+  "observed_date": "2026-08-14",
+  "decision": "challenger; no-promotion",
+  "hardware": {
+    "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "cards": 2,
+    "vram_gb_each": 96,
+    "topology": "two equal independent PCIe split lanes; one TP=1 serve per card"
+  },
+  "runtime": {
+    "image": "vllm/vllm-openai@sha256:4a2f33a884222f7049b983263ad9976f89452bb81affecf5b67d89ad35c1bc31",
+    "engine_revision": "3a0914114705fa38d4c3171d0746c1a6b6f10209",
+    "cuda": "13.0.1"
+  },
+  "checkpoints": {
+    "bf16": {
+      "repo": "Qwen/Qwen3.8-27B",
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "safetensors_files": 18,
+      "safetensors_bytes": 55563006776
+    },
+    "official_fp8": {
+      "repo": "Qwen/Qwen3.8-27B-FP8",
+      "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+      "safetensors_files": 66,
+      "safetensors_bytes": 30866866928
+    },
+    "artifact_gate": "all local safetensors SHA-256 values matched pinned Hugging Face LFS identities; no executable, Python, pickle, PyTorch bin, native-library, auto_map, or trust_remote_code path was present"
+  },
+  "baseline": {
+    "shared": {
+      "context_tokens": 262144,
+      "tensor_parallel_size": 1,
+      "kv_cache_dtype": "fp8",
+      "prefix_cache": false,
+      "speculative_decoding": false,
+      "thinking_disabled_control": "verified",
+      "adaptive_reasoning_efforts_passed": ["low", "medium", "xhigh"]
+    },
+    "bf16_multimodal": {
+      "max_num_seqs": 2,
+      "gpu_memory_utilization": 0.9,
+      "functional_checks": "all passed",
+      "repeated_quality": "intelligence, session, tool, and 31225-token retrieval passed at 3/3 policy",
+      "capacity_4k": {
+        "c1_decode_tok_s_p50": 26.9,
+        "c1_e2e_s_p50": 2.46,
+        "c2_decode_tok_s_p50": 17.8,
+        "c2_aggregate_output_tok_s": 27
+      },
+      "context": [
+        {"actual_prompt_tokens": 31225, "ttft_s": 8.05, "status": "passed"},
+        {"actual_prompt_tokens": 139428, "ttft_s": 53.44, "status": "passed"},
+        {"actual_prompt_tokens": 241250, "ttft_s": 125.14, "status": "passed"}
+      ],
+      "multimodal": {
+        "corpus_sha256": "ebff9dcc87a7fd13f801fc19eeea7271aec01a99fe560d721be99c1c9becad49",
+        "attempts": 30,
+        "passed": 30,
+        "image": "12/12",
+        "video": "14/14",
+        "mixed": "4/4"
+      }
+    },
+    "official_fp8_text": {
+      "max_num_seqs": 5,
+      "gpu_memory_utilization": 0.92,
+      "functional_checks": "all passed before and after setting experiments",
+      "repeated_quality": "intelligence, session, tool, and 31225-token retrieval passed at 3/3 policy",
+      "capacity_4k": {
+        "c1_decode_tok_s_p50": 47.9,
+        "c1_e2e_s_p50": 1.69,
+        "c5_decode_tok_s_p50": 16.2,
+        "c5_aggregate_output_tok_s": 51
+      },
+      "context": [
+        {"actual_prompt_tokens": 31225, "ttft_s": 5.88, "status": "passed"},
+        {"actual_prompt_tokens": 139428, "ttft_s": 42.04, "status": "passed"},
+        {"actual_prompt_tokens": 241250, "ttft_s": 104.71, "status": "passed"}
+      ],
+      "engine_kv_tokens": 1825809,
+      "reported_full_window_concurrency": 6.96,
+      "caveat": "startup warned that absent FP8 attention q/prob scaling factors defaulted to 1.0; quality equivalence to unquantized KV is not established"
+    }
+  },
+  "setting_experiments": {
+    "mtp3": {
+      "only_change": "speculative_config method=mtp, num_speculative_tokens=3",
+      "functional_checks": "all passed",
+      "repeated_quality": "all passed",
+      "c1_decode_tok_s_p50": 94.8,
+      "c5_aggregate_output_tok_s": 54,
+      "quality_context_decode_tok_s": 100.4,
+      "warning": "vLLM reported the inherited 4096 max batched tokens may be suboptimal for MTP3; observed draft acceptance varied by workload",
+      "retained_failure": "first managed start failed before load because registry quoting stripped JSON quotes; the same value succeeded after serialization-only correction"
+    },
+    "prefix_cache": {
+      "only_change": "prefix caching enabled",
+      "workload": "five concurrent requests with a 30000-token shared prefix",
+      "enabled_cold": {"ttft_s_p50": 9.18, "aggregate_output_tok_s": 23},
+      "enabled_warm": {"ttft_s_p50": 0.41, "aggregate_output_tok_s": 142},
+      "disabled_first": {"ttft_s_p50": 16.59, "aggregate_output_tok_s": 9},
+      "disabled_repeat": {"ttft_s_p50": 16.39, "aggregate_output_tok_s": 9},
+      "caveat": "the endpoint omitted prompt_tokens_details.cached_tokens, so the result is timing-based reuse evidence"
+    },
+    "unquantized_kv": {
+      "only_change": "kv_cache_dtype fp8 to auto, resolved with bfloat16 model dtype",
+      "functional_checks": "all passed",
+      "c1_decode_tok_s_p50": 47.8,
+      "c5_aggregate_output_tok_s": 51,
+      "actual_prompt_tokens_passed": 244573,
+      "engine_kv_tokens": 929913,
+      "reported_full_window_concurrency": 3.55,
+      "decision": "viable accuracy-oriented control; no short-context speed gain and about half the full-window KV-token capacity"
+    }
+  },
+  "gaps": [
+    "No candidate router alias, promotion, or routed client acceptance was attempted.",
+    "The durable separate-worker context, agentic, and SWE harness was not submitted because the candidate had no approved router alias; direct API tool and coding checks are not SWE-bench evidence.",
+    "Adaptive reasoning effort runs prove control plumbing and visible/reasoning separation, not a quality ranking among effort levels.",
+    "The official FP8 attention-scaling warning requires a matched independent quality A/B before treating FP8 KV as quality-equivalent to unquantized KV."
+  ],
+  "private_artifact_digests": {
+    "bf16_preflight": "cdc8e0a45eef62ad384829a548c2b5ef041d8841e5e5f2b1737d56520ecfb917",
+    "fp8_preflight": "038c48969b5e20e902ab954c866d686e14823128d418480ecc6d46c56556aa7e",
+    "bf16_quality": "3198ea2251b7579a24cfedb89bccbb640783cd3b655923e343570b2e3aeb46e9",
+    "fp8_quality": "c84fe8ec26055327dcc0d88866e6f7a247051e7cea59073dd84f8e77a1b3d0e9",
+    "bf16_context": "e85eef2eae82f0831eb3dddaac81540dc7c45a7130ca1343f32eab9148deff06",
+    "fp8_context": "02c7c0a0f57d0b6b2e0d861d0356ce3c2a4d04b27e83e2d478617fa1442fe4c8",
+    "bf16_multimodal": "d8540307e0ddafe247357cec2b18b6eef3537b193c135abaa94a02ab473861cc",
+    "mtp3_quality": "6a531da51412f1887b0c4875de7f4f503c183c96f9debdab05407bae097a1b33",
+    "prefix_enabled_warm": "adf9a600061738ebdf6c61aeb7cb99c6d155cc62ea4855d11f330beb863c2f01",
+    "prefix_disabled_repeat": "16b3a5a95677ddad43cfce3567a85849ef3d9c804d24dc1ee55b8e726cbc6016",
+    "unquantized_kv_context": "72c7db0160a0f39c816ac93f6f16039c50019aeb3212a1a1226b3c609b9a90c1"
+  }
+}

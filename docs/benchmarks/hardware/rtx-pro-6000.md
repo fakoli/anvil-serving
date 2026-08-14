@@ -2,7 +2,7 @@
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark, Windows 11 with
-Docker Desktop/WSL2. **Reviewed:** 2026-08-11.
+Docker Desktop/WSL2. **Reviewed:** 2026-08-14.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -28,10 +28,11 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
 | 1 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | `current`, 2026-08-11 promotion record | Exclusive TP=2 r33 text Primary at 393,216 tokens; direct capacity through 359,900 actual prompt tokens |
-| 2 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Not started or selected by this promotion's restoration contract |
-| 3 | [Agents-A1](../models/agents-a1.md) plus Omni | managed split restoration | Restore group when leaving this exclusive profile; Agents-A1 retains FP8 text/image/video evidence |
-| 4 | [Laguna S 2.1](../models/laguna-s-2.1.md) | `rollback` | Additional managed rollback; thinking disabled |
-| 5 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | `rollback` | Additional pinned rollback; strict unified-diff caveat |
+| 2 | [Qwen3.8 27B](../models/qwen38-27b.md) | `challenger`, `no-promotion` | Official BF16 multimodal plus official FP8 text split lanes; 262K, MTP/prefix/KV setting evidence; not routed |
+| 3 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Not started or selected by this promotion's restoration contract |
+| 4 | [Agents-A1](../models/agents-a1.md) plus Omni | managed split restoration | Restore group when leaving this exclusive profile; Agents-A1 retains FP8 text/image/video evidence |
+| 5 | [Laguna S 2.1](../models/laguna-s-2.1.md) | `rollback` | Additional managed rollback; thinking disabled |
+| 6 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | `rollback` | Additional pinned rollback; strict unified-diff caveat |
 
 ## Comparable quality and context
 
@@ -88,6 +89,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
+| Qwen3.8 27B official BF16 / official FP8 | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; BF16 media 30/30 | Both passed 241,250 actual prompt tokens; BF16/FP8 TTFT 125.14/104.71 s; FP8 47.9 tok/s c1 and 51 aggregate tok/s c5 | `challenger`, `no-promotion`; FP8 MTP=3 leads interaction, BF16 is media reference |
 | Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `rollback` |
 | Laguna S 2.1 NVFP4 | Passed protocol-v3 with thinking disabled | 32K/128K/240K passed; TTFT 2.26/21.15/50.64 s | `rollback` |
 | GPT-OSS Puzzle 88B | Tools/session/timeout 3/3; unified diff 2/3 | 32K and 128K retained | `rollback` |
@@ -99,6 +101,8 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
+| Qwen3.8 27B official FP8 text | 262,144 | 5 | FP8 KV reports 1,825,809 tokens / 6.96 full windows; 4K c5 30/30 at 51 aggregate output tok/s; MTP=3 doubles c1 decode but only modestly raises c5 throughput; prefix cache gives strong repeated-prefix reuse |
+| Qwen3.8 27B official BF16 multimodal | 262,144 | 2 | FP8 KV reports 1,036,311 tokens / 3.95 full windows; 241,250-token retrieval and 30/30 media corpus pass |
 | DeepSeek V4 Flash 0731 r33 B12X + DSpark K5, batch 4,096, TP=2 | 393,216 | 16 configured; c1 long-context measured | FP8 DS-MLA KV, GPU-only; 725,543 reported KV tokens; 359,900 actual prompt tokens passed; current Primary |
 | DeepSeek V4 Flash 0731 r33 B12X target-only, batch 4,096, TP=2 | 131,072 measured; GPU-only 393,216 next | 1 | FP8 DS-MLA KV; 119,503 actual prompt tokens passed; lowering batch tokens reduced activation 34.1% and increased minimum-rank KV 15.27 to 15.99 GiB; engine reports 553,243 tokens, but >300K remains unproven pending a configured long-context request |
 | DeepSeek V4 Flash 0731 r33 B12X target-only, TP=2 | 131,072 measured; 393,216 translated only | 1 | FP8 DS-MLA KV; 119,503 actual prompt tokens at 73.86 decode tok/s; 283,917-token GPU KV pool cannot support 393K without host capacity; translated recipe adds 16 GiB native offload |
@@ -117,6 +121,13 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Recent changes
 
+- 2026-08-14: official Qwen3.8 27B BF16 multimodal and official FP8 text
+  checkpoints qualified on concurrent one-card split lanes. Both passed the
+  functional, adaptive-reasoning, repeated-quality, 4K capacity, and 241,250
+  actual-prompt-token gates; BF16 passed 30/30 media attempts. FP8 MTP=3 raised
+  c1 decode 47.9 to 94.8 tok/s, prefix caching reduced a repeated 30K-prefix
+  burst to 0.41 s TTFT, and unquantized KV halved full-window capacity without
+  a 4K speed gain. Decision `challenger`, `no-promotion`; no route changed.
 - 2026-08-11: after human approval, the r33 DSpark K5 GPU-only profile became
   `llm.primary` at 393,216 tokens, maxseq16, and batch 4,096. Direct capacity
   passed through 359,900 actual prompt tokens; OpenClaw and Hermes were aligned
