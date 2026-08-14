@@ -1804,6 +1804,7 @@ def test_notebook_rejects_diagnostic_suite_before_live_work(
     ("openai/gpt-oss-120b", ["--reasoning-effort", "minimal"], "low, medium, or high"),
     ("deepseek-v4-flash-0731", ["--reasoning-effort", "medium"], "low, high, or max"),
     ("Qwen/Qwen3.6-27B", ["--reasoning-effort", "high"], "chat-template thinking control"),
+    ("Qwen/Qwen3.8-27B", ["--reasoning-effort", "high"], "low, medium, or xhigh"),
 ])
 def test_model_family_rejects_known_ignored_reasoning_controls(
     model, extra, expected, capsys
@@ -1843,6 +1844,33 @@ def test_deepseek_accepts_max_reasoning_effort(capsys):
     assert plan["thinking"]["reasoning_effort"] == "max"
     assert plan["thinking"]["control_mechanism"] == "reasoning_effort"
     assert plan["thinking"]["control_requested"] == "max"
+
+
+def test_qwen38_accepts_xhigh_reasoning_effort(capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:39080/v1",
+        "--model", "qwen38-27b-bf16-262k",
+        "--reasoning-effort", "xhigh",
+        "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["thinking"]["reasoning_effort"] == "xhigh"
+    assert plan["thinking"]["control_mechanism"] == "reasoning_effort"
+    assert plan["thinking"]["control_requested"] == "xhigh"
+
+
+def test_qwen38_accepts_no_think_template_control(capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:39080/v1",
+        "--model", "qwen38-27b-bf16-262k",
+        "--thinking-mode", "disabled",
+        "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["thinking"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert plan["thinking"]["control_mechanism"] == "chat_template_kwargs"
 
 
 def test_quality_dry_run_reports_exact_reasoning_control(capsys):
