@@ -102,6 +102,24 @@ def test_preflight_forwards_deepseek_max_reasoning_effort(monkeypatch):
     assert calls == ["max"]
 
 
+def test_preflight_forwards_qwen38_xhigh_reasoning_effort(monkeypatch):
+    calls = []
+
+    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout):
+        calls.append(reasoning_effort)
+        evidence.append({"test": "smoke", "finish_reason": "stop", "reasoning_chars": 12})
+        return True, "ok"
+
+    monkeypatch.setattr(pf, "t_smoke", fake_smoke)
+    assert pf.main([
+        "--base-url", "http://127.0.0.1:39080/v1",
+        "--model", "qwen38-27b-bf16-262k",
+        "--checks", "smoke",
+        "--reasoning-effort", "xhigh",
+    ]) == 0
+    assert calls == ["xhigh"]
+
+
 def test_preflight_rejects_length_finish_and_missing_required_reasoning(monkeypatch):
     def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout):
         assert timeout == 60.0

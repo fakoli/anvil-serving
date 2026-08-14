@@ -232,6 +232,46 @@ def test_reconstruct_docker_run_model_is_positional_after_image():
     assert " serve " not in cmd
 
 
+def test_reconstruct_docker_run_supports_immutable_container_model_path():
+    snapshot = (
+        "/root/.cache/huggingface/hub/models--Qwen--Qwen3.8-27B/"
+        "snapshots/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+    )
+    recipe = {
+        **_RECIPE,
+        "serve": {**_RECIPE["serve"], "model_path": snapshot},
+    }
+
+    argv = sr.docker_run_argv(recipe)
+    image_i = argv.index("vllm/vllm-openai:nightly")
+    assert argv[image_i + 1] == snapshot
+    assert "io.anvil-serving.recipe.model=openai/gpt-oss-120b" in argv
+    assert "openai/gpt-oss-120b" not in argv[image_i + 1:]
+
+
+@pytest.mark.parametrize("model_path", ["relative/model", "/bad/../model", "C:\\bad"])
+def test_docker_run_argv_rejects_unsafe_container_model_path(model_path):
+    recipe = {
+        **_RECIPE,
+        "serve": {**_RECIPE["serve"], "model_path": model_path},
+    }
+    with pytest.raises(sr.RecipeError, match="normalized absolute POSIX path"):
+        sr.docker_run_argv(recipe)
+
+
+def test_docker_run_argv_rejects_model_path_with_model_env():
+    recipe = {
+        **_RECIPE,
+        "serve": {
+            **_RECIPE["serve"],
+            "model_path": "/models/pinned",
+            "model_env": "MODEL",
+        },
+    }
+    with pytest.raises(sr.RecipeError, match="incompatible"):
+        sr.docker_run_argv(recipe)
+
+
 def test_reconstruct_docker_run_supports_entrypoint_and_model_flag():
     recipe = {
         "model": "nvidia/Qwen3.5-122B-A10B-NVFP4",
