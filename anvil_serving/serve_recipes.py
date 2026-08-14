@@ -361,6 +361,24 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         raise RecipeError("recipe.serve.image is required to load a recipe")
     if image.lstrip().startswith("-") or "\x00" in image:
         raise RecipeError("recipe.serve.image must be a Docker image reference, not an option")
+    model_path = serve.get("model_path")
+    if model_path is not None:
+        path_parts = model_path.split("/") if isinstance(model_path, str) else []
+        if (
+            not isinstance(model_path, str)
+            or not model_path.startswith("/")
+            or "\\" in model_path
+            or any(ch in model_path for ch in ("\n", "\r", "\x00"))
+            or any(ch.isspace() for ch in model_path)
+            or any(not part or part in {".", ".."} for part in path_parts[1:])
+        ):
+            raise RecipeError(
+                "recipe.serve.model_path must be a normalized absolute POSIX path"
+            )
+        if serve.get("model_env"):
+            raise RecipeError(
+                "recipe.serve.model_path is incompatible with recipe.serve.model_env"
+            )
     if "\x00" in model:
         raise RecipeError("recipe.model must not contain NUL bytes")
     port = serve.get("port")
@@ -715,7 +733,7 @@ def docker_run_argv(
     if model_flag:
         argv.append(model_flag)
     if not model_env:
-        argv.append(recipe["model"])
+        argv.append(serve.get("model_path", recipe["model"]))
     for flag in serve.get("flags", []):
         try:
             tokens = shlex.split(flag)
@@ -731,9 +749,11 @@ def reconstruct_docker_run(recipe: dict) -> str:
     """Reconstruct the reproducible `docker run` for a recipe.
 
     The default image ENTRYPOINT is `vllm serve`, so the model is positional after
-    the image. Recipes can instead supply ``serve.entrypoint`` with ``model_flag``
-    for images that require ``--model MODEL``, or ``model_env`` for launchers whose
-    environment selects the model and which must receive no model argument.
+    the image. ``serve.model_path`` can select an immutable container-side snapshot
+    while ``recipe.model`` remains the stable registry identity. Recipes can instead
+    supply ``serve.entrypoint`` with ``model_flag`` for images that require
+    ``--model MODEL``, or ``model_env`` for launchers whose environment selects the
+    model and which must receive no model argument.
     """
     return shlex.join(docker_run_argv(recipe))
 

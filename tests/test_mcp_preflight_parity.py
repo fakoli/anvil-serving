@@ -68,7 +68,7 @@ def test_preflight_probe_schema_matches_local_bounds_and_controls():
         "default": 900,
     }
     assert schema["reasoning_effort"]["enum"] == [
-        "none", "minimal", "low", "medium", "high", "max"
+        "none", "minimal", "low", "medium", "high", "max", "xhigh"
     ]
     assert "allowed_finish_reasons" in schema
     assert schema["image_expect"]["maxItems"] == 32

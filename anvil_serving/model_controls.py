@@ -1,6 +1,8 @@
 """Shared model-family reasoning-control validation for eval commands."""
 
-REASONING_EFFORT_CHOICES = ("none", "minimal", "low", "medium", "high", "max")
+REASONING_EFFORT_CHOICES = (
+    "none", "minimal", "low", "medium", "high", "max", "xhigh",
+)
 
 
 def validate_reasoning_control(model, *, thinking_mode, no_thinking,
@@ -15,6 +17,7 @@ def validate_reasoning_control(model, *, thinking_mode, no_thinking,
     explicit_template_control = bool(
         no_thinking or thinking_mode in {"enabled", "disabled"}
     )
+    qwen38 = "qwen3.8" in normalized or "qwen38" in normalized
     if "gpt-oss" in normalized:
         if explicit_template_control:
             raise ValueError(
@@ -31,7 +34,12 @@ def validate_reasoning_control(model, *, thinking_mode, no_thinking,
             raise ValueError(
                 "DeepSeek V4 supports --reasoning-effort low, high, or max"
             )
-    if "qwen" in normalized and reasoning_effort is not None:
+    if qwen38:
+        if reasoning_effort not in {None, "low", "medium", "xhigh"}:
+            raise ValueError(
+                "Qwen3.8 supports --reasoning-effort low, medium, or xhigh"
+            )
+    elif "qwen" in normalized and reasoning_effort is not None:
         raise ValueError(
             "Qwen uses chat-template thinking control; use --thinking-mode "
             "enabled|disabled instead of --reasoning-effort"
