@@ -21,6 +21,12 @@ When merging into an existing OpenClaw document, sync refreshes only the
 an existing structured file/env SecretRef for the Anvil provider. It never
 replaces a structured SecretRef with a plaintext token.
 
+When the router exposes an image-capable `vision.general` alias, sync also
+sets `agents.defaults.imageModel.primary` to `anvil/vision.general`. This lets
+OpenClaw's image-understanding tool use the explicit vision route while the
+ordinary agent remains on `llm.primary`. A non-Anvil image-model selection is
+operator-owned and remains unchanged.
+
 ## Contract
 
 - The gateway calls `POST /v1/chat/completions` or `POST /v1/messages` with an explicit alias.
