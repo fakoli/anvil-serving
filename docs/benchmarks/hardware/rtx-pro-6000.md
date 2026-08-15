@@ -17,8 +17,8 @@ The two GPU roles are symmetric. Split mode can place independent workloads on
 the cards. Exclusive TP=2 mode assigns both roles to one declared owner and
 blocks every other inference workload until the mode is left; the cards are
 connected over PCIe without NVLink, so 192 GB is aggregate rather than unified
-memory. The public 2026-08-11 finding records a human-approved assignment of
-both roles to the DeepSeek r33 393K Primary. Earlier findings retain the r16
+memory. The public 2026-08-14 finding records the human-approved Qwen3.8 split,
+with one TP=1 serve per equal card. Earlier findings retain the DeepSeek r33 and r16
 650K promotion, 262K retune, and r27 image-upgrade history. Active assignments
 remain private operator state;
 Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
@@ -27,8 +27,8 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
-| 1 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | `current`, 2026-08-11 promotion record | Exclusive TP=2 r33 text Primary at 393,216 tokens; direct capacity through 359,900 actual prompt tokens |
-| 2 | [Qwen3.8 27B](../models/qwen38-27b.md) | `challenger`, `no-promotion` | Official BF16 multimodal plus official FP8 text split lanes; matched TP=1/TP=2 and MTP controls; TP=2 retrieval through 985,107 actual prompt tokens; not routed |
+| 1 | [Qwen3.8 27B](../models/qwen38-27b.md) | `current`, 2026-08-14 split promotion | Official FP8 MTP=3 text Primary plus BF16 MTP=3 general-vision/OCR; TP=1 each, matched 393,216-token windows, 32 images per BF16 request |
+| 2 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | managed rollback, historical 2026-08-11 promotion | Exclusive TP=2 r33 text profile at 393,216 tokens; direct capacity through 359,900 actual prompt tokens |
 | 3 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Not started or selected by this promotion's restoration contract |
 | 4 | [Agents-A1](../models/agents-a1.md) plus Omni | managed split restoration | Restore group when leaving this exclusive profile; Agents-A1 retains FP8 text/image/video evidence |
 | 5 | [Laguna S 2.1](../models/laguna-s-2.1.md) | `rollback` | Additional managed rollback; thinking disabled |
@@ -40,7 +40,7 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 | Candidate | Repeated quality | Capacity and context evidence | Decision |
 |---|---|---|---|
-| DeepSeek V4 Flash 0731, r33 B12X + DSpark K5, batch 4,096, maxseq16, 393K | prior repeated high-reasoning suite retained; routed functional checks passed except legacy long-needle calibration and trivial-prompt reasoning-evidence checks; OpenClaw/Hermes 393K/32K/high client paths passed | direct 238,507/339,310/359,900 actual prompt tokens passed; largest 65.2 s TTFT and 5,599 effective prefill tok/s; engine 725,543 KV tokens / 1.845 full windows | human-approved `current`; routed/OpenClaw/Hermes >300K and SWE score remain open |
+| DeepSeek V4 Flash 0731, r33 B12X + DSpark K5, batch 4,096, maxseq16, 393K | prior repeated high-reasoning suite retained; routed functional checks passed except legacy long-needle calibration and trivial-prompt reasoning-evidence checks; OpenClaw/Hermes 393K/32K/high client paths passed | direct 238,507/339,310/359,900 actual prompt tokens passed; largest 65.2 s TTFT and 5,599 effective prefill tok/s; engine 725,543 KV tokens / 1.845 full windows | historical Primary; now managed TP=2 rollback; routed/OpenClaw/Hermes >300K and SWE score remain open |
 | DeepSeek V4 Flash 0731, r33 B12X target-only/no-spec, batch 4,096 | functional preflight 6/6 at high reasoning; same repeated broad-quality suite not rerun | 119,503 actual prompt tokens; 17.364 s TTFT, 7,344 effective prefill tok/s, 75.20 decode tok/s; minimum-rank KV 15.99 GiB; engine reports 553,243 KV tokens with unresolved byte/token-accounting caveat | healthy direct-only A/B winner for capacity; next arm GPU-only 393K; `no-promotion` |
 | DeepSeek V4 Flash 0731, r33 B12X target-only/no-spec | intelligence 6/6, session 3/3, tools 3/3 at high reasoning; functional preflight 6/6 | 119,503 actual prompt tokens; 17.445 s TTFT, 7,537 effective prefill tok/s, 73.86 decode tok/s; 283,917-token GPU KV allocation; context-target calibration caveat retained | priority `challenger`, `no-promotion`; 393K FP8-KV plus 16 GiB host-offload recipe translated but not loaded |
 | Qwen3.5 122B NVFP4 | intelligence 6/6, session 3/3, tools 3/3 | 32K 12/12 at 2.32 s TTFT and 67.5 tok/s decode; 128K 4/4 at 14.59 s and 65.0 tok/s | TP=2 `no-promotion`; single-card profile remains `rollback` |
@@ -89,7 +89,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
-| Qwen3.8 27B official BF16 / official FP8 | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; BF16 media 30/30; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | `challenger`, `no-promotion`; FP8 MTP leads interactive text, TP=2 helps long prefill/capacity, 1M remains batch-like |
+| Qwen3.8 27B official BF16 / official FP8 | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; final routed BF16 media 30/30 and 32-image request 1/1; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | `current` split at TP=1/393K/MTP=3; FP8 text Primary, BF16 vision/OCR; TP=2 remains batch-like |
 | Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `rollback` |
 | Laguna S 2.1 NVFP4 | Passed protocol-v3 with thinking disabled | 32K/128K/240K passed; TTFT 2.26/21.15/50.64 s | `rollback` |
 | GPT-OSS Puzzle 88B | Tools/session/timeout 3/3; unified diff 2/3 | 32K and 128K retained | `rollback` |
@@ -123,6 +123,11 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Recent changes
 
+- 2026-08-14: human approval promoted the matched 393K TP=1/MTP=3 split.
+  Official FP8 is the text Primary and official BF16 handles explicit
+  general-vision/OCR with a 32-image request ceiling. Routed FP8 functional
+  gates, BF16 media 30/30, one 32-image request, and Hermes/OpenClaw client
+  paths passed without fallback.
 - 2026-08-14: the matched Qwen3.8 BF16/official-FP8 matrix completed split
   TP=1 at 393K and exclusive TP=2 at 393K/600K/1.01M, each with control and
   MTP=3. All 16 arms passed full functional gates and cold retrieval at
