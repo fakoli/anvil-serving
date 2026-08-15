@@ -795,6 +795,14 @@ class RelayBackend:
                 body["presence_penalty"] = raw["presence_penalty"]
             if raw.get("frequency_penalty") is not None:
                 body["frequency_penalty"] = raw["frequency_penalty"]
+            # vLLM and SGLang use this OpenAI-compatible extension for model
+            # family controls such as Qwen's enable_thinking switch.  It must
+            # survive a same-dialect relay just like response_format; dropping
+            # it silently changes the model's generation policy behind the
+            # router.  Keep the extension same-dialect-only and mapping-shaped
+            # so cross-dialect requests cannot invent provider-specific fields.
+            if isinstance(raw.get("chat_template_kwargs"), Mapping):
+                body["chat_template_kwargs"] = dict(raw["chat_template_kwargs"])
             # reasoning_effort (gpt-oss / harmony): forward the CALLER's value verbatim, so it lands
             # in the body BEFORE _apply_tier_extra_body and thus OVERRIDES a tier's soft
             # extra_body_defaults reasoning_effort — this is what makes OpenClaw's per-message

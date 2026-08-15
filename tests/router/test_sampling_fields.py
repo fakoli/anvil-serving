@@ -302,6 +302,34 @@ def test_reasoning_effort_not_invented_for_anthropic_origin():
     assert "reasoning_effort" not in _backend("openai")._build_body(req)
 
 
+def test_chat_template_kwargs_forwarded_openai_to_openai():
+    body = _backend("openai")._build_body(
+        _openai_req(chat_template_kwargs={"enable_thinking": False})
+    )
+    assert body["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+def test_chat_template_kwargs_not_invented_for_anthropic_origin():
+    req = AnthropicDialect().parse_request(
+        {
+            "model": "claude",
+            "max_tokens": 64,
+            "messages": [{"role": "user", "content": "hi"}],
+        }
+    )
+    assert "chat_template_kwargs" not in _backend("openai")._build_body(req)
+
+
+def test_hard_extra_body_overrides_chat_template_kwargs():
+    body = _backend(
+        "openai",
+        extra_body={"chat_template_kwargs": {"enable_thinking": True}},
+    )._build_body(
+        _openai_req(chat_template_kwargs={"enable_thinking": False})
+    )
+    assert body["chat_template_kwargs"] == {"enable_thinking": True}
+
+
 def test_extra_body_defaults_fills_when_request_absent():
     # tier soft-default applies only when the caller didn't set it.
     body = _backend("openai", extra_body_defaults={"reasoning_effort": "high"})._build_body(_openai_req())

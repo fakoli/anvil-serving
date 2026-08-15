@@ -1,0 +1,57 @@
+{
+  "schema": "multimodal-corpus/v1",
+  "provenance": {
+    "observed_date": "2026-08-14",
+    "synthetic": {
+      "license": "CC0-1.0",
+      "generator": "generate.py",
+      "purpose": "Qwen3.8 BF16 per-request image admission boundary"
+    }
+  },
+  "cases": [
+    {
+      "id": "image-limit-32-final-ocr",
+      "modality": "image",
+      "media": [
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "scene.png", "mime": "image/png", "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"},
+        {"path": "ocr.png", "mime": "image/png", "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"}
+      ],
+      "prompt": "Inspect the final image only. Transcribe its large heading and five-digit code exactly.",
+      "assertions": [
+        {"type": "contains_casefold", "value": "ANVIL READY"},
+        {"type": "contains_casefold", "value": "42917"}
+      ],
+      "repetitions": 1
+    }
+  ]
+}
