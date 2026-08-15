@@ -90,6 +90,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
 | Qwen3.8 27B official BF16 / official FP8 | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; final routed BF16 media 30/30 and 32-image request 1/1; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | `current` split at TP=1/393K/MTP=3; FP8 text Primary, BF16 vision/OCR; TP=2 remains batch-like |
+| Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, MTP=3 | Both pass intelligence 6/6, session 3/3, tools 3/3, plus bounded image/OCR with CPU feature transport; video/multi-image/32-image not tested | Both pass 389K retrieval; at 4K official FP8 averages 111.3 decode tok/s while NVFP4 averages 98.1, with NVFP4 retaining lower TTFT and higher prefill | SGLang MTP/CPU-multimodal `challenger`, both `no-promotion`; current vLLM split restored |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4 | Both pass full functional gates on two card placements plus intelligence 6/6, session 3/3, and tools 3/3; text-only, no speculation | Both pass 388,979 actual tokens; NVFP4 248.75 s TTFT / 1,564 prefill tok/s versus official FP8 258.13 s / 1,507; at 4K NVFP4 averages 57.9 versus 48.0 decode tok/s across five runs | NVFP4 text `challenger`; both `no-promotion`; current vLLM MTP=3 remains faster and SGLang multimodal is unqualified on WSL2 |
 | Qwen3.8 27B official FP8 MTP=4/5 | Both pass tools 20/20 and repeated deterministic intelligence/session/tools; the quality artifacts are behavioral rather than timing evidence | Both pass one cold 388,979-token request; cross-card 4K runs show MTP=5 only 0.4-1.3% above MTP=4 decode on a fixed card and no E2E win | MTP=4/5 `no-promotion`; MTP=3 remains current |
 | Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `rollback` |
@@ -103,6 +104,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
+| Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, TP=1 MTP=3 | 393,216 | 1 each | Both pass 389K retrieval and cross-card gates; official FP8 averages 111.3 decode tok/s, NVFP4 98.1 with 0.448 s TTFT; CPU transport passes bounded image/OCR on both but full media and host-memory-pressure gates remain open |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, TP=1 no-spec | 393,216 | 1 each | Both pass 388,979 actual prompt tokens and cross-card functional gates; official FP8 reports 1,665,740 KV tokens and 48.0 tok/s 4K decode, NVFP4 1,805,068 and 57.9 tok/s; text-only because WSL2 CUDA-IPC multimodal warmup failed |
 | Qwen3.8 27B official FP8 text, TP=2 control/MTP=3 | 393,216 / 600,000 / 1,010,000 | 1 | All three limits passed at 388,979 / 598,729 / 985,107 actual tokens; control reports ~4.65-4.67M KV tokens; MTP reports ~4.22-4.33M and 85.9-91.6 tok/s 4K decode; no P2P |
 | Qwen3.8 27B official BF16 multimodal, TP=2 control/MTP=3 | 393,216 / 600,000 / 1,010,000 | 1 | All three limits passed; control reports ~3.77-3.78M KV tokens; MTP reports ~3.42-3.50M and 67.4-75.6 tok/s 4K decode; no P2P |
@@ -140,11 +142,18 @@ Dormant vLLM MTP=4/5 recipes remain measured `no-promotion` controls. The
 [SGLang official-FP8/NVFP4 qualification](../../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md)
 completed the second direction with a digest-pinned runtime, exact revisions,
 cross-card measurements, and exact restoration. NVFP4 improved the matched
-no-spec SGLang lane, but did not beat the current vLLM MTP=3 service; SGLang
-multimodal remains a separate CPU-feature-transport experiment.
+no-spec SGLang lane. The later
+[MTP/multimodal qualification](../../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md)
+raised official-FP8 decode to 111.3 tok/s and NVFP4 to 98.1, while bounded
+image/OCR passed on both with CPU feature transport. All remain no-promotion.
 
 ## Recent changes
 
+- 2026-08-15: SGLang EAGLE MTP `3/1/4` raised matched official-FP8 decode
+  from 48.0 to 111.3 tok/s and Inferact NVFP4 from 57.9 to 98.1. Both passed
+  389K retrieval, repeated deterministic quality, and bounded image/OCR after
+  forcing CPU feature transport around the failing CUDA-IPC path. The exact
+  vLLM split was restored and readmitted; no route or promotion changed.
 - 2026-08-15: digest-pinned SGLang official FP8 and audited Inferact NVFP4
   both passed full functional, repeated deterministic-quality, cross-card 4K,
   and 388,979-token gates at TP=1/393K. NVFP4 averaged 22.6% lower TTFT and
