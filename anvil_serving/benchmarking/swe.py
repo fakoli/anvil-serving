@@ -11,6 +11,7 @@ import subprocess
 import time
 from typing import Any, Callable, Mapping, Sequence
 
+from ..model_controls import REASONING_EFFORT_CHOICES
 from .artifacts import atomic_write_json, path_is_within, real_path
 from .harnesses import HARNESS_ASSETS_SCHEMA, MAX_HARNESS_OUTPUT_BYTES
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
@@ -151,11 +152,48 @@ def _endpoint(value: Any) -> dict[str, str]:
     return result
 
 
-def _mini_config(endpoint: Mapping[str, str], suite: Mapping[str, Any]) -> str:
+def _validate_request_controls(value: Mapping[str, Any] | None) -> dict[str, Any]:
+    controls = dict(value or {})
+    if set(controls) - {"thinking_mode", "reasoning_effort"}:
+        raise BenchmarkJobError("bad_request_controls", "SWE request controls are invalid")
+    thinking_mode = controls.get("thinking_mode", "default")
+    reasoning_effort = controls.get("reasoning_effort")
+    if thinking_mode not in {"default", "enabled", "disabled"}:
+        raise BenchmarkJobError(
+            "bad_thinking_mode", "thinking_mode must be default, enabled, or disabled"
+        )
+    if reasoning_effort is not None and reasoning_effort not in REASONING_EFFORT_CHOICES:
+        raise BenchmarkJobError(
+            "bad_reasoning_effort", "reasoning_effort is not supported by the harness"
+        )
+    if reasoning_effort is not None and thinking_mode != "default":
+        raise BenchmarkJobError(
+            "conflicting_reasoning_controls",
+            "reasoning_effort and thinking_mode cannot both be explicit",
+        )
+    return {"thinking_mode": thinking_mode, "reasoning_effort": reasoning_effort}
+
+
+def _mini_config(
+    endpoint: Mapping[str, str],
+    suite: Mapping[str, Any],
+    request_controls: Mapping[str, Any],
+) -> str:
     # This is intentionally a small YAML overlay. It contains endpoint identity only;
     # the credential is mapped into OPENAI_API_KEY in the child process environment.
     base = json.dumps(endpoint["base_url"], ensure_ascii=True)
     model = json.dumps(f"openai/{endpoint['model']}", ensure_ascii=True)
+    control_lines = ""
+    if request_controls["reasoning_effort"] is not None:
+        effort = json.dumps(request_controls["reasoning_effort"], ensure_ascii=True)
+        control_lines = f"    reasoning_effort: {effort}\n"
+    elif request_controls["thinking_mode"] != "default":
+        enabled = "true" if request_controls["thinking_mode"] == "enabled" else "false"
+        control_lines = (
+            "    extra_body:\n"
+            "      chat_template_kwargs:\n"
+            f"        enable_thinking: {enabled}\n"
+        )
     return (
         "model:\n"
         f"  model_name: {model}\n"
@@ -166,6 +204,7 @@ def _mini_config(endpoint: Mapping[str, str], suite: Mapping[str, Any]) -> str:
         f"    api_base: {base}\n"
         "    drop_params: true\n"
         "    parallel_tool_calls: true\n"
+        f"{control_lines}"
         f"    max_tokens: {suite['max_completion_tokens']}\n"
         "agent:\n"
         f"  step_limit: {suite['max_steps']}\n"
@@ -183,12 +222,14 @@ def build_swe_run_plan(
     ownership_id: str,
     run_id: str,
     python_executable: str = "python",
+    request_controls: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic two-stage execution plan without running a model."""
     validated = validate_profile(profile)
     assets = _validate_assets(validated, assets_manifest)
     selected = validate_swe_selection(validated, instance_ids)
     target = _endpoint(endpoint)
+    controls = _validate_request_controls(request_controls)
     Path(run_root).mkdir(parents=True, exist_ok=True)
     run_path = resolve_owned_run_path(run_root, ownership_id=ownership_id, run_id=run_id)
     work = resolve_owned_run_path(
@@ -246,6 +287,7 @@ def build_swe_run_plan(
             "sha256": hashlib.sha256(canonical_json_bytes(selected)).hexdigest(),
         },
         "endpoint": target,
+        "request_controls": controls,
         "harnesses": {
             "agent": {"name": "mini-swe-agent", "revision": assets["mini-swe-agent"]["revision"]},
             "grader": {"name": "swe-bench", "revision": assets["swe-bench"]["revision"]},
@@ -262,7 +304,7 @@ def build_swe_run_plan(
             "result": os.path.join(run_path, "swe-result.json"),
         },
         "commands": {"agent": mini_command, "grader": grader_command},
-        "config_text": _mini_config(target, suite),
+        "config_text": _mini_config(target, suite, controls),
         "timeout_s": suite["timeout_s"],
     }
     plan["plan_sha256"] = hashlib.sha256(canonical_json_bytes(plan)).hexdigest()
@@ -364,6 +406,7 @@ def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
         "split": plan["split"],
         "selection": plan["selection"],
         "endpoint": plan["endpoint"],
+        "request_controls": plan["request_controls"],
         "harnesses": plan["harnesses"],
         "state": "incomplete",
         "official_grader_complete": False,

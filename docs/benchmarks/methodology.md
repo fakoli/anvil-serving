@@ -164,7 +164,8 @@ recovery, final-answer failure, and worker failure are separate outcomes.
 **Official SWE resolution.** An agent trajectory and patch are intermediate
 evidence. SWE resolution is complete only when the pinned official SWE-bench
 grader emits a report for the exact explicitly selected instance. Agent,
-dataset, image, prediction, and grader identities remain bound in the artifact.
+dataset, image, prediction, grader, and model reasoning-control identities
+remain bound in the artifact.
 See [the durable job workflow](context-agentic-swe.md).
 
 ## Evaluation pipeline

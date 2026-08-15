@@ -134,6 +134,7 @@ def _run_suite(
     if spec["suite"] == "agentic":
         return run_agentic_suite(profile, spec)
     instance_ids = spec.get("parameters", {}).get("instance_ids")
+    parameters = spec.get("parameters", {})
     cache_root = os.environ.get(
         "ANVIL_BENCHMARK_CACHE_ROOT",
         os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
@@ -148,6 +149,11 @@ def _run_suite(
         ownership_id=spec["ownership_id"],
         run_id=spec["run_id"],
         python_executable=sys.executable,
+        request_controls={
+            key: parameters[key]
+            for key in ("thinking_mode", "reasoning_effort")
+            if key in parameters
+        },
     )
     return run_swe_benchmark(plan)
 
