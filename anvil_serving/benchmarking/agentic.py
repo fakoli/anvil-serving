@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from typing import Any, Mapping
 
@@ -76,6 +77,7 @@ def build_agentic_scenario(
         "result_markers": [],
         "final": None,
         "final_kind": "normalized_exact",
+        "reasoning_required": scenario_type == "reasoning",
         "recovery_required": False,
     }
     if scenario_type == "planning":
@@ -114,6 +116,7 @@ def build_agentic_scenario(
             ],
             "result_markers": ["FILE-READY"],
             "final": "FILE-READY",
+            "final_kind": "contains_markers",
         })
     elif scenario_type == "parallel-tools":
         scenario["messages"] = [{
@@ -132,6 +135,7 @@ def build_agentic_scenario(
             ],
             "result_markers": ["A-OK", "B-OK"],
             "final": "A-OK | B-OK",
+            "final_kind": "contains_markers",
         })
     elif scenario_type == "dependent-result":
         scenario["messages"] = [{
@@ -150,6 +154,7 @@ def build_agentic_scenario(
             ],
             "result_markers": ["UPDATED-73"],
             "final": "UPDATED-73",
+            "final_kind": "contains_markers",
         })
     elif scenario_type == "tool-recovery":
         scenario["scenario_id"] = f"tool-recovery-{recovery_result}"
@@ -177,6 +182,7 @@ def build_agentic_scenario(
             ],
             "result_markers": ["BUILD-OK"],
             "final": "BUILD-OK",
+            "final_kind": "contains_markers",
             "recovery_required": True,
             "recovery_result": recovery_result,
         })
@@ -199,6 +205,7 @@ def build_agentic_scenario(
             ],
             "result_markers": ["TESTS-PASS"],
             "final": "TESTS-PASS",
+            "final_kind": "contains_markers",
         })
     else:
         code = "SESSION-8841"
@@ -261,22 +268,29 @@ def score_agentic_trace(
         )
     final = trace.get("final_answer")
     final_passed = False
+    markers = expected.get("result_markers", [])
     if expected.get("final_kind") == "exact_json":
         try:
             parsed = json.loads(final) if isinstance(final, str) else final
         except json.JSONDecodeError:
             parsed = None
         final_passed = parsed == expected.get("final")
+    elif expected.get("final_kind") == "contains_markers":
+        final_passed = (
+            isinstance(final, str)
+            and bool(markers)
+            and all(marker in final for marker in markers)
+        )
     elif isinstance(final, str) and isinstance(expected.get("final"), str):
         final_passed = _normalize(final) == _normalize(expected["final"])
-    markers = expected.get("result_markers", [])
     result_passed = isinstance(final, str) and all(marker in final for marker in markers)
     if not markers:
         result_passed = True
     recovery_passed = not expected.get("recovery_required") or (
         protocol_passed and len(tool_calls) >= 2 and result_passed
     )
-    reasoning_passed = final_passed
+    reasoning_applicable = bool(expected.get("reasoning_required"))
+    reasoning_passed = final_passed if reasoning_applicable else True
     history = trace.get("history", [])
     growth = trace.get("history_prompt_tokens", [])
     history_passed = True
@@ -301,7 +315,7 @@ def score_agentic_trace(
         classification = "protocol_failure"
     elif not recovery_passed:
         classification = "recovery_failure"
-    elif not reasoning_passed:
+    elif reasoning_applicable and not reasoning_passed:
         classification = "reasoning_failure"
     elif not final_passed or not result_passed or not history_passed:
         classification = "final_answer_failure"
@@ -309,7 +323,7 @@ def score_agentic_trace(
         classification = None
     stages = {
         "protocol": {"passed": protocol_passed},
-        "reasoning": {"passed": reasoning_passed},
+        "reasoning": {"applicable": reasoning_applicable, "passed": reasoning_passed},
         "result_incorporation": {"passed": result_passed},
         "recovery": {"passed": recovery_passed},
         "history": {"passed": history_passed},
@@ -322,6 +336,14 @@ def score_agentic_trace(
         "failure_class": classification,
         "stages": stages,
         "tool_calls": [dict(item) for item in tool_calls],
+        "visible_answer": final if isinstance(final, str) else None,
+        "answer_sha256": (
+            hashlib.sha256(final.encode("utf-8")).hexdigest()
+            if isinstance(final, str)
+            else None
+        ),
+        "reasoning_present": bool(trace.get("reasoning_present")),
+        "turns": copy.deepcopy(trace.get("turns", [])),
         "full_history": copy.deepcopy(history),
         "history_prompt_tokens": list(growth) if isinstance(growth, list) else [],
         "failure": dict(failure) if isinstance(failure, Mapping) else None,

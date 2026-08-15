@@ -147,10 +147,16 @@ interpolation. Missing engine prefill/decode telemetry stays unavailable rather
 than being inferred from wall-clock latency.
 
 **Agentic stage score.** Deterministic agentic fixtures score protocol, tool
-arguments, result incorporation, recovery, history, reasoning, and final answer
-independently. Tool results come from the harness, never from the model under
-test. A malformed call, reasoning-budget exhaustion, incorrect recovery, and
-worker failure are separate outcomes.
+arguments, result incorporation, recovery, history, applicable reasoning, and
+final answer independently. Tool results come from the harness, never from the
+model under test. Tool scenarios accept a natural-language final answer when
+it contains every deterministic result marker; they do not require an
+undisclosed marker-only response. The reasoning stage is applicable only to an
+explicit reasoning scenario and is never inferred from exact-answer formatting.
+Artifacts retain the visible final answer, its SHA-256, per-turn latency and
+token counts, finish reasons, tool-call counts, and whether a separate reasoning
+channel was present. A malformed call, reasoning-budget exhaustion, incorrect
+recovery, final-answer failure, and worker failure are separate outcomes.
 
 **Official SWE resolution.** An agent trajectory and patch are intermediate
 evidence. SWE resolution is complete only when the pinned official SWE-bench

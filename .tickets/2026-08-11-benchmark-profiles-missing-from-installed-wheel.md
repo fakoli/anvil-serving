@@ -26,3 +26,11 @@ The source checkout can load `smoke`, `scout`, and `deep`, but
 
 Do not copy profile files into an installed environment by hand. That produces
 an unversioned worker state which disappears on the next tool update.
+
+## Resolution
+
+Resolved in `codex/qwen38-agentic-benchmark-fix`: the immutable profiles are
+mirrored under `anvil_serving/_benchmark_profiles/`, loaded through
+`importlib.resources`, included as wheel package data, and checked against the
+public `configs/benchmarks/` copies. The built-wheel smoke now loads `smoke`,
+`scout`, and `deep` from a clean installation outside the source checkout.

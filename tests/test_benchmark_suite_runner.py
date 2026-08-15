@@ -72,7 +72,11 @@ def test_context_runner_rejects_unimplemented_profile_cases():
 
 
 class AgentCaller:
+    def __init__(self):
+        self.kwargs = []
+
     def __call__(self, base, model, key, messages, max_tokens, timeout, tools=None, **_kwargs):
+        self.kwargs.append(_kwargs)
         tool_messages = [item for item in messages if item["role"] == "tool"]
         if not tool_messages:
             message = {
@@ -115,6 +119,42 @@ def test_agentic_runner_injects_failed_result_then_scores_retry():
     assert observation["stages"]["recovery"]["passed"] is True
     assert [call["arguments"]["attempt"] for call in observation["tool_calls"]] == ["1", "2"]
     assert len(result["request_ids"]) == 3
+    assert observation["visible_answer"] == "BUILD-OK"
+    assert len(observation["turns"]) == 3
+
+
+def test_agentic_runner_forwards_one_explicit_reasoning_control():
+    caller = AgentCaller()
+    result = run_agentic_suite(
+        load_profile("smoke"),
+        spec(
+            "agentic",
+            recovery_result="error",
+            case_ids=["tool-recovery"],
+            reasoning_effort="xhigh",
+        ),
+        caller=caller,
+    )
+
+    assert result["request_controls"]["reasoning_effort"] == "xhigh"
+    assert all(item["reasoning_effort"] == "xhigh" for item in caller.kwargs)
+    assert all(item["chat_template_kwargs"] is None for item in caller.kwargs)
+
+
+def test_agentic_runner_rejects_conflicting_reasoning_controls():
+    with pytest.raises(BenchmarkJobError) as exc:
+        run_agentic_suite(
+            load_profile("smoke"),
+            spec(
+                "agentic",
+                case_ids=["tool-recovery"],
+                reasoning_effort="xhigh",
+                thinking_mode="enabled",
+            ),
+            caller=AgentCaller(),
+        )
+
+    assert exc.value.code == "conflicting_reasoning_controls"
 
 
 def test_agentic_runner_executes_every_profile_repetition():
