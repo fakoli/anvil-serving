@@ -1,4 +1,4 @@
-from pathlib import Path
+import json
 
 import pytest
 
@@ -194,7 +194,45 @@ def test_serves_mode_rejects_preserve_on_failure_outside_enter(
 
 
 def test_openclaw_sync_apply_writes_direct_alias_provider(tmp_path):
-    config = Path(__file__).resolve().parents[1] / "configs" / "example.toml"
+    config = tmp_path / "router.toml"
+    config.write_text(
+        """
+[router]
+
+[[router.tiers]]
+id = "primary-local"
+base_url = "http://127.0.0.1:30002/v1"
+model = "primary"
+dialect = "openai"
+context_limit = 393216
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
+
+[router.tiers.params.capabilities]
+modalities = ["text"]
+
+[[router.tiers]]
+id = "omni-local"
+base_url = "http://127.0.0.1:30003/v1"
+model = "omni"
+dialect = "openai"
+context_limit = 393216
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_OMNI_LOCAL_KEY"
+
+[router.tiers.params.capabilities]
+modalities = ["text", "image"]
+
+[router.model_routes]
+llm.primary = "primary-local"
+llm.voice = "primary-local"
+vision.ocr = "omni-local"
+vision.general = "omni-local"
+""".lstrip(),
+        encoding="utf-8",
+    )
     out = tmp_path / "openclaw.json"
 
     result = mcp.tool_openclaw_sync({
@@ -214,9 +252,14 @@ def test_openclaw_sync_apply_writes_direct_alias_provider(tmp_path):
         "vision.ocr",
         "vision.general",
     ]
+    assert data["preview"]["image_model"] == "anvil/vision.general"
     assert "plugin_id" not in data["preview"]
     assert "route_endpoint" not in data["target"]
     assert out.is_file()
+    rendered = json.loads(out.read_text(encoding="utf-8"))
+    assert rendered["agents"]["defaults"]["imageModel"] == {
+        "primary": "anvil/vision.general"
+    }
 
 
 def test_workflow_promotion_requires_a_serves_promotion_result():
