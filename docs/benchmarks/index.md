@@ -82,6 +82,16 @@ SGLang recipes are `no-promotion`, and SGLang multimodal remains unqualified on
 WSL2. See the
 [SGLang/NVFP4 qualification](../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md).
 
+A matched MTP=3 follow-up then raised official-FP8 SGLang decode from 48.0 to
+111.3 tok/s and Inferact NVFP4 from 57.9 to 98.1. Both retained the complete
+functional and repeated deterministic-quality gate and passed a 389K
+retrieval probe. The prior multimodal crash was isolated to SGLang's automatic
+CUDA-IPC feature transport in this exact runtime; forcing CPU transport let
+both checkpoints pass bounded image understanding and OCR with MTP enabled.
+Video, multi-image, the 32-image ceiling, and host-memory pressure remain open,
+so both recipes are `no-promotion`. See the
+[MTP/multimodal qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md).
+
 ## How to read the evidence
 
 Evidence labels describe what was observed:
