@@ -2,8 +2,9 @@
 
 ## Current status and review date
 
-Official BF16 multimodal and official FP8 text `challenger`;
-`no-promotion`. Review date: 2026-08-14.
+Human-approved `current` split: official FP8 text Primary and official BF16
+multimodal/OCR, both TP=1 at 393,216 tokens with MTP=3. Review date:
+2026-08-14.
 
 ## Immutable identity
 
@@ -39,6 +40,11 @@ for both checkpoints. Split TP=1 used 393,216 tokens. Exclusive TP=2 used
 393,216, 600,000, and 1,010,000 tokens. Every point had an otherwise identical
 no-MTP control and `method=mtp,num_speculative_tokens=3` arm.
 
+The promoted split selects the 393,216-token TP=1 MTP=3 arm for both models.
+Official FP8 is text-only. BF16 admits text, image, and video, including up to
+32 images in one request. Both default to thinking disabled while retaining a
+caller override on chat-completions requests.
+
 ## Evidence by measurement class
 
 Both official variants passed the thinking-disabled functional gate, repeated
@@ -72,10 +78,11 @@ multimodal. The deterministic API checks are not SWE-bench evidence.
 
 ## Decision and promotion state
 
-`challenger`, `no-promotion`. Official FP8 plus MTP=3 is the measured
-interactive leader within this campaign; BF16 remains the feature reference
-for native image and video work. No router alias or client configuration
-changed.
+Human-approved `current` split. Official FP8 plus MTP=3 is the text Primary;
+BF16 plus MTP=3 backs explicit general-vision and OCR capabilities. Both use
+the same 393,216-token limit. The final routed media corpus passed 30/30, the
+32-image request passed 1/1, and Hermes/OpenClaw client-path checks completed
+without fallback. TP=2 at 600K and 1.01M remains an offline/batch experiment.
 
 ## Failures and gotchas
 
@@ -87,7 +94,10 @@ changed.
 - The durable separate-worker context/agentic/SWE campaign was not submitted
   because no candidate router alias was approved. Direct API checks are not
   SWE-bench evidence.
-- No router alias, client configuration, or promotion changed.
+- General-vision output is materially more verbose than OCR. The first routed
+  corpus exposed a dropped `chat_template_kwargs` extension; a
+  thinking-disabled soft default and same-dialect relay forwarding corrected
+  it without raising the final 512-token corpus cap.
 - The 1M-configured retrieval harness produced at most 825,049 API-reported
   prompt tokens, and each largest run took almost 16 minutes.
 - The later matrix reached 985,107 actual prompt tokens on both checkpoints in
@@ -98,6 +108,7 @@ changed.
 
 ## Dated run history
 
+- [2026-08-14 split promotion](../../findings/2026-08-14-qwen38-27b-split-promotion.md)
 - [2026-08-14 TP/MTP/context matrix](../../findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md)
 - [2026-08-14 official FP8 1M-context continuation](../../findings/2026-08-14-qwen38-27b-1m-context.md)
 - [2026-08-14 official BF16/FP8 qualification](../../findings/2026-08-14-qwen38-27b-official-qualification.md)

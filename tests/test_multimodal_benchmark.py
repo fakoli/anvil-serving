@@ -107,6 +107,20 @@ def test_corpus_rejects_hash_mismatch(tmp_path):
         multimodal.load_corpus(corpus)
 
 
+def test_corpus_image_ceiling_is_explicit_and_bounded(tmp_path):
+    image = _media(tmp_path, "scene.png", b"\x89PNG\r\n\x1a\nscene")
+    corpus = _manifest(tmp_path, [_case([image] * 5)])
+
+    with pytest.raises(ValueError, match="exceeds 4 images"):
+        multimodal.load_corpus(corpus)
+
+    loaded = multimodal.load_corpus(corpus, max_images_per_request=5)
+    assert len(loaded["cases"][0]["media"]) == 5
+
+    with pytest.raises(ValueError, match="from 1 through 64"):
+        multimodal.load_corpus(corpus, max_images_per_request=65)
+
+
 def test_assertions_are_deterministic_and_casefolded():
     results = multimodal.evaluate_assertions(
         "READY. First RED, then GREEN.",
@@ -166,8 +180,34 @@ def test_runner_records_identity_media_sampling_outputs_and_aggregates(
     assert artifact["corpus"]["cases"][0]["media"][0]["sha256"] == image["sha256"]
     assert artifact["attempts"][0]["output"] == "READY. RED changes to GREEN."
     assert artifact["aggregates"]["modality"]["image"]["pass_rate"] == 1.0
+    assert artifact["configuration"]["max_images_per_request"] == 4
     assert artifact["passed"] is True
     assert seen_sampling == [None, None]
+
+
+def test_runner_records_explicit_image_ceiling(monkeypatch, tmp_path):
+    image = _media(tmp_path, "scene.png", b"\x89PNG\r\n\x1a\nscene")
+    corpus = _manifest(tmp_path, [_case([image] * 5)])
+    output = tmp_path / "evidence.json"
+    monkeypatch.setattr(multimodal, "_endpoint_models", lambda *_args: ["agents-a1"])
+
+    def fake_chat(*_args, **_kwargs):
+        return {
+            "choices": [{
+                "finish_reason": "stop",
+                "message": {"content": "READY. RED changes to GREEN."},
+            }],
+            "usage": {"prompt_tokens": 12, "completion_tokens": 7},
+        }, 0.25
+
+    rc = multimodal.main(
+        _argv(corpus, output) + ["--max-images-per-request", "5"],
+        chat_request=fake_chat,
+    )
+
+    assert rc == 0
+    artifact = json.loads(output.read_text(encoding="utf-8"))
+    assert artifact["configuration"]["max_images_per_request"] == 5
 
 
 def test_runner_records_exact_engine_build_ref_when_revision_is_unavailable(

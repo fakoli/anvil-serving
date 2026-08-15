@@ -1,0 +1,106 @@
+{
+  "schema": "benchmark-summary/v1",
+  "observed_date": "2026-08-14",
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "count": 2,
+    "memory_gib_each": 96,
+    "topology": "split TP=1; one independent serve per equal PCIe card"
+  },
+  "runtime": {
+    "image_digest": "sha256:4a2f33a884222f7049b983263ad9976f89452bb81affecf5b67d89ad35c1bc31",
+    "vllm_revision": "3a0914114705fa38d4c3171d0746c1a6b6f10209"
+  },
+  "profiles": [
+    {
+      "capability": "primary text",
+      "model": "Qwen/Qwen3.8-27B-FP8",
+      "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+      "weights": "official FP8",
+      "kv_cache": "FP8",
+      "context_tokens": 393216,
+      "tensor_parallel": 1,
+      "mtp_speculative_tokens": 3,
+      "max_sequences": 1,
+      "batch_tokens": 4096,
+      "four_k": {
+        "requests": 10,
+        "median_ttft_seconds": 0.834,
+        "median_e2e_seconds": 1.295,
+        "decode_tokens_per_second": 93.6
+      },
+      "routed_functional": {
+        "short_coding": "pass",
+        "structured_json": "pass",
+        "tools": "20/20",
+        "streaming_tool": "pass",
+        "tool_result_recovery": "pass",
+        "responses_subset": "pass"
+      }
+    },
+    {
+      "capability": "multimodal and OCR",
+      "model": "Qwen/Qwen3.8-27B",
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "weights": "BF16",
+      "kv_cache": "FP8",
+      "context_tokens": 393216,
+      "tensor_parallel": 1,
+      "mtp_speculative_tokens": 3,
+      "max_sequences": 1,
+      "batch_tokens": 4096,
+      "images_per_request": 32,
+      "four_k": {
+        "requests": 10,
+        "median_ttft_seconds": 0.884,
+        "median_e2e_seconds": 1.584,
+        "decode_tokens_per_second": 62.0
+      },
+      "routed_multimodal": {
+        "passed": 30,
+        "attempts": 30,
+        "image": {
+          "passed": 12,
+          "attempts": 12,
+          "median_seconds": 0.9668275
+        },
+        "video": {
+          "passed": 14,
+          "attempts": 14,
+          "median_seconds": 2.218448
+        },
+        "mixed": {
+          "passed": 4,
+          "attempts": 4,
+          "median_seconds": 2.621022
+        }
+      },
+      "thirty_two_image_request": {
+        "passed": true,
+        "seconds": 5.71659,
+        "prompt_tokens": 7173,
+        "completion_tokens": 265
+      },
+      "routed_ocr": "pass"
+    }
+  ],
+  "client_acceptance": {
+    "hermes": {
+      "text": "pass",
+      "image": "pass",
+      "fallback_used": false
+    },
+    "openclaw": {
+      "primary": "pass",
+      "vision_alias": "pass",
+      "fallback_used": false,
+      "reported_context_tokens": 393216
+    }
+  },
+  "retained_failures": [
+    "The first routed multimodal run passed 22/30 at a 512-token cap because the router did not preserve the caller's chat_template_kwargs extension.",
+    "A 2048-token retry passed 28/30 but still exhausted two verbose video attempts while thinking remained enabled upstream.",
+    "After installing a thinking-disabled soft default, the unchanged 512-token corpus passed 30/30.",
+    "The Responses subset rejects chat-only chat_template_kwargs; its separate supported-field request passed."
+  ]
+}

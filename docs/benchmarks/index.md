@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-11.**
+**Last evidence review: 2026-08-14.**
 
 ## Start with the numbers
 
@@ -44,29 +44,27 @@ commands; it does not claim a live model result by itself.
 
 ## Production aliases and recent controls
 
-1. **DeepSeek V4 Flash 0731 r33 DSpark K5** — `current` exclusive TP=2 text
-   Primary at 393,216 tokens, 16 sequences, and 4,096-token batching.
-2. **Qwen3.5 122B A10B NVFP4** — retained qualified recipe, but not started or
-   selected by this promotion's restoration contract.
-3. **Agents-A1 official FP8 plus the Omni stack** — declared managed split
-   restoration group for leaving the exclusive profile.
-4. **DeepSeek r16 650K** — prior Primary and retained historical capacity
-   evidence. **Laguna S 2.1 NVFP4** and **GPT-OSS Puzzle 88B** are additional
-   rollback-era recipes, not this profile's immediate restoration contract.
+1. **Qwen3.8 27B official FP8 MTP=3** — `current` TP=1 text Primary at
+   393,216 tokens on one RTX PRO 6000.
+2. **Qwen3.8 27B official BF16 MTP=3** — `current` TP=1 general-vision/OCR
+   service at the same 393,216-token limit on the other equal card, with a
+   qualified 32-image per-request ceiling.
+3. **DeepSeek V4 Flash 0731 r33 DSpark K5** — managed exclusive TP=2 rollback
+   at 393,216 tokens.
+4. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
+   **Laguna S 2.1**, and **GPT-OSS Puzzle 88B** — retained qualified or
+   promotion-era recipes, not the immediate selected deployment.
 5. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
-   controls, not the current rollback order.
+   controls.
 6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
 
-On 2026-08-11, after a separate human gate, the r33 393K profile became
-Primary. It passed exact managed routing, a direct 359,900-actual-token request,
-and OpenClaw/Hermes client paths after both were aligned to 393,216 context,
-32,768 output, and high reasoning. The legacy routed
-nominal-320K needle was conservatively estimated above the route limit and
-failed 413, so routed, OpenClaw, and Hermes >300K remain open rather than inferred from
-the direct result. See the
-[model dossier](models/deepseek-v4-flash.md) and
-[promotion record](../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md).
+On 2026-08-14, after a separate human gate, the matched 393K Qwen3.8 split
+became current. Final routed acceptance passed FP8 tools 20/20, BF16 media
+30/30, and one 32-image request. Hermes text/image and OpenClaw Primary/vision
+client paths completed without fallback. See the
+[Qwen3.8 dossier](models/qwen38-27b.md) and
+[promotion record](../findings/2026-08-14-qwen38-27b-split-promotion.md).
 
 ## How to read the evidence
 
