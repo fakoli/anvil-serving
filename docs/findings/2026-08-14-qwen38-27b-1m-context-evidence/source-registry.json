@@ -1,0 +1,46 @@
+{
+  "schema": "anvil-serving.source-registry/v1",
+  "observed_at": "2026-08-14",
+  "sources": [
+    {
+      "url": "https://github.com/vllm-project/recipes/blob/002576894984c12e203bb25421635fbb3f408e9d/models/Qwen/Qwen3.8-27B.yaml",
+      "published_or_observed_date": "2026-08-14",
+      "age_class": "current-day",
+      "evidence_type": "official-vllm-recipe",
+      "hardware_engine_relevance": "vLLM revision 3a091411 and GB300-verified 1M prior; requires local SM120 translation",
+      "decision_impact": "Supplied the 1,010,000 max-model-len and nested text_config override."
+    },
+    {
+      "url": "https://github.com/vllm-project/recipes/commit/716158a82985cb9fcbed887ee558ff6686462917",
+      "published_or_observed_date": "2026-08-14",
+      "age_class": "current-day",
+      "evidence_type": "official-vllm-recipe-history",
+      "hardware_engine_relevance": "Initial Qwen3.8-27B recipe revision",
+      "decision_impact": "Proved the 1M section was present in the initial recipe rather than newly added later."
+    },
+    {
+      "url": "https://github.com/vllm-project/recipes/commit/002576894984c12e203bb25421635fbb3f408e9d",
+      "published_or_observed_date": "2026-08-14",
+      "age_class": "current-day",
+      "evidence_type": "official-vllm-recipe-history",
+      "hardware_engine_relevance": "Current 27B recipe revision at capture",
+      "decision_impact": "Changed the declared vLLM floor and difficulty, not the 1M launch flags."
+    },
+    {
+      "url": "https://github.com/vllm-project/recipes/blob/8ec3b50552eb15ed7df909d304b5a19bc5621153/models/Qwen/Qwen3.8-2.4T-A95B.yaml",
+      "published_or_observed_date": "2026-08-14",
+      "age_class": "current-day",
+      "evidence_type": "official-vllm-sibling-recipe",
+      "hardware_engine_relevance": "Multi-node/high-GPU-count Blackwell recipe; not a two-card 192 GB fit",
+      "decision_impact": "Recorded as the new sibling recipe and rejected from this local campaign."
+    },
+    {
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B-FP8/tree/017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+      "published_or_observed_date": "2026-08-14",
+      "age_class": "current-day",
+      "evidence_type": "official-model-revision",
+      "hardware_engine_relevance": "Exact cached official FP8 checkpoint used locally",
+      "decision_impact": "Kept the continuation on official Qwen weights; no third-party NVFP4 model was pulled."
+    }
+  ]
+}
