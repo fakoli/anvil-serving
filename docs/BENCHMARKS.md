@@ -62,6 +62,26 @@ current; MTP=4 and MTP=5 are retained `no-promotion` controls. The exact FP8
 plus BF16 split was restored, directly requalified, and readmitted. See the
 [MTP-depth qualification](findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
 
+## Qwen3.8 27B SGLang MTP and multimodal qualification (2026-08-15)
+
+Official FP8 and audited Inferact NVFP4 were tested with the SGLang cookbook's
+in-checkpoint EAGLE MTP `3/1/4` configuration at TP=1, 393,216 tokens, and
+concurrency one, then swapped across the two equal RTX PRO 6000 cards. Across
+five matched 4K runs, official FP8 rose from 48.0 to 111.3 decode tok/s and
+NVFP4 rose from 57.9 to 98.1. NVFP4 retained lower TTFT and higher effective
+prefill; official FP8 won speculative decode because its sampled acceptance
+was higher.
+
+Both models passed coding, JSON, 20/20 tools, streaming and tool-result
+recovery, Responses, 131K and 389K retrieval, plus repeated deterministic
+intelligence 6/6, session 3/3, and tools 3/3. The earlier multimodal crash was
+isolated to SGLang's automatic CUDA-IPC feature transport in this exact
+runtime. CPU feature transport let both MTP profiles pass bounded image
+understanding and OCR. Video, multiple images, the 32-image ceiling, and host
+memory pressure remain untested. The exact current vLLM split was restored and
+readmitted; no route or promotion changed. See the
+[SGLang MTP/multimodal qualification](findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md).
+
 ## Qwen3.8 27B TP/MTP/long-context matrix (2026-08-14)
 
 The pinned official BF16 and official FP8 checkpoints completed 16 matched

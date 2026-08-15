@@ -51,6 +51,14 @@ reads it does.
 - No product code is implicated. `cli._installed_version()` correctly prefers
   distribution metadata and falls back to `__version__`; the metadata it read
   was simply stale.
+- On 2026-08-15 the hazard recurred in a subtler form. The global command
+  reported the same package version as the current source but executed stale
+  recipe behavior: it ignored an explicit immutable `recipe.serve.model_path`
+  and passed the mutable Hub repository ID into an offline container. No
+  benchmark used those failed containers. Invoking
+  `python -m anvil_serving.cli` from the isolated current worktree preserved
+  the snapshot path and the campaign proceeded. Version equality alone is
+  therefore not sufficient source-identity evidence for an editable install.
 
 ## Required behavior / operator action
 
