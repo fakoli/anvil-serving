@@ -1,0 +1,159 @@
+{
+  "schema": "anvil-serving.public-benchmark-summary/v1",
+  "date": "2026-08-15",
+  "decision": "no-promotion",
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "count": 2,
+    "topology": "split TP=1 candidates followed by a cross-card swap"
+  },
+  "runtime": {
+    "image": "lmsysorg/sglang@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124",
+    "image_label_revision": "c4271c3fe1262fc2adbd162c33b25de5255251c5",
+    "cookbook_revision": "dd458f3212dd4ddf0e1a7907bbf539b660e70d21"
+  },
+  "models": [
+    {
+      "id": "Qwen/Qwen3.8-27B-FP8",
+      "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+      "quantization": "official FP8"
+    },
+    {
+      "id": "Inferact/Qwen3.8-27B-NVFP4",
+      "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+      "quantization": "ModelOpt NVFP4 W4A4 with FP8 projections"
+    }
+  ],
+  "common_configuration": {
+    "tensor_parallel": 1,
+    "context_tokens": 393216,
+    "max_running_requests": 1,
+    "kv_cache_dtype": "fp8_e4m3",
+    "attention_backend": "flashinfer",
+    "chunked_prefill_tokens": 2048,
+    "radix_cache": false,
+    "memory_fraction_static": 0.85,
+    "thinking": "disabled"
+  },
+  "speculative_configuration": {
+    "algorithm": "EAGLE",
+    "steps": 3,
+    "topk": 1,
+    "draft_tokens": 4,
+    "max_mamba_cache_size": 5
+  },
+  "performance_protocol": {
+    "requests_per_run": 10,
+    "runs_per_model": 5,
+    "concurrency": 1,
+    "configured_input_tokens": 4096,
+    "max_output_tokens": 256,
+    "aggregation": "mean of run medians across three first-placement and two swapped-placement runs"
+  },
+  "performance": [
+    {
+      "model": "official-fp8",
+      "speculation": "off",
+      "ttft_p50_ms": 554.3,
+      "effective_prefill_tok_s_p50": 6512,
+      "decode_tok_s_p50": 48.0,
+      "e2e_p50_ms": 1450.9,
+      "aggregate_output_tok_s": 30.2
+    },
+    {
+      "model": "official-fp8",
+      "speculation": "mtp3",
+      "ttft_p50_ms": 569.3,
+      "effective_prefill_tok_s_p50": 6341,
+      "decode_tok_s_p50": 111.3,
+      "e2e_p50_ms": 954.2,
+      "aggregate_output_tok_s": 46.0,
+      "decode_delta_percent": 131.9,
+      "e2e_delta_percent": -34.2
+    },
+    {
+      "model": "inferact-nvfp4",
+      "speculation": "off",
+      "ttft_p50_ms": 429.3,
+      "effective_prefill_tok_s_p50": 8409,
+      "decode_tok_s_p50": 57.9,
+      "e2e_p50_ms": 1244.3,
+      "aggregate_output_tok_s": 38.4
+    },
+    {
+      "model": "inferact-nvfp4",
+      "speculation": "mtp3",
+      "ttft_p50_ms": 447.5,
+      "effective_prefill_tok_s_p50": 8065,
+      "decode_tok_s_p50": 98.1,
+      "e2e_p50_ms": 913.7,
+      "aggregate_output_tok_s": 50.9,
+      "decode_delta_percent": 69.4,
+      "e2e_delta_percent": -26.6
+    }
+  ],
+  "sampled_speculative_telemetry": [
+    {
+      "model": "official-fp8",
+      "accepted_length_range": [3.35, 3.52],
+      "acceptance_rate_range": [0.78, 0.84]
+    },
+    {
+      "model": "inferact-nvfp4",
+      "accepted_length_range": [2.88, 3.12],
+      "acceptance_rate_range": [0.62, 0.71]
+    }
+  ],
+  "functional": {
+    "both_models": {
+      "coding": "pass",
+      "json": "pass",
+      "retrieval_131k": "pass",
+      "tools": "20/20",
+      "streaming_tools": "pass",
+      "tool_result_recovery": "pass",
+      "responses_subset": "pass",
+      "thinking_disabled_reasoning_leakage": false
+    },
+    "quality": {
+      "official_fp8": {"intelligence": "6/6", "session": "3/3", "tools": "3/3"},
+      "inferact_nvfp4": {"intelligence": "6/6", "session": "3/3", "tools": "3/3"}
+    },
+    "near_limit_retrieval": {
+      "requested_context_tokens": 389000,
+      "official_fp8_elapsed_seconds": 193.2,
+      "inferact_nvfp4_elapsed_seconds": 185.3,
+      "official_fp8": "pass",
+      "inferact_nvfp4": "pass"
+    }
+  },
+  "multimodal": {
+    "transport": "cpu",
+    "mtp_enabled": true,
+    "official_fp8": {
+      "general_image_seconds": 9.3,
+      "ocr_seconds": 0.7,
+      "result": "pass"
+    },
+    "inferact_nvfp4": {
+      "general_image_seconds": 7.7,
+      "ocr_seconds": 0.7,
+      "result": "pass"
+    },
+    "not_tested": ["video", "multi-image ordering", "32-image ceiling", "concurrency above one", "host-memory pressure"]
+  },
+  "retained_failures": [
+    "The default CUDA-IPC multimodal feature transport failed with CUDA invalid-resource-handle errors in the exact WSL2/Docker/PyTorch runtime.",
+    "The first 512-token image response found the required content but ended at the completion cap; the 1024-token rerun passed.",
+    "The global editable CLI initially ignored the immutable recipe model_path; no measurement used those failed containers.",
+    "The first final Primary readmission returned a transient 503; identity remained ready and the managed retry plus routed acceptance passed."
+  ],
+  "restoration": {
+    "result": "pass",
+    "primary": "official FP8 TP=1 393K MTP=3",
+    "multimodal": "official BF16 TP=1 393K MTP=3 with existing 32-image ceiling",
+    "router_aliases": ["llm.primary", "vision.general", "vision.ocr"],
+    "all_tiers_admitting": true,
+    "shared_memory_reclaimable_bytes": 0
+  }
+}
