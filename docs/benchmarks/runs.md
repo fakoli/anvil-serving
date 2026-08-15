@@ -5,6 +5,15 @@ This manually maintained catalog indexes retained, decision-relevant runs.
 `PRO relationship` prevents a co-resident or protected PRO 6000 from being
 reported as measured.
 
+## Research-only recipe intake
+
+These records are indexed for decision reachability but are not benchmark runs
+and name no measured hardware.
+
+| Date | Subject | Evidence | Decision | Dossier / finding |
+|---|---|---|---|---|
+| 2026-08-15 | Qwen3.8 27B external recipe refresh | `external-prior`; current official vLLM/SGLang recipes, exact-hardware Reddit MTP sweep, X discovery, and community runtime reports | Queue matched official-FP8 MTP=3/4/5 A/B; prepare digest-pinned SGLang official-weight spike; no live or promotion change | [Qwen3.8 27B](models/qwen38-27b.md) · [recipe refresh](../findings/2026-08-15-qwen38-27b-external-recipe-refresh.md) |
+
 ## RTX PRO 6000 runs
 
 | Date | Capability | Exact model/configuration | Measured hardware | Evidence | Decision | Dossier / finding |
