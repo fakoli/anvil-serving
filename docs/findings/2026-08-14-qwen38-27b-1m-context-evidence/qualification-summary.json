@@ -1,0 +1,68 @@
+{
+  "schema": "anvil-serving.qualification-summary/v1",
+  "captured_at": "2026-08-14",
+  "decision": "challenger-no-promotion",
+  "model": {
+    "repo": "Qwen/Qwen3.8-27B-FP8",
+    "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+    "cached_snapshot_bytes": 30890071640,
+    "served_name": "qwen38-27b-fp8-text-1m"
+  },
+  "runtime": {
+    "image_digest": "sha256:4a2f33a884222f7049b983263ad9976f89452bb81affecf5b67d89ad35c1bc31",
+    "vllm_revision": "3a0914114705fa38d4c3171d0746c1a6b6f10209",
+    "gpu_arch": "sm_120"
+  },
+  "configuration": {
+    "topology": "one TP=1 serve on one of two equal RTX PRO 6000 Blackwell Max-Q cards in split mode",
+    "weights": "official block-scaled FP8",
+    "kv_cache": "fp8",
+    "configured_context_tokens": 1010000,
+    "max_num_sequences": 1,
+    "max_num_batched_tokens": 4096,
+    "gpu_memory_utilization": 0.92,
+    "language_model_only": true,
+    "chunked_prefill": true,
+    "prefix_cache": false,
+    "speculative_decoding": false,
+    "thinking_mode": "disabled",
+    "hf_overrides": {"text_config": {"max_position_embeddings": 1010000}}
+  },
+  "startup": {
+    "model_memory_gib": 27.99,
+    "available_kv_cache_gib": 56.68,
+    "reported_kv_cache_tokens": 1845432,
+    "reported_max_context_concurrency": 1.83,
+    "startup_passed": true
+  },
+  "retrieval_ladder": [
+    {"target_label_tokens": 384000, "actual_prompt_tokens": 316849, "attempts": 1, "passed": 1, "e2e_seconds": [167.252], "effective_input_tokens_per_second": [1894.4]},
+    {"target_label_tokens": 512000, "actual_prompt_tokens": 422449, "attempts": 1, "passed": 1, "e2e_seconds": [279.367], "effective_input_tokens_per_second": [1512.2]},
+    {"target_label_tokens": 768000, "actual_prompt_tokens": 633649, "attempts": 1, "passed": 1, "e2e_seconds": [585.176], "effective_input_tokens_per_second": [1082.8]},
+    {"target_label_tokens": 1000000, "actual_prompt_tokens": 825049, "attempts": 3, "passed": 3, "e2e_seconds": [957.09, 956.528, 956.598], "e2e_seconds_mean": 956.739, "effective_input_tokens_per_second_mean": 862.3}
+  ],
+  "functional_gates": {
+    "baseline_before_mutation": "both BF16 and FP8 full preflights passed",
+    "candidate_before_ladder": "coding, JSON, 128K retrieval, and tool batch 20/20 passed",
+    "candidate_after_ladder": "coding, JSON, 128K retrieval, and tool batch 20/20 passed",
+    "restored_fp8": "coding, JSON, 128K retrieval, and tool batch 20/20 passed",
+    "untouched_bf16": "coding and JSON smoke passed"
+  },
+  "restoration": {
+    "candidate_unloaded": true,
+    "original_fp8_served_name": "qwen38-27b-fp8-text-262k",
+    "original_fp8_context_tokens": 262144,
+    "original_fp8_max_num_sequences": 5,
+    "original_fp8_preflight_passed": true,
+    "bf16_lane_remained_up": true,
+    "shared_memory_reclaimable_bytes": 0
+  },
+  "caveats": [
+    "The retrieval harness target is approximate; 1,000,000 requested by the harness produced 825,049 API-reported prompt tokens.",
+    "The retained time is non-streaming request-to-completion latency for a 14-token answer, not a raw TTFT trace.",
+    "Cold 825,049-token retrieval averaged 956.739 seconds, so this is an offline/batch capability rather than an interactive default.",
+    "vLLM warned that the FP8 attention q/prob scaling factors were unavailable and defaulted to 1.0.",
+    "No concurrent 1M requests, MTP arm, prefix-cache arm, routed alias, or client-path test was run.",
+    "No route or promotion changed."
+  ]
+}

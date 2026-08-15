@@ -29,6 +29,10 @@ and five sequences. Both used vLLM V1 with chunked prefill, no prefix caching,
 and no speculative decoding for the control. MTP=3, prefix caching, and
 unquantized KV were isolated one-variable arms.
 
+The extended-context arm kept official FP8 weights, FP8 KV, TP=1, chunked
+prefill, no prefix caching, and no MTP, but configured 1,010,000 tokens with
+one admitted sequence and the official nested `text_config` override.
+
 ## Evidence by measurement class
 
 Both official variants passed the thinking-disabled functional gate, repeated
@@ -42,6 +46,12 @@ repeated quality gate; prefix caching reduced a repeated 30K-prefix c5 burst
 from 16.39 seconds TTFT with caching disabled to 0.41 seconds warm; unquantized
 KV retained correctness and 244,573-token retrieval but halved reported
 full-window capacity from 6.96 to 3.55 windows without a 4K speed gain.
+
+The 1M-configured continuation passed a monotonic retrieval ladder through
+825,049 actual prompt tokens. The largest point passed 3/3 with exact output
+and a 956.739-second mean request-to-completion latency. A full post-stress gate
+also passed. This is stable offline/batch capacity evidence, not an interactive
+latency result or proof of a one-million-token API prompt.
 
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
 multimodal. The deterministic API checks are not SWE-bench evidence.
@@ -64,7 +74,10 @@ changed.
   because no candidate router alias was approved. Direct API checks are not
   SWE-bench evidence.
 - No router alias, client configuration, or promotion changed.
+- The 1M-configured retrieval harness produced at most 825,049 API-reported
+  prompt tokens, and each largest run took almost 16 minutes.
 
 ## Dated run history
 
+- [2026-08-14 official FP8 1M-context continuation](../../findings/2026-08-14-qwen38-27b-1m-context.md)
 - [2026-08-14 official BF16/FP8 qualification](../../findings/2026-08-14-qwen38-27b-official-qualification.md)
