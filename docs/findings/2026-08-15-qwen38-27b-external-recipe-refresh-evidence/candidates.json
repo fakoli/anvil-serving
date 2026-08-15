@@ -1,0 +1,287 @@
+{
+  "schema": "anvil-serving-community-recipe-research/v1",
+  "subject": "Qwen3.8 27B external recipe refresh",
+  "captured_at": "2026-08-15",
+  "campaign_kind": "discovery-and-decision-support-only",
+  "target_hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "architecture": "sm_120",
+    "available_count": 2,
+    "topologies": [
+      "split TP=1 with one independent model per card",
+      "exclusive TP=2 over PCIe without NVLink or observed P2P"
+    ]
+  },
+  "official_checkpoint_policy": {
+    "allowed": [
+      {
+        "repository": "Qwen/Qwen3.8-27B",
+        "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+        "tracked_safetensors_files": 18,
+        "tracked_python_files": 0
+      },
+      {
+        "repository": "Qwen/Qwen3.8-27B-FP8",
+        "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+        "tracked_safetensors_files": 66,
+        "tracked_python_files": 0
+      }
+    ],
+    "excluded_classes": [
+      "third-party NVFP4 checkpoints",
+      "third-party DSpark draft checkpoints",
+      "GGUF conversions",
+      "AutoRound conversions",
+      "custom .ninfer artifacts"
+    ],
+    "safety_boundary": "Pinned official repositories and no tracked Python files reduce executable-code exposure but do not constitute a blanket malware guarantee. Exact revision, file inventory, Safetensors indexes, and cache completeness remain preflight gates."
+  },
+  "local_mutations": {
+    "model_downloads": false,
+    "container_pulls": false,
+    "serve_lifecycle_changes": false,
+    "router_or_mode_changes": false,
+    "live_benchmarks": false,
+    "promotion_changes": false,
+    "portable_dormant_recipes_added": true
+  },
+  "recorded_local_control": {
+    "evidence_date": "2026-08-14",
+    "model": "Qwen/Qwen3.8-27B-FP8",
+    "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+    "runtime_revision": "3a0914114705fa38d4c3171d0746c1a6b6f10209",
+    "runtime_digest": "sha256:4a2f33a884222f7049b983263ad9976f89452bb81affecf5b67d89ad35c1bc31",
+    "tensor_parallel_size": 1,
+    "context_tokens": 393216,
+    "max_num_seqs": 1,
+    "max_num_batched_tokens": 4096,
+    "gpu_memory_utilization": 0.92,
+    "kv_cache_dtype": "fp8",
+    "text_only": true,
+    "mtp_depth": 3,
+    "measured_4k_decode_tokens_per_second": 93.6,
+    "promotion_state": "human-approved current text Primary"
+  },
+  "candidates": [
+    {
+      "id": "vllm-official-fp8-tp1-393k-mtp4",
+      "priority": 1,
+      "decision_action": "benchmark-a-b",
+      "evidence_label": "community-report translated to a matched local candidate",
+      "portable_recipe": "configs/qwen38-27b-fp8-tp1-393k-mtp4-recipe.toml",
+      "source_ids": ["src-vllm-recipe", "src-reddit-mtp-sweep"],
+      "configuration_delta": {
+        "from": "qualified local MTP=3 recipe",
+        "only_change": "num_speculative_tokens=4"
+      },
+      "required_gates": [
+        "matched MTP=3/4/5 4K benchmark",
+        "speculative acceptance telemetry",
+        "repeated visible-answer quality",
+        "multi-turn tools and tool-result recovery",
+        "long-prompt capacity and KV-cost sample",
+        "post-stress endpoint health"
+      ]
+    },
+    {
+      "id": "vllm-official-fp8-tp1-393k-mtp5",
+      "priority": 1,
+      "decision_action": "benchmark-a-b",
+      "evidence_label": "community-report translated to a matched local candidate",
+      "portable_recipe": "configs/qwen38-27b-fp8-tp1-393k-mtp5-recipe.toml",
+      "source_ids": ["src-vllm-recipe", "src-reddit-mtp-sweep"],
+      "configuration_delta": {
+        "from": "qualified local MTP=3 recipe",
+        "only_change": "num_speculative_tokens=5"
+      },
+      "required_gates": [
+        "matched MTP=3/4/5 4K benchmark",
+        "speculative acceptance telemetry",
+        "repeated visible-answer quality",
+        "multi-turn tools and tool-result recovery",
+        "long-prompt capacity and KV-cost sample",
+        "post-stress endpoint health"
+      ]
+    },
+    {
+      "id": "sglang-official-fp8-sm120",
+      "priority": 2,
+      "decision_action": "compatibility-spike-then-benchmark",
+      "evidence_label": "external-upstream-recipe with creator verification claim",
+      "portable_recipe": null,
+      "recipe_blocker": "The published qwen38-27b image is tag-based; resolve an immutable image digest and source mapping before adding an executable Anvil recipe.",
+      "source_ids": ["src-sglang-cookbook", "src-sglang-config", "src-sglang-x", "src-reddit-sglang"],
+      "translation": {
+        "checkpoint": "Qwen/Qwen3.8-27B-FP8@017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+        "tensor_parallel_size": 1,
+        "context_tokens": 393216,
+        "max_num_seqs": 1,
+        "mem_fraction_static_start": 0.85,
+        "attention_backend": "flashinfer",
+        "chunked_prefill_size": 2048,
+        "first_control": "no speculative decoding",
+        "second_arm": "in-checkpoint EAGLE, 3 steps, top-k 1, 4 draft tokens",
+        "must_size": ["mamba_full_memory_ratio or max_mamba_cache_size"]
+      },
+      "required_gates": [
+        "digest and source pin",
+        "startup and API compatibility",
+        "reasoning and tool parser conformance",
+        "thinking-control conformance",
+        "393K actual-prompt retrieval",
+        "matched no-spec versus in-checkpoint EAGLE/MTP",
+        "GDN state and KV admission accounting",
+        "WSL2 stability and post-stress health"
+      ]
+    },
+    {
+      "id": "sglang-official-bf16-multimodal-sm120",
+      "priority": 3,
+      "decision_action": "compatibility-and-media-quality-spike",
+      "evidence_label": "external-upstream-recipe with creator verification claim",
+      "portable_recipe": null,
+      "recipe_blocker": "Pin an immutable SGLang image and first qualify the official FP8 engine lane.",
+      "source_ids": ["src-sglang-cookbook", "src-sglang-config"],
+      "translation": {
+        "checkpoint": "Qwen/Qwen3.8-27B@1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+        "tensor_parallel_size": 1,
+        "context_tokens": 393216,
+        "max_num_seqs": 1,
+        "mem_fraction_static_start": 0.85,
+        "attention_backend": "flashinfer",
+        "chunked_prefill_size": 2048,
+        "first_control": "no speculative decoding"
+      },
+      "required_gates": [
+        "full existing 30-case image/video/mixed-media corpus",
+        "32-image request boundary",
+        "OCR and general-vision routed-equivalent outputs without changing routes",
+        "393K actual-prompt retrieval",
+        "GDN state and multimodal encoder memory accounting"
+      ]
+    },
+    {
+      "id": "vllm-bf16-tp2-mm-encoder-data",
+      "priority": 4,
+      "decision_action": "watch",
+      "evidence_label": "official-upstream-setting without local or exact-hardware performance evidence",
+      "portable_recipe": null,
+      "source_ids": ["src-vllm-recipe"],
+      "configuration_delta": {
+        "required_topology": "exclusive TP=2",
+        "only_change": "--mm-encoder-tp-mode data"
+      },
+      "reason_not_queued": "The flag cannot improve the current TP=1 vision lane, and exclusive TP=2 would replace the preferred two-model split during the experiment."
+    }
+  ],
+  "excluded_or_watch_only": [
+    {
+      "id": "inferact-nvfp4",
+      "disposition": "exclude",
+      "reason": "Third-party checkpoint; official vLLM recipe lists B200/B300/GB200/GB300 support and omits RTX PRO 6000."
+    },
+    {
+      "id": "radixark-nvfp4-dspark",
+      "disposition": "external-upper-bound-only",
+      "reason": "SGLang 200+ tok/s headline changes both weight artifact and draft model and does not isolate official-checkpoint engine performance."
+    },
+    {
+      "id": "ninfer-custom-format",
+      "disposition": "watch",
+      "reason": "Custom 18.2 GB artifact and runtime, third-party quantization, uncertain multimodal support, and no independent quality qualification."
+    },
+    {
+      "id": "llama-cpp-gguf",
+      "disposition": "watch",
+      "reason": "Third-party conversion and lower reported decode than the qualified official FP8 lane."
+    },
+    {
+      "id": "autoround-int4",
+      "disposition": "exclude",
+      "reason": "Third-party mixed INT4 conversion; recovery and quality evidence incomplete."
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-vllm-recipe",
+      "url": "https://github.com/vllm-project/recipes/blob/002576894984c12e203bb25421635fbb3f408e9d/models/Qwen/Qwen3.8-27B.yaml",
+      "published_or_committed_at": "2026-08-14",
+      "observed_at": "2026-08-15",
+      "evidence_type": "official-upstream-recipe",
+      "age_class": "current-day-one",
+      "content_sha256": "eb32a7ebf463c923f95a8f29f81655aa24af0fb1d8de7b6d759eaf958f3f5326",
+      "hardware_relevance": "GB300 verified; settings require SM120 translation"
+    },
+    {
+      "id": "src-sglang-cookbook",
+      "url": "https://github.com/sgl-project/sglang/blob/70e291b70f5a2833291fff517a00b2f3ff559463/docs/cookbook/autoregressive/Qwen/Qwen3.8-27B.mdx",
+      "published_or_committed_at": "2026-08-14",
+      "observed_at": "2026-08-15",
+      "evidence_type": "official-upstream-cookbook",
+      "age_class": "current-day-one",
+      "content_sha256": "c8b48306cfa38e7d9c8328e41812ef5d59426ced9fbc8dcd2fa82ac031e3d46f",
+      "hardware_relevance": "Explicit RTX PRO 6000 and SM120 guidance"
+    },
+    {
+      "id": "src-sglang-config",
+      "url": "https://github.com/sgl-project/sglang/blob/70e291b70f5a2833291fff517a00b2f3ff559463/docs/src/snippets/configs/Qwen/qwen3.8-27b.jsx",
+      "published_or_committed_at": "2026-08-14",
+      "observed_at": "2026-08-15",
+      "evidence_type": "official-upstream-recipe-source",
+      "age_class": "current-day-one",
+      "content_sha256": "c968812a6afdbf2a3aa1475df08df169fc14fa11846213e98e9203583072b610",
+      "hardware_relevance": "RTX PRO 6000 cells, SM120 FlashInfer, 2048-token prefill chunks, GDN controls"
+    },
+    {
+      "id": "src-reddit-mtp-sweep",
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1vodweq/qwen_36_vs_38_mtp_sweep_comparison_27bfp8/",
+      "published_or_committed_at": "2026-08-14",
+      "observed_at": "2026-08-15",
+      "evidence_type": "community-self-report",
+      "age_class": "current-day-one",
+      "hardware_relevance": "Same GPU product and official FP8 model; different context, concurrency, runtime details, and workload"
+    },
+    {
+      "id": "src-sglang-x",
+      "url": "https://x.com/sgl_project/status/2088281320422322413",
+      "observed_at": "2026-08-15",
+      "evidence_type": "social-discovery",
+      "age_class": "current",
+      "hardware_relevance": "RTX PRO headline uses third-party NVFP4 and DSpark artifacts"
+    },
+    {
+      "id": "src-reddit-sglang",
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1voearc/sglang_support_for_qwen3827b_200_toks_on_5090_38/",
+      "published_or_committed_at": "2026-08-14",
+      "observed_at": "2026-08-15",
+      "evidence_type": "upstream-author-community-post",
+      "age_class": "current-day-one",
+      "hardware_relevance": "Discovery source for the commit-pinned SGLang cookbook"
+    },
+    {
+      "id": "src-hermes-megathread",
+      "url": "https://www.reddit.com/r/hermesagent/comments/1voapha/qwen_38_release_megathread/",
+      "published_or_committed_at": "2026-08-14",
+      "observed_at": "2026-08-15",
+      "evidence_type": "community-discussion",
+      "age_class": "current-day-one",
+      "hardware_relevance": "RTX 5090 GGUF and agent-session failure leads only"
+    },
+    {
+      "id": "src-ninfer-reddit",
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1vod417/ninfer_day0_support_for_qwen38_27b_200_toks/",
+      "published_or_committed_at": "2026-08-14",
+      "observed_at": "2026-08-15",
+      "evidence_type": "community-runtime-claim",
+      "age_class": "current-day-one",
+      "hardware_relevance": "RTX 5090 custom-format upper bound; not official-weight evidence"
+    }
+  ],
+  "decision": {
+    "promotion": "unchanged",
+    "current_split": "unchanged",
+    "next_test": "Matched official-FP8 vLLM TP1 393K MTP=3/4/5 A/B",
+    "second_test": "Digest-pinned SGLang official-FP8 compatibility control",
+    "human_gate_required": true
+  }
+}
