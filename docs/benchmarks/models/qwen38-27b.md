@@ -4,7 +4,8 @@
 
 Human-approved `current` split: official FP8 text Primary and official BF16
 multimodal/OCR, both TP=1 at 393,216 tokens with MTP=3. Review date:
-2026-08-14.
+2026-08-15. The review date includes external recipe research; the last local
+measurement remains 2026-08-14.
 
 ## Immutable identity
 
@@ -84,6 +85,30 @@ the same 393,216-token limit. The final routed media corpus passed 30/30, the
 32-image request passed 1/1, and Hermes/OpenClaw client-path checks completed
 without fallback. TP=2 at 600K and 1.01M remains an offline/batch experiment.
 
+## External recipe watch
+
+The 2026-08-15 external refresh added two dormant, official-weight vLLM
+qualification recipes. They change only the speculative depth from the
+qualified TP=1/393K MTP=3 recipe:
+`configs/qwen38-27b-fp8-tp1-393k-mtp4-recipe.toml` and
+`configs/qwen38-27b-fp8-tp1-393k-mtp5-recipe.toml`.
+A same-product community sweep reports the best decode at depth 5, but its
+prompts, concurrency, runtime details, and quality method differ from the local
+campaign. The required next step is a matched MTP=3/4/5 A/B, not a config or
+promotion change.
+
+SGLang's day-zero cookbook is the second-priority challenger. Its RTX PRO 6000
+cells use official BF16 or FP8 weights, FlashInfer attention,
+`--mem-fraction-static 0.85`, and 2,048-token prefill chunks, with separate GDN
+state-cache sizing. The widely shared 200+ tok/s result changes to third-party
+NVFP4 weights and a separate DSpark draft, so it is not evidence for the
+official checkpoints. No executable SGLang recipe is recorded until its image
+is digest-pinned and mapped to an exact source revision.
+
+All NVFP4, GGUF, AutoRound, and custom `.ninfer` artifacts remain excluded from
+the active queue under the official-only checkpoint policy. These statements
+are `external-prior`, not local measurements.
+
 ## Failures and gotchas
 
 - Official FP8 startup warned that absent attention q/prob scaling factors
@@ -108,6 +133,7 @@ without fallback. TP=2 at 600K and 1.01M remains an offline/batch experiment.
 
 ## Dated run history
 
+- [2026-08-15 external recipe refresh](../../findings/2026-08-15-qwen38-27b-external-recipe-refresh.md)
 - [2026-08-14 split promotion](../../findings/2026-08-14-qwen38-27b-split-promotion.md)
 - [2026-08-14 TP/MTP/context matrix](../../findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md)
 - [2026-08-14 official FP8 1M-context continuation](../../findings/2026-08-14-qwen38-27b-1m-context.md)

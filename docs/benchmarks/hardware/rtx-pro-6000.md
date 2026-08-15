@@ -2,13 +2,14 @@
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark, Windows 11 with
-Docker Desktop/WSL2. **Reviewed:** 2026-08-14.
+Docker Desktop/WSL2. **Reviewed:** 2026-08-15. The latest review includes an
+external-prior recipe intake; the last local measurement remains 2026-08-14.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
 
-This page contains only measurements made on one or both PRO 6000 cards. Tests
-that merely kept a card running or described its topology belong in the
+This page's result tables contain only measurements made on one or both PRO
+6000 cards. Tests that merely kept a card running or described its topology belong in the
 [mention audit](../rtx-pro-6000-audit.md), not the result tables.
 
 ## Recorded topology and service history
@@ -121,8 +122,27 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 | Qwen3.6 27B community NVFP4 + MTP | 262,144 | 5 | 262K needle validated |
 | Mistral Small 4 119B NVFP4 | 131,072 | 5 | Low short-request TTFT; weaker quality slice |
 
+## External recipe watch (not measured locally)
+
+The [2026-08-15 Qwen3.8 recipe refresh](../../findings/2026-08-15-qwen38-27b-external-recipe-refresh.md)
+records two test-next directions without adding a hardware result. First, a
+same-product community sweep makes MTP=4 and MTP=5 worthwhile matched A/Bs
+against the current official-FP8 TP=1/393K MTP=3 lane. Second, SGLang's
+commit-pinned cookbook supplies explicit RTX PRO 6000 official-FP8/BF16 cells,
+SM120 FlashInfer guidance, 2,048-token prefill chunks, and GDN state-cache
+sizing controls. The SGLang 200+ tok/s headline uses third-party NVFP4 and
+DSpark artifacts and is not comparable with the local official-weight result.
+
+Dormant vLLM MTP=4/5 recipes are recorded. SGLang remains a compatibility
+spike until its image has an immutable digest/source mapping. No model pull,
+serve lifecycle action, route change, benchmark, or promotion occurred.
+
 ## Recent changes
 
+- 2026-08-15: external research queued a matched official-FP8 MTP=3/4/5
+  vLLM A/B and an official-weight SGLang compatibility spike. Third-party
+  NVFP4, DSpark, GGUF, AutoRound, and custom-runtime artifacts remain excluded.
+  This is an `external-prior` update, not a new hardware measurement.
 - 2026-08-14: human approval promoted the matched 393K TP=1/MTP=3 split.
   Official FP8 is the text Primary and official BF16 handles explicit
   general-vision/OCR with a 32-image request ceiling. Routed FP8 functional
