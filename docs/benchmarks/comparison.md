@@ -79,6 +79,24 @@ current MTP=3 Compute B control remains ahead at 93.6 tok/s and 1.295 seconds
 E2E. See the
 [MTP-depth qualification](../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
 
+### SGLang no-speculation controls
+
+The digest-pinned SGLang A/B held TP=1, 393,216 context, one request,
+FP8 E4M3 KV, FlashInfer, 2K prefill chunks, disabled prefix cache, text-only
+mode, and no speculation fixed. Each model ran three repetitions on its first
+card and two after the model placements were swapped.
+
+| Model | Runs | TTFT | Prefill | Decode | E2E | Near-limit result | Decision |
+|---|---:|---:|---:|---:|---:|---|---|
+| Official FP8 | 5 | 0.554 s | 6,512 tok/s | 48.0 tok/s | 1.451 s | 388,979 tok pass; 258.13 s TTFT | qualified control, `no-promotion` |
+| Inferact NVFP4 | 5 | **0.429 s** | **8,409 tok/s** | **57.9 tok/s** | **1.244 s** | 388,979 tok pass; **248.75 s TTFT** | text `challenger`, `no-promotion` |
+
+NVFP4 reduced matched TTFT 22.6% and raised decode 20.6%; the ranking held
+after the card swap. It still trails the current vLLM MTP=3 service's 93.6
+tok/s decode. SGLang multimodal is not qualified on this WSL2 host because its
+default CUDA-IPC feature warmup failed; these rows are text-only. See the
+[SGLang/NVFP4 qualification](../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md).
+
 ---
 
 ## Dual RTX PRO 6000 Blackwell Max-Q — 192 GB aggregate, exclusive TP=2
