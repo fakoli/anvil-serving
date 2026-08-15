@@ -16,6 +16,7 @@ from .context import (
 )
 from .jobs import BenchmarkJobError
 from .requests import post_chat, resolve_api_key, response_observation
+from ..model_controls import REASONING_EFFORT_CHOICES
 
 
 ChatCaller = Callable[..., dict[str, Any]]
@@ -235,6 +236,8 @@ def _run_agentic_case(
     max_tokens: int,
     timeout: float,
     caller: ChatCaller,
+    chat_template_kwargs: Mapping[str, Any] | None = None,
+    reasoning_effort: str | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     messages = copy.deepcopy(scenario["messages"])
     observed_calls = []
@@ -242,6 +245,8 @@ def _run_agentic_case(
     request_ids = []
     final_answer = ""
     failure = None
+    reasoning_present = False
+    turns = []
     for _step in range(max_steps):
         try:
             response = caller(
@@ -252,6 +257,8 @@ def _run_agentic_case(
                 max_tokens=max_tokens,
                 timeout=timeout,
                 tools=scenario.get("tools") or None,
+                chat_template_kwargs=chat_template_kwargs,
+                reasoning_effort=reasoning_effort,
             )
             payload = response["response"]
             prompt_tokens = _usage_tokens(payload, "prompt_tokens")
@@ -261,6 +268,23 @@ def _run_agentic_case(
                 request_ids.append(response["request_id"])
             message = _message(payload)
             calls = _normalized_tool_calls(message)
+            reasoning = message.get("reasoning_content") or message.get("reasoning")
+            reasoning_chars = len(reasoning) if isinstance(reasoning, str) else 0
+            reasoning_present = reasoning_present or reasoning_chars > 0
+            choices = payload.get("choices")
+            first_choice = choices[0] if isinstance(choices, list) and choices else {}
+            turns.append({
+                "latency_ms": response["latency_s"] * 1000,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": _usage_tokens(payload, "completion_tokens"),
+                "finish_reason": (
+                    first_choice.get("finish_reason")
+                    if isinstance(first_choice, Mapping)
+                    else None
+                ),
+                "reasoning_chars": reasoning_chars,
+                "tool_call_count": len(calls),
+            })
             if not calls:
                 content = message.get("content")
                 final_answer = content if isinstance(content, str) else ""
@@ -290,6 +314,8 @@ def _run_agentic_case(
         "history": copy.deepcopy(scenario["messages"]) if expected.get("history") is not None else [],
         "history_prompt_tokens": growth,
         "failure": failure,
+        "reasoning_present": reasoning_present,
+        "turns": turns,
     }
     return score_agentic_trace(scenario, expected, trace), request_ids
 
@@ -305,6 +331,26 @@ def run_agentic_suite(
     endpoint = spec["endpoint"]
     key = resolve_api_key(endpoint.get("auth_env"))
     parameters = spec.get("parameters", {})
+    thinking_mode = parameters.get("thinking_mode", "default")
+    if thinking_mode not in {"default", "enabled", "disabled"}:
+        raise BenchmarkJobError(
+            "bad_thinking_mode", "thinking_mode must be default, enabled, or disabled"
+        )
+    reasoning_effort = parameters.get("reasoning_effort")
+    if reasoning_effort is not None and reasoning_effort not in REASONING_EFFORT_CHOICES:
+        raise BenchmarkJobError(
+            "bad_reasoning_effort", "reasoning_effort is not supported by the harness"
+        )
+    if reasoning_effort is not None and thinking_mode != "default":
+        raise BenchmarkJobError(
+            "conflicting_reasoning_controls",
+            "reasoning_effort and thinking_mode cannot both be explicit",
+        )
+    chat_template_kwargs = (
+        {"enable_thinking": True}
+        if thinking_mode == "enabled"
+        else {"enable_thinking": False} if thinking_mode == "disabled" else None
+    )
     case_limit = parameters.get("case_limit")
     if case_limit is not None and (
         not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
@@ -350,6 +396,8 @@ def run_agentic_suite(
                 max_tokens=suite["max_completion_tokens"],
                 timeout=min(float(spec["timeout_s"]), 900.0),
                 caller=caller,
+                chat_template_kwargs=chat_template_kwargs,
+                reasoning_effort=reasoning_effort,
             )
             observation["repetition"] = repetition
             observations.append(observation)
@@ -370,6 +418,11 @@ def run_agentic_suite(
             "passed": passed,
             "pass_rate": passed / len(observations),
             "required_pass_rate": suite["scoring"]["pass_rate_floor"],
+        },
+        "request_controls": {
+            "thinking_mode": thinking_mode,
+            "chat_template_kwargs": chat_template_kwargs,
+            "reasoning_effort": reasoning_effort,
         },
         "passed": passed / len(observations) >= suite["scoring"]["pass_rate_floor"],
     }
