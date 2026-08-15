@@ -73,6 +73,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-14-qwen38-27b-1m-context.md`;
 `docs/findings/2026-08-14-qwen38-27b-official-qualification.md`;
 `docs/findings/2026-08-14-qwen38-27b-split-promotion.md`;
+`docs/findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/closed/2026-07-27-release-sweep-fixes.md`;
 `.tickets/closed/2026-07-28-agents-a1-multimodal-qualification.md`;
