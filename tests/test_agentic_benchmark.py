@@ -86,6 +86,26 @@ def test_tool_final_mismatch_is_not_mislabeled_as_reasoning_failure():
     assert result["stages"]["reasoning"] == {"applicable": False, "passed": True}
 
 
+def test_planning_accepts_an_ordered_numbered_workflow():
+    scenario, expected = build_agentic_scenario("planning")
+    trace = passing_trace(expected)
+    trace["final_answer"] = "1. Inspect\n2. Patch\n3. Test"
+
+    assert score_agentic_trace(scenario, expected, trace)["passed"] is True
+
+
+def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():
+    scenario, expected = build_agentic_scenario("debug-loop")
+    assert "unit tests" in scenario["messages"][0]["content"]
+    trace = passing_trace(expected)
+    trace["final_answer"] = "The requested fix is applied and the unit tests now pass."
+
+    result = score_agentic_trace(scenario, expected, trace)
+
+    assert result["passed"] is True
+    assert result["stages"]["result_incorporation"] == {"passed": True}
+
+
 @pytest.mark.parametrize(
     ("code", "classification"),
     [

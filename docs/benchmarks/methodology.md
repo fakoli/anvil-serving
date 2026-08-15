@@ -153,6 +153,9 @@ model under test. Tool scenarios accept a natural-language final answer when
 it contains every deterministic result marker; they do not require an
 undisclosed marker-only response. The reasoning stage is applicable only to an
 explicit reasoning scenario and is never inferred from exact-answer formatting.
+Ordered planning fixtures accept equivalent numbered or delimited workflows,
+and required tool arguments are disclosed in the prompt rather than hidden in
+the grader.
 Artifacts retain the visible final answer, its SHA-256, per-turn latency and
 token counts, finish reasons, tool-call counts, and whether a separate reasoning
 channel was present. A malformed call, reasoning-budget exhaustion, incorrect
