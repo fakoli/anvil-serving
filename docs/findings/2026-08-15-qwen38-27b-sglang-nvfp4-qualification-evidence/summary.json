@@ -1,0 +1,136 @@
+{
+  "schema": "anvil-serving.sanitized-qualification-summary/v1",
+  "observed_date": "2026-08-15",
+  "source_base_revision": "6f3af00659441371b266b27bd910d932f428f277",
+  "hardware": {
+    "host_label": "Fakoli Dark",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "gpu_count": 2,
+    "vram_gib_per_gpu": 96,
+    "topology": "two concurrent TP=1 lanes, then model placement swapped across the equal PCIe cards"
+  },
+  "runtime": {
+    "image": "lmsysorg/sglang@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124",
+    "image_label_engine_revision": "c4271c3fe1262fc2adbd162c33b25de5255251c5",
+    "internal_build_version_revision": "561c8f3",
+    "source_recipe_revision": "dd458f3212dd4ddf0e1a7907bbf539b660e70d21"
+  },
+  "common_recipe": {
+    "tensor_parallel_size": 1,
+    "context_tokens": 393216,
+    "max_running_requests": 1,
+    "language_only": true,
+    "kv_cache_dtype": "fp8_e4m3",
+    "attention_backend": "flashinfer",
+    "chunked_prefill_tokens": 2048,
+    "memory_fraction_static": 0.85,
+    "prefix_cache": false,
+    "max_mamba_cache_size": 1,
+    "speculative_decoding": false,
+    "thinking_default": "disabled"
+  },
+  "candidates": {
+    "official_fp8": {
+      "model": "Qwen/Qwen3.8-27B-FP8",
+      "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+      "cached_snapshot_bytes": 30890071640,
+      "startup_weight_memory_gib": 28.47,
+      "startup_kv_capacity_tokens": 1665740,
+      "decision": ["qualified-control", "no-promotion"]
+    },
+    "inferact_nvfp4": {
+      "model": "Inferact/Qwen3.8-27B-NVFP4",
+      "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+      "cached_snapshot_bytes": 26404422156,
+      "startup_weight_memory_gib": 24.21,
+      "startup_kv_capacity_tokens": 1805068,
+      "decision": ["challenger", "no-promotion"]
+    }
+  },
+  "artifact_safety": {
+    "files": "documentation, tokenizer/config/template data, and seven Safetensors shards only",
+    "tracked_executable_code": false,
+    "auto_map_or_remote_code_hook": false,
+    "pickle_or_pytorch_binary": false,
+    "safetensors_files_verified": 7,
+    "safetensors_tensors_verified": 2111,
+    "headers_ranges_and_file_lengths_valid": true,
+    "local_sha256_matches_hugging_face_lfs": true,
+    "shard_sha256": [
+      "4b71c5d9d5027c88d1df9f53b93ad77b8d5e428d5d6f75ae42063704d94930b9",
+      "d0ceb042ef003ec63e00203823eb70d4815c9fc0430ba04a5442b6b8bde19093",
+      "b633a26c1d3b97bf061585363b99d4c01650b4e3f6d0cbb18e7c7e03ca2de1e4",
+      "485ea312626e2d1f3a820d9f7545809cef1e2e77414e3977a61d32dacd370bd0",
+      "2aa61bab1ed252fe3cdb479286b5b7add7e8ad567501add5f6eeef3987b03d31",
+      "8214cd21a46832380c06be552c42d9514c6cc9f27d98e09e2a09e36a8bd6e6ce",
+      "c2b7cb6987e40f13b1ab6e552958afe47a759f86cac0c3c4a1c29f606dc080ef"
+    ]
+  },
+  "functional": {
+    "official_fp8": {
+      "placements_passed": 2,
+      "checks": ["coding", "structured-json", "128k-retrieval", "tools-20-of-20", "streaming-tools", "tool-result-continuation", "responses"],
+      "reasoning_chars_with_thinking_disabled": 0
+    },
+    "inferact_nvfp4": {
+      "placements_passed": 2,
+      "checks": ["coding", "structured-json", "128k-retrieval", "tools-20-of-20", "streaming-tools", "tool-result-continuation", "responses"],
+      "reasoning_chars_with_thinking_disabled": 0
+    }
+  },
+  "bounded_quality": {
+    "official_fp8": {"intelligence": "6/6", "session": "3/3", "tool": "3/3", "failures": 0},
+    "inferact_nvfp4": {"intelligence": "6/6", "session": "3/3", "tool": "3/3", "failures": 0}
+  },
+  "capacity_4k_c1": {
+    "protocol": "five 10-request runs per candidate; 4096 configured input tokens; 256-token output cap; concurrency one; values are means of each run median",
+    "official_fp8": {
+      "runs": 5,
+      "ttft_p50_ms": 554.3,
+      "e2e_p50_ms": 1450.9,
+      "effective_prefill_tok_s_p50": 6512,
+      "decode_tok_s_p50": 48.0,
+      "aggregate_output_tok_s": 30.2
+    },
+    "inferact_nvfp4": {
+      "runs": 5,
+      "ttft_p50_ms": 429.3,
+      "e2e_p50_ms": 1244.3,
+      "effective_prefill_tok_s_p50": 8409,
+      "decode_tok_s_p50": 57.9,
+      "aggregate_output_tok_s": 38.4
+    },
+    "nvfp4_delta_percent": {
+      "ttft": -22.6,
+      "e2e": -14.2,
+      "effective_prefill": 29.1,
+      "decode": 20.6,
+      "aggregate_output_throughput": 27.2
+    }
+  },
+  "near_limit_context": {
+    "actual_prompt_tokens": 388979,
+    "official_fp8": {"status": "passed", "ttft_s": 258.13, "effective_prefill_tok_s": 1507, "decode_tok_s": 33.2},
+    "inferact_nvfp4": {"status": "passed", "ttft_s": 248.75, "effective_prefill_tok_s": 1564, "decode_tok_s": 37.0}
+  },
+  "retained_failures_and_caveats": [
+    "The first launch refused 393216 because it exceeds the advertised 262144 context until the explicit SGLang overwrite opt-in was added.",
+    "The default multimodal CUDA IPC warmup failed on WSL2 with CUDA invalid resource handle; the matched text qualification uses language-only and does not qualify SGLang multimodal serving.",
+    "The first otherwise-passing functional run leaked reasoning through the Responses adapter until a server-side thinking-disabled default was added.",
+    "Both lanes warned that FP8 KV scaling factors were absent and defaulted to 1.0; bounded quality passed but equivalence to unquantized KV is not proven.",
+    "The immutable image label and internal build-version string identify different SGLang revisions.",
+    "The repository-provided crc32 file was stale and its md5 list empty, so immutable LFS identities and independently computed local SHA256 values were used.",
+    "The generic evidence inspector flags unselected timing or suite fields in deterministic-quality and context-only artifacts; claims are limited to complete per-attempt and per-target records."
+  ],
+  "restoration": {
+    "exact_original_split_restored": true,
+    "official_fp8_direct_gate": "passed",
+    "bf16_multimodal_direct_gate": "passed including image and OCR",
+    "router_primary_identity_and_gate": "passed",
+    "router_vision_general_gate": "passed",
+    "router_vision_ocr_gate": "passed",
+    "shared_memory_reclaimable_bytes": 0,
+    "promotion_changed": false,
+    "client_configuration_changed": false
+  }
+}
