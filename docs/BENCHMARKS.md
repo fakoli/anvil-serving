@@ -8,11 +8,12 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained Primary is DeepSeek V4 Flash 0731 r33 DSpark K5 at 393,216
-tokens (`current`, exclusive TP=2). Qwen3.5 122B NVFP4 remains a qualified
-rollback-era recipe but is not the immediate restoration contract. The
-declared managed restoration group is the split Agents-A1 plus Omni stack. The
-earlier r16 650K profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical or
+The maintained deployment is the Qwen3.8 27B split: official FP8 MTP=3 for
+text and official BF16 MTP=3 for explicit general-vision/OCR, each TP=1 at
+393,216 tokens. DeepSeek V4 Flash 0731 r33 remains a managed exclusive TP=2
+rollback profile. Qwen3.5 122B NVFP4 remains a qualified rollback-era recipe. The
+Agents-A1 split remains retained promotion-era evidence. The earlier r16 650K
+profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical or
 rollback-era recipes but are not the immediate restoration contract for this
 profile. Gemma 4 and ThinkingCap remain historical controls. Fakoli
 Dark has two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
@@ -29,6 +30,21 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 - Compare rows only when their workload and topology are comparable. A faster inference run does not establish coding quality, tool reliability, or routing eligibility.
 - Quality-profile and production changes remain human-gated. A benchmark can recommend a change; it never promotes a model by itself.
 - External benchmark data is an advisory prior, not a local result. See [External benchmarks](EXTERNAL-BENCHMARKS.md) for its import and comparison workflow.
+
+## Qwen3.8 27B split promotion (2026-08-14)
+
+The human-approved everyday profile runs official FP8 and BF16 concurrently,
+one TP=1 service per equal RTX PRO 6000. Both use FP8 KV, MTP=3, maxseq1,
+4,096 batched tokens, and a 393,216-token context window. FP8 is the text
+Primary; BF16 backs explicit general-vision and OCR capabilities and admits up
+to 32 images in one request.
+
+At the matched 4K shape, FP8 measured 0.834-second median TTFT, 1.295-second
+median E2E, and 93.6 decode tok/s. BF16 measured 0.884-second TTFT,
+1.584-second E2E, and 62.0 tok/s. Final routed acceptance passed FP8 tools
+20/20, BF16 media 30/30, and the 32-image request 1/1. Hermes text/image and
+OpenClaw Primary/vision checks completed with no fallback. See the
+[promotion finding](findings/2026-08-14-qwen38-27b-split-promotion.md).
 
 ## Qwen3.8 27B TP/MTP/long-context matrix (2026-08-14)
 
@@ -47,7 +63,8 @@ no repeatable extreme-context TTFT benefit. TP=2 therefore earns a
 prefill/capacity role, not a universal speed claim. The 600K and 985K rows took
 about 5.2-5.8 and 13.0-13.7 minutes to first token, so they remain deliberate
 batch-like profiles. The exact original 262K split services were restored and
-passed fresh co-resident acceptance. No route or promotion changed. See the
+passed fresh co-resident acceptance at the close of that matrix. The later
+human-approved promotion is recorded above. See the
 [full matrix and sanitized result set](findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md).
 
 ## Qwen3.8 27B official FP8 1M-context continuation (2026-08-14)
