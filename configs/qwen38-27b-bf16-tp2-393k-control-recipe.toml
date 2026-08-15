@@ -1,0 +1,79 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "Qwen/Qwen3.8-27B"
+status = "qualification-candidate"
+source = "2026-08-14 matched Qwen3.8 BF16 TP2 393K no-MTP qualification arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Qwen/Qwen3.8-27B"
+revision = "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Two equal PCIe-attached GPUs without NVLink; exclusive TP=2, with sharded rather than unified capacity."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai@sha256:4a2f33a884222f7049b983263ad9976f89452bb81affecf5b67d89ad35c1bc31"
+model_path = "/root/.cache/huggingface/hub/models--Qwen--Qwen3.8-27B/snapshots/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+quantization = "official BF16 weights with FP8 KV cache"
+context_tokens = 393216
+port = 39110
+startup_timeout_seconds = 1800
+served_model_name = "qwen38-27b-bf16-tp2-393k-control"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+]
+flags = [
+  "--revision 1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "--served-model-name qwen38-27b-bf16-tp2-393k-control",
+  "--tensor-parallel-size 2",
+  "--dtype bfloat16",
+  "--kv-cache-dtype fp8",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--limit-mm-per-prompt '{\"image\":4,\"video\":1}'",
+  "--media-io-kwargs '{\"video\":{\"num_frames\":-1}}'",
+  "--enable-chunked-prefill",
+  "--no-enable-prefix-caching",
+  "--max-model-len 393216",
+  "--hf-overrides '{\"text_config\":{\"max_position_embeddings\":393216}}'",
+  "--max-num-seqs 1",
+  "--max-num-batched-tokens 4096",
+  "--gpu-memory-utilization 0.90",
+  "--host 0.0.0.0",
+  "--port 39110",
+]
+note = "Matched no-MTP control for the TP2 393K campaign point. Max sequences, batching, cache policy, precision, runtime, and context are held fixed against configs/qwen38-27b-bf16-tp2-393k-mtp3-recipe.toml. Router and promotion state remain out of scope."
+
+[recipe.fit]
+suited = ["qualification","long-context","multimodal","coding","agentic"]
+rationale = "Measures topology, context, and MTP effects on the pinned official checkpoint without changing a routed alias."
+
+[recipe.sources]
+official = [
+  "https://github.com/vllm-project/recipes/blob/002576894984c12e203bb25421635fbb3f408e9d/models/Qwen/Qwen3.8-27B.yaml",
+  "https://huggingface.co/Qwen/Qwen3.8-27B/tree/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "https://github.com/vllm-project/vllm/tree/3a0914114705fa38d4c3171d0746c1a6b6f10209",
+]
+local = [
+  "configs/qwen38-27b-bf16-tp2-393k-mtp3-recipe.toml",
+  "docs/findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md",
+]

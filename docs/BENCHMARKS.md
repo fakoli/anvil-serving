@@ -30,6 +30,26 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 - Quality-profile and production changes remain human-gated. A benchmark can recommend a change; it never promotes a model by itself.
 - External benchmark data is an advisory prior, not a local result. See [External benchmarks](EXTERNAL-BENCHMARKS.md) for its import and comparison workflow.
 
+## Qwen3.8 27B TP/MTP/long-context matrix (2026-08-14)
+
+The pinned official BF16 and official FP8 checkpoints completed 16 matched
+configurations: split TP=1 at 393K, then exclusive TP=2 at 393K, 600K, and
+1.01M, each with no-MTP and MTP=3. Every arm passed the complete functional
+gate and one cold retrieval at 388,979, 598,729, or 985,107 actual prompt
+tokens. The 4K performance figures are 10-request c1 p50/p95 runs; each extreme
+row is only 1/1 and is not a latency distribution.
+
+TP=2 cut 393K control TTFT from 272.9 to 168.7 seconds for BF16 and from 239.3
+to 154.8 seconds for official FP8, but official-FP8 4K decode changed only 47.6
+to 48.8 tok/s. MTP raised short decode 1.76-2.40x, peaking at 93.6 tok/s on the
+single-card FP8 lane, while consuming 7-11% of reported KV tokens and providing
+no repeatable extreme-context TTFT benefit. TP=2 therefore earns a
+prefill/capacity role, not a universal speed claim. The 600K and 985K rows took
+about 5.2-5.8 and 13.0-13.7 minutes to first token, so they remain deliberate
+batch-like profiles. The exact original 262K split services were restored and
+passed fresh co-resident acceptance. No route or promotion changed. See the
+[full matrix and sanitized result set](findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md).
+
 ## Qwen3.8 27B official FP8 1M-context continuation (2026-08-14)
 
 The official FP8 checkpoint was configured for 1,010,000 tokens on one RTX PRO
