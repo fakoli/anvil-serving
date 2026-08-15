@@ -55,6 +55,8 @@ share the same 393,216-token context and one-sequence admission contract.
 | --- | --- | --- | --- | ---: | --- | --- |
 | [Qwen3.8 27B official FP8, TP=1 MTP=3](models/qwen38-27b.md) | `current` text Primary | Official FP8 · FP8 KV | 0.834 / 1.295 s | **93.6 tok/s** | text only; routed tools 20/20 | [promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
 | [Qwen3.8 27B official BF16, TP=1 MTP=3](models/qwen38-27b.md) | `current` general-vision/OCR | BF16 · FP8 KV | 0.884 / 1.584 s | 62.0 tok/s | routed 30/30; 32-image request 1/1 | [promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
+| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `challenger`, `no-promotion` | Official FP8 · FP8 KV | 0.569 / 0.954 s | **111.3 tok/s** | CPU transport: image/OCR pass; broader media open | [qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md) |
+| [Qwen3.8 27B Inferact NVFP4, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `challenger`, `no-promotion` | ModelOpt NVFP4 · FP8 KV | **0.448 / 0.914 s** | 98.1 tok/s | CPU transport: image/OCR pass; broader media open | [qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md) |
 
 The BF16 32-image result is one request at concurrency one. It is not a claim
 of 32 concurrent requests.

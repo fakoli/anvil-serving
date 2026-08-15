@@ -1,0 +1,86 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4"
+status = "qualification-candidate"
+source = "2026-08-15 SGLang TP1 393K MTP=3 multimodal CPU-transport diagnostic arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "One GPU in split mode; multimodal feature transfer uses host memory rather than CUDA IPC."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 with FP8 projections and explicit FP8 E4M3 KV cache"
+context_tokens = 393216
+port = 39216
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-sglang-tp1-393k-mtp3-mm-cpu"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = [
+  "qwen38-nvfp4-sglang-cache:/root/.cache/sglang",
+]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+  "SGLANG_VIT_ENABLE_CUDA_GRAPH=0",
+  "SGLANG_MM_BUFFER_SIZE_MB=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-sglang-tp1-393k-mtp3-mm-cpu",
+  "--tp-size 1",
+  "--mm-feature-transport cpu",
+  "--context-length 393216",
+  "--max-running-requests 1",
+  "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--disable-radix-cache",
+  "--max-mamba-cache-size 5",
+  "--speculative-algorithm EAGLE",
+  "--speculative-num-steps 3",
+  "--speculative-eagle-topk 1",
+  "--speculative-num-draft-tokens 4",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--host 0.0.0.0",
+  "--port 39216",
+]
+note = "Diagnostic multimodal extension of the matched Inferact-NVFP4 MTP arm. The prior image request failed while SGLang reconstructed its automatically selected CUDA-IPC feature pool with CUDA invalid-resource-handle errors. This recipe removes --language-only, explicitly selects the supported CPU feature transport, disables CUDA-IPC transport defensively, and disables the initial vision CUDA-graph and multimodal buffer optimizations. Checkpoint, image, TP, context, concurrency, KV dtype, attention, prefill, Mamba cache, MTP, parsers, and thinking mode remain fixed. The exact-snapshot safety audit remains applicable. It is a qualification candidate, not a promotion recipe."
+
+[recipe.fit]
+suited = ["qualification", "long-context", "multimodal", "vision", "ocr", "speculative-decoding"]
+rationale = "Tests whether CPU feature transport removes the observed WSL2/Docker CUDA-IPC failure while retaining the matched MTP configuration and NVFP4 weights."
+
+[recipe.sources]
+official = [
+  "https://github.com/sgl-project/sglang/blob/dd458f3212dd4ddf0e1a7907bbf539b660e70d21/docs/cookbook/autoregressive/Qwen/Qwen3.8-27B.mdx",
+  "https://github.com/sgl-project/sglang/blob/c4271c3fe1262fc2adbd162c33b25de5255251c5/python/sglang/srt/server_args.py",
+  "https://github.com/sgl-project/sglang/pull/33899",
+]
+community = [
+  "https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4/tree/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+]
+local = [
+  "configs/qwen38-27b-inferact-nvfp4-sglang-tp1-393k-mtp3-recipe.toml",
+  "docs/findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md",
+]
