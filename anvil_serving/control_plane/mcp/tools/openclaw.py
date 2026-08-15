@@ -195,6 +195,7 @@ def tool_openclaw_sync(args: dict) -> dict:
             "base_url": preview["base_url"],
             "api_key": preview["api_key"],
             "direct_aliases": preview["direct_aliases"],
+            "image_model": preview["image_model"],
             "voice": preview["voice"],
             "voice_provider": preview["voice_provider"],
             "voice_realtime_url": preview["voice_realtime_url"],

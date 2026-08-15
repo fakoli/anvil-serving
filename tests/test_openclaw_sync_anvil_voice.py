@@ -231,6 +231,136 @@ def test_openclaw_sync_refreshes_anvil_models_without_erasing_other_providers(tm
     assert "other" in payload["models"]["providers"]
 
 
+def test_openclaw_sync_sets_general_vision_as_the_image_model(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps({"agents": {"defaults": {"models": {}}}}) + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={
+            "llm.primary": "text",
+            "vision.general": "vision",
+            "vision.ocr": "vision",
+        },
+        tiers={
+            "text": _Tier(393216, ["text"]),
+            "vision": _Tier(393216, ["text", "image"]),
+        },
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert payload["agents"]["defaults"]["imageModel"] == {
+        "primary": "anvil/vision.general"
+    }
+
+
+def test_openclaw_sync_preserves_an_operator_owned_image_model(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps({
+            "agents": {"defaults": {
+                "models": {},
+                "imageModel": {"primary": "other/image-model"},
+            }}
+        }) + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={"vision.general": "vision"},
+        tiers={"vision": _Tier(393216, ["text", "image"])},
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert payload["agents"]["defaults"]["imageModel"] == {
+        "primary": "other/image-model"
+    }
+
+
+def test_openclaw_sync_preserves_a_string_operator_image_model(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps({
+            "agents": {"defaults": {
+                "models": {},
+                "imageModel": "other/image-model",
+            }}
+        }) + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={"vision.general": "vision"},
+        tiers={"vision": _Tier(393216, ["text", "image"])},
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert payload["agents"]["defaults"]["imageModel"] == "other/image-model"
+    assert harness._openclaw_payload_summary(payload)["image_model"] == (
+        "other/image-model"
+    )
+
+
+def test_openclaw_sync_removes_a_stale_anvil_image_primary(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps({
+            "agents": {"defaults": {
+                "models": {},
+                "imageModel": {
+                    "primary": "anvil/vision.general",
+                    "fallbacks": ["other/image-model"],
+                },
+            }}
+        }) + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={"llm.primary": "text"},
+        tiers={"text": _Tier(393216, ["text"])},
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert payload["agents"]["defaults"]["imageModel"] == {
+        "fallbacks": ["other/image-model"]
+    }
+
+
 def test_openclaw_voice_sync_falls_back_to_chat_consult_model(capsys):
     cfg = _Config(
         model_routes={"llm.primary": "heavy"},

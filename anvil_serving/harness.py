@@ -109,14 +109,20 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
         }
         for alias, tier_id in routes.items()
     ]
+    defaults = {"models": {
+        "anvil/%s" % model["id"]: {} for model in models
+    }}
+    if any(
+        model["id"] == "vision.general" and "image" in model["input"]
+        for model in models
+    ):
+        defaults["imageModel"] = {"primary": "anvil/vision.general"}
     return {
         "models": {"mode": "merge", "providers": {"anvil": {
             "baseUrl": base_url, "apiKey": "${%s}" % api_key_env,
             "api": "openai-completions", "models": models,
         }}},
-        "agents": {"defaults": {"models": {
-            "anvil/%s" % model["id"]: {} for model in models
-        }}},
+        "agents": {"defaults": defaults},
     }
 
 
@@ -166,6 +172,15 @@ def _with_voice(payload, voice):
     return result
 
 
+def _openclaw_model_primary(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, Mapping):
+        primary = value.get("primary")
+        return primary if isinstance(primary, str) else None
+    return None
+
+
 def _openclaw_payload_summary(provider, *, skills=False, voice=False, **_ignored):
     models = provider["models"]["providers"]["anvil"]["models"]
     realtime = provider.get("talk", {}).get("realtime", {})
@@ -178,6 +193,9 @@ def _openclaw_payload_summary(provider, *, skills=False, voice=False, **_ignored
         "base_url": provider["models"]["providers"]["anvil"]["baseUrl"],
         "api_key": provider["models"]["providers"]["anvil"]["apiKey"],
         "direct_aliases": True,
+        "image_model": _openclaw_model_primary(
+            provider.get("agents", {}).get("defaults", {}).get("imageModel")
+        ),
         "skills": False,
         "voice": bool(voice),
         "voice_provider": realtime.get("provider") if isinstance(realtime, dict) else None,
@@ -228,7 +246,27 @@ def _merge_provider(existing, rendered):
     for model_id in tuple(allowed):
         if model_id.startswith("anvil/"):
             allowed.pop(model_id)
-    allowed.update(rendered["agents"]["defaults"]["models"])
+    rendered_defaults = rendered["agents"]["defaults"]
+    allowed.update(rendered_defaults["models"])
+    current_image_model = defaults.get("imageModel")
+    current_image_primary = _openclaw_model_primary(current_image_model)
+    rendered_image_model = rendered_defaults.get("imageModel")
+    if rendered_image_model is not None:
+        if current_image_primary is None or current_image_primary.startswith("anvil/"):
+            if isinstance(current_image_model, dict):
+                current_image_model["primary"] = rendered_image_model["primary"]
+                defaults["imageModel"] = current_image_model
+            else:
+                defaults["imageModel"] = rendered_image_model
+    elif isinstance(current_image_primary, str) and current_image_primary.startswith("anvil/"):
+        if isinstance(current_image_model, dict):
+            current_image_model.pop("primary", None)
+            if current_image_model:
+                defaults["imageModel"] = current_image_model
+            else:
+                defaults.pop("imageModel", None)
+        else:
+            defaults.pop("imageModel", None)
     # Delete the only Anvil-owned compatibility path. Other installed plugins remain.
     plugins = result.get("plugins")
     if isinstance(plugins, dict):
