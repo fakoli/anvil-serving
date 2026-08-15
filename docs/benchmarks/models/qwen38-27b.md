@@ -18,8 +18,9 @@ Official BF16 multimodal and official FP8 text `challenger`;
 ## Tested hardware and topology
 
 One TP=1 serve on each of two equal 96 GB RTX PRO 6000 Blackwell Max-Q cards
-in split mode. The cards are independent PCIe devices; aggregate VRAM is not
-unified memory.
+in split mode, plus exclusive TP=2 on both cards at 393K, 600K, and 1.01M.
+The cards are independent PCIe devices; aggregate VRAM is not unified memory,
+and the TP=2 runtime could not enable GPU P2P.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
@@ -32,6 +33,11 @@ unquantized KV were isolated one-variable arms.
 The extended-context arm kept official FP8 weights, FP8 KV, TP=1, chunked
 prefill, no prefix caching, and no MTP, but configured 1,010,000 tokens with
 one admitted sequence and the official nested `text_config` override.
+
+The matched TP/MTP matrix fixed one admitted sequence and 4,096 batched tokens
+for both checkpoints. Split TP=1 used 393,216 tokens. Exclusive TP=2 used
+393,216, 600,000, and 1,010,000 tokens. Every point had an otherwise identical
+no-MTP control and `method=mtp,num_speculative_tokens=3` arm.
 
 ## Evidence by measurement class
 
@@ -52,6 +58,14 @@ The 1M-configured continuation passed a monotonic retrieval ladder through
 and a 956.739-second mean request-to-completion latency. A full post-stress gate
 also passed. This is stable offline/batch capacity evidence, not an interactive
 latency result or proof of a one-million-token API prompt.
+
+The later topology matrix passed every arm at 388,979 actual prompt tokens for
+393K, 598,729 for 600K, and 985,107 for 1.01M. At 393K, TP=2 reduced control
+TTFT 38% for BF16 and 35% for official FP8. Official FP8 TP=2 control measured
+154.8/321.2/784.1 seconds TTFT across the three largest rows. MTP raised 4K
+decode 1.76-2.40x but used 7-11% of the engine-reported KV-token pool and did
+not improve extreme-context TTFT consistently. Each largest row is one cold
+pass; only the 4K 10-request runs carry p50/p95 statistics.
 
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
 multimodal. The deterministic API checks are not SWE-bench evidence.
@@ -76,8 +90,14 @@ changed.
 - No router alias, client configuration, or promotion changed.
 - The 1M-configured retrieval harness produced at most 825,049 API-reported
   prompt tokens, and each largest run took almost 16 minutes.
+- The later matrix reached 985,107 actual prompt tokens on both checkpoints in
+  TP=2, but TTFT remained 13.0-13.7 minutes. The result supersedes the earlier
+  prompt-depth limit, not its offline/batch recommendation.
+- TP=2 lacked P2P and used PyNCCL over the socket-backed local path after vLLM
+  disabled custom allreduce.
 
 ## Dated run history
 
+- [2026-08-14 TP/MTP/context matrix](../../findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md)
 - [2026-08-14 official FP8 1M-context continuation](../../findings/2026-08-14-qwen38-27b-1m-context.md)
 - [2026-08-14 official BF16/FP8 qualification](../../findings/2026-08-14-qwen38-27b-official-qualification.md)
