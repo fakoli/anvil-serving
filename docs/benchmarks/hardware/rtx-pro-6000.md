@@ -28,7 +28,7 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
 | 1 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | `current`, 2026-08-11 promotion record | Exclusive TP=2 r33 text Primary at 393,216 tokens; direct capacity through 359,900 actual prompt tokens |
-| 2 | [Qwen3.8 27B](../models/qwen38-27b.md) | `challenger`, `no-promotion` | Official BF16 multimodal plus official FP8 text split lanes; native 262K setting A/Bs and offline 1M-configured retrieval through 825,049 actual prompt tokens; not routed |
+| 2 | [Qwen3.8 27B](../models/qwen38-27b.md) | `challenger`, `no-promotion` | Official BF16 multimodal plus official FP8 text split lanes; matched TP=1/TP=2 and MTP controls; TP=2 retrieval through 985,107 actual prompt tokens; not routed |
 | 3 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Not started or selected by this promotion's restoration contract |
 | 4 | [Agents-A1](../models/agents-a1.md) plus Omni | managed split restoration | Restore group when leaving this exclusive profile; Agents-A1 retains FP8 text/image/video evidence |
 | 5 | [Laguna S 2.1](../models/laguna-s-2.1.md) | `rollback` | Additional managed rollback; thinking disabled |
@@ -89,7 +89,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
-| Qwen3.8 27B official BF16 / official FP8 | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; BF16 media 30/30; 1M FP8 passed post-stress functional gate | Native controls passed 241,250 actual prompt tokens; 1M-configured FP8 passed 825,049 at 3/3 with 956.739 s mean E2E | `challenger`, `no-promotion`; 1M is stable offline/batch capacity, not interactive default |
+| Qwen3.8 27B official BF16 / official FP8 | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; BF16 media 30/30; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | `challenger`, `no-promotion`; FP8 MTP leads interactive text, TP=2 helps long prefill/capacity, 1M remains batch-like |
 | Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `rollback` |
 | Laguna S 2.1 NVFP4 | Passed protocol-v3 with thinking disabled | 32K/128K/240K passed; TTFT 2.26/21.15/50.64 s | `rollback` |
 | GPT-OSS Puzzle 88B | Tools/session/timeout 3/3; unified diff 2/3 | 32K and 128K retained | `rollback` |
@@ -101,6 +101,8 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
+| Qwen3.8 27B official FP8 text, TP=2 control/MTP=3 | 393,216 / 600,000 / 1,010,000 | 1 | All three limits passed at 388,979 / 598,729 / 985,107 actual tokens; control reports ~4.65-4.67M KV tokens; MTP reports ~4.22-4.33M and 85.9-91.6 tok/s 4K decode; no P2P |
+| Qwen3.8 27B official BF16 multimodal, TP=2 control/MTP=3 | 393,216 / 600,000 / 1,010,000 | 1 | All three limits passed; control reports ~3.77-3.78M KV tokens; MTP reports ~3.42-3.50M and 67.4-75.6 tok/s 4K decode; no P2P |
 | Qwen3.8 27B official FP8 text | 262,144 control / 1,010,000 continuation | 5 control / 1 continuation | Control reports 1,825,809 KV tokens and 51 aggregate output tok/s at c5; 1M arm reports 1,845,432 KV tokens and passes 825,049 actual prompt tokens 3/3, but cold E2E is ~956.7 s |
 | Qwen3.8 27B official BF16 multimodal | 262,144 | 2 | FP8 KV reports 1,036,311 tokens / 3.95 full windows; 241,250-token retrieval and 30/30 media corpus pass |
 | DeepSeek V4 Flash 0731 r33 B12X + DSpark K5, batch 4,096, TP=2 | 393,216 | 16 configured; c1 long-context measured | FP8 DS-MLA KV, GPU-only; 725,543 reported KV tokens; 359,900 actual prompt tokens passed; current Primary |
@@ -121,6 +123,12 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Recent changes
 
+- 2026-08-14: the matched Qwen3.8 BF16/official-FP8 matrix completed split
+  TP=1 at 393K and exclusive TP=2 at 393K/600K/1.01M, each with control and
+  MTP=3. All 16 arms passed full functional gates and cold retrieval at
+  388,979/598,729/985,107 actual prompt tokens. MTP raised 4K decode 1.76-2.40x
+  while consuming 7-11% of reported KV tokens; TP=2 cut 393K control TTFT
+  35-38%. The exact 262K split baselines were restored; no route changed.
 - 2026-08-14: the official Qwen3.8 27B FP8 checkpoint was configured for
   1,010,000 tokens on one card and passed retrieval through 825,049 actual
   prompt tokens at 3/3. Mean cold request-to-completion latency was 956.739
