@@ -59,6 +59,10 @@ inputs, but they are not silently substituted for or claimed by these profiles;
 an external-adapter profile must explicitly pin and execute them before a run
 can report those benchmark names.
 
+Every SWE profile also pins the `princeton-nlp/SWE-bench_Verified` dataset
+revision as a prepared adapter. The official grader's repository revision is
+not a substitute for the dataset identity.
+
 | Profile | Context buckets | Positions × repetitions | Agentic scope | SWE Verified instances | Intended use |
 |---|---|---:|---|---:|---|
 | `smoke` | 8K, 32K | 3 × 1 | tool sequence and one recovery fixture | 1 | Wiring and short functional gate |
