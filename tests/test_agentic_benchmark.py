@@ -62,6 +62,30 @@ def test_protocol_recovery_and_final_failures_are_distinct():
     assert score_agentic_trace(scenario, expected, final)["failure_class"] == "recovery_failure"
 
 
+def test_tool_result_marker_allows_natural_language_final_answer():
+    scenario, expected = build_agentic_scenario("tool-sequence")
+    trace = passing_trace(expected)
+    trace["final_answer"] = "The requested file is ready: FILE-READY."
+
+    result = score_agentic_trace(scenario, expected, trace)
+
+    assert result["passed"] is True
+    assert result["stages"]["reasoning"] == {"applicable": False, "passed": True}
+    assert result["visible_answer"] == trace["final_answer"]
+    assert len(result["answer_sha256"]) == 64
+
+
+def test_tool_final_mismatch_is_not_mislabeled_as_reasoning_failure():
+    scenario, expected = build_agentic_scenario("tool-sequence")
+    trace = passing_trace(expected)
+    trace["final_answer"] = "The file was read successfully."
+
+    result = score_agentic_trace(scenario, expected, trace)
+
+    assert result["failure_class"] == "final_answer_failure"
+    assert result["stages"]["reasoning"] == {"applicable": False, "passed": True}
+
+
 @pytest.mark.parametrize(
     ("code", "classification"),
     [

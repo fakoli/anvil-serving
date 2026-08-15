@@ -22,11 +22,19 @@ from importlib import resources
 import anvil_serving
 
 package = resources.files("anvil_serving")
-required = (package / "py.typed",)
+required = (
+    package / "py.typed",
+    package / "_benchmark_profiles" / "smoke.json",
+    package / "_benchmark_profiles" / "scout.json",
+    package / "_benchmark_profiles" / "deep.json",
+)
 missing = [str(path) for path in required if not path.is_file()]
 if missing:
     raise SystemExit("missing package data: " + ", ".join(missing))
 print(anvil_serving.__file__)
+from anvil_serving.benchmarking.profiles import PROFILE_NAMES, load_profile
+for name in sorted(PROFILE_NAMES):
+    load_profile(name)
 print("package-data-ok")
 """.strip()
 
@@ -173,7 +181,12 @@ def run_smoke(
             "installed_package": str(installed_package),
             "entrypoint": str(entrypoint),
             "canonical_command": "anvil-serving router run --help",
-            "package_data": ["anvil_serving/py.typed"],
+            "package_data": [
+                "anvil_serving/py.typed",
+                "anvil_serving/_benchmark_profiles/smoke.json",
+                "anvil_serving/_benchmark_profiles/scout.json",
+                "anvil_serving/_benchmark_profiles/deep.json",
+            ],
         }
 
 

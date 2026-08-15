@@ -80,6 +80,7 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
     "_node/*.mjs",
     "_gpu_sharing_probe/*.yml",
     "_gpu_sharing_probe/gpu-sharing/*.cu",
+    "_benchmark_profiles/*.json",
 ]
 "anvil_serving.observability.dashboard.static" = ["*.html"]
 

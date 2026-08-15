@@ -1,0 +1,18 @@
+{
+  "schema": "anvil-serving.benchmark-profile/v1",
+  "name": "smoke",
+  "description": "Fast contract and routing check before a larger campaign.",
+  "content_sha256": "34c5ea22aeba9ae3bdff7530632959f293f5a77896f4a389431790891596dd4d",
+  "adapters": {
+    "ruler": {"kind": "git", "source": "https://github.com/NVIDIA/RULER", "revision": "c3f5e3b4f87f97e048793bb510a3a6b19a46bf3a"},
+    "mrcr": {"kind": "dataset", "source": "https://huggingface.co/datasets/openai/mrcr", "revision": "f4c69fae7cf81f7ca26b9fee34b392a50f6b8a1d"},
+    "mini-swe-agent": {"kind": "git", "source": "https://github.com/SWE-agent/mini-swe-agent", "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"},
+    "swe-bench": {"kind": "git", "source": "https://github.com/SWE-bench/SWE-bench", "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"},
+    "worker-base": {"kind": "image", "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"}
+  },
+  "suites": {
+    "context": {"cases": ["native-needle", "native-order"], "token_buckets": [8192, 32768], "positions": [0.1, 0.5, 0.9], "repetitions": 1, "timeout_s": 1800, "output_headroom_tokens": 2048, "scoring": {"baseline_bucket": 8192, "pass_rate_floor": 0.8, "max_relative_drop": 0.2}, "requirements": {"min_free_disk_bytes": 1073741824}, "adapters": []},
+    "agentic": {"cases": ["tool-sequence", "tool-recovery"], "repetitions": 1, "timeout_s": 1800, "max_steps": 12, "max_completion_tokens": 4096, "scoring": {"pass_rate_floor": 0.8}, "requirements": {"min_free_disk_bytes": 1073741824}, "adapters": []},
+    "swe": {"cases": ["swe-verified"], "repetitions": 1, "timeout_s": 7200, "instance_limit": 1, "max_steps": 40, "max_completion_tokens": 8192, "scoring": {"pass_rate_floor": 1.0}, "requirements": {"min_free_disk_bytes": 21474836480, "container_required": true}, "adapters": ["mini-swe-agent", "swe-bench", "worker-base"]}
+  }
+}

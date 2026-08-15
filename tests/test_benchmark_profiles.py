@@ -1,4 +1,6 @@
 import copy
+import json
+from pathlib import Path
 
 import pytest
 
@@ -16,6 +18,16 @@ def test_checked_in_profiles_are_content_addressed_and_valid(name):
     profile = load_profile(name)
     assert profile["content_sha256"] == profile_content_sha256(profile)
     assert set(profile["suites"]) == {"context", "agentic", "swe"}
+
+
+@pytest.mark.parametrize("name", sorted(PROFILE_NAMES))
+def test_packaged_profiles_match_public_config(name):
+    root = Path(__file__).resolve().parents[1]
+    packaged = root / "anvil_serving" / "_benchmark_profiles" / f"{name}.json"
+    public = root / "configs" / "benchmarks" / f"{name}.json"
+    assert json.loads(packaged.read_text(encoding="utf-8")) == json.loads(
+        public.read_text(encoding="utf-8")
+    )
 
 
 def test_context_capacity_reserves_output_headroom():
