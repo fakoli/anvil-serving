@@ -1,0 +1,65 @@
+{
+  "schema": "anvil-serving.qwen38-tp-mtp-context-matrix-summary/v1",
+  "observed_date": "2026-08-14",
+  "decision": "challenger; no-promotion",
+  "hardware": {
+    "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "cards": 2,
+    "vram_gb_each": 96,
+    "interconnect": "PCIe without GPU P2P or NVLink",
+    "topologies": [
+      "split TP=1 with one checkpoint per card",
+      "exclusive TP=2 with both cards assigned to one checkpoint"
+    ]
+  },
+  "runtime": {
+    "image": "vllm/vllm-openai@sha256:4a2f33a884222f7049b983263ad9976f89452bb81affecf5b67d89ad35c1bc31",
+    "engine_revision": "3a0914114705fa38d4c3171d0746c1a6b6f10209",
+    "kv_cache_dtype": "fp8",
+    "max_num_seqs": 1,
+    "max_num_batched_tokens": 4096,
+    "prefix_cache": false,
+    "thinking": "disabled and independently verified"
+  },
+  "checkpoints": {
+    "bf16": "Qwen/Qwen3.8-27B@1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+    "official_fp8": "Qwen/Qwen3.8-27B-FP8@017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
+  },
+  "protocol": {
+    "functional_per_arm": "coding smoke, structured JSON, 128K retrieval, tools 20/20, streaming tools, tool-result continuation, Responses API",
+    "short_capacity_per_arm": "10 requests, concurrency 1, 4096 configured input tokens, 256 output-token cap",
+    "long_context_per_arm": "one cold retrieval at the largest row; 393K configured produced 388979 actual prompt tokens, 600K produced 598729, and 1.01M produced 985107",
+    "important_limit": "the context harness accepted eval-repetitions=3 but emitted one request per context target; every extreme-context result is therefore 1/1, not a latency distribution"
+  },
+  "results": [
+    {"checkpoint":"bf16","tp":1,"context":393216,"mtp":0,"kv_tokens":1044963,"short":{"ttft_p50_ms":847.7,"ttft_p95_ms":1020.9,"prefill_tok_s_p50":4259.4,"decode_tok_s_p50":25.8,"e2e_p50_ms":2514.7},"long":{"prompt_tokens":388979,"ttft_s":272.933,"prefill_tok_s":1425.2,"decode_tok_s":20.9,"status":"passed"}},
+    {"checkpoint":"bf16","tp":1,"context":393216,"mtp":3,"kv_tokens":934269,"short":{"ttft_p50_ms":884.3,"ttft_p95_ms":1061.3,"prefill_tok_s_p50":4084.1,"decode_tok_s_p50":62.0,"e2e_p50_ms":1584.4},"long":{"prompt_tokens":388979,"ttft_s":280.024,"prefill_tok_s":1389.1,"decode_tok_s":18.7,"status":"passed"}},
+    {"checkpoint":"official_fp8","tp":1,"context":393216,"mtp":0,"kv_tokens":1842232,"short":{"ttft_p50_ms":801.7,"ttft_p95_ms":988.1,"prefill_tok_s_p50":4501.5,"decode_tok_s_p50":47.6,"e2e_p50_ms":1706.3},"long":{"prompt_tokens":388979,"ttft_s":239.341,"prefill_tok_s":1625.2,"decode_tok_s":34.9,"status":"passed"}},
+    {"checkpoint":"official_fp8","tp":1,"context":393216,"mtp":3,"kv_tokens":1662785,"short":{"ttft_p50_ms":834.0,"ttft_p95_ms":997.3,"prefill_tok_s_p50":4326.1,"decode_tok_s_p50":93.6,"e2e_p50_ms":1295.4},"long":{"prompt_tokens":388979,"ttft_s":244.786,"prefill_tok_s":1589.1,"decode_tok_s":28.1,"status":"passed"}},
+    {"checkpoint":"bf16","tp":2,"context":393216,"mtp":0,"kv_tokens":3771158,"short":{"ttft_p50_ms":730.6,"ttft_p95_ms":985.6,"prefill_tok_s_p50":4939.3,"decode_tok_s_p50":35.9,"e2e_p50_ms":1923.3},"long":{"prompt_tokens":388979,"ttft_s":168.735,"prefill_tok_s":2305.3,"decode_tok_s":32.8,"status":"passed"}},
+    {"checkpoint":"bf16","tp":2,"context":393216,"mtp":3,"kv_tokens":3417016,"short":{"ttft_p50_ms":758.2,"ttft_p95_ms":994.2,"prefill_tok_s_p50":4760.2,"decode_tok_s_p50":75.6,"e2e_p50_ms":1325.0},"long":{"prompt_tokens":388979,"ttft_s":172.201,"prefill_tok_s":2258.9,"decode_tok_s":25.1,"status":"passed"}},
+    {"checkpoint":"official_fp8","tp":2,"context":393216,"mtp":0,"kv_tokens":4653572,"short":{"ttft_p50_ms":711.0,"ttft_p95_ms":725.8,"prefill_tok_s_p50":5080.8,"decode_tok_s_p50":48.8,"e2e_p50_ms":1587.2},"long":{"prompt_tokens":388979,"ttft_s":154.839,"prefill_tok_s":2512.2,"decode_tok_s":43.0,"status":"passed"}},
+    {"checkpoint":"official_fp8","tp":2,"context":393216,"mtp":3,"kv_tokens":4224785,"short":{"ttft_p50_ms":743.7,"ttft_p95_ms":775.8,"prefill_tok_s_p50":4837.0,"decode_tok_s_p50":85.9,"e2e_p50_ms":1240.0},"long":{"prompt_tokens":388979,"ttft_s":158.849,"prefill_tok_s":2448.7,"decode_tok_s":29.4,"status":"passed"}},
+    {"checkpoint":"bf16","tp":2,"context":600000,"mtp":0,"kv_tokens":3780310,"short":{"ttft_p50_ms":739.6,"ttft_p95_ms":955.1,"prefill_tok_s_p50":4867.3,"decode_tok_s_p50":35.4,"e2e_p50_ms":1947.9},"long":{"prompt_tokens":598729,"ttft_s":344.122,"prefill_tok_s":1739.9,"decode_tok_s":30.1,"status":"passed"}},
+    {"checkpoint":"bf16","tp":2,"context":600000,"mtp":3,"kv_tokens":3469767,"short":{"ttft_p50_ms":763.9,"ttft_p95_ms":768.5,"prefill_tok_s_p50":4727.8,"decode_tok_s_p50":70.4,"e2e_p50_ms":1372.8},"long":{"prompt_tokens":598729,"ttft_s":346.962,"prefill_tok_s":1725.6,"decode_tok_s":23.6,"status":"passed"}},
+    {"checkpoint":"official_fp8","tp":2,"context":600000,"mtp":0,"kv_tokens":4666321,"short":{"ttft_p50_ms":709.0,"ttft_p95_ms":725.4,"prefill_tok_s_p50":5093.2,"decode_tok_s_p50":49.1,"e2e_p50_ms":1583.5},"long":{"prompt_tokens":598729,"ttft_s":321.228,"prefill_tok_s":1863.9,"decode_tok_s":47.4,"status":"passed"}},
+    {"checkpoint":"official_fp8","tp":2,"context":600000,"mtp":3,"kv_tokens":4289922,"short":{"ttft_p50_ms":742.5,"ttft_p95_ms":753.8,"prefill_tok_s_p50":4851.5,"decode_tok_s_p50":91.6,"e2e_p50_ms":1197.2},"long":{"prompt_tokens":598729,"ttft_s":324.221,"prefill_tok_s":1846.7,"decode_tok_s":28.4,"status":"passed"}},
+    {"checkpoint":"bf16","tp":2,"context":1010000,"mtp":0,"kv_tokens":3778148,"short":{"ttft_p50_ms":732.2,"ttft_p95_ms":740.9,"prefill_tok_s_p50":4932.8,"decode_tok_s_p50":36.1,"e2e_p50_ms":1921.4},"long":{"prompt_tokens":985107,"ttft_s":820.553,"prefill_tok_s":1200.5,"decode_tok_s":26.5,"status":"passed"}},
+    {"checkpoint":"bf16","tp":2,"context":1010000,"mtp":3,"kv_tokens":3497360,"short":{"ttft_p50_ms":764.1,"ttft_p95_ms":770.0,"prefill_tok_s_p50":4725.2,"decode_tok_s_p50":67.4,"e2e_p50_ms":1384.9},"long":{"prompt_tokens":985107,"ttft_s":817.813,"prefill_tok_s":1204.6,"decode_tok_s":20.6,"status":"passed"}},
+    {"checkpoint":"official_fp8","tp":2,"context":1010000,"mtp":0,"kv_tokens":4666574,"short":{"ttft_p50_ms":716.4,"ttft_p95_ms":730.6,"prefill_tok_s_p50":5031.6,"decode_tok_s_p50":49.2,"e2e_p50_ms":1590.0},"long":{"prompt_tokens":985107,"ttft_s":784.108,"prefill_tok_s":1256.3,"decode_tok_s":32.7,"status":"passed"}},
+    {"checkpoint":"official_fp8","tp":2,"context":1010000,"mtp":3,"kv_tokens":4328571,"short":{"ttft_p50_ms":756.0,"ttft_p95_ms":766.9,"prefill_tok_s_p50":4773.4,"decode_tok_s_p50":91.5,"e2e_p50_ms":1225.3},"long":{"prompt_tokens":985107,"ttft_s":780.072,"prefill_tok_s":1262.8,"decode_tok_s":25.0,"status":"passed"}}
+  ],
+  "restoration": {
+    "status": "passed",
+    "state": "original split TP=1 BF16 and official FP8 262K direct services restored on their original cards",
+    "checks": "both passed the complete functional suite while co-resident; shared memory contained zero files and zero reclaimable bytes",
+    "router_or_client_change": false
+  },
+  "retained_failures_and_caveats": [
+    "A requested 390000-token harness target exceeded the 393216 configured lane after tokenization and returned HTTP 400; the retained calibrated target produced 388979 actual prompt tokens.",
+    "The installed global CLI was stale and initially ignored recipe model_path. No benchmark was taken from those provisional containers; they were unloaded and every measured arm was relaunched from the isolated worktree module with immutable snapshot paths.",
+    "TP=2 could not enable GPU P2P; vLLM disabled custom allreduce and used PyNCCL over the socket-backed local path.",
+    "Official FP8 retained the attention-scale default warning, and vLLM auto-disabled DeepGemm on Blackwell for this architecture in favor of CUTLASS.",
+    "No result changes route, client, or promotion state."
+  ]
+}
