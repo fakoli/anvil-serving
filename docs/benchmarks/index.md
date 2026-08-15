@@ -73,6 +73,15 @@ MTP=4 decode by only 0.4-1.3% on the same card and did not improve E2E. MTP=3
 remains current. See the
 [MTP-depth qualification](../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
 
+Also on 2026-08-15, a digest-pinned SGLang no-speculation A/B qualified
+official FP8 and audited Inferact NVFP4 as TP=1/393K text controls on both card
+placements. NVFP4 reduced matched 4K TTFT 22.6% and raised decode 20.6%, while
+both candidates passed 388,979 actual prompt tokens and bounded deterministic
+quality. The current vLLM MTP=3 split remains faster and unchanged; both
+SGLang recipes are `no-promotion`, and SGLang multimodal remains unqualified on
+WSL2. See the
+[SGLang/NVFP4 qualification](../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md).
+
 ## How to read the evidence
 
 Evidence labels describe what was observed:

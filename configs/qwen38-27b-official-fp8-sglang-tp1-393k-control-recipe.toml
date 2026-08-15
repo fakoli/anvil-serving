@@ -1,0 +1,77 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "Qwen/Qwen3.8-27B-FP8"
+status = "qualification-candidate"
+source = "2026-08-15 SGLang RTX PRO 6000 recipe translated to the existing TP1 393K no-speculation control shape"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Qwen/Qwen3.8-27B-FP8"
+revision = "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "One GPU in split mode; the other equal GPU remains independently assigned."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Qwen--Qwen3.8-27B-FP8/snapshots/017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
+quantization = "official block-scaled FP8 weights with explicit FP8 E4M3 KV cache"
+context_tokens = 393216
+port = 39211
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-official-fp8-sglang-tp1-393k-control"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = [
+  "qwen38-fp8-sglang-cache:/root/.cache/sglang",
+]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1",
+]
+flags = [
+  "--served-model-name qwen38-27b-official-fp8-sglang-tp1-393k-control",
+  "--tp-size 1",
+  "--language-only",
+  "--context-length 393216",
+  "--max-running-requests 1",
+  "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--disable-radix-cache",
+  "--max-mamba-cache-size 1",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--host 0.0.0.0",
+  "--port 39211",
+]
+note = "Matched SGLang no-speculation control for the TP1 393K campaign. The upstream RTX PRO 6000 cell supplies mem-fraction 0.85, FlashInfer attention, 2K chunked prefill, and Qwen parsers. This translation adds the campaign's explicit 393K/c1/FP8-KV shape and --language-only to match the existing vLLM FP8 text control. SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 is SGLang's fail-closed opt-in for exceeding the checkpoint's advertised 262K native limit, equivalent in intent to the nested config override in the existing vLLM 393K control. The default chat-template kwargs keep thinking disabled across both Chat Completions and SGLang's Responses adapter; request-level controls remain testable overrides. Prefix caching is disabled and one GDN state slot is allocated because the qualification workload has no shared-prefix reuse. A model-specific named volume retains generated SGLang/FlashInfer caches across card-swap restarts without sharing writes between models. The upstream cell includes --trust-remote-code, but the pinned official snapshot has no tracked Python or auto_map hook, and this recipe deliberately omits executable remote-code permission. The immutable image label reports SGLang c4271c3fe1262fc2adbd162c33b25de5255251c5 while an internal build-version string reports 561c8f3; retain that provenance discrepancy as a caveat. Router and promotion state remain out of scope."
+
+[recipe.fit]
+suited = ["qualification", "long-context", "text", "coding", "agentic"]
+rationale = "Measures the SGLang runtime against the existing official-FP8 vLLM control on one SM120 card without changing a routed alias."
+
+[recipe.sources]
+official = [
+  "https://github.com/sgl-project/sglang/blob/dd458f3212dd4ddf0e1a7907bbf539b660e70d21/docs/cookbook/autoregressive/Qwen/Qwen3.8-27B.mdx",
+  "https://github.com/sgl-project/sglang/blob/dd458f3212dd4ddf0e1a7907bbf539b660e70d21/docs/src/snippets/configs/Qwen/qwen3.8-27b.jsx",
+  "https://huggingface.co/Qwen/Qwen3.8-27B-FP8/tree/017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+]
+local = [
+  "configs/qwen38-27b-fp8-tp1-393k-control-recipe.toml",
+  "docs/findings/2026-08-15-qwen38-27b-external-recipe-refresh.md",
+  "docs/findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md",
+]

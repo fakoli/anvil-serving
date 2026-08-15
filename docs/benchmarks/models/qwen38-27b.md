@@ -4,7 +4,8 @@
 
 Human-approved `current` split: official FP8 text Primary and official BF16
 multimodal/OCR, both TP=1 at 393,216 tokens with MTP=3. Review date:
-2026-08-15. The current review includes the local MTP=4/5 depth qualification.
+2026-08-15. The current review includes the local MTP=4/5 depth qualification
+and the SGLang official-FP8 versus Inferact NVFP4 control.
 
 ## Immutable identity
 
@@ -15,6 +16,11 @@ multimodal/OCR, both TP=1 at 393,216 tokens with MTP=3. Review date:
 - Runtime image digest:
   `sha256:4a2f33a884222f7049b983263ad9976f89452bb81affecf5b67d89ad35c1bc31`;
   vLLM revision `3a0914114705fa38d4c3171d0746c1a6b6f10209`.
+- SGLang qualification image:
+  `lmsysorg/sglang@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124`;
+  image-label revision `c4271c3fe1262fc2adbd162c33b25de5255251c5`.
+- Inferact NVFP4 qualification revision:
+  `Inferact/Qwen3.8-27B-NVFP4@6128240ebaf4eaa7bad2b3d1c72c37d677c5f462`.
 
 ## Tested hardware and topology
 
@@ -44,6 +50,12 @@ The promoted split selects the 393,216-token TP=1 MTP=3 arm for both models.
 Official FP8 is text-only. BF16 admits text, image, and video, including up to
 32 images in one request. Both default to thinking disabled while retaining a
 caller override on chat-completions requests.
+
+The SGLang A/B held TP=1, 393,216 tokens, one running request, FP8 E4M3 KV,
+FlashInfer attention, 2,048-token chunks, memory fraction 0.85, disabled prefix
+cache, one GDN state slot, text-only mode, and no speculative decoding fixed.
+It compared official FP8 against Inferact ModelOpt NVFP4 and swapped model
+placement across the equal cards.
 
 ## Evidence by measurement class
 
@@ -82,6 +94,16 @@ MTP=4 lead reversed with placement and was lane variance. On the production
 Compute B lane, the historical matched MTP=3 control remains ahead at 93.6
 tok/s versus 91.6 for MTP=5 and 90.4 for MTP=4.
 
+The same day's SGLang control qualified both official FP8 and Inferact NVFP4
+on two placements. Both passed complete functional checks, deterministic
+intelligence/session/tools, and 388,979 actual prompt tokens. Across five 4K
+runs per model, NVFP4 averaged 0.429 seconds TTFT, 8,409 effective prefill
+tok/s, 57.9 decode tok/s, and 1.244 seconds E2E, versus official FP8's 0.554
+seconds, 6,512 tok/s, 48.0 tok/s, and 1.451 seconds. NVFP4 retained a smaller
+advantage at the near-limit row: 248.75 versus 258.13 seconds TTFT. The card
+swap reproduced the ranking, but the current vLLM MTP=3 result remains much
+faster at 93.6 decode tok/s.
+
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
 multimodal. The deterministic API checks are not SWE-bench evidence.
 
@@ -106,17 +128,17 @@ campaign. The local two-lane and cross-card follow-up found no meaningful E2E
 win for depth 4 or 5, so MTP=3 remains current and both deeper recipes remain
 dormant `no-promotion` controls.
 
-SGLang's day-zero cookbook is the second-priority challenger. Its RTX PRO 6000
-cells use official BF16 or FP8 weights, FlashInfer attention,
-`--mem-fraction-static 0.85`, and 2,048-token prefill chunks, with separate GDN
-state-cache sizing. The widely shared 200+ tok/s result changes to third-party
-NVFP4 weights and a separate DSpark draft, so it is not evidence for the
-official checkpoints. No executable SGLang recipe is recorded until its image
-is digest-pinned and mapped to an exact source revision.
+The SGLang cookbook follow-up is complete for no-speculation text serving.
+Digest-pinned executable recipes now retain official FP8 and the explicitly
+approved Inferact NVFP4 checkpoint. The NVFP4 snapshot passed full Safetensors
+structure and immutable LFS SHA-256 verification before load. SGLang
+multimodal remains unqualified because the default CUDA-IPC feature warmup is
+incompatible with WSL2; a separate CPU-feature-transport arm is required.
+The widely shared 200+ tok/s result also adds a DSpark draft and remains an
+`external-prior`, not a local result.
 
-All NVFP4, GGUF, AutoRound, and custom `.ninfer` artifacts remain excluded from
-the active queue under the official-only checkpoint policy. These statements
-are `external-prior`, not local measurements.
+Other NVFP4, GGUF, AutoRound, and custom `.ninfer` artifacts remain excluded
+from the active queue. The two SGLang lanes are `no-promotion` controls.
 
 ## Failures and gotchas
 
@@ -146,9 +168,22 @@ are `external-prior`, not local measurements.
   prompt-depth limit, not its offline/batch recommendation.
 - TP=2 lacked P2P and used PyNCCL over the socket-backed local path after vLLM
   disabled custom allreduce.
+- SGLang's first 393K launch required the explicit longer-context overwrite
+  opt-in; its first WSL2 multimodal warmup failed with an invalid CUDA resource
+  handle, so the qualified recipes are text-only.
+- The SGLang image label names `c4271c3`, but its internal build-version string
+  names `561c8f3`; the digest is the execution identity and the discrepancy is
+  retained.
+- Both SGLang candidates warned that missing FP8 KV scaling factors defaulted
+  to 1.0. The bounded gates passed, but unquantized-KV equivalence is unproven.
+- The generic evidence inspector flags absent aggregate chat timing in the
+  deterministic agentic artifacts and unrelated `not_run` suites in the
+  context-only artifacts. Only complete attempt/target records ground the
+  published claims; aggregate quality timing is not claimed.
 
 ## Dated run history
 
+- [2026-08-15 SGLang official-FP8/NVFP4 qualification](../../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md)
 - [2026-08-15 official-FP8 MTP-depth qualification](../../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md)
 - [2026-08-15 external recipe refresh](../../findings/2026-08-15-qwen38-27b-external-recipe-refresh.md)
 - [2026-08-14 split promotion](../../findings/2026-08-14-qwen38-27b-split-promotion.md)
