@@ -113,8 +113,8 @@ in JSON:
 `high`, `max`, or `xhigh` when the selected model supports it. For model
 families that use chat-template thinking controls, set `thinking_mode` to
 `enabled` or `disabled` instead. The two controls are mutually exclusive and
-the artifact records the exact requested control. Context and SWE jobs ignore
-these agentic-only parameters.
+the artifact records the exact requested control. Agentic and SWE jobs forward
+the control to every model request; context jobs ignore these parameters.
 
 `case_limit` is useful for the first smoke only; omit it for the complete
 profile matrix. For SWE, replace the context parameters with
@@ -188,7 +188,8 @@ infrastructure failure remain distinct.
 
 SWE artifacts retain the prompt/dataset identity, trajectory hash, request IDs
 when exposed, token counts, duration, exit status, prediction hash, pinned agent
-harness, and pinned grader. A trajectory or prediction without an official
+harness, pinned grader, and exact reasoning/thinking request control. A
+trajectory or prediction without an official
 grader report is `incomplete`, even when the agent exited normally.
 
 The common evidence envelope labels a record `measured` or `external_prior`,

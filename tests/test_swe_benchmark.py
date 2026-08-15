@@ -42,7 +42,7 @@ def manifest(profile):
     }
 
 
-def plan(tmp_path):
+def plan(tmp_path, *, request_controls=None):
     profile = load_profile("smoke")
     return build_swe_run_plan(
         profile,
@@ -57,6 +57,7 @@ def plan(tmp_path):
         cache_root=str(tmp_path / "cache"),
         ownership_id="campaign",
         run_id="smoke-one",
+        request_controls=request_controls,
     )
 
 
@@ -71,6 +72,30 @@ def test_plan_pins_selection_router_and_both_harnesses(tmp_path):
     assert value["harnesses"]["grader"]["revision"] == load_profile("smoke")["adapters"]["swe-bench"]["revision"]
     assert "secret" not in value["config_text"].lower()
     assert "http://100.64.0.10:8000/v1" in value["config_text"]
+    assert value["request_controls"] == {
+        "thinking_mode": "default",
+        "reasoning_effort": None,
+    }
+
+
+def test_plan_forwards_and_records_reasoning_effort(tmp_path):
+    value = plan(tmp_path, request_controls={"reasoning_effort": "xhigh"})
+
+    assert value["request_controls"] == {
+        "thinking_mode": "default",
+        "reasoning_effort": "xhigh",
+    }
+    assert 'reasoning_effort: "xhigh"' in value["config_text"]
+
+
+def test_plan_rejects_conflicting_reasoning_controls(tmp_path):
+    with pytest.raises(BenchmarkJobError) as exc:
+        plan(
+            tmp_path,
+            request_controls={"reasoning_effort": "xhigh", "thinking_mode": "enabled"},
+        )
+
+    assert exc.value.code == "conflicting_reasoning_controls"
 
 
 def test_selection_cannot_be_implicit_short_or_duplicated():
@@ -131,6 +156,7 @@ def test_completed_run_requires_official_grader_and_keeps_instance_evidence(tmp_
     )
     assert result["state"] == "completed"
     assert result["official_grader_complete"] is True
+    assert result["request_controls"]["thinking_mode"] == "default"
     assert result["summary"]["resolve_rate"] == 1.0
     instance = result["instances"][0]
     assert instance["tokens"] == {"prompt_tokens": 101, "completion_tokens": 22, "total_tokens": 123}
