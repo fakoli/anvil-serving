@@ -77,6 +77,7 @@ def build_agentic_scenario(
         "result_markers": [],
         "final": None,
         "final_kind": "normalized_exact",
+        "final_terms": [],
         "reasoning_required": scenario_type == "reasoning",
         "recovery_required": False,
     }
@@ -86,6 +87,8 @@ def build_agentic_scenario(
             "content": "Return only the safe three-step workflow for changing code: inspect, patch, test.",
         }]
         expected["final"] = "inspect -> patch -> test"
+        expected["final_kind"] = "ordered_terms"
+        expected["final_terms"] = ["inspect", "patch", "test"]
     elif scenario_type == "reasoning":
         scenario["messages"] = [{
             "role": "user",
@@ -188,7 +191,8 @@ def build_agentic_scenario(
         })
     elif scenario_type == "debug-loop":
         scenario["messages"] = [{
-            "role": "user", "content": "Run tests, inspect the failing file, apply the one-line fix, and rerun."
+            "role": "user",
+            "content": "Run unit tests, inspect the failing file, apply the one-line fix, and rerun unit tests.",
         }]
         scenario["tools"] = [
             _tool("run_tests", ["scope"]),
@@ -203,9 +207,11 @@ def build_agentic_scenario(
                 {"name": "apply_edit", "arguments": {"path": "calc.py", "edit": "return a + b"}},
                 {"name": "run_tests", "arguments": {"scope": "unit"}},
             ],
-            "result_markers": ["TESTS-PASS"],
-            "final": "TESTS-PASS",
-            "final_kind": "contains_markers",
+            "result_markers": [],
+            "result_terms": ["pass"],
+            "final": "tests pass",
+            "final_kind": "contains_terms",
+            "final_terms": ["pass"],
         })
     else:
         code = "SESSION-8841"
@@ -269,6 +275,7 @@ def score_agentic_trace(
     final = trace.get("final_answer")
     final_passed = False
     markers = expected.get("result_markers", [])
+    normalized_final = _normalize(final) if isinstance(final, str) else ""
     if expected.get("final_kind") == "exact_json":
         try:
             parsed = json.loads(final) if isinstance(final, str) else final
@@ -281,9 +288,22 @@ def score_agentic_trace(
             and bool(markers)
             and all(marker in final for marker in markers)
         )
+    elif expected.get("final_kind") == "contains_terms":
+        terms = expected.get("final_terms", [])
+        final_passed = bool(terms) and all(term in normalized_final for term in terms)
+    elif expected.get("final_kind") == "ordered_terms":
+        terms = expected.get("final_terms", [])
+        positions = [normalized_final.find(term) for term in terms]
+        final_passed = (
+            bool(terms)
+            and all(position >= 0 for position in positions)
+            and positions == sorted(positions)
+        )
     elif isinstance(final, str) and isinstance(expected.get("final"), str):
         final_passed = _normalize(final) == _normalize(expected["final"])
     result_passed = isinstance(final, str) and all(marker in final for marker in markers)
+    result_terms = expected.get("result_terms", [])
+    result_passed = result_passed and all(term in normalized_final for term in result_terms)
     if not markers:
         result_passed = True
     recovery_passed = not expected.get("recovery_required") or (
