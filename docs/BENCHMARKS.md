@@ -21,7 +21,7 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-11**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-14**.
 
 ## Read these results correctly
 
@@ -29,6 +29,23 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 - Compare rows only when their workload and topology are comparable. A faster inference run does not establish coding quality, tool reliability, or routing eligibility.
 - Quality-profile and production changes remain human-gated. A benchmark can recommend a change; it never promotes a model by itself.
 - External benchmark data is an advisory prior, not a local result. See [External benchmarks](EXTERNAL-BENCHMARKS.md) for its import and comparison workflow.
+
+## Qwen3.8 27B official FP8 1M-context continuation (2026-08-14)
+
+The official FP8 checkpoint was configured for 1,010,000 tokens on one RTX PRO
+6000 with TP=1, FP8 KV, maxseq1, chunked prefill, and no MTP or prefix caching.
+It passed retrieval at 316,849, 422,449, and 633,649 actual prompt tokens, then
+passed **825,049 actual prompt tokens at 3/3**. Those largest runs averaged
+**956.739 seconds** request-to-completion, so the result is stable offline/batch
+capacity rather than an interactive default. A post-stress functional gate
+passed, and the original 262K FP8 lane was restored and requalified.
+
+The official 1M flags were already present in the first 27B vLLM recipe; the
+later same-day edit changed the declared vLLM floor and difficulty. The new
+2.4T-A95B sibling recipe does not fit this two-card host. No third-party NVFP4
+checkpoint was pulled, no route changed, and the model remains a
+`challenger`, `no-promotion`. See the
+[dated continuation and raw artifacts](findings/2026-08-14-qwen38-27b-1m-context.md).
 
 ## Dual-PRO exclusive TP=2 campaign (2026-08-01)
 
