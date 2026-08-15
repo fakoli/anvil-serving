@@ -59,6 +59,26 @@ share the same 393,216-token context and one-sequence admission contract.
 The BF16 32-image result is one request at concurrency one. It is not a claim
 of 32 concurrent requests.
 
+### Official-FP8 MTP-depth controls
+
+MTP=4 and MTP=5 used the current FP8 TP=1/393K/maxseq1/batch4096 recipe and
+were swapped across the equal cards. Values are means of each run's median;
+three repetitions were taken in the first placement and two after the swap.
+
+| Setting | Card role | TTFT | Prefill | Decode | E2E | Decision |
+|---|---|---:|---:|---:|---:|---|
+| MTP=4 | Compute A | 0.836 s | 4,319 tok/s | 97.9 tok/s | **1.276 s** | `no-promotion` |
+| MTP=5 | Compute A | 0.844 s | 4,280 tok/s | **98.3 tok/s** | 1.281 s | `no-promotion` |
+| MTP=4 | Compute B | 0.841 s | 4,288 tok/s | 90.4 tok/s | 1.313 s | `no-promotion` |
+| MTP=5 | Compute B | 0.845 s | 4,274 tok/s | **91.6 tok/s** | 1.315 s | `no-promotion` |
+
+The apparent first-placement winner reversed after the card swap. On a fixed
+card, MTP=5 adds only 0.4-1.3% decode and makes E2E slightly worse. Both
+settings passed 388,979-token retrieval and bounded behavioral gates. The
+current MTP=3 Compute B control remains ahead at 93.6 tok/s and 1.295 seconds
+E2E. See the
+[MTP-depth qualification](../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
+
 ---
 
 ## Dual RTX PRO 6000 Blackwell Max-Q — 192 GB aggregate, exclusive TP=2
