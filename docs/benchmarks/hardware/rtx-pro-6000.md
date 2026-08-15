@@ -2,8 +2,7 @@
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark, Windows 11 with
-Docker Desktop/WSL2. **Reviewed:** 2026-08-15. The latest review includes an
-external-prior recipe intake; the last local measurement remains 2026-08-14.
+Docker Desktop/WSL2. **Reviewed and last locally measured:** 2026-08-15.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -91,6 +90,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
 | Qwen3.8 27B official BF16 / official FP8 | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; final routed BF16 media 30/30 and 32-image request 1/1; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | `current` split at TP=1/393K/MTP=3; FP8 text Primary, BF16 vision/OCR; TP=2 remains batch-like |
+| Qwen3.8 27B official FP8 MTP=4/5 | Both pass tools 20/20 and repeated deterministic intelligence/session/tools; the quality artifacts are behavioral rather than timing evidence | Both pass one cold 388,979-token request; cross-card 4K runs show MTP=5 only 0.4-1.3% above MTP=4 decode on a fixed card and no E2E win | MTP=4/5 `no-promotion`; MTP=3 remains current |
 | Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `rollback` |
 | Laguna S 2.1 NVFP4 | Passed protocol-v3 with thinking disabled | 32K/128K/240K passed; TTFT 2.26/21.15/50.64 s | `rollback` |
 | GPT-OSS Puzzle 88B | Tools/session/timeout 3/3; unified diff 2/3 | 32K and 128K retained | `rollback` |
@@ -122,25 +122,33 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 | Qwen3.6 27B community NVFP4 + MTP | 262,144 | 5 | 262K needle validated |
 | Mistral Small 4 119B NVFP4 | 131,072 | 5 | Low short-request TTFT; weaker quality slice |
 
-## External recipe watch (not measured locally)
+## External recipe watch and local follow-up
 
 The [2026-08-15 Qwen3.8 recipe refresh](../../findings/2026-08-15-qwen38-27b-external-recipe-refresh.md)
-records two test-next directions without adding a hardware result. First, a
-same-product community sweep makes MTP=4 and MTP=5 worthwhile matched A/Bs
-against the current official-FP8 TP=1/393K MTP=3 lane. Second, SGLang's
+recorded two test-next directions. The first is now complete: the
+[MTP-depth qualification](../../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md)
+found no meaningful MTP=4/5 E2E win against the current official-FP8
+TP=1/393K MTP=3 lane. SGLang's
 commit-pinned cookbook supplies explicit RTX PRO 6000 official-FP8/BF16 cells,
 SM120 FlashInfer guidance, 2,048-token prefill chunks, and GDN state-cache
 sizing controls. The SGLang 200+ tok/s headline uses third-party NVFP4 and
 DSpark artifacts and is not comparable with the local official-weight result.
 
-Dormant vLLM MTP=4/5 recipes are recorded. SGLang remains a compatibility
-spike until its image has an immutable digest/source mapping. No model pull,
-serve lifecycle action, route change, benchmark, or promotion occurred.
+Dormant vLLM MTP=4/5 recipes are retained as measured `no-promotion`
+controls. SGLang remains the next compatibility spike until its image has an
+immutable digest/source mapping.
 
 ## Recent changes
 
+- 2026-08-15: official-FP8 MTP=4 and MTP=5 both passed functional,
+  deterministic-quality, and 388,979-token gates. A cross-card swap showed
+  the first-placement speed gap followed the GPU lane; MTP=5 beat MTP=4
+  decode by only 0.4-1.3% on the same card and did not improve E2E. The exact
+  MTP=3 FP8/BF16 split was restored and readmitted; MTP=4/5 remain
+  `no-promotion`.
 - 2026-08-15: external research queued a matched official-FP8 MTP=3/4/5
-  vLLM A/B and an official-weight SGLang compatibility spike. Third-party
+  vLLM A/B (now completed above) and an official-weight SGLang compatibility
+  spike. Third-party
   NVFP4, DSpark, GGUF, AutoRound, and custom-runtime artifacts remain excluded.
   This is an `external-prior` update, not a new hardware measurement.
 - 2026-08-14: human approval promoted the matched 393K TP=1/MTP=3 split.

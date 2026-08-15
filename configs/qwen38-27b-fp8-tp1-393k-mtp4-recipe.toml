@@ -2,8 +2,8 @@ schema = "anvil-serving.serve-recipes/v1"
 
 [[recipe]]
 model = "Qwen/Qwen3.8-27B-FP8"
-status = "qualification-candidate"
-source = "2026-08-15 external recipe refresh: matched TP1 393K MTP=4 candidate"
+status = "verified"
+source = "2026-08-15 local qualification: matched TP1 393K MTP=4, no-promotion"
 family = "qwen3.8-dense-vl"
 total_params_b = 27
 
@@ -54,7 +54,7 @@ flags = [
   "--host 0.0.0.0",
   "--port 39104",
 ]
-note = "Dormant MTP=4 qualification candidate. It changes only speculative depth from the qualified TP1 393K MTP=3 recipe. Compare MTP=3/4/5 with identical prompts, output budgets, cache state, batching, acceptance telemetry, quality gates, and post-run health. Router and promotion state remain out of scope."
+note = "Verified dormant MTP=4 control. Functional, repeated deterministic-quality, 4K capacity, and 388979-token retrieval gates passed. A cross-card swap found no meaningful E2E win over MTP=5 or the current MTP=3 recipe. Decision remains no-promotion."
 
 [recipe.fit]
 suited = ["qualification","long-context","text","coding","agentic"]
@@ -73,4 +73,5 @@ local = [
   "configs/qwen38-27b-fp8-tp1-393k-mtp3-recipe.toml",
   "configs/qwen38-27b-fp8-tp1-393k-mtp5-recipe.toml",
   "docs/findings/2026-08-15-qwen38-27b-external-recipe-refresh.md",
+  "docs/findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md",
 ]

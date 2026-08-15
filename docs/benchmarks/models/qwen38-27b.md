@@ -4,8 +4,7 @@
 
 Human-approved `current` split: official FP8 text Primary and official BF16
 multimodal/OCR, both TP=1 at 393,216 tokens with MTP=3. Review date:
-2026-08-15. The review date includes external recipe research; the last local
-measurement remains 2026-08-14.
+2026-08-15. The current review includes the local MTP=4/5 depth qualification.
 
 ## Immutable identity
 
@@ -74,6 +73,15 @@ decode 1.76-2.40x but used 7-11% of the engine-reported KV-token pool and did
 not improve extreme-context TTFT consistently. Each largest row is one cold
 pass; only the 4K 10-request runs carry p50/p95 statistics.
 
+The 2026-08-15 official-FP8 follow-up tested MTP=4 and MTP=5 concurrently,
+then swapped the settings across the two equal cards. Both passed complete
+functional checks, repeated deterministic intelligence/session/tool suites,
+and one cold 388,979-token request. On a fixed card, MTP=5 exceeded MTP=4
+decode by only 0.4-1.3% and made E2E slightly worse. The earlier apparent 6.9%
+MTP=4 lead reversed with placement and was lane variance. On the production
+Compute B lane, the historical matched MTP=3 control remains ahead at 93.6
+tok/s versus 91.6 for MTP=5 and 90.4 for MTP=4.
+
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
 multimodal. The deterministic API checks are not SWE-bench evidence.
 
@@ -85,7 +93,7 @@ the same 393,216-token limit. The final routed media corpus passed 30/30, the
 32-image request passed 1/1, and Hermes/OpenClaw client-path checks completed
 without fallback. TP=2 at 600K and 1.01M remains an offline/batch experiment.
 
-## External recipe watch
+## External recipe watch and local follow-up
 
 The 2026-08-15 external refresh added two dormant, official-weight vLLM
 qualification recipes. They change only the speculative depth from the
@@ -94,8 +102,9 @@ qualified TP=1/393K MTP=3 recipe:
 `configs/qwen38-27b-fp8-tp1-393k-mtp5-recipe.toml`.
 A same-product community sweep reports the best decode at depth 5, but its
 prompts, concurrency, runtime details, and quality method differ from the local
-campaign. The required next step is a matched MTP=3/4/5 A/B, not a config or
-promotion change.
+campaign. The local two-lane and cross-card follow-up found no meaningful E2E
+win for depth 4 or 5, so MTP=3 remains current and both deeper recipes remain
+dormant `no-promotion` controls.
 
 SGLang's day-zero cookbook is the second-priority challenger. Its RTX PRO 6000
 cells use official BF16 or FP8 weights, FlashInfer attention,
@@ -115,7 +124,14 @@ are `external-prior`, not local measurements.
   defaulted to 1.0. No independent quality result proves equivalence to
   unquantized KV.
 - vLLM warned that 4,096 batched tokens may be suboptimal with MTP=3. A later
-  tune must be a matched one-variable A/B.
+  tune must be a matched one-variable A/B. The same warning appeared for
+  MTP=4 and MTP=5.
+- MTP=4/5 short decode differed by roughly 7-8% between equal card roles.
+  Cross-card placement is therefore required before attributing a small
+  speculative-depth delta to the recipe.
+- The MTP=4/5 deterministic quality artifacts contain complete suite attempts
+  but no aggregate chat timing fields; they are bounded behavioral evidence,
+  not timing comparisons.
 - The durable separate-worker context/agentic/SWE campaign was not submitted
   because no candidate router alias was approved. Direct API checks are not
   SWE-bench evidence.
@@ -133,6 +149,7 @@ are `external-prior`, not local measurements.
 
 ## Dated run history
 
+- [2026-08-15 official-FP8 MTP-depth qualification](../../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md)
 - [2026-08-15 external recipe refresh](../../findings/2026-08-15-qwen38-27b-external-recipe-refresh.md)
 - [2026-08-14 split promotion](../../findings/2026-08-14-qwen38-27b-split-promotion.md)
 - [2026-08-14 TP/MTP/context matrix](../../findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md)
