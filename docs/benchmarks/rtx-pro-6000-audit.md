@@ -69,6 +69,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md`;
 `docs/findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md`;
 `docs/findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md`;
+`docs/findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md`;
 `docs/findings/2026-08-14-qwen38-27b-1m-context.md`;
 `docs/findings/2026-08-14-qwen38-27b-official-qualification.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
