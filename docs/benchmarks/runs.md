@@ -5,10 +5,20 @@ This manually maintained catalog indexes retained, decision-relevant runs.
 `PRO relationship` prevents a co-resident or protected PRO 6000 from being
 reported as measured.
 
+## Research-only recipe intake
+
+These records are indexed for decision reachability but are not benchmark runs
+and name no measured hardware.
+
+| Date | Subject | Evidence | Decision | Dossier / finding |
+|---|---|---|---|---|
+| 2026-08-15 | Qwen3.8 27B external recipe refresh | `external-prior`; current official vLLM/SGLang recipes, exact-hardware Reddit MTP sweep, X discovery, and community runtime reports | Queue matched official-FP8 MTP=3/4/5 A/B; prepare digest-pinned SGLang official-weight spike; no live or promotion change | [Qwen3.8 27B](models/qwen38-27b.md) · [recipe refresh](../findings/2026-08-15-qwen38-27b-external-recipe-refresh.md) |
+
 ## RTX PRO 6000 runs
 
 | Date | Capability | Exact model/configuration | Measured hardware | Evidence | Decision | Dossier / finding |
 |---|---|---|---|---|---|---|
+| 2026-08-15 | Qwen3.8 27B official-FP8 MTP-depth A/B | Official FP8 `017b9c7a`, vLLM `3a091411`, TP=1, 393,216 context, FP8 KV, maxseq1, batch 4,096, MTP=4 versus MTP=5; settings swapped across cards | **2x RTX PRO 6000 Max-Q**, one independent candidate per equal card | `functional`, `capacity`, bounded deterministic `quality`; both pass tools 20/20, repeated intelligence/session/tools, and 388,979-token retrieval; same-card MTP=5 decode only 0.4-1.3% above MTP=4 with no E2E win | MTP=4/5 `no-promotion`; retain `current` MTP=3; exact FP8/BF16 split restored and readmitted | [Qwen3.8 27B](models/qwen38-27b.md) · [MTP-depth qualification](../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md) |
 | 2026-08-14 | Qwen3.8 27B split promotion | Official FP8 `017b9c7a` text plus official BF16 `1d4bf0f2` multimodal, vLLM `3a091411`, TP=1 per card, 393,216 context, FP8 KV, maxseq1, batch 4,096, MTP=3; BF16 32 images/request | **2x RTX PRO 6000 Max-Q**, one independent serve per equal card | `functional`, `capacity`, multimodal, client acceptance; FP8 93.6 tok/s at 4K, routed tools 20/20; BF16 routed media 30/30 and 32-image request 1/1; Hermes text/image and OpenClaw Primary/vision passed without fallback | human-approved `current` split; FP8 text Primary, BF16 explicit general-vision/OCR; TP=2 long-context profiles remain experimental | [Qwen3.8 27B](models/qwen38-27b.md) · [promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
 | 2026-08-14 | Qwen3.8 27B TP/MTP/long-context matrix | Official BF16 `1d4bf0f2` and official FP8 `017b9c7a`, vLLM `3a091411`; split TP=1 at 393K and exclusive TP=2 at 393K/600K/1.01M; matched no-MTP/MTP=3, FP8 KV, maxseq1, batch 4,096 | **2x RTX PRO 6000 Max-Q** over PCIe without P2P or NVLink | `functional`, `capacity`; all 16 arms passed complete functional gates and cold retrieval at 388,979/598,729/985,107 actual prompt tokens; 4K FP8 MTP 85.9-93.6 tok/s; TP=2 control cut 393K TTFT 35-38% | `challenger`, `no-promotion`; TP=2 for prefill/capacity, MTP for decode, 600K/1M batch-like; exact split baselines restored | [Qwen3.8 27B](models/qwen38-27b.md) · [matrix](../findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md) |
 | 2026-08-14 | Qwen3.8 27B official FP8 1M-context continuation | Official FP8 `017b9c7a`, vLLM `3a091411`, 1,010,000 configured context, TP=1, FP8 KV, maxseq1, batch 4,096, text-only, no MTP/prefix cache | **1x RTX PRO 6000 Max-Q**; second equal card continued the BF16 serve | `functional`, `capacity`; retrieval passed at 316,849, 422,449, and 633,649 actual prompt tokens, then 825,049 at 3/3 with 956.739 s mean E2E; post-stress and restored-control gates passed | stable offline/batch `challenger`, `no-promotion`; original 262K FP8 lane restored, no route change | [Qwen3.8 27B](models/qwen38-27b.md) · [1M continuation](../findings/2026-08-14-qwen38-27b-1m-context.md) |

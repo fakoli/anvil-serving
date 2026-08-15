@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-14.**
+**Last evidence review: 2026-08-15.**
 
 ## Start with the numbers
 
@@ -65,6 +65,13 @@ became current. Final routed acceptance passed FP8 tools 20/20, BF16 media
 client paths completed without fallback. See the
 [Qwen3.8 dossier](models/qwen38-27b.md) and
 [promotion record](../findings/2026-08-14-qwen38-27b-split-promotion.md).
+
+On 2026-08-15, official-FP8 MTP=4 and MTP=5 both passed functional,
+near-393K, and repeated deterministic-quality gates. A cross-card swap showed
+that the apparent first-run speed gap followed the GPU lane: MTP=5 exceeded
+MTP=4 decode by only 0.4-1.3% on the same card and did not improve E2E. MTP=3
+remains current. See the
+[MTP-depth qualification](../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
 
 ## How to read the evidence
 

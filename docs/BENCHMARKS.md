@@ -22,7 +22,7 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-14**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-15**.
 
 ## Read these results correctly
 
@@ -45,6 +45,22 @@ median E2E, and 93.6 decode tok/s. BF16 measured 0.884-second TTFT,
 20/20, BF16 media 30/30, and the 32-image request 1/1. Hermes text/image and
 OpenClaw Primary/vision checks completed with no fallback. See the
 [promotion finding](findings/2026-08-14-qwen38-27b-split-promotion.md).
+
+## Qwen3.8 27B official-FP8 MTP-depth qualification (2026-08-15)
+
+MTP=4 and MTP=5 were tested concurrently at the current TP=1/393K/maxseq1
+shape, then swapped across the two equal cards. Both passed complete direct
+functional checks, repeated deterministic intelligence/session/tool checks,
+and a cold request with 388,979 actual prompt tokens.
+
+The swap changed the performance conclusion. The first placement appeared to
+favor MTP=4 by about 6.9% in decode, but the faster result followed the card.
+On a fixed card, MTP=5 exceeded MTP=4 decode by only 0.4-1.3% and made median
+E2E slightly worse. The historical matched MTP=3 result on the production
+lane remains better than either deeper setting. MTP=3 therefore remains
+current; MTP=4 and MTP=5 are retained `no-promotion` controls. The exact FP8
+plus BF16 split was restored, directly requalified, and readmitted. See the
+[MTP-depth qualification](findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
 
 ## Qwen3.8 27B TP/MTP/long-context matrix (2026-08-14)
 
