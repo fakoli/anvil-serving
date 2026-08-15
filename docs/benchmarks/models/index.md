@@ -9,8 +9,8 @@ evidence class, decision boundary, failures, and dated history.
 
 | Dossier | Current decision | Contents |
 |---|---|---|
-| [Qwen3.8 27B](qwen38-27b.md) | `challenger`, `no-promotion` | Official BF16 multimodal and FP8 text; 262K, MTP/prefix/KV A/Bs |
-| [Agents-A1](agents-a1.md) | `current` | Thinking-disabled FP8 Primary; BF16 control and compact NVFP4 text profile |
+| [Qwen3.8 27B](qwen38-27b.md) | `current` split | Official FP8 MTP=3 text Primary and BF16 MTP=3 general-vision/OCR at matched 393K |
+| [Agents-A1](agents-a1.md) | historical promotion / retained recipe | Thinking-disabled FP8 Primary-era evidence; BF16 control and compact NVFP4 text profile |
 | [Qwen3.5 122B](qwen35-122b.md) | `rollback` | Immediate NVFP4 rollback and historical MXFP4 |
 | [Laguna S 2.1 and Laguna XS](laguna-s-2.1.md) | `rollback` / `rejected` | Qualified S and failed XS path |
 | [GPT-OSS Puzzle 88B](gpt-oss-puzzle-88b.md) | `rollback` | Additional pinned rollback |
