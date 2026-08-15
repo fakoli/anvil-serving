@@ -1,0 +1,94 @@
+{
+  "schema": "anvil-serving.qwen38-mtp-depth-qualification-summary/v1",
+  "observed_date": "2026-08-15",
+  "decision": "retain current MTP=3; MTP=4 and MTP=5 no-promotion",
+  "hardware": {
+    "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "cards": 2,
+    "vram_gb_each": 96,
+    "topology": "split TP=1 with one candidate per equal card; cross-card swap included"
+  },
+  "identity": {
+    "checkpoint": "Qwen/Qwen3.8-27B-FP8@017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+    "image": "vllm/vllm-openai@sha256:4a2f33a884222f7049b983263ad9976f89452bb81affecf5b67d89ad35c1bc31",
+    "engine_revision": "3a0914114705fa38d4c3171d0746c1a6b6f10209"
+  },
+  "common_recipe": {
+    "weights": "official FP8",
+    "kv_cache_dtype": "fp8",
+    "tensor_parallel_size": 1,
+    "context_tokens": 393216,
+    "max_num_seqs": 1,
+    "max_num_batched_tokens": 4096,
+    "gpu_memory_utilization": 0.92,
+    "chunked_prefill": true,
+    "prefix_cache": false,
+    "language_model_only": true,
+    "thinking": "disabled and independently verified"
+  },
+  "protocol": {
+    "functional": "coding, JSON, 32K retrieval, tools 20/20, streaming tools, tool-result continuation, Responses API",
+    "quality": "three repetitions: intelligence 6/6, session 3/3, tools 3/3 for each setting",
+    "short_capacity": "10 requests, concurrency 1, 4096 configured input tokens, 256 output-token cap",
+    "long_context": "one cold request at 388979 actual prompt tokens for each initial lane",
+    "quality_caveat": "evidence inspector reports absent aggregate chat timing fields; suite attempts are used as bounded behavioral evidence only"
+  },
+  "short_capacity": [
+    {"mtp":4,"gpu_role":"dark-compute-a","repetitions":3,"ttft_p50_run_mean_ms":836.1,"e2e_p50_run_mean_ms":1275.5,"effective_prefill_p50_run_mean_tok_s":4319.0,"decode_p50_run_mean_tok_s":97.9,"aggregate_run_mean_tok_s":34.4},
+    {"mtp":5,"gpu_role":"dark-compute-a","repetitions":2,"ttft_p50_run_mean_ms":843.7,"e2e_p50_run_mean_ms":1280.7,"effective_prefill_p50_run_mean_tok_s":4280.3,"decode_p50_run_mean_tok_s":98.3,"aggregate_run_mean_tok_s":33.0},
+    {"mtp":4,"gpu_role":"dark-compute-b","repetitions":2,"ttft_p50_run_mean_ms":840.7,"e2e_p50_run_mean_ms":1313.0,"effective_prefill_p50_run_mean_tok_s":4287.5,"decode_p50_run_mean_tok_s":90.4,"aggregate_run_mean_tok_s":32.3},
+    {"mtp":5,"gpu_role":"dark-compute-b","repetitions":3,"ttft_p50_run_mean_ms":844.5,"e2e_p50_run_mean_ms":1315.1,"effective_prefill_p50_run_mean_tok_s":4274.0,"decode_p50_run_mean_tok_s":91.6,"aggregate_run_mean_tok_s":33.7},
+    {"mtp":3,"gpu_role":"dark-compute-b","repetitions":1,"source":"2026-08-14 matched control","ttft_p50_ms":834.0,"e2e_p50_ms":1295.4,"effective_prefill_p50_tok_s":4326.1,"decode_p50_tok_s":93.6}
+  ],
+  "long_context": [
+    {"mtp":4,"gpu_role":"dark-compute-a","prompt_tokens":388979,"ttft_s":247.67,"effective_prefill_tok_s":1570.5,"decode_tok_s":28.5,"status":"passed"},
+    {"mtp":5,"gpu_role":"dark-compute-b","prompt_tokens":388979,"ttft_s":250.12,"effective_prefill_tok_s":1555.2,"decode_tok_s":27.8,"status":"passed"}
+  ],
+  "functional": {
+    "mtp4": "passed",
+    "mtp5": "passed",
+    "restore_fp8_mtp3": "passed",
+    "restore_bf16_mm32_first_attempt": "content checks passed; rejected by evidence policy after image description ended at 512-token cap",
+    "restore_bf16_mm32_1024": "passed"
+  },
+  "interpretation": {
+    "compute_a_mtp5_vs_mtp4_decode_percent": 0.4,
+    "compute_b_mtp5_vs_mtp4_decode_percent": 1.3,
+    "e2e_difference_on_each_card_percent": "less than 0.5 and slightly favors MTP=4",
+    "lane_effect": "the apparent first-placement advantage reversed after swapping settings across cards",
+    "promotion": false
+  },
+  "restoration": {
+    "status": "passed",
+    "state": "official FP8 MTP=3 text Primary and official BF16 MTP=3 multimodal/OCR, both TP=1 at 393216 tokens",
+    "router_identity": "expected and observed identities matched; both tiers readmitted",
+    "shared_memory": "zero files and zero reclaimable bytes",
+    "client_configuration_changed": false
+  },
+  "warnings": [
+    "official FP8 attention q/prob scaling values were absent and defaulted to 1.0",
+    "vLLM warned that max_num_batched_tokens=4096 may be suboptimal with speculative decoding",
+    "recipe-loaded containers were absent from the managed serve ownership ledger; public ticket retained"
+  ],
+  "private_artifact_manifest": [
+    {"name":"mtp4-capacity-4k-c1-r10-r2.json","bytes":8659,"sha256":"74d1ef0c6e4490cf8f85b247e79f801401add977f1208bc133d537b5f0987995"},
+    {"name":"mtp4-capacity-4k-c1-r10-r3.json","bytes":8659,"sha256":"a212f54fa062ae2a902e3a7f0c82ed0cd183113a9cd30600bb3e501f023504b8"},
+    {"name":"mtp4-capacity-4k-c1-r10.json","bytes":8650,"sha256":"aa195db6722c1f52075405601fab025ec16c26f0460dca4891491ab7bacedce6"},
+    {"name":"mtp4-context-393k.json","bytes":5474,"sha256":"a33fb15861fbb5dc0c157940571206db0bf50e0b5638d9b7ecf56dd069281d8b"},
+    {"name":"mtp4-preflight.json","bytes":17893,"sha256":"f06251e1176e3a1c3dbfb4391fc8083098595807378a7bdd76ec4c651b5c756c"},
+    {"name":"mtp4-quality-agentic-r3.json","bytes":19452,"sha256":"44fd3eaf454ec67cb6dcf1432c0b8222192e39e9891f287e2638c2e09587c9df"},
+    {"name":"mtp4-xswap-capacity-4k-c1-r10-r1.json","bytes":8652,"sha256":"1bba1275b1cce8dfa2c204dbffff7b6dbb93c7645c1e19c791b5fcded871d04d"},
+    {"name":"mtp4-xswap-capacity-4k-c1-r10-r2.json","bytes":8653,"sha256":"fac93d7c75c9799335356e59f88fed22f8876be759d1257cfd8cc11975673572"},
+    {"name":"mtp5-capacity-4k-c1-r10-r2.json","bytes":8656,"sha256":"5c9d99e54a28e40a52e224d2d2cc2a6fc2c492622278646ad319896bbe5433c2"},
+    {"name":"mtp5-capacity-4k-c1-r10-r3.json","bytes":8643,"sha256":"ad25a8afd8e02e230b6f564d2eabd11bbf6d710cc525bc551df5cd1666fe64a8"},
+    {"name":"mtp5-capacity-4k-c1-r10.json","bytes":8655,"sha256":"bb3c88966f2ef3f53e1fc22d986d2e48367ff72a080e523624e79bba7000a97c"},
+    {"name":"mtp5-context-393k.json","bytes":5470,"sha256":"1059b50af5454d501ae4000827d7c26e96c521a77a57657ed1401b0c3bd2655b"},
+    {"name":"mtp5-preflight.json","bytes":17892,"sha256":"ea5a431e276e2f0909be6bc729f23b161bcd78cc76d9e79705f340e55fea64bf"},
+    {"name":"mtp5-quality-agentic-r3.json","bytes":19343,"sha256":"f2fc627a2a3cdde41f3fdf7ce3ab69ad3e5a6f93220d6ab0c089e4d379b60641"},
+    {"name":"mtp5-xswap-capacity-4k-c1-r10-r1.json","bytes":8650,"sha256":"e1341dbd49e5952f3c2821f2194391d11436498d333b2fc580a6821b115de667"},
+    {"name":"mtp5-xswap-capacity-4k-c1-r10-r2.json","bytes":8659,"sha256":"321a1b195ae2598148e6d44e26a039586485ad9c2a30db4ae49c2e5bbbca2c46"},
+    {"name":"restore-bf16-mm32-preflight-1024.json","bytes":10154,"sha256":"9ffa923c257a5bd5aad895ba3e75cacb6ccb3b494d96002527ddbc09ddba977c"},
+    {"name":"restore-bf16-mm32-preflight.json","bytes":10137,"sha256":"4983fb9e9192b7529297036e6e0d6f68d265ca0ee55dc1d454f0671fb1e6ee42"},
+    {"name":"restore-fp8-mtp3-preflight.json","bytes":8484,"sha256":"2efb6926fb5e4afc9c9f35441cc478038569f2f3a0d8fd52fd954e87601ff005"}
+  ]
+}
