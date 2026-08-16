@@ -46,16 +46,16 @@ dated finding before treating a row as a single experiment. Full rules:
 
 ---
 
-## Current split on dual RTX PRO 6000
+## Current single-service profile on dual RTX PRO 6000
 
-These two rows run concurrently, one TP=1 service per equal 96 GB card. They
-share the same 393,216-token context and one-sequence admission contract.
+One TP=1 service runs on one 96 GB card and the second equal card is empty.
+The former two-service split remains the exact rollback.
 
 | Model / config | Status | Quant · KV | 4K median TTFT / E2E | Decode | Multimodal acceptance | Evidence |
 | --- | --- | --- | --- | ---: | --- | --- |
-| [Qwen3.8 27B official FP8, TP=1 MTP=3](models/qwen38-27b.md) | `current` text Primary | Official FP8 · FP8 KV | 0.834 / 1.295 s | **93.6 tok/s** | text only; routed tools 20/20 | [promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
-| [Qwen3.8 27B official BF16, TP=1 MTP=3](models/qwen38-27b.md) | `current` general-vision/OCR | BF16 · FP8 KV | 0.884 / 1.584 s | 62.0 tok/s | routed 30/30; 32-image request 1/1 | [promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
-| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `challenger`, `no-promotion` | Official FP8 · FP8 KV | 0.569 / 0.954 s | **111.3 tok/s** | CPU transport: image/OCR pass; broader media open | [qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md) |
+| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `current` Primary/general-vision/OCR | Official FP8 · FP8 E4M3 KV | 0.577 / 0.962 s | **111.4 tok/s** | CPU transport; direct+routed 18/18; two images, no video | [promotion](../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md) |
+| [Qwen3.8 27B official FP8, vLLM TP=1 MTP=3](models/qwen38-27b.md) | split rollback, text | Official FP8 · FP8 KV | 0.834 / 1.295 s | 93.6 tok/s | text only; routed tools 20/20 | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
+| [Qwen3.8 27B official BF16, vLLM TP=1 MTP=3](models/qwen38-27b.md) | split rollback, vision/OCR | BF16 · FP8 KV | 0.884 / 1.584 s | 62.0 tok/s | historical routed 30/30; 32-image request 1/1 | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
 | [Qwen3.8 27B Inferact NVFP4, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `challenger`, `no-promotion` | ModelOpt NVFP4 · FP8 KV | **0.448 / 0.914 s** | 98.1 tok/s | CPU transport: image/OCR pass; broader media open | [qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md) |
 
 The BF16 32-image result is one request at concurrency one. It is not a claim
@@ -173,8 +173,8 @@ advisory only.
 
 | Model / config | Status | Quant · KV | Context · adm. | Thinking | TTFT | Output rate | Recipe |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [Qwen3.8 27B official FP8, TP=1 MTP=3](models/qwen38-27b.md) | `current` text Primary | Official FP8 · FP8 KV | 393,216 · 1 seq | disabled default, caller override | 0.834 s median @4K | **93.6 tok/s decode** | [promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
-| [Qwen3.8 27B official BF16, TP=1 MTP=3](models/qwen38-27b.md) | `current` general-vision/OCR | BF16 · FP8 KV | 393,216 · 1 seq; 32 images/request | disabled default, caller override | 0.884 s median @4K | 62.0 tok/s decode | [promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
+| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `current` Primary/general-vision/OCR | Official FP8 · FP8 E4M3 KV | 393,216 · 1 request; 2 images/request; no video | server default disabled; chat caller override | 0.577 s median @4K | **111.4 tok/s decode** | [promotion](../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md) |
+| [Qwen3.8 27B official FP8 + BF16 vLLM split](models/qwen38-27b.md) | managed split rollback | Official FP8/BF16 · FP8 KV | 393,216 · 1 seq each; BF16 32 images/one video | disabled default, caller override | 0.834 / 0.884 s median @4K | 93.6 / 62.0 tok/s decode | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
 | [DeepSeek V4 Flash 0731, r33 DSpark K5, 393K/maxseq16](models/deepseek-v4-flash.md) | managed exclusive TP=2 rollback | B12X W4A8/FP8 · FP8 DS-MLA KV | 393,216 · 16 seqs | high-reasoning client path | 65.2 s TTFT @359,900 actual tok | 5,599 tok/s effective prefill | [historical promotion](../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md) |
 | [Qwen3.5 122B A10B NVFP4](models/qwen35-122b.md) | retained qualified recipe; not immediate restore | ModelOpt NVFP4 · **BF16 KV** | 262,144 · c1 | default **on**, per-request disable | 0.15 / 0.26 s p50/p95 @8K c1 · 68.91 s @231K, c1 matched lane | 60.3 tok/s decode @231K · 59.45 `agg` @8K c1 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml) |
 | [Agents-A1 official FP8 multimodal](models/agents-a1.md) plus Omni | managed split restoration | compressed-tensors FP8 · FP8 KV | 262,144 · c1 | **must be off** | 0.25 / 0.53 s @8K c1 · 32.97 / 33.44 s @231K c1 | 188.1 tok/s decode @8K · 155.8 tok/s decode @231K | [promotion-era evidence](../findings/2026-07-29-agents-a1-primary-promotion.md) |

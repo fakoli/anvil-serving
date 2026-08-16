@@ -44,11 +44,11 @@ commands; it does not claim a live model result by itself.
 
 ## Production aliases and recent controls
 
-1. **Qwen3.8 27B official FP8 MTP=3** — `current` TP=1 text Primary at
-   393,216 tokens on one RTX PRO 6000.
-2. **Qwen3.8 27B official BF16 MTP=3** — `current` TP=1 general-vision/OCR
-   service at the same 393,216-token limit on the other equal card, with a
-   qualified 32-image per-request ceiling.
+1. **Qwen3.8 27B official FP8 on SGLang with EAGLE MTP `3/1/4`** — `current`
+   TP=1 Primary/general-vision/OCR at 393,216 tokens on one RTX PRO 6000; one
+   running request, two images, no video, and the second equal card empty.
+2. **Qwen3.8 27B official FP8 plus BF16 vLLM split** — immediate managed
+   rollback at the same 393,216-token limit.
 3. **DeepSeek V4 Flash 0731 r33 DSpark K5** — managed exclusive TP=2 rollback
    at 393,216 tokens.
 4. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
@@ -59,12 +59,16 @@ commands; it does not claim a live model result by itself.
 6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
 
-On 2026-08-14, after a separate human gate, the matched 393K Qwen3.8 split
-became current. Final routed acceptance passed FP8 tools 20/20, BF16 media
-30/30, and one 32-image request. Hermes text/image and OpenClaw Primary/vision
-client paths completed without fallback. See the
-[Qwen3.8 dossier](models/qwen38-27b.md) and
-[promotion record](../findings/2026-08-14-qwen38-27b-split-promotion.md).
+On 2026-08-15, after a separate human gate, the exact official-FP8 SGLang
+TP=1/393K profile became current. Guarded acceptance passed 108K retrieval,
+tools 20/20, direct and routed media 18/18, the supported Responses subset,
+and fresh Hermes/OpenClaw Primary turns without fallback. The second GPU was
+then emptied. See the [Qwen3.8 dossier](models/qwen38-27b.md) and
+[single-service promotion record](../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md).
+
+The 2026-08-14 matched vLLM split remains the exact rollback. Its routed FP8
+tools 20/20, BF16 media 30/30, and one 32-image request remain historical
+capability evidence, not the current two-image/no-video admission declaration.
 
 On 2026-08-15, official-FP8 MTP=4 and MTP=5 both passed functional,
 near-393K, and repeated deterministic-quality gates. A cross-card swap showed
@@ -77,9 +81,7 @@ Also on 2026-08-15, a digest-pinned SGLang no-speculation A/B qualified
 official FP8 and audited Inferact NVFP4 as TP=1/393K text controls on both card
 placements. NVFP4 reduced matched 4K TTFT 22.6% and raised decode 20.6%, while
 both candidates passed 388,979 actual prompt tokens and bounded deterministic
-quality. The current vLLM MTP=3 split remains faster and unchanged; both
-SGLang recipes are `no-promotion`, and SGLang multimodal remains unqualified on
-WSL2. See the
+quality. See the
 [SGLang/NVFP4 qualification](../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md).
 
 A matched MTP=3 follow-up then raised official-FP8 SGLang decode from 48.0 to
@@ -88,8 +90,10 @@ functional and repeated deterministic-quality gate and passed a 389K
 retrieval probe. The prior multimodal crash was isolated to SGLang's automatic
 CUDA-IPC feature transport in this exact runtime; forcing CPU transport let
 both checkpoints pass bounded image understanding and OCR with MTP enabled.
-Video, multi-image, the 32-image ceiling, and host-memory pressure remain open,
-so both recipes are `no-promotion`. See the
+The later matched consolidation corpus added two-image ordering and supported
+the human promotion of official FP8; Inferact NVFP4 remains `no-promotion`.
+Video, 32-image admission, concurrency, and host-memory pressure remain open.
+See the
 [MTP/multimodal qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md).
 
 ## How to read the evidence

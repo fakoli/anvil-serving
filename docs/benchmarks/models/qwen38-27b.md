@@ -2,12 +2,11 @@
 
 ## Current status and review date
 
-Human-approved `current` split: official FP8 text Primary and official BF16
-multimodal/OCR, both TP=1 at 393,216 tokens with MTP=3. Review date:
-2026-08-15. The current review includes the local MTP=4/5 depth qualification,
-the SGLang official-FP8 versus Inferact NVFP4 control, and the matched SGLang
-MTP=3 plus CPU-feature-transport multimodal follow-up. A final consolidation
-A/B adds the official BF16 control and a repeated six-case/two-image corpus.
+Human-approved `current` single-service profile: official FP8 on SGLang owns
+Primary, multimodal, and OCR at TP=1/393,216 with EAGLE MTP `3/1/4` and CPU
+feature transport; the second GPU is empty. Review date: 2026-08-15. The
+current review includes MTP=4/5, official-FP8 versus Inferact NVFP4, the
+matched BF16 consolidation A/B, and the guarded live promotion.
 
 ## Immutable identity
 
@@ -26,8 +25,9 @@ A/B adds the official BF16 control and a repeated six-case/two-image corpus.
 
 ## Tested hardware and topology
 
-One TP=1 serve on each of two equal 96 GB RTX PRO 6000 Blackwell Max-Q cards
-in split mode, plus exclusive TP=2 on both cards at 393K, 600K, and 1.01M.
+The current profile uses one TP=1 serve on one of two equal 96 GB RTX PRO 6000
+Blackwell Max-Q cards and leaves the other card empty. Prior tests include one
+TP=1 serve per card in split mode and exclusive TP=2 at 393K, 600K, and 1.01M.
 The cards are independent PCIe devices; aggregate VRAM is not unified memory,
 and the TP=2 runtime could not enable GPU P2P.
 
@@ -48,10 +48,11 @@ for both checkpoints. Split TP=1 used 393,216 tokens. Exclusive TP=2 used
 393,216, 600,000, and 1,010,000 tokens. Every point had an otherwise identical
 no-MTP control and `method=mtp,num_speculative_tokens=3` arm.
 
-The promoted split selects the 393,216-token TP=1 MTP=3 arm for both models.
-Official FP8 is text-only. BF16 admits text, image, and video, including up to
-32 images in one request. Both default to thinking disabled while retaining a
-caller override on chat-completions requests.
+The historical split selected the 393,216-token TP=1 MTP=3 arm for both vLLM
+models. The current profile instead runs the official-FP8 SGLang MTP=3
+multimodal arm as one service for Primary, general vision, and OCR. It admits
+one running request, two images, and no video; the second GPU is empty. The
+former FP8/BF16 split remains the exact rollback.
 
 The SGLang control A/B held TP=1, 393,216 tokens, one running request, FP8
 E4M3 KV, FlashInfer attention, 2,048-token chunks, memory fraction 0.85,
@@ -126,19 +127,29 @@ decode from 62.7 to 111.4 tok/s. NVFP4 cut media latency 51.1%, halved TTFT,
 and doubled effective prefill versus BF16, but decoded 12.3% slower than
 official FP8. Official FP8 is therefore the preferred single-service
 challenger; video, 32-image, concurrency, host-memory-pressure, broad vision
-quality, client acceptance, and a human gate remain required before replacing
-the current split.
+quality, client acceptance, and a human gate were still required before the
+subsequent replacement of the then-current split.
+
+The human-approved promotion then applied that exact official-FP8 profile.
+The managed cutover passed exact identity, coding, JSON, a 108K retrieval
+needle, and 20/20 tools. Direct and routed copies of the repeated image corpus
+both passed 18/18; routed image/OCR, streaming tools, tool-result recovery, and
+the Responses subset passed as well. Fresh Hermes and OpenClaw Primary turns
+completed without fallback. The current admission ceiling remains two images,
+no video, and concurrency one; the broader open gates were not silently
+inherited from BF16.
 
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
 multimodal. The deterministic API checks are not SWE-bench evidence.
 
 ## Decision and promotion state
 
-Human-approved `current` split. Official FP8 plus MTP=3 is the text Primary;
-BF16 plus MTP=3 backs explicit general-vision and OCR capabilities. Both use
-the same 393,216-token limit. The final routed media corpus passed 30/30, the
-32-image request passed 1/1, and Hermes/OpenClaw client-path checks completed
-without fallback. TP=2 at 600K and 1.01M remains an offline/batch experiment.
+Human-approved `current` single-service profile. Official FP8 on SGLang with
+MTP `3/1/4` owns Primary, general vision, and OCR at 393,216 tokens on one
+card; the other card is dormant. Direct and routed media passed 18/18 and
+Hermes/OpenClaw Primary client paths passed without fallback. The former vLLM
+FP8/BF16 split is the immediate rollback. TP=2 at 600K and 1.01M remains an
+offline/batch experiment.
 
 ## External recipe watch and local follow-up
 
@@ -165,7 +176,8 @@ combination. The widely shared 200+ tok/s result also adds a DSpark draft and
 remains an `external-prior`, not a local result.
 
 Other NVFP4, GGUF, AutoRound, and custom `.ninfer` artifacts remain excluded
-from the active queue. The two SGLang lanes are `no-promotion` controls.
+from the active queue. Inferact NVFP4 remains a `no-promotion` control; the
+official-FP8 SGLang arm is current.
 
 ## Failures and gotchas
 
@@ -204,6 +216,10 @@ from the active queue. The two SGLang lanes are `no-promotion` controls.
   retained.
 - Both SGLang candidates warned that missing FP8 KV scaling factors defaulted
   to 1.0. The bounded gates passed, but unquantized-KV equivalence is unproven.
+- The first routed Responses probe supplied a chat-only thinking field that
+  SGLang rejects on `/v1/responses`. The redundant router soft default was
+  removed; the recipe-level default keeps thinking disabled and the Responses
+  subset passed. Chat-completions retains the caller control.
 - The generic evidence inspector flags absent aggregate chat timing in the
   deterministic agentic artifacts and unrelated `not_run` suites in the
   context-only artifacts. Only complete attempt/target records ground the
@@ -211,6 +227,7 @@ from the active queue. The two SGLang lanes are `no-promotion` controls.
 
 ## Dated run history
 
+- [2026-08-15 SGLang official-FP8 single-service promotion](../../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md)
 - [2026-08-15 SGLang single-service consolidation A/B](../../findings/2026-08-15-qwen38-27b-sglang-consolidation-ab.md)
 - [2026-08-15 SGLang MTP/multimodal qualification](../../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md)
 - [2026-08-15 SGLang official-FP8/NVFP4 qualification](../../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md)
