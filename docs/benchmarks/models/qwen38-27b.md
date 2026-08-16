@@ -6,7 +6,8 @@ Human-approved `current` split: official FP8 text Primary and official BF16
 multimodal/OCR, both TP=1 at 393,216 tokens with MTP=3. Review date:
 2026-08-15. The current review includes the local MTP=4/5 depth qualification,
 the SGLang official-FP8 versus Inferact NVFP4 control, and the matched SGLang
-MTP=3 plus CPU-feature-transport multimodal follow-up.
+MTP=3 plus CPU-feature-transport multimodal follow-up. A final consolidation
+A/B adds the official BF16 control and a repeated six-case/two-image corpus.
 
 ## Immutable identity
 
@@ -115,8 +116,18 @@ averaged 0.448 seconds, 8,065 tok/s, 98.1 tok/s, and 0.914 seconds. Relative to
 their no-spec controls, MTP raised decode 131.9% for official FP8 and 69.4% for
 NVFP4. Both passed 389K retrieval and repeated intelligence 6/6, session 3/3,
 and tools 3/3. CPU feature transport also let both MTP profiles pass bounded
-single-image understanding and OCR; video, multi-image, 32-image, concurrency,
-and host-memory-pressure gates remain open.
+single-image understanding and OCR.
+
+The consolidation A/B then compared official BF16, official FP8, and Inferact
+NVFP4 under the same SGLang MTP=3/393K/CPU-transport shape. All three passed
+18/18 across scene, OCR, chart, UI, spatial-count, and two-image comparison
+cases. Official FP8 cut median media latency 35.8% versus BF16 and raised 4K
+decode from 62.7 to 111.4 tok/s. NVFP4 cut media latency 51.1%, halved TTFT,
+and doubled effective prefill versus BF16, but decoded 12.3% slower than
+official FP8. Official FP8 is therefore the preferred single-service
+challenger; video, 32-image, concurrency, host-memory-pressure, broad vision
+quality, client acceptance, and a human gate remain required before replacing
+the current split.
 
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
 multimodal. The deterministic API checks are not SWE-bench evidence.
@@ -146,9 +157,10 @@ The SGLang cookbook follow-up is complete for no-speculation and in-checkpoint
 MTP text serving. Digest-pinned executable recipes retain official FP8 and the
 explicitly approved Inferact NVFP4 checkpoint. The NVFP4 snapshot passed full
 Safetensors structure and immutable LFS SHA-256 verification before load.
-Bounded image/OCR now passes on both checkpoints when CPU feature transport is
-forced, but the full media, multi-image, and host-memory-pressure gates remain
-open. The default CUDA-IPC path still fails in this exact WSL2/Docker/runtime
+Bounded image/OCR and a repeated six-case corpus now pass on BF16 and both
+quantized checkpoints when CPU feature transport is forced. Two-image ordering
+is covered; video, the 32-image ceiling, concurrency, broad vision quality, and
+host-memory-pressure remain open. The default CUDA-IPC path still fails in this exact WSL2/Docker/runtime
 combination. The widely shared 200+ tok/s result also adds a DSpark draft and
 remains an `external-prior`, not a local result.
 
@@ -199,6 +211,7 @@ from the active queue. The two SGLang lanes are `no-promotion` controls.
 
 ## Dated run history
 
+- [2026-08-15 SGLang single-service consolidation A/B](../../findings/2026-08-15-qwen38-27b-sglang-consolidation-ab.md)
 - [2026-08-15 SGLang MTP/multimodal qualification](../../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md)
 - [2026-08-15 SGLang official-FP8/NVFP4 qualification](../../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md)
 - [2026-08-15 official-FP8 MTP-depth qualification](../../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md)

@@ -89,6 +89,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
+| Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, MTP=3 multimodal | All pass the same functional gate and 18/18 deterministic media attempts spanning scene, OCR, chart, UI, spatial count, and two-image ordering; video and broad vision quality not tested | 393,216 configured tokens; at 4K BF16/FP8/NVFP4 measure 62.7/111.4/97.7 decode tok/s, while media p50 is 0.915/0.588/0.448 s | Official FP8 preferred single-service `challenger`; NVFP4 lowest-latency third-party alternative; `no-promotion`; current split restored |
 | Qwen3.8 27B official BF16 / official FP8 | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; final routed BF16 media 30/30 and 32-image request 1/1; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | `current` split at TP=1/393K/MTP=3; FP8 text Primary, BF16 vision/OCR; TP=2 remains batch-like |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, MTP=3 | Both pass intelligence 6/6, session 3/3, tools 3/3, plus bounded image/OCR with CPU feature transport; video/multi-image/32-image not tested | Both pass 389K retrieval; at 4K official FP8 averages 111.3 decode tok/s while NVFP4 averages 98.1, with NVFP4 retaining lower TTFT and higher prefill | SGLang MTP/CPU-multimodal `challenger`, both `no-promotion`; current vLLM split restored |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4 | Both pass full functional gates on two card placements plus intelligence 6/6, session 3/3, and tools 3/3; text-only, no speculation | Both pass 388,979 actual tokens; NVFP4 248.75 s TTFT / 1,564 prefill tok/s versus official FP8 258.13 s / 1,507; at 4K NVFP4 averages 57.9 versus 48.0 decode tok/s across five runs | NVFP4 text `challenger`; both `no-promotion`; current vLLM MTP=3 remains faster and SGLang multimodal is unqualified on WSL2 |
@@ -104,6 +105,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
+| Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, TP=1 MTP=3 multimodal | 393,216 | 1 each | All pass 18/18 repeated deterministic media including a two-image request; media p50 0.915/0.588/0.448 s and 4K TTFT 0.910/0.577/0.453 s; official FP8 is the preferred consolidation challenger pending video, 32-image, concurrency, memory-pressure, quality, and client gates |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, TP=1 MTP=3 | 393,216 | 1 each | Both pass 389K retrieval and cross-card gates; official FP8 averages 111.3 decode tok/s, NVFP4 98.1 with 0.448 s TTFT; CPU transport passes bounded image/OCR on both but full media and host-memory-pressure gates remain open |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, TP=1 no-spec | 393,216 | 1 each | Both pass 388,979 actual prompt tokens and cross-card functional gates; official FP8 reports 1,665,740 KV tokens and 48.0 tok/s 4K decode, NVFP4 1,805,068 and 57.9 tok/s; text-only because WSL2 CUDA-IPC multimodal warmup failed |
 | Qwen3.8 27B official FP8 text, TP=2 control/MTP=3 | 393,216 / 600,000 / 1,010,000 | 1 | All three limits passed at 388,979 / 598,729 / 985,107 actual tokens; control reports ~4.65-4.67M KV tokens; MTP reports ~4.22-4.33M and 85.9-91.6 tok/s 4K decode; no P2P |
@@ -149,6 +151,13 @@ image/OCR passed on both with CPU feature transport. All remain no-promotion.
 
 ## Recent changes
 
+- 2026-08-15: a matched SGLang consolidation A/B added official BF16 to the
+  MTP=3 CPU-transport comparison and ran 18 repeated media attempts per model,
+  including two-image ordering. All three passed. Official FP8 cut media p50
+  35.8% and raised 4K decode 77.7% versus BF16; NVFP4 cut media p50 51.1% and
+  halved TTFT but decoded 12.3% slower than official FP8. Official FP8 is the
+  preferred single-service challenger; the current split was restored and
+  routed, with no promotion.
 - 2026-08-15: SGLang EAGLE MTP `3/1/4` raised matched official-FP8 decode
   from 48.0 to 111.3 tok/s and Inferact NVFP4 from 57.9 to 98.1. Both passed
   389K retrieval, repeated deterministic quality, and bounded image/OCR after
