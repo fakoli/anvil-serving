@@ -62,6 +62,50 @@ def test_protocol_recovery_and_final_failures_are_distinct():
     assert score_agentic_trace(scenario, expected, final)["failure_class"] == "recovery_failure"
 
 
+def test_tool_result_marker_allows_natural_language_final_answer():
+    scenario, expected = build_agentic_scenario("tool-sequence")
+    trace = passing_trace(expected)
+    trace["final_answer"] = "The requested file is ready: FILE-READY."
+
+    result = score_agentic_trace(scenario, expected, trace)
+
+    assert result["passed"] is True
+    assert result["stages"]["reasoning"] == {"applicable": False, "passed": True}
+    assert result["visible_answer"] == trace["final_answer"]
+    assert len(result["answer_sha256"]) == 64
+
+
+def test_tool_final_mismatch_is_not_mislabeled_as_reasoning_failure():
+    scenario, expected = build_agentic_scenario("tool-sequence")
+    trace = passing_trace(expected)
+    trace["final_answer"] = "The file was read successfully."
+
+    result = score_agentic_trace(scenario, expected, trace)
+
+    assert result["failure_class"] == "final_answer_failure"
+    assert result["stages"]["reasoning"] == {"applicable": False, "passed": True}
+
+
+def test_planning_accepts_an_ordered_numbered_workflow():
+    scenario, expected = build_agentic_scenario("planning")
+    trace = passing_trace(expected)
+    trace["final_answer"] = "1. Inspect\n2. Patch\n3. Test"
+
+    assert score_agentic_trace(scenario, expected, trace)["passed"] is True
+
+
+def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():
+    scenario, expected = build_agentic_scenario("debug-loop")
+    assert "unit tests" in scenario["messages"][0]["content"]
+    trace = passing_trace(expected)
+    trace["final_answer"] = "The requested fix is applied and the unit tests now pass."
+
+    result = score_agentic_trace(scenario, expected, trace)
+
+    assert result["passed"] is True
+    assert result["stages"]["result_incorporation"] == {"passed": True}
+
+
 @pytest.mark.parametrize(
     ("code", "classification"),
     [

@@ -140,7 +140,11 @@ no video, and concurrency one; the broader open gates were not silently
 inherited from BF16.
 
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
-multimodal. The deterministic API checks are not SWE-bench evidence.
+multimodal. A later durable router-only campaign added separate agentic and
+SWE-bench evidence: agentic smoke passed 2/2, the scout passed 16/18 with both
+failures in the debug-loop case, and all five fixed SWE-bench Verified scout
+instances resolved under the official grader. That five-instance sample is
+bounded evidence, not a full-benchmark score.
 
 ## Decision and promotion state
 
@@ -193,9 +197,11 @@ official-FP8 SGLang arm is current.
 - The MTP=4/5 deterministic quality artifacts contain complete suite attempts
   but no aggregate chat timing fields; they are bounded behavioral evidence,
   not timing comparisons.
-- The durable separate-worker context/agentic/SWE campaign was not submitted
-  because no candidate router alias was approved. Direct API checks are not
-  SWE-bench evidence.
+- The durable separate-worker campaign subsequently completed through the
+  approved router alias. It exposed a repeated debug-loop weakness and a wide
+  19-57 model-request range across the five resolved SWE tasks; neither the
+  16/18 agentic result nor 5/5 fixed SWE sample should be generalized to a full
+  benchmark score.
 - General-vision output is materially more verbose than OCR. The first routed
   corpus exposed a dropped `chat_template_kwargs` extension; a
   thinking-disabled soft default and same-dialect relay forwarding corrected
@@ -227,6 +233,7 @@ official-FP8 SGLang arm is current.
 
 ## Dated run history
 
+- [2026-08-15 agentic and SWE-bench Verified scout](../../findings/2026-08-15-qwen38-27b-agentic-swe-scout.md)
 - [2026-08-15 SGLang official-FP8 single-service promotion](../../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md)
 - [2026-08-15 SGLang single-service consolidation A/B](../../findings/2026-08-15-qwen38-27b-sglang-consolidation-ab.md)
 - [2026-08-15 SGLang MTP/multimodal qualification](../../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md)
