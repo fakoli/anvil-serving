@@ -458,7 +458,7 @@ def run_swe_benchmark(
         value = child_env.get(auth_env)
         if not value:
             raise BenchmarkJobError("missing_credential", f"required credential environment {auth_env!r} is absent")
-        child_env["OPENAI_API_KEY"] = value
+        child_env["OPENAI_API_KEY"] = value.strip()
     else:
         child_env.setdefault("OPENAI_API_KEY", "anvil-local")
     child_env["MSWEA_COST_TRACKING"] = "ignore_errors"
