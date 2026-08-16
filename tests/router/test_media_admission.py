@@ -84,7 +84,10 @@ def test_one_video_and_four_images_are_admitted():
 
 @pytest.mark.parametrize(
     ("images", "videos", "reason"),
-    ((5, 0, "media_admission_image_limit"), (0, 2, "media_admission_video_limit")),
+    (
+        (5, 0, "media_admission_image_limit"),
+        (0, 2, "media_admission_video_limit"),
+    ),
 )
 def test_media_count_overflow_fails_before_upstream(images, videos, reason):
     routing, backend = _routing()
@@ -92,6 +95,21 @@ def test_media_count_overflow_fails_before_upstream(images, videos, reason):
         routing.generate(_request(images=images, videos=videos))
     assert error.value.kind == "media_limit"
     assert routing._decision_log.records[-1].attempts[0].reason == reason
+    assert backend.calls == 0
+
+
+def test_zero_video_limit_rejects_one_video_before_upstream():
+    routing, backend = _routing()
+    tier = routing._config.tiers[0]
+    tier.params["capacity"]["video_limit"] = 0
+
+    with pytest.raises(NoAvailableTierError) as error:
+        routing.generate(_request(videos=1))
+
+    assert error.value.kind == "media_limit"
+    assert routing._decision_log.records[-1].attempts[0].reason == (
+        "media_admission_video_limit"
+    )
     assert backend.calls == 0
 
 

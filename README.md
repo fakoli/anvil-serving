@@ -35,6 +35,7 @@ llm.primary = "primary-local"
 llm.voice = "omni-local"
 vision.ocr = "omni-local"
 vision.general = "omni-local"
+vision.video = "primary-local"
 ```
 
 Send one of those aliases as the chat `model`. Matching is case-insensitive

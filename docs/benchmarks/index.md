@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-15.**
+**Last evidence review: 2026-08-16.**
 
 ## Start with the numbers
 
@@ -45,8 +45,8 @@ commands; it does not claim a live model result by itself.
 ## Production aliases and recent controls
 
 1. **Qwen3.8 27B official FP8 on SGLang with EAGLE MTP `3/1/4`** — `current`
-   TP=1 Primary/general-vision/OCR at 393,216 tokens on one RTX PRO 6000; one
-   running request, two images, no video, and the second equal card empty.
+   TP=1 Primary/general-vision/OCR/video at 393,216 tokens on one RTX PRO 6000;
+   one running request, two images, one video, and the second equal card empty.
 2. **Qwen3.8 27B official FP8 plus BF16 vLLM split** — immediate managed
    rollback at the same 393,216-token limit.
 3. **DeepSeek V4 Flash 0731 r33 DSpark K5** — managed exclusive TP=2 rollback
@@ -66,9 +66,16 @@ and fresh Hermes/OpenClaw Primary turns without fallback. The second GPU was
 then emptied. See the [Qwen3.8 dossier](models/qwen38-27b.md) and
 [single-service promotion record](../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md).
 
+On 2026-08-16, the unchanged current model passed 30/30 direct deterministic
+media attempts, including video 14/14. A managed router-only expansion added
+`vision.video` and fail-closed admission for one video; the live admitted
+subset passed 28/28 along with streaming, tool-use, malformed-input, overflow,
+and Primary regression probes. See the
+[video-router finding](../findings/2026-08-16-qwen38-27b-video-router.md).
+
 The 2026-08-14 matched vLLM split remains the exact rollback. Its routed FP8
 tools 20/20, BF16 media 30/30, and one 32-image request remain historical
-capability evidence, not the current two-image/no-video admission declaration.
+capability evidence, not the current two-image/one-video admission declaration.
 
 On 2026-08-15, official-FP8 MTP=4 and MTP=5 both passed functional,
 near-393K, and repeated deterministic-quality gates. A cross-card swap showed
@@ -92,7 +99,8 @@ CUDA-IPC feature transport in this exact runtime; forcing CPU transport let
 both checkpoints pass bounded image understanding and OCR with MTP enabled.
 The later matched consolidation corpus added two-image ordering and supported
 the human promotion of official FP8; Inferact NVFP4 remains `no-promotion`.
-Video, 32-image admission, concurrency, and host-memory pressure remain open.
+The promoted official-FP8 service subsequently qualified one video. The
+32-image ceiling, concurrency above one, and host-memory pressure remain open.
 See the
 [MTP/multimodal qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md).
 
