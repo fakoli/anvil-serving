@@ -1,0 +1,80 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "video"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [],
+  "model": "vision.video",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "The video begins with a dark blue background. In the center of the screen, the text \"FIRST RED\" appears in bold red letters. This text remains on the screen for a few seconds. \n\nNext, the text changes to \"THEN GREEN,\" which is displayed in bold green letters. This new text also stays on the screen for a few seconds.\n\nThroughout the video, there are no other visible elements or actions besides the change in text. The background remains consistently dark blue, and the focus is solely on the text changes. The sequence of events is straightforward: the initial display of \"FIRST RED\" followed by the transition to \"THEN GREEN.\"",
+      "content_chars": 629,
+      "content_excerpt": "The video begins with a dark blue background. In the center of the screen, the text \"FIRST RED\" appears in bold red letters. This text remains on the screen for a few seconds. \n\nNext, the text changes",
+      "expected": [
+        "red",
+        "green"
+      ],
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 2.52,
+      "test": "video",
+      "usage": {
+        "completion_tokens": 132,
+        "prompt_tokens": 635,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 767
+      },
+      "validation_detail": "all expected text present",
+      "video": {
+        "bytes": 11627,
+        "mime": "video/mp4",
+        "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+      }
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "2.5s all expected text present finish='stop' visible=629 reasoning_chars=0 reasoning_tokens=None",
+      "name": "bounded video understanding",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [
+    "red",
+    "green"
+  ],
+  "video_input": {
+    "bytes": 11627,
+    "mime": "video/mp4",
+    "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+  }
+}
