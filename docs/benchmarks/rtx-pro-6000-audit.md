@@ -79,6 +79,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md`;
 `docs/findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md`;
 `docs/findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md`;
+`docs/findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md`;
 `docs/findings/2026-08-16-qwen38-27b-video-router.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/closed/2026-07-27-release-sweep-fixes.md`;

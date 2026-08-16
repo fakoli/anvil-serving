@@ -17,8 +17,11 @@ The two GPU roles are symmetric. Split mode can place independent workloads on
 the cards. Exclusive TP=2 mode assigns both roles to one declared owner and
 blocks every other inference workload until the mode is left; the cards are
 connected over PCIe without NVLink, so 192 GB is aggregate rather than unified
-memory. The public 2026-08-14 finding records the human-approved Qwen3.8 split,
-with one TP=1 serve per equal card. Earlier findings retain the DeepSeek r33 and r16
+memory. The public 2026-08-16 finding records the human-approved
+DeepSeek V4 Flash 0731 Infernal Invocation r15 exclusive TP=2 text Primary.
+The earlier Qwen3.8
+single-service and split profiles remain retained history, while r33 is the
+immediate managed DeepSeek rollback. Earlier findings also retain the r16
 650K promotion, 262K retune, and r27 image-upgrade history. Active assignments
 remain private operator state;
 Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
@@ -27,19 +30,21 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
-| 1 | [Qwen3.8 27B](../models/qwen38-27b.md) | `current`, 2026-08-16 video expansion | Official FP8 SGLang MTP `3/1/4` owns Primary/general-vision/OCR/video; TP=1, 393,216 tokens, two images/one video; second card empty |
-| 2 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | managed rollback, historical 2026-08-11 promotion | Exclusive TP=2 r33 text profile at 393,216 tokens; direct capacity through 359,900 actual prompt tokens |
-| 3 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Not started or selected by this promotion's restoration contract |
-| 4 | [Agents-A1](../models/agents-a1.md) plus Omni | managed split restoration | Restore group when leaving this exclusive profile; Agents-A1 retains FP8 text/image/video evidence |
-| 5 | [Laguna S 2.1](../models/laguna-s-2.1.md) | `rollback` | Additional managed rollback; thinking disabled |
-| 6 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | `rollback` | Additional pinned rollback; strict unified-diff caveat |
+| 1 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | `current`, 2026-08-16 r15 promotion | Infernal Invocation r15 B12X/DSpark K5 owns text Primary; exclusive TP=2, 393,216 tokens, eight admitted sequences, router concurrency two |
+| 2 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | immediate managed rollback | Exclusive TP=2 r33 text profile at 393,216 tokens on the same fixed endpoint; direct capacity through 359,900 actual prompt tokens |
+| 3 | [Qwen3.8 27B](../models/qwen38-27b.md) | former single service and split | Retained official-FP8 SGLang text/image/OCR/video profile and FP8/BF16 vLLM split recipes |
+| 4 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Not started or selected by this promotion's restoration contract |
+| 5 | [Agents-A1](../models/agents-a1.md) plus Omni | historical managed split restoration | Agents-A1 retains FP8 text/image/video evidence |
+| 6 | [Laguna S 2.1](../models/laguna-s-2.1.md) | retained rollback-era recipe | Thinking disabled |
+| 7 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | retained rollback-era recipe | Strict unified-diff caveat |
 
 ## Comparable quality and context
 
-### Exclusive dual-card TP=2, 2026-08-01
+### Exclusive dual-card TP=2
 
 | Candidate | Repeated quality | Capacity and context evidence | Decision |
 |---|---|---|---|
+| DeepSeek V4 Flash 0731, Infernal Invocation r15 B12X + DSpark K5, batch 4,096, maxseq8, 393K | full direct functional gate; repeated tools/session/unified-diff/timeout 12/12; authenticated routed tools and OpenClaw-compatible Anthropic basic/tool paths pass | K5/no-spec 4K decode 150.0/76.4 tok/s and 32K decode 119.245/76.767; direct 351,118 and routed 340,119 actual prompt tokens pass; c8 short 8/8 and c2 long 2/2; 797,689 KV tokens / 2.03 full windows | human-approved `current` text Primary; r33 fixed-port managed rollback; actual Mini OpenClaw turn remains open |
 | DeepSeek V4 Flash 0731, r33 B12X + DSpark K5, batch 4,096, maxseq16, 393K | prior repeated high-reasoning suite retained; routed functional checks passed except legacy long-needle calibration and trivial-prompt reasoning-evidence checks; OpenClaw/Hermes 393K/32K/high client paths passed | direct 238,507/339,310/359,900 actual prompt tokens passed; largest 65.2 s TTFT and 5,599 effective prefill tok/s; engine 725,543 KV tokens / 1.845 full windows | historical Primary; now managed TP=2 rollback; routed/OpenClaw/Hermes >300K and SWE score remain open |
 | DeepSeek V4 Flash 0731, r33 B12X target-only/no-spec, batch 4,096 | functional preflight 6/6 at high reasoning; same repeated broad-quality suite not rerun | 119,503 actual prompt tokens; 17.364 s TTFT, 7,344 effective prefill tok/s, 75.20 decode tok/s; minimum-rank KV 15.99 GiB; engine reports 553,243 KV tokens with unresolved byte/token-accounting caveat | healthy direct-only A/B winner for capacity; next arm GPU-only 393K; `no-promotion` |
 | DeepSeek V4 Flash 0731, r33 B12X target-only/no-spec | intelligence 6/6, session 3/3, tools 3/3 at high reasoning; functional preflight 6/6 | 119,503 actual prompt tokens; 17.445 s TTFT, 7,537 effective prefill tok/s, 73.86 decode tok/s; 283,917-token GPU KV allocation; context-target calibration caveat retained | priority `challenger`, `no-promotion`; 393K FP8-KV plus 16 GiB host-offload recipe translated but not loaded |
@@ -50,7 +55,7 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 | DeepSeek V4 Flash 0731, r16 B12X + DSpark K5, GPU-only Pi contexts | 650K/maxseq16 passed the low-reasoning gate plus Dark Pi, Mini Pi, and Mini OpenClaw high-reasoning smokes; 1M retained two fatal client-shaped workspace failures | 640K retrieval 120.6 s; matched 32K decode 141.6 tok/s at 650K; 1M qualification reached 985K before later client failures | 2026-08-02 promotion record; later retuned to 262K and upgraded to r27; 1M experimental only; 3 GiB reserve explicitly waived |
 | DeepSeek V4 Flash 0731, remote AI-MBP25 benchmark worker | 8K context 1/1; tool-error retry protocol passed but final answer failed; SWE-bench Verified official-grader smoke resolved 1/1 | 6,102 observed prompt tokens in the 8K context case; larger buckets not attempted | benchmark substrate qualified for scout; no promotion change |
 | DeepSeek V4 Flash 0731, r16 B12X + DSpark K5 + native KV offload | full functional preflight passes; 128K and 256K CPU reload proven | 8 GiB cold 249,573-token row: 43.75 s TTFO, 45.58 s visible TTFT, 5,705 effective prefill tok/s, 135.2 tok/s decode; 16 GiB exact 113,674-token replay: 113,408 external hits, 1.002 GB CPU-to-GPU, 0.825 s TTFO; managed mmap cleanup passes | capacity extension, `no-promotion`; no 256K per-card reserve sample |
-| DeepSeek V4 Flash 0731, earlier SGLang lane | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | retained low-reasoning point-in-time lane; one reasoning-only exhaustion; see r16 row for current DSpark/high/max evidence |
+| DeepSeek V4 Flash 0731, earlier SGLang lane | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | retained low-reasoning point-in-time lane; one reasoning-only exhaustion; see the r16 and r15 rows for later DSpark evidence |
 | Inkling Small NVFP4 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 12/12; 2.79 s TTFO, 4.63 s first-visible TTFT, 73.5 tok/s combined reasoning/visible decode; reasoning-off lane also 12/12 | `no-promotion`; reasoning-off Responses caveat retained |
 
 All rows used both physical cards as measured hardware, exclusive ownership,
@@ -89,16 +94,16 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
-| Qwen3.8 27B SGLang official FP8, remote AI-MBP25 worker | agentic smoke 2/2; agentic scout 16/18 with both failures in debug-loop; fixed SWE-bench Verified scout 5/5 officially graded and resolved | 393,216-token service; SWE tasks required 19-57 model requests and completed in 42m29s overall | bounded coding-agent evidence; retain `current`, no route or promotion change; larger stratified SWE and efficiency-aware debugging follow-up |
-| Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, MTP=3 multimodal | All pass the same earlier 18/18 image corpus; current official FP8 later passes direct 30/30 including video 14/14 and live admitted 28/28 | 393,216 configured tokens; at 4K BF16/FP8/NVFP4 measure 62.7/111.4/97.7 decode tok/s; official-FP8 direct video p50/p95 is 2.935/9.904 s | Official FP8 is the human-promoted single-service `current` with one video; NVFP4 is the lowest-latency third-party `no-promotion` alternative with video still open |
+| Qwen3.8 27B SGLang official FP8, remote AI-MBP25 worker | agentic smoke 2/2; agentic scout 16/18 with both failures in debug-loop; fixed SWE-bench Verified scout 5/5 officially graded and resolved | 393,216-token service; SWE tasks required 19-57 model requests and completed in 42m29s overall | bounded coding-agent evidence from the former service; larger stratified SWE and efficiency-aware debugging follow-up |
+| Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, MTP=3 multimodal | All pass the same earlier 18/18 image corpus; the official FP8 arm later passed direct 30/30 including video 14/14 and live admitted 28/28 | 393,216 configured tokens; at 4K BF16/FP8/NVFP4 measure 62.7/111.4/97.7 decode tok/s; official-FP8 direct video p50/p95 is 2.935/9.904 s | Official FP8 is the former human-promoted single service; NVFP4 is the lowest-latency third-party `no-promotion` alternative with video still open |
 | Qwen3.8 27B official BF16 / official FP8 vLLM split | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; final routed BF16 media 30/30 and 32-image request 1/1; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | managed rollback at TP=1/393K/MTP=3; TP=2 remains batch-like |
-| Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, MTP=3 | Both pass intelligence 6/6, session 3/3, tools 3/3, plus CPU-transport image/OCR; the later corpus adds repeated two-image ordering | Both pass 389K retrieval; at 4K official FP8 averages 111.3 decode tok/s while NVFP4 averages 98.1, with NVFP4 retaining lower TTFT and higher prefill | official FP8 `current`; Inferact NVFP4 `no-promotion` |
-| Qwen3.8 27B SGLang official FP8 / Inferact NVFP4 | Both pass full functional gates on two card placements plus intelligence 6/6, session 3/3, and tools 3/3; text-only, no speculation | Both pass 388,979 actual tokens; NVFP4 248.75 s TTFT / 1,564 prefill tok/s versus official FP8 258.13 s / 1,507; at 4K NVFP4 averages 57.9 versus 48.0 decode tok/s across five runs | NVFP4 text `challenger`; both `no-promotion`; current vLLM MTP=3 remains faster and SGLang multimodal is unqualified on WSL2 |
-| Qwen3.8 27B official FP8 MTP=4/5 | Both pass tools 20/20 and repeated deterministic intelligence/session/tools; the quality artifacts are behavioral rather than timing evidence | Both pass one cold 388,979-token request; cross-card 4K runs show MTP=5 only 0.4-1.3% above MTP=4 decode on a fixed card and no E2E win | MTP=4/5 `no-promotion`; MTP=3 remains current |
+| Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, MTP=3 | Both pass intelligence 6/6, session 3/3, tools 3/3, plus CPU-transport image/OCR; the later corpus adds repeated two-image ordering | Both pass 389K retrieval; at 4K official FP8 averages 111.3 decode tok/s while NVFP4 averages 98.1, with NVFP4 retaining lower TTFT and higher prefill | official FP8 former deployment; Inferact NVFP4 `no-promotion` |
+| Qwen3.8 27B SGLang official FP8 / Inferact NVFP4 | Both pass full functional gates on two card placements plus intelligence 6/6, session 3/3, and tools 3/3; text-only, no speculation | Both pass 388,979 actual tokens; NVFP4 248.75 s TTFT / 1,564 prefill tok/s versus official FP8 258.13 s / 1,507; at 4K NVFP4 averages 57.9 versus 48.0 decode tok/s across five runs | NVFP4 text `challenger`; both `no-promotion`; former vLLM MTP=3 was faster and SGLang multimodal was unqualified on WSL2 |
+| Qwen3.8 27B official FP8 MTP=4/5 | Both pass tools 20/20 and repeated deterministic intelligence/session/tools; the quality artifacts are behavioral rather than timing evidence | Both pass one cold 388,979-token request; cross-card 4K runs show MTP=5 only 0.4-1.3% above MTP=4 decode on a fixed card and no E2E win | MTP=4/5 `no-promotion`; MTP=3 remained the selected Qwen depth |
 | Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `rollback` |
 | Laguna S 2.1 NVFP4 | Passed protocol-v3 with thinking disabled | 32K/128K/240K passed; TTFT 2.26/21.15/50.64 s | `rollback` |
 | GPT-OSS Puzzle 88B | Tools/session/timeout 3/3; unified diff 2/3 | 32K and 128K retained | `rollback` |
-| Agents-A1 | Official FP8 passed three-repetition protocol-v3; BF16/FP8 retain the identical 28/30 multimodal corpus | 240K on a 262,144 serve; 35.21 s promotion-quality TTFT, 32.97 s capacity TTFT p50 at 231,426 actual tokens | `current` |
+| Agents-A1 | Official FP8 passed three-repetition protocol-v3; BF16/FP8 retain the identical 28/30 multimodal corpus | 240K on a 262,144 serve; 35.21 s promotion-quality TTFT, 32.97 s capacity TTFT p50 at 231,426 actual tokens | historical promotion |
 | Gemma 4 12B QAT W4A16 | Historical protocol-v3 control passed | 240K passed | `no-promotion` |
 | ThinkingCap Qwen3.6 27B FP8 | Historical strict-quality control passed | 240K retained | `no-promotion` |
 
@@ -106,7 +111,8 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
-| Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, TP=1 MTP=3 multimodal | 393,216 | 1 each | All pass the earlier 18/18 image corpus; current official FP8 later passes video 14/14 and live admitted 28/28 at two images/one video; NVFP4 video plus broader concurrency, memory-pressure, and quality gates remain open |
+| DeepSeek V4 Flash 0731 Infernal Invocation r15 B12X + DSpark K5, batch 4,096, TP=2 | 393,216 | 8 engine; router 2 | FP8 compressed MLA KV, GPU-only; 797,689 reported KV tokens; 351,118 direct and 340,119 routed actual prompt tokens passed; c8 short and c2 at 99,175 tokens/request passed; matched no-spec control retained |
+| Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, TP=1 MTP=3 multimodal | 393,216 | 1 each | All pass the earlier 18/18 image corpus; official FP8 later passed video 14/14 and live admitted 28/28 at two images/one video; NVFP4 video plus broader concurrency, memory-pressure, and quality gates remain open |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, TP=1 MTP=3 | 393,216 | 1 each | Both pass 389K retrieval and cross-card gates; official FP8 averages 111.3 decode tok/s, NVFP4 98.1 with 0.448 s TTFT; CPU transport passes bounded image/OCR on both but full media and host-memory-pressure gates remain open |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, TP=1 no-spec | 393,216 | 1 each | Both pass 388,979 actual prompt tokens and cross-card functional gates; official FP8 reports 1,665,740 KV tokens and 48.0 tok/s 4K decode, NVFP4 1,805,068 and 57.9 tok/s; text-only because WSL2 CUDA-IPC multimodal warmup failed |
 | Qwen3.8 27B official FP8 text, TP=2 control/MTP=3 | 393,216 / 600,000 / 1,010,000 | 1 | All three limits passed at 388,979 / 598,729 / 985,107 actual tokens; control reports ~4.65-4.67M KV tokens; MTP reports ~4.22-4.33M and 85.9-91.6 tok/s 4K decode; no P2P |
@@ -121,7 +127,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 | Qwen3.5 122B NVFP4 | 262,144 | 1 | BF16 KV; near-ceiling prefill is slow |
 | Laguna S 2.1 NVFP4 | 262,144 | recorded recipe | FP8 KV; disabled-thinking contract |
 | DeepSeek V4 Flash 0731 r16 B12X + DSpark K5, TP=2 | 131,072 | 8 configured; c1 measured | FP8 MLA KV; 130.7 tok/s matched decode; 128K pass; 3 GiB reserve failed |
-| DeepSeek V4 Flash 0731 r16 B12X + DSpark K5 GPU-only Pi, TP=2 | 650,000 current / 1,000,000 experimental | 16 | 650K: 640K retrieval, 141.6 tok/s matched 32K decode, live Pi/OpenClaw smokes; 1M: retained client-shaped workspace failures; reserve waived |
+| DeepSeek V4 Flash 0731 r16 B12X + DSpark K5 GPU-only Pi, TP=2 | 650,000 historical / 1,000,000 experimental | 16 | 650K: 640K retrieval, 141.6 tok/s matched 32K decode, live Pi/OpenClaw smokes; 1M: retained client-shaped workspace failures; reserve waived |
 | DeepSeek V4 Flash 0731 r16 B12X + DSpark K5 + native offload, TP=2 | 262,144 | 8 configured; c1 measured | 8 GiB cold 250K capacity; 16 GiB CPU tier proves 113,408-token external reload; per-card reserve not sampled |
 | DeepSeek 0731 Vision (NVFP4), webbrain-one SGLang, TP=2 | 4,096 | 1; one image per request | ~175.6 GB mixed FP8/NVFP4 weights, 88.08/87.87 GB per card; `--mem-fraction-static 0.97` against an engine-measured KV floor of 0.9411; steady-state 95,164/93,992 MiB of 97,887 MiB; marlin MoE JIT first-compile requires a persistent tvm-ffi cache volume |
 | GPT-OSS Puzzle 88B MXFP4 | 131,072 | 8 | FP8 KV; pinned Anvil vLLM |
@@ -134,7 +140,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 The [2026-08-15 Qwen3.8 recipe refresh](../../findings/2026-08-15-qwen38-27b-external-recipe-refresh.md)
 recorded two test-next directions. The first is now complete: the
 [MTP-depth qualification](../../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md)
-found no meaningful MTP=4/5 E2E win against the current official-FP8
+found no meaningful MTP=4/5 E2E win against the then-current official-FP8
 TP=1/393K MTP=3 lane. SGLang's
 commit-pinned cookbook supplies explicit RTX PRO 6000 official-FP8/BF16 cells,
 SM120 FlashInfer guidance, 2,048-token prefill chunks, and GDN state-cache
@@ -154,7 +160,17 @@ profile and then qualified for one video; Inferact NVFP4 remains no-promotion.
 
 ## Recent changes
 
-- 2026-08-16: the unchanged current official-FP8 SGLang service passed direct
+- 2026-08-16: after explicit human approval, the digest-pinned DeepSeek
+  Infernal Invocation r15 K5 profile became the exclusive TP=2 text Primary at
+  393,216 tokens. Matched K5/no-spec performance, 351,118-token direct and
+  340,119-token routed retrieval, repeated quality 12/12, c8 short, c2 long,
+  tools, streaming, Responses, exact managed routing, and rollback checks
+  passed. The r33 393K profile is the fixed-port managed rollback. Martin
+  Vit's upstream receipt covered 131,072 tokens on native Linux with two RTX
+  PRO 6000 Blackwell GPUs on direct PCIe root ports; the 393K WSL2 result is
+  independently qualified. Actual Mini OpenClaw remains open because the
+  installed Mini controller lacks the current status tool.
+- 2026-08-16: the then-current official-FP8 SGLang service passed direct
   media 30/30 with video 14/14. A managed router-only expansion added
   `vision.video` and fail-closed two-image/one-video admission; live admitted
   media passed 28/28 plus overflow, malformed-input, SSE, tool, and Primary
