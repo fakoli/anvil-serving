@@ -30,6 +30,15 @@ def test_packaged_profiles_match_public_config(name):
     )
 
 
+@pytest.mark.parametrize("name", sorted(PROFILE_NAMES))
+def test_swe_bench_verified_uses_the_fetchable_official_revision(name):
+    profile = load_profile(name)
+    assert (
+        profile["adapters"]["swe-bench-verified"]["revision"]
+        == "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"
+    )
+
+
 def test_context_capacity_reserves_output_headroom():
     smoke = load_profile("smoke", observed_context=65536)
     assert smoke["suites"]["context"]["token_buckets"][-1] == 32768
