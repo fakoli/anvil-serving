@@ -1,0 +1,130 @@
+{
+  "schema": "anvil-serving.sanitized-benchmark-summary/v1",
+  "date": "2026-08-15",
+  "subject": "Qwen3.8 27B SGLang BF16 versus quantized multimodal consolidation A/B",
+  "decision": {
+    "current": "unchanged official FP8 text plus official BF16 multimodal vLLM split",
+    "preferred_single_service_candidate": "official-fp8",
+    "lowest_latency_candidate": "inferact-nvfp4",
+    "promotion": "no-promotion"
+  },
+  "hardware": {
+    "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "count": 2,
+    "vram_gb_each": 96,
+    "topology": "split TP=1; BF16 fixed on one card and quantized candidates sequential on the other"
+  },
+  "runtime": {
+    "image": "lmsysorg/sglang@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124",
+    "engine_revision": "c4271c3fe1262fc2adbd162c33b25de5255251c5",
+    "cookbook_revision": "dd458f3212dd4ddf0e1a7907bbf539b660e70d21"
+  },
+  "configuration": {
+    "tensor_parallel": 1,
+    "context_tokens": 393216,
+    "max_running_requests": 1,
+    "kv_cache": "fp8_e4m3",
+    "memory_fraction_static": 0.85,
+    "attention_backend": "flashinfer",
+    "chunked_prefill_tokens": 2048,
+    "radix_cache": false,
+    "mtp": {
+      "algorithm": "EAGLE",
+      "steps": 3,
+      "top_k": 1,
+      "draft_tokens": 4,
+      "gdn_state_slots": 5
+    },
+    "multimodal_feature_transport": "cpu",
+    "thinking_mode": "disabled"
+  },
+  "multimodal_protocol": {
+    "corpus_sha256": "ac06eb4c295e1fbd91d582bb1330ea55a70ea775f291e2c323fd4fc4f00c45db",
+    "cases": 6,
+    "repetitions_per_case": 3,
+    "attempts_per_model": 18,
+    "concurrency": 1,
+    "max_images_per_request": 2,
+    "max_tokens": 1024,
+    "case_types": [
+      "scene",
+      "ocr",
+      "chart",
+      "ui",
+      "spatial-count",
+      "two-image-comparison"
+    ]
+  },
+  "text_protocol": {
+    "runs_per_model": 3,
+    "requests_per_run": 10,
+    "concurrency": 1,
+    "configured_input_tokens": 4096,
+    "max_output_tokens": 256
+  },
+  "results": [
+    {
+      "id": "official-bf16",
+      "model": "Qwen/Qwen3.8-27B",
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "multimodal_passed": 18,
+      "multimodal_attempts": 18,
+      "multimodal_latency_p50_ms": 915.3,
+      "multimodal_latency_p95_ms": 2722.9,
+      "ttft_p50_ms": 910.4,
+      "effective_prefill_p50_tok_s": 3966,
+      "decode_p50_tok_s": 62.7,
+      "e2e_p50_ms": 1596.5,
+      "aggregate_output_tok_s": 27.0,
+      "observed_device_memory_mib": "81729-82089"
+    },
+    {
+      "id": "official-fp8",
+      "model": "Qwen/Qwen3.8-27B-FP8",
+      "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+      "multimodal_passed": 18,
+      "multimodal_attempts": 18,
+      "multimodal_latency_p50_ms": 587.5,
+      "multimodal_latency_p95_ms": 1885.5,
+      "ttft_p50_ms": 576.8,
+      "effective_prefill_p50_tok_s": 6261,
+      "decode_p50_tok_s": 111.4,
+      "e2e_p50_ms": 962.0,
+      "aggregate_output_tok_s": 45.8,
+      "observed_device_memory_mib": 83203
+    },
+    {
+      "id": "inferact-nvfp4",
+      "model": "Inferact/Qwen3.8-27B-NVFP4",
+      "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+      "multimodal_passed": 18,
+      "multimodal_attempts": 18,
+      "multimodal_latency_p50_ms": 447.9,
+      "multimodal_latency_p95_ms": 1727.0,
+      "ttft_p50_ms": 452.6,
+      "effective_prefill_p50_tok_s": 7975,
+      "decode_p50_tok_s": 97.7,
+      "e2e_p50_ms": 918.3,
+      "aggregate_output_tok_s": 50.8,
+      "observed_device_memory_mib": 83537
+    }
+  ],
+  "restoration": {
+    "shared_memory_files": 0,
+    "shared_memory_reclaimable_bytes": 0,
+    "primary_identity": "passed",
+    "omni_identity": "passed",
+    "router_tiers_admitting": true,
+    "routed_primary_sentinel": "passed",
+    "routed_ocr_sentinel": "passed"
+  },
+  "limits": [
+    "concurrency one only",
+    "maximum two images per request",
+    "no video",
+    "no 32-image request",
+    "no host-memory-pressure soak",
+    "no broad vision-quality benchmark",
+    "BF16 was not swapped across cards"
+  ]
+}
