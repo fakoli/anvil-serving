@@ -1,0 +1,77 @@
+{
+  "schema": "anvil-serving.deepseek-infernal-r15-qualification/v1",
+  "observed_date": "2026-08-16",
+  "model": {
+    "repository": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "served_name": "deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-tp2-393k"
+  },
+  "source_credit": {
+    "author": "Martin Vit (voipmonitor)",
+    "rtx6kpro_revision": "55323f94cd9d9ea98ccecef553791a63c3585816",
+    "blackwell_llm_docker_revision": "2c301121c8680f02a91443f502d13ca1fccb51c2",
+    "runtime_image_digest": "sha256:f1b13c8604b274212e1164def7d4ed7a4cac9e4f7fa06fa1739730195eca4e18",
+    "upstream_qualified_context_tokens": 131072,
+    "upstream_hardware": "2x RTX PRO 6000 Blackwell on direct PCIe root ports",
+    "upstream_topology": "native Linux TP2/DCP1"
+  },
+  "local_configuration": {
+    "hardware": "2x RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "topology": "Windows 11 Docker Desktop/WSL2, PCIe without NVLink, exclusive TP2/DCP1",
+    "context_tokens": 393216,
+    "max_num_seqs": 8,
+    "max_num_batched_tokens": 4096,
+    "kv_cache": "FP8 compressed MLA",
+    "kv_cache_capacity_tokens": 797689,
+    "full_context_concurrency": 2.03,
+    "native_kv_offload": false,
+    "lmcache": false,
+    "speculative_decoding": "fixed probabilistic DSpark K5"
+  },
+  "matched_ab": {
+    "k5": {
+      "functional_gate": "pass",
+      "decode_tokens_per_second_p50_4k_c1": 150.0,
+      "decode_tokens_per_second_p50_32k_c1": 119.245,
+      "effective_prefill_tokens_per_second_p50_4k_c1": 8741,
+      "effective_prefill_tokens_per_second_p50_32k_c1": 9071,
+      "completion_4k_c1": "3/3",
+      "completion_32k_c1": "3/3"
+    },
+    "no_spec": {
+      "functional_gate": "pass",
+      "decode_tokens_per_second_p50_4k_c1": 76.4,
+      "decode_tokens_per_second_p50_32k_c1": 76.767,
+      "effective_prefill_tokens_per_second_p50_4k_c1": 8237,
+      "effective_prefill_tokens_per_second_p50_32k_c1": 9262,
+      "completion_4k_c1": "3/3",
+      "completion_32k_c1": "3/3"
+    }
+  },
+  "local_gates": {
+    "direct_functional": "pass: smoke, JSON, retrieval, tools 20/20, streaming tools, tool-result continuation, Responses",
+    "direct_long_context": {
+      "prompt_tokens": 351118,
+      "elapsed_seconds": 53.133,
+      "result": "pass"
+    },
+    "routed_long_context": {
+      "prompt_tokens": 340119,
+      "elapsed_seconds": 58.891,
+      "result": "pass"
+    },
+    "short_concurrency": "8/8 at c8, 267 aggregate output tok/s",
+    "long_concurrency": "2/2 at c2 with 99175 prompt tokens per request and 4096 completion-token budget",
+    "repeated_quality": "12/12 across tools, session recall, unified diff, and parallel timeout triage",
+    "openclaw_wire": "pass: Anthropic basic marker and typed workspace_status tool call through llm.primary",
+    "managed_promotion": "pass: exact identity, router install, post-restart health and readiness",
+    "rollback": "r33 B12X DSpark K5 393K, endpoint-only port adaptation validated"
+  },
+  "retained_failures": [
+    "Generic thinking-disabled control was ignored by the r15 chat template; reasoning remained present.",
+    "The stock nominal-390K English routed needle was rejected with HTTP 413 because the router byte/4 estimator exceeded 393216; a calibrated 340119-actual-token routed probe passed.",
+    "The first c2 long-context run used only 512 completion tokens and returned no visible answer; the matched 4096-token rerun passed 2/2.",
+    "The installed Mini controller lacks the current OpenClaw status tool, so no fresh actual Mini OpenClaw turn is claimed.",
+    "Startup warned that K5 reduced max_num_scheduled_tokens to 4064; no runtime exception or OOM followed."
+  ]
+}

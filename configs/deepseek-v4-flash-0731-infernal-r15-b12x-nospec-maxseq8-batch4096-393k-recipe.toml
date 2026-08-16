@@ -3,7 +3,7 @@ schema = "anvil-serving.serve-recipes/v1"
 [[recipe]]
 model = "deepseek-ai/DeepSeek-V4-Flash-0731"
 status = "verified"
-source = "Current community-recipe external prior published 2026-08-15 and observed 2026-08-16: locally qualified and human-promoted translation of local-inference-lab's Infernal Invocation r15 recipe, authored by Martin Vit (voipmonitor); upstream qualified 131072 tokens, while the independent local profile qualifies a 393216-token envelope"
+source = "Matched target-only control for the 2026-08-16 locally qualified Infernal Invocation r15 DSpark K5 profile, translated from the current community recipe authored by Martin Vit (voipmonitor)"
 family = "deepseek-v4"
 total_params_b = 304
 active_params_b = 13
@@ -35,9 +35,9 @@ named_volumes = [
 ]
 quantization = "Released 0731 checkpoint through B12X W4A8 kernels; NVFP4 MoE weights, FP8 activations/dense path, and FP8 compressed MLA KV"
 context_tokens = 393216
-port = 39077
+port = 39078
 startup_timeout_seconds = 2400
-served_model_name = "deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-tp2-393k"
+served_model_name = "deepseek-v4-flash-0731-infernal-r15-b12x-nospec-maxseq8-batch4096-tp2-393k"
 ipc = "host"
 shm_size = "32gb"
 ulimits = [
@@ -55,8 +55,8 @@ env = [
   "NCCL_CUMEM_HOST_ENABLE=0",
   "NCCL_DEBUG=INFO",
   "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
-  "PORT=39077",
-  "MODE=dspark",
+  "PORT=39078",
+  "MODE=dspark-mtp0",
   "BACKEND=b12x-a8",
   "TP_SIZE=2",
   "DCP_SIZE=1",
@@ -80,14 +80,14 @@ env = [
   "INSTANTTENSOR_BACKEND=BUFFERED",
   "MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
   "SPEC_MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
-  "SERVED_MODEL_NAME=deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-tp2-393k",
+  "SERVED_MODEL_NAME=deepseek-v4-flash-0731-infernal-r15-b12x-nospec-maxseq8-batch4096-tp2-393k",
 ]
 flags = []
-note = "Locally qualified and human-promoted on 2026-08-16. The local-inference-lab r15 receipt qualified TP2/DCP1, max-seq-8, batch-4096, fixed probabilistic DSpark K5, native offload disabled, and LMCache disabled at 131072 tokens on two direct-root-port RTX PRO 6000 GPUs. This WSL2 translation retains that shape, raises MAX_MODEL_LEN to 393216, and adds the established local NCCL controls. Direct retrieval passed at 351118 actual prompt tokens; the authenticated router passed a separate 340119-token retrieval. Matched 4K K5/no-spec decode was 150.0/76.4 tok/s and the repeated intelligence/session/tool suite passed 12/12. The managed promotion installed this profile as llm.primary with r33 as the fixed-port rollback. Credit: Martin Vit (voipmonitor); local-inference-lab/rtx6kpro and local-inference-lab/blackwell-llm-docker; B12X PR 214 and vLLM PR 320 contributors. The pinned upstream repositories expose no root license file; this recipe references and translates their public configuration but does not redistribute the image or source."
+note = "Locally qualified matched target-only control for the Infernal Invocation r15 393216-token K5 profile. It retains the exact image, checkpoint, TP2/DCP1 layout, WSL2/NCCL controls, FP8 KV, max-seq-8, batch-4096, no-offload policy, allocator, JIT volumes, and memory utilization of the K5 arm. Only MODE=dspark-mtp0, the loopback port, and the served name differ. The complete functional gate passed; matched 4K and 32K runs measured 76.4 and 76.767 tok/s median decode. Credit: Martin Vit (voipmonitor); local-inference-lab/rtx6kpro and local-inference-lab/blackwell-llm-docker; B12X PR 214 and vLLM PR 320 contributors. Upstream qualified this image at 131072 tokens on native Linux; the local 393216-token result is independent WSL2 evidence."
 
 [recipe.fit]
-suited = ["serving-primary", "qualification", "long-context", "speculative-decoding", "coding-agent"]
-rationale = "Qualified text Primary at 393216 tokens. It preserves the upstream max-seq-8, batch-4096, TP2/DCP1, FP8-KV, no-offload, and fixed K5 controls while adding independently measured WSL2 correctness, capacity, performance, quality, routed acceptance, and fixed-port rollback evidence."
+suited = ["qualification-control", "long-context", "coding-agent", "target-only"]
+rationale = "Provides the required otherwise-identical target-only baseline for deciding whether r15 DSpark K5 improves the local 393216-token lane without masking correctness, capacity, or stability regressions."
 
 [recipe.sources]
 official = [
@@ -102,5 +102,6 @@ community = [
   "https://github.com/local-inference-lab/vllm/pull/320",
 ]
 local = [
+  "configs/deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-393k-recipe.toml",
   "configs/deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-393k-recipe.toml",
 ]

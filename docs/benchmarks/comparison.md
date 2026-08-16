@@ -46,14 +46,16 @@ dated finding before treating a row as a single experiment. Full rules:
 
 ---
 
-## Current single-service profile on dual RTX PRO 6000
+## Current text Primary and retained single-card profiles
 
-One TP=1 service runs on one 96 GB card and the second equal card is empty.
-The former two-service split remains the exact rollback.
+DeepSeek Infernal Invocation r15 now owns both 96 GB cards as the exclusive
+TP=2 text Primary. The Qwen single service and former two-service split remain
+retained text/image/OCR/video recipes; r33 393K is the immediate text rollback.
 
 | Model / config | Status | Quant · KV | 4K median TTFT / E2E | Decode | Multimodal acceptance | Evidence |
 | --- | --- | --- | --- | ---: | --- | --- |
-| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `current` Primary/general-vision/OCR/video | Official FP8 · FP8 E4M3 KV | 0.577 / 0.962 s | **111.4 tok/s** | CPU transport; direct 30/30, live admitted 28/28; two images, one video | [video expansion](../findings/2026-08-16-qwen38-27b-video-router.md) |
+| [DeepSeek V4 Flash 0731, Infernal Invocation r15 DSpark K5](models/deepseek-v4-flash.md) | `current` text Primary; exclusive TP=2 | B12X W4A8 · FP8 compressed MLA KV | aggregate TTFT/E2E not published | **150.0 tok/s** | text-only contract; routed tools and OpenClaw-compatible Anthropic paths pass | [promotion](../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md) |
+| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | former Primary/general-vision/OCR/video service | Official FP8 · FP8 E4M3 KV | 0.577 / 0.962 s | **111.4 tok/s** | CPU transport; direct 30/30, live admitted 28/28; two images, one video | [video expansion](../findings/2026-08-16-qwen38-27b-video-router.md) |
 | [Qwen3.8 27B official FP8, vLLM TP=1 MTP=3](models/qwen38-27b.md) | split rollback, text | Official FP8 · FP8 KV | 0.834 / 1.295 s | 93.6 tok/s | text only; routed tools 20/20 | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
 | [Qwen3.8 27B official BF16, vLLM TP=1 MTP=3](models/qwen38-27b.md) | split rollback, vision/OCR | BF16 · FP8 KV | 0.884 / 1.584 s | 62.0 tok/s | historical routed 30/30; 32-image request 1/1 | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
 | [Qwen3.8 27B Inferact NVFP4, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `challenger`, `no-promotion` | ModelOpt NVFP4 · FP8 KV | **0.448 / 0.914 s** | 98.1 tok/s | CPU transport: image/OCR pass; broader media open | [qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md) |
@@ -83,7 +85,7 @@ and [DeepSeek smoke](../findings/2026-08-03-deepseek-context-agentic-swe-smoke.m
 
 ### Official-FP8 MTP-depth controls
 
-MTP=4 and MTP=5 used the current FP8 TP=1/393K/maxseq1/batch4096 recipe and
+MTP=4 and MTP=5 used the then-current FP8 TP=1/393K/maxseq1/batch4096 recipe and
 were swapped across the equal cards. Values are means of each run's median;
 three repetitions were taken in the first placement and two after the swap.
 
@@ -97,7 +99,7 @@ three repetitions were taken in the first placement and two after the swap.
 The apparent first-placement winner reversed after the card swap. On a fixed
 card, MTP=5 adds only 0.4-1.3% decode and makes E2E slightly worse. Both
 settings passed 388,979-token retrieval and bounded behavioral gates. The
-current MTP=3 Compute B control remains ahead at 93.6 tok/s and 1.295 seconds
+then-current MTP=3 Compute B control remained ahead at 93.6 tok/s and 1.295 seconds
 E2E. See the
 [MTP-depth qualification](../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
 
@@ -114,7 +116,7 @@ card and two after the model placements were swapped.
 | Inferact NVFP4 | 5 | **0.429 s** | **8,409 tok/s** | **57.9 tok/s** | **1.244 s** | 388,979 tok pass; **248.75 s TTFT** | text `challenger`, `no-promotion` |
 
 NVFP4 reduced matched TTFT 22.6% and raised decode 20.6%; the ranking held
-after the card swap. It still trails the current vLLM MTP=3 service's 93.6
+after the card swap. It still trailed the then-current vLLM MTP=3 service's 93.6
 tok/s decode. SGLang multimodal is not qualified on this WSL2 host because its
 default CUDA-IPC feature warmup failed; these rows are text-only. See the
 [SGLang/NVFP4 qualification](../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md).
@@ -130,6 +132,7 @@ alias; later rows record separately approved promotions.
 
 | Model / config | Status | Quant · KV | Served · validated context | Reasoning contract | First-output latency | Effective prefill | Completion rate · decode | Recipe |
 | --- | --- | --- | --- | --- | --- | ---: | --- | --- |
+| [DeepSeek V4 Flash 0731, Infernal Invocation r15 DSpark K5, 393K/maxseq8](models/deepseek-v4-flash.md) | `current` text Primary; exclusive TP=2 | B12X W4A8 · FP8 compressed MLA KV | 393,216 · 351,118 actual tokens direct; 340,119 routed | default thinking; generic disable not qualified | 53.133 s direct @351,118; 58.891 s routed @340,119 | 8,741 tok/s @4K; 9,071 @32K | 3/3 at 4K and 32K; 150.0/119.245 tok/s decode; repeated quality 12/12 | [pinned recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-393k-recipe.toml) |
 | [DeepSeek V4 Flash 0731, r33 DSpark K5, 393K/maxseq16](models/deepseek-v4-flash.md) | managed TP=2 rollback; historical Primary | B12X W4A8 NVFP4 MoE / FP8 dense · FP8 DS-MLA KV | 393,216 · 359,900 actual tokens direct | high-reasoning quality prior; routed functional pass with retained reasoning-evidence caveat | 65.2 s TTFT @359,900 tok | 5,599 tok/s | direct capacity pass; OpenClaw/Hermes 393K/32K/high client paths pass; client >300K open | [pinned recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-393k-recipe.toml) |
 | [Qwen3.8 27B official FP8, TP=2 control](models/qwen38-27b.md) | `challenger`, `no-promotion`; text-only | Official FP8 weights · FP8 KV | 393,216 / 600,000 / 1,010,000 · 388,979 / 598,729 / 985,107 actual tokens | thinking disabled | 154.8 / 321.2 / 784.1 s cold TTFT at the three limits; 0.71-0.72 s p50 at 4K | 2,512 / 1,864 / 1,256 tok/s at the limits | all functional/context gates pass; 48.8-49.2 tok/s 4K decode | [matrix recipes and evidence](../findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md) |
 | [Qwen3.8 27B official FP8, TP=2 MTP=3](models/qwen38-27b.md) | interactive-text `challenger`, `no-promotion` | Official FP8 weights · FP8 KV · MTP=3 | 393,216 / 600,000 / 1,010,000 · 388,979 / 598,729 / 985,107 actual tokens | thinking disabled | 158.8 / 324.2 / 780.1 s cold TTFT at the three limits; 0.74-0.76 s p50 at 4K | 2,449 / 1,847 / 1,263 tok/s at the limits | all functional/context gates pass; **85.9-91.6 tok/s** 4K decode; 7-9% KV-token cost | [matrix recipes and evidence](../findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md) |
@@ -171,9 +174,10 @@ MiB in its separate run. After qualification, the 1M/maxseq16 profile also
 crashed on two real agent shapes: 703.64 and 687.83 MiB workspaces were required
 against 514.25 MiB available. The second used a 19,118-token Pi prompt and a
 5,120 output cap, so router output clamping is not a sufficient 1M mitigation.
-The r16 650K row is historical promotion/capacity evidence. The r33 393K row
-is now the human-approved Primary and uses the operator-approved AI-only policy
-without a separate video-workload reserve gate.
+The r16 650K and r33 393K rows are historical promotion/capacity evidence.
+The Infernal Invocation r15 393K row is now the human-approved text Primary
+and uses the operator-approved AI-only policy without a separate
+graphics/co-resident reserve gate.
 
 The native-offload row uses a narrowly derived WSL2 image and a different
 262,144-token admission ceiling. Its cold 250K result is capacity evidence,
@@ -193,9 +197,10 @@ advisory only.
 
 | Model / config | Status | Quant · KV | Context · adm. | Thinking | TTFT | Output rate | Recipe |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `current` Primary/general-vision/OCR/video | Official FP8 · FP8 E4M3 KV | 393,216 · 1 request; 2 images/request; 1 video/request | server default disabled; chat caller override | 0.577 s median @4K | **111.4 tok/s decode** | [video expansion](../findings/2026-08-16-qwen38-27b-video-router.md) |
-| [Qwen3.8 27B official FP8 + BF16 vLLM split](models/qwen38-27b.md) | managed split rollback | Official FP8/BF16 · FP8 KV | 393,216 · 1 seq each; BF16 32 images/one video | disabled default, caller override | 0.834 / 0.884 s median @4K | 93.6 / 62.0 tok/s decode | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
-| [DeepSeek V4 Flash 0731, r33 DSpark K5, 393K/maxseq16](models/deepseek-v4-flash.md) | managed exclusive TP=2 rollback | B12X W4A8/FP8 · FP8 DS-MLA KV | 393,216 · 16 seqs | high-reasoning client path | 65.2 s TTFT @359,900 actual tok | 5,599 tok/s effective prefill | [historical promotion](../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md) |
+| [DeepSeek V4 Flash 0731, Infernal Invocation r15 DSpark K5, 393K/maxseq8](models/deepseek-v4-flash.md) | `current` text Primary | B12X W4A8 · FP8 compressed MLA KV | 393,216 · 8 engine; router concurrency 2 | default reasoning | 53.133 s @351,118 actual tok direct | 150.0 tok/s decode @4K; 119.245 @32K | [promotion](../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md) |
+| [DeepSeek V4 Flash 0731, r33 DSpark K5, 393K/maxseq16](models/deepseek-v4-flash.md) | immediate managed exclusive TP=2 rollback | B12X W4A8/FP8 · FP8 DS-MLA KV | 393,216 · 16 seqs | high-reasoning client path | 65.2 s TTFT @359,900 actual tok | 5,599 tok/s effective prefill | [historical promotion](../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md) |
+| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | former Primary/general-vision/OCR/video service | Official FP8 · FP8 E4M3 KV | 393,216 · 1 request; 2 images/request; 1 video/request | server default disabled; chat caller override | 0.577 s median @4K | **111.4 tok/s decode** | [video expansion](../findings/2026-08-16-qwen38-27b-video-router.md) |
+| [Qwen3.8 27B official FP8 + BF16 vLLM split](models/qwen38-27b.md) | former managed split | Official FP8/BF16 · FP8 KV | 393,216 · 1 seq each; BF16 32 images/one video | disabled default, caller override | 0.834 / 0.884 s median @4K | 93.6 / 62.0 tok/s decode | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
 | [Qwen3.5 122B A10B NVFP4](models/qwen35-122b.md) | retained qualified recipe; not immediate restore | ModelOpt NVFP4 · **BF16 KV** | 262,144 · c1 | default **on**, per-request disable | 0.15 / 0.26 s p50/p95 @8K c1 · 68.91 s @231K, c1 matched lane | 60.3 tok/s decode @231K · 59.45 `agg` @8K c1 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml) |
 | [Agents-A1 official FP8 multimodal](models/agents-a1.md) plus Omni | managed split restoration | compressed-tensors FP8 · FP8 KV | 262,144 · c1 | **must be off** | 0.25 / 0.53 s @8K c1 · 32.97 / 33.44 s @231K c1 | 188.1 tok/s decode @8K · 155.8 tok/s decode @231K | [promotion-era evidence](../findings/2026-07-29-agents-a1-primary-promotion.md) |
 | [Laguna S 2.1 NVFP4](models/laguna-s-2.1.md) | `rollback` | NVFP4 · FP8 KV | 262,144 | **must be off** | 0.07 / 0.55 s @c1 · 3.44 / 4.37 s @c8 · quality ctx 2.26 / 21.15 / 50.64 s @32K/128K/240K | 75.46 `agg` @c1 · 83.24 `agg` @c8 | [registry](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml#L1229) |
