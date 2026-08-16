@@ -72,6 +72,7 @@ def test_plan_pins_selection_router_and_both_harnesses(tmp_path):
     assert value["harnesses"]["grader"]["revision"] == load_profile("smoke")["adapters"]["swe-bench"]["revision"]
     assert "secret" not in value["config_text"].lower()
     assert "http://100.64.0.10:8000/v1" in value["config_text"]
+    assert "  executable:" in value["config_text"]
     assert "    - --platform\n    - linux/amd64\n" in value["config_text"]
     assert value["request_controls"] == {
         "thinking_mode": "default",

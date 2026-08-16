@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import time
 from typing import Any, Callable, Mapping, Sequence
@@ -178,11 +179,13 @@ def _mini_config(
     endpoint: Mapping[str, str],
     suite: Mapping[str, Any],
     request_controls: Mapping[str, Any],
+    container_executable: str,
 ) -> str:
     # This is intentionally a small YAML overlay. It contains endpoint identity only;
     # the credential is mapped into OPENAI_API_KEY in the child process environment.
     base = json.dumps(endpoint["base_url"], ensure_ascii=True)
     model = json.dumps(f"openai/{endpoint['model']}", ensure_ascii=True)
+    executable = json.dumps(container_executable, ensure_ascii=True)
     control_lines = ""
     if request_controls["reasoning_effort"] is not None:
         effort = json.dumps(request_controls["reasoning_effort"], ensure_ascii=True)
@@ -209,6 +212,7 @@ def _mini_config(
         "agent:\n"
         f"  step_limit: {suite['max_steps']}\n"
         "environment:\n"
+        f"  executable: {executable}\n"
         "  run_args:\n"
         "    - --platform\n"
         "    - linux/amd64\n"
@@ -309,7 +313,9 @@ def build_swe_run_plan(
             "result": os.path.join(run_path, "swe-result.json"),
         },
         "commands": {"agent": mini_command, "grader": grader_command},
-        "config_text": _mini_config(target, suite, controls),
+        "config_text": _mini_config(
+            target, suite, controls, shutil.which("docker") or "docker"
+        ),
         "timeout_s": suite["timeout_s"],
     }
     plan["plan_sha256"] = hashlib.sha256(canonical_json_bytes(plan)).hexdigest()
