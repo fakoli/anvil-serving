@@ -61,6 +61,26 @@ The former two-service split remains the exact rollback.
 The BF16 32-image result is one request at concurrency one. It is not a claim
 of 32 concurrent requests.
 
+### Remote coding-agent comparison
+
+Both campaigns used AI-MBP25 as the isolated worker and reached Fakoli Dark
+through the router. They did not use the same model recipe, GPU count, harness
+revision, or complete workload, so this is a bounded capability comparison—not
+a statistically controlled model ranking.
+
+| Subject | Serving topology | Agentic evidence | SWE-bench Verified evidence | What the comparison supports |
+|---|---|---|---|---|
+| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | 1x RTX PRO 6000 Max-Q active; second equal card idle | smoke 2/2; scout 16/18; `tool-recovery-error` 2/2; both failures were `debug-loop` protocol failures | 5/5 fixed scout tasks officially resolved; 19-57 model requests/task; 42m29s overall | strongest local bounded repository-agent evidence; broader SWE sample and efficiency-aware debug follow-up still required |
+| [DeepSeek V4 Flash 0731 r16 DSpark K5](models/deepseek-v4-flash.md) | exclusive TP=2 on 2x RTX PRO 6000 Max-Q | `tool-recovery-error` 0/1: retry protocol passed, required final answer failed | `django__django-11099` 1/1 officially resolved | qualified the then-new worker/grader path; too small for an intelligence ranking |
+
+The exact SWE overlap is only `django__django-11099`, which both models
+resolved. Qwen additionally resolved the fixed pytest, scikit-learn, requests,
+and SymPy tasks. The shared `tool-recovery-error` scenario favors Qwen in the
+retained evidence, but the benchmark source and request controls changed
+between campaigns. Treat that as a useful directional result, not a matched
+head-to-head score. See the [Qwen scout](../findings/2026-08-15-qwen38-27b-agentic-swe-scout.md)
+and [DeepSeek smoke](../findings/2026-08-03-deepseek-context-agentic-swe-smoke.md).
+
 ### Official-FP8 MTP-depth controls
 
 MTP=4 and MTP=5 used the current FP8 TP=1/393K/maxseq1/batch4096 recipe and
