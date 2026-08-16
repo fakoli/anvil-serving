@@ -73,6 +73,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-14-qwen38-27b-1m-context.md`;
 `docs/findings/2026-08-14-qwen38-27b-official-qualification.md`;
 `docs/findings/2026-08-14-qwen38-27b-split-promotion.md`;
+`docs/findings/2026-08-15-qwen38-27b-agentic-swe-scout.md`;
 `docs/findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md`;
 `docs/findings/2026-08-15-qwen38-27b-sglang-consolidation-ab.md`;
 `docs/findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md`;

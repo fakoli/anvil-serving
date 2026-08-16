@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import copy
 import hashlib
+from importlib import resources
 import json
-from pathlib import Path
 import re
 from typing import Any, Mapping
 
@@ -16,7 +16,7 @@ from .limits import MAX_BENCHMARK_JOB_SECONDS, MAX_CONTEXT_TARGET_TOKENS
 BENCHMARK_PROFILE_SCHEMA = "anvil-serving.benchmark-profile/v1"
 PROFILE_NAMES = frozenset({"smoke", "scout", "deep"})
 SUITE_NAMES = frozenset({"context", "agentic", "swe"})
-PROFILE_ROOT = Path(__file__).resolve().parents[2] / "configs" / "benchmarks"
+PROFILE_ROOT = resources.files("anvil_serving") / "_benchmark_profiles"
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _HEX_RE = re.compile(r"^[0-9a-f]{40,64}$")
 _IMAGE_RE = re.compile(r"^[^\s@]+@sha256:[0-9a-f]{64}$")
