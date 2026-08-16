@@ -2,26 +2,28 @@
 
 ## Current status and review date
 
-The 2026-08-11 public record documents human approval of the r33 B12X TP=2
-DSpark K5 recipe for `llm.primary` at 393,216 tokens, 4,096-token batching,
-and 16 admitted sequences. It passed a direct 359,900-actual-token request,
-exact managed routing, and OpenClaw/Hermes client requests after both clients
-were aligned to 393,216 context, 32,768 output, and high reasoning.
-The legacy routed nominal-320K needle failed closed because its byte estimate
-exceeded 393,216, so routed, OpenClaw, and Hermes >300K remain open qualification items.
+The 2026-08-16 public record documents human approval of Martin Vit's
+Infernal Invocation r15 B12X TP=2 DSpark K5 profile for the text
+`llm.primary` route at 393,216 tokens, 4,096-token batching, and eight admitted
+sequences. It passed 351,118 actual prompt tokens directly, 340,119 through
+the authenticated router, repeated tools/session/diff/timeout checks 12/12,
+short c8 and long c2 capacity, and OpenClaw-compatible Anthropic wire calls.
+The prior r33 393K profile is the fixed-port managed rollback. A fresh actual
+Mini OpenClaw turn remains open because the installed Mini controller lacks
+the current status tool.
 
-A derived WSL2 image now also qualifies native CPU KV offload at a 262,144
+A derived WSL2 image also qualified native CPU KV offload at a 262,144
 served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
-the managed shared-memory lifecycle regression. This extends the capacity
-contract but does not replace the 131K profile as the preferred performance
-recipe. A digest-pinned r33 target-only control subsequently qualified the same
+the managed shared-memory lifecycle regression. This is retained historical
+capacity evidence and is not part of the current r15 profile. A digest-pinned
+r33 target-only control subsequently qualified the same
 checkpoint at a 131,072-token envelope and reached 119,503 actual prompt
 tokens. A matched batch-token A/B then reduced profiled activation memory by
 34.1% and increased minimum-rank KV allocation by 0.72 GiB while retaining
-the same functional and 119,503-token capacity gates. The promoted DSpark arm
+the same functional and 119,503-token capacity gates. The later r33 DSpark arm
 reported 725,543 GPU KV tokens and passed 238,507-, 339,310-, and
 359,900-actual-token direct requests without host offload. Review date:
-2026-08-11.
+2026-08-16.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
 not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
@@ -55,12 +57,14 @@ figure is aggregate VRAM, not unified memory.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
-The working profile uses image digest
-`sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f`,
-vLLM base commit `30038602b71395f481ef4a6edfe4fcf8551d9c15`, B12X W4A8
-NVFP4 MoE and FP8 dense kernels, FP8 MLA KV, InstantTensor, TP=2, 131,072
-context, eight admitted sequences, and DSpark fixed-depth five-token drafting.
-The measured workload is c1.
+The current working profile uses image digest
+`sha256:f1b13c8604b274212e1164def7d4ed7a4cac9e4f7fa06fa1739730195eca4e18`,
+vLLM integration tree `068fc8e7270b92077ba753d002da179c865e444d`, B12X tree
+`96e5d3d5c2057fa5d4f542e2368951ddbdcb5b42`, W4A8 kernels, FP8 compressed
+MLA KV, InstantTensor `BUFFERED`, TP=2/DCP=1, 393,216 context, eight admitted
+sequences, and fixed probabilistic DSpark K5. Native KV offload and LMCache
+are disabled. The matched performance workload is c1; capacity also covers
+c8 short requests and c2 at 99,175 prompt tokens per request.
 
 The native-Linux source recipe required an SM120-to-WSL2 translation:
 direct NCCL P2P and NCCL cuMem device/host allocation are disabled, shared
@@ -85,10 +89,24 @@ JIT, and temporary build data use named Docker volumes.
 - [r33 quality-control qualification](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md)
 - [r33 batch-token A/B](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md)
 - [r33 393K Primary promotion](../../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md)
+- [Infernal Invocation r15 K5 393K recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-393k-recipe.toml)
+- [Infernal Invocation r15 matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r15-b12x-nospec-maxseq8-batch4096-393k-recipe.toml)
+- [Infernal Invocation r15 393K promotion](../../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md)
 
 ## Evidence by measurement class
 
-The promoted r33 DSpark profile adds `functional`, `capacity`, and bounded
+The r15 DSpark K5 profile adds `functional`, `capacity`, matched `performance`,
+bounded `quality`, and routed acceptance evidence. K5 versus the otherwise
+identical no-spec control measured 150.0 versus 76.4 tok/s median decode at
+4K/c1 and 119.245 versus 76.767 at 32K/c1. Direct retrieval passed at 351,118
+actual prompt tokens and authenticated routed retrieval at 340,119. Repeated
+tools, session recall, unified diff, and parallel timeout triage passed 12/12.
+The engine reported 797,689 KV tokens, or 2.03 full 393,216-token windows.
+The stock English 390K routed needle still failed closed under the router's
+conservative byte estimator, and generic thinking-disable did not suppress
+r15 reasoning. Those are retained limits, not relabelled successes.
+
+The historical r33 DSpark profile adds `functional`, `capacity`, and bounded
 `quality` evidence: exact managed routing passed, the direct context ladder
 reached 359,900 actual prompt tokens, and OpenClaw/Hermes client-path requests
 passed after safe gateway restarts. It uses FP8 DS-MLA KV with no host
@@ -238,6 +256,16 @@ decision, source classifications, subreddit coverage, and required gates.
 
 ## Decision and promotion state
 
+2026-08-16 Infernal Invocation r15 promotion: after explicit human approval,
+the digest-pinned K5 profile became the exclusive TP=2 text `llm.primary` at
+393,216 tokens. The guarded transaction reran direct context, tools,
+streaming, tool-result, and Responses gates, installed the router profile,
+restarted the router, and verified exact post-restart identity and admission.
+The endpoint-adapted r33 393K profile is the immediate transactional rollback.
+Martin Vit's upstream receipt qualified 131,072 tokens on native Linux with
+two RTX PRO 6000 Blackwell GPUs on direct PCIe root ports; this WSL2 393K
+result is an independent local qualification.
+
 The 2026-08-02 public finding records human approval of the maxseq16 r16 DSpark
 profile as the exclusive TP=2 Primary for one Pi/OpenClaw coding user, with
 high reasoning as the client default and `llm.rollback` preserved explicitly.
@@ -344,6 +372,7 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
+- [2026-08-16 Infernal Invocation r15 393K Primary promotion](../../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md)
 - [2026-08-11 r33 393K Primary promotion](../../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md)
 - [2026-08-10 r33 batch-token A/B](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md)
 - [2026-08-10 r33 target-only quality control](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md)

@@ -1,0 +1,107 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "deepseek-ai/DeepSeek-V4-Flash-0731"
+status = "verified"
+source = "Matched target-only control for the 2026-08-16 locally qualified Infernal Invocation r15 DSpark K5 profile, translated from the current community recipe authored by Martin Vit (voipmonitor)"
+family = "deepseek-v4"
+total_params_b = 304
+active_params_b = 13
+
+[recipe.download]
+repo = "deepseek-ai/DeepSeek-V4-Flash-0731"
+revision = "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+volume = "deepseek-v4-0731-r16-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2; exclusive TP2 only. Upstream r15 measurements used native Linux GPUs on direct PCIe root ports and do not qualify this topology."
+
+[recipe.serve]
+engine = "vllm-infernal-invocation-r15-b12x"
+allow_cuda_visible_devices_index = true
+image = "voipmonitor/vllm@sha256:f1b13c8604b274212e1164def7d4ed7a4cac9e4f7fa06fa1739730195eca4e18"
+entrypoint = [
+  "/usr/local/bin/lmcache-mp-wrapper.sh",
+  "/usr/local/bin/serve-ds4-flash.sh",
+]
+model_env = "MODEL"
+named_volumes = [
+  "deepseek-v4-0731-infernal-r15-jit:/cache",
+  "deepseek-v4-0731-infernal-r15-tmp:/container-tmp",
+]
+quantization = "Released 0731 checkpoint through B12X W4A8 kernels; NVFP4 MoE weights, FP8 activations/dense path, and FP8 compressed MLA KV"
+context_tokens = 393216
+port = 39078
+startup_timeout_seconds = 2400
+served_model_name = "deepseek-v4-flash-0731-infernal-r15-b12x-nospec-maxseq8-batch4096-tp2-393k"
+ipc = "host"
+shm_size = "32gb"
+ulimits = [
+  "memlock=-1",
+  "nofile=1048576:1048576",
+  "stack=67108864",
+]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "PORT=39078",
+  "MODE=dspark-mtp0",
+  "BACKEND=b12x-a8",
+  "TP_SIZE=2",
+  "DCP_SIZE=1",
+  "ALLREDUCE_MODE=auto",
+  "B12X_PCIE_TP2_REMOTE_PUSH=0",
+  "DSPARK_DEPTH_MODE=fixed",
+  "DSPARK_TOKENS=5",
+  "DSPARK_CAPACITY_ACTIVATION_BATCH_SIZE=0",
+  "DRAFT_SAMPLE_METHOD=probabilistic",
+  "REJECTION_SAMPLE_METHOD=standard",
+  "VLLM_MOE_SKIP_PADDING=1",
+  "GRAPH=auto",
+  "MAX_NUM_SEQS=8",
+  "MAX_MODEL_LEN=393216",
+  "MAX_NUM_BATCHED_TOKENS=4096",
+  "GPU_MEMORY_UTILIZATION=0.975",
+  "LMCACHE_MODE=off",
+  "KV_OFFLOADING_SIZE=0",
+  "NATIVE_L2_GB=0",
+  "LOAD_FORMAT=instanttensor",
+  "INSTANTTENSOR_BACKEND=BUFFERED",
+  "MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SPEC_MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SERVED_MODEL_NAME=deepseek-v4-flash-0731-infernal-r15-b12x-nospec-maxseq8-batch4096-tp2-393k",
+]
+flags = []
+note = "Locally qualified matched target-only control for the Infernal Invocation r15 393216-token K5 profile. It retains the exact image, checkpoint, TP2/DCP1 layout, WSL2/NCCL controls, FP8 KV, max-seq-8, batch-4096, no-offload policy, allocator, JIT volumes, and memory utilization of the K5 arm. Only MODE=dspark-mtp0, the loopback port, and the served name differ. The complete functional gate passed; matched 4K and 32K runs measured 76.4 and 76.767 tok/s median decode. Credit: Martin Vit (voipmonitor); local-inference-lab/rtx6kpro and local-inference-lab/blackwell-llm-docker; B12X PR 214 and vLLM PR 320 contributors. Upstream qualified this image at 131072 tokens on native Linux; the local 393216-token result is independent WSL2 evidence."
+
+[recipe.fit]
+suited = ["qualification-control", "long-context", "coding-agent", "target-only"]
+rationale = "Provides the required otherwise-identical target-only baseline for deciding whether r15 DSpark K5 improves the local 393216-token lane without masking correctness, capacity, or stability regressions."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731/tree/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+]
+community = [
+  "https://github.com/local-inference-lab/rtx6kpro/blob/55323f94cd9d9ea98ccecef553791a63c3585816/models/ds4dspark-infernal-invocation-r15.md",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/2c301121c8680f02a91443f502d13ca1fccb51c2/examples/docker-compose-ds4-infernal-invocation-cu133-r15.yml",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/2c301121c8680f02a91443f502d13ca1fccb51c2/validation/infernal-invocation-r15-remote-gpu.json",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/2c301121c8680f02a91443f502d13ca1fccb51c2/validation/infernal-invocation-r15/runtime-summary.json",
+  "https://github.com/local-inference-lab/b12x/pull/214",
+  "https://github.com/local-inference-lab/vllm/pull/320",
+]
+local = [
+  "configs/deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-393k-recipe.toml",
+  "configs/deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-393k-recipe.toml",
+]

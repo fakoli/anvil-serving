@@ -8,14 +8,15 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained deployment is one official-FP8 Qwen3.8 27B SGLang MTP=3
-service for text, image, OCR, and video at TP=1/393,216. The second equal card
-is dormant. DeepSeek V4 Flash 0731 r33 remains a managed exclusive TP=2
-rollback profile. Qwen3.5 122B NVFP4 remains a qualified rollback-era recipe. The
-Agents-A1 split remains retained promotion-era evidence. The earlier r16 650K
-profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical or
-rollback-era recipes but are not the immediate restoration contract for this
-profile. Gemma 4 and ThinkingCap remain historical controls. Fakoli
+The maintained text deployment is DeepSeek V4 Flash 0731 Infernal Invocation
+r15 with DSpark K5 at exclusive TP=2/393,216 across both equal cards. The r33
+393K profile is its immediate fixed-port managed rollback. The former
+official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
+retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
+split remain qualified rollback- or promotion-era evidence. The earlier r16
+650K profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical
+recipes but are not the immediate restoration contract for this profile.
+Gemma 4 and ThinkingCap remain historical controls. Fakoli
 Dark has two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
 now-removed RTX 5090 while the PRO 6000 was protected. Older sections below
 preserve what was concluded at their dates.
@@ -24,6 +25,31 @@ This page is the public, searchable summary of the model and end-to-end benchmar
 
 The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-16**.
 
+## DeepSeek Infernal Invocation r15 393K promotion (2026-08-16)
+
+The r15 recipe was inspired by and translated from Martin Vit's
+(`voipmonitor`) pinned `local-inference-lab/rtx6kpro` and
+`local-inference-lab/blackwell-llm-docker` work. His upstream receipt qualified
+131,072 tokens on native Linux with two RTX PRO 6000 Blackwell GPUs on direct
+PCIe root ports. The 393,216-token WSL2 result is an independent local
+qualification, not a transfer of that upstream stability claim.
+
+The exact digest-pinned B12X W4A8/FP8-compressed-MLA-KV profile passed a
+matched K5/no-spec A/B. K5 measured 150.0 versus 76.4 tok/s median decode at
+4K/c1 and 119.245 versus 76.767 at 32K/c1. Direct retrieval passed at 351,118
+actual prompt tokens and authenticated routed retrieval at 340,119. The full
+functional gate, repeated tools/session/unified-diff/timeout checks 12/12, c8
+short concurrency, c2 long concurrency, streaming, tool-result continuation,
+Responses, and OpenClaw-compatible Anthropic wire requests passed.
+
+After explicit human approval, a guarded transaction installed the exact
+r15 identity as the exclusive TP=2 text `llm.primary`, restarted the router,
+and verified post-restart readiness and admission. The endpoint-adapted r33
+393K profile is the transactional rollback. A fresh actual Mini OpenClaw turn
+remains unproven because the reachable Mini controller lacks the current
+OpenClaw status tool. See the
+[promotion finding](findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md).
+
 ## Qwen3.8 27B video-router expansion (2026-08-16)
 
 The existing model passed the complete deterministic corpus directly at
@@ -31,7 +57,7 @@ The existing model passed the complete deterministic corpus directly at
 admission and `vision.video`, the admitted routed subset passed 28/28 live.
 Two-video overflow returned 413, malformed input returned a sanitized 400,
 and video SSE, grounded tool use, and the full Primary regression gate passed.
-The current ceiling is one request, two images, and one video. The model was
+The qualified Qwen ceiling was one request, two images, and one video. The model was
 not restarted. See the
 [video qualification](findings/2026-08-16-qwen38-27b-video-router.md).
 
@@ -48,12 +74,12 @@ The later router-only AI-MBP25 coding-agent campaign passed the agentic smoke
 2/2, the broader agentic scout 16/18, and a fixed five-instance SWE-bench
 Verified scout 5/5 under the official grader. Both agentic failures were the
 debug-loop repetitions; SWE tasks used 19-57 model requests. This is bounded
-evidence for the exact current profile, not a full-suite 100% SWE claim. See
+evidence for the exact then-current Qwen profile, not a full-suite 100% SWE claim. See
 the [agentic and SWE scout](findings/2026-08-15-qwen38-27b-agentic-swe-scout.md).
 
-The human-approved everyday profile now runs one official-FP8 SGLang TP=1
-service on one RTX PRO 6000, with the second equal card empty. Primary,
-general vision, and OCR share the same 393,216-token service. It uses FP8 E4M3
+The human-approved Qwen profile then ran one official-FP8 SGLang TP=1 service
+on one RTX PRO 6000, with the second equal card empty. Primary, general vision,
+and OCR shared the same 393,216-token service. It used FP8 E4M3
 KV, one running request, 2,048-token chunks, memory fraction 0.85, five GDN
 states, EAGLE MTP `3/1/4`, and CPU multimodal feature transport. Admission was
 initially bounded to two images and no video; the subsequent router-only
@@ -66,12 +92,12 @@ Promotion acceptance passed 108K retrieval, tools 20/20, direct and routed
 media 18/18, the Responses subset, and fresh Hermes/OpenClaw Primary turns
 without fallback. See the [promotion finding](findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md).
 
-The former vLLM FP8/BF16 split remains the exact managed model rollback. A
-retained no-video router profile is the narrower capability rollback.
+The former vLLM FP8/BF16 split remains a retained managed recipe. A retained
+no-video router profile is the narrower historical capability profile.
 
 ## Qwen3.8 27B official-FP8 MTP-depth qualification (2026-08-15)
 
-MTP=4 and MTP=5 were tested concurrently at the current TP=1/393K/maxseq1
+MTP=4 and MTP=5 were tested concurrently at the then-current TP=1/393K/maxseq1
 shape, then swapped across the two equal cards. Both passed complete direct
 functional checks, repeated deterministic intelligence/session/tool checks,
 and a cold request with 388,979 actual prompt tokens.
@@ -80,8 +106,8 @@ The swap changed the performance conclusion. The first placement appeared to
 favor MTP=4 by about 6.9% in decode, but the faster result followed the card.
 On a fixed card, MTP=5 exceeded MTP=4 decode by only 0.4-1.3% and made median
 E2E slightly worse. The historical matched MTP=3 result on the production
-lane remains better than either deeper setting. MTP=3 therefore remains
-current; MTP=4 and MTP=5 are retained `no-promotion` controls. The exact FP8
+lane remained better than either deeper setting. MTP=3 therefore remained the
+selected Qwen depth; MTP=4 and MTP=5 are retained `no-promotion` controls. The exact FP8
 plus BF16 split was restored, directly requalified, and readmitted. See the
 [MTP-depth qualification](findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
 
@@ -101,7 +127,7 @@ intelligence 6/6, session 3/3, and tools 3/3. The earlier multimodal crash was
 isolated to SGLang's automatic CUDA-IPC feature transport in this exact
 runtime. CPU feature transport let both MTP profiles pass bounded image
 understanding and OCR. Video, multiple images, the 32-image ceiling, and host
-memory pressure remain untested. The exact current vLLM split was restored and
+memory pressure remain untested. The exact then-current vLLM split was restored and
 readmitted; no route or promotion changed. See the
 [SGLang MTP/multimodal qualification](findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md).
 
