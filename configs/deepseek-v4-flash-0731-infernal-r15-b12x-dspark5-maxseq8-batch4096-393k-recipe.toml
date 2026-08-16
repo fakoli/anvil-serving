@@ -1,0 +1,106 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "deepseek-ai/DeepSeek-V4-Flash-0731"
+status = "qualification-candidate"
+source = "Current community-recipe external prior published 2026-08-15 and observed 2026-08-16: compatibility-spike translation of local-inference-lab's Infernal Invocation r15 recipe, authored by Martin Vit (voipmonitor); upstream qualified 131072 tokens, while this local candidate raises only the context envelope to 393216"
+family = "deepseek-v4"
+total_params_b = 304
+active_params_b = 13
+
+[recipe.download]
+repo = "deepseek-ai/DeepSeek-V4-Flash-0731"
+revision = "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+volume = "deepseek-v4-0731-r16-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2; exclusive TP2 only. Upstream r15 measurements used native Linux GPUs on direct PCIe root ports and do not qualify this topology."
+
+[recipe.serve]
+engine = "vllm-infernal-invocation-r15-b12x"
+allow_cuda_visible_devices_index = true
+image = "voipmonitor/vllm@sha256:f1b13c8604b274212e1164def7d4ed7a4cac9e4f7fa06fa1739730195eca4e18"
+entrypoint = [
+  "/usr/local/bin/lmcache-mp-wrapper.sh",
+  "/usr/local/bin/serve-ds4-flash.sh",
+]
+model_env = "MODEL"
+named_volumes = [
+  "deepseek-v4-0731-infernal-r15-jit:/cache",
+  "deepseek-v4-0731-infernal-r15-tmp:/container-tmp",
+]
+quantization = "Released 0731 checkpoint through B12X W4A8 kernels; NVFP4 MoE weights, FP8 activations/dense path, and FP8 compressed MLA KV"
+context_tokens = 393216
+port = 39077
+startup_timeout_seconds = 2400
+served_model_name = "deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-tp2-393k"
+ipc = "host"
+shm_size = "32gb"
+ulimits = [
+  "memlock=-1",
+  "nofile=1048576:1048576",
+  "stack=67108864",
+]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "PORT=39077",
+  "MODE=dspark",
+  "BACKEND=b12x-a8",
+  "TP_SIZE=2",
+  "DCP_SIZE=1",
+  "ALLREDUCE_MODE=auto",
+  "B12X_PCIE_TP2_REMOTE_PUSH=0",
+  "DSPARK_DEPTH_MODE=fixed",
+  "DSPARK_TOKENS=5",
+  "DSPARK_CAPACITY_ACTIVATION_BATCH_SIZE=0",
+  "DRAFT_SAMPLE_METHOD=probabilistic",
+  "REJECTION_SAMPLE_METHOD=standard",
+  "VLLM_MOE_SKIP_PADDING=1",
+  "GRAPH=auto",
+  "MAX_NUM_SEQS=8",
+  "MAX_MODEL_LEN=393216",
+  "MAX_NUM_BATCHED_TOKENS=4096",
+  "GPU_MEMORY_UTILIZATION=0.975",
+  "LMCACHE_MODE=off",
+  "KV_OFFLOADING_SIZE=0",
+  "NATIVE_L2_GB=0",
+  "LOAD_FORMAT=instanttensor",
+  "INSTANTTENSOR_BACKEND=BUFFERED",
+  "MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SPEC_MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SERVED_MODEL_NAME=deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-tp2-393k",
+]
+flags = []
+note = "Compatibility spike only; no local load, qualification, route change, or promotion is implied. The local-inference-lab r15 receipt qualified TP2/DCP1, max-seq-8, batch-4096, fixed probabilistic DSpark K5, native offload disabled, and LMCache disabled at 131072 tokens. This translation retains that receipt shape and raises only MAX_MODEL_LEN to 393216, while adding the established WSL2/NCCL controls used by prior local DeepSeek recipes. Credit: local-inference-lab; rtx6kpro and blackwell-llm-docker; Martin Vit (voipmonitor); B12X PR 214 and vLLM PR 320 contributors. The pinned rtx6kpro and blackwell-llm-docker revisions expose no root license file; this recipe references and translates their public configuration but does not redistribute the upstream image or source. The 393216-token envelope must be loaded and independently qualified on the local WSL2 PCIe topology before it can be called stable."
+
+[recipe.fit]
+suited = ["qualification", "long-context", "speculative-decoding", "coding-agent", "compatibility-spike"]
+rationale = "Tests the newer r15 inactive-route and speculative-grammar runtime at the locally useful 393216-token envelope while holding the upstream-qualified max-seq-8, batch-4096, TP2/DCP1, FP8-KV, no-offload, and fixed K5 controls constant."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731/tree/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+]
+community = [
+  "https://github.com/local-inference-lab/rtx6kpro/blob/55323f94cd9d9ea98ccecef553791a63c3585816/models/ds4dspark-infernal-invocation-r15.md",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/2c301121c8680f02a91443f502d13ca1fccb51c2/examples/docker-compose-ds4-infernal-invocation-cu133-r15.yml",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/2c301121c8680f02a91443f502d13ca1fccb51c2/validation/infernal-invocation-r15-remote-gpu.json",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/2c301121c8680f02a91443f502d13ca1fccb51c2/validation/infernal-invocation-r15/runtime-summary.json",
+  "https://github.com/local-inference-lab/b12x/pull/214",
+  "https://github.com/local-inference-lab/vllm/pull/320",
+]
+local = [
+  "configs/deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-393k-recipe.toml",
+]
