@@ -17,8 +17,9 @@ The two GPU roles are symmetric. Split mode can place independent workloads on
 the cards. Exclusive TP=2 mode assigns both roles to one declared owner and
 blocks every other inference workload until the mode is left; the cards are
 connected over PCIe without NVLink, so 192 GB is aggregate rather than unified
-memory. The public 2026-08-16 finding records the human-approved DeepSeek
-Infernal Invocation r15 exclusive TP=2 text Primary. The earlier Qwen3.8
+memory. The public 2026-08-16 finding records the human-approved
+DeepSeek V4 Flash 0731 Infernal Invocation r15 exclusive TP=2 text Primary.
+The earlier Qwen3.8
 single-service and split profiles remain retained history, while r33 is the
 immediate managed DeepSeek rollback. Earlier findings also retain the r16
 650K promotion, 262K retune, and r27 image-upgrade history. Active assignments
