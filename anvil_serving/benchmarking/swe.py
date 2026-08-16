@@ -208,6 +208,11 @@ def _mini_config(
         f"    max_tokens: {suite['max_completion_tokens']}\n"
         "agent:\n"
         f"  step_limit: {suite['max_steps']}\n"
+        "environment:\n"
+        "  run_args:\n"
+        "    - --platform\n"
+        "    - linux/amd64\n"
+        "    - --rm\n"
     )
 
 
