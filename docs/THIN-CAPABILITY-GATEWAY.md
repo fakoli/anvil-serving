@@ -18,6 +18,7 @@ llm.primary = "primary-local"
 llm.voice = "auxiliary-local"
 vision.ocr = "ocr-local"
 vision.general = "vision-local"
+vision.video = "video-local"
 ```
 
 The chosen tier remains subject to its declared context and tool capabilities,

@@ -36,8 +36,11 @@ gpu_memory_total_mib = 97887
 model_memory_gib = 35.31
 kv_cache_capacity_tokens = 5277426
 scheduler_max_num_seqs = 1
+media_admission_enabled = true
 image_limit = 4
 video_limit = 1
+image_tokens_estimate = 2048
+video_tokens_estimate = 16384
 
 [router.tiers.params.capabilities]
 modalities = ["text", "image", "video"]
@@ -68,6 +71,7 @@ llm.primary = "primary-local"
 llm.voice = "omni-local"
 vision.ocr = "omni-local"
 vision.general = "omni-local"
+vision.video = "primary-local"
 
 [[router.purpose_models]]
 id = "embeddings-local"

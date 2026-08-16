@@ -281,6 +281,14 @@ The allowlisted capacity keys are `gpu_role`, `gpu_name`,
 values are never returned. These values are operator-declared measurements,
 not runtime discovery.
 
+`image_limit` and `video_limit` become enforced request admission controls only
+when `media_admission_enabled = true`. An enabled policy must also provide
+non-negative `image_tokens_estimate` and `video_tokens_estimate` values. The
+router then rejects media-count overflow before contacting the selected tier
+and reserves the estimates when checking context headroom. A declared zero
+limit therefore rejects the first matching media block; without the explicit
+enable flag, the values remain metadata for backward compatibility.
+
 The endpoint accepts `model` and `gpu_role` filters. Optional `images`,
 `input_tokens`, `image_tokens`, and `output_tokens` parameters evaluate a
 request scenario. Image count alone cannot establish context use because image

@@ -4,9 +4,11 @@
 
 Human-approved `current` single-service profile: official FP8 on SGLang owns
 Primary, multimodal, and OCR at TP=1/393,216 with EAGLE MTP `3/1/4` and CPU
-feature transport; the second GPU is empty. Review date: 2026-08-15. The
+feature transport; the second GPU is empty. Review date: 2026-08-16. The
 current review includes MTP=4/5, official-FP8 versus Inferact NVFP4, the
 matched BF16 consolidation A/B, and the guarded live promotion.
+The 2026-08-16 review adds direct and routed video qualification plus
+fail-closed router admission for one video.
 
 ## Immutable identity
 
@@ -51,7 +53,7 @@ no-MTP control and `method=mtp,num_speculative_tokens=3` arm.
 The historical split selected the 393,216-token TP=1 MTP=3 arm for both vLLM
 models. The current profile instead runs the official-FP8 SGLang MTP=3
 multimodal arm as one service for Primary, general vision, and OCR. It admits
-one running request, two images, and no video; the second GPU is empty. The
+one running request, two images, and one video; the second GPU is empty. The
 former FP8/BF16 split remains the exact rollback.
 
 The SGLang control A/B held TP=1, 393,216 tokens, one running request, FP8
@@ -136,8 +138,16 @@ needle, and 20/20 tools. Direct and routed copies of the repeated image corpus
 both passed 18/18; routed image/OCR, streaming tools, tool-result recovery, and
 the Responses subset passed as well. Fresh Hermes and OpenClaw Primary turns
 completed without fallback. The current admission ceiling remains two images,
-no video, and concurrency one; the broader open gates were not silently
-inherited from BF16.
+one video, and concurrency one after the 2026-08-16 router-only expansion; the
+broader 32-image and concurrency gates were not silently inherited from BF16.
+
+The video follow-up kept the model and recipe unchanged. The complete direct
+deterministic corpus passed 30/30, including video 14/14 and mixed media 4/4.
+Video latency across those attempts was 2.935 seconds p50 and 9.904 seconds
+p95. The live routed admitted subset passed 28/28; the excluded case contains
+four images plus a video and correctly receives 413 under the two-image limit.
+Two-video overflow, malformed input, SSE ordering, grounded tool use, and the
+complete Primary regression gate also passed.
 
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
 multimodal. A later durable router-only campaign added separate agentic and
@@ -150,7 +160,8 @@ bounded evidence, not a full-benchmark score.
 
 Human-approved `current` single-service profile. Official FP8 on SGLang with
 MTP `3/1/4` owns Primary, general vision, and OCR at 393,216 tokens on one
-card; the other card is dormant. Direct and routed media passed 18/18 and
+card; the other card is dormant. Explicit video now shares that tier. Direct
+video qualification passed 14/14 and the live admitted corpus passed 28/28;
 Hermes/OpenClaw Primary client paths passed without fallback. The former vLLM
 FP8/BF16 split is the immediate rollback. TP=2 at 600K and 1.01M remains an
 offline/batch experiment.
@@ -172,10 +183,11 @@ The SGLang cookbook follow-up is complete for no-speculation and in-checkpoint
 MTP text serving. Digest-pinned executable recipes retain official FP8 and the
 explicitly approved Inferact NVFP4 checkpoint. The NVFP4 snapshot passed full
 Safetensors structure and immutable LFS SHA-256 verification before load.
-Bounded image/OCR and a repeated six-case corpus now pass on BF16 and both
+Bounded image/OCR and a repeated six-case corpus pass on BF16 and both
 quantized checkpoints when CPU feature transport is forced. Two-image ordering
-is covered; video, the 32-image ceiling, concurrency, broad vision quality, and
-host-memory-pressure remain open. The default CUDA-IPC path still fails in this exact WSL2/Docker/runtime
+is covered. The current official-FP8 profile subsequently passed one-video
+qualification; NVFP4 video, the 32-image ceiling, concurrency, broad vision
+quality, and host-memory-pressure remain open. The default CUDA-IPC path still fails in this exact WSL2/Docker/runtime
 combination. The widely shared 200+ tok/s result also adds a DSpark draft and
 remains an `external-prior`, not a local result.
 
@@ -215,8 +227,9 @@ official-FP8 SGLang arm is current.
   disabled custom allreduce.
 - SGLang's first 393K launch required the explicit longer-context overwrite
   opt-in; its first WSL2 multimodal warmup failed with an invalid CUDA resource
-  handle. CPU feature transport now passes bounded image/OCR, but it is not a
-  blanket CUDA-IPC diagnosis and does not yet qualify video or 32 images.
+  handle. CPU feature transport now passes bounded image/OCR and one-video
+  qualification on the current official-FP8 profile, but it is not a blanket
+  CUDA-IPC diagnosis and does not qualify 32 images.
 - The SGLang image label names `c4271c3`, but its internal build-version string
   names `561c8f3`; the digest is the execution identity and the discrepancy is
   retained.
@@ -233,6 +246,7 @@ official-FP8 SGLang arm is current.
 
 ## Dated run history
 
+- [2026-08-16 video qualification and router expansion](../../findings/2026-08-16-qwen38-27b-video-router.md)
 - [2026-08-15 agentic and SWE-bench Verified scout](../../findings/2026-08-15-qwen38-27b-agentic-swe-scout.md)
 - [2026-08-15 SGLang official-FP8 single-service promotion](../../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md)
 - [2026-08-15 SGLang single-service consolidation A/B](../../findings/2026-08-15-qwen38-27b-sglang-consolidation-ab.md)
