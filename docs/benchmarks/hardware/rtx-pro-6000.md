@@ -27,7 +27,7 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
-| 1 | [Qwen3.8 27B](../models/qwen38-27b.md) | `current`, 2026-08-14 split promotion | Official FP8 MTP=3 text Primary plus BF16 MTP=3 general-vision/OCR; TP=1 each, matched 393,216-token windows, 32 images per BF16 request |
+| 1 | [Qwen3.8 27B](../models/qwen38-27b.md) | `current`, 2026-08-15 single-service promotion | Official FP8 SGLang MTP `3/1/4` owns Primary/general-vision/OCR; TP=1, 393,216 tokens, two images/no video; second card empty |
 | 2 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | managed rollback, historical 2026-08-11 promotion | Exclusive TP=2 r33 text profile at 393,216 tokens; direct capacity through 359,900 actual prompt tokens |
 | 3 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Not started or selected by this promotion's restoration contract |
 | 4 | [Agents-A1](../models/agents-a1.md) plus Omni | managed split restoration | Restore group when leaving this exclusive profile; Agents-A1 retains FP8 text/image/video evidence |
@@ -89,9 +89,9 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
-| Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, MTP=3 multimodal | All pass the same functional gate and 18/18 deterministic media attempts spanning scene, OCR, chart, UI, spatial count, and two-image ordering; video and broad vision quality not tested | 393,216 configured tokens; at 4K BF16/FP8/NVFP4 measure 62.7/111.4/97.7 decode tok/s, while media p50 is 0.915/0.588/0.448 s | Official FP8 preferred single-service `challenger`; NVFP4 lowest-latency third-party alternative; `no-promotion`; current split restored |
-| Qwen3.8 27B official BF16 / official FP8 | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; final routed BF16 media 30/30 and 32-image request 1/1; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | `current` split at TP=1/393K/MTP=3; FP8 text Primary, BF16 vision/OCR; TP=2 remains batch-like |
-| Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, MTP=3 | Both pass intelligence 6/6, session 3/3, tools 3/3, plus bounded image/OCR with CPU feature transport; video/multi-image/32-image not tested | Both pass 389K retrieval; at 4K official FP8 averages 111.3 decode tok/s while NVFP4 averages 98.1, with NVFP4 retaining lower TTFT and higher prefill | SGLang MTP/CPU-multimodal `challenger`, both `no-promotion`; current vLLM split restored |
+| Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, MTP=3 multimodal | All pass the same functional gate and 18/18 deterministic media attempts spanning scene, OCR, chart, UI, spatial count, and two-image ordering; video and broad vision quality not tested | 393,216 configured tokens; at 4K BF16/FP8/NVFP4 measure 62.7/111.4/97.7 decode tok/s, while media p50 is 0.915/0.588/0.448 s | Official FP8 is the human-promoted single-service `current`; NVFP4 is the lowest-latency third-party `no-promotion` alternative |
+| Qwen3.8 27B official BF16 / official FP8 vLLM split | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; final routed BF16 media 30/30 and 32-image request 1/1; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | managed rollback at TP=1/393K/MTP=3; TP=2 remains batch-like |
+| Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, MTP=3 | Both pass intelligence 6/6, session 3/3, tools 3/3, plus CPU-transport image/OCR; the later corpus adds repeated two-image ordering | Both pass 389K retrieval; at 4K official FP8 averages 111.3 decode tok/s while NVFP4 averages 98.1, with NVFP4 retaining lower TTFT and higher prefill | official FP8 `current`; Inferact NVFP4 `no-promotion` |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4 | Both pass full functional gates on two card placements plus intelligence 6/6, session 3/3, and tools 3/3; text-only, no speculation | Both pass 388,979 actual tokens; NVFP4 248.75 s TTFT / 1,564 prefill tok/s versus official FP8 258.13 s / 1,507; at 4K NVFP4 averages 57.9 versus 48.0 decode tok/s across five runs | NVFP4 text `challenger`; both `no-promotion`; current vLLM MTP=3 remains faster and SGLang multimodal is unqualified on WSL2 |
 | Qwen3.8 27B official FP8 MTP=4/5 | Both pass tools 20/20 and repeated deterministic intelligence/session/tools; the quality artifacts are behavioral rather than timing evidence | Both pass one cold 388,979-token request; cross-card 4K runs show MTP=5 only 0.4-1.3% above MTP=4 decode on a fixed card and no E2E win | MTP=4/5 `no-promotion`; MTP=3 remains current |
 | Qwen3.5 122B NVFP4 | Passed protocol-v3, tools 10/10, image/OCR | 128K and 240K retrieval; 262,144 served | `rollback` |
@@ -112,7 +112,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 | Qwen3.8 27B official BF16 multimodal, TP=2 control/MTP=3 | 393,216 / 600,000 / 1,010,000 | 1 | All three limits passed; control reports ~3.77-3.78M KV tokens; MTP reports ~3.42-3.50M and 67.4-75.6 tok/s 4K decode; no P2P |
 | Qwen3.8 27B official FP8 text | 262,144 control / 1,010,000 continuation | 5 control / 1 continuation | Control reports 1,825,809 KV tokens and 51 aggregate output tok/s at c5; 1M arm reports 1,845,432 KV tokens and passes 825,049 actual prompt tokens 3/3, but cold E2E is ~956.7 s |
 | Qwen3.8 27B official BF16 multimodal | 262,144 | 2 | FP8 KV reports 1,036,311 tokens / 3.95 full windows; 241,250-token retrieval and 30/30 media corpus pass |
-| DeepSeek V4 Flash 0731 r33 B12X + DSpark K5, batch 4,096, TP=2 | 393,216 | 16 configured; c1 long-context measured | FP8 DS-MLA KV, GPU-only; 725,543 reported KV tokens; 359,900 actual prompt tokens passed; current Primary |
+| DeepSeek V4 Flash 0731 r33 B12X + DSpark K5, batch 4,096, TP=2 | 393,216 | 16 configured; c1 long-context measured | FP8 DS-MLA KV, GPU-only; 725,543 reported KV tokens; 359,900 actual prompt tokens passed; managed exclusive rollback |
 | DeepSeek V4 Flash 0731 r33 B12X target-only, batch 4,096, TP=2 | 131,072 measured; GPU-only 393,216 next | 1 | FP8 DS-MLA KV; 119,503 actual prompt tokens passed; lowering batch tokens reduced activation 34.1% and increased minimum-rank KV 15.27 to 15.99 GiB; engine reports 553,243 tokens, but >300K remains unproven pending a configured long-context request |
 | DeepSeek V4 Flash 0731 r33 B12X target-only, TP=2 | 131,072 measured; 393,216 translated only | 1 | FP8 DS-MLA KV; 119,503 actual prompt tokens at 73.86 decode tok/s; 283,917-token GPU KV pool cannot support 393K without host capacity; translated recipe adds 16 GiB native offload |
 | Agents-A1 FP8 multimodal | 262,144 | c1 at 262K; earlier 131K c32 | 188 tok/s decode at 8K c1; 156 tok/s decode and 32.97 s TTFT at 240K; 51.93 GiB KV; generated MoE tune rejected |
@@ -147,10 +147,17 @@ cross-card measurements, and exact restoration. NVFP4 improved the matched
 no-spec SGLang lane. The later
 [MTP/multimodal qualification](../../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md)
 raised official-FP8 decode to 111.3 tok/s and NVFP4 to 98.1, while bounded
-image/OCR passed on both with CPU feature transport. All remain no-promotion.
+image/OCR passed on both with CPU feature transport. The official-FP8 arm was
+subsequently human-promoted as the single-service Primary/general-vision/OCR
+profile; Inferact NVFP4 remains no-promotion.
 
 ## Recent changes
 
+- 2026-08-15: the exact official-FP8 SGLang TP=1/393K/MTP `3/1/4` profile was
+  human-promoted on one card, with the other card left empty. Guarded 108K and
+  20-tool checks, direct+routed 18/18 media, routed Responses, and fresh
+  Hermes/OpenClaw Primary turns passed. Admission is one request, two images,
+  and no video; the former vLLM FP8/BF16 split remains rollback.
 - 2026-08-15: a matched SGLang consolidation A/B added official BF16 to the
   MTP=3 CPU-transport comparison and ran 18 repeated media attempts per model,
   including two-image ordering. All three passed. Official FP8 cut media p50
