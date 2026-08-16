@@ -124,6 +124,7 @@ rollback-check, and promotion dry-run all passed before the live cutover.
   into the A/B.
 - Idle reported free VRAM is about 1.5 GiB per card. This exclusive AI profile
   does not retain a graphics/co-resident reserve.
-- The private live manifest currently references a linked public worktree.
-  Removing that worktree before the recipe is installed at a durable revision
-  would break future managed restart or rollback commands.
+- The managed restart and rollback commands now reference the canonical public
+  checkout at the merged recipe revision. This closes the earlier linked-
+  worktree cleanup risk; the private operator-state merge itself did not
+  restart the already-running model or router.
