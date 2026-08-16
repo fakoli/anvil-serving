@@ -65,7 +65,7 @@ flags = [
   "--host 0.0.0.0",
   "--port 39215",
 ]
-note = "Diagnostic multimodal extension of the matched official-FP8 MTP arm. The prior image request failed while SGLang reconstructed its automatically selected CUDA-IPC feature pool with CUDA invalid-resource-handle errors. This recipe removes --language-only, explicitly selects the supported CPU feature transport, disables CUDA-IPC transport defensively, and disables the initial vision CUDA-graph and multimodal buffer optimizations. Checkpoint, image, TP, context, concurrency, KV dtype, attention, prefill, Mamba cache, MTP, parsers, and thinking mode remain fixed. It is a qualification candidate, not a promotion recipe."
+note = "Exact portable source for the human-promoted 2026-08-15 single-service profile. The prior image request failed while SGLang reconstructed its automatically selected CUDA-IPC feature pool with CUDA invalid-resource-handle errors. This recipe removes --language-only, explicitly selects the supported CPU feature transport, disables CUDA-IPC transport defensively, and disables the initial vision CUDA-graph and multimodal buffer optimizations. Checkpoint, image, TP, context, concurrency, KV dtype, attention, prefill, Mamba cache, MTP, parsers, and thinking mode remain fixed. This public recipe records the configuration but does not itself enact a promotion or route change."
 
 [recipe.fit]
 suited = ["qualification", "long-context", "multimodal", "vision", "ocr", "speculative-decoding"]

@@ -31,20 +31,24 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 - Quality-profile and production changes remain human-gated. A benchmark can recommend a change; it never promotes a model by itself.
 - External benchmark data is an advisory prior, not a local result. See [External benchmarks](EXTERNAL-BENCHMARKS.md) for its import and comparison workflow.
 
-## Qwen3.8 27B split promotion (2026-08-14)
+## Qwen3.8 27B SGLang FP8 single-service promotion (2026-08-15)
 
-The human-approved everyday profile runs official FP8 and BF16 concurrently,
-one TP=1 service per equal RTX PRO 6000. Both use FP8 KV, MTP=3, maxseq1,
-4,096 batched tokens, and a 393,216-token context window. FP8 is the text
-Primary; BF16 backs explicit general-vision and OCR capabilities and admits up
-to 32 images in one request.
+The human-approved everyday profile now runs one official-FP8 SGLang TP=1
+service on one RTX PRO 6000, with the second equal card empty. Primary,
+general vision, and OCR share the same 393,216-token service. It uses FP8 E4M3
+KV, one running request, 2,048-token chunks, memory fraction 0.85, five GDN
+states, EAGLE MTP `3/1/4`, and CPU multimodal feature transport. Admission is
+bounded to two images and no video.
 
-At the matched 4K shape, FP8 measured 0.834-second median TTFT, 1.295-second
-median E2E, and 93.6 decode tok/s. BF16 measured 0.884-second TTFT,
-1.584-second E2E, and 62.0 tok/s. Final routed acceptance passed FP8 tools
-20/20, BF16 media 30/30, and the 32-image request 1/1. Hermes text/image and
-OpenClaw Primary/vision checks completed with no fallback. See the
-[promotion finding](findings/2026-08-14-qwen38-27b-split-promotion.md).
+The exact earlier profile measured 0.577-second median TTFT, 0.962-second
+median E2E, 6,261 effective prefill tok/s, and 111.4 decode tok/s at 4K/c1.
+Promotion acceptance passed 108K retrieval, tools 20/20, direct and routed
+media 18/18, the Responses subset, and fresh Hermes/OpenClaw Primary turns
+without fallback. See the [promotion finding](findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md).
+
+The former vLLM FP8/BF16 split remains the exact managed rollback. Its broader
+32-image/one-video BF16 result is historical evidence, not the current route's
+advertised capability.
 
 ## Qwen3.8 27B official-FP8 MTP-depth qualification (2026-08-15)
 
