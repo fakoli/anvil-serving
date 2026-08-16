@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.public-benchmark-summary/v1",
+  "date": "2026-08-15",
+  "model": {"id": "Qwen/Qwen3.8-27B-FP8", "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a", "served_name": "qwen38-27b-official-fp8-sglang-tp1-393k-mtp3-mm-cpu"},
+  "engine": {"name": "SGLang", "revision": "c4271c3fe1262fc2adbd162c33b25de5255251c5", "image_digest": "sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124"},
+  "topology": {"measured_hardware": "1x RTX PRO 6000 Max-Q", "tensor_parallel_size": 1, "served_context": 393216, "kv_cache": "FP8 E4M3", "speculation": "EAGLE MTP 3/1/4", "admission": 1, "second_equal_card": "idle"},
+  "worker": {"label": "AI-MBP25", "platform": "macOS arm64", "swe_container_platform": "linux/amd64", "model_access": "private router over Tailscale"},
+  "source_revision": "19783914f24367ff6b96eb91fb35cb0efbeced18",
+  "runs": {
+    "agentic_smoke": {"run_id": "qwen38-sglang-router-agentic-smoke-001", "thinking_mode": "disabled", "passed": 2, "attempted": 2, "artifact_receipt_sha256": "204fa06f5e7d3607b60e9244ccdb3e074b45a856d07c123efa9677f8e6671763", "stage_sha256": "38e914cc3eb23258871dd4e15f9557ad750532deb15f0074b780c9b51e17f0ba"},
+    "agentic_scout": {"run_id": "qwen38-sglang-router-agentic-scout-001", "thinking_mode": "enabled", "passed": 16, "attempted": 18, "pass_rate": 0.8888888889, "threshold": 0.75, "failed_cases": ["debug-loop repetition 0", "debug-loop repetition 1"], "artifact_receipt_sha256": "917fcdcf60a4518c4931a1766f9fb3ec821a052ec197b3bcb8cab891218bb5d3", "stage_sha256": "dc52ba60193b86f46c0487d20375e40084256d10ebee0de320559d869edb665d"},
+    "swe_scout": {
+      "run_id": "qwen38-sglang-router-swe-scout-011", "thinking_mode": "enabled", "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6", "plan_sha256": "0e21dc93115aecf027738a97c41c2d2ee8c675c840816397bc893382004e3a78", "attempted": 5, "graded": 5, "resolved": 5, "resolve_rate": 1.0, "elapsed_seconds": 2549,
+      "instances": [{"id": "django__django-11099", "resolved": true, "model_requests": 19}, {"id": "pytest-dev__pytest-10051", "resolved": true, "model_requests": 28}, {"id": "scikit-learn__scikit-learn-10297", "resolved": true, "model_requests": 31}, {"id": "psf__requests-1142", "resolved": true, "model_requests": 57}, {"id": "sympy__sympy-11618", "resolved": true, "model_requests": 21}],
+      "artifact_receipt_sha256": "f320a06da8188b4070124b91fe7212e73da65395b742589ce2a81b04326ab625", "stage_sha256": "d9d6c8cb501d4b9a7bceb4982be7ea1fb52620daa783007228c8c0aa8630f960", "asset_stage_sha256": "28361faae0b45acd1107596e00d6f1de035066f09f11440ce6a8b63ba1bc7ad2", "preflight_sha256": "4116d4120f643b94365da83b77f283979f514160528e87e29532078090bf9a9e", "official_report_sha256": "a576b4b969d344c12b8fca12e352c6c5f29e46e46a154886271172a16ee8a1f9"
+    }
+  },
+  "decision": "Retain current service and route. The fixed five-instance SWE scout and 18-attempt agentic scout are bounded qualification evidence, not a general leaderboard score or promotion authority."
+}

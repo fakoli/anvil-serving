@@ -43,10 +43,18 @@ Before a measured campaign, verify:
 - prepared repositories and images match their immutable revisions or digests;
 - the owned evidence directory is writable.
 
-SWE-bench evaluation images are normally Linux x86-64. An Apple Silicon worker
-must prove that its configured container runtime can execute the selected
-image; host architecture alone is not proof. An incompatible runtime is a
-preflight failure, not a model failure.
+SWE-bench evaluation images are normally Linux x86-64. The managed adapter
+selects `linux/amd64`; an Apple Silicon worker must prove that its configured
+container runtime can execute that image under emulation. The immutable plan
+records an absolute container-runtime executable so detached workers do not
+depend on shell `PATH`. Host architecture alone is not proof. An incompatible
+runtime is a preflight failure, not a model failure.
+
+The worker environment must also select its active container context. A stale
+global `DOCKER_HOST` (for example, an absent Colima socket while Docker Desktop
+is active) is a worker configuration failure. Credential values are trimmed
+at the child-process boundary to prevent CRLF or surrounding whitespace from
+changing authentication; values remain secret and never enter artifacts.
 
 ## Versioned profiles
 

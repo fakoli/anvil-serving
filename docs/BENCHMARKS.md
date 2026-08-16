@@ -33,6 +33,13 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 
 ## Qwen3.8 27B SGLang FP8 single-service promotion (2026-08-15)
 
+The later router-only AI-MBP25 coding-agent campaign passed the agentic smoke
+2/2, the broader agentic scout 16/18, and a fixed five-instance SWE-bench
+Verified scout 5/5 under the official grader. Both agentic failures were the
+debug-loop repetitions; SWE tasks used 19-57 model requests. This is bounded
+evidence for the exact current profile, not a full-suite 100% SWE claim. See
+the [agentic and SWE scout](findings/2026-08-15-qwen38-27b-agentic-swe-scout.md).
+
 The human-approved everyday profile now runs one official-FP8 SGLang TP=1
 service on one RTX PRO 6000, with the second equal card empty. Primary,
 general vision, and OCR share the same 393,216-token service. It uses FP8 E4M3
