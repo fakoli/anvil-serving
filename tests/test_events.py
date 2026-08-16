@@ -1,7 +1,11 @@
 """Tests for the optional anvil-events lifecycle emission seam."""
 
 import json
+import sqlite3
 import subprocess
+import sys
+import threading
+import time
 import uuid
 
 import pytest
@@ -69,26 +73,119 @@ root = %s
     argv, kwargs = calls[0]
     assert argv == [
         "/opt/anvil/bin/anvil-events",
-        "--root",
-        str(tmp_path / "events-root"),
+        "--root=%s" % (tmp_path / "events-root"),
         "record",
         "serve.up",
-        "--node",
-        "node-a",
-        "--producer",
-        "node-a:serves",
-        "--operation-key",
-        "anvil-serving:serve.up:00000000000000000000000000000001",
-        "--correlation",
-        "change-123",
+        "--node=node-a",
+        "--producer=node-a:serves",
+        "--operation-key=anvil-serving:serve.up:00000000000000000000000000000001",
+        "--correlation=change-123",
     ]
     assert json.loads(kwargs["input"]) == {
         "serve": "example", "model": "example-local",
     }
     assert kwargs["env"] == {"UNCHANGED": "yes"}
-    assert kwargs["timeout"] == 5
+    assert kwargs["timeout"] == 35
     assert kwargs["capture_output"] is True
     assert kwargs["text"] is True
+
+
+def test_enabled_emit_uses_argparse_safe_option_tokens(tmp_path):
+    from anvil_serving import events
+
+    config = tmp_path / "events.toml"
+    config.write_text(
+        """\
+[events]
+enabled = true
+command = "anvil-events"
+node = "-node"
+producer = "-node:serves"
+root = %s
+""" % json.dumps(str(tmp_path / "events-root")),
+        encoding="utf-8",
+    )
+    calls = []
+
+    result = events.emit_lifecycle_event(
+        "serve.up",
+        {"serve": "example"},
+        correlation_id="-correlation",
+        config_path=config,
+        _run=lambda argv, **kwargs: calls.append((argv, kwargs)) or proc(
+            0,
+            '{"accepted":true,"already_recorded":false,"event_id":"e-1"}',
+        ),
+    )
+
+    assert result["emitted"] is True
+    argv = calls[0][0]
+    assert "--node=-node" in argv
+    assert "--producer=-node:serves" in argv
+    assert "--correlation=-correlation" in argv
+    assert "-node" not in argv
+    assert "-correlation" not in argv
+
+
+def test_record_timeout_covers_real_sqlite_writer_contention(tmp_path):
+    from anvil_serving import events
+
+    config = tmp_path / "events.toml"
+    config.write_text(
+        """\
+[events]
+enabled = true
+command = "anvil-events"
+node = "node-a"
+producer = "node-a:serves"
+root = %s
+""" % json.dumps(str(tmp_path / "events-root")),
+        encoding="utf-8",
+    )
+    database = tmp_path / "writer-lock.db"
+    holder = sqlite3.connect(database, isolation_level=None, check_same_thread=False)
+    holder.execute("PRAGMA journal_mode = WAL")
+    holder.execute("CREATE TABLE facts(value TEXT)")
+    holder.execute("BEGIN IMMEDIATE")
+
+    def release_lock():
+        time.sleep(0.2)
+        holder.commit()
+
+    release = threading.Thread(target=release_lock, daemon=True)
+    release.start()
+    helper = """
+import json
+import sqlite3
+import sys
+
+connection = sqlite3.connect(sys.argv[1], timeout=30, isolation_level=None)
+connection.execute("PRAGMA busy_timeout = 30000")
+connection.execute("BEGIN IMMEDIATE")
+connection.commit()
+connection.close()
+print(json.dumps({"accepted": True, "already_recorded": False, "event_id": "e-1"}))
+"""
+
+    def run(_argv, **kwargs):
+        assert kwargs["timeout"] == 35
+        return subprocess.run(
+            [sys.executable, "-c", helper, str(database)],
+            **kwargs,
+        )
+
+    try:
+        result = events.emit_lifecycle_event(
+            "serve.up",
+            {"serve": "example"},
+            config_path=config,
+            _run=run,
+        )
+    finally:
+        release.join(timeout=2)
+        holder.close()
+
+    assert result["emitted"] is True
 
 
 def test_enabled_emit_does_not_require_broker_configuration(tmp_path):
@@ -157,7 +254,7 @@ root = %s
     [
         (FileNotFoundError("anvil-events"), "could not invoke"),
         (PermissionError("anvil-events"), "could not invoke"),
-        (subprocess.TimeoutExpired(["anvil-events", "record"], 5), "timed out"),
+        (subprocess.TimeoutExpired(["anvil-events", "record"], 35), "timed out"),
     ],
 )
 def test_enabled_emit_normalizes_invocation_failures(tmp_path, failure, message):
