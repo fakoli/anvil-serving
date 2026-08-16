@@ -154,7 +154,7 @@ def test_completed_run_requires_official_grader_and_keeps_instance_evidence(tmp_
     result = run_swe_benchmark(
         value,
         runner=runner,
-        environ={"ANVIL_ROUTER_TOKEN": "not-recorded"},
+        environ={"ANVIL_ROUTER_TOKEN": "not-recorded\r\n"},
     )
     assert result["state"] == "completed"
     assert result["official_grader_complete"] is True
@@ -164,6 +164,7 @@ def test_completed_run_requires_official_grader_and_keeps_instance_evidence(tmp_
     assert instance["tokens"] == {"prompt_tokens": 101, "completion_tokens": 22, "total_tokens": 123}
     assert instance["request_ids"] == ["req-anvil-1"]
     assert instance["grader"]["resolved"] is True
+    assert runner.calls[0][3]["OPENAI_API_KEY"] == "not-recorded"
     assert result["promotion"]["authorized"] is False
     serialized = json.dumps(result)
     assert "not-recorded" not in serialized
