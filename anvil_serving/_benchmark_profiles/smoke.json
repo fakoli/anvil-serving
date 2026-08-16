@@ -2,13 +2,13 @@
   "schema": "anvil-serving.benchmark-profile/v1",
   "name": "smoke",
   "description": "Fast contract and routing check before a larger campaign.",
-  "content_sha256": "edd7459b91614c5077c70a94b19686077367e94e8a2270907e0038a0e8e728af",
+  "content_sha256": "090745451099214af7c222f736769737911453fe9e9c5d14ffc04f5a4a3e4586",
   "adapters": {
     "ruler": {"kind": "git", "source": "https://github.com/NVIDIA/RULER", "revision": "c3f5e3b4f87f97e048793bb510a3a6b19a46bf3a"},
     "mrcr": {"kind": "dataset", "source": "https://huggingface.co/datasets/openai/mrcr", "revision": "f4c69fae7cf81f7ca26b9fee34b392a50f6b8a1d"},
     "mini-swe-agent": {"kind": "git", "source": "https://github.com/SWE-agent/mini-swe-agent", "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"},
     "swe-bench": {"kind": "git", "source": "https://github.com/SWE-bench/SWE-bench", "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"},
-    "swe-bench-verified": {"kind": "dataset", "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified", "revision": "c104a568cd32d76b9a41390466a2c865d98f5d6a"},
+    "swe-bench-verified": {"kind": "dataset", "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified", "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"},
     "worker-base": {"kind": "image", "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"}
   },
   "suites": {

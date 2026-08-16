@@ -2,11 +2,11 @@
   "schema": "anvil-serving.benchmark-profile/v1",
   "name": "scout",
   "description": "Bounded curve scouting across representative context and agentic cases.",
-  "content_sha256": "298d5f28df98cd1bd6fd9cdd45eb1fb0adfe06e45630c3e9de6d370f8fae2653",
+  "content_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
   "adapters": {
     "mini-swe-agent": {"kind": "git", "source": "https://github.com/SWE-agent/mini-swe-agent", "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"},
     "swe-bench": {"kind": "git", "source": "https://github.com/SWE-bench/SWE-bench", "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"},
-    "swe-bench-verified": {"kind": "dataset", "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified", "revision": "c104a568cd32d76b9a41390466a2c865d98f5d6a"},
+    "swe-bench-verified": {"kind": "dataset", "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified", "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"},
     "worker-base": {"kind": "image", "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"}
   },
   "suites": {
