@@ -1,0 +1,34 @@
+{
+  "schema": "anvil-serving/publishable-edge-summary/v1",
+  "date": "2026-08-16",
+  "model": "Qwen/Qwen3.8-27B-FP8",
+  "model_revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+  "engine": "SGLang",
+  "engine_revision": "c4271c3fe1262fc2adbd162c33b25de5255251c5",
+  "runtime_image_digest": "sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124",
+  "served_context": 393216,
+  "topology": "TP=1 on one RTX PRO 6000 Blackwell Max-Q; second equal card dormant",
+  "admission": {
+    "max_concurrency": 1,
+    "images_per_request": 2,
+    "videos_per_request": 1,
+    "media_admission_enabled": true
+  },
+  "results": {
+    "direct_full_corpus": "30/30",
+    "direct_video": "14/14",
+    "direct_video_latency_p50_seconds": 2.934588,
+    "direct_video_latency_p95_seconds": 9.903558,
+    "routed_full_corpus": "28/30; two expected 413 rejections for four images plus one video",
+    "isolated_routed_admitted_corpus": "28/28",
+    "live_routed_admitted_corpus": "28/28",
+    "two_video_overflow": 413,
+    "malformed_video": 400,
+    "sse_video_stream": "pass",
+    "video_grounded_tool_call": "pass",
+    "post_cutover_primary_regression": "pass"
+  },
+  "installed_router_config_sha256": "043402e762a54e0d02e6c5981dc654d0717dd2247a6b2ea54f35ea462941741f",
+  "rollback": "retained no-video managed router profile",
+  "model_restarted": false
+}
