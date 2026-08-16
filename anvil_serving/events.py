@@ -27,6 +27,7 @@ _LIFECYCLE_KINDS = frozenset({
 })
 _NODE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 _PRODUCER_RE = re.compile(r"^[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)*$")
+_RECORD_TIMEOUT_SECONDS = 35
 
 
 class LifecycleEventError(RuntimeError):
@@ -120,19 +121,15 @@ def emit_lifecycle_event(
 
     argv = [
         config["command"],
-        "--root",
-        str(root),
+        f"--root={root}",
         "record",
         kind,
-        "--node",
-        config["node"],
-        "--producer",
-        config["producer"],
-        "--operation-key",
-        _operation_key(kind, _make_uuid),
+        f"--node={config['node']}",
+        f"--producer={config['producer']}",
+        f"--operation-key={_operation_key(kind, _make_uuid)}",
     ]
     if correlation_id:
-        argv += ["--correlation", correlation_id]
+        argv.append(f"--correlation={correlation_id}")
     try:
         encoded = json.dumps(
             payload, sort_keys=True, separators=(",", ":"), allow_nan=False,
@@ -146,7 +143,7 @@ def emit_lifecycle_event(
             argv,
             env=dict(os.environ if environ is None else environ),
             input=encoded,
-            timeout=5,
+            timeout=_RECORD_TIMEOUT_SECONDS,
             capture_output=True,
             text=True,
         )
@@ -155,7 +152,10 @@ def emit_lifecycle_event(
             "could not invoke anvil-events command %r: %s" % (config["command"], exc)
         ) from exc
     except subprocess.TimeoutExpired as exc:
-        raise LifecycleEventError("anvil-events record timed out after 5 seconds") from exc
+        raise LifecycleEventError(
+            "anvil-events record timed out after %d seconds"
+            % _RECORD_TIMEOUT_SECONDS
+        ) from exc
     if completed.returncode != 0:
         raise LifecycleEventError(
             "anvil-events record failed (rc=%d): %s"
