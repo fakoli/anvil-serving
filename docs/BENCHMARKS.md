@@ -8,9 +8,9 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained deployment is the Qwen3.8 27B split: official FP8 MTP=3 for
-text and official BF16 MTP=3 for explicit general-vision/OCR, each TP=1 at
-393,216 tokens. DeepSeek V4 Flash 0731 r33 remains a managed exclusive TP=2
+The maintained deployment is one official-FP8 Qwen3.8 27B SGLang MTP=3
+service for text, image, OCR, and video at TP=1/393,216. The second equal card
+is dormant. DeepSeek V4 Flash 0731 r33 remains a managed exclusive TP=2
 rollback profile. Qwen3.5 122B NVFP4 remains a qualified rollback-era recipe. The
 Agents-A1 split remains retained promotion-era evidence. The earlier r16 650K
 profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical or
@@ -22,7 +22,18 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-15**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-16**.
+
+## Qwen3.8 27B video-router expansion (2026-08-16)
+
+The existing model passed the complete deterministic corpus directly at
+30/30, including 14/14 video attempts. After adding fail-closed router media
+admission and `vision.video`, the admitted routed subset passed 28/28 live.
+Two-video overflow returned 413, malformed input returned a sanitized 400,
+and video SSE, grounded tool use, and the full Primary regression gate passed.
+The current ceiling is one request, two images, and one video. The model was
+not restarted. See the
+[video qualification](findings/2026-08-16-qwen38-27b-video-router.md).
 
 ## Read these results correctly
 
@@ -44,8 +55,10 @@ The human-approved everyday profile now runs one official-FP8 SGLang TP=1
 service on one RTX PRO 6000, with the second equal card empty. Primary,
 general vision, and OCR share the same 393,216-token service. It uses FP8 E4M3
 KV, one running request, 2,048-token chunks, memory fraction 0.85, five GDN
-states, EAGLE MTP `3/1/4`, and CPU multimodal feature transport. Admission is
-bounded to two images and no video.
+states, EAGLE MTP `3/1/4`, and CPU multimodal feature transport. Admission was
+initially bounded to two images and no video; the subsequent router-only
+qualification expanded it to one video while retaining the two-image and
+concurrency-one ceilings.
 
 The exact earlier profile measured 0.577-second median TTFT, 0.962-second
 median E2E, 6,261 effective prefill tok/s, and 111.4 decode tok/s at 4K/c1.
@@ -53,9 +66,8 @@ Promotion acceptance passed 108K retrieval, tools 20/20, direct and routed
 media 18/18, the Responses subset, and fresh Hermes/OpenClaw Primary turns
 without fallback. See the [promotion finding](findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md).
 
-The former vLLM FP8/BF16 split remains the exact managed rollback. Its broader
-32-image/one-video BF16 result is historical evidence, not the current route's
-advertised capability.
+The former vLLM FP8/BF16 split remains the exact managed model rollback. A
+retained no-video router profile is the narrower capability rollback.
 
 ## Qwen3.8 27B official-FP8 MTP-depth qualification (2026-08-15)
 

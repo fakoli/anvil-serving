@@ -65,11 +65,11 @@ flags = [
   "--host 0.0.0.0",
   "--port 39215",
 ]
-note = "Exact portable source for the human-promoted 2026-08-15 single-service profile. The prior image request failed while SGLang reconstructed its automatically selected CUDA-IPC feature pool with CUDA invalid-resource-handle errors. This recipe removes --language-only, explicitly selects the supported CPU feature transport, disables CUDA-IPC transport defensively, and disables the initial vision CUDA-graph and multimodal buffer optimizations. Checkpoint, image, TP, context, concurrency, KV dtype, attention, prefill, Mamba cache, MTP, parsers, and thinking mode remain fixed. This public recipe records the configuration but does not itself enact a promotion or route change."
+note = "Exact portable source for the human-promoted 2026-08-15 single-service profile. The prior image request failed while SGLang reconstructed its automatically selected CUDA-IPC feature pool with CUDA invalid-resource-handle errors. This recipe removes --language-only, explicitly selects the supported CPU feature transport, disables CUDA-IPC transport defensively, and disables the initial vision CUDA-graph and multimodal buffer optimizations. Checkpoint, image, TP, context, concurrency, KV dtype, attention, prefill, Mamba cache, MTP, parsers, and thinking mode remain fixed. A later deterministic corpus qualified one video per request while retaining the two-image and concurrency-one ceiling. This public recipe records the configuration but does not itself enact a promotion or route change."
 
 [recipe.fit]
-suited = ["qualification", "long-context", "multimodal", "vision", "ocr", "speculative-decoding"]
-rationale = "Tests whether CPU feature transport removes the observed WSL2/Docker CUDA-IPC failure while retaining the matched MTP configuration."
+suited = ["qualification", "long-context", "multimodal", "vision", "ocr", "video", "speculative-decoding"]
+rationale = "CPU feature transport removes the observed WSL2/Docker CUDA-IPC failure while retaining the matched MTP configuration; the qualified envelope includes deterministic image, video, and mixed-media requests."
 
 [recipe.sources]
 official = [
