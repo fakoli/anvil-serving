@@ -55,6 +55,23 @@ per-instance token or duration fields, so none are inferred. Request counts
 ranged from 19 to 57, making the perfect bounded score compatible with
 materially different solution costs.
 
+## Comparison with the earlier DeepSeek worker smoke
+
+The earlier DeepSeek V4 Flash 0731 r16/DSpark campaign used the same AI-MBP25
+worker boundary but an exclusive two-card TP=2 serve and an earlier harness.
+Its `tool-recovery-error` smoke followed the required retry protocol but failed
+to produce the required final answer (0/1); Qwen passed both repetitions of the
+current scenario. On SWE-bench Verified, both models resolved the only exact
+overlap, `django__django-11099`. Qwen also resolved the fixed pytest,
+scikit-learn, requests, and SymPy tasks, expanding the retained official-grader
+sample from one task to five.
+
+This favors Qwen for the tested repository-agent workflow, with half the
+measured GPU count, but it is not a controlled intelligence ranking: the model
+recipes, GPU topology, benchmark source, request controls, and sample sizes
+differ. The [comparison table](../benchmarks/comparison.md#remote-coding-agent-comparison)
+keeps those boundaries visible.
+
 ## Harness corrections made before the retained run
 
 The campaign exposed and fixed six benchmark-worker defects rather than
