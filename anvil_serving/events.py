@@ -1,7 +1,8 @@
-"""Optional lifecycle-event seam for anvil-serving.
+"""Optional local-first lifecycle-event seam for anvil-serving.
 
-The anvil-events CLI owns durable outbox writes and publishing. This module
-only loads the explicit operator gate and invokes that CLI without a shell.
+The anvil-events CLI owns durable SQLite acceptance and asynchronous broker
+delivery. This module only loads the explicit operator gate and invokes the
+v2 ``record`` command without a shell or network dependency.
 """
 
 from __future__ import annotations
@@ -12,8 +13,8 @@ from pathlib import Path
 import re
 import subprocess
 import tomllib
+import uuid
 
-from .envfile import resolve_env_value
 from .paths import config_path as operator_config_path
 
 _LIFECYCLE_KINDS = frozenset({
@@ -24,7 +25,8 @@ _LIFECYCLE_KINDS = frozenset({
     "promote.applied",
     "promote.rolled_back",
 })
-_ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+_NODE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+_PRODUCER_RE = re.compile(r"^[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)*$")
 
 
 class LifecycleEventError(RuntimeError):
@@ -41,16 +43,52 @@ def _load_events_config(config_path):
     return events if isinstance(events, dict) else {}
 
 
-def _validate_enabled_config(config):
-    if "nats_url" in config:
-        raise ValueError("events nats_url is forbidden; configure its env-var name")
-    required = ("command", "host", "producer", "nats_url_env")
-    for key in required:
+def _validate_enabled_config(config, config_path):
+    retired = sorted({"host", "nats_url", "nats_url_env"} & set(config))
+    if retired:
+        raise ValueError(
+            "events config uses retired v1 fields: %s" % ", ".join(retired)
+        )
+    for key in ("command", "node", "producer", "root"):
         value = config.get(key)
         if not isinstance(value, str) or not value.strip():
             raise ValueError("events %s must be a non-empty string" % key)
-    if not _ENV_NAME_RE.fullmatch(config["nats_url_env"]):
-        raise ValueError("events nats_url_env must be an uppercase environment name")
+    if not _NODE_RE.fullmatch(config["node"]):
+        raise ValueError("events node must be one safe token")
+    if not _PRODUCER_RE.fullmatch(config["producer"]):
+        raise ValueError("events producer must be colon-separated safe tokens")
+    if config["producer"].split(":", 1)[0] != config["node"]:
+        raise ValueError("events producer identity must belong to events node")
+    root = Path(os.path.expanduser(config["root"]))
+    if not root.is_absolute():
+        raise ValueError(
+            "events root must be absolute (config %s)" % Path(config_path)
+        )
+    return root
+
+
+def _operation_key(kind, make_uuid):
+    return "anvil-serving:%s:%s" % (kind, make_uuid().hex)
+
+
+def _accepted_record(stdout):
+    try:
+        result = json.loads(stdout)
+    except (TypeError, ValueError) as exc:
+        raise LifecycleEventError(
+            "anvil-events record returned invalid acceptance evidence"
+        ) from exc
+    if (
+        not isinstance(result, dict)
+        or result.get("accepted") is not True
+        or not isinstance(result.get("already_recorded"), bool)
+        or not isinstance(result.get("event_id"), str)
+        or not result["event_id"]
+    ):
+        raise LifecycleEventError(
+            "anvil-events record returned invalid acceptance evidence"
+        )
+    return result
 
 
 def emit_lifecycle_event(
@@ -61,8 +99,9 @@ def emit_lifecycle_event(
     correlation_id=None,
     environ=None,
     _run=subprocess.run,
+    _make_uuid=uuid.uuid4,
 ):
-    """Record one lifecycle event through the outbox-owning anvil-events CLI."""
+    """Record one lifecycle fact through the outbox-owning v2 CLI."""
     if kind not in _LIFECYCLE_KINDS:
         raise ValueError("unsupported lifecycle event kind %r" % kind)
     config_path = config_path or operator_config_path("events.toml")
@@ -75,33 +114,38 @@ def emit_lifecycle_event(
     if config.get("enabled") is not True:
         return {"enabled": False, "emitted": False, "detail": "disabled"}
     try:
-        _validate_enabled_config(config)
+        root = _validate_enabled_config(config, config_path)
     except ValueError as exc:
         raise LifecycleEventError(str(exc)) from exc
 
-    env = dict(os.environ if environ is None else environ)
-    nats_url_env = config["nats_url_env"]
-    nats_url, _source = resolve_env_value(nats_url_env, env=environ)
-    if not nats_url:
-        raise LifecycleEventError("events nats_url_env %r is not set" % nats_url_env)
-    env["ANVIL_EVENTS_NATS_URL"] = nats_url
-
     argv = [
         config["command"],
-        "emit",
+        "--root",
+        str(root),
+        "record",
         kind,
-        "--host",
-        config["host"],
+        "--node",
+        config["node"],
         "--producer",
         config["producer"],
+        "--operation-key",
+        _operation_key(kind, _make_uuid),
     ]
     if correlation_id:
         argv += ["--correlation", correlation_id]
-    argv.append(json.dumps(payload, sort_keys=True, separators=(",", ":")))
+    try:
+        encoded = json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), allow_nan=False,
+        )
+    except (TypeError, ValueError) as exc:
+        raise LifecycleEventError(
+            "lifecycle event payload must contain only JSON values"
+        ) from exc
     try:
         completed = _run(
             argv,
-            env=env,
+            env=dict(os.environ if environ is None else environ),
+            input=encoded,
             timeout=5,
             capture_output=True,
             text=True,
@@ -111,10 +155,17 @@ def emit_lifecycle_event(
             "could not invoke anvil-events command %r: %s" % (config["command"], exc)
         ) from exc
     except subprocess.TimeoutExpired as exc:
-        raise LifecycleEventError("anvil-events emit timed out after 5 seconds") from exc
+        raise LifecycleEventError("anvil-events record timed out after 5 seconds") from exc
     if completed.returncode != 0:
         raise LifecycleEventError(
-            "anvil-events emit failed (rc=%d): %s"
+            "anvil-events record failed (rc=%d): %s"
             % (completed.returncode, (completed.stderr or completed.stdout).strip()[:200])
         )
-    return {"enabled": True, "emitted": True, "detail": "recorded"}
+    accepted = _accepted_record(completed.stdout)
+    return {
+        "enabled": True,
+        "emitted": True,
+        "detail": "recorded",
+        "event_id": accepted["event_id"],
+        "already_recorded": accepted["already_recorded"],
+    }

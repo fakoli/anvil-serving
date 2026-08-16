@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+import uuid
 
 import pytest
 
@@ -23,7 +24,7 @@ def test_emit_disabled_by_default_never_spawns(tmp_path):
     assert calls == []
 
 
-def test_enabled_emit_records_via_canonical_cli_and_env_transport(tmp_path):
+def test_enabled_emit_records_via_v2_local_cli_and_stdin(tmp_path):
     from anvil_serving import events
 
     config = tmp_path / "events.toml"
@@ -32,80 +33,94 @@ def test_enabled_emit_records_via_canonical_cli_and_env_transport(tmp_path):
 [events]
 enabled = true
 command = "/opt/anvil/bin/anvil-events"
-host = "node-a"
+node = "node-a"
 producer = "node-a:serves"
-nats_url_env = "FLEET_NATS_URL"
-""",
+root = %s
+""" % json.dumps(str(tmp_path / "events-root")),
         encoding="utf-8",
     )
     calls = []
 
     def run(argv, **kwargs):
         calls.append((argv, kwargs))
-        return proc(0, "emitted node-a:serves:000001 -> anvil.fleet.node-a.serve.up seq=1 sent=True\n")
+        return proc(0, json.dumps({
+            "accepted": True,
+            "already_recorded": False,
+            "event_id": "node-a:serves:000001",
+        }))
 
     result = events.emit_lifecycle_event(
         "serve.up",
         {"serve": "example", "model": "example-local"},
         correlation_id="change-123",
         config_path=config,
-        environ={"FLEET_NATS_URL": "nats://127.0.0.1:4222"},
+        environ={"UNCHANGED": "yes"},
         _run=run,
+        _make_uuid=lambda: uuid.UUID(int=1),
     )
 
-    assert result == {"enabled": True, "emitted": True, "detail": "recorded"}
+    assert result == {
+        "enabled": True,
+        "emitted": True,
+        "detail": "recorded",
+        "event_id": "node-a:serves:000001",
+        "already_recorded": False,
+    }
     argv, kwargs = calls[0]
-    assert argv[:7] == [
+    assert argv == [
         "/opt/anvil/bin/anvil-events",
-        "emit",
+        "--root",
+        str(tmp_path / "events-root"),
+        "record",
         "serve.up",
-        "--host",
+        "--node",
         "node-a",
         "--producer",
         "node-a:serves",
+        "--operation-key",
+        "anvil-serving:serve.up:00000000000000000000000000000001",
+        "--correlation",
+        "change-123",
     ]
-    assert argv[7:9] == ["--correlation", "change-123"]
-    assert json.loads(argv[9]) == {"serve": "example", "model": "example-local"}
-    assert kwargs["env"]["ANVIL_EVENTS_NATS_URL"] == "nats://127.0.0.1:4222"
+    assert json.loads(kwargs["input"]) == {
+        "serve": "example", "model": "example-local",
+    }
+    assert kwargs["env"] == {"UNCHANGED": "yes"}
     assert kwargs["timeout"] == 5
     assert kwargs["capture_output"] is True
     assert kwargs["text"] is True
 
 
-def test_enabled_emit_resolves_transport_from_operator_dotenv(tmp_path, monkeypatch):
+def test_enabled_emit_does_not_require_broker_configuration(tmp_path):
     from anvil_serving import events
 
-    operator_home = tmp_path / "operator-home"
-    operator_home.mkdir()
-    (operator_home / ".env").write_text(
-        "FLEET_NATS_URL=nats://127.0.0.1:4222\n",
-        encoding="utf-8",
-    )
-    config = operator_home / "events.toml"
+    config = tmp_path / "events.toml"
     config.write_text(
         """\
 [events]
 enabled = true
 command = "anvil-events"
-host = "node-a"
+node = "node-a"
 producer = "node-a:serves"
-nats_url_env = "FLEET_NATS_URL"
-""",
+root = %s
+""" % json.dumps(str(tmp_path / "events-root")),
         encoding="utf-8",
     )
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(operator_home))
-    monkeypatch.delenv("FLEET_NATS_URL", raising=False)
     calls = []
 
     result = events.emit_lifecycle_event(
         "serve.up",
         {"serve": "example"},
         config_path=config,
-        _run=lambda argv, **kwargs: calls.append((argv, kwargs)) or proc(0),
+        environ={},
+        _run=lambda argv, **kwargs: calls.append((argv, kwargs)) or proc(
+            0,
+            '{"accepted":true,"already_recorded":false,"event_id":"e-1"}',
+        ),
     )
 
     assert result["detail"] == "recorded"
-    assert calls[0][1]["env"]["ANVIL_EVENTS_NATS_URL"] == "nats://127.0.0.1:4222"
+    assert calls[0][1]["env"] == {}
 
 
 def test_enabled_emit_fails_loudly_when_outbox_cli_fails(tmp_path):
@@ -117,10 +132,10 @@ def test_enabled_emit_fails_loudly_when_outbox_cli_fails(tmp_path):
 [events]
 enabled = true
 command = "anvil-events"
-host = "node-a"
+node = "node-a"
 producer = "node-a:serves"
-nats_url_env = "ANVIL_EVENTS_NATS_URL"
-""",
+root = %s
+""" % json.dumps(str(tmp_path / "events-root")),
         encoding="utf-8",
     )
 
@@ -132,7 +147,7 @@ nats_url_env = "ANVIL_EVENTS_NATS_URL"
             "serve.down",
             {"serve": "example"},
             config_path=config,
-            environ={"ANVIL_EVENTS_NATS_URL": "nats://127.0.0.1:4222"},
+            environ={},
             _run=run,
         )
 
@@ -142,7 +157,7 @@ nats_url_env = "ANVIL_EVENTS_NATS_URL"
     [
         (FileNotFoundError("anvil-events"), "could not invoke"),
         (PermissionError("anvil-events"), "could not invoke"),
-        (subprocess.TimeoutExpired(["anvil-events", "emit"], 5), "timed out"),
+        (subprocess.TimeoutExpired(["anvil-events", "record"], 5), "timed out"),
     ],
 )
 def test_enabled_emit_normalizes_invocation_failures(tmp_path, failure, message):
@@ -154,10 +169,10 @@ def test_enabled_emit_normalizes_invocation_failures(tmp_path, failure, message)
 [events]
 enabled = true
 command = "anvil-events"
-host = "node-a"
+node = "node-a"
 producer = "node-a:serves"
-nats_url_env = "ANVIL_EVENTS_NATS_URL"
-""",
+root = %s
+""" % json.dumps(str(tmp_path / "events-root")),
         encoding="utf-8",
     )
 
@@ -169,7 +184,7 @@ nats_url_env = "ANVIL_EVENTS_NATS_URL"
             "serve.up",
             {"serve": "example"},
             config_path=config,
-            environ={"ANVIL_EVENTS_NATS_URL": "nats://127.0.0.1:4222"},
+            environ={},
             _run=run,
         )
 
@@ -659,22 +674,22 @@ producer = "node-a:serves"
 nats_url = "nats://127.0.0.1:4222"
 nats_url_env = "ANVIL_EVENTS_NATS_URL"
 """,
-            "nats_url is forbidden",
+            "retired v1 fields",
         ),
         (
             """\
 [events]
 enabled = true
 command = "anvil-events"
-host = "node-a"
-producer = "node-a:serves"
-nats_url_env = "not-valid"
+node = "node-a"
+producer = "node-b:serves"
+root = "C:/events"
 """,
-            "nats_url_env",
+            "must belong",
         ),
     ],
 )
-def test_events_config_rejects_inline_transport_and_bad_env_names(tmp_path, body, message):
+def test_events_config_rejects_v1_fields_and_foreign_producer(tmp_path, body, message):
     from anvil_serving import events
 
     config = tmp_path / "events.toml"
@@ -684,7 +699,7 @@ def test_events_config_rejects_inline_transport_and_bad_env_names(tmp_path, body
             "serve.up",
             {"serve": "example"},
             config_path=config,
-            environ={"ANVIL_EVENTS_NATS_URL": "nats://127.0.0.1:4222"},
+            environ={},
             _run=lambda *_args, **_kwargs: proc(),
         )
 
@@ -709,20 +724,20 @@ def test_emit_rejects_kind_outside_frozen_vocabulary(tmp_path):
 [events]
 enabled = true
 command = "anvil-events"
-host = "node-a"
+node = "node-a"
 producer = "node-a:serves"
-nats_url_env = "MISSING_NATS_URL"
+root = "relative/events"
 """,
-            "is not set",
+            "root must be absolute",
         ),
         ("[events\nenabled = true\n", "could not load"),
         (
             """\
 [events]
 enabled = true
-host = "node-a"
+node = "node-a"
 producer = "node-a:serves"
-nats_url_env = "ANVIL_EVENTS_NATS_URL"
+root = "C:/events"
 """,
             "command must be a non-empty string",
         ),
@@ -741,6 +756,70 @@ def test_enabled_operator_config_failures_are_typed(tmp_path, body, message):
             environ={},
             _run=lambda *_args, **_kwargs: proc(),
         )
+
+
+@pytest.mark.parametrize(
+    "stdout",
+    [
+        "not-json",
+        "{}",
+        '{"accepted":true,"already_recorded":"no","event_id":"e-1"}',
+        '{"accepted":true,"already_recorded":false,"event_id":""}',
+    ],
+)
+def test_enabled_emit_rejects_invalid_acceptance_evidence(tmp_path, stdout):
+    from anvil_serving import events
+
+    config = tmp_path / "events.toml"
+    config.write_text(
+        """\
+[events]
+enabled = true
+command = "anvil-events"
+node = "node-a"
+producer = "node-a:serves"
+root = %s
+""" % json.dumps(str(tmp_path / "events-root")),
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        events.LifecycleEventError, match="invalid acceptance evidence",
+    ):
+        events.emit_lifecycle_event(
+            "serve.up",
+            {"serve": "example"},
+            config_path=config,
+            environ={},
+            _run=lambda *_args, **_kwargs: proc(0, stdout),
+        )
+
+
+def test_enabled_emit_rejects_non_json_payload_without_spawning(tmp_path):
+    from anvil_serving import events
+
+    config = tmp_path / "events.toml"
+    config.write_text(
+        """\
+[events]
+enabled = true
+command = "anvil-events"
+node = "node-a"
+producer = "node-a:serves"
+root = %s
+""" % json.dumps(str(tmp_path / "events-root")),
+        encoding="utf-8",
+    )
+    calls = []
+    with pytest.raises(
+        events.LifecycleEventError, match="only JSON values",
+    ):
+        events.emit_lifecycle_event(
+            "serve.up",
+            {"value": float("nan")},
+            config_path=config,
+            _run=lambda *_args, **_kwargs: calls.append(True),
+        )
+    assert calls == []
 
 
 class _NullLock:

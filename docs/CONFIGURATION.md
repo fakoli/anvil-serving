@@ -44,26 +44,28 @@ serves, and no-op profile transitions do not create false history.
 [events]
 enabled = true
 command = "anvil-events"
-host = "node-a"
+node = "node-a"
 producer = "node-a:anvil-serving"
-nats_url_env = "ANVIL_EVENTS_NATS_URL"
+root = "/var/lib/anvil/events"
 ```
 
-`command` is one executable name or path and is invoked without a shell. `host`
-and `producer` are public event-envelope identities; real operator identity
-belongs only in the private operator home. `nats_url_env` names the environment
-variable containing the broker URL. Do not add a `nats_url` value to TOML; the
-loader rejects inline transport configuration. For example, an operator may
-place `ANVIL_EVENTS_NATS_URL=nats://127.0.0.1:4222` in the gitignored `.env`
-chain described below.
+`command` is one executable name or path and is invoked without a shell. `node`
+and `producer` are public event-envelope identities; the producer's first token
+must be the node. `root` is the absolute local v2 SQLite store root shared with
+the node's `anvil-events serve` process. Real operator identity and paths belong
+only in the private operator home. The retired v1 fields `host`, `nats_url`, and
+`nats_url_env` are rejected so an old configuration cannot silently target the
+removed JSONL/`emit` contract.
 
-The child CLI writes the event to its fsync-backed local outbox before attempting
-the NATS send. A successful invocation therefore means **recorded locally**, not
-delivered or acknowledged by the broker. Network failure leaves the record
-pending and creates `event.degraded` through `anvil-events`. If the executable
-is missing, times out, or cannot write the outbox, the lifecycle action may
-already be applied; the command returns non-zero and reports that the change was
-applied but its event was not recorded.
+The child invocation is `anvil-events --root ROOT record KIND ...`. It sends the
+JSON payload on standard input, assigns a fresh operation key, and requires
+machine-readable local-acceptance evidence from the CLI. The command performs
+no broker I/O. A successful invocation therefore means **committed locally**,
+not delivered or acknowledged by JetStream; the independent `anvil-events`
+delivery worker owns retry and PubAck evidence. If the executable is missing,
+times out, cannot commit SQLite, or returns malformed acceptance evidence, the
+lifecycle action may already be applied; the command returns non-zero and
+reports that the change was applied but its event was not recorded.
 
 The seam records the frozen lifecycle kinds `serve.up`, `serve.down`,
 `profile.enter`, `profile.leave`, `promote.applied`, and
