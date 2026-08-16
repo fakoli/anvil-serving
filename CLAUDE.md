@@ -82,6 +82,7 @@ llm.primary = "primary-local"
 llm.voice = "omni-local"
 vision.ocr = "omni-local"
 vision.general = "omni-local"
+vision.video = "primary-local"
 ```
 
 Aliases are lowercase after trimming; compatibility prefixes are not accepted.
