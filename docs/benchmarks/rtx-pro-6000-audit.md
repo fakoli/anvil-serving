@@ -1,7 +1,7 @@
 # RTX PRO 6000 mention audit
 
 This audit classifies every tracked Markdown file containing an RTX PRO 6000
-name at the 2026-08-16 review. Evidence-directory Markdown is classified with
+name at the 2026-08-17 review. Evidence-directory Markdown is classified with
 its own file, not inherited implicitly from the parent finding. This is a
 coverage control; benchmark results remain in the [run catalog](runs.md).
 
@@ -130,6 +130,8 @@ local measurement).
 `docs/findings/2026-07-12-green-context-mps-capability.md`;
 `docs/findings/2026-07-18-lifecycle-aware-wsl-cache-reclaim.md`;
 `docs/findings/2026-08-01-dual-pro-tp2-campaign-evidence/compatibility-brief.md`;
+`docs/findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md`;
+`docs/findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090.md`;
 `docs/findings/README.md`; `docs/index.md`;
 `examples/fakoli-dark/README.md`;
 `skills/anvil-serving-benchmark-docs/SKILL.md`.

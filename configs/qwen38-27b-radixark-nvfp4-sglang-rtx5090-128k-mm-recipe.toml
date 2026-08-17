@@ -1,0 +1,81 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "RadixArk/Qwen3.8-27B-NVFP4-RTX5090-128K"
+status = "qualification-candidate"
+source = "2026-08-17 RTX 5090 128K direct multimodal qualification"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "RadixArk/Qwen3.8-27B-NVFP4"
+revision = "554ebba9b5f1b79dc11246341960360e6ef05ef4"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "Single-GPU qualification host; preserve 3 GiB for Windows and driver overhead."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang:qwen38-27b@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--RadixArk--Qwen3.8-27B-NVFP4/snapshots/554ebba9b5f1b79dc11246341960360e6ef05ef4"
+quantization = "ModelOpt NVFP4 W4A4 with FP8 projections, BF16 vision/MTP tensors, and FP8 E4M3 KV cache"
+context_tokens = 131072
+port = 39038
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm"
+ipc = "host"
+shm_size = "16gb"
+named_volumes = [
+  "qwen38-radixark-nvfp4-sglang-cache:/root/.cache/sglang",
+]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+  "SGLANG_VIT_ENABLE_CUDA_GRAPH=0",
+  "SGLANG_MM_BUFFER_SIZE_MB=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm",
+  "--tp-size 1",
+  "--mm-feature-transport cpu",
+  "--limit-mm-data-per-request '{\"image\":8,\"video\":2}'",
+  "--context-length 131072",
+  "--max-running-requests 1",
+  "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--disable-radix-cache",
+  "--max-mamba-cache-size 1",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--host 0.0.0.0",
+  "--port 39038",
+]
+note = "Direct-only RTX 5090 qualification profile. It raises the proven 64K baseline to 128K while retaining concurrency one, FP8 KV, CPU multimodal feature transport, disabled radix caching, one GDN state slot, and no MTP. The 8-image and 2-video ceilings are qualification targets, not inherited capability claims. No route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "long-context", "multimodal", "vision", "ocr", "video", "tool-use"]
+rationale = "The pinned 64K runtime allocated 167,789 KV tokens with 3.73 GB of post-start headroom. A 131,072-token request ceiling preserves roughly 36K KV tokens for output and scheduling while remaining below the measured pool; the exact 120K and multimodal hard gates decide retention."
+
+[recipe.sources]
+official = [
+  "https://github.com/sgl-project/sglang/blob/70e291b70f5a2833291fff517a00b2f3ff559463/docs/cookbook/autoregressive/Qwen/Qwen3.8-27B.mdx",
+  "https://github.com/sgl-project/sglang/blob/70e291b70f5a2833291fff517a00b2f3ff559463/docs/src/snippets/configs/Qwen/qwen3.8-27b.jsx",
+]
+community = [
+  "https://huggingface.co/RadixArk/Qwen3.8-27B-NVFP4/tree/554ebba9b5f1b79dc11246341960360e6ef05ef4",
+]
+local = [
+  "docs/benchmarks/models/qwen38-27b.md",
+  "docs/findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090.md",
+]

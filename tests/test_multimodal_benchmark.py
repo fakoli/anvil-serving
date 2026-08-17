@@ -121,6 +121,23 @@ def test_corpus_image_ceiling_is_explicit_and_bounded(tmp_path):
         multimodal.load_corpus(corpus, max_images_per_request=65)
 
 
+def test_corpus_video_ceiling_is_explicit_and_bounded(tmp_path):
+    video = _media(tmp_path, "clip.mp4", b"\x00\x00\x00\x18ftypmp42clip")
+    corpus = _manifest(
+        tmp_path,
+        [_case([video] * 2, modality="video", sampling={"num_frames": 8})],
+    )
+
+    with pytest.raises(ValueError, match="exceeds 4 images or 1 videos"):
+        multimodal.load_corpus(corpus)
+
+    loaded = multimodal.load_corpus(corpus, max_videos_per_request=2)
+    assert len(loaded["cases"][0]["media"]) == 2
+
+    with pytest.raises(ValueError, match="from 1 through 16"):
+        multimodal.load_corpus(corpus, max_videos_per_request=17)
+
+
 def test_assertions_are_deterministic_and_casefolded():
     results = multimodal.evaluate_assertions(
         "READY. First RED, then GREEN.",
@@ -181,6 +198,7 @@ def test_runner_records_identity_media_sampling_outputs_and_aggregates(
     assert artifact["attempts"][0]["output"] == "READY. RED changes to GREEN."
     assert artifact["aggregates"]["modality"]["image"]["pass_rate"] == 1.0
     assert artifact["configuration"]["max_images_per_request"] == 4
+    assert artifact["configuration"]["max_videos_per_request"] == 1
     assert artifact["passed"] is True
     assert seen_sampling == [None, None]
 
@@ -208,6 +226,35 @@ def test_runner_records_explicit_image_ceiling(monkeypatch, tmp_path):
     assert rc == 0
     artifact = json.loads(output.read_text(encoding="utf-8"))
     assert artifact["configuration"]["max_images_per_request"] == 5
+
+
+def test_runner_records_explicit_video_ceiling(monkeypatch, tmp_path):
+    video = _media(tmp_path, "clip.mp4", b"\x00\x00\x00\x18ftypmp42clip")
+    corpus = _manifest(
+        tmp_path,
+        [_case([video] * 2, modality="video", sampling={"num_frames": 8})],
+    )
+    output = tmp_path / "evidence.json"
+    monkeypatch.setattr(multimodal, "_endpoint_models", lambda *_args: ["agents-a1"])
+
+    def fake_chat(*_args, **kwargs):
+        assert kwargs["mm_processor_kwargs"] == {"num_frames": 8}
+        return {
+            "choices": [{
+                "finish_reason": "stop",
+                "message": {"content": "READY. RED changes to GREEN."},
+            }],
+            "usage": {"prompt_tokens": 12, "completion_tokens": 7},
+        }, 0.25
+
+    rc = multimodal.main(
+        _argv(corpus, output) + ["--max-videos-per-request", "2"],
+        chat_request=fake_chat,
+    )
+
+    assert rc == 0
+    artifact = json.loads(output.read_text(encoding="utf-8"))
+    assert artifact["configuration"]["max_videos_per_request"] == 2
 
 
 def test_runner_records_exact_engine_build_ref_when_revision_is_unavailable(

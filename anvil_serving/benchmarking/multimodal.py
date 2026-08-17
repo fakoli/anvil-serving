@@ -33,7 +33,8 @@ MAX_CASES = 256
 MAX_REPETITIONS = 20
 DEFAULT_MAX_IMAGES = 4
 HARD_MAX_IMAGES = 64
-MAX_VIDEOS = 1
+DEFAULT_MAX_VIDEOS = 1
+HARD_MAX_VIDEOS = 16
 _HEX_64 = re.compile(r"[0-9a-f]{64}")
 _HEX_40 = re.compile(r"[0-9a-f]{40}")
 
@@ -145,6 +146,7 @@ def load_corpus(
     path: str,
     *,
     max_images_per_request: int = DEFAULT_MAX_IMAGES,
+    max_videos_per_request: int = DEFAULT_MAX_VIDEOS,
 ) -> dict[str, Any]:
     """Load, contain, hash, and normalize a ``multimodal-corpus/v1`` manifest."""
     if (
@@ -154,6 +156,14 @@ def load_corpus(
     ):
         raise ValueError(
             "max images per request must be from 1 through %d" % HARD_MAX_IMAGES
+        )
+    if (
+        isinstance(max_videos_per_request, bool)
+        or not isinstance(max_videos_per_request, int)
+        or not 1 <= max_videos_per_request <= HARD_MAX_VIDEOS
+    ):
+        raise ValueError(
+            "max videos per request must be from 1 through %d" % HARD_MAX_VIDEOS
         )
     manifest_path = real_path(path)
     value, raw = _read_json(manifest_path)
@@ -195,10 +205,13 @@ def load_corpus(
         media = [_load_media(item, root=root, case_id=case_id) for item in media_entries]
         images = sum(item["kind"] == "image" for item in media)
         videos = sum(item["kind"] == "video" for item in media)
-        if images > max_images_per_request or videos > MAX_VIDEOS:
+        if (
+            images > max_images_per_request
+            or videos > max_videos_per_request
+        ):
             raise ValueError(
-                "%s exceeds %d images or one video"
-                % (case_id, max_images_per_request)
+                "%s exceeds %d images or %d videos"
+                % (case_id, max_images_per_request, max_videos_per_request)
             )
         if sum(item["bytes"] for item in media) > MAX_CASE_BYTES:
             raise ValueError("%s exceeds the 256 MiB case limit" % case_id)
@@ -329,6 +342,15 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
             % (HARD_MAX_IMAGES, DEFAULT_MAX_IMAGES)
         ),
     )
+    ap.add_argument(
+        "--max-videos-per-request",
+        type=int,
+        default=DEFAULT_MAX_VIDEOS,
+        help=(
+            "corpus admission ceiling, 1 through %d (default: %d)"
+            % (HARD_MAX_VIDEOS, DEFAULT_MAX_VIDEOS)
+        ),
+    )
     ap.add_argument("--max-tokens", type=int, default=1024)
     ap.add_argument("--timeout-seconds", type=float, default=900.0)
     ap.add_argument(
@@ -357,6 +379,11 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
             "--max-images-per-request must be from 1 through %d"
             % HARD_MAX_IMAGES
         )
+    if not 1 <= args.max_videos_per_request <= HARD_MAX_VIDEOS:
+        ap.error(
+            "--max-videos-per-request must be from 1 through %d"
+            % HARD_MAX_VIDEOS
+        )
     if not 1 <= args.max_tokens <= 65536:
         ap.error("--max-tokens must be from 1 through 65536")
     if not math.isfinite(args.timeout_seconds) or not 0 < args.timeout_seconds <= 3600:
@@ -378,6 +405,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
         corpus = load_corpus(
             args.corpus,
             max_images_per_request=args.max_images_per_request,
+            max_videos_per_request=args.max_videos_per_request,
         )
         validate_write_target(args.output)
         api_key = resolve_api_key(args.api_key_env)
@@ -412,6 +440,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
             "requests": len(work),
             "concurrency": args.concurrency,
             "max_images_per_request": args.max_images_per_request,
+            "max_videos_per_request": args.max_videos_per_request,
             "output": real_path(args.output),
             "deferred": ["endpoint identity", "model requests", "artifact write"],
         }, indent=2, sort_keys=True, ensure_ascii=True))
@@ -563,6 +592,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
         "configuration": {
             "concurrency": args.concurrency,
             "max_images_per_request": args.max_images_per_request,
+            "max_videos_per_request": args.max_videos_per_request,
             "max_tokens": args.max_tokens,
             "timeout_seconds": args.timeout_seconds,
             "thinking_mode": args.thinking_mode,
