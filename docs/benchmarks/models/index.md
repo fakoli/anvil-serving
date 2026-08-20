@@ -9,7 +9,9 @@ evidence class, decision boundary, failures, and dated history.
 
 | Dossier | Current decision | Contents |
 |---|---|---|
-| [Agents-A1](agents-a1.md) | `current` | Thinking-disabled FP8 Primary; BF16 control and compact NVFP4 text profile |
+| [DeepSeek V4 Flash 0731](deepseek-v4-flash.md) | `current` text Primary | Infernal Invocation r15 B12X/DSpark K5, exclusive TP=2 at 393K; matched no-spec A/B, 351K direct and 340K routed retrieval; r33 is the managed rollback |
+| [Qwen3.8 27B](qwen38-27b.md) | former single service / retained recipe | Official FP8 SGLang TP=1/393K/MTP `3/1/4` text/image/OCR/video evidence |
+| [Agents-A1](agents-a1.md) | historical promotion / retained recipe | Thinking-disabled FP8 Primary-era evidence; BF16 control and compact NVFP4 text profile |
 | [Qwen3.5 122B](qwen35-122b.md) | `rollback` | Immediate NVFP4 rollback and historical MXFP4 |
 | [Laguna S 2.1 and Laguna XS](laguna-s-2.1.md) | `rollback` / `rejected` | Qualified S and failed XS path |
 | [GPT-OSS Puzzle 88B](gpt-oss-puzzle-88b.md) | `rollback` | Additional pinned rollback |
@@ -21,7 +23,6 @@ evidence class, decision boundary, failures, and dated history.
 | [Mistral Small 4](mistral-small-4.md) | `no-promotion` | Low-TTFT control |
 | [MiniMax M2.7 REAP](minimax-m27-reap.md) | `no-promotion` | Historical community challenger |
 | [Ornith 1.0 35B](ornith-35b.md) | `no-promotion` | Historical specialist |
-| [DeepSeek V4 Flash 0731](deepseek-v4-flash.md) | priority `challenger`, `no-promotion` | Pinned r16 DSpark K5 TP=2 lane; low/high/max reasoning, 128K store/replay, 256K native-offload capacity, same-image no-spec A/B, coding-agent quality, NVFP4/GGUF research |
 | [Inkling Small](inkling-small.md) | `no-promotion` | Qualified NVFP4 TP=2 lane; low-reasoning contract passes, reasoning-off Responses caveat retained |
 
 ## RTX 5090

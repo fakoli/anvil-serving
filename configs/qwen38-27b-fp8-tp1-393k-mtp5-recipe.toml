@@ -1,0 +1,77 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "Qwen/Qwen3.8-27B-FP8"
+status = "verified"
+source = "2026-08-15 local qualification: matched TP1 393K MTP=5, no-promotion"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Qwen/Qwen3.8-27B-FP8"
+revision = "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "One GPU in split mode; the other equal GPU remains independently assigned."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai@sha256:4a2f33a884222f7049b983263ad9976f89452bb81affecf5b67d89ad35c1bc31"
+model_path = "/root/.cache/huggingface/hub/models--Qwen--Qwen3.8-27B-FP8/snapshots/017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
+quantization = "official block-scaled FP8 weights with FP8 KV cache"
+context_tokens = 393216
+port = 39105
+startup_timeout_seconds = 1800
+served_model_name = "qwen38-27b-fp8-tp1-393k-mtp5"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+]
+flags = [
+  "--revision 017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+  "--served-model-name qwen38-27b-fp8-tp1-393k-mtp5",
+  "--tensor-parallel-size 1",
+  "--language-model-only",
+  "--kv-cache-dtype fp8",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--enable-chunked-prefill",
+  "--no-enable-prefix-caching",
+  "--max-model-len 393216",
+  "--hf-overrides '{\"text_config\":{\"max_position_embeddings\":393216}}'",
+  "--max-num-seqs 1",
+  "--max-num-batched-tokens 4096",
+  "--gpu-memory-utilization 0.92",
+  "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":5}'",
+  "--host 0.0.0.0",
+  "--port 39105",
+]
+note = "Verified dormant MTP=5 control. Functional, repeated deterministic-quality, 4K capacity, and 388979-token retrieval gates passed. A cross-card swap found only a 0.4-1.3 percent same-card decode edge over MTP=4 and no E2E win. Decision remains no-promotion; MTP=3 stays current."
+
+[recipe.fit]
+suited = ["qualification","long-context","text","coding","agentic"]
+rationale = "Tests the reported exact-hardware MTP sweet spot while preserving official weights and every other qualified setting."
+
+[recipe.sources]
+official = [
+  "https://github.com/vllm-project/recipes/blob/002576894984c12e203bb25421635fbb3f408e9d/models/Qwen/Qwen3.8-27B.yaml",
+  "https://huggingface.co/Qwen/Qwen3.8-27B-FP8/tree/017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+  "https://github.com/vllm-project/vllm/tree/3a0914114705fa38d4c3171d0746c1a6b6f10209",
+]
+community = [
+  "https://www.reddit.com/r/LocalLLaMA/comments/1vodweq/qwen_36_vs_38_mtp_sweep_comparison_27bfp8/",
+]
+local = [
+  "configs/qwen38-27b-fp8-tp1-393k-mtp3-recipe.toml",
+  "configs/qwen38-27b-fp8-tp1-393k-mtp4-recipe.toml",
+  "docs/findings/2026-08-15-qwen38-27b-external-recipe-refresh.md",
+  "docs/findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md",
+]

@@ -31,6 +31,47 @@ target as a numbered `.anvil.bak.N` file before `init` replaces it.
 Content-identical files are left untouched, so repeated runs do not create
 redundant backups, including for `.env.example`.
 
+## Lifecycle events (`events.toml`)
+
+Lifecycle event recording is optional and disabled when
+`$ANVIL_SERVING_HOME/events.toml` is absent or its `[events]` table does not set
+`enabled = true`. When enabled, successful state changes from `serves up`,
+`serves down`, `serves profile apply`, and `serves promote` invoke the
+stdlib-only `anvil-events` CLI. Dry runs, failed operations, already-satisfied
+serves, and no-op profile transitions do not create false history.
+
+```toml
+[events]
+enabled = true
+command = "anvil-events"
+node = "node-a"
+producer = "node-a:anvil-serving"
+root = "/var/lib/anvil/events"
+```
+
+`command` is one executable name or path and is invoked without a shell. `node`
+and `producer` are public event-envelope identities; the producer's first token
+must be the node. `root` is the absolute local v2 SQLite store root shared with
+the node's `anvil-events serve` process. Real operator identity and paths belong
+only in the private operator home. The retired v1 fields `host`, `nats_url`, and
+`nats_url_env` are rejected so an old configuration cannot silently target the
+removed JSONL/`emit` contract.
+
+The child invocation is `anvil-events --root ROOT record KIND ...`. It sends the
+JSON payload on standard input, assigns a fresh operation key, and requires
+machine-readable local-acceptance evidence from the CLI. The command performs
+no broker I/O. A successful invocation therefore means **committed locally**,
+not delivered or acknowledged by JetStream; the independent `anvil-events`
+delivery worker owns retry and PubAck evidence. If the executable is missing,
+times out, cannot commit SQLite, or returns malformed acceptance evidence, the
+lifecycle action may already be applied; the command returns non-zero and
+reports that the change was applied but its event was not recorded.
+
+The seam records the frozen lifecycle kinds `serve.up`, `serve.down`,
+`profile.enter`, `profile.leave`, `promote.applied`, and
+`promote.rolled_back`. A multi-tier promotion emits one promotion record per
+declared affected tier while the promotion lock is still held.
+
 By default, `init` asks `nvidia-smi` for stable GPU UUIDs and total memory, then
 assigns the two largest distinct cards to Compute A and Compute B. Equal-VRAM
 cards use canonical UUID ordering, not runtime index, so a reboot cannot swap
@@ -262,6 +303,14 @@ The allowlisted capacity keys are `gpu_role`, `gpu_name`,
 `scheduler_max_num_seqs`, `image_limit`, and `video_limit`. Other `params`
 values are never returned. These values are operator-declared measurements,
 not runtime discovery.
+
+`image_limit` and `video_limit` become enforced request admission controls only
+when `media_admission_enabled = true`. An enabled policy must also provide
+non-negative `image_tokens_estimate` and `video_tokens_estimate` values. The
+router then rejects media-count overflow before contacting the selected tier
+and reserves the estimates when checking context headroom. A declared zero
+limit therefore rejects the first matching media block; without the explicit
+enable flag, the values remain metadata for backward compatibility.
 
 The endpoint accepts `model` and `gpu_role` filters. Optional `images`,
 `input_tokens`, `image_tokens`, and `output_tokens` parameters evaluate a

@@ -6,8 +6,9 @@ from anvil_serving.voice import config as voice_config
 
 
 class _Tier:
-    def __init__(self, context_limit):
+    def __init__(self, context_limit, modalities=None):
         self.context_limit = context_limit
+        self.params = {"capabilities": {"modalities": modalities or ["text"]}}
 
 
 class _Config:
@@ -173,6 +174,191 @@ def test_openclaw_voice_sync_replaces_existing_consult_thinking_level(tmp_path):
     payload = json.loads(existing.read_text(encoding="utf-8"))
     assert payload["talk"]["consultThinkingLevel"] == "off"
     assert payload["talk"]["consultBootstrapContextMode"] == "lightweight"
+
+
+def test_openclaw_sync_refreshes_anvil_models_without_erasing_other_providers(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps(
+            {
+                "agents": {"defaults": {"models": {
+                    "anthropic/claude-sonnet": {},
+                    "anvil/llm.stale": {},
+                }}},
+                "models": {"providers": {
+                    "anvil": {"apiKey": {
+                        "source": "file", "provider": "default", "id": "/anvil/routerToken",
+                    }},
+                    "other": {"models": []},
+                }},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={"llm.primary": "heavy", "llm.thinking": "fast"},
+        tiers={
+            "fast": _Tier(262144, ["text", "image"]),
+            "heavy": _Tier(262144, ["text", "image"]),
+        },
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert [
+        model["id"] for model in payload["models"]["providers"]["anvil"]["models"]
+    ] == ["llm.primary", "llm.thinking"]
+    assert [
+        model["input"] for model in payload["models"]["providers"]["anvil"]["models"]
+    ] == [["text", "image"], ["text", "image"]]
+    assert payload["agents"]["defaults"]["models"] == {
+        "anthropic/claude-sonnet": {},
+        "anvil/llm.primary": {},
+        "anvil/llm.thinking": {},
+    }
+    assert payload["models"]["providers"]["anvil"]["apiKey"] == {
+        "source": "file", "provider": "default", "id": "/anvil/routerToken",
+    }
+    assert "other" in payload["models"]["providers"]
+
+
+def test_openclaw_sync_sets_general_vision_as_the_image_model(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps({"agents": {"defaults": {"models": {}}}}) + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={
+            "llm.primary": "text",
+            "vision.general": "vision",
+            "vision.ocr": "vision",
+        },
+        tiers={
+            "text": _Tier(393216, ["text"]),
+            "vision": _Tier(393216, ["text", "image"]),
+        },
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert payload["agents"]["defaults"]["imageModel"] == {
+        "primary": "anvil/vision.general"
+    }
+
+
+def test_openclaw_sync_preserves_an_operator_owned_image_model(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps({
+            "agents": {"defaults": {
+                "models": {},
+                "imageModel": {"primary": "other/image-model"},
+            }}
+        }) + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={"vision.general": "vision"},
+        tiers={"vision": _Tier(393216, ["text", "image"])},
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert payload["agents"]["defaults"]["imageModel"] == {
+        "primary": "other/image-model"
+    }
+
+
+def test_openclaw_sync_preserves_a_string_operator_image_model(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps({
+            "agents": {"defaults": {
+                "models": {},
+                "imageModel": "other/image-model",
+            }}
+        }) + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={"vision.general": "vision"},
+        tiers={"vision": _Tier(393216, ["text", "image"])},
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert payload["agents"]["defaults"]["imageModel"] == "other/image-model"
+    assert harness._openclaw_payload_summary(payload)["image_model"] == (
+        "other/image-model"
+    )
+
+
+def test_openclaw_sync_removes_a_stale_anvil_image_primary(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps({
+            "agents": {"defaults": {
+                "models": {},
+                "imageModel": {
+                    "primary": "anvil/vision.general",
+                    "fallbacks": ["other/image-model"],
+                },
+            }}
+        }) + "\n",
+        encoding="utf-8",
+    )
+    cfg = _Config(
+        model_routes={"llm.primary": "text"},
+        tiers={"text": _Tier(393216, ["text"])},
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.64.0.10:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert payload["agents"]["defaults"]["imageModel"] == {
+        "fallbacks": ["other/image-model"]
+    }
 
 
 def test_openclaw_voice_sync_falls_back_to_chat_consult_model(capsys):

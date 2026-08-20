@@ -1,0 +1,674 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "responses",
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [
+    "ANVIL READY",
+    "42917",
+    "42"
+  ],
+  "model": "llm.primary",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```",
+      "content_chars": 21,
+      "content_excerpt": "```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 1.183,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 9,
+        "prompt_tokens": 28,
+        "total_tokens": 37
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.166,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 10,
+        "prompt_tokens": 30,
+        "total_tokens": 40
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 1.036,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 2.081,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 3.128,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 4,
+      "seconds": 4.178,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 6,
+      "seconds": 5.226,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 5,
+      "seconds": 6.277,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 7,
+      "seconds": 7.329,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 8,
+      "seconds": 8.379,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 9,
+      "seconds": 9.432,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 10,
+      "seconds": 10.481,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 11,
+      "seconds": 11.534,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 12,
+      "seconds": 12.587,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 3,
+      "seconds": 13.644,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 13,
+      "seconds": 14.694,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 14,
+      "seconds": 15.746,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 15,
+      "seconds": 16.802,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 16,
+      "seconds": 17.858,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 17,
+      "seconds": 18.915,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 18,
+      "seconds": 19.975,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 19,
+      "seconds": 21.034,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 5492,
+        "total_tokens": 5519
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 5,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 1.303,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 292,
+        "total_tokens": 319
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.302,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 292,
+        "total_tokens": 319
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "OAKLAND 72F",
+      "content_chars": 11,
+      "content_excerpt": "OAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.137,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 8,
+        "prompt_tokens": 103,
+        "total_tokens": 111
+      },
+      "validation_detail": "tool result retained"
+    },
+    {
+      "content_chars": 5,
+      "content_excerpt": "READY",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "response_status": "completed",
+      "seconds": 0.091,
+      "test": "responses",
+      "usage": {
+        "input_tokens": 16,
+        "output_tokens": 2,
+        "total_tokens": 18
+      },
+      "validation_detail": "completed exact READY"
+    },
+    {
+      "content": "This image displays a digital status readout, likely from an industrial or manufacturing system (possibly related to metalworking, given the term \u201cANVIL\u201d). The background is dark navy blue, with three lines of text in different colors for emphasis:\n\n---\n\n**1. Status Label (Top Line):** \n- **Text:** `ANVIL READY` \n- **Color:** Bright green \n- **Interpretation:** Indicates that the anvil component is prepared and operational \u2014 a positive/ready state.\n\n---\n\n**2. Code Identifier (Middle Line):** \n- **Text:** `CODE 42917` \n- **Color:** White \n- **Interpretation:** Likely a unique identifier, job code, batch number, or diagnostic code associated with the current operation or machine state.\n\n---\n\n**3. Temperature Reading (Bottom Line):** \n- **Text:** `TEMPERATURE 42 C` \n- **Color:** Light blue \n- **Interpretation:** Current temperature reading is 42 degrees Celsius. This may be within normal operating range depending on context (e.g., ambient or pre-heating phase).\n\n---\n\n### Summary of Key Information:\n- **Status:** \u2705 Anvil is ready\n- **Code:** 42917\n- **Temperature:** 42\u00b0C\n\nThe color coding suggests a clear visual hierarchy: green = ready/safe, white = neutral/identifier, blue = informational/measurement. This display is designed for quick operator interpretation in a production or maintenance environment.",
+      "content_chars": 1321,
+      "content_excerpt": "This image displays a digital status readout, likely from an industrial or manufacturing system (possibly related to metalworking, given the term \u201cANVIL\u201d). The background is dark navy blue, with three",
+      "expected": [
+        "ANVIL READY",
+        "42917",
+        "42"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 3.435,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 319,
+        "prompt_tokens": 254,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 573
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "content_chars": 39,
+      "content_excerpt": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "expected": [
+        "ANVIL READY",
+        "42917",
+        "42"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.258,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 21,
+        "prompt_tokens": 255,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 276
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "ANVIL READY",
+    "42917",
+    "42"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "1.2s got='```python\\nsum(xs)\\n```' finish='stop' visible=21 reasoning_chars=0 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=0 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "20/20 clean (sample: 1.0s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x20",
+      "passed": true
+    },
+    {
+      "detail": "1.3s done=True events=5 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "0.4s tool result retained finish='stop' visible=11 reasoning_chars=0 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "0.1s status='completed' output='READY' reasoning_chars=0",
+      "name": "Responses API subset",
+      "passed": true
+    },
+    {
+      "detail": "3.4s all expected text present finish='stop' visible=1321 reasoning_chars=0 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.3s all expected text present finish='stop' visible=39 reasoning_chars=0 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

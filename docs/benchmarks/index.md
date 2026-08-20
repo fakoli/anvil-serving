@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-02.**
+**Last evidence review: 2026-08-16.**
 
 ## Start with the numbers
 
@@ -44,28 +44,80 @@ commands; it does not claim a live model result by itself.
 
 ## Production aliases and recent controls
 
-1. **DeepSeek V4 Flash 0731 r16 DSpark K5** — `current` exclusive TP=2 text
-   Primary at 650K, high reasoning by default, with a 32,768 output cap.
-2. **Qwen3.5 122B A10B NVFP4** — immediate managed `rollback`.
-3. **Agents-A1 official FP8** — previous multimodal Primary; thinking disabled.
-4. **Laguna S 2.1 NVFP4** — additional managed `rollback`.
-5. **GPT-OSS Puzzle 88B** — additional pinned `rollback`; repeated strict
-   unified-diff formatting passed only 2/3.
-6. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
-   controls, not the current rollback order.
-7. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
+1. **DeepSeek V4 Flash 0731 Infernal Invocation r15 DSpark K5** — `current`
+   text Primary at 393,216 tokens in exclusive TP=2 across both RTX PRO 6000
+   cards; eight admitted sequences and a router concurrency ceiling of two.
+2. **DeepSeek V4 Flash 0731 r33 DSpark K5** — immediate managed exclusive
+   TP=2 rollback at the same 393,216-token limit and fixed endpoint.
+3. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
+   former text/image/OCR/video deployments with retained managed recipes.
+4. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
+   **Laguna S 2.1**, and **GPT-OSS Puzzle 88B** — retained qualified or
+   promotion-era recipes, not the immediate selected deployment.
+5. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
+   controls.
+6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
 
-The 2026-08-01 dual-PRO campaign itself did not reroute production. On
-2026-08-02, after the separate human gate and client verification, the 650K
-DeepSeek profile became Primary. It passed 640K retrieval, the complete Pi
-protocol gate, Dark and Mini Pi smokes, and a Mini OpenClaw high-reasoning smoke.
-The 1M/maxseq16 profile was removed after two fatal real-client B12X workspace
-failures; even a 5,120 output cap did not protect its 19,118-token Pi prompt.
-The 650K deployment explicitly waives the 3 GiB free-VRAM policy and is valid
-only as a single-user exclusive TP=2 serve. See the
-[model dossier](models/deepseek-v4-flash.md) and
-[promotion record](../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md).
+On 2026-08-16, after the explicit human gate, the exact digest-pinned r15
+TP=2/393K profile became the text Primary. A matched control measured K5 at
+150.0 versus 76.4 tok/s median decode at 4K/c1 and 119.245 versus 76.767 at
+32K/c1. Direct retrieval passed at 351,118 actual tokens and authenticated
+routed retrieval at 340,119; tools, streaming, Responses, c8, c2 long-context,
+and repeated agentic checks passed. The fixed-port r33 393K profile is the
+transactional rollback. See the [DeepSeek dossier](models/deepseek-v4-flash.md)
+and [r15 promotion record](../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md).
+
+The upstream r15 recipe was authored by Martin Vit (`voipmonitor`) and was
+qualified upstream at 131,072 tokens on native Linux with two RTX PRO 6000
+Blackwell GPUs on direct PCIe root ports. The local 393,216-token WSL2 result
+is a separate qualification, not a transferred upstream claim.
+
+On 2026-08-15, after a separate human gate, the exact official-FP8 SGLang
+TP=1/393K Qwen profile became current. Its guarded acceptance passed 108K
+retrieval, tools 20/20, direct and routed media 18/18, the supported Responses
+subset, and fresh Hermes/OpenClaw Primary turns without fallback. It is now a
+former deployment with retained evidence. See the
+[Qwen3.8 dossier](models/qwen38-27b.md) and
+[single-service promotion record](../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md).
+
+On 2026-08-16, the then-current Qwen model passed 30/30 direct deterministic
+media attempts, including video 14/14. A managed router-only expansion added
+`vision.video` and fail-closed admission for one video; the live admitted
+subset passed 28/28 along with streaming, tool-use, malformed-input, overflow,
+and Primary regression probes. See the
+[video-router finding](../findings/2026-08-16-qwen38-27b-video-router.md).
+
+The 2026-08-14 matched vLLM split remains the exact rollback. Its routed FP8
+tools 20/20, BF16 media 30/30, and one 32-image request remain historical
+capability evidence, not a current admission declaration.
+
+On 2026-08-15, official-FP8 MTP=4 and MTP=5 both passed functional,
+near-393K, and repeated deterministic-quality gates. A cross-card swap showed
+that the apparent first-run speed gap followed the GPU lane: MTP=5 exceeded
+MTP=4 decode by only 0.4-1.3% on the same card and did not improve E2E. MTP=3
+remained selected within the Qwen profile. See the
+[MTP-depth qualification](../findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
+
+Also on 2026-08-15, a digest-pinned SGLang no-speculation A/B qualified
+official FP8 and audited Inferact NVFP4 as TP=1/393K text controls on both card
+placements. NVFP4 reduced matched 4K TTFT 22.6% and raised decode 20.6%, while
+both candidates passed 388,979 actual prompt tokens and bounded deterministic
+quality. See the
+[SGLang/NVFP4 qualification](../findings/2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md).
+
+A matched MTP=3 follow-up then raised official-FP8 SGLang decode from 48.0 to
+111.3 tok/s and Inferact NVFP4 from 57.9 to 98.1. Both retained the complete
+functional and repeated deterministic-quality gate and passed a 389K
+retrieval probe. The prior multimodal crash was isolated to SGLang's automatic
+CUDA-IPC feature transport in this exact runtime; forcing CPU transport let
+both checkpoints pass bounded image understanding and OCR with MTP enabled.
+The later matched consolidation corpus added two-image ordering and supported
+the human promotion of official FP8; Inferact NVFP4 remains `no-promotion`.
+The then-promoted official-FP8 service subsequently qualified one video. The
+32-image ceiling, concurrency above one, and host-memory pressure remain open.
+See the
+[MTP/multimodal qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md).
 
 ## How to read the evidence
 

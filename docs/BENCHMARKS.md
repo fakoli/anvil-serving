@@ -8,18 +8,58 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained production-alias chain is DeepSeek V4 Flash 0731 r16 DSpark K5
-at 650K (`current`, exclusive TP=2, high reasoning default), Qwen3.5 122B NVFP4
-(immediate managed `rollback`), and Agents-A1 official FP8 as the previous
-multimodal Primary. Laguna S 2.1 and GPT-OSS Puzzle remain additional managed
-rollback profiles; Gemma 4 and ThinkingCap remain historical controls. Fakoli
+The maintained text deployment is DeepSeek V4 Flash 0731 Infernal Invocation
+r15 with DSpark K5 at exclusive TP=2/393,216 across both equal cards. The r33
+393K profile is its immediate fixed-port managed rollback. The former
+official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
+retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
+split remain qualified rollback- or promotion-era evidence. The earlier r16
+650K profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical
+recipes but are not the immediate restoration contract for this profile.
+Gemma 4 and ThinkingCap remain historical controls. Fakoli
 Dark has two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
 now-removed RTX 5090 while the PRO 6000 was protected. Older sections below
 preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-02**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-16**.
+
+## DeepSeek Infernal Invocation r15 393K promotion (2026-08-16)
+
+The r15 recipe was inspired by and translated from Martin Vit's
+(`voipmonitor`) pinned `local-inference-lab/rtx6kpro` and
+`local-inference-lab/blackwell-llm-docker` work. His upstream receipt qualified
+131,072 tokens on native Linux with two RTX PRO 6000 Blackwell GPUs on direct
+PCIe root ports. The 393,216-token WSL2 result is an independent local
+qualification, not a transfer of that upstream stability claim.
+
+The exact digest-pinned B12X W4A8/FP8-compressed-MLA-KV profile passed a
+matched K5/no-spec A/B. K5 measured 150.0 versus 76.4 tok/s median decode at
+4K/c1 and 119.245 versus 76.767 at 32K/c1. Direct retrieval passed at 351,118
+actual prompt tokens and authenticated routed retrieval at 340,119. The full
+functional gate, repeated tools/session/unified-diff/timeout checks 12/12, c8
+short concurrency, c2 long concurrency, streaming, tool-result continuation,
+Responses, and OpenClaw-compatible Anthropic wire requests passed.
+
+After explicit human approval, a guarded transaction installed the exact
+r15 identity as the exclusive TP=2 text `llm.primary`, restarted the router,
+and verified post-restart readiness and admission. The endpoint-adapted r33
+393K profile is the transactional rollback. A fresh actual Mini OpenClaw turn
+remains unproven because the reachable Mini controller lacks the current
+OpenClaw status tool. See the
+[promotion finding](findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md).
+
+## Qwen3.8 27B video-router expansion (2026-08-16)
+
+The existing model passed the complete deterministic corpus directly at
+30/30, including 14/14 video attempts. After adding fail-closed router media
+admission and `vision.video`, the admitted routed subset passed 28/28 live.
+Two-video overflow returned 413, malformed input returned a sanitized 400,
+and video SSE, grounded tool use, and the full Primary regression gate passed.
+The qualified Qwen ceiling was one request, two images, and one video. The model was
+not restarted. See the
+[video qualification](findings/2026-08-16-qwen38-27b-video-router.md).
 
 ## Read these results correctly
 
@@ -27,6 +67,107 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 - Compare rows only when their workload and topology are comparable. A faster inference run does not establish coding quality, tool reliability, or routing eligibility.
 - Quality-profile and production changes remain human-gated. A benchmark can recommend a change; it never promotes a model by itself.
 - External benchmark data is an advisory prior, not a local result. See [External benchmarks](EXTERNAL-BENCHMARKS.md) for its import and comparison workflow.
+
+## Qwen3.8 27B SGLang FP8 single-service promotion (2026-08-15)
+
+The later router-only AI-MBP25 coding-agent campaign passed the agentic smoke
+2/2, the broader agentic scout 16/18, and a fixed five-instance SWE-bench
+Verified scout 5/5 under the official grader. Both agentic failures were the
+debug-loop repetitions; SWE tasks used 19-57 model requests. This is bounded
+evidence for the exact then-current Qwen profile, not a full-suite 100% SWE claim. See
+the [agentic and SWE scout](findings/2026-08-15-qwen38-27b-agentic-swe-scout.md).
+
+The human-approved Qwen profile then ran one official-FP8 SGLang TP=1 service
+on one RTX PRO 6000, with the second equal card empty. Primary, general vision,
+and OCR shared the same 393,216-token service. It used FP8 E4M3
+KV, one running request, 2,048-token chunks, memory fraction 0.85, five GDN
+states, EAGLE MTP `3/1/4`, and CPU multimodal feature transport. Admission was
+initially bounded to two images and no video; the subsequent router-only
+qualification expanded it to one video while retaining the two-image and
+concurrency-one ceilings.
+
+The exact earlier profile measured 0.577-second median TTFT, 0.962-second
+median E2E, 6,261 effective prefill tok/s, and 111.4 decode tok/s at 4K/c1.
+Promotion acceptance passed 108K retrieval, tools 20/20, direct and routed
+media 18/18, the Responses subset, and fresh Hermes/OpenClaw Primary turns
+without fallback. See the [promotion finding](findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md).
+
+The former vLLM FP8/BF16 split remains a retained managed recipe. A retained
+no-video router profile is the narrower historical capability profile.
+
+## Qwen3.8 27B official-FP8 MTP-depth qualification (2026-08-15)
+
+MTP=4 and MTP=5 were tested concurrently at the then-current TP=1/393K/maxseq1
+shape, then swapped across the two equal cards. Both passed complete direct
+functional checks, repeated deterministic intelligence/session/tool checks,
+and a cold request with 388,979 actual prompt tokens.
+
+The swap changed the performance conclusion. The first placement appeared to
+favor MTP=4 by about 6.9% in decode, but the faster result followed the card.
+On a fixed card, MTP=5 exceeded MTP=4 decode by only 0.4-1.3% and made median
+E2E slightly worse. The historical matched MTP=3 result on the production
+lane remained better than either deeper setting. MTP=3 therefore remained the
+selected Qwen depth; MTP=4 and MTP=5 are retained `no-promotion` controls. The exact FP8
+plus BF16 split was restored, directly requalified, and readmitted. See the
+[MTP-depth qualification](findings/2026-08-15-qwen38-27b-mtp-depth-qualification.md).
+
+## Qwen3.8 27B SGLang MTP and multimodal qualification (2026-08-15)
+
+Official FP8 and audited Inferact NVFP4 were tested with the SGLang cookbook's
+in-checkpoint EAGLE MTP `3/1/4` configuration at TP=1, 393,216 tokens, and
+concurrency one, then swapped across the two equal RTX PRO 6000 cards. Across
+five matched 4K runs, official FP8 rose from 48.0 to 111.3 decode tok/s and
+NVFP4 rose from 57.9 to 98.1. NVFP4 retained lower TTFT and higher effective
+prefill; official FP8 won speculative decode because its sampled acceptance
+was higher.
+
+Both models passed coding, JSON, 20/20 tools, streaming and tool-result
+recovery, Responses, 131K and 389K retrieval, plus repeated deterministic
+intelligence 6/6, session 3/3, and tools 3/3. The earlier multimodal crash was
+isolated to SGLang's automatic CUDA-IPC feature transport in this exact
+runtime. CPU feature transport let both MTP profiles pass bounded image
+understanding and OCR. Video, multiple images, the 32-image ceiling, and host
+memory pressure remain untested. The exact then-current vLLM split was restored and
+readmitted; no route or promotion changed. See the
+[SGLang MTP/multimodal qualification](findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md).
+
+## Qwen3.8 27B TP/MTP/long-context matrix (2026-08-14)
+
+The pinned official BF16 and official FP8 checkpoints completed 16 matched
+configurations: split TP=1 at 393K, then exclusive TP=2 at 393K, 600K, and
+1.01M, each with no-MTP and MTP=3. Every arm passed the complete functional
+gate and one cold retrieval at 388,979, 598,729, or 985,107 actual prompt
+tokens. The 4K performance figures are 10-request c1 p50/p95 runs; each extreme
+row is only 1/1 and is not a latency distribution.
+
+TP=2 cut 393K control TTFT from 272.9 to 168.7 seconds for BF16 and from 239.3
+to 154.8 seconds for official FP8, but official-FP8 4K decode changed only 47.6
+to 48.8 tok/s. MTP raised short decode 1.76-2.40x, peaking at 93.6 tok/s on the
+single-card FP8 lane, while consuming 7-11% of reported KV tokens and providing
+no repeatable extreme-context TTFT benefit. TP=2 therefore earns a
+prefill/capacity role, not a universal speed claim. The 600K and 985K rows took
+about 5.2-5.8 and 13.0-13.7 minutes to first token, so they remain deliberate
+batch-like profiles. The exact original 262K split services were restored and
+passed fresh co-resident acceptance at the close of that matrix. The later
+human-approved promotion is recorded above. See the
+[full matrix and sanitized result set](findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md).
+
+## Qwen3.8 27B official FP8 1M-context continuation (2026-08-14)
+
+The official FP8 checkpoint was configured for 1,010,000 tokens on one RTX PRO
+6000 with TP=1, FP8 KV, maxseq1, chunked prefill, and no MTP or prefix caching.
+It passed retrieval at 316,849, 422,449, and 633,649 actual prompt tokens, then
+passed **825,049 actual prompt tokens at 3/3**. Those largest runs averaged
+**956.739 seconds** request-to-completion, so the result is stable offline/batch
+capacity rather than an interactive default. A post-stress functional gate
+passed, and the original 262K FP8 lane was restored and requalified.
+
+The official 1M flags were already present in the first 27B vLLM recipe; the
+later same-day edit changed the declared vLLM floor and difficulty. The new
+2.4T-A95B sibling recipe does not fit this two-card host. No third-party NVFP4
+checkpoint was pulled, no route changed, and the model remains a
+`challenger`, `no-promotion`. See the
+[dated continuation and raw artifacts](findings/2026-08-14-qwen38-27b-1m-context.md).
 
 ## Dual-PRO exclusive TP=2 campaign (2026-08-01)
 
@@ -103,6 +244,24 @@ output clamping alone cannot make the 1M profile safe. The promoted 650K serve
 still waives the standing 3 GiB reported-free VRAM policy and therefore remains
 an explicit single-user, exclusive TP=2 deployment. See the
 [promotion record](findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md).
+
+### DeepSeek 0731 r33 393K Primary promotion
+
+After a separate human gate on 2026-08-11, the digest-pinned r33 B12X/DSpark
+K5 profile became `llm.primary` at 393,216 tokens, maxseq16, and 4,096-token
+batching. It retains FP8 DS-MLA KV and uses no host offload. The engine reported
+725,543 GPU KV tokens. A calibrated direct ladder passed through 359,900 actual
+prompt tokens; the largest row measured 65.2-second TTFT and 5,599 effective
+prefill tok/s.
+
+OpenClaw and Hermes now target `llm.primary` with 393,216 context, 32,768
+maximum output tokens, and high reasoning. Their gateways restarted and
+isolated client-path markers passed. These are not client requests above 300K. The
+legacy routed nominal-320K needle generated a byte-based 450,028-token
+admission estimate and correctly failed 413, so a calibrated routed context
+job remains open. The requested SWE smoke also remains unscored because the
+installed worker wheel could not load its benchmark profiles. See the
+[promotion record](findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md).
 
 ## RTX 5090 Omni choices (as of 2026-07-27)
 

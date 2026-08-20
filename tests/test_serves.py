@@ -4,6 +4,7 @@ Docker + nvidia-smi + HTTP are injected (the module exposes `_run`/`_open`
 seams), so these run with no docker, no GPU, and no network.
 """
 import os
+import shlex
 import subprocess
 import textwrap
 import json
@@ -1584,6 +1585,57 @@ def test_cmd_up_compose_serve_running_reruns_compose_up_for_drift():
     assert not any(c[:2] == ["docker", "start"] for c in run.calls)  # never blind-started
 
 
+def test_cmd_up_compose_already_running_noop_records_no_serve_up(monkeypatch):
+    # REQUEST_CHANGES follow-up: for a compose serve whose container is ALREADY
+    # running, `docker compose up -d` is a cheap no-op / drift-recreate; the CLI
+    # cannot tell which from its return code, so we must NOT create a false
+    # serve.up history entry for an already-running serve.
+    recorded = []
+    monkeypatch.setattr(
+        serves, "_record_lifecycle_event",
+        lambda kind, payload: (recorded.append((kind, payload)) or True),
+    )
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local",
+             "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
+    run = _inspect_returning("running")
+    assert serves.cmd_up(serv, [], _run=run) == 0
+    assert recorded == []  # no false serve.up history for an already-running serve
+
+
+def test_cmd_up_compose_absent_records_serve_up(monkeypatch):
+    # The counterpart: a fresh compose create SHOULD record serve.up exactly once.
+    recorded = []
+    monkeypatch.setattr(
+        serves, "_record_lifecycle_event",
+        lambda kind, payload: (recorded.append((kind, payload)) or True),
+    )
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local",
+             "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
+    run = _inspect_returning("absent")
+    assert serves.cmd_up(serv, [], _run=run) == 0
+    assert [kind for kind, _ in recorded] == ["serve.up"]
+
+
+def test_cmd_up_running_explicit_recreate_records_serve_up(monkeypatch):
+    # An explicit --recreate of a RUNNING container provably removes and
+    # recreates it (docker rm -f + compose up) — a real lifecycle change that
+    # must record serve.up exactly once, unlike an already-running no-op.
+    recorded = []
+    monkeypatch.setattr(
+        serves, "_record_lifecycle_event",
+        lambda kind, payload: (recorded.append((kind, payload)) or True),
+    )
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local",
+             "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
+    run = _inspect_returning("running")
+    assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
+    assert any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)  # actually recreated
+    assert [kind for kind, _ in recorded] == ["serve.up"]
+
+
 def test_cmd_up_paused_compose_serve_is_unpaused_not_composed():
     # N1: a PAUSED compose serve must be `docker unpause`d (handled before the compose
     # branch), not routed through `docker compose up -d` — which would not unpause it and
@@ -1800,6 +1852,21 @@ def test_cmd_up_storage_skips_bind_and_readonly_mounts():
     run = _storage_run(mounts=mounts)
     assert serves.cmd_up(_storage_serve(), [], _run=run) == 0
     assert not any("touch" in str(a) for c in run.calls for a in c)
+
+
+def test_cmd_up_storage_shell_quotes_mount_destination():
+    destination = "/app/user'; echo PWNED; #"
+    mounts = [{"Type": "volume", "Name": "data", "RW": True,
+               "Destination": destination}]
+    run = _storage_run(mounts=mounts)
+    assert serves.cmd_up(_storage_serve(), [], _run=run) == 0
+    command = next(
+        argv[-1]
+        for argv in run.calls
+        if argv[:2] == ["docker", "exec"] and "touch" in argv[-1]
+    )
+    probe = destination + "/.anvil-serving-write-probe"
+    assert shlex.split(command) == ["touch", probe, "&&", "rm", "-f", probe]
 
 
 def test_load_manifest_normalizes_shared_volumes(tmp_path):

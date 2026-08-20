@@ -43,10 +43,18 @@ Before a measured campaign, verify:
 - prepared repositories and images match their immutable revisions or digests;
 - the owned evidence directory is writable.
 
-SWE-bench evaluation images are normally Linux x86-64. An Apple Silicon worker
-must prove that its configured container runtime can execute the selected
-image; host architecture alone is not proof. An incompatible runtime is a
-preflight failure, not a model failure.
+SWE-bench evaluation images are normally Linux x86-64. The managed adapter
+selects `linux/amd64`; an Apple Silicon worker must prove that its configured
+container runtime can execute that image under emulation. The immutable plan
+records an absolute container-runtime executable so detached workers do not
+depend on shell `PATH`. Host architecture alone is not proof. An incompatible
+runtime is a preflight failure, not a model failure.
+
+The worker environment must also select its active container context. A stale
+global `DOCKER_HOST` (for example, an absent Colima socket while Docker Desktop
+is active) is a worker configuration failure. Credential values are trimmed
+at the child-process boundary to prevent CRLF or surrounding whitespace from
+changing authentication; values remain secret and never enter artifacts.
 
 ## Versioned profiles
 
@@ -59,11 +67,15 @@ inputs, but they are not silently substituted for or claimed by these profiles;
 an external-adapter profile must explicitly pin and execute them before a run
 can report those benchmark names.
 
+Every SWE profile also pins the `princeton-nlp/SWE-bench_Verified` dataset
+revision as a prepared adapter. The official grader's repository revision is
+not a substitute for the dataset identity.
+
 | Profile | Context buckets | Positions × repetitions | Agentic scope | SWE Verified instances | Intended use |
 |---|---|---:|---|---:|---|
 | `smoke` | 8K, 32K | 3 × 1 | tool sequence and one recovery fixture | 1 | Wiring and short functional gate |
-| `scout` | 8K, 32K, 131K, 262K | 5 × 2 | adds structured edit and debug loop | 5 | Find likely failure regions before a deep run |
-| `deep` | 8K through 640K in seven buckets | 7 × 3 | adds context recovery | 25 | Expensive degradation and repository campaign |
+| `scout` | 8K, 32K, 131K, 262K | 5 × 2 | 9 cases: planning, reasoning, structured output, sequential/parallel/dependent tools, recovery, debugging, and context recovery | 5 | Find likely failure regions before a deep run |
+| `deep` | 8K through 640K in seven buckets | 7 × 3 | the scout matrix plus long-session retention | 25 | Expensive degradation and repository campaign |
 
 SWE instance IDs are always explicit, ordered, unique, and equal in count to
 the selected profile's `instance_limit`. The adapter never silently replaces a
@@ -103,10 +115,18 @@ in JSON:
   "parameters": {
     "model_host_id": "model-host",
     "case_limit": 1,
-    "advertised_context": 650000
+    "advertised_context": 650000,
+    "reasoning_effort": "xhigh"
   }
 }
 ```
+
+`reasoning_effort` is optional and may be `none`, `minimal`, `low`, `medium`,
+`high`, `max`, or `xhigh` when the selected model supports it. For model
+families that use chat-template thinking controls, set `thinking_mode` to
+`enabled` or `disabled` instead. The two controls are mutually exclusive and
+the artifact records the exact requested control. Agentic and SWE jobs forward
+the control to every model request; context jobs ignore these parameters.
 
 `case_limit` is useful for the first smoke only; omit it for the complete
 profile matrix. For SWE, replace the context parameters with
@@ -170,13 +190,18 @@ Context artifacts distinguish:
 - capacity: whether a request completes;
 - quality: whether the independently hidden answer remains correct.
 
-Agentic artifacts score protocol, reasoning, result incorporation, recovery,
-history, and final answer separately. Parser failure, reasoning-budget
-exhaustion, model behavior, and infrastructure failure remain distinct.
+Agentic artifacts score protocol, applicable reasoning, result incorporation,
+recovery, history, and final answer separately. Tool-result final answers may
+use natural language as long as every deterministic marker is present. The raw
+private artifact retains the visible answer and per-turn measurements so a
+formatting miss cannot be mislabeled as a reasoning failure. Parser failure,
+reasoning-budget exhaustion, recovery failure, final-answer failure, and
+infrastructure failure remain distinct.
 
 SWE artifacts retain the prompt/dataset identity, trajectory hash, request IDs
 when exposed, token counts, duration, exit status, prediction hash, pinned agent
-harness, and pinned grader. A trajectory or prediction without an official
+harness, pinned grader, and exact reasoning/thinking request control. A
+trajectory or prediction without an official
 grader report is `incomplete`, even when the agent exited normally.
 
 The common evidence envelope labels a record `measured` or `external_prior`,

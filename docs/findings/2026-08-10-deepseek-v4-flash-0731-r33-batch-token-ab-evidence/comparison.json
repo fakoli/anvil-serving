@@ -1,0 +1,150 @@
+{
+  "schema": "anvil-serving.deepseek-r33-batch-token-ab/v1",
+  "observed_date_local": "2026-08-10",
+  "observed_date_utc": "2026-08-11",
+  "evidence_types": ["external-prior", "functional", "capacity", "bounded-performance"],
+  "identity": {
+    "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "image": "voipmonitor/vllm@sha256:fdde59fed7f9fc12f9fd5ef1b3b3ea8d5097bf10ebad54b348497102c3a83f82",
+    "runtime": "0.11.2.dev280+gilded.gnosis.v20.vllmfa13d33.b12x06db0f4.fi1ac6942.cu132.20260809.r33",
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "topology": "exclusive TP=2 over PCIe without NVLink",
+    "context_tokens": 131072,
+    "max_num_seqs": 1,
+    "gpu_memory_utilization": 0.975,
+    "weight_path": "B12X W4A8 with NVFP4 MoE and FP8 dense/activation path",
+    "kv_cache": "FP8 DS-MLA",
+    "speculative_decoding": false,
+    "host_kv_offload_gib": 0
+  },
+  "controlled_change": {
+    "field": "MAX_NUM_BATCHED_TOKENS",
+    "baseline": 8192,
+    "candidate": 4096,
+    "other_functional_recipe_differences": [],
+    "operational_identity_differences": ["port", "served model name", "container name"]
+  },
+  "external_documentation": [
+    {
+      "publisher": "local-inference-lab",
+      "kind": "pinned creator compose",
+      "url": "https://github.com/local-inference-lab/blackwell-llm-docker/blob/426da51285d0666508003b03a75a442139fb7979/examples/docker-compose-ds4-v20-r33.yml",
+      "relevance": "The r33 compose defaults MAX_MODEL_LEN=131072, MAX_NUM_BATCHED_TOKENS=8192, MAX_NUM_SEQS=16, and GPU utilization 0.975."
+    },
+    {
+      "publisher": "vLLM",
+      "kind": "official backend tuning documentation",
+      "url": "https://docs.vllm.ai/projects/ascend/en/v0.24.0rc/tutorials/models/Qwen3.5-27B-Qwen3.6-27B.html",
+      "relevance": "Defines max-num-batched-tokens as tokens processed per step; larger values reduce latency but increase activation-memory pressure, and profiling subtracts peak HBM usage from the utilization budget to size KV. This is a mechanism prior from the Ascend backend, not RTX qualification."
+    },
+    {
+      "publisher": "local-inference-lab",
+      "kind": "pinned r33 guide",
+      "url": "https://github.com/local-inference-lab/rtx6kpro/blob/6c111c20c2bf2efec038e4daf14fc67030717e46/models/ds4dspark-v20-r33.md",
+      "relevance": "Pinned runtime and DeepSeek r33 operating guide used to confirm recipe provenance."
+    }
+  ],
+  "startup_measurements": {
+    "baseline_8192": {
+      "available_kv_cache_gib_min_rank": 15.27,
+      "gpu_kv_cache_tokens_reported": 283917,
+      "reported_full_context_concurrency": 2.17,
+      "weight_gib_per_rank": 75.64,
+      "peak_activation_gib_per_rank": 1.73,
+      "non_torch_gib_tp0": 0.35,
+      "non_torch_gib_tp1": 0.12,
+      "cuda_graph_gib_per_rank": 0.04
+    },
+    "candidate_4096": {
+      "available_kv_cache_gib_min_rank": 15.99,
+      "gpu_kv_cache_tokens_reported": 553243,
+      "reported_full_context_concurrency": 4.22,
+      "weight_gib_per_rank": 75.51,
+      "peak_activation_gib_per_rank": 1.14,
+      "non_torch_gib_tp0": 0.35,
+      "non_torch_gib_tp1": 0.12,
+      "cuda_graph_gib_per_rank": 0.04
+    },
+    "candidate_minus_baseline": {
+      "available_kv_cache_gib": 0.72,
+      "available_kv_cache_percent": 4.715,
+      "gpu_kv_cache_tokens_reported": 269326,
+      "gpu_kv_cache_tokens_reported_percent": 94.861,
+      "reported_full_context_concurrency": 2.05,
+      "peak_activation_gib_per_rank": -0.59,
+      "peak_activation_percent": -34.104
+    }
+  },
+  "functional_gate_4096": {
+    "passed": true,
+    "checks_passed": 6,
+    "checks_total": 6,
+    "tool_batch_passed": 20,
+    "tool_batch_total": 20,
+    "checks": ["short coding smoke", "structured JSON", "typed tool calls", "streaming tool call", "tool-result continuation", "Responses API subset"],
+    "reasoning_effort": "high"
+  },
+  "matched_context_ladder": {
+    "targets": [117500, 118500, 119500],
+    "baseline_8192": {
+      "all_passed": true,
+      "largest_actual_prompt_tokens": 119503,
+      "largest_ttft_ms": 17444.791,
+      "largest_e2e_ms": 17885.786,
+      "largest_effective_prefill_tokens_per_second": 7537.341,
+      "largest_decode_tokens_per_second": 73.856
+    },
+    "candidate_4096": {
+      "all_passed": true,
+      "largest_actual_prompt_tokens": 119503,
+      "largest_ttft_ms": 17364.43,
+      "largest_e2e_ms": 17708.37,
+      "largest_effective_prefill_tokens_per_second": 7343.7,
+      "largest_decode_tokens_per_second": 75.2
+    },
+    "largest_request_candidate_minus_baseline_percent": {
+      "ttft": -0.461,
+      "e2e": -0.992,
+      "effective_prefill_tokens_per_second": -2.569,
+      "decode_tokens_per_second": 1.82
+    },
+    "measurement_note": "One request per target is sufficient for a bounded capacity replay, not a performance-ranking claim. API-reported prompt tokens remain authoritative because the harness target generator has a retained calibration defect."
+  },
+  "private_raw_artifact_hashes_sha256": {
+    "r33-131k-context-edge-high.json": "77cc5c7f325b8abd8fc66c9f29ad04965cce91fa84fe840f2df7a11c98f8f58c",
+    "r33-131k-batch4096-context-edge-high.json": "73d373d6fd16989128ba16a359eb895ff886e3d5fa6fd0de7ce7f0e94b7d8e8d",
+    "r33-131k-batch4096-preflight.json": "f82386d5a9c190907ab60dc712dcfb38aeba468990f70702628d62a63dc79890"
+  },
+  "interpretation": {
+    "proven": [
+      "On this exact r33 dual-PRO recipe, reducing MAX_NUM_BATCHED_TOKENS from 8192 to 4096 reduced profiled peak activation memory and increased GPU memory assigned to KV.",
+      "The 4096 configuration remained healthy and passed the same bounded functional and 119503-prompt-token capacity gates.",
+      "A fresh 8192 replay reproduced 15.27 GiB, 283917 reported KV tokens, and 2.17x reported concurrency, ruling out a stale historical baseline."
+    ],
+    "not_proven": [
+      "The reported 553243-token KV figure is not proof that a 393216-token configured serve starts or that an actual request above 300000 tokens succeeds.",
+      "The near-doubling of reported KV tokens is not explained by the 4.715 percent KV-byte increase alone; cache geometry or engine accounting must be treated as unresolved until a long-context load and request validate it.",
+      "One context request per target does not establish a statistically significant throughput difference or broad task-quality equivalence."
+    ],
+    "next_test": "Prepare a separate GPU-only 393216-token, max-seq-1, batch-4096, FP8-KV, target-only arm with zero host offload; require healthy startup, a reported KV pool at least 393216 tokens, an actual prompt above 300000 tokens, post-probe functional checks, and no route or promotion change."
+  },
+  "campaign_closeout": {
+    "candidate": "batch4096-131k",
+    "health_at_close": "healthy",
+    "qualification_mode": "exclusive TP=2",
+    "post_reload_smoke": "smoke, JSON, 3/3 typed tools, and tool-result continuation passed",
+    "shared_memory_reclaimable_bytes": 0,
+    "route_changed": false,
+    "promotion_changed": false,
+    "post_session_owner": "private operator state"
+  },
+  "repository_validation": {
+    "benchmark_docs_skill_tests": "7 passed",
+    "markdown_links": "345 tracked Markdown files passed",
+    "mkdocs_strict": "passed",
+    "cli_reference_audit": "669 files, 0 violations",
+    "ruff": "passed",
+    "full_pytest": "3993 passed, 10 skipped"
+  }
+}

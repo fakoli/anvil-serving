@@ -67,10 +67,12 @@ import numbers
 import os
 import re
 import shlex
+import signal
 import subprocess
 import tempfile
 import time
 from . import envfile
+from .events import LifecycleEventError, emit_lifecycle_event
 from . import guard
 from . import host as host_ops
 from . import reservations
@@ -95,9 +97,25 @@ REPO = os.path.dirname(HERE)
 DEFAULT_MANIFEST = "./serves.toml"
 EXAMPLE_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
 DEFAULT_RECIPE_REGISTRY = os.path.join("configs", "serve-recipes.toml")
+DEFAULT_SERVE_PROFILES = "./serve-profiles.toml"
+SERVE_PROFILES_SCHEMA = "anvil-serving/serve-profiles/v1"
 
 # States meaning the container exists but is already stopped (nothing to free).
 _STOPPED = ("exited", "created", "dead")
+
+
+def _record_lifecycle_event(kind, payload):
+    try:
+        emit_lifecycle_event(kind, payload)
+    except LifecycleEventError as exc:
+        print(
+            "lifecycle change applied but event was not recorded: %s" % exc,
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
 _ENGINE_ALIASES = {
     "llama.cpp": "llamacpp",
     "llama-cpp": "llamacpp",
@@ -184,6 +202,87 @@ def resolve_recipe_registry_path(path=None):
         if os.path.isfile(os.path.expanduser(candidate)):
             return candidate
     return config_path("serve-recipes.toml")
+
+
+class ServeProfileError(ValueError):
+    """A declared serving profile is incomplete or internally inconsistent."""
+
+
+def default_serve_profile_candidates():
+    """Return the operator-first search path for serving-profile declarations."""
+    return [config_path("serve-profiles.toml"), DEFAULT_SERVE_PROFILES]
+
+
+def resolve_serve_profiles_path(path=None):
+    if path:
+        return path
+    for candidate in default_serve_profile_candidates():
+        if os.path.isfile(os.path.expanduser(candidate)):
+            return candidate
+    return config_path("serve-profiles.toml")
+
+
+def load_serve_profiles(path):
+    """Load a small, declarative selector for split and exclusive profiles.
+
+    A profile contains the target exclusive serve, named split restore group,
+    and optional bounded readiness timing.  The serves manifest remains the
+    sole owner of lifecycle, GPU reservations, and router profile paths, so
+    this file cannot introduce a second, drifting implementation of a model
+    serve.
+    """
+    with open(os.path.expanduser(path), "rb") as f:
+        data = tomllib.load(f)
+    if data.get("schema") != SERVE_PROFILES_SCHEMA:
+        raise ServeProfileError(
+            "serve profiles schema must be %r" % SERVE_PROFILES_SCHEMA
+        )
+    rows = data.get("profile")
+    if not isinstance(rows, list) or not rows:
+        raise ServeProfileError("serve profiles must declare at least one [[profile]] row")
+    profiles = []
+    seen = set()
+    required = ("id", "mode", "exclusive_target", "restore_group")
+    for raw in rows:
+        if not isinstance(raw, dict):
+            raise ServeProfileError("each [[profile]] row must be a TOML table")
+        missing = [key for key in required if not isinstance(raw.get(key), str) or not raw[key]]
+        if missing:
+            raise ServeProfileError(
+                "serve profile is missing non-empty %s" % ", ".join(missing)
+            )
+        if raw["id"] in seen:
+            raise ServeProfileError("duplicate serve profile id %r" % raw["id"])
+        if raw["mode"] not in {"split", DUAL_GPU_EXCLUSIVE_MODE}:
+            raise ServeProfileError(
+                "serve profile %r has unsupported mode %r"
+                % (raw["id"], raw["mode"])
+            )
+        profile = dict(raw)
+        profile.setdefault("startup_timeout", LIFECYCLE_READINESS_TIMEOUT_SECONDS)
+        profile.setdefault("poll_interval", LIFECYCLE_READINESS_POLL_SECONDS)
+        for field in ("startup_timeout", "poll_interval"):
+            value = profile[field]
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, numbers.Real)
+                or not math.isfinite(value)
+                or value <= 0
+            ):
+                raise ServeProfileError(
+                    "serve profile %r %s must be a finite positive number"
+                    % (raw["id"], field)
+                )
+        seen.add(raw["id"])
+        profiles.append(profile)
+    return profiles
+
+
+def select_serve_profile(profiles, profile_id):
+    matches = [profile for profile in profiles if profile["id"] == profile_id]
+    if len(matches) != 1:
+        raise ServeProfileError("unknown serve profile %r" % profile_id)
+    return matches[0]
 
 
 def manifest_set_paths(manifest_path):
@@ -1948,11 +2047,40 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
     lock = nullcontext() if dry_run else _switch_role_lock("promotion")
     try:
         with lock:
-            return _cmd_promote_unlocked(
+            result = _cmd_promote_unlocked(
                 serves, promotions, name, manifest_path,
                 rollback=rollback, resume=resume, dry_run=dry_run,
                 _run=_run, _open=_open, _sleep=_sleep,
             )
+            if result == 0 and not dry_run:
+                plan = next(item for item in promotions if item["name"] == name)
+                target_name = plan["rollback"] if rollback else plan["target"]
+                rollback_name = plan["target"] if rollback else plan["rollback"]
+                target = _exact_serve(serves, target_name)
+                rollback_serve = _exact_serve(serves, rollback_name)
+                base_payload = {
+                    "promotion": name,
+                    "model": target.get("served_name", target.get("model")),
+                }
+                if rollback:
+                    base_payload["restored_model"] = base_payload.pop("model")
+                else:
+                    base_payload["context"] = plan.get("needle_ctx")
+                    base_payload["rollback"] = rollback_serve.get(
+                        "served_name", rollback_serve.get("model")
+                    )
+                for tier in plan["affected_tiers"]:
+                    emit_lifecycle_event(
+                        "promote.rolled_back" if rollback else "promote.applied",
+                        {**base_payload, "tier": tier},
+                    )
+            return result
+    except LifecycleEventError as exc:
+        print(
+            "promotion applied but lifecycle event was not recorded: %s" % exc,
+            file=sys.stderr,
+        )
+        return 1
     except RuntimeError as exc:
         print("promotion refused: %s" % exc, file=sys.stderr)
         return 1
@@ -3305,6 +3433,15 @@ def cmd_down(
             if not native_offload:
                 return True
             return finish_native_offload_cleanup()
+
+        def record_down(graceful):
+            nonlocal rc
+            if not _record_lifecycle_event(
+                "serve.down",
+                {"serve": s["name"], "graceful": graceful},
+            ):
+                rc = 1
+
         if st in _STOPPED:
             if keep_container:
                 print("  %s: %s (kept for logs/restart)" % (s["container"], st))
@@ -3341,6 +3478,7 @@ def cmd_down(
             if ok:
                 if not finish_detected_native_offload_cleanup():
                     rc = 1
+                record_down(False)
             else:
                 rc = 1
             continue
@@ -3373,6 +3511,7 @@ def cmd_down(
             if ok:
                 if not finish_detected_native_offload_cleanup():
                     rc = 1
+                record_down(False)
             else:
                 rc = 1
             continue
@@ -3392,6 +3531,7 @@ def cmd_down(
                     print("  stopped and kept %s" % s["container"])
                     if not finish_detected_native_offload_cleanup():
                         rc = 1
+                    record_down(True)
             else:
                 ok, message = _docker_rm_f(
                     s["container"], _run,
@@ -3401,6 +3541,7 @@ def cmd_down(
                 if ok:
                     if not finish_detected_native_offload_cleanup():
                         rc = 1
+                    record_down(True)
                 else:
                     rc = 1
         else:
@@ -3687,7 +3828,10 @@ def _container_mount_plan(container, _run):
     # reference fleet that is a 9P path into Windows) which is not ours to
     # chown, and a read-only mount fails a write probe by design.
     volumes = [m for m in mounts
-               if m.get("Type") == "volume" and m.get("RW") and m.get("Destination")]
+               if isinstance(m, dict)
+               and m.get("Type") == "volume"
+               and m.get("RW")
+               and m.get("Destination")]
     return int(parts[0]), int(parts[1]), volumes
 
 
@@ -3742,8 +3886,9 @@ def _storage_write_check(s, _run):
         failed = []
         for dest in paths:
             probe = "%s/%s" % (dest.rstrip("/"), _STORAGE_PROBE_NAME)
+            quoted_probe = shlex.quote(probe)
             r = _run_or(["docker", "exec", container, "sh", "-c",
-                         "touch '%s' && rm -f '%s'" % (probe, probe)],
+                         "touch %s && rm -f %s" % (quoted_probe, quoted_probe)],
                         None, _run, capture_output=True, text=True)
             if r is None or r.returncode != 0:
                 failed.append(dest)
@@ -4010,6 +4155,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                 rc = 1
                 break
         else:
+            ready = True
             # Storage guard BEFORE the readiness wait: a serve can answer its
             # health endpoint while unable to write its volumes (the 2026-08-09
             # ComfyUI defect), and if a repair restart is needed it must happen
@@ -4037,6 +4183,32 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                             readiness_timeout,
                         )
                     )
+                    ready = False
+                    rc = 1
+            if steps and ready and (recreate or st != "running"):
+                # Record serve.up only when the container was not already
+                # running before this invocation, EXCEPT for an explicit
+                # --recreate, which provably removes and recreates the
+                # container (docker rm -f + up) — a real lifecycle change.
+                # For a compose serve whose container was already running
+                # without --recreate, `docker compose up -d` is a cheap
+                # drift-recreate-or-no-op; we cannot tell from the CLI
+                # whether the container actually changed, so we must not
+                # create a false serve.up history entry for an already-
+                # running state.
+                gpu_roles = s.get("gpu_roles")
+                if gpu_roles is None and s.get("gpu_role"):
+                    gpu_roles = [s["gpu_role"]]
+                if not _record_lifecycle_event(
+                    "serve.up",
+                    {
+                        "serve": s["name"],
+                        "model": s.get("served_name", s.get("model")),
+                        "port": s["port"],
+                        "gpu_roles": gpu_roles or [],
+                        "residency": s.get("residency"),
+                    },
+                ):
                     rc = 1
     return rc
 
@@ -4194,6 +4366,8 @@ def _restore_split_stack(
     _run,
     _open,
     _sleep,
+    readiness_timeout=LIFECYCLE_READINESS_TIMEOUT_SECONDS,
+    readiness_poll=LIFECYCLE_READINESS_POLL_SECONDS,
     skip_readmit_when_router_stopped=False,
 ):
     names = plan["rollback"]["serves"]
@@ -4202,6 +4376,8 @@ def _restore_split_stack(
         names,
         ledger_serves=serves,
         wait_for_readiness=True,
+        readiness_timeout=readiness_timeout,
+        readiness_poll=readiness_poll,
         _run=_run,
         _open=_open,
         _sleep=_sleep,
@@ -4237,6 +4413,8 @@ def cmd_mode(
     dry_run=False,
     drain_timeout=EVICTION_DRAIN_TIMEOUT,
     preserve_on_failure=False,
+    readiness_timeout=LIFECYCLE_READINESS_TIMEOUT_SECONDS,
+    readiness_poll=LIFECYCLE_READINESS_POLL_SECONDS,
     router_url=None,
     _transition=None,
     _run=subprocess.run,
@@ -4342,6 +4520,8 @@ def cmd_mode(
         stack_rc = _restore_split_stack(
             serves, plan, transition=transition, _run=_run,
             _open=_open, _sleep=_sleep,
+            readiness_timeout=readiness_timeout,
+            readiness_poll=readiness_poll,
             skip_readmit_when_router_stopped=skip_offline_router_readmit,
         )
         return 0 if config_rc == 0 and stack_rc == 0 else 1
@@ -4394,6 +4574,8 @@ def cmd_mode(
             _restore_split_stack(
                 serves, plan, transition=transition, _run=_run,
                 _open=_open, _sleep=_sleep,
+                readiness_timeout=readiness_timeout,
+                readiness_poll=readiness_poll,
                 skip_readmit_when_router_stopped=skip_offline_router_readmit,
             )
             return 1
@@ -4410,6 +4592,8 @@ def cmd_mode(
             _restore_split_stack(
                 serves, plan, transition=transition, _run=_run,
                 _open=_open, _sleep=_sleep,
+                readiness_timeout=readiness_timeout,
+                readiness_poll=readiness_poll,
                 skip_readmit_when_router_stopped=skip_offline_router_readmit,
             )
             return 1
@@ -4418,6 +4602,8 @@ def cmd_mode(
             [target_name],
             ledger_serves=serves,
             wait_for_readiness=True,
+            readiness_timeout=readiness_timeout,
+            readiness_poll=readiness_poll,
             _allow_exclusive_target=True,
             _run=_run,
             _open=_open,
@@ -4474,6 +4660,8 @@ def cmd_mode(
             [target_name],
             ledger_serves=serves,
             wait_for_readiness=True,
+            readiness_timeout=readiness_timeout,
+            readiness_poll=readiness_poll,
             _allow_exclusive_target=True,
             _run=_run,
             _open=_open,
@@ -4487,6 +4675,164 @@ def cmd_mode(
 
     print("unknown mode action %r" % action, file=sys.stderr)
     return 2
+
+
+def profile_transition_action(profile, mode_summary, *, apply=False):
+    """Resolve a declared profile to its one safe mode transaction.
+
+    Split profiles are intentionally reachable only by leaving their declared
+    exclusive owner; an already-split host has no durable proof of which router
+    profile was installed, so an apply refuses rather than silently treating an
+    arbitrary split stack as the requested profile.
+    """
+    current = mode_summary["mode"]
+    target = profile["exclusive_target"]
+    if current == "unresolved":
+        raise ServeProfileError("current serving mode is unresolved")
+    if profile["mode"] == DUAL_GPU_EXCLUSIVE_MODE:
+        if current == DUAL_GPU_EXCLUSIVE_MODE:
+            if mode_summary["exclusive_owner"] == target:
+                return "noop"
+            raise ServeProfileError(
+                "exclusive owner %r is active; profile %r requires split first"
+                % (mode_summary["exclusive_owner"], profile["id"])
+            )
+        return "enter"
+    if current == DUAL_GPU_EXCLUSIVE_MODE:
+        if mode_summary["exclusive_owner"] != target:
+            raise ServeProfileError(
+                "exclusive owner %r is active; split profile %r declares %r"
+                % (mode_summary["exclusive_owner"], profile["id"], target)
+            )
+        return "leave"
+    if apply:
+        raise ServeProfileError(
+            "host is already in split mode; refuse to assume profile %r is installed"
+            % profile["id"]
+        )
+    return "leave"
+
+
+@contextmanager
+def _defer_first_profile_interrupt(enabled):
+    """Keep one accidental Ctrl-C from abandoning a live profile transaction.
+
+    Lifecycle commands start detached containers and then wait on readiness.  A
+    default SIGINT during that wait exits Python without undoing the detached
+    work.  For a confirmed profile apply, defer the first SIGINT so the existing
+    success-or-rollback path can finish.  A second SIGINT preserves the normal
+    emergency-abort behavior and may leave a partial transition, which is stated
+    explicitly in the warning.
+    """
+    if not enabled:
+        yield
+        return
+
+    previous = signal.getsignal(signal.SIGINT)
+    count = 0
+
+    def handler(signum, frame):
+        nonlocal count
+        count += 1
+        if count == 1:
+            print(
+                "profile transition still active; first Ctrl-C deferred so "
+                "success or rollback can finish (press Ctrl-C again to force "
+                "exit and then inspect `serves mode status`)",
+                file=sys.stderr,
+            )
+            return
+        if previous == signal.SIG_IGN:
+            return
+        if callable(previous):
+            previous(signum, frame)
+            return
+        signal.default_int_handler(signum, frame)
+
+    installed = False
+    try:
+        signal.signal(signal.SIGINT, handler)
+        installed = True
+    except ValueError:
+        # Signal handlers can only be installed by the main Python thread.
+        pass
+    try:
+        yield
+    finally:
+        if installed:
+            signal.signal(signal.SIGINT, previous)
+
+
+def cmd_profile(
+    serves,
+    profiles,
+    action,
+    profile_id=None,
+    *,
+    confirm=False,
+    dry_run=False,
+    drain_timeout=EVICTION_DRAIN_TIMEOUT,
+    router_url=None,
+    _run=subprocess.run,
+):
+    """List, preview, or apply a named topology profile through ``cmd_mode``."""
+    if action == "list":
+        for profile in profiles:
+            print(
+                "%s\t%s\texclusive=%s\trestore-group=%s"
+                % (
+                    profile["id"],
+                    profile["mode"],
+                    profile["exclusive_target"],
+                    profile["restore_group"],
+                )
+            )
+        return 0
+
+    profile = select_serve_profile(profiles, profile_id)
+    states = docker_states(
+        [serve["container"] for serve in serves if reservations.is_gpu_inference(serve)],
+        _run=_run,
+    )
+    summary = operating_mode_summary(serves, lambda container: states.get(container, "absent"))
+    transition = profile_transition_action(
+        profile, summary, apply=action == "apply" and not dry_run
+    )
+    print(
+        "serving profile %s: %s (current=%s, exclusive-owner=%s)"
+        % (profile["id"], transition, summary["mode"], summary["exclusive_owner"] or "none")
+    )
+    if transition == "noop":
+        print("profile already active; no lifecycle or router change made")
+        return 0
+    with _defer_first_profile_interrupt(
+        action == "apply" and not dry_run and confirm
+    ):
+        result = cmd_mode(
+            serves,
+            "preview" if action == "preview" else transition,
+            profile["exclusive_target"],
+            profile["restore_group"],
+            confirm=confirm,
+            dry_run=dry_run,
+            drain_timeout=drain_timeout,
+            readiness_timeout=profile["startup_timeout"],
+            readiness_poll=profile["poll_interval"],
+            router_url=router_url,
+            _run=_run,
+        )
+        if result == 0 and action == "apply" and not dry_run:
+            if not _record_lifecycle_event(
+                "profile.enter" if transition == "enter" else "profile.leave",
+                {
+                    "profile": profile["id"],
+                    "mode": profile["mode"],
+                    "exclusive_target": profile["exclusive_target"],
+                    "restore_group": profile["restore_group"],
+                },
+            ):
+                return 1
+        return result
 
 
 def cmd_rm(serves, names, dry_run=False, assume_yes=False, _run=subprocess.run,
@@ -4862,7 +5208,7 @@ def cmd_probe(serves, names, *, text, image_path, timeout, _open=urllib.request.
 
 _ACTIONS = (
     "status", "probe", "up", "down", "rm", "adopt", "logs", "groups", "lint",
-    "rollback-check", "up-for", "switch", "promote", "mode", "render",
+    "rollback-check", "up-for", "switch", "promote", "mode", "profile", "render",
 )
 # Actions that accept `--group NAME` (repeatable) — they act across the whole
 # manifest set (serves*.toml in the manifest's dir), not just one file.
@@ -4883,6 +5229,7 @@ _ACTION_DESCRIPTIONS = {
     "switch": "Switch a deployment role to an activation-ready recipe.",
     "promote": "Promote a staged model recipe with preflight and full rollback.",
     "mode": "Preview or transact split and exclusive TP=2 operating modes.",
+    "profile": "List, preview, or apply a declared serving topology profile.",
     "render": "Render tuned compose, manifest, and router-tier configuration.",
 }
 
@@ -4927,6 +5274,19 @@ def _build_action_parser(action):
             help="exclusive TP=2 serve (required except for status)",
         )
         p.set_defaults(names=[])
+    elif action == "profile":
+        p.add_argument(
+            "profile_action",
+            choices=("list", "preview", "apply"),
+            help="profile operation to perform",
+        )
+        p.add_argument(
+            "profile_id",
+            nargs="?",
+            metavar="PROFILE",
+            help="declared profile id (required except for list)",
+        )
+        p.set_defaults(names=[])
     elif action == "promote":
         p.add_argument("names", nargs="*", metavar="PLAN_OR_TARGET",
                        help="the [[promotion]] plan name from the manifest; "
@@ -4961,7 +5321,7 @@ def _build_action_parser(action):
                        help="emit the report as JSON for tooling.")
     else:
         p.set_defaults(json_out=False)
-    if action in {"up", "down", "rm", "adopt", "switch", "promote", "mode", "up-for"}:
+    if action in {"up", "down", "rm", "adopt", "switch", "promote", "mode", "profile", "up-for"}:
         p.add_argument("--dry-run", action="store_true",
                        help="print what would run without touching any container.")
     else:
@@ -5029,6 +5389,26 @@ def _build_action_parser(action):
                  "container and logs before restoring the split stack",
         )
         p.add_argument("--router-url", metavar="URL", help="router transition base URL")
+    elif action == "profile":
+        p.add_argument(
+            "--profiles",
+            metavar="PATH",
+            help="serving-profile TOML (default: operator config home, then ./serve-profiles.toml)",
+        )
+        p.add_argument(
+            "--confirm",
+            action="store_true",
+            help="apply the declared topology transaction after reviewing it",
+        )
+        p.add_argument(
+            "--drain-timeout",
+            type=float,
+            default=EVICTION_DRAIN_TIMEOUT,
+            metavar="SECONDS",
+            help="bounded router drain wait before a profile transition",
+        )
+        p.add_argument("--router-url", metavar="URL", help="router transition base URL")
+        p.set_defaults(restore_group=None, preserve_on_failure=False)
     elif action == "rollback-check":
         p.add_argument(
             "--restore-group",
@@ -5245,6 +5625,8 @@ def main(argv=None):
         cache_operation = "serves switch"
     elif a.action == "mode" and a.mode_action in {"enter", "leave"}:
         cache_operation = "serves mode %s" % a.mode_action
+    elif a.action == "profile" and a.profile_action == "apply":
+        cache_operation = "serves profile apply"
     elif a.action == "up-for" and a.confirm:
         cache_operation = "serves up-for"
     cache_policy = None
@@ -5306,7 +5688,9 @@ def main(argv=None):
     # manifest SET. Plain positional-name operations keep selection scoped to
     # the named manifest, but admission/status still use the complete set so a
     # separate voice or ComfyUI manifest cannot become invisible GPU occupancy.
-    use_set = bool(a.groups) or a.action in {"groups", "lint", "rollback-check", "mode", "up-for"}
+    use_set = bool(a.groups) or a.action in {
+        "groups", "lint", "rollback-check", "mode", "profile", "up-for",
+    }
     # `lint` reports defects that the strict loader refuses, so it must load
     # leniently -- otherwise the command an operator reaches for when blocked
     # is the one that cannot run.
@@ -5360,6 +5744,86 @@ def main(argv=None):
                 return 2
         return cmd_rollback_check(
             serves, promotions, restore_group=a.restore_group, as_json=a.json_out)
+    if a.action == "profile":
+        if a.profile_action == "list" and a.profile_id:
+            print("serves profile list does not accept PROFILE", file=sys.stderr)
+            return 2
+        if a.profile_action != "list" and not a.profile_id:
+            print(
+                "serves profile %s requires PROFILE" % a.profile_action,
+                file=sys.stderr,
+            )
+            return 2
+        if a.profile_action != "apply" and a.confirm:
+            print("--confirm is only valid with serves profile apply", file=sys.stderr)
+            return 2
+        profiles_path = resolve_serve_profiles_path(a.profiles)
+        try:
+            profiles = load_serve_profiles(profiles_path)
+        except FileNotFoundError:
+            print(
+                "serve profiles not found: %s (pass --profiles PATH or add "
+                "serve-profiles.toml to the operator config home)" % profiles_path,
+                file=sys.stderr,
+            )
+            return 2
+        except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:
+            print("bad serve profiles %s: %s" % (profiles_path, exc), file=sys.stderr)
+            return 2
+        if a.profile_action == "apply":
+            try:
+                profile = select_serve_profile(profiles, a.profile_id)
+                states = docker_states(
+                    [
+                        serve["container"] for serve in serves
+                        if reservations.is_gpu_inference(serve)
+                    ]
+                )
+                summary = operating_mode_summary(
+                    serves, lambda container: states.get(container, "absent")
+                )
+                transition = profile_transition_action(
+                    profile, summary, apply=not a.dry_run
+                )
+            except ServeProfileError as exc:
+                print("serving profile refused: %s" % exc, file=sys.stderr)
+                return 2
+            if transition == "enter":
+                mode_promotions = []
+                for path in manifest_set_paths(manifest_path):
+                    try:
+                        mode_promotions.extend(load_promotions(path))
+                    except FileNotFoundError:
+                        continue
+                    except Exception as exc:
+                        print("bad promotion plan in %s: %s" % (path, exc), file=sys.stderr)
+                        return 2
+                profile_involved = {profile["exclusive_target"]} | {
+                    serve["name"] for serve in resolve_group(serves, profile["restore_group"])
+                }
+                gate_rc = _preflight_gate(
+                    serves,
+                    mode_promotions,
+                    restore_group=profile["restore_group"],
+                    involved=profile_involved,
+                    label="profile apply",
+                )
+                if gate_rc is not None:
+                    return gate_rc
+        try:
+            return cmd_profile(
+                serves,
+                profiles,
+                a.profile_action,
+                a.profile_id,
+                confirm=a.confirm,
+                dry_run=a.dry_run,
+                drain_timeout=a.drain_timeout,
+                router_url=a.router_url,
+            )
+        except ServeProfileError as exc:
+            print("serving profile refused: %s" % exc, file=sys.stderr)
+            return 2
     if a.action == "up-for":
         from .doctor import resolve_default_config_path
         from .router import config as router_config
