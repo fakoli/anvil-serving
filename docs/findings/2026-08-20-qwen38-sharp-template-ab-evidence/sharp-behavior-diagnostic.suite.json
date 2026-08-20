@@ -1,0 +1,72 @@
+{
+  "suite": "qwen-sharp-behavior-diagnostic",
+  "date": "2026-08-20",
+  "work_class": "chat-template-behavior-diagnostic",
+  "evidence_use": "diagnostic",
+  "validator_strength": "deterministic_marker",
+  "evals": [
+    {
+      "id": "brief-factual",
+      "prompt": "Explain why immutable build artifacts are useful. Keep the answer lean, preserve any necessary caveat, and end with FINAL=PINNED.",
+      "visible_answer_tokens": 256,
+      "reasoning_headroom_tokens": 0,
+      "checks": [
+        {"name": "marker", "contains": "FINAL=PINNED"}
+      ]
+    },
+    {
+      "id": "availability-caveat",
+      "prompt": "A service reports 99.9% availability. Does that fact alone guarantee fewer than 44 minutes of downtime in every 30-day month? Explain precisely, keep the answer concise, and end with FINAL=NO-GUARANTEE.",
+      "visible_answer_tokens": 256,
+      "reasoning_headroom_tokens": 0,
+      "checks": [
+        {"name": "marker", "contains": "FINAL=NO-GUARANTEE"}
+      ]
+    },
+    {
+      "id": "code-deliverable",
+      "prompt": "Write a Python function dedupe_preserving_order(items) that returns the unique items in first-seen order. Include only the code plus a final line containing FINAL=CODE.",
+      "visible_answer_tokens": 256,
+      "reasoning_headroom_tokens": 0,
+      "checks": [
+        {"name": "marker", "contains": "FINAL=CODE"},
+        {"name": "function", "contains": "def dedupe_preserving_order"}
+      ]
+    },
+    {
+      "id": "system-prompt-preserved",
+      "messages": [
+        {"role": "system", "content": "Include the exact marker SYSTEM-KEPT in your answer. Keep the explanation technically correct."},
+        {"role": "user", "content": "Briefly explain what a mutex protects."}
+      ],
+      "visible_answer_tokens": 256,
+      "reasoning_headroom_tokens": 0,
+      "checks": [
+        {"name": "system-marker", "contains": "SYSTEM-KEPT"}
+      ]
+    },
+    {
+      "id": "ambiguous-request-question",
+      "prompt": "Update the deployment to the new target.",
+      "visible_answer_tokens": 256,
+      "reasoning_headroom_tokens": 0,
+      "checks": [
+        {"name": "asks-question", "contains": "?"}
+      ]
+    },
+    {
+      "id": "multi-turn-memory",
+      "messages": [
+        {"role": "user", "content": "The project codename is AMBER-17. Remember it for my next question."},
+        {"role": "assistant", "content": "Understood."},
+        {"role": "user", "content": "What is the project codename? Answer with the codename and FINAL=MEMORY."}
+      ],
+      "visible_answer_tokens": 256,
+      "reasoning_headroom_tokens": 0,
+      "checks": [
+        {"name": "codename", "contains": "AMBER-17"},
+        {"name": "marker", "contains": "FINAL=MEMORY"}
+      ]
+    }
+  ]
+}

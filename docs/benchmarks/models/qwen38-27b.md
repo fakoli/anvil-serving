@@ -6,7 +6,7 @@ Former human-approved single-service profile: official FP8 on SGLang served
 Primary, multimodal, OCR, and video at TP=1/393,216 with EAGLE MTP `3/1/4`
 and CPU feature transport; the second GPU was empty. On 2026-08-16 it was
 superseded as text Primary by DeepSeek Infernal Invocation r15. Review date:
-2026-08-17. The review includes MTP=4/5, official-FP8 versus Inferact NVFP4, the
+2026-08-20. The review includes MTP=4/5, official-FP8 versus Inferact NVFP4, the
 matched BF16 consolidation A/B, and the guarded live promotion.
 The 2026-08-16 review adds direct and routed video qualification plus
 fail-closed router admission for one video.
@@ -14,6 +14,10 @@ The 2026-08-17 review adds a separate RTX 5090 qualification of the RadixArk
 NVFP4 checkpoint, first at 65,536 and then at 131,072 tokens, including native
 video, mixed media, and eight-image/two-video boundary coverage. It is a
 measured direct challenger only; no route or promotion changed.
+The 2026-08-20 review adds a matched stock-versus-Sharp-v22.1 chat-template A/B
+on that 128K RTX 5090 profile. Sharp passed the functional gate but did not
+improve the bounded thinking-enabled diagnostic, so the stock template remains
+selected and no route or promotion changed.
 
 ## Immutable identity
 
@@ -31,6 +35,8 @@ measured direct challenger only; no route or promotion changed.
   `Inferact/Qwen3.8-27B-NVFP4@6128240ebaf4eaa7bad2b3d1c72c37d677c5f462`.
 - RTX 5090 RadixArk NVFP4 qualification revision:
   `RadixArk/Qwen3.8-27B-NVFP4@554ebba9b5f1b79dc11246341960360e6ef05ef4`.
+- Sharp chat-template qualification revision:
+  `peculiar-ragdoll/Qwen-Sharp-Chat-Templates@3dc34df52c63dd22ada21f96435e069deaa8d7da`.
 
 ## Tested hardware and topology
 
@@ -186,6 +192,16 @@ failures in the debug-loop case, and all five fixed SWE-bench Verified scout
 instances resolved under the official grader. That five-instance sample is
 bounded evidence, not a full-benchmark score.
 
+The 2026-08-20 RTX 5090 A/B kept the RadixArk weights, SGLang digest, 128K
+shape, GPU, and request budgets fixed. Sharp v22.1 passed the complete
+thinking-disabled functional preflight. On the thinking-enabled MMLU-Pro
+diagnostic it matched stock at 24/30, including the same two budget-exhausted
+items, while using 10.8% more completion tokens and taking 10.7% longer. On a
+smaller thinking-disabled behavior suite it used 5.1% fewer tokens and was 5.0%
+faster, but passed 15/18 versus stock's 18/18 because it missed a declared
+literal-question-mark contract. This is bounded template evidence, not a
+general model-quality score.
+
 ## Decision and promotion state
 
 Former human-approved single-service profile. Official FP8 on SGLang with MTP
@@ -199,6 +215,8 @@ an offline/batch experiment.
 The RadixArk NVFP4 RTX 5090 recipe is the locally qualified 32 GB challenger
 when native vision and video are required. It remains `no-promotion`, and its
 131,072-token served window should not be conflated with the former 393K lane.
+Sharp v22.1 is rejected for this exact recipe; the stock template remains the
+qualified configuration.
 
 ## External recipe watch and local follow-up
 
@@ -234,6 +252,13 @@ the native NVFP4 target passed its required gates.
 
 ## Failures and gotchas
 
+- The Sharp v22.1 A/B produced complete attempt records, but the generic
+  inspector flags unrelated built-in suites as `not_run`, missing aggregate
+  chat timing, and thinking control as `requested_unverified` in the quality
+  lanes. Those artifacts are bounded diagnostics, not promotion-grade evidence.
+- Both stock and Sharp exhausted the 2,048-token completion cap on the same two
+  MMLU-Pro items. Sharp also failed the narrow ambiguous-request punctuation
+  contract despite safely declining to guess and requesting the missing input.
 - Official FP8 startup warned that absent attention q/prob scaling factors
   defaulted to 1.0. No independent quality result proves equivalence to
   unquantized KV.
@@ -295,6 +320,7 @@ the native NVFP4 target passed its required gates.
 
 ## Dated run history
 
+- [2026-08-20 RTX 5090 Sharp v22.1 chat-template A/B](../../findings/2026-08-20-qwen38-sharp-template-ab.md)
 - [2026-08-17 RTX 5090 RadixArk NVFP4 128K qualification](../../findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md)
 - [2026-08-17 RTX 5090 RadixArk NVFP4 qualification](../../findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090.md)
 - [2026-08-16 video qualification and router expansion](../../findings/2026-08-16-qwen38-27b-video-router.md)
