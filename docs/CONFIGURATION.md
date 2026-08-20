@@ -162,6 +162,27 @@ Both router profile paths are direct dependencies of the operating-mode
 manifest. Manifest loading resolves `{dir}` and relative paths against the
 manifest directory and fails before lifecycle work if either file is missing.
 
+`serves up` runs a post-start storage write guard on every docker serve:
+each read-write named-volume mount is probed as the container's real runtime
+identity before the readiness wait, because a serve can answer its health
+endpoint while unable to write its volumes (pre-created volume layouts defeat
+Docker's empty-volume ownership donation, leaving root-owned directories
+under a non-root workload). A denied mount on an unshared volume is repaired
+in place — re-owned to the runtime identity and the container restarted so
+failed initialization re-runs — then re-verified. Declare volumes this serve
+deliberately shares with other containers:
+
+```toml
+shared_volumes = ["comfyui-user"]
+```
+
+A declared-shared volume is never auto-re-owned: sharing is a deployment
+decision and so is its ownership, so the guard fails the serve and prints the
+manual command instead. A volume found shared at runtime without a
+declaration is reported as a topology fault in its own right. Bind mounts and
+read-only mounts are outside the guard's scope; deliberately non-writable
+storage should be mounted read-only.
+
 Set `native_kv_offload = true` only when the serve recipe uses vLLM's native
 CPU KV-offload mmap files. This explicit ownership declaration lets `serves
 down` run the bounded, two-scan orphan cleanup even when Docker has already
