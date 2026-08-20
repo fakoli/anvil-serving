@@ -11,6 +11,7 @@ import textwrap
 
 from anvil_serving import serves
 from anvil_serving.router import config as router_config
+from tests.conftest import proc
 
 
 def _write(tmp_path, filename, body):
@@ -165,9 +166,16 @@ def test_single_candidate_dry_run_confirm_reaches_cmd_up_dry_run(tmp_path, capsy
     config, serves_set, router_path = _load(
         tmp_path, _entry("primary", "primary-c", router_tier="primary-local"))
 
+    def run(argv, **_kwargs):
+        if argv[:3] == ["docker", "ps", "-a"]:
+            return proc(0, "")
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(1, "", "No such object")
+        raise AssertionError("dry-run executed an unexpected command: %r" % (argv,))
+
     rc = serves.cmd_up_for(
         config, serves_set, "llm.primary", router_path,
-        confirm=True, dry_run=True, ledger_serves=serves_set)
+        confirm=True, dry_run=True, ledger_serves=serves_set, _run=run)
 
     assert rc == 0
     out = capsys.readouterr().out

@@ -1,0 +1,87 @@
+[[recipe]]
+model = "RadixArk/Qwen3.8-27B-NVFP4-RTX5090-128K-Sharp-v22.1"
+status = "qualification-candidate"
+source = "2026-08-20 stock-versus-Sharp v22.1 chat-template A/B on the pinned RTX 5090 Qwen3.8 profile"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+  [recipe.download]
+  repo = "RadixArk/Qwen3.8-27B-NVFP4"
+  revision = "554ebba9b5f1b79dc11246341960360e6ef05ef4"
+  volume = "vllm-hfcache"
+  require_complete_cache = true
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  vram_total_gb = 32
+  vram_note = "Single-GPU qualification host; preserve 3 GiB for Windows and driver overhead."
+
+  [recipe.serve]
+  engine = "sglang"
+  image = "lmsysorg/sglang:qwen38-27b@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124"
+  entrypoint = [
+    "python3",
+    "-m",
+    "sglang.launch_server",
+  ]
+  model_flag = "--model-path"
+  model_path = "/root/.cache/huggingface/hub/models--RadixArk--Qwen3.8-27B-NVFP4/snapshots/554ebba9b5f1b79dc11246341960360e6ef05ef4"
+  quantization = "ModelOpt NVFP4 W4A4 with FP8 projections, BF16 vision/MTP tensors, and FP8 E4M3 KV cache"
+  context_tokens = 131072
+  port = 39038
+  startup_timeout_seconds = 2400
+  served_model_name = "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-sharp-v22.1"
+  ipc = "host"
+  shm_size = "16gb"
+  named_volumes = ["qwen38-radixark-nvfp4-sglang-cache:/root/.cache/sglang"]
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "PYTHONHASHSEED=0",
+    "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+    "SGLANG_VIT_ENABLE_CUDA_GRAPH=0",
+    "SGLANG_MM_BUFFER_SIZE_MB=0",
+  ]
+  flags = [
+    "--served-model-name qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-sharp-v22.1",
+    "--tp-size 1",
+    "--mm-feature-transport cpu",
+    "--limit-mm-data-per-request '{\"image\":8,\"video\":2}'",
+    "--context-length 131072",
+    "--max-running-requests 1",
+    "--mem-fraction-static 0.85",
+    "--kv-cache-dtype fp8_e4m3",
+    "--attention-backend flashinfer",
+    "--chunked-prefill-size 2048",
+    "--disable-radix-cache",
+    "--max-mamba-cache-size 1",
+    "--reasoning-parser qwen3",
+    "--tool-call-parser qwen3_coder",
+    "--chat-template /root/.cache/huggingface/hub/models--peculiar-ragdoll--Qwen-Sharp-Chat-Templates/snapshots/3dc34df52c63dd22ada21f96435e069deaa8d7da/chat_template.jinja",
+    "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+    "--host 0.0.0.0",
+    "--port 39038",
+  ]
+  note = "Direct-only Sharp-template A/B profile. It is byte-equivalent to the pinned 128K qualification recipe except for the explicit Sharp v22.1 chat-template path and distinct served identity. The template artifact is peculiar-ragdoll/Qwen-Sharp-Chat-Templates@3dc34df52c63dd22ada21f96435e069deaa8d7da, pulled through Anvil into the same named Hugging Face cache. No route or promotion authority."
+
+  [recipe.fit]
+  suited = [
+    "qualification",
+    "chat-template-ab",
+    "long-context",
+    "multimodal",
+    "tool-use",
+  ]
+  rationale = "Same weights, image, GPU, context, KV format, concurrency, and engine flags as the qualified 128K baseline; only the chat template and served identity differ."
+
+  [recipe.sources]
+  official = [
+    "https://github.com/sgl-project/sglang/blob/70e291b70f5a2833291fff517a00b2f3ff559463/docs/cookbook/autoregressive/Qwen/Qwen3.8-27B.mdx",
+    "https://huggingface.co/peculiar-ragdoll/Qwen-Sharp-Chat-Templates/commit/3dc34df52c63dd22ada21f96435e069deaa8d7da",
+  ]
+  community = [
+    "https://huggingface.co/RadixArk/Qwen3.8-27B-NVFP4/tree/554ebba9b5f1b79dc11246341960360e6ef05ef4",
+  ]
+  local = [
+    "evidence/2026-08-20-qwen38-sharp-template-ab/",
+  ]

@@ -1,0 +1,168 @@
+{
+  "base_url": "http://127.0.0.1:39038/v1",
+  "budget": {
+    "max_completion_tokens": 512,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "image",
+    "ocr",
+    "video"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [
+    "ANVIL READY"
+  ],
+  "model": "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "This image displays a digital status panel, likely from an industrial or manufacturing system (possibly related to metalworking, given the term \u201cAnvil\u201d). It shows three key pieces of information:\n\n- **Status**: \u201cANVIL READY\u201d \u2014 displayed in bright green, indicating the anvil is prepared for operation.\n- **Code**: \u201cCODE 42917\u201d \u2014 shown in white; this may be a machine ID, process code, or diagnostic identifier.\n- **Temperature**: \u201cTEMPERATURE 42 C\u201d \u2014 shown in light blue; indicates the current temperature is 42 degrees Celsius.\n\n**Most Important Labels, Values, and Status:**\n\n\u2705 **Primary Status**: ANVIL READY (green = operational/ready state)  \n\ud83d\udd22 **Identifier**: CODE 42917 (likely for tracking or configuration)  \n\ud83c\udf21\ufe0f **Critical Parameter**: TEMPERATURE 42 C (within normal range? context-dependent, but low for most forging operations \u2014 possibly ambient or preheat stage)\n\nThe color-coding suggests a user interface designed for quick visual interpretation: green for ready, white for neutral data, blue for environmental/thermal metrics. This appears to be a real-time monitoring screen for equipment readiness and conditions.",
+      "content_chars": 1131,
+      "content_excerpt": "This image displays a digital status panel, likely from an industrial or manufacturing system (possibly related to metalworking, given the term \u201cAnvil\u201d). It shows three key pieces of information:\n\n- *",
+      "expected": [
+        "ANVIL READY"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 3.664,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 261,
+        "prompt_tokens": 254,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 515
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "content_chars": 39,
+      "content_excerpt": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "expected": [
+        "42917",
+        "42"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.386,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 21,
+        "prompt_tokens": 255,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 276
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "The video begins with a dark blue background. In the center of the screen, the text \"FIRST RED\" appears in bold red letters. This text remains on the screen for a few seconds. \n\nSubsequently, the text changes to \"THEN GREEN,\" which is displayed in bold green letters. This new text also stays on the screen for a few seconds. \n\nThroughout the video, the background remains consistently dark blue, and there are no other visible elements or changes in the scene. The sequence of events is straightforward: the initial display of \"FIRST RED\" followed by the transition to \"THEN GREEN.\"",
+      "content_chars": 583,
+      "content_excerpt": "The video begins with a dark blue background. In the center of the screen, the text \"FIRST RED\" appears in bold red letters. This text remains on the screen for a few seconds. \n\nSubsequently, the text",
+      "expected": [
+        "red",
+        "green"
+      ],
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 1.84,
+      "test": "video",
+      "usage": {
+        "completion_tokens": 122,
+        "prompt_tokens": 635,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 560
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 757
+      },
+      "validation_detail": "all expected text present",
+      "video": {
+        "bytes": 11627,
+        "mime": "video/mp4",
+        "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+      }
+    }
+  ],
+  "ocr_expect": [
+    "42917",
+    "42"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "3.7s all expected text present finish='stop' visible=1131 reasoning_chars=0 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.4s all expected text present finish='stop' visible=39 reasoning_chars=0 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    },
+    {
+      "detail": "1.8s all expected text present finish='stop' visible=583 reasoning_chars=0 reasoning_tokens=None",
+      "name": "bounded video understanding",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [
+    "red",
+    "green"
+  ],
+  "video_input": {
+    "bytes": 11627,
+    "mime": "video/mp4",
+    "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+  }
+}
