@@ -806,8 +806,8 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
     # The vision-sized slot the F006 design gives the tenant; the compose file
     # enforces it engine-side with --reserve-vram (change them together).
     assert comfyui["vram_mib"] == 12288
-    # v0.27.1 pin travels in the label so `serves status` shows what runs.
-    assert comfyui["model"] == "comfyui-v0.27.1"
+    # The app-version pin travels in the label so `serves status` shows what runs.
+    assert comfyui["model"] == "comfyui-v0.31.1"
     # Own compose project, own compose file — never the shared docker-compose.yml.
     assert "docker-compose.comfyui.yml" in " ".join(comfyui["up"])
     # The tenant is the ONLY lifecycle target: every other row is a ledger
