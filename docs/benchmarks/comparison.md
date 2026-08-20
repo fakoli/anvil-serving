@@ -264,11 +264,14 @@ Under 128 concurrent requests the ranking inverts — NVFP4 wins on density wher
 
 ## RTX 5090 — 32 GB, sm_120
 
-The 5090 runs either an exclusive Omni stack or a smaller Omni co-resident with dedicated
-STT/TTS. Usable budget is **27,999 MiB** after a 4,608 MiB system/audio reserve.
+The current qualification lane uses the 5090 exclusively for one candidate.
+The older Omni rows describe historical Fakoli Dark reservation shapes; their
+27,999 MiB usable budget after a 4,608 MiB system/audio reserve is not the
+current qualification policy.
 
 | Model / config | Status | Quant · KV | Context · adm. | Thinking | TTFT | Output rate | VRAM |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| [Qwen3.8 27B RadixArk NVFP4, SGLang TP=1](models/qwen38-27b.md) | preferred 5090 `challenger`, `no-promotion` | ModelOpt NVFP4 · FP8 E4M3 KV | 131,072 · c1 | disabled | decode TTFT not measured; 119,675-token retrieval 29.8 s E2E | decode not measured; media 30/30; eight images / two videos 4/4 | 20.14 GB weights; 3,928 MiB free after startup |
 | [Nemotron Nano Omni 30B NVFP4](models/nemotron-omni-30b.md) | `current` topology | NVFP4 · *KV not recorded* | 65,536 · 2 seqs | off for text gates | 122 / 164 ms p50/p95 | 224.08 `agg` @c2 | 27,706 MiB observed; exclusive |
 | [Qwen2.5-Omni 3B](models/qwen25-omni-3b.md) | `challenger` · `no-promotion` | *not recorded* | 32,768 (recipe) · 2 seqs | n/a | 0.04 / 0.06 s p50/p95 | 243 `agg` @c2 | 24,576 MiB reserved; co-resident |
 | [Gemma 4 E4B FP8-Dynamic](models/gemma4-e4b.md) | `no-promotion` (historical Fast) | FP8-Dynamic · FP8 KV | 32,768 | — | 0.46 s @c1 · 0.58 s @c2 | 49 `agg` @c1 · 79 `agg` @c2 | *not measured* |

@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-16.**
+**Last evidence review: 2026-08-17.**
 
 ## Start with the numbers
 
@@ -19,7 +19,7 @@ what runs on it and how well, start there.
 | Hardware | Current role | Start here |
 |---|---|---|
 | 2× NVIDIA RTX PRO 6000 Blackwell Max-Q, 192 GB aggregate, sm_120 | Current Fakoli Dark topology; split workloads or exclusive TP=2 | [RTX PRO 6000](hardware/rtx-pro-6000.md) |
-| NVIDIA GeForce RTX 5090, 32 GB, sm_120 | Historical Fakoli Dark results; card removed before the TP=2 campaign | [RTX 5090](hardware/rtx-5090.md) |
+| NVIDIA GeForce RTX 5090, 32 GB, sm_120 | Current isolated qualification lane plus historical Fakoli Dark results | [RTX 5090](hardware/rtx-5090.md) |
 
 Fakoli Dark now has two equal PRO 6000 cards. Aggregate VRAM is not unified
 memory, and the cards communicate over PCIe without NVLink. Exclusive TP=2
@@ -58,6 +58,8 @@ commands; it does not claim a live model result by itself.
    controls.
 6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
+7. **RadixArk Qwen3.8 27B NVFP4** — current RTX 5090 multimodal challenger;
+   direct 128K text/tools/image/OCR/video evidence, no route or promotion.
 
 On 2026-08-16, after the explicit human gate, the exact digest-pinned r15
 TP=2/393K profile became the text Primary. A matched control measured K5 at
@@ -87,6 +89,15 @@ media attempts, including video 14/14. A managed router-only expansion added
 subset passed 28/28 along with streaming, tool-use, malformed-input, overflow,
 and Primary regression probes. See the
 [video-router finding](../findings/2026-08-16-qwen38-27b-video-router.md).
+
+On 2026-08-17, the separate single-RTX-5090 RadixArk NVFP4 profile advanced
+from its 64K baseline to a 131,072-token served window. It returned a retrieval
+marker at 119,675 actual prompt tokens, passed tools 20/20, direct
+image/OCR/video, the complete media corpus 30/30, and boundary cases 4/4 at
+eight images and two videos. It is the preferred 5090 computer-use perception
+challenger, but remains direct-only and `no-promotion`; GUI action-loop, routed
+admission, concurrency, and FP8-KV scale follow-up remain open. See the
+[128K qualification](../findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md).
 
 The 2026-08-14 matched vLLM split remains the exact rollback. Its routed FP8
 tools 20/20, BF16 media 30/30, and one 32-image request remain historical

@@ -1,0 +1,590 @@
+{
+  "aggregates": {
+    "case": {
+      "image-count-eight": {
+        "attempts": 2,
+        "latency_p50_seconds": 5.208686999999999,
+        "latency_p95_seconds": 6.073893,
+        "pass_rate": 0.0,
+        "passed": 0
+      },
+      "video-count-two": {
+        "attempts": 2,
+        "latency_p50_seconds": 3.839493,
+        "latency_p95_seconds": 4.555005,
+        "pass_rate": 1.0,
+        "passed": 2
+      }
+    },
+    "modality": {
+      "image": {
+        "attempts": 2,
+        "latency_p50_seconds": 5.208686999999999,
+        "latency_p95_seconds": 6.073893,
+        "pass_rate": 0.0,
+        "passed": 0
+      },
+      "video": {
+        "attempts": 2,
+        "latency_p50_seconds": 3.839493,
+        "latency_p95_seconds": 4.555005,
+        "pass_rate": 1.0,
+        "passed": 2
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_id": "image-count-eight",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        },
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        },
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        },
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on an inspection of all the supplied images, here is the requested information:\n\n- **Status:** The status shown in the first and last images is \"ANVIL READY\".\n- **Red Car Scene:** The second image depicts a scene with a red car on a green park under a sunny day.\n- **Chart's Q4 Value:** The bar chart in the third image displays data for Q1, Q2, and Q3. There is no bar or value provided for Q4.\n- **UI's Primary Action:** The fourth image shows a user interface element with the text \"STATUS READY\" and \"GPU 42 PERCENT\". The primary action or state indicated is \"STATUS READY\".\n- **Blue-Circle Spatial Relation:** The fifth image asks to \"COUNT THE BLUE BOXES\" and shows three blue squares. There are no blue circles in this or any other image, so a spatial relation for a blue circle cannot be determined.\n- **Higher Meter:** Comparing the two meters, Meter B is higher. It is at 75 percent, while Meter A is at 25 percent.",
+      "passed": false,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 6.073893,
+      "usage": {
+        "completion_tokens": 233,
+        "prompt_tokens": 1834,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 1760
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2067
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "Q4"
+          },
+          {
+            "passed": false,
+            "type": "contains_casefold",
+            "value": "submit"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "blue circle"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-count-eight",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        },
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        },
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        },
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on an inspection of all the supplied images, here is the requested information:\n\n- **Status:** The status shown in the first and last images is \"ANVIL READY\".\n- **Red Car Scene:** The second image depicts a scene with a red car on a green park under a sunny day.\n- **Chart's Q4 Value:** The bar chart in the third image displays data for Q1, Q2, and Q3. There is no bar or value provided for Q4.\n- **UI's Primary Action:** The fourth image shows a user interface element with the text \"STATUS READY\" and \"GPU 42 PERCENT\". The primary action or state indicated is \"STATUS READY\".\n- **Blue-Circle Spatial Relation:** The fifth image asks to \"COUNT THE BLUE BOXES\" and shows three blue squares. There are no blue circles in this or any other image, so a spatial relation for a blue circle cannot be determined.\n- **Higher Meter:** Comparing the two meters, Meter B is higher. It is at 75 percent, while Meter A is at 25 percent.",
+      "passed": false,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 4.343481,
+      "usage": {
+        "completion_tokens": 233,
+        "prompt_tokens": 1834,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 1760
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2067
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "Q4"
+          },
+          {
+            "passed": false,
+            "type": "contains_casefold",
+            "value": "submit"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "blue circle"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-count-two",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 11627,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "temporal-order-10s.mp4",
+          "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+        },
+        {
+          "bytes": 14552,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "state-change-30s.mp4",
+          "sha256": "4d720486425afff4a7450f0f7f3ce6e3eea591e063b66e48fc953415b9172e62"
+        }
+      ],
+      "modality": "video",
+      "output": "Based on the provided video frames, here is the report for each video in the supplied order:\n\n**First Video:**\nThe two color states shown in temporal order are:\n1.  **Red:** The text \"FIRST RED\" is displayed in red.\n2.  **Green:** The text changes to \"THEN GREEN\" in green.\n\n**Second Video:**\nThe state change shown in temporal order is:\n1.  **Door Closed:** The text \"DOOR CLOSED\" is displayed in white.\n2.  **Door Open:** The text changes to \"DOOR OPEN\" in green.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 4.555005,
+      "usage": {
+        "completion_tokens": 127,
+        "prompt_tokens": 2459,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 2240
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2586
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green",
+              "closed",
+              "open"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-count-two",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 11627,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "temporal-order-10s.mp4",
+          "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+        },
+        {
+          "bytes": 14552,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "state-change-30s.mp4",
+          "sha256": "4d720486425afff4a7450f0f7f3ce6e3eea591e063b66e48fc953415b9172e62"
+        }
+      ],
+      "modality": "video",
+      "output": "Based on the provided video frames, here is the report for each video in the supplied order:\n\n**First Video:**\nThe two color states shown in temporal order are:\n1.  **Red:** The text \"FIRST RED\" is displayed in red.\n2.  **Green:** The text changes to \"THEN GREEN\" in green.\n\n**Second Video:**\nThe state change shown in temporal order is:\n1.  **Door Closed:** The text \"DOOR CLOSED\" is displayed in white.\n2.  **Door Open:** The text changes to \"DOOR OPEN\" in green.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 3.123981,
+      "usage": {
+        "completion_tokens": 127,
+        "prompt_tokens": 2459,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 2240
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2586
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green",
+              "closed",
+              "open"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    }
+  ],
+  "configuration": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "concurrency": 1,
+    "max_images_per_request": 8,
+    "max_tokens": 512,
+    "max_videos_per_request": 2,
+    "reasoning_effort": null,
+    "thinking_mode": "disabled",
+    "timeout_seconds": 600.0
+  },
+  "corpus": {
+    "cases": [
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "Q4"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "submit"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "blue circle"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "id": "image-count-eight",
+        "media": [
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          },
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+          },
+          {
+            "bytes": 12635,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "chart.png",
+            "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+          },
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+          },
+          {
+            "bytes": 8785,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "spatial.png",
+            "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+          },
+          {
+            "bytes": 8000,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-a.png",
+            "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+          },
+          {
+            "bytes": 7679,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-b.png",
+            "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+          },
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Inspect all supplied images. Report the status ANVIL READY, the red car scene, the chart's Q4 value, the UI's primary action, the blue-circle spatial relation, and which meter is higher with its percentage.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green",
+              "closed",
+              "open"
+            ]
+          }
+        ],
+        "id": "video-count-two",
+        "media": [
+          {
+            "bytes": 11627,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "temporal-order-10s.mp4",
+            "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+          },
+          {
+            "bytes": 14552,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "state-change-30s.mp4",
+            "sha256": "4d720486425afff4a7450f0f7f3ce6e3eea591e063b66e48fc953415b9172e62"
+          }
+        ],
+        "modality": "video",
+        "prompt": "Treat the videos in supplied order. For the first, report its two color states in temporal order. For the second, report its state change in temporal order.",
+        "repetitions": 2,
+        "sampling": {
+          "num_frames": 16
+        }
+      }
+    ],
+    "path": "benchmarks/corpora/agents-a1-v1/count-boundaries-128k.json",
+    "provenance": {
+      "observed_date": "2026-08-17",
+      "synthetic": {
+        "generator": "generate.py",
+        "license": "CC0-1.0",
+        "purpose": "exercise exact 8-image and 2-video direct-request boundaries",
+        "source_corpus": "corpus.json"
+      }
+    },
+    "schema": "multimodal-corpus/v1",
+    "sha256": "a10ed934b6b91515ec21d00decf5677d99b10c96c8045b5caf5a489675f2dbdc"
+  },
+  "failed_attempts": 2,
+  "finished_at": "2026-08-17T20:43:25Z",
+  "identity": {
+    "base_url": "http://127.0.0.1:39038/v1",
+    "engine_build_ref": null,
+    "engine_revision": "c4271c3fe1262fc2adbd162c33b25de5255251c5",
+    "hardware": "NVIDIA GeForce RTX 5090 32GB",
+    "model": "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm",
+    "model_revision": "554ebba9b5f1b79dc11246341960360e6ef05ef4",
+    "runtime_image": "lmsysorg/sglang:qwen38-27b@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124",
+    "served_models": [
+      "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm"
+    ]
+  },
+  "passed": false,
+  "passed_attempts": 2,
+  "requests": 4,
+  "run_id": "multimodal-20260817T204307Z",
+  "schema": "multimodal-benchmark-evidence/v1",
+  "started_at": "2026-08-17T20:43:07Z"
+}
