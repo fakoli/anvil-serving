@@ -1,0 +1,77 @@
+ARG BASE_IMAGE=obeliks/comfyui@sha256:84b7392dd092eeba32ecc7ccf75882b96587b95fe87bfc8b11e40ca50e4f5531
+FROM ${BASE_IMAGE}
+
+USER root
+
+# ComfyUI's GLSL extras load ANGLE, which links against X11 even in this
+# headless container. ffmpeg and the remaining GL libraries cover the common
+# video, preview, and ControlNet custom-node paths.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+        ffmpeg \
+        git \
+        libegl1 \
+        libgl1 \
+        libgles2 \
+        libglib2.0-0 \
+        libsm6 \
+        libx11-6 \
+        libxext6 \
+        libxrender1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Exact revisions pin the add-on source trees. Their requirements still resolve
+# from package indexes at build time; the constraints and final imports below
+# protect the base CUDA stack but do not make the image bit-for-bit hermetic.
+# Update revisions deliberately and rerun the import/probe gate; never update
+# nodes at container startup. Manager remains available for inspection only.
+ARG COMFYUI_MANAGER_REV=97421c49658aaa8cf6e64736a8cb21697db3f866
+ARG IMPACT_PACK_REV=429d0159ad429e64d2b3916e6e7be9c22d025c3c
+ARG VIDEO_HELPER_SUITE_REV=4ee72c065db22c9d96c2427954dc69e7b908444b
+ARG KJNODES_REV=073efb07419f56cc714e099a82e49fbc23ad9263
+ARG RGTHREE_REV=6b76ee6f2c5a007710b5a16f97c94330d6ecc871
+ARG ESSENTIALS_REV=9d9f4bedfc9f0321c19faf71855e228c93bd0dc9
+ARG CONTROLNET_AUX_REV=e8b689a513c3e6b63edc44066560ca5919c0576e
+ARG CRYSTOOLS_REV=2f18256c5b5063937106f29a8e0a7db3ae3869b7
+
+RUN mkdir -p /opt/anvil \
+    && printf '%s\n' \
+      'torch==2.13.0' \
+      'torchvision==0.28.0' \
+      'torchaudio==2.11.0' \
+      > /opt/anvil/comfy-core-constraints.txt
+
+COPY install-comfyui-node.sh /opt/anvil/install-comfyui-node.sh
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    sh /opt/anvil/install-comfyui-node.sh comfyui-manager https://github.com/Comfy-Org/ComfyUI-Manager.git "$COMFYUI_MANAGER_REV"
+RUN --mount=type=cache,target=/root/.cache/pip \
+    sh /opt/anvil/install-comfyui-node.sh ComfyUI-VideoHelperSuite https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git "$VIDEO_HELPER_SUITE_REV"
+RUN --mount=type=cache,target=/root/.cache/pip \
+    sh /opt/anvil/install-comfyui-node.sh ComfyUI-KJNodes https://github.com/kijai/ComfyUI-KJNodes.git "$KJNODES_REV"
+RUN --mount=type=cache,target=/root/.cache/pip \
+    sh /opt/anvil/install-comfyui-node.sh rgthree-comfy https://github.com/rgthree/rgthree-comfy.git "$RGTHREE_REV"
+RUN --mount=type=cache,target=/root/.cache/pip \
+    sh /opt/anvil/install-comfyui-node.sh ComfyUI_essentials https://github.com/cubiq/ComfyUI_essentials.git "$ESSENTIALS_REV"
+RUN --mount=type=cache,target=/root/.cache/pip \
+    sh /opt/anvil/install-comfyui-node.sh ComfyUI-Crystools https://github.com/crystian/ComfyUI-Crystools.git "$CRYSTOOLS_REV"
+
+# The last two packs are deliberately isolated because their segmentation and
+# preprocessing dependencies are much larger than the core workflow helpers.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    sh /opt/anvil/install-comfyui-node.sh ComfyUI-Impact-Pack https://github.com/ltdrdata/ComfyUI-Impact-Pack.git "$IMPACT_PACK_REV"
+RUN --mount=type=cache,target=/root/.cache/pip \
+    sh /opt/anvil/install-comfyui-node.sh comfyui_controlnet_aux https://github.com/Fannovel16/comfyui_controlnet_aux.git "$CONTROLNET_AUX_REV"
+
+RUN /app/venv/bin/python -m pip uninstall --yes pynvml \
+    && /app/venv/bin/python -c "import pynvml" \
+    && /app/venv/bin/python -c \
+      "import torch, torchvision, torchaudio; assert torch.__version__ == '2.13.0+cu130'; assert torchvision.__version__ == '0.28.0+cu130'; assert torchaudio.__version__ == '2.11.0+cu130'" \
+    && chown -R 1000:1000 /app/custom_nodes /app/venv \
+    && find /app/custom_nodes -mindepth 1 -maxdepth 1 -type d -exec test -d '{}/.git' ';'
+
+LABEL org.opencontainers.image.title="Anvil ComfyUI curated add-ons" \
+      org.opencontainers.image.description="ComfyUI 0.31.1 with headless GLSL dependencies and pinned, curated custom nodes" \
+      org.opencontainers.image.base.digest="sha256:84b7392dd092eeba32ecc7ccf75882b96587b95fe87bfc8b11e40ca50e4f5531"
+
+USER 1000:1000

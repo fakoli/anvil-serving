@@ -14,13 +14,13 @@
 # ledger BEFORE any container command runs; `serves down` stops the container, which IS
 # the reservation release (the ledger is derived from docker state).
 #
-# IMAGE PIN: ComfyUI v0.27.1 (Comfy-Org/ComfyUI tag v0.27.1) via the version-pinned
-# community CUDA build docker.io/obeliks/comfyui:0.27.1-cu128 — cu128 is the CUDA line
-# proven on this box's Blackwell sm_120 cards (the kokoro TTS sidecar runs latest-cu128).
-# Tag existence verified against the registry on 2026-07-13 (amd64 manifest
-# sha256:c32bc9b8c229bc18d8634c82cfee198906fd817052ef3f4d8e811c167643f5d3; OCI label
-# org.opencontainers.image.version=0.27.1-cu128). There is no first-party Comfy-Org
-# image; upstream README documents source installs only.
+# IMAGE: Dockerfile.comfyui builds a local, revision-pinned derivative from an exact
+# obeliks/comfyui content digest. It supplies the headless GL/X11 runtime required by
+# nodes_glsl.py plus a curated custom-node baseline pinned to exact Git revisions.
+# Build-time constraints prove that custom-node dependencies did not replace the base
+# CUDA 13.0 torch stack. Other apt/Python dependencies resolve at build time, so this is
+# not a bit-for-bit hermetic build. Update the base or node revisions deliberately and
+# rerun the import/probe gate; do not auto-update code at container startup.
 #
 # VOLUMES (CLAUDE.md gotcha #15 — NO C:/ bind mounts for model paths, 9P is a
 # ~15 MB/s read path): the 61 GiB model library lives in the named volume
@@ -48,7 +48,10 @@ name: comfyui
 
 services:
   comfyui:
-    image: ${COMFYUI_IMAGE:-obeliks/comfyui:0.27.1-cu128}
+    image: ${COMFYUI_IMAGE:-anvil-comfyui:0.31.1-cu130-addons-20260811}
+    build:
+      context: .
+      dockerfile: Dockerfile.comfyui
     container_name: comfyui
     # On-demand tenant: never auto-resurrect — a restart policy reviving the container
     # would silently re-take the 12288 MiB reservation the ledger thought was released.

@@ -294,7 +294,7 @@ _EXPECTED_HOME_FILES = {
     "serves.toml", "serves.voice.toml", "serves.comfyui.toml",
     "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.voice-proxy.yml",
     "docker-compose.comfyui.yml",
-    "Dockerfile.omni-small",
+    "Dockerfile.omni-small", "Dockerfile.comfyui", "install-comfyui-node.sh",
     "operator-topology.toml", ".env.example", "voice.toml", "edge.toml",
 }
 

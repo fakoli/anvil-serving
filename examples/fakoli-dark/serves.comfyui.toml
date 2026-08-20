@@ -27,8 +27,8 @@ vram_mib = 97887
 reserve_mib = 3072
 
 # ── The tenant ──
-# ComfyUI v0.27.1 (pinned image obeliks/comfyui:0.27.1-cu128 — see the compose header
-# for the pin provenance). `on-demand` residency (ADR-0017 §1): started per image/video
+# ComfyUI v0.31.1 (digest-pinned CUDA 13 derived image — see the compose header
+# for the pin and curated add-on provenance). `on-demand` residency (ADR-0017 §1): started per image/video
 # task, released by `serves down comfyui` (stopping the container IS the release), and
 # the only residency class allowed to evict — `serves up comfyui --evict` drains and
 # stops the exclusive `omni` tier via the T005/ADR-0018 transition when the ledger is
@@ -47,7 +47,7 @@ stack = "comfyui"
 container = "comfyui"
 runtime = "docker"
 port = 8188
-model = "comfyui-v0.27.1"      # UI/API tenant, not a served-model-name; label = pinned app version
+model = "comfyui-v0.31.1"      # UI/API tenant, not a served-model-name; label = pinned app version
 engine = "image"
 health = "/system_stats"
 gpu_role = "dark-compute-b"
