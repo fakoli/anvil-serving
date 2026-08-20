@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.2] - 2026-08-20
+
+### Fixed
+
+- `serves up` now consults the operator topology before its router
+  health-ensure step. A host whose topology assigns the `router` role (or a
+  `role = "router"` resource) to another host skips the probe and bring-up
+  entirely. On a host the topology declares as the router owner, a failed
+  bring-up aborts `serves up` with the router's exit code; `--no-router`
+  remains the explicit override. Hosts with no topology file, an invalid one,
+  or unresolvable command identity keep the historical co-located default and
+  report router failures without gating the serve. A Docker-unavailable probe
+  also defers to the serve's own authoritative Docker failure.
+
 ## [0.34.1] - 2026-08-10
 
 ### Added
