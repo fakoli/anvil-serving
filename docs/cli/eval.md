@@ -23,10 +23,11 @@ the gateway's alias map.
 | `eval usage` | Summarize local evaluation usage. |
 
 The multimodal runner admits at most four images and one video per corpus case
-by default. When qualifying a recipe with a higher engine-side image limit,
-raise only the recorded image ceiling with
-`--max-images-per-request N` (maximum 64). The selected ceiling is retained in
-the evidence artifact; it does not change the serving recipe or router policy.
+by default. When qualifying a recipe with higher engine-side media limits,
+raise only the recorded corpus ceilings with `--max-images-per-request N`
+(maximum 64) and `--max-videos-per-request N` (maximum 16). Both selected
+ceilings are retained in the evidence artifact; they do not change the serving
+recipe or router policy.
 
 Capacity runs use a deterministic context plan by default. Keep the seed,
 request count, concurrency, context policy, completion cap, and endpoint recipe
