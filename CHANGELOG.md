@@ -32,6 +32,14 @@ All notable changes to this project are documented here. The format is based on
   the explicit deployment-level declaration that this serve deliberately
   shares the named volumes with other containers. Same shape rules as
   `groups`; absent field leaves existing manifests parsing unchanged.
+- The generated ComfyUI stack now builds a local CUDA 13 derivative from an
+  exact ComfyUI 0.31.1 base-image digest. Eight curated custom-node source
+  trees are pinned to exact Git revisions, required headless GL/X11 and video
+  libraries are installed, the base Torch/TorchVision/TorchAudio versions are
+  constrained and import-checked, and node fetches use bounded retries. The
+  packaged scaffold and public example remain byte-synchronized. Apt and
+  Python requirements still resolve from package indexes at build time, so
+  this is revision-pinned rather than a bit-for-bit hermetic image.
 
 ### Fixed
 
