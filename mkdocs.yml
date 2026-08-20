@@ -160,6 +160,7 @@ nav:
       - 'ADR-0034: Fleet control plane and node runtime classes': adr/0034-fleet-control-plane-and-node-runtime-classes.md
       - 'ADR-0035: Fleet configuration reconciliation': adr/0035-fleet-configuration-reconciliation.md
       - 'ADR-0036: Voice relocation and qualification host': adr/0036-voice-relocation-and-qualification-host.md
+      - 'ADR-0037: Caller-side prompt-lane classification': adr/0037-caller-side-prompt-lane-classification.md
   - Changelog: changelog.md
 
 markdown_extensions:
