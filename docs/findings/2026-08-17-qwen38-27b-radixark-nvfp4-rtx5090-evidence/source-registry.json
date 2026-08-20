@@ -1,0 +1,62 @@
+{
+  "schema": "benchmark-source-registry/v1",
+  "observed_date": "2026-08-17",
+  "sources": [
+    {
+      "url": "https://github.com/sgl-project/sglang/blob/70e291b70f5a2833291fff517a00b2f3ff559463/docs/cookbook/autoregressive/Qwen/Qwen3.8-27B.mdx",
+      "published_or_observed_date": "2026-08-17",
+      "age_class": "current",
+      "evidence_type": "official runtime cookbook",
+      "hardware_engine_relevance": "RTX 5090 and SGLang Qwen3.8 recipe",
+      "decision_impact": "Selected the RadixArk NVFP4 checkpoint and stability-first SGLang flags."
+    },
+    {
+      "url": "https://github.com/sgl-project/sglang/blob/70e291b70f5a2833291fff517a00b2f3ff559463/docs/src/snippets/configs/Qwen/qwen3.8-27b.jsx",
+      "published_or_observed_date": "2026-08-17",
+      "age_class": "current",
+      "evidence_type": "official runtime configuration",
+      "hardware_engine_relevance": "RTX 5090 checkpoint and memory guidance",
+      "decision_impact": "Excluded official FP8 from the single-5090 serviceable baseline."
+    },
+    {
+      "url": "https://huggingface.co/RadixArk/Qwen3.8-27B-NVFP4/tree/554ebba9b5f1b79dc11246341960360e6ef05ef4",
+      "published_or_observed_date": "2026-08-16",
+      "age_class": "current",
+      "evidence_type": "community checkpoint publisher",
+      "hardware_engine_relevance": "exact ModelOpt NVFP4 artifact",
+      "decision_impact": "Pinned the 21,945,295,265-byte model snapshot used locally."
+    },
+    {
+      "url": "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/tree/f1bfb127c64f7072bdd2cad55f258b9c8b2910fe",
+      "published_or_observed_date": "2026-08-15",
+      "age_class": "current",
+      "evidence_type": "community fallback checkpoint",
+      "hardware_engine_relevance": "single-5090 GGUF plus multimodal projector",
+      "decision_impact": "Prepared but did not pull the frame-sampling fallback after native video passed."
+    },
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/blob/master/docs/multimodal.md",
+      "published_or_observed_date": "2026-08-17",
+      "age_class": "current",
+      "evidence_type": "official runtime documentation",
+      "hardware_engine_relevance": "llama.cpp multimodal input contract",
+      "decision_impact": "Classified GGUF video as frame extraction plus multi-image input, not native video."
+    },
+    {
+      "url": "https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B/tree/919fde3d022e3f90a4716006f993938ee8c2eb97",
+      "published_or_observed_date": "2026-03-30",
+      "age_class": "current-year",
+      "evidence_type": "official model publisher",
+      "hardware_engine_relevance": "small local vision/OCR comparator",
+      "decision_impact": "Recommended LFM2.5-VL as an auxiliary perception model, not the primary computer-use/video reasoner."
+    },
+    {
+      "url": "https://docs.liquid.ai/examples/web/vl-webgpu-demo",
+      "published_or_observed_date": "2026-08-17",
+      "age_class": "current",
+      "evidence_type": "official vendor demo documentation",
+      "hardware_engine_relevance": "live frame processing in WebGPU",
+      "decision_impact": "Interpreted the advertised video mode as local frame processing rather than proof of native temporal video-file reasoning."
+    }
+  ]
+}

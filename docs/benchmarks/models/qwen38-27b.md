@@ -6,10 +6,18 @@ Former human-approved single-service profile: official FP8 on SGLang served
 Primary, multimodal, OCR, and video at TP=1/393,216 with EAGLE MTP `3/1/4`
 and CPU feature transport; the second GPU was empty. On 2026-08-16 it was
 superseded as text Primary by DeepSeek Infernal Invocation r15. Review date:
-2026-08-16. The review includes MTP=4/5, official-FP8 versus Inferact NVFP4, the
+2026-08-20. The review includes MTP=4/5, official-FP8 versus Inferact NVFP4, the
 matched BF16 consolidation A/B, and the guarded live promotion.
 The 2026-08-16 review adds direct and routed video qualification plus
 fail-closed router admission for one video.
+The 2026-08-17 review adds a separate RTX 5090 qualification of the RadixArk
+NVFP4 checkpoint, first at 65,536 and then at 131,072 tokens, including native
+video, mixed media, and eight-image/two-video boundary coverage. It is a
+measured direct challenger only; no route or promotion changed.
+The 2026-08-20 review adds a matched stock-versus-Sharp-v22.1 chat-template A/B
+on that 128K RTX 5090 profile. Sharp passed the functional gate but did not
+improve the bounded thinking-enabled diagnostic, so the stock template remains
+selected and no route or promotion changed.
 
 ## Immutable identity
 
@@ -25,6 +33,10 @@ fail-closed router admission for one video.
   image-label revision `c4271c3fe1262fc2adbd162c33b25de5255251c5`.
 - Inferact NVFP4 qualification revision:
   `Inferact/Qwen3.8-27B-NVFP4@6128240ebaf4eaa7bad2b3d1c72c37d677c5f462`.
+- RTX 5090 RadixArk NVFP4 qualification revision:
+  `RadixArk/Qwen3.8-27B-NVFP4@554ebba9b5f1b79dc11246341960360e6ef05ef4`.
+- Sharp chat-template qualification revision:
+  `peculiar-ragdoll/Qwen-Sharp-Chat-Templates@3dc34df52c63dd22ada21f96435e069deaa8d7da`.
 
 ## Tested hardware and topology
 
@@ -33,6 +45,9 @@ Blackwell Max-Q cards and left the other card empty. Prior tests include one
 TP=1 serve per card in split mode and exclusive TP=2 at 393K, 600K, and 1.01M.
 The cards are independent PCIe devices; aggregate VRAM is not unified memory,
 and the TP=2 runtime could not enable GPU P2P.
+The 2026-08-17 challenger used one 32 GB RTX 5090 at TP=1. It is a distinct
+hardware and context lane and is not directly comparable to the 96 GB-card
+393K production history.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
@@ -65,6 +80,14 @@ state cache to five slots. Its multimodal arms retained MTP and forced CPU
 feature transport instead of the failing automatic CUDA-IPC path. Both rounds
 compared official FP8 with Inferact ModelOpt NVFP4 and swapped placement across
 the equal cards.
+
+The retained RTX 5090 RadixArk arm uses SGLang at the same pinned image digest,
+TP=1, 131,072 tokens, one running request, FP8 E4M3 KV, FlashInfer attention,
+2,048-token chunks, disabled radix cache, one Mamba/GDN state slot, CPU
+multimodal feature transport, no MTP, thinking disabled, and explicit ceilings
+of eight images and two videos. The managed recipe is
+`configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm-recipe.toml`; the
+otherwise matched 64K recipe is retained as rollback.
 
 ## Evidence by measurement class
 
@@ -150,12 +173,34 @@ four images plus a video and correctly receives 413 under the two-image limit.
 Two-video overflow, malformed input, SSE ordering, grounded tool use, and the
 complete Primary regression gate also passed.
 
+The 2026-08-17 RTX 5090 RadixArk NVFP4 qualification first established the 64K
+baseline, then retained a separate 128K recipe. The 128K arm passed coding and
+JSON, exact retrieval at 119,675 actual prompt tokens, and 20/20 tool calls.
+Its native multimodal run passed 30/30: image 12/12, mixed media 4/4, and video
+14/14, including temporal ordering, state change, event localization, video
+OCR, 120-second continuity, and real-world clips. A separate boundary corpus
+passed 4/4: two eight-image attempts and two two-video attempts. The loaded
+weights consumed 20.14 GB; the engine exposed a 167,789-token FP8 KV pool and
+the host reported 3,928 MiB free after startup. This is bounded
+single-concurrency qualification evidence, not a broad computer-use benchmark
+or a promotion.
+
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
 multimodal. A later durable router-only campaign added separate agentic and
 SWE-bench evidence: agentic smoke passed 2/2, the scout passed 16/18 with both
 failures in the debug-loop case, and all five fixed SWE-bench Verified scout
 instances resolved under the official grader. That five-instance sample is
 bounded evidence, not a full-benchmark score.
+
+The 2026-08-20 RTX 5090 A/B kept the RadixArk weights, SGLang digest, 128K
+shape, GPU, and request budgets fixed. Sharp v22.1 passed the complete
+thinking-disabled functional preflight. On the thinking-enabled MMLU-Pro
+diagnostic it matched stock at 24/30, including the same two budget-exhausted
+items, while using 10.8% more completion tokens and taking 10.7% longer. On a
+smaller thinking-disabled behavior suite it used 5.1% fewer tokens and was 5.0%
+faster, but passed 15/18 versus stock's 18/18 because it missed a declared
+literal-question-mark contract. This is bounded template evidence, not a
+general model-quality score.
 
 ## Decision and promotion state
 
@@ -167,6 +212,11 @@ paths passed without fallback. The SGLang profile and former vLLM FP8/BF16
 split are retained managed recipes, but neither is the immediate text
 rollback; DeepSeek r33 393K now fills that role. TP=2 at 600K and 1.01M remains
 an offline/batch experiment.
+The RadixArk NVFP4 RTX 5090 recipe is the locally qualified 32 GB challenger
+when native vision and video are required. It remains `no-promotion`, and its
+131,072-token served window should not be conflated with the former 393K lane.
+Sharp v22.1 is rejected for this exact recipe; the stock template remains the
+qualified configuration.
 
 ## External recipe watch and local follow-up
 
@@ -194,11 +244,21 @@ combination. The widely shared 200+ tok/s result also adds a DSpark draft and
 remains an `external-prior`, not a local result.
 
 Other NVFP4, GGUF, AutoRound, and custom `.ninfer` artifacts remain excluded
-from the active queue. Inferact NVFP4 remains a `no-promotion` control; the
-official-FP8 SGLang arm is the retained preferred Qwen profile.
+from the active production queue. Inferact NVFP4 remains a `no-promotion`
+control. RadixArk NVFP4 is now a qualified RTX 5090 challenger with native
+video evidence, while the official-FP8 SGLang arm remains the retained former
+96 GB-card Qwen profile. The Unsloth GGUF fallback was not downloaded because
+the native NVFP4 target passed its required gates.
 
 ## Failures and gotchas
 
+- The Sharp v22.1 A/B produced complete attempt records, but the generic
+  inspector flags unrelated built-in suites as `not_run`, missing aggregate
+  chat timing, and thinking control as `requested_unverified` in the quality
+  lanes. Those artifacts are bounded diagnostics, not promotion-grade evidence.
+- Both stock and Sharp exhausted the 2,048-token completion cap on the same two
+  MMLU-Pro items. Sharp also failed the narrow ambiguous-request punctuation
+  contract despite safely declining to guess and requesting the missing input.
 - Official FP8 startup warned that absent attention q/prob scaling factors
   defaulted to 1.0. No independent quality result proves equivalence to
   unquantized KV.
@@ -237,6 +297,18 @@ official-FP8 SGLang arm is the retained preferred Qwen profile.
   retained.
 - Both SGLang candidates warned that missing FP8 KV scaling factors defaulted
   to 1.0. The bounded gates passed, but unquantized-KV equivalence is unproven.
+- The RTX 5090 RadixArk run emitted the same FP8-KV scaling-factor warning.
+  Its bounded gates passed, but equivalence to unquantized KV remains unproven.
+- The first eight-image boundary artifact used expectations that did not exist
+  in the hash-pinned images. Inspection and the model output exposed the test
+  error; the corrected canonical-label corpus passed 4/4, and both artifacts
+  remain published.
+- The benchmark harness now records an explicit, bounded multi-video evidence
+  ceiling. That flag changes corpus admission only, not engine or router
+  policy.
+- The generic evidence-inspector command does not recognize the multimodal
+  benchmark schema even though its complete attempt records report 30/30. A
+  product-gap ticket tracks that fail-closed inspection limitation.
 - The first routed Responses probe supplied a chat-only thinking field that
   SGLang rejects on `/v1/responses`. The redundant router soft default was
   removed; the recipe-level default keeps thinking disabled and the Responses
@@ -248,6 +320,9 @@ official-FP8 SGLang arm is the retained preferred Qwen profile.
 
 ## Dated run history
 
+- [2026-08-20 RTX 5090 Sharp v22.1 chat-template A/B](../../findings/2026-08-20-qwen38-sharp-template-ab.md)
+- [2026-08-17 RTX 5090 RadixArk NVFP4 128K qualification](../../findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md)
+- [2026-08-17 RTX 5090 RadixArk NVFP4 qualification](../../findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090.md)
 - [2026-08-16 video qualification and router expansion](../../findings/2026-08-16-qwen38-27b-video-router.md)
 - [2026-08-15 agentic and SWE-bench Verified scout](../../findings/2026-08-15-qwen38-27b-agentic-swe-scout.md)
 - [2026-08-15 SGLang official-FP8 single-service promotion](../../findings/2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md)

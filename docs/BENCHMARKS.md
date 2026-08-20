@@ -23,7 +23,26 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-16**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-17**.
+
+## Qwen3.8 27B RadixArk NVFP4 on RTX 5090 (2026-08-17)
+
+A separate single-RTX-5090 qualification loaded the exact RadixArk ModelOpt
+NVFP4 checkpoint through digest-pinned SGLang at TP=1, 131,072 tokens,
+concurrency one, FP8 E4M3 KV, CPU multimodal feature transport, and no MTP.
+It passed coding, JSON, retrieval at 119,675 actual prompt tokens, tools 20/20,
+direct image/OCR/video, the complete deterministic multimodal corpus 30/30
+(image 12/12, mixed 4/4, video 14/14), and count-boundary cases 4/4 at eight
+images and two videos per request. The model used 20.14 GB for weights and the
+host reported 3,928 MiB free after startup.
+
+This is now the preferred locally proven RTX 5090 computer-use perception and
+native-video challenger. It is not a deployment change: routing, GUI action
+loops, concurrency above one, controlled decode rate, and the FP8-KV scale
+warning remain open, and promotion requires a separate human gate. LFM2.5-VL
+1.6B remains a promising lightweight frame-caption/OCR companion rather than
+the primary temporal video reasoner. See the
+[128K qualification](findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md).
 
 ## DeepSeek Infernal Invocation r15 393K promotion (2026-08-16)
 

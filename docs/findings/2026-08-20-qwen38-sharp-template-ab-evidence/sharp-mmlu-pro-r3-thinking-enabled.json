@@ -1,0 +1,1256 @@
+{
+  "context": {
+    "cap_tokens": 128000,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 1792,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-40-engineering",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39038/v1",
+    "candidate_id": "RadixArk-Qwen3.8-27B-NVFP4",
+    "config_id": "sharp-v22.1-template-128k",
+    "engine": "sglang",
+    "gpu": "isolated-rtx5090-host",
+    "model": "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-sharp-v22.1",
+    "started_at": "2026-08-20T10:37:51Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260820T103751Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "RadixArk/Qwen3.8-27B-NVFP4@554ebba9b5f1b79dc11246341960360e6ef05ef4+Sharp@3dc34df52c63dd22ada21f96435e069deaa8d7da",
+    "serve_command": null
+  },
+  "suites": {
+    "hf-mmlu-pro-10-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, within the middle cranial fossa. That places it squarely in the **cranial cavity**.\n\n- \"Dorsal\" (B) is a broader category that *includes* the cranial cavity, but the question asks for the specific cavity, and \"cranial\" is the precise answer.\n- All other options (buccal, thoracic, pericardial, abdominal, spinal, pelvic, pleural) are anatomically unrelated to the pituitary's location.\n\nFINAL=J",
+              "content_chars": 477,
+              "content_excerpt": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, within the middle cranial fossa. That places it squarely in the **cranial cavity**.\n\n- \"Dorsal\" (B) is a broader cate",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4798.742300015874,
+              "reasoning_chars": 839,
+              "reasoning_excerpt": "The question asks which body cavity contains the pituitary gland.\n\nThe pituitary gland (hypophysis) is located in the sella turcica of the sphenoid bone, within the cranial cavity. It sits in the midd",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 351,
+                "prompt_tokens": 250,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 221,
+                "total_tokens": 601
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, within the middle cranial fossa. That places it squarely in the **cranial cavity**.\n\n- \"Dorsal\" (B) is a broader category that *includes* the cranial cavity, but the question asks for the specific cavity, and \"cranial\" is the precise answer.\n- All other options (buccal, thoracic, pericardial, abdominal, spinal, pelvic, pleural) are anatomically unrelated to the pituitary's location.\n\nFINAL=J",
+              "content_chars": 477,
+              "content_excerpt": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, within the middle cranial fossa. That places it squarely in the **cranial cavity**.\n\n- \"Dorsal\" (B) is a broader cate",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4666.005600010976,
+              "reasoning_chars": 839,
+              "reasoning_excerpt": "The question asks which body cavity contains the pituitary gland.\n\nThe pituitary gland (hypophysis) is located in the sella turcica of the sphenoid bone, within the cranial cavity. It sits in the midd",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 351,
+                "prompt_tokens": 250,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 221,
+                "total_tokens": 601
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, within the middle cranial fossa. That places it squarely in the **cranial cavity**.\n\n- \"Dorsal\" (B) is a broader category that *includes* the cranial cavity, but the question asks for the specific cavity, and \"cranial\" is the precise answer.\n- All other options (buccal, thoracic, pericardial, abdominal, spinal, pelvic, pleural) are anatomically unrelated to the pituitary's location.\n\nFINAL=J",
+              "content_chars": 477,
+              "content_excerpt": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, within the middle cranial fossa. That places it squarely in the **cranial cavity**.\n\n- \"Dorsal\" (B) is a broader cate",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4667.430299974512,
+              "reasoning_chars": 839,
+              "reasoning_excerpt": "The question asks which body cavity contains the pituitary gland.\n\nThe pituitary gland (hypophysis) is located in the sella turcica of the sphenoid bone, within the cranial cavity. It sits in the midd",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 351,
+                "prompt_tokens": 250,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 221,
+                "total_tokens": 601
+              }
+            }
+          ],
+          "id": "mmlu-pro-5-health",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLight-gathering power scales with the **area** of the aperture, i.e., the square of the diameter.\n\n- Eye pupil: 5 mm = 0.5 cm\n- Telescope aperture: 50 cm\n\nDiameter ratio: 50 / 0.5 = 100\n\nArea (light) ratio: 100\u00b2 = **10,000**\n\nThe telescope gathers 10,000 times more light.\n\nFINAL=E",
+              "content_chars": 283,
+              "content_excerpt": "\n\nLight-gathering power scales with the **area** of the aperture, i.e., the square of the diameter.\n\n- Eye pupil: 5 mm = 0.5 cm\n- Telescope aperture: 50 cm\n\nDiameter ratio: 50 / 0.5 = 100\n\nArea (light",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3375.5975000094622,
+              "reasoning_chars": 498,
+              "reasoning_excerpt": "The question asks how much more light a telescope with a 50 cm aperture can gather compared to an eye with a 5 mm pupil diameter.\n\nLight gathering power is proportional to the area of the aperture, wh",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 251,
+                "prompt_tokens": 310,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 146,
+                "total_tokens": 561
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLight-gathering power scales with the **area** of the aperture, i.e., the square of the diameter.\n\n- Eye pupil: 5 mm = 0.5 cm\n- Telescope aperture: 50 cm\n\nDiameter ratio: 50 / 0.5 = 100\n\nArea (light) ratio: 100\u00b2 = **10,000**\n\nThe telescope gathers 10,000 times more light.\n\nFINAL=E",
+              "content_chars": 283,
+              "content_excerpt": "\n\nLight-gathering power scales with the **area** of the aperture, i.e., the square of the diameter.\n\n- Eye pupil: 5 mm = 0.5 cm\n- Telescope aperture: 50 cm\n\nDiameter ratio: 50 / 0.5 = 100\n\nArea (light",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3368.2514000101946,
+              "reasoning_chars": 498,
+              "reasoning_excerpt": "The question asks how much more light a telescope with a 50 cm aperture can gather compared to an eye with a 5 mm pupil diameter.\n\nLight gathering power is proportional to the area of the aperture, wh",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 251,
+                "prompt_tokens": 310,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 146,
+                "total_tokens": 561
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLight-gathering power scales with the **area** of the aperture, i.e., the square of the diameter.\n\n- Eye pupil: 5 mm = 0.5 cm\n- Telescope aperture: 50 cm\n\nDiameter ratio: 50 / 0.5 = 100\n\nArea (light) ratio: 100\u00b2 = **10,000**\n\nThe telescope gathers 10,000 times more light.\n\nFINAL=E",
+              "content_chars": 283,
+              "content_excerpt": "\n\nLight-gathering power scales with the **area** of the aperture, i.e., the square of the diameter.\n\n- Eye pupil: 5 mm = 0.5 cm\n- Telescope aperture: 50 cm\n\nDiameter ratio: 50 / 0.5 = 100\n\nArea (light",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3366.5475000161678,
+              "reasoning_chars": 498,
+              "reasoning_excerpt": "The question asks how much more light a telescope with a 50 cm aperture can gather compared to an eye with a 5 mm pupil diameter.\n\nLight gathering power is proportional to the area of the aperture, wh",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 251,
+                "prompt_tokens": 310,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 146,
+                "total_tokens": 561
+              }
+            }
+          ],
+          "id": "mmlu-pro-10-physics",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Reasoning:**\n\n1. **First two blanks:** The sentence contrasts a punitive mechanism with a reward mechanism. Boycotts punish companies for bad behavior; **buycotts** reward companies for good behavior. So: \"In contrast to **boycotts**, **buycotts** aim to reward favourable behaviour\u2026\" This eliminates B, D, G, I (wrong order) and A, E (\"Buyalls\" is not a standard term).\n\n2. **Third blank:** The enabler that has heightened the success of consumer campaigns is **digital technology** (social media, apps, online platforms). \"Blockchain\" is too narrow and not the standard framing in this context; \"Physical technology\" is nonsensical. This eliminates H and J.\n\n3. **Fourth blank:** Buycotts exist to *reward* a company, so the outcome they facilitate is **increased sales**, not decreased sales. This eliminates C.\n\nThe completed sentence reads: \"In contrast to **boycotts**, **buycotts** aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of **digital technology**, which allow campaigns to facilitate the company in achieving **increased sales**.\"\n\nFINAL=F",
+              "content_chars": 1126,
+              "content_excerpt": "\n\n**Reasoning:**\n\n1. **First two blanks:** The sentence contrasts a punitive mechanism with a reward mechanism. Boycotts punish companies for bad behavior; **buycotts** reward companies for good behav",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10381.530300015584,
+              "reasoning_chars": 2386,
+              "reasoning_excerpt": "Let me reason through this question carefully.\n\nThe sentence structure is:\n\"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heig",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 789,
+                "prompt_tokens": 383,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 534,
+                "total_tokens": 1172
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Reasoning:**\n\n1. **First two blanks:** The sentence contrasts a punitive mechanism with a reward mechanism. Boycotts punish companies for bad behavior; **buycotts** reward companies for good behavior. So: \"In contrast to **boycotts**, **buycotts** aim to reward favourable behaviour\u2026\" This eliminates B, D, G, I (wrong order) and A, E (\"Buyalls\" is not a standard term).\n\n2. **Third blank:** The enabler that has heightened the success of consumer campaigns is **digital technology** (social media, apps, online platforms). \"Blockchain\" is too narrow and not the standard framing in this context; \"Physical technology\" is nonsensical. This eliminates H and J.\n\n3. **Fourth blank:** Buycotts exist to *reward* a company, so the outcome they facilitate is **increased sales**, not decreased sales. This eliminates C.\n\nThe completed sentence reads: \"In contrast to **boycotts**, **buycotts** aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of **digital technology**, which allow campaigns to facilitate the company in achieving **increased sales**.\"\n\nFINAL=F",
+              "content_chars": 1126,
+              "content_excerpt": "\n\n**Reasoning:**\n\n1. **First two blanks:** The sentence contrasts a punitive mechanism with a reward mechanism. Boycotts punish companies for bad behavior; **buycotts** reward companies for good behav",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10373.10929998057,
+              "reasoning_chars": 2386,
+              "reasoning_excerpt": "Let me reason through this question carefully.\n\nThe sentence structure is:\n\"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heig",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 789,
+                "prompt_tokens": 383,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 534,
+                "total_tokens": 1172
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Reasoning:**\n\n1. **First two blanks:** The sentence contrasts a punitive mechanism with a reward mechanism. Boycotts punish companies for bad behavior; **buycotts** reward companies for good behavior. So: \"In contrast to **boycotts**, **buycotts** aim to reward favourable behaviour\u2026\" This eliminates B, D, G, I (wrong order) and A, E (\"Buyalls\" is not a standard term).\n\n2. **Third blank:** The enabler that has heightened the success of consumer campaigns is **digital technology** (social media, apps, online platforms). \"Blockchain\" is too narrow and not the standard framing in this context; \"Physical technology\" is nonsensical. This eliminates H and J.\n\n3. **Fourth blank:** Buycotts exist to *reward* a company, so the outcome they facilitate is **increased sales**, not decreased sales. This eliminates C.\n\nThe completed sentence reads: \"In contrast to **boycotts**, **buycotts** aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of **digital technology**, which allow campaigns to facilitate the company in achieving **increased sales**.\"\n\nFINAL=F",
+              "content_chars": 1126,
+              "content_excerpt": "\n\n**Reasoning:**\n\n1. **First two blanks:** The sentence contrasts a punitive mechanism with a reward mechanism. Boycotts punish companies for bad behavior; **buycotts** reward companies for good behav",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10367.403000011109,
+              "reasoning_chars": 2386,
+              "reasoning_excerpt": "Let me reason through this question carefully.\n\nThe sentence structure is:\n\"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heig",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 789,
+                "prompt_tokens": 383,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 534,
+                "total_tokens": 1172
+              }
+            }
+          ],
+          "id": "mmlu-pro-15-business",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Reasoning through each option:**\n\n- **A:** Arthropod exoskeletons are made primarily of **chitin**, not peptidoglycan (which is a bacterial cell-wall polymer). False.\n- **B:** Arthropods have an **open circulatory system** (hemolymph bathes organs in a hemocoel) and a **dorsal, tubular/sac-like heart** that pumps hemolymph forward. This is a well-established feature of the phylum. True.\n- **C:** Arthropoda is the most species-rich and ecologically successful phylum in the animal kingdom, occupying nearly every habitat and trophic level. False.\n- **D:** The name *Arthropoda* literally means \"jointed appendages\"; paired, jointed legs are a defining synapomorphy. False.\n\n**FINAL=B**",
+              "content_chars": 692,
+              "content_excerpt": "\n\n**Reasoning through each option:**\n\n- **A:** Arthropod exoskeletons are made primarily of **chitin**, not peptidoglycan (which is a bacterial cell-wall polymer). False.\n- **B:** Arthropods have an *",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6410.479800018948,
+              "reasoning_chars": 1185,
+              "reasoning_excerpt": "Let me reason through each option:\n\nA. \"They possess an exoskeleton composed primarily of peptidoglycan.\"\n- Arthropods have an exoskeleton composed primarily of chitin (a polysaccharide), not peptidog",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 484,
+                "prompt_tokens": 291,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 298,
+                "total_tokens": 775
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Reasoning through each option:**\n\n- **A:** Arthropod exoskeletons are made primarily of **chitin**, not peptidoglycan (which is a bacterial cell-wall polymer). False.\n- **B:** Arthropods have an **open circulatory system** (hemolymph bathes organs in a hemocoel) and a **dorsal, tubular/sac-like heart** that pumps hemolymph forward. This is a well-established feature of the phylum. True.\n- **C:** Arthropoda is the most species-rich and ecologically successful phylum in the animal kingdom, occupying nearly every habitat and trophic level. False.\n- **D:** The name *Arthropoda* literally means \"jointed appendages\"; paired, jointed legs are a defining synapomorphy. False.\n\n**FINAL=B**",
+              "content_chars": 692,
+              "content_excerpt": "\n\n**Reasoning through each option:**\n\n- **A:** Arthropod exoskeletons are made primarily of **chitin**, not peptidoglycan (which is a bacterial cell-wall polymer). False.\n- **B:** Arthropods have an *",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6398.67329999106,
+              "reasoning_chars": 1185,
+              "reasoning_excerpt": "Let me reason through each option:\n\nA. \"They possess an exoskeleton composed primarily of peptidoglycan.\"\n- Arthropods have an exoskeleton composed primarily of chitin (a polysaccharide), not peptidog",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 484,
+                "prompt_tokens": 291,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 298,
+                "total_tokens": 775
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Reasoning through each option:**\n\n- **A:** Arthropod exoskeletons are made primarily of **chitin**, not peptidoglycan (which is a bacterial cell-wall polymer). False.\n- **B:** Arthropods have an **open circulatory system** (hemolymph bathes organs in a hemocoel) and a **dorsal, tubular/sac-like heart** that pumps hemolymph forward. This is a well-established feature of the phylum. True.\n- **C:** Arthropoda is the most species-rich and ecologically successful phylum in the animal kingdom, occupying nearly every habitat and trophic level. False.\n- **D:** The name *Arthropoda* literally means \"jointed appendages\"; paired, jointed legs are a defining synapomorphy. False.\n\n**FINAL=B**",
+              "content_chars": 692,
+              "content_excerpt": "\n\n**Reasoning through each option:**\n\n- **A:** Arthropod exoskeletons are made primarily of **chitin**, not peptidoglycan (which is a bacterial cell-wall polymer). False.\n- **B:** Arthropods have an *",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6403.69460004149,
+              "reasoning_chars": 1185,
+              "reasoning_excerpt": "Let me reason through each option:\n\nA. \"They possess an exoskeleton composed primarily of peptidoglycan.\"\n- Arthropods have an exoskeleton composed primarily of chitin (a polysaccharide), not peptidog",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 484,
+                "prompt_tokens": 291,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 298,
+                "total_tokens": 775
+              }
+            }
+          ],
+          "id": "mmlu-pro-20-biology",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n## Reasoning\n\nThe \u00b9\u00b3CH\u2083 radical has an unpaired electron coupled to two sets of nuclei:\n\n- **Three equivalent \u00b9H nuclei** (I = 1/2 each): produce a multiplet of 2nI + 1 = 2(3)(1/2) + 1 = **4 lines** (a quartet).\n- **One \u00b9\u00b3C nucleus** (I = 1/2): produces a multiplet of 2(1)(1/2) + 1 = **2 lines** (a doublet).\n\nSince the \u00b9\u00b3C and \u00b9H are *not* equivalent to each other, the total number of lines is the product:\n\n4 \u00d7 2 = **8 lines**\n\nEach of the four proton-split lines is further split into two by the \u00b9\u00b3C, giving 8 distinct lines (assuming no overlap).\n\nFINAL=B",
+              "content_chars": 563,
+              "content_excerpt": "\n\n## Reasoning\n\nThe \u00b9\u00b3CH\u2083 radical has an unpaired electron coupled to two sets of nuclei:\n\n- **Three equivalent \u00b9H nuclei** (I = 1/2 each): produce a multiplet of 2nI + 1 = 2(3)(1/2) + 1 = **4 lines**",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6371.425699966494,
+              "reasoning_chars": 835,
+              "reasoning_excerpt": "The 13CH3 radical has:\n- One 13C nucleus with I = 1/2\n- Three 1H nuclei, each with I = 1/2\n\nThe number of lines in an EPR spectrum is determined by the hyperfine coupling.\n\nFor a set of equivalent nuc",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 481,
+                "prompt_tokens": 270,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 284,
+                "total_tokens": 751
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n## Reasoning\n\nThe \u00b9\u00b3CH\u2083 radical has an unpaired electron coupled to two sets of nuclei:\n\n- **Three equivalent \u00b9H nuclei** (I = 1/2 each): produce a multiplet of 2nI + 1 = 2(3)(1/2) + 1 = **4 lines** (a quartet).\n- **One \u00b9\u00b3C nucleus** (I = 1/2): produces a multiplet of 2(1)(1/2) + 1 = **2 lines** (a doublet).\n\nSince the \u00b9\u00b3C and \u00b9H are *not* equivalent to each other, the total number of lines is the product:\n\n4 \u00d7 2 = **8 lines**\n\nEach of the four proton-split lines is further split into two by the \u00b9\u00b3C, giving 8 distinct lines (assuming no overlap).\n\nFINAL=B",
+              "content_chars": 563,
+              "content_excerpt": "\n\n## Reasoning\n\nThe \u00b9\u00b3CH\u2083 radical has an unpaired electron coupled to two sets of nuclei:\n\n- **Three equivalent \u00b9H nuclei** (I = 1/2 each): produce a multiplet of 2nI + 1 = 2(3)(1/2) + 1 = **4 lines**",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6361.98049999075,
+              "reasoning_chars": 835,
+              "reasoning_excerpt": "The 13CH3 radical has:\n- One 13C nucleus with I = 1/2\n- Three 1H nuclei, each with I = 1/2\n\nThe number of lines in an EPR spectrum is determined by the hyperfine coupling.\n\nFor a set of equivalent nuc",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 481,
+                "prompt_tokens": 270,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 284,
+                "total_tokens": 751
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n## Reasoning\n\nThe \u00b9\u00b3CH\u2083 radical has an unpaired electron coupled to two sets of nuclei:\n\n- **Three equivalent \u00b9H nuclei** (I = 1/2 each): produce a multiplet of 2nI + 1 = 2(3)(1/2) + 1 = **4 lines** (a quartet).\n- **One \u00b9\u00b3C nucleus** (I = 1/2): produces a multiplet of 2(1)(1/2) + 1 = **2 lines** (a doublet).\n\nSince the \u00b9\u00b3C and \u00b9H are *not* equivalent to each other, the total number of lines is the product:\n\n4 \u00d7 2 = **8 lines**\n\nEach of the four proton-split lines is further split into two by the \u00b9\u00b3C, giving 8 distinct lines (assuming no overlap).\n\nFINAL=B",
+              "content_chars": 563,
+              "content_excerpt": "\n\n## Reasoning\n\nThe \u00b9\u00b3CH\u2083 radical has an unpaired electron coupled to two sets of nuclei:\n\n- **Three equivalent \u00b9H nuclei** (I = 1/2 each): produce a multiplet of 2nI + 1 = 2(3)(1/2) + 1 = **4 lines**",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6361.893699970096,
+              "reasoning_chars": 835,
+              "reasoning_excerpt": "The 13CH3 radical has:\n- One 13C nucleus with I = 1/2\n- Three 1H nuclei, each with I = 1/2\n\nThe number of lines in an EPR spectrum is determined by the hyperfine coupling.\n\nFor a set of equivalent nuc",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 481,
+                "prompt_tokens": 270,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 284,
+                "total_tokens": 751
+              }
+            }
+          ],
+          "id": "mmlu-pro-25-chemistry",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 26792.93689999031,
+              "reasoning_chars": 5250,
+              "reasoning_excerpt": "We need minimum cycles for AB + ABC + BC.\n\nRegisters: R0=A, R1=B, R2=C. Must not modify R0,R1,R2. Available R3-R7.\n\nOperations: ADD Rs1, Rs2, Rd; MUL Rs1, Rs2, Rd.\n\nNormal op = 1 cycle. But if an oper",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2048,
+                "prompt_tokens": 333,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 2048,
+                "total_tokens": 2381
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 26794.621400011238,
+              "reasoning_chars": 5250,
+              "reasoning_excerpt": "We need minimum cycles for AB + ABC + BC.\n\nRegisters: R0=A, R1=B, R2=C. Must not modify R0,R1,R2. Available R3-R7.\n\nOperations: ADD Rs1, Rs2, Rd; MUL Rs1, Rs2, Rd.\n\nNormal op = 1 cycle. But if an oper",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2048,
+                "prompt_tokens": 333,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 2048,
+                "total_tokens": 2381
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 26787.639899994247,
+              "reasoning_chars": 5250,
+              "reasoning_excerpt": "We need minimum cycles for AB + ABC + BC.\n\nRegisters: R0=A, R1=B, R2=C. Must not modify R0,R1,R2. Available R3-R7.\n\nOperations: ADD Rs1, Rs2, Rd; MUL Rs1, Rs2, Rd.\n\nNormal op = 1 cycle. But if an oper",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2048,
+                "prompt_tokens": 333,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 2048,
+                "total_tokens": 2381
+              }
+            }
+          ],
+          "error": "answer",
+          "id": "mmlu-pro-30-computer-science",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a stationary AR process (e.g., AR(1): y_t = c + \u03c6y_{t\u22121} + \u03b5_t with |\u03c6| < 1), the impulse response to a shock at time t is \u03c6^k at horizon k. Because |\u03c6| < 1, this decays geometrically toward zero. The shock's influence is felt for many periods but fades without leaving a permanent mark on the level or trend.\n\n- A, H: Shocks do occur and don't vanish instantly.\n- B, C: Indefinite persistence / permanent level shift are hallmarks of a unit-root (non-stationary) process.\n- D: Exponential growth requires |\u03c6| > 1 (explosive, non-stationary).\n- E: The effect extends beyond one period.\n- G: A single shock doesn't alter the process's stationarity.\n- I: A single shock produces a decaying response, not a sustained cycle.\n- J: Subsequent shocks are independent; they don't \"offset\" the prior one.\n\nThe defining feature of stationarity in an AR model is that the effect of any given shock decays to zero over time.\n\nFINAL=F",
+              "content_chars": 926,
+              "content_excerpt": "\n\nIn a stationary AR process (e.g., AR(1): y_t = c + \u03c6y_{t\u22121} + \u03b5_t with |\u03c6| < 1), the impulse response to a shock at time t is \u03c6^k at horizon k. Because |\u03c6| < 1, this decays geometrically toward zero",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11778.636200004257,
+              "reasoning_chars": 2691,
+              "reasoning_excerpt": "The question asks about what happens to shocks in a stationary autoregressive (AR) process.\n\nLet me reason through this:\n\nA stationary AR process has the form: y_t = c + \u03c6_1 y_{t-1} + ... + \u03c6_p y_{t-p",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 896,
+                "prompt_tokens": 263,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 640,
+                "total_tokens": 1159
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a stationary AR process (e.g., AR(1): y_t = c + \u03c6y_{t\u22121} + \u03b5_t with |\u03c6| < 1), the impulse response to a shock at time t is \u03c6^k at horizon k. Because |\u03c6| < 1, this decays geometrically toward zero. The shock's influence is felt for many periods but fades without leaving a permanent mark on the level or trend.\n\n- A, H: Shocks do occur and don't vanish instantly.\n- B, C: Indefinite persistence / permanent level shift are hallmarks of a unit-root (non-stationary) process.\n- D: Exponential growth requires |\u03c6| > 1 (explosive, non-stationary).\n- E: The effect extends beyond one period.\n- G: A single shock doesn't alter the process's stationarity.\n- I: A single shock produces a decaying response, not a sustained cycle.\n- J: Subsequent shocks are independent; they don't \"offset\" the prior one.\n\nThe defining feature of stationarity in an AR model is that the effect of any given shock decays to zero over time.\n\nFINAL=F",
+              "content_chars": 926,
+              "content_excerpt": "\n\nIn a stationary AR process (e.g., AR(1): y_t = c + \u03c6y_{t\u22121} + \u03b5_t with |\u03c6| < 1), the impulse response to a shock at time t is \u03c6^k at horizon k. Because |\u03c6| < 1, this decays geometrically toward zero",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11769.724200014025,
+              "reasoning_chars": 2691,
+              "reasoning_excerpt": "The question asks about what happens to shocks in a stationary autoregressive (AR) process.\n\nLet me reason through this:\n\nA stationary AR process has the form: y_t = c + \u03c6_1 y_{t-1} + ... + \u03c6_p y_{t-p",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 896,
+                "prompt_tokens": 263,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 640,
+                "total_tokens": 1159
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a stationary AR process (e.g., AR(1): y_t = c + \u03c6y_{t\u22121} + \u03b5_t with |\u03c6| < 1), the impulse response to a shock at time t is \u03c6^k at horizon k. Because |\u03c6| < 1, this decays geometrically toward zero. The shock's influence is felt for many periods but fades without leaving a permanent mark on the level or trend.\n\n- A, H: Shocks do occur and don't vanish instantly.\n- B, C: Indefinite persistence / permanent level shift are hallmarks of a unit-root (non-stationary) process.\n- D: Exponential growth requires |\u03c6| > 1 (explosive, non-stationary).\n- E: The effect extends beyond one period.\n- G: A single shock doesn't alter the process's stationarity.\n- I: A single shock produces a decaying response, not a sustained cycle.\n- J: Subsequent shocks are independent; they don't \"offset\" the prior one.\n\nThe defining feature of stationarity in an AR model is that the effect of any given shock decays to zero over time.\n\nFINAL=F",
+              "content_chars": 926,
+              "content_excerpt": "\n\nIn a stationary AR process (e.g., AR(1): y_t = c + \u03c6y_{t\u22121} + \u03b5_t with |\u03c6| < 1), the impulse response to a shock at time t is \u03c6^k at horizon k. Because |\u03c6| < 1, this decays geometrically toward zero",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11774.604700040072,
+              "reasoning_chars": 2691,
+              "reasoning_excerpt": "The question asks about what happens to shocks in a stationary autoregressive (AR) process.\n\nLet me reason through this:\n\nA stationary AR process has the form: y_t = c + \u03c6_1 y_{t-1} + ... + \u03c6_p y_{t-p",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 896,
+                "prompt_tokens": 263,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 640,
+                "total_tokens": 1159
+              }
+            }
+          ],
+          "id": "mmlu-pro-35-economics",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 26799.529500014614,
+              "reasoning_chars": 4127,
+              "reasoning_excerpt": "The question asks about the force between two magnetic poles.\n\nThe force between two magnetic poles is given by:\n\nF = (\u03bc\u2080/4\u03c0) \u00d7 (m\u2081 \u00d7 m\u2082) / r\u00b2\n\nWhere:\n- \u03bc\u2080 = 4\u03c0 \u00d7 10\u207b\u2077 T\u00b7m/A (permeability of free spac",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2048,
+                "prompt_tokens": 304,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 2048,
+                "total_tokens": 2352
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 26797.93589998735,
+              "reasoning_chars": 4127,
+              "reasoning_excerpt": "The question asks about the force between two magnetic poles.\n\nThe force between two magnetic poles is given by:\n\nF = (\u03bc\u2080/4\u03c0) \u00d7 (m\u2081 \u00d7 m\u2082) / r\u00b2\n\nWhere:\n- \u03bc\u2080 = 4\u03c0 \u00d7 10\u207b\u2077 T\u00b7m/A (permeability of free spac",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2048,
+                "prompt_tokens": 304,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 2048,
+                "total_tokens": 2352
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 26794.156099960674,
+              "reasoning_chars": 4127,
+              "reasoning_excerpt": "The question asks about the force between two magnetic poles.\n\nThe force between two magnetic poles is given by:\n\nF = (\u03bc\u2080/4\u03c0) \u00d7 (m\u2081 \u00d7 m\u2082) / r\u00b2\n\nWhere:\n- \u03bc\u2080 = 4\u03c0 \u00d7 10\u207b\u2077 T\u00b7m/A (permeability of free spac",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2048,
+                "prompt_tokens": 304,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 2048,
+                "total_tokens": 2352
+              }
+            }
+          ],
+          "error": "answer",
+          "id": "mmlu-pro-40-engineering",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Parsing the sentence:**\n\n\"X unless Y\" is the standard English form for \"X or Y\" (equivalently, \"if not Y, then X\"). The \"unless\" carves out Y as the only exception to X.\n\n- X = \"Turtles live long lives and are happy creatures\" \u2192 **L \u2227 H**\n- Y = \"they are injured\" \u2192 **I**\n\nSo the whole sentence becomes **(L \u2227 H) \u2228 I**.\n\nChecking the options:\n\n- **A** (iff) asserts a biconditional \u2014 wrong direction entirely.\n- **B** matches exactly.\n- **C** re-associates the connectives, changing the meaning (it only guarantees L, not the conjunction L\u2227H, when I is false).\n- **D** introduces an undefined R.\n\nFINAL=B",
+              "content_chars": 608,
+              "content_excerpt": "\n\n**Parsing the sentence:**\n\n\"X unless Y\" is the standard English form for \"X or Y\" (equivalently, \"if not Y, then X\"). The \"unless\" carves out Y as the only exception to X.\n\n- X = \"Turtles live long ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6311.378800019156,
+              "reasoning_chars": 1012,
+              "reasoning_excerpt": "The sentence is: \"Turtles live long lives and are happy creatures, unless they are injured.\"\n\nLet me parse this carefully.\n\n\"X unless Y\" in propositional logic is typically symbolized as \"X or Y\" (equ",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 476,
+                "prompt_tokens": 275,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 295,
+                "total_tokens": 751
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Parsing the sentence:**\n\n\"X unless Y\" is the standard English form for \"X or Y\" (equivalently, \"if not Y, then X\"). The \"unless\" carves out Y as the only exception to X.\n\n- X = \"Turtles live long lives and are happy creatures\" \u2192 **L \u2227 H**\n- Y = \"they are injured\" \u2192 **I**\n\nSo the whole sentence becomes **(L \u2227 H) \u2228 I**.\n\nChecking the options:\n\n- **A** (iff) asserts a biconditional \u2014 wrong direction entirely.\n- **B** matches exactly.\n- **C** re-associates the connectives, changing the meaning (it only guarantees L, not the conjunction L\u2227H, when I is false).\n- **D** introduces an undefined R.\n\nFINAL=B",
+              "content_chars": 608,
+              "content_excerpt": "\n\n**Parsing the sentence:**\n\n\"X unless Y\" is the standard English form for \"X or Y\" (equivalently, \"if not Y, then X\"). The \"unless\" carves out Y as the only exception to X.\n\n- X = \"Turtles live long ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6299.231899960432,
+              "reasoning_chars": 1012,
+              "reasoning_excerpt": "The sentence is: \"Turtles live long lives and are happy creatures, unless they are injured.\"\n\nLet me parse this carefully.\n\n\"X unless Y\" in propositional logic is typically symbolized as \"X or Y\" (equ",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 476,
+                "prompt_tokens": 275,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 295,
+                "total_tokens": 751
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Parsing the sentence:**\n\n\"X unless Y\" is the standard English form for \"X or Y\" (equivalently, \"if not Y, then X\"). The \"unless\" carves out Y as the only exception to X.\n\n- X = \"Turtles live long lives and are happy creatures\" \u2192 **L \u2227 H**\n- Y = \"they are injured\" \u2192 **I**\n\nSo the whole sentence becomes **(L \u2227 H) \u2228 I**.\n\nChecking the options:\n\n- **A** (iff) asserts a biconditional \u2014 wrong direction entirely.\n- **B** matches exactly.\n- **C** re-associates the connectives, changing the meaning (it only guarantees L, not the conjunction L\u2227H, when I is false).\n- **D** introduces an undefined R.\n\nFINAL=B",
+              "content_chars": 608,
+              "content_excerpt": "\n\n**Parsing the sentence:**\n\n\"X unless Y\" is the standard English form for \"X or Y\" (equivalently, \"if not Y, then X\"). The \"unless\" carves out Y as the only exception to X.\n\n- X = \"Turtles live long ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6298.6049999599345,
+              "reasoning_chars": 1012,
+              "reasoning_excerpt": "The sentence is: \"Turtles live long lives and are happy creatures, unless they are injured.\"\n\nLet me parse this carefully.\n\n\"X unless Y\" in propositional logic is typically symbolized as \"X or Y\" (equ",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 476,
+                "prompt_tokens": 275,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 295,
+                "total_tokens": 751
+              }
+            }
+          ],
+          "id": "mmlu-pro-45-philosophy",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Reasoning:**\n\nA *judge ad hoc* is defined in **Article 31(2) of the Statute of the ICJ**: \"If the Bench does not include a judge of the nationality of a party to the case, that party may choose a person to sit as judge.\" The person is appointed solely for that case, need not come from the list of eligible judges (Art. 31(3)), and enjoys the same privileges as regular judges (Art. 31(4)).\n\nChecking the distractors:\n\n- **B** (\"temporary judge for a specific period\") is too vague and misses the triggering condition.\n- **C** (\"each party *always* nominates\") is wrong \u2014 the right arises only when the party has *no* national on the Bench.\n- **E** (\"irrespective of nationality\") omits the essential precondition (absence of a national judge).\n- **H** (surrogate for a disqualified/deceased judge) describes a different mechanism (Art. 13, replacement of a judge).\n- The remaining options (A, D, F, G) are simply incorrect descriptions of other roles or institutions.\n\nOption **I** captures both the condition (no national sitting as judge) and the scope (nominated solely for that case), matching Article 31 precisely.\n\nFINAL=I",
+              "content_chars": 1133,
+              "content_excerpt": "\n\n**Reasoning:**\n\nA *judge ad hoc* is defined in **Article 31(2) of the Statute of the ICJ**: \"If the Bench does not include a judge of the nationality of a party to the case, that party may choose a ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 14282.181500049774,
+              "reasoning_chars": 3367,
+              "reasoning_excerpt": "The question asks: \"What is the judge ad hoc?\"\n\nLet me reason through the options:\n\nA judge ad hoc in the context of the International Court of Justice (ICJ) is defined in Article 31 of the Statute of",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1088,
+                "prompt_tokens": 316,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 803,
+                "total_tokens": 1404
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Reasoning:**\n\nA *judge ad hoc* is defined in **Article 31(2) of the Statute of the ICJ**: \"If the Bench does not include a judge of the nationality of a party to the case, that party may choose a person to sit as judge.\" The person is appointed solely for that case, need not come from the list of eligible judges (Art. 31(3)), and enjoys the same privileges as regular judges (Art. 31(4)).\n\nChecking the distractors:\n\n- **B** (\"temporary judge for a specific period\") is too vague and misses the triggering condition.\n- **C** (\"each party *always* nominates\") is wrong \u2014 the right arises only when the party has *no* national on the Bench.\n- **E** (\"irrespective of nationality\") omits the essential precondition (absence of a national judge).\n- **H** (surrogate for a disqualified/deceased judge) describes a different mechanism (Art. 13, replacement of a judge).\n- The remaining options (A, D, F, G) are simply incorrect descriptions of other roles or institutions.\n\nOption **I** captures both the condition (no national sitting as judge) and the scope (nominated solely for that case), matching Article 31 precisely.\n\nFINAL=I",
+              "content_chars": 1133,
+              "content_excerpt": "\n\n**Reasoning:**\n\nA *judge ad hoc* is defined in **Article 31(2) of the Statute of the ICJ**: \"If the Bench does not include a judge of the nationality of a party to the case, that party may choose a ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 14271.434300055262,
+              "reasoning_chars": 3367,
+              "reasoning_excerpt": "The question asks: \"What is the judge ad hoc?\"\n\nLet me reason through the options:\n\nA judge ad hoc in the context of the International Court of Justice (ICJ) is defined in Article 31 of the Statute of",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1088,
+                "prompt_tokens": 316,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 803,
+                "total_tokens": 1404
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 1792,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\n**Reasoning:**\n\nA *judge ad hoc* is defined in **Article 31(2) of the Statute of the ICJ**: \"If the Bench does not include a judge of the nationality of a party to the case, that party may choose a person to sit as judge.\" The person is appointed solely for that case, need not come from the list of eligible judges (Art. 31(3)), and enjoys the same privileges as regular judges (Art. 31(4)).\n\nChecking the distractors:\n\n- **B** (\"temporary judge for a specific period\") is too vague and misses the triggering condition.\n- **C** (\"each party *always* nominates\") is wrong \u2014 the right arises only when the party has *no* national on the Bench.\n- **E** (\"irrespective of nationality\") omits the essential precondition (absence of a national judge).\n- **H** (surrogate for a disqualified/deceased judge) describes a different mechanism (Art. 13, replacement of a judge).\n- The remaining options (A, D, F, G) are simply incorrect descriptions of other roles or institutions.\n\nOption **I** captures both the condition (no national sitting as judge) and the scope (nominated solely for that case), matching Article 31 precisely.\n\nFINAL=I",
+              "content_chars": 1133,
+              "content_excerpt": "\n\n**Reasoning:**\n\nA *judge ad hoc* is defined in **Article 31(2) of the Statute of the ICJ**: \"If the Bench does not include a judge of the nationality of a party to the case, that party may choose a ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 14272.264800034463,
+              "reasoning_chars": 3367,
+              "reasoning_excerpt": "The question asks: \"What is the judge ad hoc?\"\n\nLet me reason through the options:\n\nA judge ad hoc in the context of the International Court of Justice (ICJ) is defined in Article 31 of the Statute of",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1088,
+                "prompt_tokens": 316,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 803,
+                "total_tokens": 1404
+              }
+            }
+          ],
+          "id": "mmlu-pro-65-law",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "evidence_use": "diagnostic",
+      "source": "tests\\fixtures\\eval-data\\hf-mmlu-pro-10-repeated.suite.json",
+      "source_sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636",
+      "status": "failed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "content_chunks": 0,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p95": null,
+      "e2e_p50_ms": null,
+      "e2e_p95_ms": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p95": null,
+      "generation_p50_ms": null,
+      "generation_p95_ms": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p95": null,
+      "reasoning_chunks": 0,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_samples": 0
+    },
+    "wall_ms": 351526.2389999698
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

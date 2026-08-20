@@ -1,0 +1,99 @@
+{
+  "schema": "anvil-serving.chat-template-ab-summary/v1",
+  "date": "2026-08-20",
+  "model": {
+    "repository": "RadixArk/Qwen3.8-27B-NVFP4",
+    "revision": "554ebba9b5f1b79dc11246341960360e6ef05ef4",
+    "quantization": "ModelOpt NVFP4 W4A4 with FP8 projections and FP8 E4M3 KV",
+    "context_tokens": 131072,
+    "concurrency": 1
+  },
+  "runtime": {
+    "engine": "SGLang",
+    "image": "lmsysorg/sglang:qwen38-27b@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124",
+    "measured_gpu": "NVIDIA GeForce RTX 5090",
+    "topology": "isolated direct loopback qualification endpoint",
+    "pro_relationship": "unrelated"
+  },
+  "template": {
+    "repository": "peculiar-ragdoll/Qwen-Sharp-Chat-Templates",
+    "revision": "3dc34df52c63dd22ada21f96435e069deaa8d7da",
+    "version": "Sharp v22.1",
+    "application": "SGLang --chat-template from the pinned named-cache snapshot"
+  },
+  "thinking_enabled_mmlu_pro": {
+    "shape": "10 items x 3 repetitions; 256 visible-answer tokens plus 1792 reasoning-headroom tokens",
+    "stock": {
+      "passed_attempts": 24,
+      "attempts": 30,
+      "completion_tokens": 24138,
+      "reasoning_characters": 69798,
+      "visible_characters": 8868,
+      "mean_latency_ms": 10586.3
+    },
+    "sharp": {
+      "passed_attempts": 24,
+      "attempts": 30,
+      "completion_tokens": 26736,
+      "reasoning_characters": 66570,
+      "visible_characters": 17424,
+      "mean_latency_ms": 11716.6
+    },
+    "sharp_delta_percent": {
+      "completion_tokens": 10.8,
+      "reasoning_characters": -4.6,
+      "visible_characters": 96.5,
+      "mean_latency_ms": 10.7
+    },
+    "shared_failures": [
+      "mmlu-pro-30-computer-science: reasoning_budget_exhausted in 3/3 attempts",
+      "mmlu-pro-40-engineering: reasoning_budget_exhausted in 3/3 attempts"
+    ]
+  },
+  "thinking_disabled_behavior": {
+    "shape": "6 items x 3 repetitions; 256 visible-answer tokens; zero reasoning headroom",
+    "stock": {
+      "passed_attempts": 18,
+      "attempts": 18,
+      "completion_tokens": 1596,
+      "visible_characters": 7017,
+      "mean_latency_ms": 1267.6
+    },
+    "sharp": {
+      "passed_attempts": 15,
+      "attempts": 18,
+      "completion_tokens": 1515,
+      "visible_characters": 6723,
+      "mean_latency_ms": 1204.7
+    },
+    "sharp_delta_percent": {
+      "completion_tokens": -5.1,
+      "visible_characters": -4.2,
+      "mean_latency_ms": -5.0
+    },
+    "sharp_failure": "The ambiguous-request case requested four specific details but did not contain the diagnostic's required literal question mark."
+  },
+  "functional_gate": {
+    "sharp_thinking_disabled": "passed",
+    "checks": [
+      "smoke",
+      "json",
+      "tools 20/20",
+      "streaming tools",
+      "tool-result continuation",
+      "Responses API subset"
+    ],
+    "reasoning_leak": false
+  },
+  "artifact_caveats": [
+    "Both quality artifacts retain inspector validation warnings for unrelated not-run built-in suites and absent aggregate chat timing fields.",
+    "Thinking control was requested through chat_template_kwargs but is labeled requested_unverified in the quality artifacts.",
+    "This bounded deterministic diagnostic is not the publisher's Claw-Eval, SWE-bench-Live, or full MMLU-Pro campaign."
+  ],
+  "decision": {
+    "evidence": ["functional", "quality"],
+    "label": "rejected",
+    "promotion_authorized": false,
+    "recommendation": "Do not adopt Sharp v22.1 for this pinned Qwen3.8 RTX 5090 profile from this evidence."
+  }
+}

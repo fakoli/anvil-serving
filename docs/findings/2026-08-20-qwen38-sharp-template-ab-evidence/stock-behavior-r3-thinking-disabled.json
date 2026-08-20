@@ -1,0 +1,813 @@
+{
+  "context": {
+    "cap_tokens": 129792,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 256
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:39038/v1",
+    "candidate_id": "RadixArk-Qwen3.8-27B-NVFP4",
+    "config_id": "stock-template-behavior",
+    "engine": "sglang",
+    "gpu": "isolated-rtx5090-host",
+    "model": "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm",
+    "started_at": "2026-08-20T10:48:47Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260820T104847Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "disabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "RadixArk/Qwen3.8-27B-NVFP4@554ebba9b5f1b79dc11246341960360e6ef05ef4",
+    "serve_command": null
+  },
+  "suites": {
+    "qwen-sharp-behavior-diagnostic": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Immutable build artifacts ensure that the exact binary or package deployed in production is bit-for-bit identical to the one tested in CI/CD. This eliminates \"works on my machine\" discrepancies, guarantees reproducible builds, and allows for precise rollback and forensic debugging. The primary caveat is that it requires strict versioning and storage management to prevent accidental overwrites or loss of historical versions.\n\nFINAL=PINNED",
+              "content_chars": 441,
+              "content_excerpt": "Immutable build artifacts ensure that the exact binary or package deployed in production is bit-for-bit identical to the one tested in CI/CD. This eliminates \"works on my machine\" discrepancies, guara",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1351.7156000016257,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 82,
+                "prompt_tokens": 40,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 122
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Immutable build artifacts ensure that the exact binary or package deployed in production is bit-for-bit identical to the one tested in CI/CD. This eliminates \"works on my machine\" discrepancies, guarantees reproducible builds, and allows for precise rollback and forensic debugging. The primary caveat is that it requires strict versioning and storage management to prevent accidental overwrites or loss of historical versions.\n\nFINAL=PINNED",
+              "content_chars": 441,
+              "content_excerpt": "Immutable build artifacts ensure that the exact binary or package deployed in production is bit-for-bit identical to the one tested in CI/CD. This eliminates \"works on my machine\" discrepancies, guara",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1166.0873999935575,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 82,
+                "prompt_tokens": 40,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 122
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Immutable build artifacts ensure that the exact binary or package deployed in production is bit-for-bit identical to the one tested in CI/CD. This eliminates \"works on my machine\" discrepancies, guarantees reproducible builds, and allows for precise rollback and forensic debugging. The primary caveat is that it requires strict versioning and storage management to prevent accidental overwrites or loss of historical versions.\n\nFINAL=PINNED",
+              "content_chars": 441,
+              "content_excerpt": "Immutable build artifacts ensure that the exact binary or package deployed in production is bit-for-bit identical to the one tested in CI/CD. This eliminates \"works on my machine\" discrepancies, guara",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1166.3326999987476,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 82,
+                "prompt_tokens": 40,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 122
+              }
+            }
+          ],
+          "id": "brief-factual",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "No, 99.9% availability is a statistical target or average metric, not a strict upper bound for any specific period. It allows for downtime to be concentrated in a single month (e.g., 43.8 minutes) while compensating with zero downtime in others to meet the annual average. Furthermore, \"availability\" often excludes scheduled maintenance, which could add significant downtime. Therefore, it does not guarantee fewer than 44 minutes of downtime in *every* 30-day month.\n\nFINAL=NO-GUARANTEE",
+              "content_chars": 488,
+              "content_excerpt": "No, 99.9% availability is a statistical target or average metric, not a strict upper bound for any specific period. It allows for downtime to be concentrated in a single month (e.g., 43.8 minutes) whi",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1560.7959000044502,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 112,
+                "prompt_tokens": 63,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 175
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "No, 99.9% availability is a statistical target or average metric, not a strict upper bound for any specific period. It allows for downtime to be concentrated in a single month (e.g., 43.8 minutes) while compensating with zero downtime in others to meet the annual average. Furthermore, \"availability\" often excludes scheduled maintenance, which could add significant downtime. Therefore, it does not guarantee fewer than 44 minutes of downtime in *every* 30-day month.\n\nFINAL=NO-GUARANTEE",
+              "content_chars": 488,
+              "content_excerpt": "No, 99.9% availability is a statistical target or average metric, not a strict upper bound for any specific period. It allows for downtime to be concentrated in a single month (e.g., 43.8 minutes) whi",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1558.9444999932311,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 112,
+                "prompt_tokens": 63,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 175
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "No, 99.9% availability is a statistical target or average metric, not a strict upper bound for any specific period. It allows for downtime to be concentrated in a single month (e.g., 43.8 minutes) while compensating with zero downtime in others to meet the annual average. Furthermore, \"availability\" often excludes scheduled maintenance, which could add significant downtime. Therefore, it does not guarantee fewer than 44 minutes of downtime in *every* 30-day month.\n\nFINAL=NO-GUARANTEE",
+              "content_chars": 488,
+              "content_excerpt": "No, 99.9% availability is a statistical target or average metric, not a strict upper bound for any specific period. It allows for downtime to be concentrated in a single month (e.g., 43.8 minutes) whi",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1560.704400006216,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 112,
+                "prompt_tokens": 63,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 175
+              }
+            }
+          ],
+          "id": "availability-caveat",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "```python\ndef dedupe_preserving_order(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result\n\nFINAL=CODE\n```",
+              "content_chars": 223,
+              "content_excerpt": "```python\ndef dedupe_preserving_order(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 905.513699981384,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                },
+                {
+                  "name": "function",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 60,
+                "prompt_tokens": 47,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 107
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "```python\ndef dedupe_preserving_order(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result\n\nFINAL=CODE\n```",
+              "content_chars": 223,
+              "content_excerpt": "```python\ndef dedupe_preserving_order(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 882.4522000504658,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                },
+                {
+                  "name": "function",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 60,
+                "prompt_tokens": 47,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 107
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "```python\ndef dedupe_preserving_order(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result\n\nFINAL=CODE\n```",
+              "content_chars": 223,
+              "content_excerpt": "```python\ndef dedupe_preserving_order(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 881.694299983792,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                },
+                {
+                  "name": "function",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 60,
+                "prompt_tokens": 47,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 107
+              }
+            }
+          ],
+          "id": "code-deliverable",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "A mutex (mutual exclusion) protects a **critical section** of code or a shared resource (such as a variable, file, or hardware device) to ensure that only one thread or process can access it at a time. This prevents **race conditions** and data corruption that occur when multiple threads attempt to read or write to the same resource simultaneously without synchronization.\n\nSYSTEM-KEPT",
+              "content_chars": 387,
+              "content_excerpt": "A mutex (mutual exclusion) protects a **critical section** of code or a shared resource (such as a variable, file, or hardware device) to ensure that only one thread or process can access it at a time",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1133.2845000433736,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "system-marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 79,
+                "prompt_tokens": 43,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 122
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "A mutex (mutual exclusion) protects a **critical section** of code or a shared resource (such as a variable, file, or hardware device) to ensure that only one thread or process can access it at a time. This prevents **race conditions** and data corruption that occur when multiple threads attempt to read or write to the same resource simultaneously without synchronization.\n\nSYSTEM-KEPT",
+              "content_chars": 387,
+              "content_excerpt": "A mutex (mutual exclusion) protects a **critical section** of code or a shared resource (such as a variable, file, or hardware device) to ensure that only one thread or process can access it at a time",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1126.3339000288397,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "system-marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 79,
+                "prompt_tokens": 43,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 122
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "A mutex (mutual exclusion) protects a **critical section** of code or a shared resource (such as a variable, file, or hardware device) to ensure that only one thread or process can access it at a time. This prevents **race conditions** and data corruption that occur when multiple threads attempt to read or write to the same resource simultaneously without synchronization.\n\nSYSTEM-KEPT",
+              "content_chars": 387,
+              "content_excerpt": "A mutex (mutual exclusion) protects a **critical section** of code or a shared resource (such as a variable, file, or hardware device) to ensure that only one thread or process can access it at a time",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1130.0126999849454,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "system-marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 79,
+                "prompt_tokens": 43,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 122
+              }
+            }
+          ],
+          "id": "system-prompt-preserved",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "I can help with that, but I need more context to proceed. Could you please clarify:\n\n1. **What deployment system are you using?** (e.g., Kubernetes, AWS ECS, GitHub Actions, Terraform, Helm, etc.)\n2. **What is the current target and what is the new target?** (e.g., a new environment, cluster, region, version, or namespace)\n3. **Do you have a specific command, config file, or CI/CD pipeline you'd like me to update?**\n\nFor example, if you're using Kubernetes, you might be looking to run something like:\n\n```bash\nkubectl set image deployment/my-app my-container=new-image:tag\n```\n\nOr if it's a CI/CD pipeline, you might need to update an environment variable or target in your workflow file.\n\nPlease share the relevant details or code, and I'll provide the exact update needed.",
+              "content_chars": 779,
+              "content_excerpt": "I can help with that, but I need more context to proceed. Could you please clarify:\n\n1. **What deployment system are you using?** (e.g., Kubernetes, AWS ECS, GitHub Actions, Terraform, Helm, etc.)\n2. ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2581.508200033568,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "asks-question",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 190,
+                "prompt_tokens": 20,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 210
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "I can help with that, but I need more context to proceed. Could you please clarify:\n\n1. **What deployment system are you using?** (e.g., Kubernetes, AWS ECS, GitHub Actions, Terraform, Helm, etc.)\n2. **What is the current target and what is the new target?** (e.g., a new environment, cluster, region, version, or namespace)\n3. **Do you have a specific command, config file, or CI/CD pipeline you'd like me to update?**\n\nFor example, if you're using Kubernetes, you might be looking to run something like:\n\n```bash\nkubectl set image deployment/my-app my-container=new-image:tag\n```\n\nOr if it's a CI/CD pipeline, you might need to update an environment variable or target in your workflow file.\n\nPlease share the relevant details or code, and I'll provide the exact update needed.",
+              "content_chars": 779,
+              "content_excerpt": "I can help with that, but I need more context to proceed. Could you please clarify:\n\n1. **What deployment system are you using?** (e.g., Kubernetes, AWS ECS, GitHub Actions, Terraform, Helm, etc.)\n2. ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2575.1227000146173,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "asks-question",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 190,
+                "prompt_tokens": 20,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 210
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "I can help with that, but I need more context to proceed. Could you please clarify:\n\n1. **What deployment system are you using?** (e.g., Kubernetes, AWS ECS, GitHub Actions, Terraform, Helm, etc.)\n2. **What is the current target and what is the new target?** (e.g., a new environment, cluster, region, version, or namespace)\n3. **Do you have a specific command, config file, or CI/CD pipeline you'd like me to update?**\n\nFor example, if you're using Kubernetes, you might be looking to run something like:\n\n```bash\nkubectl set image deployment/my-app my-container=new-image:tag\n```\n\nOr if it's a CI/CD pipeline, you might need to update an environment variable or target in your workflow file.\n\nPlease share the relevant details or code, and I'll provide the exact update needed.",
+              "content_chars": 779,
+              "content_excerpt": "I can help with that, but I need more context to proceed. Could you please clarify:\n\n1. **What deployment system are you using?** (e.g., Kubernetes, AWS ECS, GitHub Actions, Terraform, Helm, etc.)\n2. ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2569.8151999968104,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "asks-question",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 190,
+                "prompt_tokens": 20,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 210
+              }
+            }
+          ],
+          "id": "ambiguous-request-question",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "AMBER-17 FINAL=MEMORY",
+              "content_chars": 21,
+              "content_excerpt": "AMBER-17 FINAL=MEMORY",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 229.96389999752864,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "codename",
+                  "passed": true
+                },
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 9,
+                "prompt_tokens": 64,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 73
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "AMBER-17 FINAL=MEMORY",
+              "content_chars": 21,
+              "content_excerpt": "AMBER-17 FINAL=MEMORY",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 217.1315000159666,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "codename",
+                  "passed": true
+                },
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 9,
+                "prompt_tokens": 64,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 73
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "AMBER-17 FINAL=MEMORY",
+              "content_chars": 21,
+              "content_excerpt": "AMBER-17 FINAL=MEMORY",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 219.68189999461174,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "codename",
+                  "passed": true
+                },
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 9,
+                "prompt_tokens": 64,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 73
+              }
+            }
+          ],
+          "id": "multi-turn-memory",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-08-20",
+      "evidence_use": "diagnostic",
+      "source": ".\\sharp-behavior-diagnostic.suite.json",
+      "source_sha256": "5a609f29db1d3857418d14ebfeb240c50d48f3013eb4c7c6d9031810d5639fbe",
+      "status": "passed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "chat-template-behavior-diagnostic"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": false
+    },
+    "control_status": "requested_unverified",
+    "mode": "disabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "content_chunks": 0,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p95": null,
+      "e2e_p50_ms": null,
+      "e2e_p95_ms": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p95": null,
+      "generation_p50_ms": null,
+      "generation_p95_ms": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p95": null,
+      "reasoning_chunks": 0,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_samples": 0
+    },
+    "wall_ms": 22843.717899988405
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

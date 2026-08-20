@@ -1,0 +1,536 @@
+{
+  "aggregates": {
+    "case": {
+      "image-count-eight": {
+        "attempts": 2,
+        "latency_p50_seconds": 3.8032785000000002,
+        "latency_p95_seconds": 3.927383,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "video-count-two": {
+        "attempts": 2,
+        "latency_p50_seconds": 3.1192205,
+        "latency_p95_seconds": 3.138158,
+        "pass_rate": 1.0,
+        "passed": 2
+      }
+    },
+    "modality": {
+      "image": {
+        "attempts": 2,
+        "latency_p50_seconds": 3.8032785000000002,
+        "latency_p95_seconds": 3.927383,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "video": {
+        "attempts": 2,
+        "latency_p50_seconds": 3.1192205,
+        "latency_p95_seconds": 3.138158,
+        "pass_rate": 1.0,
+        "passed": 2
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_id": "image-count-eight",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        },
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        },
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        },
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on your request, here is the information extracted from the eight images in order:\n\n1.  **First image:** The numeric code is **42917**.\n2.  **Second image (red car scene):** The scene shows a **red car** on a green surface labeled \"GREEN PARK\" under a \"SUNNY DAY\".\n3.  **Third image (chart):** The highest quarter is **Q3** with a value of **30**.\n4.  **Fourth image (dashboard):** The GPU percentage is **42**.\n5.  **Fifth image:** The number of blue boxes is **three**.\n6.  **Sixth and Seventh images (meters):** **Meter B** is higher, at **75 percent**.\n7.  **Eighth image:** The numeric code is **42917**.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 3.927383,
+      "usage": {
+        "completion_tokens": 183,
+        "prompt_tokens": 1851,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 1760
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2034
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "42917",
+              "red car",
+              "Q3",
+              "30",
+              "42",
+              "three",
+              "meter b",
+              "75",
+              "42917"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-count-eight",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        },
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        },
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        },
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on your request, here is the information extracted from the eight images in order:\n\n1.  **First image:** The numeric code is **42917**.\n2.  **Second image (red car scene):** The scene shows a **red car** on a green surface labeled \"GREEN PARK\" under a \"SUNNY DAY\".\n3.  **Third image (chart):** The highest quarter is **Q3** with a value of **30**.\n4.  **Fourth image (dashboard):** The GPU percentage is **42**.\n5.  **Fifth image:** The number of blue boxes is **three**.\n6.  **Sixth and Seventh images (meters):** **Meter B** is higher, at **75 percent**.\n7.  **Eighth image:** The numeric code is **42917**.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 3.679174,
+      "usage": {
+        "completion_tokens": 183,
+        "prompt_tokens": 1851,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 1760
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2034
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "42917",
+              "red car",
+              "Q3",
+              "30",
+              "42",
+              "three",
+              "meter b",
+              "75",
+              "42917"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-count-two",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 11627,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "temporal-order-10s.mp4",
+          "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+        },
+        {
+          "bytes": 14552,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "state-change-30s.mp4",
+          "sha256": "4d720486425afff4a7450f0f7f3ce6e3eea591e063b66e48fc953415b9172e62"
+        }
+      ],
+      "modality": "video",
+      "output": "Based on the provided video frames, here is the report for each video in the supplied order:\n\n**First Video:**\nThe two color states shown in temporal order are:\n1.  **Red:** The text \"FIRST RED\" is displayed in red.\n2.  **Green:** The text changes to \"THEN GREEN\" in green.\n\n**Second Video:**\nThe state change shown in temporal order is:\n1.  **Door Closed:** The text \"DOOR CLOSED\" is displayed in white.\n2.  **Door Open:** The text changes to \"DOOR OPEN\" in green.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 3.138158,
+      "usage": {
+        "completion_tokens": 127,
+        "prompt_tokens": 2459,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 2240
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2586
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green",
+              "closed",
+              "open"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-count-two",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 11627,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "temporal-order-10s.mp4",
+          "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+        },
+        {
+          "bytes": 14552,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "state-change-30s.mp4",
+          "sha256": "4d720486425afff4a7450f0f7f3ce6e3eea591e063b66e48fc953415b9172e62"
+        }
+      ],
+      "modality": "video",
+      "output": "Based on the provided video frames, here is the report for each video in the supplied order:\n\n**First Video:**\nThe two color states shown in temporal order are:\n1.  **Red:** The text \"FIRST RED\" is displayed in red.\n2.  **Green:** The text changes to \"THEN GREEN\" in green.\n\n**Second Video:**\nThe state change shown in temporal order is:\n1.  **Door Closed:** The text \"DOOR CLOSED\" is displayed in white.\n2.  **Door Open:** The text changes to \"DOOR OPEN\" in green.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 3.100283,
+      "usage": {
+        "completion_tokens": 127,
+        "prompt_tokens": 2459,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 2240
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2586
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green",
+              "closed",
+              "open"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    }
+  ],
+  "configuration": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "concurrency": 1,
+    "max_images_per_request": 8,
+    "max_tokens": 512,
+    "max_videos_per_request": 2,
+    "reasoning_effort": null,
+    "thinking_mode": "disabled",
+    "timeout_seconds": 600.0
+  },
+  "corpus": {
+    "cases": [
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "42917",
+              "red car",
+              "Q3",
+              "30",
+              "42",
+              "three",
+              "meter b",
+              "75",
+              "42917"
+            ]
+          }
+        ],
+        "id": "image-count-eight",
+        "media": [
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          },
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+          },
+          {
+            "bytes": 12635,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "chart.png",
+            "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+          },
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+          },
+          {
+            "bytes": 8785,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "spatial.png",
+            "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+          },
+          {
+            "bytes": 8000,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-a.png",
+            "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+          },
+          {
+            "bytes": 7679,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-b.png",
+            "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+          },
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Inspect all eight supplied images in order. Report the numeric code in the first image, the red car scene, the chart's highest quarter and value, the dashboard GPU percentage, the number of blue boxes written as an English word, which meter is higher with its percentage, and the numeric code in the eighth image.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green",
+              "closed",
+              "open"
+            ]
+          }
+        ],
+        "id": "video-count-two",
+        "media": [
+          {
+            "bytes": 11627,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "temporal-order-10s.mp4",
+            "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+          },
+          {
+            "bytes": 14552,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "state-change-30s.mp4",
+            "sha256": "4d720486425afff4a7450f0f7f3ce6e3eea591e063b66e48fc953415b9172e62"
+          }
+        ],
+        "modality": "video",
+        "prompt": "Treat the videos in supplied order. For the first, report its two color states in temporal order. For the second, report its state change in temporal order.",
+        "repetitions": 2,
+        "sampling": {
+          "num_frames": 16
+        }
+      }
+    ],
+    "path": "benchmarks/corpora/agents-a1-v1/count-boundaries-128k.json",
+    "provenance": {
+      "observed_date": "2026-08-17",
+      "synthetic": {
+        "generator": "generate.py",
+        "license": "CC0-1.0",
+        "purpose": "exercise exact 8-image and 2-video direct-request boundaries",
+        "source_corpus": "corpus.json"
+      }
+    },
+    "schema": "multimodal-corpus/v1",
+    "sha256": "9d0ecd190ae63e7ad5d501c383113d72457e0bd12d7c6eb9a84ff82a65059d25"
+  },
+  "failed_attempts": 0,
+  "finished_at": "2026-08-17T20:44:40Z",
+  "identity": {
+    "base_url": "http://127.0.0.1:39038/v1",
+    "engine_build_ref": null,
+    "engine_revision": "c4271c3fe1262fc2adbd162c33b25de5255251c5",
+    "hardware": "NVIDIA GeForce RTX 5090 32GB",
+    "model": "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm",
+    "model_revision": "554ebba9b5f1b79dc11246341960360e6ef05ef4",
+    "runtime_image": "lmsysorg/sglang:qwen38-27b@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124",
+    "served_models": [
+      "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm"
+    ]
+  },
+  "passed": true,
+  "passed_attempts": 4,
+  "requests": 4,
+  "run_id": "multimodal-20260817T204426Z",
+  "schema": "multimodal-benchmark-evidence/v1",
+  "started_at": "2026-08-17T20:44:26Z"
+}

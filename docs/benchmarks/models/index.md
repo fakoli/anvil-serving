@@ -29,6 +29,7 @@ evidence class, decision boundary, failures, and dated history.
 
 | Dossier | Current decision | Capability |
 |---|---|---|
+| [Qwen3.8 27B](qwen38-27b.md) | preferred 5090 `challenger`, `no-promotion` | Computer-use perception, image, OCR, native video, 128K text/tools; eight images / two videos |
 | [Nemotron Nano/Omni 30B](nemotron-omni-30b.md) | `current` topology | Auxiliary text, vision, OCR |
 | [Qwen2.5-Omni 3B](qwen25-omni-3b.md) | `challenger`, `no-promotion` | Co-resident Omni |
 | [Parakeet TDT 0.6B v3](parakeet.md) | `current` | STT |
