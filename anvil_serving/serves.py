@@ -81,7 +81,7 @@ import sys
 import urllib.request
 import urllib.error
 
-from .paths import config_path, runtime_url
+from .paths import config_path, resolve_topology_path, runtime_url
 
 try:
     import tomllib  # Python 3.11+
@@ -3732,11 +3732,55 @@ def _evict_victims(serves, victims, *, dry_run=False, drain_timeout, transition,
     return 0
 
 
+def _topology_router_ownership(topology_path=None):
+    """Answer "does THIS command host own a router?" from the operator topology.
+
+    Returns True when the resolved command host carries the "router" host role
+    or owns a resource with role "router"; False when a valid topology resolves
+    a command host that does neither (the router is another host's concern);
+    None when there is no positive answer either way — no topology file at the
+    operator config home, an invalid one, or unresolvable command identity.
+    Resolution reuses the D004 precedence (`resolve_command_identity`), so
+    `ANVIL_COMMAND_HOST`/`ANVIL_COMMAND_RUNTIME` overrides behave exactly as
+    they do for topology-aware commands.
+    """
+    from .topology import (
+        TopologyResolutionError, TopologyValidationError,
+        load_topology, resolve_command_identity,
+    )
+
+    path = resolve_topology_path(topology_path)
+    if not os.path.isfile(path):
+        return None
+    try:
+        topology = load_topology(path)
+        identity = resolve_command_identity(topology)
+    except (TopologyResolutionError, TopologyValidationError):
+        return None
+    if identity is None:
+        return None
+    host = identity.host
+    if "router" in host.roles:
+        return True
+    return any(
+        resource.role == "router" and resource.host == host.id
+        for resource in topology.resources
+    )
+
+
 def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
-                          compose=None, env_file=None,
+                          compose=None, env_file=None, topology_path=None,
                           _run=subprocess.run, _open=urllib.request.urlopen):
-    """Ensure the DEPLOYED router is healthy before `serves up` (serves are only
-    reachable behind it).
+    """Ensure the DEPLOYED router is healthy before `serves up` — on hosts that
+    own one.
+
+    The operator topology decides whether the router is this host's concern at
+    all (`_topology_router_ownership`): a topology that assigns the router role
+    to another host makes any local probe or bring-up wrong (e.g. a
+    qualification/ComfyUI host while the gateway lives elsewhere), so the step
+    is skipped with one line. Without a positive topology answer (no file,
+    invalid file, unresolvable command identity) the historical co-located
+    default applies: probe and bring up if needed.
 
     Reuses the `router` verb's own machinery — its `status_summary` health-check
     path and its `cmd_up` bring-up code path — rather than re-deriving either, so
@@ -3745,10 +3789,13 @@ def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
     skips the whole step (offline/serve-only workflows); `--dry-run` reports the
     action without performing it. Prints one `router: …` line describing what it did.
 
-    Returns 0 when the router is (or would be) healthy or the step was skipped; the
-    non-zero `router up` return code when a real bring-up failed. Router bring-up is
-    a safety net, not a gate — the caller reports the failure but still brings serves
-    up (a failed router does not make the serves themselves un-startable).
+    Returns 0 when `serves up` may proceed (router healthy/started/skipped, or a
+    failure that is not this host's declared responsibility — reported but
+    non-gating). Returns the non-zero `router up` code ONLY when the topology
+    declares this host the router owner and its bring-up failed: the caller
+    aborts `serves up`, because proceeding past a failed dependency this host
+    owns would hand out serves nothing can reach through the gateway.
+    `--no-router` is the explicit override.
 
     router_manage is imported lazily: it does `from .serves import docker_state` at
     module load, so a top-level import here would be circular.
@@ -3758,6 +3805,10 @@ def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
     if no_router:
         print("router: skipped (--no-router)")
         return 0
+    ownership = _topology_router_ownership(topology_path)
+    if ownership is False:
+        print("router: not this host's role (operator topology) -- skipped")
+        return 0
     if container is None:
         container = router_manage.DEFAULT_CONTAINER
     # Reuse the `router status` health-check path verbatim (its status_summary /
@@ -3765,8 +3816,10 @@ def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
     summary = router_manage.status_summary(container, _run=_run, _open=_open)
     if summary.get("docker_state") == "error":
         # docker is unreachable — we can neither probe nor bring the router up.
+        # Non-gating even on a router host: the serves' own docker commands are
+        # about to fail with the authoritative error.
         print("router: cannot determine health (docker unavailable) -- bringing serves up anyway")
-        return 1
+        return 0
     # "healthy" == the container is running (and not in a docker error state). A
     # positive loopback HTTP code is EXTRA confirmation, but its ABSENCE is not
     # proof of unhealth: a router deployed with ROUTER_PUBLISH=<tailnet-ip>
@@ -3792,9 +3845,13 @@ def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
     )
     if rc == 0:
         print("router: started")
-    else:
-        print("router: FAILED to start (see above) -- bringing serves up anyway")
-    return rc
+        return 0
+    if ownership:
+        print("router: FAILED to start (see above); this host owns the router "
+              "(operator topology) -- not bringing serves up (--no-router overrides)")
+        return rc
+    print("router: FAILED to start (see above) -- bringing serves up anyway")
+    return 0
 
 
 _STORAGE_PROBE_NAME = ".anvil-serving-write-probe"
@@ -5359,7 +5416,11 @@ def _build_action_parser(action):
         p.add_argument("--no-router", action="store_true",
                        help="skip ensuring the deployed router is healthy first "
                             "(offline/serve-only workflows); by default `serves up` "
-                            "brings the router up idempotently if it is not healthy.")
+                            "brings the router up idempotently if it is not healthy "
+                            "and the operator topology declares this host the router "
+                            "owner (a failed bring-up there aborts the serves; hosts "
+                            "whose topology assigns the router elsewhere skip "
+                            "automatically).")
     else:
         p.set_defaults(compose=None, recreate=False, evict=False,
                        drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
@@ -5654,14 +5715,19 @@ def main(argv=None):
                 print("  " + line)
             return 1
 
-    # `serves up` ensures the DEPLOYED router is healthy FIRST — serves are only
-    # reachable behind it. Reuses the `router` verb's own status/up code paths;
-    # idempotent (a healthy router is not restarted), honors --dry-run, and
-    # --no-router skips it. Placed before BOTH up paths (ad-hoc --compose and
-    # manifest) so either form gets the ensure. Non-gating: a failed router
-    # bring-up is reported but still proceeds to the serves.
+    # `serves up` ensures the DEPLOYED router is healthy FIRST — on hosts whose
+    # operator topology owns one (a topology that assigns the router elsewhere
+    # skips the step entirely). Reuses the `router` verb's own status/up code
+    # paths; idempotent (a healthy router is not restarted), honors --dry-run,
+    # and --no-router skips it. Placed before BOTH up paths (ad-hoc --compose
+    # and manifest) so either form gets the ensure. A non-zero return means the
+    # topology declares this host the router owner and its bring-up failed:
+    # that gates the serves (--no-router is the explicit override); any other
+    # failure is reported but non-gating.
     if a.action == "up":
-        ensure_router_healthy(no_router=a.no_router, dry_run=a.dry_run)
+        router_rc = ensure_router_healthy(no_router=a.no_router, dry_run=a.dry_run)
+        if router_rc:
+            return router_rc
 
     # `up --compose <file>`: ad-hoc/experiment serve from a compose file that is NOT in the
     # manifest — independent of serves.toml, so we neither require nor load a manifest here.

@@ -2803,6 +2803,20 @@ def test_ad_hoc_compose_is_excluded_from_automatic_reclaim(monkeypatch):
     assert serves.main(["up", "--compose", "experiment.yml", "model"]) == 0
 
 
+def test_router_owner_bring_up_failure_gates_serves_up(tmp_path, monkeypatch):
+    # A non-zero ensure_router_healthy return means the operator topology
+    # declares this host the router owner and its bring-up failed: `serves up`
+    # aborts with that code before any container mutation.
+    manifest = _lifecycle_manifest(tmp_path)
+    monkeypatch.setattr(serves.host_ops, "load_cache_reclaim_policy", lambda: None)
+    monkeypatch.setattr(serves.host_ops, "capture_cache_before", lambda _policy: None)
+    monkeypatch.setattr(serves, "ensure_router_healthy", lambda **_kwargs: 7)
+    monkeypatch.setattr(
+        serves, "cmd_up", lambda *_args, **_kwargs: pytest.fail("container mutated")
+    )
+    assert serves.main(["up", "heavy", "--manifest", manifest]) == 7
+
+
 def test_reclaim_failure_cannot_change_successful_parent_exit(monkeypatch):
     policy = _enabled_cache_policy()
     monkeypatch.setattr(
