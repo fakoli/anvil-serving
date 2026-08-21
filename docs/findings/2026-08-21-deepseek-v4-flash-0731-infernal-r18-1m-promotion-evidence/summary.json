@@ -1,0 +1,72 @@
+{
+  "schema": "anvil-serving-public-benchmark-summary/v1",
+  "date": "2026-08-21",
+  "decision": "qualified-for-operator-authorized-promotion-pending-live-transaction",
+  "model": {
+    "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "served_name": "deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-tp2-1m"
+  },
+  "source": {
+    "rtx6kpro_revision": "12272507e64752af7a6cde28540edf8ee6c20e59",
+    "blackwell_llm_docker_revision": "203e1a11a373a0486897a5a284409ba4417d0f7a",
+    "runtime_image_digest": "sha256:414ec7d0d28358cfd8af0697f330f5c8acbb80e4dc4e5ba69c9fd5b5855ea804",
+    "vllm_revision": "f0fa1cefc1865d316c2478525f550e7646addc40",
+    "b12x_revision": "75787c7a7431b3bea414d2ebf5f2b8671b23eb33",
+    "lmcache_revision": "e045d729bc5c4c63a40e13d032f42923de97812f"
+  },
+  "configuration": {
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "topology": "exclusive TP=2 over PCIe without NVLink under WSL2",
+    "context_window": 1048576,
+    "max_num_seqs": 8,
+    "max_num_batched_tokens": 4096,
+    "gpu_memory_utilization": 0.975,
+    "kv_cache_capacity_tokens": 1323176,
+    "full_window_concurrency": 1.26,
+    "speculative_method": "fixed probabilistic DSpark K5",
+    "native_kv_offload": false,
+    "lmcache": false
+  },
+  "gates": {
+    "direct_functional": "pass",
+    "quality": {
+      "intelligence": "6/6",
+      "session": "3/3",
+      "tools": "3/3",
+      "failures": 0
+    },
+    "structured_tool_soak": "160/160",
+    "post_reload": "pass"
+  },
+  "context": [
+    {"actual_prompt_tokens": 354010, "result": "pass", "seconds": 60.882},
+    {"actual_prompt_tokens": 585118, "result": "pass", "seconds": 92.087},
+    {"actual_prompt_tokens": 900118, "result": "pass", "seconds": 175.999},
+    {"actual_prompt_tokens": 1040063, "result": "pass", "seconds": 187.347}
+  ],
+  "performance": {
+    "k5": {
+      "4k_c1_decode_p50_tps": 142.075,
+      "4k_c1_e2e_p50_ms": 1576,
+      "32k_c1_decode_p50_tps": 129.475,
+      "32k_c1_e2e_p50_ms": 4098,
+      "4k_c8_completed": "8/8",
+      "4k_c8_aggregate_output_tps": 272.33,
+      "long_c2_completed": "2/2",
+      "long_c2_prompt_tokens_per_request": 490861
+    },
+    "no_spec_control": {
+      "4k_c1_decode_p50_tps": 76.4,
+      "4k_c1_e2e_p50_ms": 2350,
+      "32k_c1_decode_p50_tps": 76.3,
+      "32k_c1_e2e_p50_ms": 4660
+    }
+  },
+  "publication_safety": {
+    "contains_prompts": false,
+    "contains_response_bodies": false,
+    "contains_private_topology": false,
+    "contains_credentials": false
+  }
+}
