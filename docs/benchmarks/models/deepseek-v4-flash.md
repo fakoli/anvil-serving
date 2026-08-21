@@ -2,6 +2,15 @@
 
 ## Current status and review date
 
+The 2026-08-21 record qualifies Martin Vit's Infernal Invocation r18 B12X
+TP=2 DSpark K5 profile at 1,048,576 tokens, maxseq8, and 4,096-token batching.
+It passed 1,040,063 actual prompt tokens, repeated agentic checks 12/12,
+structured tools 160/160 plus the complete functional batches, client-shaped
+reserve probes, short c8 and long c2 capacity, a matched no-spec A/B, and a
+clean reload gate. The operator has authorized promotion, but the public state
+remains r15 until the separate guarded router transaction and Mini acceptance
+complete.
+
 The 2026-08-16 public record documents human approval of Martin Vit's
 Infernal Invocation r15 B12X TP=2 DSpark K5 profile for the text
 `llm.primary` route at 393,216 tokens, 4,096-token batching, and eight admitted
@@ -23,7 +32,7 @@ tokens. A matched batch-token A/B then reduced profiled activation memory by
 the same functional and 119,503-token capacity gates. The later r33 DSpark arm
 reported 725,543 GPU KV tokens and passed 238,507-, 339,310-, and
 359,900-actual-token direct requests without host offload. Review date:
-2026-08-16.
+2026-08-21.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
 not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
@@ -92,8 +101,22 @@ JIT, and temporary build data use named Docker volumes.
 - [Infernal Invocation r15 K5 393K recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-393k-recipe.toml)
 - [Infernal Invocation r15 matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r15-b12x-nospec-maxseq8-batch4096-393k-recipe.toml)
 - [Infernal Invocation r15 393K promotion](../../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md)
+- [Infernal Invocation r18 K5 1M recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-1m-recipe.toml)
+- [Infernal Invocation r18 matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-nospec-maxseq8-batch4096-1m-recipe.toml)
+- [Infernal Invocation r18 1M qualification](../../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md)
 
 ## Evidence by measurement class
+
+The r18 DSpark K5 profile adds `functional`, `capacity`, matched
+`performance`, and bounded `quality` evidence at the model's 1,048,576-token
+limit. Calibrated retrieval passed through 1,040,063 actual prompt tokens;
+agentic intelligence/session/tools passed 12/12; an additional structured-tool
+soak passed 160/160; client-shaped 5,120- and 8,192-output-reserve probes
+passed; c8 short and c2 at 490,861 prompt tokens per request completed. The
+engine reported 1,323,176 KV tokens, or 1.26 full windows. Against the matched
+no-spec control, K5 raised median decode from 76.4 to 142.1 tok/s at 4K and
+76.3 to 129.5 at 32K. The operator-authorized live transaction remains a
+separate pending acceptance step in this publication.
 
 The r15 DSpark K5 profile adds `functional`, `capacity`, matched `performance`,
 bounded `quality`, and routed acceptance evidence. K5 versus the otherwise
@@ -256,6 +279,13 @@ decision, source classifications, subreddit coverage, and required gates.
 
 ## Decision and promotion state
 
+2026-08-21 Infernal Invocation r18 qualification: the exact digest-pinned K5
+profile is `promotion-ready` at 1,048,576 tokens with maxseq8 and batch4,096.
+The matched no-spec arm is rejected for deployment performance. Operator
+authorization is recorded, but r15 remains the public current state until the
+guarded router transaction, Mini context/compaction convergence, and real
+Hermes/Pi/OpenClaw acceptance pass.
+
 2026-08-16 Infernal Invocation r15 promotion: after explicit human approval,
 the digest-pinned K5 profile became the exclusive TP=2 text `llm.primary` at
 393,216 tokens. The guarded transaction reran direct context, tools,
@@ -372,6 +402,7 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
+- [2026-08-21 Infernal Invocation r18 1M qualification](../../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md)
 - [2026-08-16 Infernal Invocation r15 393K Primary promotion](../../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md)
 - [2026-08-11 r33 393K Primary promotion](../../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md)
 - [2026-08-10 r33 batch-token A/B](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md)
