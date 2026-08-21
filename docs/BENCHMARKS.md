@@ -43,6 +43,30 @@ the current deployment paragraph above remains r15 until the separate guarded
 router transaction and real Hermes/Pi/OpenClaw acceptance complete. See the
 [r18 qualification](findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md).
 
+## Qwen3.8 27B RTX 5090 recipe frontier (2026-08-21)
+
+An extensive current-source review covered the official SGLang selector, X,
+Reddit, Hugging Face checkpoints, vLLM issues and proposed fixes, EXL3, NInfer,
+GGUF reports, and independent hardware sites. The green SGLang cookbook label
+is a bounded 8,192-input/1,024-output/concurrency-one verification, not proof
+that the configured 128K or 262K window fits.
+
+The exact DFlash2 screenshot recipe exposed 24,347 KV tokens; its best tuned
+BF16 arm reached 70,262. A second matched candidate kept the same RadixArk
+target and added native MTP3 plus ReplaySSM. Decode improved 80.5% at 4K and
+67.9% at 64K, with tools 20/20, but a separately loaded 5.73 GB draft left only
+70,231 KV tokens. Median 64K end-to-end latency was 1.9% slower because prefill
+dominated. Both speculative families are rejected as replacements.
+
+EXL3 has the strongest published external fidelity/context evidence, while
+NInfer has the largest speed upside. Neither currently clears the local desk
+screen: EXL3's own profiles trade prefill against fidelity and report no
+all-gates winner; NInfer lacks a comparable tool and long-context reasoning
+gate on a stable upstream runtime. The exact no-speculation 128K baseline was
+restored and passed a 105,649-token retrieval plus the complete tool/API subset.
+No route or promotion changed. See the
+[recipe research finding](findings/2026-08-21-qwen38-27b-rtx5090-recipe-research.md).
+
 ## Qwen3.8 27B RadixArk NVFP4 on RTX 5090 (2026-08-17)
 
 A separate single-RTX-5090 qualification loaded the exact RadixArk ModelOpt
