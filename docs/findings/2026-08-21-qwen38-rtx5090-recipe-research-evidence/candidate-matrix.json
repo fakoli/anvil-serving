@@ -1,0 +1,86 @@
+{
+  "schema": "anvil-serving.recipe-candidate-matrix/v1",
+  "observed_date": "2026-08-21",
+  "promotion_rule": "A replacement must be clearly better at usable context and speed while preserving bounded intelligence, tool calling, multimodal behavior, and restoration safety.",
+  "candidates": [
+    {
+      "candidate": "retained RadixArk NVFP4 SGLang no-speculation",
+      "evidence_scope": "local matched baseline",
+      "usable_context_tokens": 131072,
+      "decode_tok_s_p50_4k": 76.54,
+      "decode_tok_s_p50_64k": 69.75,
+      "effective_prefill_tok_s_p50_4k": 11159.99,
+      "effective_prefill_tok_s_p50_64k": 5936.30,
+      "tool_gate": "20/20 plus streaming, continuation, Responses",
+      "quality": "24/30 bounded thinking-enabled MMLU-Pro diagnostic; established multimodal 30/30 and boundary 4/4",
+      "decision": "retained baseline; no promotion change"
+    },
+    {
+      "candidate": "same-checkpoint SGLang MTP3 plus ReplaySSM",
+      "evidence_scope": "local matched candidate",
+      "usable_context_tokens": 70231,
+      "decode_tok_s_p50_4k": 138.19,
+      "decode_tok_s_p50_64k": 117.10,
+      "effective_prefill_tok_s_p50_4k": 10447.09,
+      "effective_prefill_tok_s_p50_64k": 5581.27,
+      "tool_gate": "20/20 plus streaming, continuation, Responses",
+      "quality": "same target weights and verified speculation; broader quality skipped after hard capacity failure",
+      "decision": "rejected: 46.4 percent below the declared 131,072-token contract; 64K E2E median 1.9 percent slower"
+    },
+    {
+      "candidate": "SGLang DFlash2 exact and tuned arms",
+      "evidence_scope": "local compatibility and capacity",
+      "usable_context_tokens": "24,347 exact float32; 70,262 tuned BF16",
+      "speed": "diagnostic log samples only; no retained matched throughput run",
+      "tool_gate": "20/20 on bounded arm",
+      "quality": "not run after hard capacity failure",
+      "decision": "rejected as 128K replacements"
+    },
+    {
+      "candidate": "malaiwah EXL3 K5/K6 context/fidelity family",
+      "evidence_scope": "external physical-RTX-5090 receipts",
+      "usable_context_tokens": "238,400 fidelity profile; native-context edition reports 262,144",
+      "speed": "fidelity about 2,988 tok/s prefill and 228/104 tok/s fox/essay decode; native-context C1 varies 82.94-107.56 with prompt acceptance",
+      "tool_gate": "40 deterministic tasks including tool schemas; qwen3_coder serving parser",
+      "quality": "context edition 58/70 MMLU-Pro versus BF16 57/70; strong KLD evidence",
+      "decision": "best research lead, not locally tested: custom runtime and published prefill/fidelity tradeoff mean no profile is clearly better"
+    },
+    {
+      "candidate": "NInfer NVFP4",
+      "evidence_scope": "external community artifact",
+      "usable_context_tokens": 262144,
+      "speed": "about 202 tok/s headline with MTP4",
+      "tool_gate": "protocol support documented; no comparable tool-quality gate",
+      "quality": "bounded HumanEval/AIME parity; no long-context reasoning qualification",
+      "decision": "research lead only: custom unmerged engine path"
+    },
+    {
+      "candidate": "MiaAI vLLM TurboQuant KV plus MTP3",
+      "evidence_scope": "external community recipe",
+      "usable_context_tokens": 262144,
+      "speed": "about 160 tok/s headline",
+      "tool_gate": "stock runtime malformed text or tools in 13/15; patched 0/15",
+      "quality": "no broad independent quality or long-context reasoning gate",
+      "decision": "rejected from stable shortlist until the correctness fix merges and is independently qualified"
+    },
+    {
+      "candidate": "gittensor ModelOpt NVFP4 vLLM no-speculation",
+      "evidence_scope": "external checkpoint card",
+      "usable_context_tokens": 262144,
+      "speed": "about 80.6 tok/s no-speculation; 74.3 near 61K",
+      "tool_gate": "5/5 bounded",
+      "quality": "small smoke only; independent same-suite KLD is materially worse than EXL3/official FP8",
+      "decision": "not selected: insufficient fidelity/tool evidence for a small speed delta"
+    },
+    {
+      "candidate": "calneymgp quantized-lm_head SGLang recipe",
+      "evidence_scope": "external checkpoint card and scripts",
+      "usable_context_tokens": "134K measured/card claim; scripts also claim 160K agent profile",
+      "speed": "162.6 short-context and about 81 at 63K on the card",
+      "tool_gate": "small bounded harness",
+      "quality": "limited; internal recipe documentation is inconsistent",
+      "decision": "research lead only; pin and reconcile the recipe before any local test"
+    }
+  ],
+  "verdict": "No candidate is a clear replacement. Retain the no-speculation baseline and keep every route/alias unchanged."
+}

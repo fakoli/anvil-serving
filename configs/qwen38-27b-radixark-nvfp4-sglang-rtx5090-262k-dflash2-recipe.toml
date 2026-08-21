@@ -1,0 +1,90 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "RadixArk/Qwen3.8-27B-NVFP4-RTX5090-262K-DFlash2"
+status = "rejected"
+source = "2026-08-21 official SGLang RTX 5090 NVFP4 single-node DFLASH2 high-throughput float32 recipe"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "RadixArk/Qwen3.8-27B-NVFP4"
+revision = "554ebba9b5f1b79dc11246341960360e6ef05ef4"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "Single-GPU qualification host; the official SGLang selector targets RTX 5090 32 GB."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang:dev@sha256:8acc563e39f4e79118cc3c11cb5a8893ca8da140b2280cdd24a9f3bfe38835a0"
+entrypoint = ["sglang", "serve"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--RadixArk--Qwen3.8-27B-NVFP4/snapshots/554ebba9b5f1b79dc11246341960360e6ef05ef4"
+quantization = "ModelOpt NVFP4 W4A4 target with FP8 E4M3 KV cache and incoai Qwen3.8 DFlash2 draft"
+context_tokens = 262144
+port = 39038
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm"
+ipc = "host"
+shm_size = "16gb"
+named_volumes = [
+  "qwen38-radixark-nvfp4-sglang-cache:/root/.cache/sglang",
+]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+  "SGLANG_VIT_ENABLE_CUDA_GRAPH=0",
+  "SGLANG_MM_BUFFER_SIZE_MB=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm",
+  "--trust-remote-code",
+  "--tp-size 1",
+  "--mm-feature-transport cpu",
+  "--limit-mm-data-per-request '{\"image\":8,\"video\":2}'",
+  "--context-length 262144",
+  "--max-running-requests 1",
+  "--cuda-graph-max-bs 1",
+  "--mem-fraction-static 0.945",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-num-draft-tokens 8",
+  "--mamba-full-memory-ratio 10",
+  "--mamba-radix-cache-strategy extra_buffer_lazy",
+  "--mamba-ssm-dtype float32",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--host 0.0.0.0",
+  "--port 39038",
+]
+note = "Rejected for the retained 128K upstream contract after local qualification on 2026-08-21. This transcribes the official RTX 5090 / Default / NVFP4 / Single Node / DFLASH2 / High-Throughput / float32 selector, including trust-remote-code and mem-fraction-static 0.945. The target checkpoint is pinned at 554ebba9b5f1b79dc11246341960360e6ef05ef4 and the separately pre-pulled DFlash2 draft is pinned at dedf8df68adfb1afeaf7b7480c0a0243108177b4. The digest-pinned SGLang image identifies source revision f825d729363136a2d4a4b330fa694d0b37a878fa. It booted and served short text and tools, but allocated only 24,347 target KV tokens and rejected a 105,649-token prompt; the exact 128K baseline was restored and passed its full preflight. The explicit configured context, thinking-disabled default, stable served-model name, and existing WSL2 multimodal transport controls are local qualification-contract additions. The stable name preserves the external router's upstream contract during a same-port qualification swap; recipe labels and the container name retain candidate identity. No route or promotion authority."
+
+[recipe.fit]
+suited = ["compatibility-scout", "short-context", "single-stream"]
+rationale = "Retained only to reproduce the official DFLASH2 operating point and the local capacity rejection. It is not suited to replace the qualified 128K service on this 32 GB host."
+
+[recipe.sources]
+official = [
+  "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+  "https://github.com/sgl-project/sglang/blob/f825d729363136a2d4a4b330fa694d0b37a878fa/docs/src/snippets/configs/Qwen/qwen3.8-27b.jsx",
+  "https://github.com/sgl-project/sglang/commit/f825d729363136a2d4a4b330fa694d0b37a878fa",
+  "https://github.com/sgl-project/sglang/pull/35371",
+  "https://github.com/sgl-project/sglang/pull/35496",
+  "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/tree/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+]
+community = [
+  "https://huggingface.co/RadixArk/Qwen3.8-27B-NVFP4/tree/554ebba9b5f1b79dc11246341960360e6ef05ef4",
+]
+local = [
+  "docs/benchmarks/models/qwen38-27b.md",
+  "docs/findings/2026-08-21-qwen38-27b-radixark-nvfp4-dflash2-rtx5090.md",
+]
