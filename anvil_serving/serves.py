@@ -1543,13 +1543,15 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         print("  %s failed: router health gate returned HTTP %s" % (label, status))
         return 1
     print("  router gateway reachable after reload (HTTP %s)" % status)
-    # The restart intentionally discards process-local quiescence.  Ordinary
-    # health+identity readiness in the new router is the fail-closed guard.
+    # The restart intentionally discards process-local quiescence, but the new
+    # process still needs an active health+identity probe before it can admit.
+    # Guarded readmit is idempotent and performs that probe; transition-status
+    # alone only observes the current state and cannot make it ready.
     for tier_id in plan["affected_tiers"]:
         readiness_deadline = time.monotonic() + min(60, startup_timeout)
         while True:
             readiness_rc = _promotion_transition_cli(
-                plan, "transition-status", tier_id, _run=_run
+                plan, "readmit", tier_id, _run=_run
             )
             if readiness_rc == 0 or time.monotonic() >= readiness_deadline:
                 break
@@ -1558,7 +1560,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                 max(0, readiness_deadline - time.monotonic()),
             ))
         if readiness_rc != 0:
-            print("  %s failed: post-restart readiness rejected %s" % (
+            print("  %s failed: post-restart readmit rejected %s" % (
                 label, tier_id))
             return 1
     return 0
