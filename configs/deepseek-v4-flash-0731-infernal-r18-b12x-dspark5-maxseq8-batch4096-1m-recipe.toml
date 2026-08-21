@@ -1,0 +1,110 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "deepseek-ai/DeepSeek-V4-Flash-0731"
+status = "verified"
+source = "Current community-recipe external prior published 2026-08-18 and observed 2026-08-21: exact 1048576-token scheduler-envelope translation of local-inference-lab's Infernal Invocation r18 recipe, authored by Martin Vit (voipmonitor); upstream physically qualified the immutable r18 image at 262144 tokens and explicitly left full-context 1048576-token execution and model quality unqualified"
+family = "deepseek-v4"
+total_params_b = 304
+active_params_b = 13
+
+[recipe.download]
+repo = "deepseek-ai/DeepSeek-V4-Flash-0731"
+revision = "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+volume = "deepseek-v4-0731-r16-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2; exclusive TP2 only. Upstream r18 measurements used native Linux GPUs on direct PCIe root ports, so its throughput and 262144-token qualification are priors rather than proof for this switched-PCIe topology."
+
+[recipe.serve]
+engine = "vllm-infernal-invocation-r18-b12x"
+allow_cuda_visible_devices_index = true
+image = "voipmonitor/vllm@sha256:414ec7d0d28358cfd8af0697f330f5c8acbb80e4dc4e5ba69c9fd5b5855ea804"
+entrypoint = [
+  "/usr/local/bin/lmcache-mp-wrapper.sh",
+  "/usr/local/bin/serve-ds4-flash.sh",
+]
+model_env = "MODEL"
+named_volumes = [
+  "deepseek-v4-0731-infernal-r18-jit:/cache",
+  "deepseek-v4-0731-infernal-r18-tmp:/container-tmp",
+]
+quantization = "Released 0731 checkpoint through r18 deepseek_v4_fp8 and B12X W4A8 kernels; NVFP4 MoE weights, FP8 activations/dense path, FP8 compressed MLA KV, and FP32 sliding-window compressor state"
+context_tokens = 1048576
+port = 39079
+startup_timeout_seconds = 2400
+served_model_name = "deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-tp2-1m"
+ipc = "host"
+shm_size = "32gb"
+ulimits = [
+  "memlock=-1",
+  "nofile=1048576:1048576",
+  "stack=67108864",
+]
+env = [
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "GLOO_SOCKET_IFNAME=lo",
+  "NCCL_SOCKET_IFNAME=lo",
+  "OMP_NUM_THREADS=2",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "PORT=39079",
+  "MODE=dspark",
+  "BACKEND=b12x-a8",
+  "TP_SIZE=2",
+  "DCP_SIZE=1",
+  "ALLREDUCE_MODE=auto",
+  "B12X_PCIE_TP2_REMOTE_PUSH=0",
+  "DSPARK_DEPTH_MODE=fixed",
+  "DSPARK_TOKENS=5",
+  "DSPARK_CAPACITY_ACTIVATION_BATCH_SIZE=0",
+  "DRAFT_SAMPLE_METHOD=probabilistic",
+  "REJECTION_SAMPLE_METHOD=standard",
+  "VLLM_MOE_SKIP_PADDING=1",
+  "GRAPH=auto",
+  "MAX_NUM_SEQS=8",
+  "MAX_MODEL_LEN=1048576",
+  "MAX_NUM_BATCHED_TOKENS=4096",
+  "GPU_MEMORY_UTILIZATION=0.975",
+  "LMCACHE_MODE=off",
+  "KV_OFFLOADING_SIZE=0",
+  "NATIVE_L2_GB=0",
+  "LOAD_FORMAT=instanttensor",
+  "INSTANTTENSOR_BACKEND=BUFFERED",
+  "MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SPEC_MODEL_PATH=/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "SERVED_MODEL_NAME=deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-tp2-1m",
+]
+flags = []
+note = "Unqualified local candidate at creation. It pins the exact r18 image/checkpoint and the upstream 1048576-token scheduler envelope: TP2/DCP1, max-seq-8, batch-4096, GRAPH=auto (48 reachable K5 all-decode rows), GPU utilization 0.975, B12X W4A8, FP8 compressed MLA KV, InstantTensor BUFFERED, prefix caching through the r18 launcher default, fixed probabilistic DSpark K5, and zero native KV/L2/LMCache offload. GLOO/NCCL loopback and the established WSL2/NCCL controls are explicit local translations. Promotion is forbidden until local full functional, client-shaped workspace, long-context, concurrency, speculative-control, quality, router, and Mini client gates pass. Credit: Martin Vit (voipmonitor); local-inference-lab/rtx6kpro and local-inference-lab/blackwell-llm-docker."
+
+[recipe.fit]
+suited = ["qualification", "maximum-context", "speculative-decoding", "coding-agent", "agent-burst"]
+rationale = "Tests whether r18 fixes the prior 1M client-shaped workspace and structured-output defects while preserving the exact requested K5 scheduler envelope. The official checkpoint declares a 1048576-token YaRN limit, but configured capacity is not local quality or concurrency proof."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731/tree/9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "https://docs.vllm.ai/en/latest/configuration/engine_args/",
+]
+community = [
+  "https://github.com/local-inference-lab/rtx6kpro/blob/12272507e64752af7a6cde28540edf8ee6c20e59/models/ds4dspark-infernal-invocation-r18.md",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/203e1a11a373a0486897a5a284409ba4417d0f7a/examples/docker-compose-ds4-infernal-invocation-cu133-r18.yml",
+  "https://github.com/local-inference-lab/blackwell-llm-docker/blob/203e1a11a373a0486897a5a284409ba4417d0f7a/validation/infernal-invocation-r18-remote-gpu.json",
+  "https://github.com/local-inference-lab/rtx6kpro/issues/67",
+]
+local = [
+  "configs/deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-393k-recipe.toml",
+  "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml",
+  "configs/deepseek-v4-flash-0731-r33-b12x-dspark5-maxseq16-batch4096-393k-recipe.toml",
+]
