@@ -38,3 +38,14 @@ returning success, so it does not predict the live recovery failure.
 
 Do not weaken exclusive admission. Fix orchestration so recovery satisfies the
 existing admission contract.
+
+## 2026-08-21 reproduction
+
+The same recovery defect reproduced during the human-approved Infernal
+Invocation r18 1M promotion campaign: after a failed intermediate promotion
+attempt, automatic rollback tried ordinary bring-up for the exclusive r33
+target and was correctly denied because ownership had not been transferred.
+The later r18 promotion itself completed successfully and did not require
+rollback. The exact r33 profile remains recoverable through the managed
+exclusive-mode transition, but automatic promotion rollback is still not
+live-proven. This ticket remains open.

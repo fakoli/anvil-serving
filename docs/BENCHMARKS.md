@@ -9,8 +9,11 @@
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
 The maintained text deployment is DeepSeek V4 Flash 0731 Infernal Invocation
-r15 with DSpark K5 at exclusive TP=2/393,216 across both equal cards. The r33
-393K profile is its immediate fixed-port managed rollback. The former
+r18 with DSpark K5 at exclusive TP=2/1,048,576 across both equal cards and
+router concurrency one. The r33 393K profile is its immediate fixed-port
+managed recovery target; the automatic exclusive-to-exclusive rollback defect
+remains open, so recovery uses the guarded mode transition. The former r15
+393K deployment and
 official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
 retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
 split remain qualified rollback- or promotion-era evidence. The earlier r16
@@ -37,11 +40,13 @@ probes, c8 short capacity, and c2 at 490,861 prompt tokens per request.
 
 Against an otherwise identical no-spec control, K5 raised median decode from
 76.4 to 142.1 tok/s at 4K and 76.3 to 129.5 at 32K. The engine reported
-1,323,176 KV tokens, or 1.26 full configured windows; planned router admission
-is therefore one full-window request. The operator authorized promotion, but
-the current deployment paragraph above remains r15 until the separate guarded
-router transaction and real Hermes/Pi/OpenClaw acceptance complete. See the
-[r18 qualification](findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md).
+1,323,176 KV tokens, or 1.26 full configured windows; router admission is
+therefore one full-window request. The operator-authorized guarded transaction
+is complete. Authenticated routing passed the functional API/tool subset with
+exact identity, and Mini generation 2 aligned Hermes, Pi, and OpenClaw to the
+1M Primary contract while retaining their compaction policies. Real Hermes
+terminal-tool, normal Pi, and running OpenClaw-gateway turns passed. See the
+[r18 qualification and promotion](findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md).
 
 ## Qwen3.8 27B RTX 5090 recipe frontier (2026-08-21)
 

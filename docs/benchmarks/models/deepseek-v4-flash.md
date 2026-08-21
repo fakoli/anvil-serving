@@ -2,14 +2,14 @@
 
 ## Current status and review date
 
-The 2026-08-21 record qualifies Martin Vit's Infernal Invocation r18 B12X
+The 2026-08-21 record qualifies and promotes Martin Vit's Infernal Invocation r18 B12X
 TP=2 DSpark K5 profile at 1,048,576 tokens, maxseq8, and 4,096-token batching.
 It passed 1,040,063 actual prompt tokens, repeated agentic checks 12/12,
 structured tools 160/160 plus the complete functional batches, client-shaped
 reserve probes, short c8 and long c2 capacity, a matched no-spec A/B, and a
-clean reload gate. The operator has authorized promotion, but the public state
-remains r15 until the separate guarded router transaction and Mini acceptance
-complete.
+clean reload gate. After operator authorization, the guarded transaction,
+authenticated routed functional gate, Mini generation-2 convergence, and real
+Hermes/Pi/OpenClaw acceptance passed. r18 is the current text `llm.primary`.
 
 The 2026-08-16 public record documents human approval of Martin Vit's
 Infernal Invocation r15 B12X TP=2 DSpark K5 profile for the text
@@ -17,14 +17,13 @@ Infernal Invocation r15 B12X TP=2 DSpark K5 profile for the text
 sequences. It passed 351,118 actual prompt tokens directly, 340,119 through
 the authenticated router, repeated tools/session/diff/timeout checks 12/12,
 short c8 and long c2 capacity, and OpenClaw-compatible Anthropic wire calls.
-The prior r33 393K profile is the fixed-port managed rollback. A fresh actual
-Mini OpenClaw turn remains open because the installed Mini controller lacks
-the current status tool.
+The r15 record is now historical. The prior r33 393K profile is the fixed-port
+managed recovery target for r18.
 
 A derived WSL2 image also qualified native CPU KV offload at a 262,144
 served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
 the managed shared-memory lifecycle regression. This is retained historical
-capacity evidence and is not part of the current r15 profile. A digest-pinned
+capacity evidence and is not part of the current r18 profile. A digest-pinned
 r33 target-only control subsequently qualified the same
 checkpoint at a 131,072-token envelope and reached 119,503 actual prompt
 tokens. A matched batch-token A/B then reduced profiled activation memory by
@@ -67,13 +66,14 @@ figure is aggregate VRAM, not unified memory.
 ## Engine, quantization, KV, context, and concurrency recipe
 
 The current working profile uses image digest
-`sha256:f1b13c8604b274212e1164def7d4ed7a4cac9e4f7fa06fa1739730195eca4e18`,
-vLLM integration tree `068fc8e7270b92077ba753d002da179c865e444d`, B12X tree
-`96e5d3d5c2057fa5d4f542e2368951ddbdcb5b42`, W4A8 kernels, FP8 compressed
-MLA KV, InstantTensor `BUFFERED`, TP=2/DCP=1, 393,216 context, eight admitted
+`sha256:414ec7d0d28358cfd8af0697f330f5c8acbb80e4dc4e5ba69c9fd5b5855ea804`,
+vLLM integration tree `f0fa1cefc1865d316c2478525f550e7646addc40`, B12X tree
+`75787c7a7431b3bea414d2ebf5f2b8671b23eb33`, W4A8 kernels, FP8 compressed
+MLA KV, InstantTensor `BUFFERED`, TP=2/DCP=1, 1,048,576 context, eight engine
 sequences, and fixed probabilistic DSpark K5. Native KV offload and LMCache
 are disabled. The matched performance workload is c1; capacity also covers
-c8 short requests and c2 at 99,175 prompt tokens per request.
+c8 short requests and c2 at 490,861 prompt tokens per request. Router
+admission is one full-window request.
 
 The native-Linux source recipe required an SM120-to-WSL2 translation:
 direct NCCL P2P and NCCL cuMem device/host allocation are disabled, shared
@@ -104,7 +104,7 @@ JIT, and temporary build data use named Docker volumes.
 - [Infernal Invocation r18 K5 1M recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-1m-recipe.toml)
 - [Infernal Invocation r18 K5 1M fixed-port promotion recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-1m-port39077-recipe.toml)
 - [Infernal Invocation r18 matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-nospec-maxseq8-batch4096-1m-recipe.toml)
-- [Infernal Invocation r18 1M qualification](../../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md)
+- [Infernal Invocation r18 1M qualification and promotion](../../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md)
 
 ## Evidence by measurement class
 
@@ -116,8 +116,9 @@ soak passed 160/160; client-shaped 5,120- and 8,192-output-reserve probes
 passed; c8 short and c2 at 490,861 prompt tokens per request completed. The
 engine reported 1,323,176 KV tokens, or 1.26 full windows. Against the matched
 no-spec control, K5 raised median decode from 76.4 to 142.1 tok/s at 4K and
-76.3 to 129.5 at 32K. The operator-authorized live transaction remains a
-separate pending acceptance step in this publication.
+76.3 to 129.5 at 32K. The operator-authorized live transaction then passed
+exact routed identity, the complete routed API/tool subset, generation-2 Mini
+convergence, and real Hermes/Pi/OpenClaw acceptance.
 
 The r15 DSpark K5 profile adds `functional`, `capacity`, matched `performance`,
 bounded `quality`, and routed acceptance evidence. K5 versus the otherwise
@@ -280,12 +281,13 @@ decision, source classifications, subreddit coverage, and required gates.
 
 ## Decision and promotion state
 
-2026-08-21 Infernal Invocation r18 qualification: the exact digest-pinned K5
-profile is `promotion-ready` at 1,048,576 tokens with maxseq8 and batch4,096.
-The matched no-spec arm is rejected for deployment performance. Operator
-authorization is recorded, but r15 remains the public current state until the
-guarded router transaction, Mini context/compaction convergence, and real
-Hermes/Pi/OpenClaw acceptance pass.
+2026-08-21 Infernal Invocation r18 promotion: the exact digest-pinned K5
+profile is the human-approved current `llm.primary` at 1,048,576 tokens with
+maxseq8 and batch4,096. The matched no-spec arm is rejected for deployment
+performance. The guarded router transaction, Mini context/compaction
+convergence, and real Hermes/Pi/OpenClaw acceptance passed. r33 393K remains
+the fixed-port managed recovery target. The automatic exclusive-to-exclusive
+rollback defect remains open and is not claimed as live-proven.
 
 2026-08-16 Infernal Invocation r15 promotion: after explicit human approval,
 the digest-pinned K5 profile became the exclusive TP=2 text `llm.primary` at
@@ -342,7 +344,8 @@ bounded gates, and was healthy/direct-only at campaign close. It is the preferre
 for a GPU-only 393K experiment, but no route or promotion changed and no
 request above 300K has yet run.
 
-The 1M profiles are experimental only. The current exclusive AI-only policy
+Earlier r16 1M profiles are experimental only; that statement does not apply
+to the exact qualified and promoted r18 profile. The current exclusive AI-only policy
 has no separate video-workload reserve gate; the historical 3 GiB reserve
 failures below remain point-in-time evidence from mixed-use policy. Remaining
 gates include sustained multi-turn high/max testing, fixing and
@@ -393,6 +396,12 @@ permission to redistribute the image or derived runtime code.
 The historical NGC vLLM architecture rejection and aborted NVFP4 load are not
 measurements of the current 0731 checkpoint.
 
+The r18 promotion also reproduced the existing automatic recovery defect for
+exclusive-to-exclusive rollback: ordinary bring-up correctly refuses the
+rollback serve without an ownership transfer. The r33 recovery profile remains
+available through the managed mode transition; automatic promotion rollback
+is not live-proven until the P1 orchestration issue is fixed.
+
 Native offload originally crashed on WSL2 because CUDA host registration of
 the process-shared mmap conflicted with the allocator lifetime. The derived
 image skips registration only for that mmap while preserving the global V2
@@ -403,7 +412,7 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
-- [2026-08-21 Infernal Invocation r18 1M qualification](../../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md)
+- [2026-08-21 Infernal Invocation r18 1M qualification and promotion](../../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md)
 - [2026-08-16 Infernal Invocation r15 393K Primary promotion](../../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md)
 - [2026-08-11 r33 393K Primary promotion](../../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md)
 - [2026-08-10 r33 batch-token A/B](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md)
