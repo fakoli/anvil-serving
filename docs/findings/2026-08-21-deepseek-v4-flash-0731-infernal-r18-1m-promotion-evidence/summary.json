@@ -1,7 +1,7 @@
 {
   "schema": "anvil-serving-public-benchmark-summary/v1",
   "date": "2026-08-21",
-  "decision": "qualified-for-operator-authorized-promotion-pending-live-transaction",
+  "decision": "human-approved-promoted-live-primary",
   "model": {
     "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
     "revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
@@ -30,6 +30,11 @@
   },
   "gates": {
     "direct_functional": "pass",
+    "routed_functional": {
+      "result": "pass",
+      "checks": "smoke,json,needle-32k,tools-20-of-20,streaming-tools,tool-result,responses",
+      "reasoning_evidence": "any-because-router-does-not-export-upstream-hidden-reasoning"
+    },
     "quality": {
       "intelligence": "6/6",
       "session": "3/3",
@@ -37,7 +42,13 @@
       "failures": 0
     },
     "structured_tool_soak": "160/160",
-    "post_reload": "pass"
+    "post_reload": "pass",
+    "mini_clients": {
+      "generation": 2,
+      "hermes": "pass-terminal-sentinel-exit-zero-no-raw-dsml",
+      "pi": "pass-normal-extension-loaded-process",
+      "openclaw": "pass-running-gateway-no-fallback"
+    }
   },
   "context": [
     {"actual_prompt_tokens": 354010, "result": "pass", "seconds": 60.882},
@@ -61,6 +72,18 @@
       "4k_c1_e2e_p50_ms": 2350,
       "32k_c1_decode_p50_tps": 76.3,
       "32k_c1_e2e_p50_ms": 4660
+    }
+  },
+  "promotion": {
+    "state": "live",
+    "alias": "llm.primary",
+    "context_window": 1048576,
+    "mode": "exclusive-tp2",
+    "identity": "exact-expected-observed-ready",
+    "rollback": {
+      "target": "r33-dspark-k5-393216-fixed-port",
+      "managed_mode_transition_available": true,
+      "automatic_promotion_rollback": "open-p1-not-live-proven"
     }
   },
   "publication_safety": {
