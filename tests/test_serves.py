@@ -2276,7 +2276,7 @@ def test_safe_promotion_orders_quiesce_drain_config_restart_before_readiness(
     quiesce = next(i for i, call in enumerate(calls) if "quiesce" in call)
     drain = next(i for i, call in enumerate(calls) if "drain" in call)
     first_stop = next(i for i, call in enumerate(calls) if call[:2] == ["docker", "stop"])
-    post_restart = next(i for i, call in enumerate(calls) if "transition-status" in call)
+    post_restart = next(i for i, call in enumerate(calls) if "readmit" in call)
     assert quiesce < drain < first_stop < post_restart
     assert applied == [str(tmp_path / "router-promoted.toml")]
     assert not any("fast-c" in call for call in calls)
@@ -2291,7 +2291,7 @@ def test_promotion_retries_transient_post_restart_readiness(tmp_path, monkeypatc
 
     def transition(_plan, action, tier_id, **_kwargs):
         transitions.append((action, tier_id))
-        if action == "transition-status":
+        if action == "readmit":
             return int(sum(a == action for a, _ in transitions) == 1)
         return 0
 
@@ -2312,7 +2312,7 @@ def test_promotion_retries_transient_post_restart_readiness(tmp_path, monkeypatc
         require_candidate=False,
         _sleep=sleeps.append,
     ) == 0
-    assert [action for action, _ in transitions].count("transition-status") == 2
+    assert [action for action, _ in transitions].count("readmit") == 2
     assert sleeps == [plan["poll_interval"]]
 
 
