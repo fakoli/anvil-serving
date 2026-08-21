@@ -139,9 +139,9 @@ The live acceptance then established:
 2. authenticated `llm.primary` routing has exact expected/observed identity and
    passes coding smoke, structured JSON, a 32K needle, tools 20/20, streaming
    tools, tool-result continuation, and the Responses subset;
-3. Mini generation 2 declares Primary at 1,048,576 tokens, auxiliary/secondary
-   and vision at 131,072, and voice at 32,768 without changing protected
-   provider or authentication fields;
+3. Mini generation 2 declares the Primary context as 1,048,576. It keeps
+   auxiliary, secondary, and vision context at 131,072, and voice context at
+   32,768 without changing protected provider or authentication fields;
 4. Hermes retains 50%/20% compression and its 5,120-token output ceiling; Pi
    retains a 20,000-token recent window and 16,384-token reserve; OpenClaw
    retains safeguard compaction, 50,000-token reserve/floor, 30,000 recent
