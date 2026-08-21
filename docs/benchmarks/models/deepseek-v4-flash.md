@@ -102,6 +102,7 @@ JIT, and temporary build data use named Docker volumes.
 - [Infernal Invocation r15 matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r15-b12x-nospec-maxseq8-batch4096-393k-recipe.toml)
 - [Infernal Invocation r15 393K promotion](../../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md)
 - [Infernal Invocation r18 K5 1M recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-1m-recipe.toml)
+- [Infernal Invocation r18 K5 1M fixed-port promotion recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-1m-port39077-recipe.toml)
 - [Infernal Invocation r18 matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-nospec-maxseq8-batch4096-1m-recipe.toml)
 - [Infernal Invocation r18 1M qualification](../../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md)
 

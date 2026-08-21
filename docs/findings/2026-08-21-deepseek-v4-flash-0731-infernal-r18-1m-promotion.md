@@ -66,6 +66,10 @@ client-shaped evidence.
 The checked-in [K5 recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-1m-recipe.toml)
 and [matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-nospec-maxseq8-batch4096-1m-recipe.toml)
 pin the complete managed configuration.
+The [fixed-port promotion variant](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-1m-port39077-recipe.toml)
+changes only the loopback endpoint from the isolated qualification port to the
+existing r33 rollback port; model, runtime, context, scheduler, KV, graph, and
+speculative settings are unchanged.
 
 ## Functional, quality, and tool gates
 
