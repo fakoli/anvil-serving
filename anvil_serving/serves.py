@@ -1546,9 +1546,18 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     # The restart intentionally discards process-local quiescence.  Ordinary
     # health+identity readiness in the new router is the fail-closed guard.
     for tier_id in plan["affected_tiers"]:
-        if _promotion_transition_cli(
-            plan, "transition-status", tier_id, _run=_run
-        ) != 0:
+        readiness_deadline = time.monotonic() + min(60, startup_timeout)
+        while True:
+            readiness_rc = _promotion_transition_cli(
+                plan, "transition-status", tier_id, _run=_run
+            )
+            if readiness_rc == 0 or time.monotonic() >= readiness_deadline:
+                break
+            _sleep(min(
+                plan["poll_interval"],
+                max(0, readiness_deadline - time.monotonic()),
+            ))
+        if readiness_rc != 0:
             print("  %s failed: post-restart readiness rejected %s" % (
                 label, tier_id))
             return 1
