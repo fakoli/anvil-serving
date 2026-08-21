@@ -1,9 +1,9 @@
-# DeepSeek V4 Flash 0731 Infernal Invocation r18 1M qualification
+# DeepSeek V4 Flash 0731 Infernal Invocation r18 1M qualification and promotion
 
 **Date:** 2026-08-21
-**Decision at publication:** qualified for the operator-authorized guarded
-promotion; the live router transaction and Mini client acceptance remain
-separate acceptance steps.
+**Decision at publication:** human-approved live `llm.primary`; the guarded
+promotion, authenticated routed gate, Mini generation-2 convergence, and real
+Hermes/Pi/OpenClaw acceptance passed.
 **Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation
 Edition cards in exclusive TP=2 over PCIe without NVLink, under Windows 11,
 Docker Desktop, and WSL2.
@@ -22,6 +22,13 @@ and a clean post-reload gate.
 The engine reported 1,323,176 GPU KV tokens, or 1.26 full configured windows,
 with eight admitted sequences. Router admission is intentionally bounded to
 one full-window request at a time. Native KV offload and LMCache are disabled.
+
+After explicit operator approval, the fixed-port K5 variant was promoted
+through the managed exclusive-mode transaction. The live owner is healthy at
+TP=2, and the authenticated router reports the exact expected and observed r18
+identity ready and admitting for `llm.primary`. Auxiliary, secondary, voice,
+OCR, general-vision, and video aliases were preserved rather than folded into
+the new text route.
 
 ## Immutable upstream identity and credit
 
@@ -121,22 +128,36 @@ tok/s. A long c2 run completed 2/2 at 490,861 prompt tokens per request with
 no preemption or workspace failure. These are bounded concurrency results,
 not a claim that eight simultaneous full-window requests fit.
 
-## Promotion and rollback boundary
+## Live promotion, clients, and rollback boundary
 
 The operator explicitly authorized validation and promotion. Qualification
-selects the K5 arm and rejects the no-spec arm for deployment performance.
-The live transaction still must:
+selected the K5 arm and rejected the no-spec arm for deployment performance.
+The live acceptance then established:
 
-1. install the exact router profile without changing auxiliary, secondary,
-   voice, OCR, general-vision, or video aliases;
-2. retain the exact r33 393K fixed-port profile as transactional rollback;
-3. update Mini Hermes, Pi, and OpenClaw to the 1,048,576-token Primary contract
-   while preserving their existing compaction policies and unrelated settings;
-4. restart only the affected gateways and pass real client/tool acceptance;
-5. record post-transaction router identity and rollback readiness.
+1. the exact r18 serve owns both cards in managed exclusive TP=2 mode and
+   reports healthy;
+2. authenticated `llm.primary` routing has exact expected/observed identity and
+   passes coding smoke, structured JSON, a 32K needle, tools 20/20, streaming
+   tools, tool-result continuation, and the Responses subset;
+3. Mini generation 2 declares Primary at 1,048,576 tokens, auxiliary/secondary
+   and vision at 131,072, and voice at 32,768 without changing protected
+   provider or authentication fields;
+4. Hermes retains 50%/20% compression and its 5,120-token output ceiling; Pi
+   retains a 20,000-token recent window and 16,384-token reserve; OpenClaw
+   retains safeguard compaction, 50,000-token reserve/floor, 30,000 recent
+   tokens, and a 50% history-share ceiling;
+5. the affected gateways restarted cleanly, Hermes completed an exact terminal
+   sentinel with exit zero and no raw DSML, Pi completed through its normal
+   extension-loaded process, and OpenClaw completed through the running gateway
+   with no fallback.
 
-Until those steps pass, this publication is `promotion-ready`, not a claim
-that r18 is the live Primary.
+The exact r33 393K fixed-port profile remains the declared recovery target and
+can be restored through the managed exclusive-mode transition. The automatic
+exclusive-to-exclusive rollback inside `serves promote` is **not** claimed as
+proven: a failed gate reproduced the existing
+[P1 recovery defect](https://github.com/fakoli/anvil-serving/blob/main/.tickets/2026-08-11-exclusive-promotion-preflight-and-recovery.md),
+where ordinary bring-up is correctly rejected because ownership was not
+transferred. Exclusive admission remains intact; orchestration must be fixed.
 
 ## Public evidence
 
@@ -158,3 +179,6 @@ private operator evidence.
   prove absence of every future structured-output edge case.
 - Full-window concurrency is one. Short c8 and long c2 evidence do not raise
   that router admission ceiling.
+- The declared r33 rollback is a managed recovery path, but the promotion
+  command's automatic exclusive-to-exclusive rollback remains an open P1 and
+  must not be described as live-proven.
