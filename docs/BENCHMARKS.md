@@ -23,7 +23,25 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-17**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-21**.
+
+## DeepSeek Infernal Invocation r18 1M qualification (2026-08-21)
+
+The exact digest-pinned r18 B12X W4A8/FP8-compressed-MLA-KV profile was
+qualified on both RTX PRO 6000 cards at TP=2/DCP=1, 1,048,576 tokens,
+maxseq8, batch4,096, and fixed probabilistic DSpark K5. Calibrated retrieval
+passed through 1,040,063 actual prompt tokens. The complete direct functional
+and post-reload gates passed, as did repeated intelligence/session/tools 12/12,
+an additional structured-tool soak 160/160, client-shaped output-reserve
+probes, c8 short capacity, and c2 at 490,861 prompt tokens per request.
+
+Against an otherwise identical no-spec control, K5 raised median decode from
+76.4 to 142.1 tok/s at 4K and 76.3 to 129.5 at 32K. The engine reported
+1,323,176 KV tokens, or 1.26 full configured windows; planned router admission
+is therefore one full-window request. The operator authorized promotion, but
+the current deployment paragraph above remains r15 until the separate guarded
+router transaction and real Hermes/Pi/OpenClaw acceptance complete. See the
+[r18 qualification](findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md).
 
 ## Qwen3.8 27B RadixArk NVFP4 on RTX 5090 (2026-08-17)
 
