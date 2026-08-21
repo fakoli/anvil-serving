@@ -1411,7 +1411,7 @@ def _await_gateway(url, timeout, poll_interval, *, _open=urllib.request.urlopen,
     deadline = time.monotonic() + timeout
     while True:
         status = _gateway_status(url, _open=_open)
-        if status == 200:
+        if status in (200, 401, 403):
             return status
         if time.monotonic() >= deadline:
             return status
@@ -1539,7 +1539,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         _open=_open,
         _sleep=_sleep,
     )
-    if status != 200:
+    if status not in (200, 401, 403):
         print("  %s failed: router health gate returned HTTP %s" % (label, status))
         return 1
     print("  router gateway reachable after reload (HTTP %s)" % status)

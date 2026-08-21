@@ -2302,7 +2302,9 @@ def test_promotion_retries_transient_post_restart_readiness(tmp_path, monkeypatc
     monkeypatch.setattr(serves, "docker_state", lambda *a, **k: "running")
     monkeypatch.setattr(serves, "_health", lambda *a, **k: 200)
     monkeypatch.setattr(serves, "_serve_identity_ready", lambda *a, **k: True)
-    monkeypatch.setattr(serves, "_gateway_status", lambda *a, **k: 200)
+    # The deployed gateway may protect its health endpoint; authentication
+    # failure still proves reachability before guarded readmit verifies the tier.
+    monkeypatch.setattr(serves, "_gateway_status", lambda *a, **k: 401)
 
     assert serves._promotion_transition(
         managed,
