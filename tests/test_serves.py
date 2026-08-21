@@ -2282,6 +2282,40 @@ def test_safe_promotion_orders_quiesce_drain_config_restart_before_readiness(
     assert not any("fast-c" in call for call in calls)
 
 
+def test_promotion_retries_transient_post_restart_readiness(tmp_path, monkeypatch):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    (plan,) = serves.load_promotions(path)
+    transitions = []
+    sleeps = []
+
+    def transition(_plan, action, tier_id, **_kwargs):
+        transitions.append((action, tier_id))
+        if action == "transition-status":
+            return int(sum(a == action for a, _ in transitions) == 1)
+        return 0
+
+    monkeypatch.setattr(serves, "_promotion_transition_cli", transition)
+    monkeypatch.setattr(serves, "_promotion_cli", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "_install_router_config", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "docker_state", lambda *a, **k: "running")
+    monkeypatch.setattr(serves, "_health", lambda *a, **k: 200)
+    monkeypatch.setattr(serves, "_serve_identity_ready", lambda *a, **k: True)
+    monkeypatch.setattr(serves, "_gateway_status", lambda *a, **k: 200)
+
+    assert serves._promotion_transition(
+        managed,
+        plan,
+        path,
+        resume=True,
+        require_candidate=False,
+        _sleep=sleeps.append,
+    ) == 0
+    assert [action for action, _ in transitions].count("transition-status") == 2
+    assert sleeps == [plan["poll_interval"]]
+
+
 # ---- status: reservation ledger surface (gpu-reservations:T004) ---------------
 
 # The reference multi-tenant card (mirrors tests/test_reservations.py):
