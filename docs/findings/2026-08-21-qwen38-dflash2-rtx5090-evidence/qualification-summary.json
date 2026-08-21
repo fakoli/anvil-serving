@@ -1,0 +1,201 @@
+{
+  "schema": "qwen38-dflash2-rtx5090-qualification/v1",
+  "observed_at": "2026-08-21",
+  "completion_state": "complete_with_rejection_and_restoration",
+  "evidence_labels": [
+    "functional",
+    "compatibility-only",
+    "capacity"
+  ],
+  "decision_labels": [
+    "rejected",
+    "no-promotion"
+  ],
+  "topology": {
+    "measured_host": "Fakoli Mid Mod qualification lane",
+    "measured_gpu": "NVIDIA GeForce RTX 5090, 32,607 MiB, sm_120",
+    "runtime_environment": "Windows 11, Docker Desktop, WSL2",
+    "protected_or_co_resident_gpu": "none",
+    "external_router_policy_changed": false
+  },
+  "identity": {
+    "target_repository": "RadixArk/Qwen3.8-27B-NVFP4",
+    "target_revision": "554ebba9b5f1b79dc11246341960360e6ef05ef4",
+    "draft_repository": "incoai/Qwen3.8-27B-DFlash2",
+    "draft_revision": "dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+    "runtime_image": "lmsysorg/sglang:dev@sha256:8acc563e39f4e79118cc3c11cb5a8893ca8da140b2280cdd24a9f3bfe38835a0",
+    "runtime_source_revision": "f825d729363136a2d4a4b330fa694d0b37a878fa",
+    "runtime_image_version": "lmsysorg/sglang:nightly-dev-20260821-f825d729",
+    "served_model_name": "qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm"
+  },
+  "recipe": {
+    "selector": "RTX 5090 / Default / NVFP4 / Single Node / DFLASH2 / High-Throughput / float32",
+    "configured_context_tokens": 262144,
+    "max_running_requests": 1,
+    "cuda_graph_max_batch_size": 1,
+    "kv_cache_dtype": "fp8_e4m3",
+    "attention_backend": "flashinfer",
+    "speculative_algorithm": "DFLASH",
+    "speculative_num_draft_tokens": 8,
+    "mamba_full_memory_ratio": 10,
+    "mamba_radix_cache_strategy": "extra_buffer_lazy",
+    "mamba_ssm_dtype": "float32",
+    "thinking_default": "disabled",
+    "local_contract_additions": [
+      "immutable target and draft snapshot paths",
+      "stable upstream served-model name",
+      "explicit 262,144 configured context",
+      "CPU multimodal feature transport",
+      "thinking-disabled server default"
+    ]
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "mem_fraction_static": 0.895,
+      "classification": "local transcription error",
+      "outcome": "startup_failed",
+      "failure": "Hybrid state cache was too small to serve any requests: max_mamba_cache_size=2, four state slots per request, max_num_reqs=0.",
+      "restoration": "Exact 128K baseline restored healthy and passed the complete preflight."
+    },
+    {
+      "attempt": 2,
+      "mem_fraction_static": 0.945,
+      "classification": "official selector with local contract additions",
+      "outcome": "started_then_rejected_by_capacity_gate",
+      "startup": {
+        "target_weight_memory_gb": 20.14,
+        "draft_weight_memory_gb": 3.92,
+        "max_mamba_cache_size": 5,
+        "target_kv_pool_tokens": 24347,
+        "effective_max_input_tokens": 24341,
+        "draft_cuda_graph": "disabled because zero free GPU memory remained after target initialization"
+      },
+      "preflight": {
+        "smoke_http_status": 200,
+        "structured_json_http_status": 200,
+        "tool_batch": "20/20 HTTP 200 responses",
+        "long_context": "failed",
+        "long_context_prompt_tokens": 105649,
+        "long_context_error": "Input length exceeds the maximum allowed length of 24,341 tokens."
+      },
+      "dflash_log_samples": [
+        {
+          "accept_length": 5.05,
+          "accept_rate": 0.58
+        },
+        {
+          "accept_length": 5.60,
+          "accept_rate": 0.66
+        }
+      ]
+    },
+    {
+      "attempt": 3,
+      "classification": "BF16 state-width diagnostic at the official BF16 memory fraction",
+      "changes_from_prior": [
+        "mamba_ssm_dtype=bfloat16",
+        "mem_fraction_static=0.90",
+        "max_mamba_cache_size=4"
+      ],
+      "outcome": "started",
+      "target_kv_pool_tokens": 30984,
+      "available_gpu_memory_after_graphs_gb": 0.91
+    },
+    {
+      "attempt": 4,
+      "classification": "one-variable memory-fraction diagnostic",
+      "changes_from_prior": [
+        "mem_fraction_static=0.945"
+      ],
+      "outcome": "started",
+      "target_kv_pool_tokens": 64790,
+      "target_prefill_cuda_graph_memory_gb": 1.13,
+      "available_gpu_memory_after_target_prefill_graph_gb": 0.0
+    },
+    {
+      "attempt": 5,
+      "classification": "one-variable prefill-graph diagnostic",
+      "changes_from_prior": [
+        "disable_prefill_cuda_graph=true"
+      ],
+      "outcome": "started",
+      "target_kv_pool_tokens": 64790,
+      "available_gpu_memory_after_verify_graph_gb": 1.0,
+      "finding": "Disabling prefill CUDA graphs restored runtime headroom but did not resize the KV pool because KV allocation precedes graph capture."
+    },
+    {
+      "attempt": 6,
+      "classification": "best safe single-request DFlash2 capacity arm",
+      "changes_from_prior": [
+        "disable_radix_cache=true",
+        "max_mamba_cache_size=1"
+      ],
+      "outcome": "functional_pass_below_route_capacity",
+      "target_kv_pool_tokens": 70262,
+      "mamba_state": {
+        "persistent_ssm_state_gb": 0.14,
+        "intermediate_ssm_state_gb": 1.12,
+        "intermediate_conv_window_gb": 0.02
+      },
+      "preflight": {
+        "short_coding": "pass",
+        "structured_json": "pass",
+        "needle_generated_context": 60000,
+        "needle_actual_prompt_tokens": 49549,
+        "needle": "pass",
+        "tool_batch": "20/20 clean"
+      },
+      "dflash_log_sample": {
+        "accept_length": 5.6,
+        "accept_rate": 0.66,
+        "generation_tokens_per_second": 45.63
+      }
+    }
+  ],
+  "diagnosis": {
+    "root_cause": "The checkpoint and DFlash implementation are compatible; the failure is resident-memory capacity on a 32 GB GPU.",
+    "fixed_weight_memory_gb": 24.06,
+    "configured_context_is_not_resident_capacity": true,
+    "best_safe_dflash_kv_pool_tokens": 70262,
+    "retained_route_prompt_gate_tokens": 105649,
+    "primary_constraint": "The eight-token DFlash verification path retains a 1.12 GB intermediate BF16 SSM state cache in addition to target and draft weights, persistent state, KV pools, and runtime graphs."
+  },
+  "recommended_adjustments": {
+    "distinct_short_context_candidate": [
+      "mamba_ssm_dtype=bfloat16",
+      "mem_fraction_static=0.945",
+      "max_mamba_cache_size=1",
+      "disable_radix_cache=true",
+      "disable_prefill_cuda_graph=true",
+      "use a distinct truthful served name and admission limit"
+    ],
+    "existing_128k_route": "Retain the qualified no-spec recipe.",
+    "future_speculative_128k_research": "Evaluate an EAGLE/MTP replay-SSM path documented to avoid resident speculative verification states, or use more aggregate VRAM; do not extrapolate that option to DFlash without qualification."
+  },
+  "restoration": {
+    "recipe": "RadixArk/Qwen3.8-27B-NVFP4-RTX5090-128K",
+    "runtime_image": "lmsysorg/sglang:qwen38-27b@sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124",
+    "status": "healthy",
+    "preflight": {
+      "short_coding": "pass",
+      "structured_json": "pass",
+      "needle_context": "pass at approximately 128,000 generated context units and 105,649 actual prompt tokens",
+      "needle_marker": "ZEBRA-42917-QUARTZ",
+      "tool_batch": "20/20 clean"
+    }
+  },
+  "limitations": [
+    "This was not an eval benchmark artifact and does not establish stable throughput or quality.",
+    "DFlash acceptance figures are scheduler-log samples, not a controlled performance comparison.",
+    "No routed request was used as public evidence; the external router policy was left unchanged.",
+    "The configured 262,144-token context is not the measured request capacity of this memory layout.",
+    "The 70,262-token tuned arm is a short-context lead, not a promoted or route-qualified service."
+  ],
+  "sources": [
+    "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+    "https://github.com/sgl-project/sglang/blob/f825d729363136a2d4a4b330fa694d0b37a878fa/docs/src/snippets/configs/Qwen/qwen3.8-27b.jsx",
+    "https://github.com/sgl-project/sglang/commit/f825d729363136a2d4a4b330fa694d0b37a878fa",
+    "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/tree/dedf8df68adfb1afeaf7b7480c0a0243108177b4"
+  ]
+}

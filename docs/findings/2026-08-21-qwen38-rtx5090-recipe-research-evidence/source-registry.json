@@ -1,0 +1,159 @@
+{
+  "schema": "anvil-serving.external-source-registry/v1",
+  "topic": "Qwen3.8-27B single-RTX-5090 context, speed, fidelity, and tool-use recipes",
+  "observed_date": "2026-08-21",
+  "sources": [
+    {
+      "url": "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+      "published_or_observed": "current page observed 2026-08-21",
+      "age_class": "current",
+      "evidence_type": "official recipe matrix",
+      "hardware_engine_relevance": "exact model family, SGLang, RTX 5090 selector",
+      "decision_impact": "The displayed verified cells use ISL 8192, OSL 1024, concurrency one. This is compatibility evidence, not proof of a 128K or 262K request. The official MTP shape is 3/1/4 and current ReplaySSM uses --enable-linear-replayssm-spec."
+    },
+    {
+      "url": "https://github.com/sgl-project/sglang/pull/28695",
+      "published_or_observed": "current merged implementation observed 2026-08-21",
+      "age_class": "current",
+      "evidence_type": "official implementation and review",
+      "hardware_engine_relevance": "SGLang hybrid-model speculative state memory",
+      "decision_impact": "ReplaySSM is exact state replay and removes intermediate SSM snapshots, but it does not remove a separately loaded MTP draft model."
+    },
+    {
+      "url": "https://www.lmsys.org/blog/2026-08-12-qwen3-8-day0-support",
+      "published_or_observed": "2026-08-12",
+      "age_class": "current-week",
+      "evidence_type": "official SGLang engineering report",
+      "hardware_engine_relevance": "Qwen3.8 SGLang performance and ReplaySSM",
+      "decision_impact": "Supports MTP and ReplaySSM as the lowest-risk same-weight speed lead, while published throughput uses different hardware and workloads."
+    },
+    {
+      "url": "https://x.com/sgl_project/status/2088281320422322413",
+      "published_or_observed": "observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "project social post",
+      "hardware_engine_relevance": "RTX 5090 headline",
+      "decision_impact": "The 200+ tok/s headline is a lead only; the post does not supply a matched long-context, quality, or tool-use gate."
+    },
+    {
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1voearc/sglang_support_for_qwen3827b_200_toks_on_5090_38/",
+      "published_or_observed": "current-week post observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "project-authored community post plus reproduction comments",
+      "hardware_engine_relevance": "RTX 5090, SGLang, NVFP4, speculative decoding",
+      "decision_impact": "The headline is not independently reproducible from the post; comments report startup failures and the author points readers to a changing cookbook."
+    },
+    {
+      "url": "https://huggingface.co/calneymgp/Qwen3.8-27B-NVFP4-lmhead4-recipe",
+      "published_or_observed": "current-week card observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "community checkpoint card with SGLang measurements",
+      "hardware_engine_relevance": "single RTX 5090, SGLang, quantized lm_head, MTP",
+      "decision_impact": "Strong speed/context lead, but its card and scripts disagree on backend, context ceiling, and some MTP details; bounded quality evidence is too small for promotion."
+    },
+    {
+      "url": "https://huggingface.co/gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+      "published_or_observed": "current-week card observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "community checkpoint card with vLLM measurements",
+      "hardware_engine_relevance": "single RTX 5090, vLLM, ModelOpt NVFP4, full native window",
+      "decision_impact": "Claims full 262K without speculation and tools 5/5, but offers only a small quality smoke. Independent same-suite analysis reports substantially higher divergence than the EXL3 context edition."
+    },
+    {
+      "url": "https://github.com/MiaAI-Lab/Qwen3.8-27B-NVFP4-RTX-5090",
+      "published_or_observed": "current-week repository observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "community vLLM recipe and patch",
+      "hardware_engine_relevance": "single RTX 5090, RadixArk NVFP4, TurboQuant KV, MTP3",
+      "decision_impact": "Promising 262K and decode headline, but stock vLLM produced malformed output/tool calls in 13/15 trials; the required unmerged patch makes this unsuitable for a stable route now."
+    },
+    {
+      "url": "https://github.com/vllm-project/vllm/issues/40880",
+      "published_or_observed": "current issue observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "official engine defect report",
+      "hardware_engine_relevance": "vLLM Qwen3.8 MTP output correctness",
+      "decision_impact": "Confirms that a high-throughput vLLM recipe can return HTTP 200 while corrupting text or tool syntax, so speed alone cannot qualify a route."
+    },
+    {
+      "url": "https://github.com/vllm-project/vllm/pull/40914",
+      "published_or_observed": "current pull request observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "official engine fix under review",
+      "hardware_engine_relevance": "vLLM Qwen3.8 MTP scheduler correctness",
+      "decision_impact": "Potentially fixes the malformed-output lead, but an unmerged fix is not a production recipe identity."
+    },
+    {
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B/discussions/51",
+      "published_or_observed": "current-week discussion observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "community hardware report on the official model",
+      "hardware_engine_relevance": "vLLM, long-context MTP, four RTX 5090 cards",
+      "decision_impact": "Shows MTP can become much slower at long context in a different topology; retained as a risk signal, not a hardware-matched result."
+    },
+    {
+      "url": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/commit/655085b6e9b58cff684c0b32ac24824547c63a3f",
+      "published_or_observed": "2026-08-20/21 current revision observed 2026-08-21",
+      "age_class": "current-day",
+      "evidence_type": "community checkpoint, reproducible receipts, and pinned-runtime recipe",
+      "hardware_engine_relevance": "physical single RTX 5090, custom vLLM EXL3 runtime, 262K",
+      "decision_impact": "Best published balance of context, fidelity, and tool-schema evidence. It requires a custom runtime. Its current project reports no profile clearing all six gates: fidelity profiles lose prefill speed, while the fast-prefill profile fails fidelity. Research lead, not a clear replacement."
+    },
+    {
+      "url": "https://github.com/malaiwah/qwen38-27b-exl3",
+      "published_or_observed": "current repository observed 2026-08-21",
+      "age_class": "current-day",
+      "evidence_type": "community reproducibility repository and receipts",
+      "hardware_engine_relevance": "physical RTX 5090, baked custom vLLM image, EXL3 profile matrix",
+      "decision_impact": "Publishes a self-contained image and shows the measured tradeoff directly: fidelity 238.4K/strong decode but about 3K tok/s prefill; throughput near 249.6K/fast prefill but unacceptable KLD."
+    },
+    {
+      "url": "https://github.com/Neroued/ninfer",
+      "published_or_observed": "current repository observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "community custom inference engine",
+      "hardware_engine_relevance": "single RTX 5090, Qwen3.8 custom quant/runtime",
+      "decision_impact": "Very strong speed/context lead with OpenAI/Anthropic protocol support, but the required unmerged engine path lacks a comparable long-context reasoning and tool-quality gate."
+    },
+    {
+      "url": "https://huggingface.co/Ostfralla/Qwen3.8-27B-NVFP4-NInfer",
+      "published_or_observed": "current-week card observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "community checkpoint card and bounded benchmark",
+      "hardware_engine_relevance": "single RTX 5090, NInfer NVFP4, MTP4, full native window",
+      "decision_impact": "Reports full 262K and about 202 tok/s with bounded HumanEval/AIME parity, but real tool calling and long-context reasoning remain unqualified."
+    },
+    {
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1vod417/ninfer_day0_support_for_qwen38_27b_200_toks/",
+      "published_or_observed": "current-week post observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "community performance report",
+      "hardware_engine_relevance": "single RTX 5090, NInfer",
+      "decision_impact": "Useful reproduction lead only; headline speed is not paired with the local route's context, quality, and tools contract."
+    },
+    {
+      "url": "https://www.reddit.com/r/LocalLLM/comments/1vr27nt/qwen3827b_on_a_single_rtx_5090_to_have_or_to_be/",
+      "published_or_observed": "current-week post observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "community cross-engine comparison",
+      "hardware_engine_relevance": "single RTX 5090, vLLM and SGLang",
+      "decision_impact": "Reinforces the capacity/speed frontier: vLLM MTP keeps a much larger window, while SGLang speculative profiles can reach higher short-context speed with much less KV. Template/tool results are encouraging but not promotion-grade."
+    },
+    {
+      "url": "https://www.hardware-corner.net/qwen3-8-27b-hardware-tests/",
+      "published_or_observed": "current-week article observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "independent hardware test",
+      "hardware_engine_relevance": "Qwen3.8 GGUF context scaling on consumer GPUs",
+      "decision_impact": "Provides independent evidence that generation speed changes sharply with context and that peak short-context numbers should not be generalized to a 128K agent route."
+    },
+    {
+      "url": "https://www.sparkthai.com/en/model-arena/Qwen3.8-27B-NVFP4",
+      "published_or_observed": "current page observed 2026-08-21",
+      "age_class": "current-week",
+      "evidence_type": "independent model-arena test",
+      "hardware_engine_relevance": "Qwen3.8 NVFP4 agent/tool behavior on different Blackwell hardware",
+      "decision_impact": "A useful quality warning: tool selection can pass while reasoning after a tool result fails. Different hardware prevents speed comparison."
+    }
+  ]
+}

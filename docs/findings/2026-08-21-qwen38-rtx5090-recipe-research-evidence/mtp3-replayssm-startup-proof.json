@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.startup-observation/v1",
+  "observed_at": "2026-08-21",
+  "capture_method": "managed models recipes load/status/logs; bounded operator transcription of startup allocation lines",
+  "model": "RadixArk/Qwen3.8-27B-NVFP4-RTX5090-128K-MTP3-ReplaySSM",
+  "runtime": {
+    "engine": "sglang",
+    "image_digest": "sha256:8acc563e39f4e79118cc3c11cb5a8893ca8da140b2280cdd24a9f3bfe38835a0",
+    "image_source_revision": "f825d729363136a2d4a4b330fa694d0b37a878fa",
+    "target_revision": "554ebba9b5f1b79dc11246341960360e6ef05ef4",
+    "declared_context_tokens": 131072,
+    "speculative_shape": "MTP 3/1/4",
+    "replayssm_flag": "--enable-linear-replayssm-spec"
+  },
+  "startup_allocations": {
+    "target_weights_gb": 20.14,
+    "draft_weights_gb": 5.73,
+    "mamba_state_cache_gb": 0.28,
+    "intermediate_ssm_state_cache_gb": 0.0,
+    "target_kv_tokens": 70231,
+    "draft_kv_tokens": 70231,
+    "target_kv_gb": 2.14,
+    "draft_kv_gb": 0.14,
+    "replayssm_record_length": 4,
+    "replayssm_exact_fold": true,
+    "replayssm_raw_v_gb": 0.004,
+    "replayssm_raw_k_gb": 0.001
+  },
+  "interpretation": "ReplaySSM successfully made recurrent-state replay negligible, but it did not eliminate the separately loaded MTP draft weights. The resulting 70,231-token KV ceiling fails the retained 128K contract.",
+  "redactions": "No operator network identity, personal path, GPU UUID, credential, or raw log was retained."
+}

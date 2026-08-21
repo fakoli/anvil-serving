@@ -6,7 +6,7 @@ Former human-approved single-service profile: official FP8 on SGLang served
 Primary, multimodal, OCR, and video at TP=1/393,216 with EAGLE MTP `3/1/4`
 and CPU feature transport; the second GPU was empty. On 2026-08-16 it was
 superseded as text Primary by DeepSeek Infernal Invocation r15. Review date:
-2026-08-20. The review includes MTP=4/5, official-FP8 versus Inferact NVFP4, the
+2026-08-21. The review includes MTP=4/5, official-FP8 versus Inferact NVFP4, the
 matched BF16 consolidation A/B, and the guarded live promotion.
 The 2026-08-16 review adds direct and routed video qualification plus
 fail-closed router admission for one video.
@@ -18,6 +18,19 @@ The 2026-08-20 review adds a matched stock-versus-Sharp-v22.1 chat-template A/B
 on that 128K RTX 5090 profile. Sharp passed the functional gate but did not
 improve the bounded thinking-enabled diagnostic, so the stock template remains
 selected and no route or promotion changed.
+The 2026-08-21 review adds the exact official RTX 5090 NVFP4 DFlash2
+high-throughput/float32 arm. It booted at memory fraction 0.945 but exposed
+only 24,347 KV tokens and failed the retained 128K capacity gate. A bounded
+BF16/single-slot tuning ladder raised the safe ceiling to 70,262 KV tokens and
+passed a 49,549-token retrieval plus tools 20/20, but still could not satisfy
+the route contract. Both arms are rejected as replacements and the stock 128K
+recipe remains selected.
+The same review adds a dated external-source registry and a matched local
+MTP3/ReplaySSM A/B. ReplaySSM made recurrent-state replay negligible and decode
+rose 80.5% at 4K and 67.9% at 64K, but SGLang's separately loaded 5.73 GB MTP
+draft left only 70,231 KV tokens. Median 64K end-to-end latency was also 1.9%
+slower. The candidate is rejected as a 128K replacement; EXL3, NInfer, vLLM
+TurboQuant, and alternative NVFP4 recipes remain research leads only.
 
 ## Immutable identity
 
@@ -37,6 +50,12 @@ selected and no route or promotion changed.
   `RadixArk/Qwen3.8-27B-NVFP4@554ebba9b5f1b79dc11246341960360e6ef05ef4`.
 - Sharp chat-template qualification revision:
   `peculiar-ragdoll/Qwen-Sharp-Chat-Templates@3dc34df52c63dd22ada21f96435e069deaa8d7da`.
+- DFlash2 draft qualification revision:
+  `incoai/Qwen3.8-27B-DFlash2@dedf8df68adfb1afeaf7b7480c0a0243108177b4`.
+- DFlash2 runtime image:
+  `lmsysorg/sglang:dev@sha256:8acc563e39f4e79118cc3c11cb5a8893ca8da140b2280cdd24a9f3bfe38835a0`;
+  image-label source revision
+  `f825d729363136a2d4a4b330fa694d0b37a878fa`.
 
 ## Tested hardware and topology
 
@@ -88,6 +107,17 @@ multimodal feature transport, no MTP, thinking disabled, and explicit ceilings
 of eight images and two videos. The managed recipe is
 `configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm-recipe.toml`; the
 otherwise matched 64K recipe is retained as rollback.
+
+The rejected DFlash2 arm kept the same target snapshot and stable served name,
+but used the separately pinned draft, DFLASH with eight draft tokens, the
+official RTX 5090 memory fraction 0.945, float32 Mamba state, full-memory ratio
+10, `extra_buffer_lazy`, and one admitted request. It configured 262,144 model
+context but allocated only 24,347 target KV tokens. Its retained recipe is
+`configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-262k-dflash2-recipe.toml`.
+The best measured diagnostic changed Mamba state to BF16, pinned one persistent
+state slot, disabled radix caching and prefill CUDA graphs, and retained memory
+fraction 0.945. It allocated 70,262 KV tokens; its reproducible recipe is
+`configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-dflash2-debug-recipe.toml`.
 
 ## Evidence by measurement class
 
@@ -202,6 +232,32 @@ faster, but passed 15/18 versus stock's 18/18 because it missed a declared
 literal-question-mark contract. This is bounded template evidence, not a
 general model-quality score.
 
+The 2026-08-21 DFlash2 trial is `compatibility-only` plus measured `capacity`.
+An initial local transcription at memory fraction 0.895 loaded both models but
+could admit zero requests. The corrected official 0.945 arm started, allocated
+five Mamba cache slots, and served short coding/JSON plus twenty HTTP-successful
+tool requests. Its 24,341-token maximum input then rejected a 105,649-token
+retrieval prompt. DFlash scheduler samples showed 5.05-5.60 accepted tokens per
+step, but no controlled speed or quality benchmark was retained.
+
+The follow-up capacity ladder measured 30,984 KV tokens with BF16 state at
+memory fraction 0.90, 64,790 after raising only the fraction to 0.945, the same
+64,790 with prefill graphs disabled, and 70,262 after also disabling radix and
+pinning one persistent Mamba slot. The final arm passed coding, JSON, a 49,549-
+token retrieval prompt, and tools 20/20. It still fell 35,387 tokens short of
+the existing 105,649-token route gate. The exact stock 128K recipe was restored
+and passed that complete gate again.
+
+The matched MTP3/ReplaySSM candidate used the same target snapshot and API
+contract. At 4K, median decode improved from 76.54 to 138.19 tok/s and E2E fell
+from 911 to 664 ms. At 64K, decode improved from 69.75 to 117.10 tok/s, but
+effective prefill fell from 5,936 to 5,581 tok/s and E2E rose from 11,309 to
+11,528 ms. Startup allocated 20.14 GB target weights, a separate 5.73 GB draft,
+0.28 GB for one FP32 Mamba state slot, and only 70,231 target/draft KV tokens.
+It passed the complete bounded functional/tool surface at a 49,549-token
+prompt, then was rejected at the hard context gate. The baseline restoration
+passed the same surface at 105,649 prompt tokens.
+
 ## Decision and promotion state
 
 Former human-approved single-service profile. Official FP8 on SGLang with MTP
@@ -217,6 +273,16 @@ when native vision and video are required. It remains `no-promotion`, and its
 131,072-token served window should not be conflated with the former 393K lane.
 Sharp v22.1 is rejected for this exact recipe; the stock template remains the
 qualified configuration.
+The exact official DFlash2 high-throughput/float32 profile is also rejected as
+a replacement for that 128K service. The BF16/no-radix/single-slot arm is the
+best measured short-context lead, but it is likewise rejected as a route
+replacement. Any distinct short-context deployment requires its own truthful
+served name, capability contract, benchmark, and human promotion gate.
+MTP3 plus ReplaySSM is rejected for the same route for a different memory
+reason: ReplaySSM removes the recurrent-state multiplier, but the 5.73 GB draft
+weight reservation still caps KV at 70,231. External full-context candidates
+remain dormant until one proves lower local end-to-end latency without losing
+the quality, tool, multimodal, or restoration contracts.
 
 ## External recipe watch and local follow-up
 
@@ -317,9 +383,22 @@ the native NVFP4 target passed its required gates.
   deterministic agentic artifacts and unrelated `not_run` suites in the
   context-only artifacts. Only complete attempt/target records ground the
   published claims; aggregate quality timing is not claimed.
+- The RTX 5090 DFlash2 float32 arm requires memory fraction 0.945 and Mamba
+  full-memory ratio 10. At 0.895 it admitted zero requests; at 0.945 it booted
+  but left only 24,347 target KV tokens and zero reported free GPU memory after
+  target graph capture. Configured 262K context must not be reported as
+  measured request capacity for this layout.
+- BF16 state, one persistent Mamba slot, disabled radix cache, and disabled
+  prefill CUDA graphs raised the safe ceiling to 70,262 KV tokens. The tuned
+  arm passed a complete 49,549-token functional gate, but the eight-token
+  DFlash verifier still reserved 1.12 GB of intermediate BF16 SSM state.
+- No controlled throughput, quality, routed, or multimodal claim is retained.
+  Logged DFlash acceptance and throughput values remain diagnostic samples.
 
 ## Dated run history
 
+- [2026-08-21 RTX 5090 recipe research and MTP3/ReplaySSM rejection](../../findings/2026-08-21-qwen38-27b-rtx5090-recipe-research.md)
+- [2026-08-21 RTX 5090 DFlash2 compatibility and capacity rejection](../../findings/2026-08-21-qwen38-27b-radixark-nvfp4-dflash2-rtx5090.md)
 - [2026-08-20 RTX 5090 Sharp v22.1 chat-template A/B](../../findings/2026-08-20-qwen38-sharp-template-ab.md)
 - [2026-08-17 RTX 5090 RadixArk NVFP4 128K qualification](../../findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md)
 - [2026-08-17 RTX 5090 RadixArk NVFP4 qualification](../../findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090.md)
