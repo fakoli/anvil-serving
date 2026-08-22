@@ -23,6 +23,7 @@ id = "primary"
 base_url = "http://127.0.0.1:31002/v1"
 dialect = "openai"
 context_limit = 16
+max_output_tokens = 8
 privacy = "local"
 tool_support = true
 auth_env = "ANVIL_PRIMARY_KEY"
@@ -169,6 +170,8 @@ def test_models_lists_only_configured_aliases(config_path):
         finally:
             connection.close()
     assert [entry["id"] for entry in payload["data"]] == ["llm.primary"]
+    assert payload["data"][0]["context_window"] == 16
+    assert payload["data"][0]["max_output_tokens"] == 8
 
 
 def test_direct_backend_error_is_logged_without_an_alternate_attempt(config_path):

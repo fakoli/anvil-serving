@@ -242,6 +242,7 @@ required operands, choices, and defaults.
 | `harness` | Manage harness integration. | `read` / `bounded` | - |
 | `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
 | `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `harness sync clients` | Reconcile OpenClaw and Pi from authenticated router metadata. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness restart` | Restart the harness | `read` / `bounded` | - |
 | `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness status` | Show harness status | `read` / `bounded` | - |

@@ -44,6 +44,7 @@ from .decision_log import (
     DecisionRecord,
     request_correlation,
 )
+from .discovery import models_payload
 from .dialects.translate import has_tool_artifacts
 from .front_door import make_server
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult, estimate_tokens
@@ -448,6 +449,9 @@ class RoutingBackend:
             self._capacity_metrics,
             query,
         )
+
+    def model_discovery(self) -> dict:
+        return models_payload(self._config)
 
     def model_capabilities(self, query: Mapping[str, list[str]]) -> dict:
         return build_model_capabilities(self._config, self._availability, query)

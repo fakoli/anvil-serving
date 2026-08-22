@@ -904,7 +904,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         extra_headers={"Cache-Control": "no-store"},
                     )
                 elif route == "/v1/models":
-                    self._json(200, models_payload(model_routes))
+                    discovery_fn = getattr(backend, "model_discovery", None)
+                    if discovery_fn is None:
+                        routing = getattr(self.server, "anvil_routing", None)
+                        discovery_fn = getattr(routing, "model_discovery", None)
+                    self._json(
+                        200,
+                        discovery_fn()
+                        if callable(discovery_fn)
+                        else models_payload(model_routes),
+                    )
                 elif route == DECISION_SUMMARY_ENDPOINT:
                     query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                     raw_limit = (query.get("limit") or ["20"])[0]
