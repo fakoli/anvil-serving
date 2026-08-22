@@ -160,6 +160,15 @@ Artifacts retain the visible final answer, its SHA-256, per-turn latency and
 token counts, finish reasons, tool-call counts, and whether a separate reasoning
 channel was present. A malformed call, reasoning-budget exhaustion, incorrect
 recovery, final-answer failure, and worker failure are separate outcomes.
+Long-session fixtures execute every scripted user turn as a real request,
+retain the model's actual replies in history, and require strictly increasing
+endpoint-reported prompt-token counts. A single prefilled transcript cannot be
+reported as a multi-turn endurance pass.
+
+**Long-context tool gate.** The `long-tools` preflight check calibrates a real
+tool request and passes only when endpoint usage reports at least 100,000
+actual prompt tokens, the model selects the expected tool, and its arguments
+are schema-valid. Nominal filler length alone is not capacity evidence.
 
 **Official SWE resolution.** An agent trajectory and patch are intermediate
 evidence. SWE resolution is complete only when the pinned official SWE-bench

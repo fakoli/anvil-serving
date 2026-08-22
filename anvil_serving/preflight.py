@@ -343,6 +343,56 @@ def t_tool_batch(base, model, key, n, ctk=None, max_tokens=256,
     return passed == n, f"{passed}/{n} clean (sample: {details[0] if details else 'n/a'})"
 
 
+def t_long_tool(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
+                reasoning_effort=None, evidence=None, timeout=900):
+    """Require a valid tool call with at least 100K measured prompt tokens."""
+    line = "Archived repository telemetry remained nominal during this interval. "
+    words = int(ctx_tokens * 0.75)
+    repetitions = max(1, words // max(1, len(line.split())))
+    record = line * repetitions
+    messages = [{
+        "role": "user",
+        "content": record + "\n\nWhat's the weather in Oakland? Use the tool.",
+    }]
+    try:
+        response, seconds = chat(
+            base,
+            model,
+            messages,
+            key,
+            max_tokens=max_tokens,
+            tools=TOOLS,
+            tool_choice="auto",
+            chat_template_kwargs=ctk,
+            reasoning_effort=reasoning_effort,
+            timeout=timeout,
+        )
+        observation = _capture(evidence, "long-tools", response, seconds)
+        message = response["choices"][0]["message"]
+        valid, detail = validate_tool_call(message)
+        usage = response.get("usage") if isinstance(response, dict) else None
+        prompt_tokens = usage.get("prompt_tokens") if isinstance(usage, dict) else None
+        measured = (
+            isinstance(prompt_tokens, int)
+            and not isinstance(prompt_tokens, bool)
+            and prompt_tokens >= 100000
+        )
+        passed = valid and measured
+        observation.update({
+            "passed": passed,
+            "validation_detail": detail,
+            "requested_context_tokens": ctx_tokens,
+            "minimum_prompt_tokens": 100000,
+            "measured_prompt_tokens": prompt_tokens,
+        })
+        return passed, (
+            f"{seconds:.1f}s measured_prompt={prompt_tokens!r} {detail} "
+            f"{_evidence_note(observation)}"
+        )
+    except Exception as exc:
+        return False, f"error: {exc}"
+
+
 def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
                      evidence=None, timeout=900):
     """Require one valid tool call reconstructed from an SSE stream."""
@@ -677,11 +727,13 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
     ap.add_argument("--api-key-env", default=None,
                     help="read the bearer token from this environment variable")
     ap.add_argument("--needle-ctx", type=int, default=128000)
+    ap.add_argument("--long-tool-ctx", type=int, default=131072,
+                    help="nominal filler target for the >=100K prompt tool-call gate")
     ap.add_argument("--tool-batch", type=int, default=20)
     ap.add_argument(
         "--checks", default="smoke,json,needle,tools",
         help=(
-            "comma-separated checks: smoke,json,needle,tools,streaming-tools,"
+            "comma-separated checks: smoke,json,needle,tools,long-tools,streaming-tools,"
             "tool-result,responses,image,ocr,video"
         ),
     )
@@ -731,19 +783,21 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         ap.error("combined completion allocation cannot exceed 65536")
     if not 1 <= a.needle_ctx <= 1000000:
         ap.error("--needle-ctx must be from 1 through 1000000")
+    if not 100000 <= a.long_tool_ctx <= 1000000:
+        ap.error("--long-tool-ctx must be from 100000 through 1000000")
     if not 1 <= a.tool_batch <= 128:
         ap.error("--tool-batch must be from 1 through 128")
     if not 0 < a.timeout <= 3600:
         ap.error("--timeout must be greater than 0 and at most 3600 seconds")
     selected = [item.strip() for item in a.checks.split(",") if item.strip()]
     known_checks = {
-        "smoke", "json", "needle", "tools", "streaming-tools",
+        "smoke", "json", "needle", "tools", "long-tools", "streaming-tools",
         "tool-result", "responses", "image", "ocr", "video",
     }
     unknown = sorted(set(selected) - known_checks)
     if not selected or unknown:
         ap.error(
-            "--checks must select smoke,json,needle,tools,streaming-tools,"
+            "--checks must select smoke,json,needle,tools,long-tools,streaming-tools,"
             "tool-result,responses,image,ocr,video; unknown=%s"
             % unknown
         )
@@ -829,6 +883,10 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         "json": ("structured JSON", lambda: t_json(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
         "needle": (f"needle @ ~{a.needle_ctx} ctx", lambda: t_needle(a.base_url, a.model, api_key, a.needle_ctx, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
         "tools": (f"shared-prefix tool batch x{a.tool_batch}", lambda: t_tool_batch(a.base_url, a.model, api_key, a.tool_batch, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
+        "long-tools": (f"tool call after >=100K prompt (target {a.long_tool_ctx})", lambda: t_long_tool(
+            a.base_url, a.model, api_key, a.long_tool_ctx, ctk, max_tokens,
+            a.reasoning_effort, evidence, a.timeout,
+        )),
         "streaming-tools": ("streaming tool call", lambda: t_streaming_tool(
             a.base_url, a.model, api_key, ctk, max_tokens, evidence, a.timeout,
         )),

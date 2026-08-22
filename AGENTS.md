@@ -11,8 +11,10 @@ A local-model serving and benchmark substrate plus a thin capability gateway
 (`eval usage`, `models sync`, `serves render`, `eval preflight`, `eval benchmark run`,
 `serves multiplex`, plus `init`, `doctor`, and `host gpus`). The router is shipped: token-authed
 containerized service, cross-dialect tool translation, true upstream SSE streaming,
-readiness, admission, and metadata-only decisions. The canonical product description is
-`README.md`; do not contradict it.
+readiness, admission, and metadata-only decisions. All routing surfaces are
+serving-engine agnostic: routes select declared capabilities, models, endpoints,
+and dialects, never a runtime brand or weight format. The canonical product
+description is `README.md`; do not contradict it.
 
 ## Read before you write
 
@@ -65,6 +67,18 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
   or any repeatable operator action, integrate it as an `anvil-serving` CLI verb
   and, where appropriate, an MCP/controller tool. Do not create random one-off
   scripts as the operational path.
+- **Keep routing serving-engine agnostic.** Chat aliases, purpose-model names,
+  and audio routes resolve through declared endpoint, dialect, capability,
+  readiness, and admission contracts. Do not branch route selection on
+  `engine`, runtime image, quantization, launch mechanism, or vendor-specific
+  behavior. llama.cpp, NInfer, SGLang, vLLM, TensorRT-LLM, or another engine may
+  back a route when its adapter satisfies the declared contract. This includes
+  running Unsloth or an Unsloth-provided serving stack: whether Unsloth supplies
+  quantized artifacts, launch tooling, or the upstream server, routing still
+  sees only the declared endpoint contract. Keep
+  engine-specific flags, lifecycle, health/metrics parsing, and tuning in serve
+  manifests, recipes, or bounded adapters; metadata may inform observability
+  but never hidden selection, fallback, or substitution.
 - **Operate model candidates through recipes and Anvil Serving, not raw Docker.**
   Record every reproducible candidate in a serve-recipe registry; start it with
   `models recipes load`, then use `models recipes status`, `models recipes logs`,
@@ -73,6 +87,13 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
   diagnosis when the product surface itself is broken; treat that as an
   immediate product gap, create or update a `.tickets/` record, fix the Anvil
   surface, and return to the managed command before continuing.
+- **Prune infeasible recipes before expensive qualification.** Use
+  `skills/anvil-serving-recipe-feasibility/SKILL.md` when model, draft, KV,
+  context, concurrency, VRAM/RAM, quality-loss, or speed constraints can rule
+  out candidates. Keep every load-bearing value as a sourced exact value,
+  interval, or explicit unknown. Only optimistic-bound physical failures are
+  unconditional mathematical rejections; label safe-envelope failures as
+  policy-infeasible and paper-feasible candidates as benchmark survivors.
 - **Benchmark research must be date-aware.** When choosing or comparing Fast/Heavy
   model candidates, prefer current official sources and recent hardware-matched
   community data. Record the source URL, published/observed date, age class, evidence
@@ -178,8 +199,10 @@ Use model depth at decision boundaries, then reduce it for bounded execution:
 
 Chat aliases in `[router.model_routes]` map to exactly one local tier. Unknown aliases
 are 404s; unavailable selected tiers are errors. Keep auth, dialect translation, streaming,
-readiness, admission, and `DecisionLog` intact. The OpenClaw adapter contract is documented
-in `docs/OPENCLAW-INTEGRATION-SPEC.md`.
+readiness, admission, and `DecisionLog` intact. Route resolution must remain independent of
+the selected tier's serving engine and quantization; those are deployment and evidence
+attributes, not routing inputs. The OpenClaw adapter contract is documented in
+`docs/OPENCLAW-INTEGRATION-SPEC.md`.
 
 ## What NOT to do
 

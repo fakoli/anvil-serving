@@ -216,13 +216,21 @@ def build_agentic_scenario(
     else:
         code = "SESSION-8841"
         history = []
+        if scenario_type == "long-session":
+            first_prompt = f"Record session marker {code} for this conversation. Reply only ACK."
+            note_template = "Turn {index}: record neutral note {index}. Reply only ACK."
+            final_prompt = "Return only the session marker."
+        else:
+            first_prompt = f"Remember private session code {code}."
+            note_template = "Turn {index}: remember neutral note {index}."
+            final_prompt = "Return only the private session code."
         for index in range(session_turns - 1):
             history.extend([
-                {"role": "user", "content": f"Turn {index}: remember neutral note {index}."},
+                {"role": "user", "content": note_template.format(index=index)},
                 {"role": "assistant", "content": f"noted {index}"},
             ])
-        history.insert(0, {"role": "user", "content": f"Remember private session code {code}."})
-        history.append({"role": "user", "content": "Return only the private session code."})
+        history.insert(0, {"role": "user", "content": first_prompt})
+        history.append({"role": "user", "content": final_prompt})
         scenario["messages"] = history
         expected.update({
             "final": code,
@@ -315,14 +323,35 @@ def score_agentic_trace(
     growth = trace.get("history_prompt_tokens", [])
     history_passed = True
     if expected.get("history") is not None:
-        history_passed = history == expected["history"]
+        if expected.get("require_token_growth"):
+            expected_users = [
+                item for item in expected["history"] if item.get("role") == "user"
+            ]
+            observed_users = [item for item in history if item.get("role") == "user"]
+            observed_assistants = [
+                item for item in history if item.get("role") == "assistant"
+            ]
+            history_passed = history == expected["history"]
+            if not history_passed:
+                history_passed = observed_users == expected_users
+                history_passed = history_passed and len(observed_assistants) == max(
+                    0, len(expected_users) - 1
+                )
+                history_passed = history_passed and all(
+                    isinstance(item.get("content"), str) and bool(item["content"].strip())
+                    for item in observed_assistants
+                )
+        else:
+            history_passed = history == expected["history"]
         history_passed = history_passed and isinstance(growth, list) and bool(growth)
         history_passed = history_passed and all(
             isinstance(item, int) and not isinstance(item, bool) and item >= 0 for item in growth
         )
         if expected.get("require_token_growth"):
             history_passed = history_passed and len(growth) > 1
-            history_passed = history_passed and growth == sorted(growth) and growth[-1] > growth[0]
+            history_passed = history_passed and all(
+                earlier < later for earlier, later in zip(growth, growth[1:])
+            )
     failure = trace.get("failure")
     failure_code = failure.get("code") if isinstance(failure, Mapping) else None
     if failure_code == "reasoning_budget_exhausted":
