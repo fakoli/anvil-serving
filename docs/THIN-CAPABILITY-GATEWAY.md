@@ -65,6 +65,7 @@ metrics. Except for `GET /healthz`, the normal router bearer token or
 
 | Endpoint | Purpose |
 |---|---|
+| `GET /v1/models` | OpenAI-shaped configured aliases with declared context and output limits for client discovery. |
 | `GET /v1/models/capacity` | Declared GPU/model capacity, bounded live engine signals, and request-scenario arithmetic. |
 | `GET /v1/models/capabilities` | Tools, modalities, thinking behavior, context, and multimodal limits. |
 | `GET /v1/models/fingerprints` | Declared checkpoint/engine identity plus identity observed by readiness. |
@@ -73,7 +74,10 @@ metrics. Except for `GET /healthz`, the normal router bearer token or
 | `GET /v1/requests/{request_id}` | Metadata-only trace for an exact sanitized request identifier. |
 | `GET /metrics` | Prometheus gauges for router-buffer aggregates and current model capacity/load. |
 
-Model endpoints and `/v1/stats` accept `model=<configured-alias>`. Capacity also
+The unauthenticated OpenAI-compatible discovery list exposes only aliases and
+their declared context/output limits; it does not expose upstream identity,
+readiness, or private topology. Authenticated model endpoints and `/v1/stats`
+accept `model=<configured-alias>`. Capacity also
 accepts `gpu_role`, `images`, `input_tokens`, `image_tokens`, and
 `output_tokens`. Stats and Prometheus accept `limit` from 1 through 10,000.
 Unknown aliases return 404; unsupported or malformed parameters return 400.

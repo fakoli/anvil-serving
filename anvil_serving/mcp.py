@@ -3,7 +3,7 @@
 Tool implementations live in :mod:`anvil_serving.control_plane.mcp.tools` and
 reach callers through the composed ``TOOLS`` catalog and ``call_tool``/
 ``list_tools`` below. This module additionally re-exports a handful of
-``tool_*`` names directly (``tool_openclaw_sync``, ``tool_router_manage``,
+``tool_*`` names directly (``tool_openclaw_sync``, ``tool_client_catalog_sync``, ``tool_router_manage``,
 ``tool_serves_mode``, ``tool_voice_manage``, ``tool_voice_proxy_manage``) plus
 ``validate_workflow_packet`` for their real callers through this facade;
 other tool functions are reachable only via ``call_tool``/``TOOLS``.
@@ -54,7 +54,7 @@ from .control_plane.mcp.stdio import (
     serve_stdio as _serve_stdio_loop,
 )
 from .control_plane.mcp.tools import TOOLS
-from .control_plane.mcp.tools.openclaw import tool_openclaw_sync
+from .control_plane.mcp.tools.openclaw import tool_client_catalog_sync, tool_openclaw_sync
 from .control_plane.mcp.tools.operations import (
     _tool_operation_contracts,
     operation_declarations as _operation_declarations,

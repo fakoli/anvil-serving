@@ -54,8 +54,8 @@ narration.
   `gpu_inventory`, `host_shared_memory`, `operator_config_inventory`,
   `operator_config_export`, `observability_collect`, `host_manage`,
   `models_inventory`, `model_cache_inventory`, and `cache_prune_plan`.
-- Harness: `openclaw_sync`, `openclaw_gateway_status`, and
-  `openclaw_gateway_restart`.
+- Harness: `openclaw_sync`, `client_catalog_sync`,
+  `openclaw_gateway_status`, and `openclaw_gateway_restart`.
 - Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
   `benchmark_artifact`, `benchmark_harness_prepare`, `benchmark_harness_status`,
   `benchmark_harness_cleanup`, `benchmark_job_preflight`, `benchmark_job_submit`, `benchmark_job_status`,
@@ -123,7 +123,10 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   contract.
 - Harness sync: preview OpenClaw provider, skill, and agent config with
   `openclaw_sync`; apply only to an explicit `out`/`gateway_host` target and
-  preserve operator-owned keys.
+  preserve operator-owned keys. Use `client_catalog_sync` to reconcile local
+  OpenClaw and Pi context/output limits from the router's authenticated status
+  and capability endpoints; preview first, preserve compaction/auth keys, and
+  require confirmation before writing.
 - Router operations: use `router_status`, bounded `router_logs`,
   `router_manage`, `router_transition`, and `decision_summary`; lifecycle and
   tier-transition mutation is preview-first and live only with `confirm=true`

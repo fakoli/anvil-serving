@@ -3,16 +3,16 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from .config import normalize_model_alias
+from .config import RouterConfig, Tier, normalize_model_alias
 
 OWNED_BY = "anvil-serving"
 # Fixed epoch keeps discovery byte-stable for tests and clients' HTTP caches.
 CREATED = 1_700_000_000
 
 
-def model_route_entry(alias: str) -> dict:
+def model_route_entry(alias: str, tier: Tier | None = None) -> dict:
     """Build one OpenAI-shaped model entry for a configured caller alias."""
-    return {
+    entry = {
         "id": alias,
         "object": "model",
         "name": alias,
@@ -20,20 +20,34 @@ def model_route_entry(alias: str) -> dict:
         "owned_by": OWNED_BY,
         "created": CREATED,
     }
+    if tier is not None:
+        # ``context_window`` is understood by Hermes and other OpenAI-compatible
+        # discovery clients.  The more detailed authenticated capability surface
+        # remains authoritative for modalities, readiness, and fingerprints.
+        entry["context_window"] = tier.context_limit
+        entry["max_output_tokens"] = tier.max_output_tokens
+    return entry
 
 
-def models_payload(model_routes: Iterable[str]) -> dict:
+def models_payload(model_routes: RouterConfig | Iterable[str]) -> dict:
     """Build the closed configured model list.
 
     Discovery deliberately does not synthesize presets, tier ids, or implicit
     aliases.  A caller can use only an advertised alias (subject to the same
     wire normalization the request router uses).
     """
+    config = model_routes if isinstance(model_routes, RouterConfig) else None
+    aliases = config.model_routes if config is not None else model_routes
     entries = []
     seen: set[str] = set()
-    for alias in model_routes:
+    for alias in aliases:
         normalized = normalize_model_alias(alias)
         if normalized and normalized not in seen:
-            entries.append(model_route_entry(alias))
+            tier = (
+                config.tier(config.model_routes[alias])
+                if config is not None
+                else None
+            )
+            entries.append(model_route_entry(alias, tier))
             seen.add(normalized)
     return {"object": "list", "data": entries}

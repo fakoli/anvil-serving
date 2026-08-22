@@ -210,6 +210,62 @@ def tool_openclaw_sync(args: dict) -> dict:
     return _ok(result)
 
 
+def tool_client_catalog_sync(args: dict) -> dict:
+    """Preview or apply the fail-closed OpenClaw/Pi capability reconciler."""
+    from .... import harness
+    from ....client_catalog_sync import ClientCatalogError, sync_clients
+
+    base_url = _safe_probe_url(
+        _str_arg(args, "base_url", "http://127.0.0.1:8000/v1")
+    )
+    if "api_key" in args:
+        raise ToolError(
+            "raw_secret_not_allowed",
+            "raw api_key is not accepted; use api_key_env",
+        )
+    api_key_env = _probe_api_key_env(
+        {"api_key_env": _str_arg(args, "api_key_env", "ANVIL_ROUTER_TOKEN")}
+    )
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    restart_on_change = _arg_bool(
+        args.get("restart_openclaw_on_change"),
+        False,
+        name="restart_openclaw_on_change",
+    )
+    timeout_seconds = _bounded_int_arg(
+        args, "timeout_seconds", 15, min_value=1, max_value=300
+    )
+    try:
+        result = sync_clients(
+            base_url=base_url,
+            api_key_env=api_key_env,
+            openclaw_config=_str_arg(
+                args, "openclaw_config", "~/.openclaw/openclaw.json"
+            ),
+            pi_models=_str_arg(args, "pi_models", "~/.pi/agent/models.json"),
+            pi_settings=_str_arg(args, "pi_settings", "~/.pi/agent/settings.json"),
+            state_path=_str_arg(
+                args, "state_path", "~/.anvil-serving/state/client-catalog.json"
+            ),
+            backup_root=_str_arg(
+                args,
+                "backup_root",
+                "~/.anvil-serving/backups/client-catalog",
+            ),
+            restart_openclaw_on_change=restart_on_change,
+            dry_run=dry_run,
+            confirm=confirm,
+            timeout_seconds=timeout_seconds,
+            restart=lambda: harness.cmd_restart_openclaw(
+                timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+            ),
+        )
+    except (OSError, ClientCatalogError) as exc:
+        raise ToolError("client_catalog_sync_failed", str(exc)) from exc
+    return _ok(result)
+
+
 def tool_openclaw_gateway_restart(args: dict) -> dict:
     from .... import harness
 
@@ -338,6 +394,28 @@ FAMILY = ToolFamily(
                 }
             ),
             "handler": tool_openclaw_gateway_status,
+        },
+        "client_catalog_sync": {
+            "description": (
+                "Reconcile local OpenClaw and Pi model limits from authenticated "
+                "router status and capability metadata. Requires confirm=true to write."
+            ),
+            "inputSchema": _schema(
+                {
+                    "base_url": {"type": "string"},
+                    "api_key_env": {"type": "string"},
+                    "openclaw_config": {"type": "string"},
+                    "pi_models": {"type": "string"},
+                    "pi_settings": {"type": "string"},
+                    "state_path": {"type": "string"},
+                    "backup_root": {"type": "string"},
+                    "restart_openclaw_on_change": {"type": "boolean"},
+                    "dry_run": {"type": "boolean"},
+                    "confirm": {"type": "boolean"},
+                    "timeout_seconds": _bounded_integer_schema(1, 300, 15),
+                }
+            ),
+            "handler": tool_client_catalog_sync,
         },
     },
 )
