@@ -75,7 +75,7 @@ def _write_inputs(root: Path, *, bad_pi_compaction=False):
     openclaw.write_text(json.dumps({
         "models": {"mode": "merge", "providers": {
             "anvil": {
-                "baseUrl": "https://router.test.ts.net/v1",
+                "baseUrl": "https://router.example.ts.net/v1",
                 "api": "openai-completions",
                 "apiKey": {"source": "env", "id": "ROUTER_TOKEN"},
                 "customProviderKey": "preserve",
@@ -100,7 +100,7 @@ def _write_inputs(root: Path, *, bad_pi_compaction=False):
     pi_models.write_text(json.dumps({
         "providers": {
             "anvil": {
-                "baseUrl": "https://router.test.ts.net/v1",
+                "baseUrl": "https://router.example.ts.net/v1",
                 "apiKey": "ROUTER_TOKEN",
                 "authHeader": True,
                 "compat": {"supportsUsageInStreaming": True},
@@ -130,7 +130,7 @@ def _run(root: Path, *, opener, confirm=False, dry_run=True, restart=None, resta
         root / "settings.json",
     )
     return sync_clients(
-        base_url="https://router.test.ts.net/v1",
+        base_url="https://router.example.ts.net/v1",
         openclaw_config=str(openclaw),
         pi_models=str(pi_models),
         pi_settings=str(pi_settings),

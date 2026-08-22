@@ -891,7 +891,7 @@ def test_cli_remote_eval_rejects_operator_manifest_before_transport(tmp_path, mo
             "harness-sync-clients",
             "client_catalog_sync",
             {
-                "base_url": "https://router.test.ts.net/v1",
+                "base_url": "https://router.example.ts.net/v1",
                 "confirm": True,
                 "dry_run": False,
                 "restart_openclaw_on_change": True,
@@ -943,7 +943,7 @@ def test_cli_remote_harness_operations_are_typed_and_controller_first(
         "client_catalog_sync": [
             "--confirm",
             "--base-url",
-            "https://router.test.ts.net/v1",
+            "https://router.example.ts.net/v1",
             "--restart-openclaw-on-change",
         ],
         "openclaw_gateway_restart": ["--confirm"],
