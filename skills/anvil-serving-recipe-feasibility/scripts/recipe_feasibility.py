@@ -76,10 +76,10 @@ def _negative(interval: Interval) -> bool:
     )
 
 
-def _clean_number(value: float | None) -> int | float | None:
+def _clean_number(value: int | float | None) -> int | float | None:
     if value is None:
         return None
-    if math.isfinite(value) and value.is_integer():
+    if math.isfinite(value) and float(value).is_integer():
         return int(value)
     return value
 

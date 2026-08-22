@@ -49,6 +49,12 @@ def test_skill_contract_keeps_unknowns_and_classifications_distinct():
         assert phrase in contract
 
 
+def test_number_cleanup_accepts_integer_bounds_on_python_311():
+    module = _module()
+    assert module._clean_number(384_568) == 384_568
+    assert module._clean_number(1.5) == 1.5
+
+
 def test_example_prunes_q6_retains_n4_and_marks_overlapping_bounds_unresolved():
     module = _module()
     result = module.evaluate(json.loads(EXAMPLE.read_text(encoding="utf-8")))
