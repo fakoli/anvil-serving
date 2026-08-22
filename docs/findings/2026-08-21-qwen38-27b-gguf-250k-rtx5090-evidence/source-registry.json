@@ -1,0 +1,78 @@
+{
+  "schema": "anvil-serving/source-registry/v1",
+  "observed_date": "2026-08-21",
+  "sources": [
+    {
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B",
+      "publisher": "Qwen",
+      "evidence_type": "official model card and repository",
+      "age_class": "current",
+      "hardware_engine_relevance": "canonical base architecture, template, context, and license identity",
+      "decision_impact": "anchored the community GGUF candidate to the official base model"
+    },
+    {
+      "url": "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/tree/main",
+      "publisher": "Unsloth",
+      "evidence_type": "original quant repository",
+      "age_class": "current",
+      "hardware_engine_relevance": "GGUF weights, MTP head, and vision projector used by llama.cpp",
+      "decision_impact": "selected Q4_0 candidate artifacts"
+    },
+    {
+      "url": "https://huggingface.co/bartowski/Qwen3.8-27B-GGUF",
+      "publisher": "bartowski",
+      "evidence_type": "original quant repository",
+      "age_class": "current",
+      "hardware_engine_relevance": "conventional GGUF Q6_K control",
+      "decision_impact": "provided exact Q6_K size for the feasibility screen"
+    },
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/releases",
+      "publisher": "llama.cpp",
+      "evidence_type": "official runtime releases",
+      "age_class": "current",
+      "hardware_engine_relevance": "CUDA server runtime with Blackwell support",
+      "decision_impact": "selected digest-pinned b10548 runtime"
+    },
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md",
+      "publisher": "llama.cpp",
+      "evidence_type": "official runtime documentation",
+      "age_class": "current",
+      "hardware_engine_relevance": "OpenAI-compatible server, cache, metrics, slots, multimodal",
+      "decision_impact": "defined launch and observability controls"
+    },
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/blob/master/docs/docker.md",
+      "publisher": "llama.cpp",
+      "evidence_type": "official runtime documentation",
+      "age_class": "current",
+      "hardware_engine_relevance": "CUDA container execution",
+      "decision_impact": "supported reproducible managed container recipe"
+    },
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/blob/master/docs/speculative.md",
+      "publisher": "llama.cpp",
+      "evidence_type": "official runtime documentation",
+      "age_class": "current",
+      "hardware_engine_relevance": "draft-model and MTP speculative decoding",
+      "decision_impact": "selected draft-MTP controls"
+    },
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/issues/27296",
+      "publisher": "llama.cpp community",
+      "evidence_type": "current issue report",
+      "age_class": "current",
+      "hardware_engine_relevance": "long-context state contamination risk",
+      "decision_impact": "required post-envelope functional rerun without restart"
+    },
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/issues/27282",
+      "publisher": "llama.cpp community",
+      "evidence_type": "current issue report",
+      "age_class": "current",
+      "hardware_engine_relevance": "Qwen3.8 llama.cpp compatibility tracking",
+      "decision_impact": "retained runtime caveat and log review gate"
+    }
+  ]
+}

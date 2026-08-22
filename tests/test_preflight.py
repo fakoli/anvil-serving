@@ -198,6 +198,63 @@ def test_t_tool_one_rejects_text_only_response(monkeypatch):
     assert "did not include tool_calls" in detail
 
 
+def test_long_tool_requires_valid_call_and_measured_100k_prompt(monkeypatch):
+    def fake_chat(*_args, **_kwargs):
+        return {
+            "choices": [{
+                "finish_reason": "tool_calls",
+                "message": {
+                    "content": None,
+                    "tool_calls": [{
+                        "type": "function",
+                        "function": {
+                            "name": "get_weather",
+                            "arguments": '{"city":"Oakland"}',
+                        },
+                    }],
+                },
+            }],
+            "usage": {"prompt_tokens": 100123, "completion_tokens": 12},
+        }, 1.25
+
+    monkeypatch.setattr(pf, "chat", fake_chat)
+    evidence = []
+    passed, detail = pf.t_long_tool(
+        "http://127.0.0.1:30000/v1", "candidate", None, 131072, evidence=evidence
+    )
+
+    assert passed is True
+    assert "measured_prompt=100123" in detail
+    assert evidence[0]["measured_prompt_tokens"] == 100123
+    assert evidence[0]["passed"] is True
+
+
+def test_long_tool_fails_when_usage_does_not_prove_100k(monkeypatch):
+    def fake_chat(*_args, **_kwargs):
+        return {
+            "choices": [{
+                "finish_reason": "tool_calls",
+                "message": {
+                    "tool_calls": [{
+                        "type": "function",
+                        "function": {
+                            "name": "get_weather",
+                            "arguments": {"city": "Oakland"},
+                        },
+                    }],
+                },
+            }],
+            "usage": {"prompt_tokens": 99999, "completion_tokens": 12},
+        }, 1.25
+
+    monkeypatch.setattr(pf, "chat", fake_chat)
+    passed, _detail = pf.t_long_tool(
+        "http://127.0.0.1:30000/v1", "candidate", None, 131072
+    )
+
+    assert passed is False
+
+
 def test_preflight_dry_run_never_requests_or_writes(monkeypatch, tmp_path, capsys):
     def boom(*args, **kwargs):
         raise AssertionError("dry-run crossed a deferred boundary")
@@ -237,6 +294,7 @@ def test_preflight_rejects_invalid_output_before_live_probe(monkeypatch, tmp_pat
 
 @pytest.mark.parametrize("flag,value", [
     ("--needle-ctx", "0"),
+    ("--long-tool-ctx", "99999"),
     ("--tool-batch", "129"),
     ("--timeout", "0"),
     ("--visible-answer-tokens", "0"),

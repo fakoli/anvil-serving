@@ -138,16 +138,29 @@ def _endpoint_models(
         raise BenchmarkJobError("route_failure", "endpoint models response is malformed") from exc
     if not isinstance(models, list) or not all(isinstance(item, dict) for item in models):
         raise BenchmarkJobError("route_failure", "endpoint models response is malformed")
-    selected = next((item for item in models if item.get("id") == endpoint["model"]), None)
+    selected = next(
+        (
+            item
+            for item in models
+            if item.get("id") == endpoint["model"]
+            or (
+                isinstance(item.get("aliases"), list)
+                and endpoint["model"] in item["aliases"]
+            )
+        ),
+        None,
+    )
     if selected is None:
         raise BenchmarkJobError(
             "model_mismatch", "requested routed model is absent from endpoint identity"
         )
+    metadata = selected.get("meta") if isinstance(selected.get("meta"), Mapping) else {}
     context = next(
         (
-            selected.get(field)
-            for field in ("max_model_len", "context_length", "max_context_length")
-            if isinstance(selected.get(field), int)
+            source.get(field)
+            for source in (selected, metadata)
+            for field in ("max_model_len", "context_length", "max_context_length", "n_ctx")
+            if isinstance(source.get(field), int)
         ),
         None,
     )
@@ -182,9 +195,15 @@ def run_benchmark_preflight(
     """Observe endpoint and worker readiness without changing model lifecycle."""
     normalized = validate_job_spec(spec)
     required = _requirements(requirements)
-    declared_model_host = normalized.get("parameters", {}).get("model_host_id")
+    parameters = normalized.get("parameters", {})
+    declared_model_host = parameters.get("model_host_id")
     if required["model_host_id"] is None and isinstance(declared_model_host, str):
         required["model_host_id"] = declared_model_host.strip() or None
+    client_topology = parameters.get("client_topology", "isolated")
+    if client_topology not in {"co-resident", "isolated"}:
+        raise BenchmarkJobError(
+            "bad_client_topology", "client_topology must be 'co-resident' or 'isolated'"
+        )
     worker_id = normalized["worker"]["id"]
     worker_platform = sys.platform.lower()
     architecture = platform.machine().lower()
@@ -199,15 +218,24 @@ def run_benchmark_preflight(
     docker = container_binary if container_binary is not None else shutil.which("docker")
     checks = []
     model_host_id = required["model_host_id"]
-    isolated = bool(model_host_id) and model_host_id != worker_id
-    isolation_code = None
-    isolation_detail = "worker differs from model host"
-    if not model_host_id:
-        isolation_code = "model_host_identity_absent"
-        isolation_detail = "model host identity was not declared"
-    elif not isolated:
-        isolation_code = "worker_not_isolated"
-        isolation_detail = "worker matches model host"
+    if client_topology == "co-resident":
+        isolated = bool(model_host_id) and model_host_id == worker_id
+        isolation_code = None if isolated else "worker_topology_mismatch"
+        isolation_detail = (
+            "co-resident benchmark client explicitly declared"
+            if isolated
+            else "co-resident client must match the declared model host"
+        )
+    else:
+        isolated = bool(model_host_id) and model_host_id != worker_id
+        isolation_code = None
+        isolation_detail = "worker differs from model host"
+        if not model_host_id:
+            isolation_code = "model_host_identity_absent"
+            isolation_detail = "model host identity was not declared"
+        elif not isolated:
+            isolation_code = "worker_not_isolated"
+            isolation_detail = "worker matches model host"
     checks.append(
         _check(
             "worker_isolation",

@@ -55,10 +55,52 @@ def test_context_runner_calibrates_with_endpoint_usage_and_scores_exactly():
         spec("context", case_limit=1, advertised_context=650000),
         caller=context_caller,
     )
-    assert result["calibration"]["method"] == "endpoint-usage-ratio/v1"
+    assert result["calibration"]["method"] == "endpoint-usage-filler-ratio/v2"
     assert result["observations"][0]["passed"] is True
     assert result["curve"]["effective_context"] == 8192
     assert result["request_ids"]
+
+
+def test_context_runner_honors_recorded_case_bucket_position_and_headroom_selection():
+    result = run_context_suite(
+        load_profile("smoke"),
+        spec(
+            "context",
+            case_ids=["native-needle"],
+            token_buckets=[512],
+            positions=[0.97],
+            repetitions=1,
+            output_headroom_tokens=8192,
+            advertised_context=262144,
+        ),
+        caller=context_caller,
+    )
+
+    assert result["selection"] == {
+        "case_ids": ["native-needle"],
+        "token_buckets": [512],
+        "positions": [0.97],
+        "repetitions": 1,
+        "output_headroom_tokens": 8192,
+    }
+    assert result["observations"][0]["requested_tokens"] == 512
+    assert result["observations"][0]["position"] == 0.97
+
+
+def test_context_runner_rejects_selection_beyond_advertised_capacity():
+    with pytest.raises(BenchmarkJobError) as exc:
+        run_context_suite(
+            load_profile("smoke"),
+            spec(
+                "context",
+                token_buckets=[250000],
+                output_headroom_tokens=16384,
+                advertised_context=262144,
+            ),
+            caller=context_caller,
+        )
+
+    assert exc.value.code == "context_capacity_exceeded"
 
 
 def test_context_runner_rejects_unimplemented_profile_cases():
@@ -169,6 +211,42 @@ def test_agentic_runner_executes_every_profile_repetition():
 
     assert [item["repetition"] for item in result["observations"]] == [0, 1]
     assert result["summary"]["attempted"] == 2
+
+
+def test_agentic_runner_executes_real_long_session_turns_with_token_growth():
+    class LongSessionCaller:
+        def __init__(self):
+            self.prompts = []
+
+        def __call__(self, base, model, key, messages, max_tokens, timeout, **_kwargs):
+            self.prompts.append(copy.deepcopy(messages))
+            final = messages[-1]["content"] == "Return only the session marker."
+            content = "SESSION-8841" if final else f"noted {len(self.prompts)}"
+            return {
+                "latency_s": 0.1,
+                "request_id": f"session-{len(self.prompts)}",
+                "response": {
+                    "choices": [{"message": {"content": content}, "finish_reason": "stop"}],
+                    "usage": {
+                        "prompt_tokens": 100 * len(self.prompts),
+                        "completion_tokens": 2,
+                    },
+                },
+            }
+
+    profile = copy.deepcopy(load_profile("deep"))
+    profile["suites"]["agentic"]["repetitions"] = 1
+    caller = LongSessionCaller()
+    result = run_agentic_suite(
+        profile,
+        spec("agentic", case_ids=["long-session"], session_turns=4),
+        caller=caller,
+    )
+
+    assert result["passed"] is True
+    assert len(caller.prompts) == 5
+    assert result["observations"][0]["history_prompt_tokens"] == [100, 200, 300, 400, 500]
+    assert len(result["request_ids"]) == 5
 
 
 @pytest.mark.parametrize("case_ids", [[], ["tool-recovery", "tool-recovery"], ["unknown"]])

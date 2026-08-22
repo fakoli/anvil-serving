@@ -4,6 +4,54 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0] - 2026-08-22
+
+### Added
+
+- `eval routed` provides a fail-closed real-client acceptance gate for routed
+  model candidates. It reconciles OpenClaw and Pi catalogs from authenticated
+  router metadata, verifies the post-sync router fingerprint and capacity,
+  then exercises exact identity and shell-tool/result continuation through
+  OpenClaw and Hermes while rejecting client fallback as a false pass.
+- The recipe-feasibility skill screens candidate quantization, speculative,
+  context, KV-cache, concurrency, headroom, speed, and quality intervals before
+  a GPU is occupied. Unknown terms remain explicit variables instead of being
+  replaced by optimistic point estimates.
+- Context qualification now includes exact identifiers and distant cross-link
+  retrieval, configurable positions and repetitions, real accumulating agent
+  sessions, a co-resident benchmark client topology, and a `long-tools` gate
+  that requires at least 100,000 reported prompt tokens.
+
+### Changed
+
+- Router and operator guidance now makes serving-engine neutrality explicit,
+  including llama.cpp, vLLM, SGLang, TensorRT-LLM, Unsloth-derived runtimes,
+  and future OpenAI-compatible engines. Routes remain capability contracts,
+  never engine selectors.
+- The benchmark harness recognizes llama.cpp model aliases and nested context
+  metadata, preserves strict prompt-growth evidence during long sessions, and
+  records routed-client configuration drift before any acceptance traffic.
+- Published the RTX 5090 Qwen3.8 27B Q4_0/no-spec versus Q4_0/MTP3 250K
+  qualification and the real `llm.secondary` OpenClaw/Hermes follow-up. The
+  result is a `FAST-TIER` challenger with no promotion: direct 250K gates pass,
+  while truthful routed 250K capacity and fingerprint gates remain closed.
+
+### Fixed
+
+- Routed evaluation now fails before client requests when the router changes
+  during catalog reconciliation, when the expected router configuration hash
+  differs, or when advertised context, runtime, quantization, and capability
+  metadata do not describe the candidate being evaluated.
+
+### Known limitations
+
+- The Qwen3.8 Q4_0/MTP3 candidate is not promoted. Its managed container health
+  probe still targets the upstream image's default port, the independent SWE
+  worker was unavailable through the required controller transport, llama.cpp
+  emitted non-consecutive-position warnings during endurance, and native video
+  is unsupported. Q6_K with the same MTP head is policy-infeasible at the
+  required 250,000-token prompt plus 8,192-token output reserve on 32 GiB VRAM.
+
 ## [0.34.3] - 2026-08-22
 
 ### Added
@@ -2210,7 +2258,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.35.0...HEAD
+[0.35.0]: https://github.com/fakoli/anvil-serving/compare/v0.34.3...v0.35.0
 [0.21.0]: https://github.com/fakoli/anvil-serving/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/fakoli/anvil-serving/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/fakoli/anvil-serving/compare/v0.18.0...v0.19.0

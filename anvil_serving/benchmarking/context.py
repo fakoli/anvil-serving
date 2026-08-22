@@ -6,6 +6,7 @@ import hashlib
 import random
 import re
 import statistics
+import uuid
 from typing import Any, Callable, Mapping
 
 from .jobs import BenchmarkJobError
@@ -14,7 +15,13 @@ from .jobs import BenchmarkJobError
 CONTEXT_CASE_SCHEMA = "anvil-serving.context-case/v1"
 CONTEXT_OBSERVATION_SCHEMA = "anvil-serving.context-observation/v1"
 CONTEXT_CURVE_SCHEMA = "anvil-serving.context-curve/v1"
-NATIVE_CONTEXT_CASES = frozenset({"native-needle", "native-order", "native-distractor"})
+NATIVE_CONTEXT_CASES = frozenset({
+    "native-crosslink",
+    "native-distractor",
+    "native-identifiers",
+    "native-needle",
+    "native-order",
+})
 TokenCounter = Callable[[str], int]
 _ANSWER_RE = re.compile(r"\s+")
 
@@ -55,18 +62,69 @@ def _native_payload(case_type: str, seed: int) -> tuple[list[str], str, str]:
         ] + [f"The canonical ORCHID marker is {values[0]}."]
         question = "Return only the canonical ORCHID marker, ignoring numbered archives."
         expected = values[0]
+    elif case_type == "native-identifiers":
+        name = f"Iris Valen-{rng.randrange(1000, 9999)}"
+        identifier = str(uuid.UUID(int=rng.getrandbits(128)))
+        number = rng.randrange(10**10, 10**11 - 1)
+        ip_address = f"198.51.100.{rng.randrange(1, 255)}"
+        symbol = f"resolve_orchid_{rng.randrange(10000, 99999)}"
+        records = [
+            (
+                f"Operator {name} owns ticket {identifier}, numeric account {number}, "
+                f"endpoint {ip_address}, and code symbol {symbol}."
+            )
+        ]
+        question = (
+            "Return the exact identifiers in this format: "
+            "NAME=<name> | UUID=<uuid> | NUMBER=<number> | IP=<ip> | SYMBOL=<symbol>."
+        )
+        expected = (
+            f"NAME={name} | UUID={identifier} | NUMBER={number} | "
+            f"IP={ip_address} | SYMBOL={symbol}"
+        )
+    elif case_type == "native-crosslink":
+        name = f"Mara Quill-{rng.randrange(1000, 9999)}"
+        ip_address = f"203.0.113.{rng.randrange(1, 255)}"
+        symbol = f"commit_aster_{rng.randrange(10000, 99999)}"
+        records = [
+            f"Project ASTER is owned by {name}.",
+            f"The deployment endpoint assigned to {name} is {ip_address}.",
+            f"The service at {ip_address} exports code symbol {symbol}.",
+        ]
+        question = (
+            "Follow the relationships and return exactly: "
+            "ASTER -> <owner> -> <endpoint> -> <code symbol>."
+        )
+        expected = f"ASTER -> {name} -> {ip_address} -> {symbol}"
     else:
         raise BenchmarkJobError("unknown_context_case", f"unknown native case {case_type!r}")
     return records, question, expected
 
 
-def _render_prompt(filler_units: int, records: list[str], position: float, question: str) -> str:
+def _render_prompt(
+    filler_units: int,
+    records: list[str],
+    position: float,
+    question: str,
+    *,
+    spread_records: bool = False,
+) -> str:
     filler = [
         f"Reference paragraph {index:07d}: neutral cobalt ledger material for calibration."
         for index in range(filler_units)
     ]
-    insertion = round(len(filler) * position)
-    document = filler[:insertion] + records + filler[insertion:]
+    if spread_records and len(records) > 1:
+        document = list(filler)
+        placements = [
+            ((position + offset) % 1.0, record)
+            for offset, record in zip((0.0, 0.37, 0.73), records)
+        ]
+        for record_position, record in sorted(placements, reverse=True):
+            insertion = round(len(filler) * record_position)
+            document.insert(insertion, record)
+    else:
+        insertion = round(len(filler) * position)
+        document = filler[:insertion] + records + filler[insertion:]
     return (
         "Read the reference document and answer the final question.\n\n"
         + "\n".join(document)
@@ -94,30 +152,34 @@ def build_native_context_case(
     if not isinstance(repetition, int) or isinstance(repetition, bool) or repetition < 0:
         raise BenchmarkJobError("bad_repetition", "repetition must be non-negative")
     records, question, expected = _native_payload(case_type, seed + repetition)
-    base = _render_prompt(0, records, float(position), question)
+    render_kwargs = {"spread_records": case_type == "native-crosslink"}
+    base = _render_prompt(0, records, float(position), question, **render_kwargs)
     base_tokens = _token_count(token_counter, base)
     if base_tokens > requested_tokens:
         raise BenchmarkJobError(
             "context_bucket_too_small", "case instructions exceed the requested token bucket"
         )
-    sample_unit = _render_prompt(1, records, float(position), question)
+    sample_unit = _render_prompt(1, records, float(position), question, **render_kwargs)
     tokens_per_unit = max(1, _token_count(token_counter, sample_unit) - base_tokens)
     estimate = max(0, (requested_tokens - base_tokens) // tokens_per_unit)
     low = max(0, estimate - 8)
     high = max(estimate + 8, 1)
-    while _token_count(token_counter, _render_prompt(high, records, float(position), question)) <= requested_tokens:
+    while _token_count(
+        token_counter,
+        _render_prompt(high, records, float(position), question, **render_kwargs),
+    ) <= requested_tokens:
         low = high
         high *= 2
         if high > requested_tokens * 2:
             break
     while low + 1 < high:
         middle = (low + high) // 2
-        candidate = _render_prompt(middle, records, float(position), question)
+        candidate = _render_prompt(middle, records, float(position), question, **render_kwargs)
         if _token_count(token_counter, candidate) <= requested_tokens:
             low = middle
         else:
             high = middle
-    prompt = _render_prompt(low, records, float(position), question)
+    prompt = _render_prompt(low, records, float(position), question, **render_kwargs)
     actual_tokens = _token_count(token_counter, prompt)
     case_id = f"{case_type}-{requested_tokens}-{position:.3f}-r{repetition}"
     public = {
@@ -128,8 +190,12 @@ def build_native_context_case(
         "calibrated_prompt_tokens": actual_tokens,
         "token_measurement": "tokenizer",
         "position": float(position),
-        "target_count": len(records) if case_type == "native-order" else 1,
-        "distractor_count": len(records) - 1,
+        "target_count": (
+            len(records)
+            if case_type in {"native-crosslink", "native-identifiers", "native-order"}
+            else 1
+        ),
+        "distractor_count": len(records) - 1 if case_type == "native-distractor" else 0,
         "prompt": prompt,
     }
     expected_record = {

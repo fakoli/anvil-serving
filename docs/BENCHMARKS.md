@@ -26,7 +26,30 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-21**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-22**.
+
+## Qwen3.8 27B GGUF 250K qualification on RTX 5090 (2026-08-21)
+
+A managed llama.cpp b10548 campaign compared Unsloth Q4_0 without speculation
+against the same weights plus the matching Q4_0 MTP head at concurrency one
+and 262,144 served tokens. Both passed exact retrieval through 253,822 actual
+prompt tokens while preserving an 8,192-token output reserve. The MTP arm
+raised short decode from 69.1 to 104.1 tok/s and reduced short E2E from 0.91 to
+0.74 seconds, though TTFT and prefill regressed. It also passed tools 20/20, a
+tool call after 110,875 actual prompt tokens, agentic 16/18, three neutral
+101-request endurance sessions, and an 18/18 image/OCR/UI corpus.
+
+Conventional Q6_K plus the same MTP head was not loaded: its optimistic
+capacity bound was 199,930 tokens and its margin at the required 258,192-token
+envelope remained negative. Q4_0+MTP3 is therefore the preferred RTX 5090
+`FAST-TIER` challenger. Promotion is deferred because the isolated SWE worker
+could not complete, the image health probe targets the wrong port, and runtime
+position warnings need resolution. An August 22 follow-up passed real OpenClaw
+and Hermes routed identity, no-fallback, and shell-tool/result-continuation
+smokes. The 250K routed gate remains closed because the bounded route declared
+stale 131,072-token SGLang/NVFP4 metadata and video capability instead of the
+262K llama.cpp image-only recipe. See the
+[GGUF qualification](findings/2026-08-21-qwen38-27b-gguf-250k-rtx5090.md).
 
 ## DeepSeek Infernal Invocation r18 1M qualification (2026-08-21)
 

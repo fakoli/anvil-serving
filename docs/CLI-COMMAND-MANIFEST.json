@@ -10170,6 +10170,338 @@
     },
     {
       "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#routed-client-evaluation",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.routed_eval:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--base-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Authenticated router API base URL.",
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Public router alias to evaluate.",
+          "value_name": "ALIAS"
+        },
+        {
+          "flags": [
+            "--api-key-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router credential environment variable.",
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--expected-served-model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Exact served identity expected from router readiness.",
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--expected-config-fingerprint"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Exact routed configuration fingerprint.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--expected-router-config-sha256"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Exact router configuration hash expected during reconciliation.",
+          "value_name": "SHA256"
+        },
+        {
+          "flags": [
+            "--min-context-tokens"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Minimum routed context capacity.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--clients"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Comma-separated real clients: openclaw,hermes.",
+          "value_name": "LIST"
+        },
+        {
+          "flags": [
+            "--openclaw-provider"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "OpenClaw provider selected for the invocation.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--hermes-provider"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Hermes provider selector for the invocation.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--hermes-expected-provider"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Provider identity expected in Hermes usage evidence.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--no-harness-sync"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Skip OpenClaw/Pi catalog reconciliation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--openclaw-config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "OpenClaw catalog to reconcile.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--pi-models"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Pi provider catalog to reconcile.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--pi-settings"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Pi settings catalog to reconcile.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--client-state-path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client reconciliation state file.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--client-backup-root"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Private client catalog backup directory.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Per-router and per-client timeout.",
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--run-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable routed-evaluation identifier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--output"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Atomic JSON evidence destination.",
+          "value_name": "PATH"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval routed",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": "gateway",
+      "summary": "Run fail-closed router and real-client acceptance for one alias.",
+      "transports": [
+        "local"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark",
       "execution_host_os": [],
       "execution_policy": "offline",

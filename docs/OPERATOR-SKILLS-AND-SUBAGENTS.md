@@ -11,6 +11,7 @@ authorization.
 | Serve operator | Exact serve and manifest | Preview or confirmed lifecycle result | Requires explicit target and confirmation. |
 | Preflight runner | Local endpoint and served model | Functional pass/fail evidence | Benchmark is blocked on failure. |
 | Benchmark runner | Preflight proof and measurement shape | Durable artifact and summary | Capacity is not quality proof. |
+| Feasibility analyst | Requirements, sourced intervals, hardware and artifact bounds | Pruned candidate matrix plus unresolved-variable ledger | Paper feasibility is permission to test, not qualification. |
 | Kernel tuner | Exact runtime, GPU, model geometry, and untuned baseline | Pinned tune plus paired A/B decision | Generated microbenchmark config is not adoption proof. |
 | Evidence reporter | Artifacts and config identity | Dated finding with caveats | Does not promote. |
 | Adversarial reviewer | Diff, tests, docs, evidence | Severity-ordered findings | Does not implement in the review pass. |
@@ -33,6 +34,14 @@ Multi-sample STT corpus qualification uses
 preparation, repeated/concurrent WER/CER and latency evidence, restoration
 checks, and the dated finding; lifecycle mechanics remain in the CLI and
 managed serve manifests.
+
+Pre-benchmark model and runtime pruning uses
+`skills/anvil-serving-recipe-feasibility/SKILL.md`. Its deterministic interval
+calculator separates physical impossibility, safe-policy failure, measured
+failure, unresolved bounds, and benchmark survivors. Unknown runtime, KV,
+workspace, quality, and speed values remain named variables and are narrowed
+from later managed qualification evidence; no mathematical result promotes a
+serve or route.
 
 Hardware-specific MoE/GEMM tuning uses
 `skills/anvil-serving-kernel-tuning/SKILL.md`. Repository-owned configs live

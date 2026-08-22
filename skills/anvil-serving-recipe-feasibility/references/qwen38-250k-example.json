@@ -1,0 +1,395 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "qwen38-27b-rtx5090-250k-example",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 250000,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "campaign requirement",
+        "observed_at": "2026-08-21",
+        "notes": "Actual total resident prompt tokens, including system instructions, tools, and any media tokens."
+      },
+      "output_reserve": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "campaign requirement",
+        "observed_at": "2026-08-21"
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "sequences",
+      "status": "assumed",
+      "source": "single-agent qualification lane",
+      "observed_at": "2026-08-21"
+    },
+    "physical_vram_bytes": {
+      "value": 34190917632,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "nvidia-smi RTX 5090 total memory",
+      "observed_at": "2026-08-21"
+    },
+    "vram_reserves": {
+      "co_resident": {
+        "kind": "physical",
+        "variable": {
+          "value": 0,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "isolated qualification lane",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "desktop_driver_headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 3221225472,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "campaign safe-operating policy",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "allocator_uncertainty": {
+        "kind": "policy",
+        "variable": {
+          "value": 805306368,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "cross-engine estimator safety band",
+          "observed_at": "2026-08-21"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "qualification hard gate",
+        "observed_at": "2026-08-21"
+      },
+      "max_relative_quality_loss": {
+        "value": 0.03,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "campaign intelligence-loss budget",
+        "observed_at": "2026-08-21"
+      },
+      "min_warm_e2e_gain": {
+        "value": 0.15,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "campaign MTP speed gate",
+        "observed_at": "2026-08-21"
+      },
+      "min_tasks_per_hour_ratio": {
+        "value": 1.2,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "campaign operational speed gate",
+        "observed_at": "2026-08-21"
+      }
+    }
+  },
+  "tracked_variables": {
+    "wsl2_memory_limit_bytes": {
+      "status": "unknown",
+      "unit": "bytes",
+      "notes": "Read .wslconfig before any CPU quantization or offload analysis."
+    },
+    "system_ram_peak_bytes": {
+      "status": "unknown",
+      "unit": "bytes",
+      "notes": "Measure during conversion, mmap, long prefill, and any bounded offload diagnostic."
+    }
+  },
+  "candidates": [
+    {
+      "id": "q38-n4-q8-mtp3",
+      "runtime_context_limit_tokens": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "official Qwen3.8 native context",
+        "observed_at": "2026-08-21"
+      },
+      "resident_components": {
+        "target_weights": {
+          "min": 16056478688,
+          "max": 16538173049,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "N4_0 uses the Q4_0 block footprint; local output hash pending",
+          "observed_at": "2026-08-21"
+        },
+        "mtp_draft": {
+          "min": 1680271648,
+          "max": 1730679798,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed ggml-org Qwen3.8 MTP Q4_0 artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "vision_projector": {
+          "min": 629247008,
+          "max": 648124419,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed ggml-org Qwen3.8 Q8 projector artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "runtime_fixed": {
+          "min": 1073741824,
+          "max": 1610612736,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "pre-start planning bound; replace from llama.cpp startup evidence",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "per_token_components": {
+        "target_and_draft_q8_kv": {
+          "min": 33458,
+          "max": 35529,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "local SGLang target/draft KV density scaled for GGUF Q8_0 block overhead",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "concurrency-one independent sequence",
+        "observed_at": "2026-08-21"
+      },
+      "tracked_variables": {
+        "mtp_acceptance_rate": {
+          "status": "unknown",
+          "unit": "ratio",
+          "notes": "Measure by context and output shape; do not infer speed from acceptance alone."
+        }
+      }
+    },
+    {
+      "id": "q38-conventional-q6-q4kv-mtp3",
+      "runtime_context_limit_tokens": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "official Qwen3.8 native context",
+        "observed_at": "2026-08-21"
+      },
+      "resident_components": {
+        "target_weights": {
+          "min": 23228500000,
+          "max": 24167024642,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "published conventional Q6_K GGUF size proxy; local output hash pending",
+          "observed_at": "2026-08-21"
+        },
+        "mtp_draft": {
+          "min": 1680271648,
+          "max": 1730679798,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed ggml-org Qwen3.8 MTP Q4_0 artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "vision_projector": {
+          "min": 629247008,
+          "max": 648124419,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed ggml-org Qwen3.8 Q8 projector artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "runtime_fixed": {
+          "min": 1073741824,
+          "max": 1610612736,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "pre-start planning bound; replace from llama.cpp startup evidence",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "per_token_components": {
+        "target_q4_and_draft_q8_kv": {
+          "min": 18680,
+          "max": 19836,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "local SGLang target/draft KV density scaled for GGUF block overhead",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "concurrency-one independent sequence",
+        "observed_at": "2026-08-21"
+      }
+    },
+    {
+      "id": "q38-q4km-k8v4-mtp3",
+      "runtime_context_limit_tokens": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "official Qwen3.8 native context",
+        "observed_at": "2026-08-21"
+      },
+      "resident_components": {
+        "target_weights": {
+          "min": 18973870432,
+          "max": 19543086545,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed ggml-org Qwen3.8 Q4_K_M artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "mtp_draft": {
+          "min": 1680271648,
+          "max": 1730679798,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed ggml-org Qwen3.8 MTP Q4_0 artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "vision_projector": {
+          "min": 629247008,
+          "max": 648124419,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed ggml-org Qwen3.8 Q8 projector artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "runtime_fixed": {
+          "min": 1073741824,
+          "max": 1610612736,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "pre-start planning bound; replace from llama.cpp startup evidence",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "per_token_components": {
+        "target_k8v4_and_draft_q8_kv": {
+          "min": 26069,
+          "max": 27682,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "local SGLang target/draft KV density scaled for mixed GGUF block overhead",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "concurrency-one independent sequence",
+        "observed_at": "2026-08-21"
+      }
+    },
+    {
+      "id": "q38-unsloth-udq5xl-q4kv-mtp3",
+      "runtime_context_limit_tokens": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "official Qwen3.8 native context",
+        "observed_at": "2026-08-21"
+      },
+      "resident_components": {
+        "target_weights": {
+          "min": 20876938144,
+          "max": 21503246289,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed unsloth Qwen3.8 UD-Q5_K_XL artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "mtp_draft": {
+          "min": 1369590656,
+          "max": 1410678376,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed unsloth Qwen3.8 MTP Q4_0 artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "vision_projector": {
+          "min": 927607488,
+          "max": 955435713,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "resident-allocation proxy from the confirmed unsloth Qwen3.8 F16 projector artifact size",
+          "observed_at": "2026-08-21"
+        },
+        "runtime_fixed": {
+          "min": 1073741824,
+          "max": 1610612736,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "pre-start planning bound; replace from llama.cpp startup evidence",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "per_token_components": {
+        "target_q4_and_draft_q8_kv": {
+          "min": 18680,
+          "max": 19836,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "local SGLang target/draft KV density scaled for GGUF block overhead",
+          "observed_at": "2026-08-21"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "concurrency-one independent sequence",
+        "observed_at": "2026-08-21"
+      }
+    },
+    {
+      "id": "q38-sglang-nvfp4-128k-measured",
+      "runtime_context_limit_tokens": {
+        "value": 131072,
+        "unit": "tokens",
+        "status": "measured",
+        "source": "retained managed SGLang recipe",
+        "observed_at": "2026-08-21"
+      },
+      "resident_components": {
+        "runtime_allocation": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Not needed for disqualification because measured context already fails."
+        }
+      },
+      "per_token_components": {
+        "kv": {
+          "status": "unknown",
+          "unit": "bytes/token",
+          "notes": "Not needed for disqualification because measured context already fails."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "concurrency-one retained recipe",
+        "observed_at": "2026-08-21"
+      }
+    }
+  ]
+}

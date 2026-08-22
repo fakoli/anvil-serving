@@ -43,6 +43,46 @@ def test_multiple_target_and_distractor_cases_are_explicit():
     assert distractor["distractor_count"] == 2
 
 
+def test_identifier_case_covers_exact_agent_workload_values():
+    case, answer = build_native_context_case(
+        "native-identifiers",
+        requested_tokens=512,
+        position=0.97,
+        repetition=1,
+        token_counter=words,
+    )
+
+    expected = answer["expected_answer"]
+    assert case["position"] == 0.97
+    assert case["target_count"] == 1
+    assert "NAME=" in expected
+    assert "UUID=" in expected
+    assert "NUMBER=" in expected
+    assert "IP=198.51.100." in expected
+    assert "SYMBOL=resolve_orchid_" in expected
+
+
+def test_crosslink_case_spreads_relationships_across_the_prompt():
+    case, answer = build_native_context_case(
+        "native-crosslink",
+        requested_tokens=1024,
+        position=0.1,
+        repetition=1,
+        token_counter=words,
+    )
+
+    prompt = case["prompt"]
+    owner_index = prompt.index("Project ASTER is owned by")
+    endpoint_index = prompt.index("The deployment endpoint assigned to")
+    symbol_index = prompt.index("exports code symbol")
+    assert len({owner_index, endpoint_index, symbol_index}) == 3
+    assert max(owner_index, endpoint_index, symbol_index) - min(
+        owner_index, endpoint_index, symbol_index
+    ) > len(prompt) // 3
+    assert case["target_count"] == 3
+    assert answer["expected_answer"].startswith("ASTER -> ")
+
+
 def test_visible_wrong_answer_fails_deterministic_semantic_score():
     case, expected = build_native_context_case(
         "native-needle", requested_tokens=256, position=0.5, repetition=0, token_counter=words

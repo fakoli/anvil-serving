@@ -132,6 +132,25 @@ def test_long_session_preserves_full_history_and_token_growth():
     assert result["history_prompt_tokens"] == [100, 250, 500, 900]
 
 
+def test_long_session_accepts_real_assistant_replies_and_requires_strict_growth():
+    scenario, expected = build_agentic_scenario("long-session", session_turns=4)
+    users = [item for item in scenario["messages"] if item["role"] == "user"]
+    history = []
+    for index, user in enumerate(users):
+        history.append(user)
+        if index < len(users) - 1:
+            history.append({"role": "assistant", "content": f"acknowledged {index}"})
+    trace = passing_trace(expected)
+    trace["history"] = history
+    trace["history_prompt_tokens"] = [100, 200, 300]
+    assert score_agentic_trace(scenario, expected, trace)["passed"] is True
+
+    trace["history_prompt_tokens"] = [100, 100, 300]
+    result = score_agentic_trace(scenario, expected, trace)
+    assert result["passed"] is False
+    assert result["stages"]["history"] == {"passed": False}
+
+
 def test_context_recovery_accepts_one_measured_long_history_request():
     scenario, expected = build_agentic_scenario("context-recovery", session_turns=8)
     trace = passing_trace(expected)
