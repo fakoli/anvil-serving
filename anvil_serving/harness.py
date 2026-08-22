@@ -390,10 +390,46 @@ def cmd_status_openclaw(**kwargs):
     return 0 if result["ok"] else 1
 
 
+def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
+                     openclaw_config="~/.openclaw/openclaw.json",
+                     pi_models="~/.pi/agent/models.json",
+                     pi_settings="~/.pi/agent/settings.json",
+                     state_path="~/.anvil-serving/state/client-catalog.json",
+                     backup_root="~/.anvil-serving/backups/client-catalog",
+                     restart_openclaw_on_change=False, dry_run=True, confirm=False,
+                     timeout_seconds=15, _opener=None, _restart=None, _environ=None):
+    """Reconcile Mini clients from authenticated router model metadata."""
+    from .client_catalog_sync import ClientCatalogError, sync_clients
+
+    try:
+        result = sync_clients(
+            base_url=base_url,
+            api_key_env=api_key_env,
+            openclaw_config=openclaw_config,
+            pi_models=pi_models,
+            pi_settings=pi_settings,
+            state_path=state_path,
+            backup_root=backup_root,
+            restart_openclaw_on_change=restart_openclaw_on_change,
+            dry_run=dry_run,
+            confirm=confirm,
+            timeout_seconds=timeout_seconds,
+            opener=_opener,
+            restart=_restart,
+            environ=_environ,
+        )
+    except (OSError, ClientCatalogError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 def _build_parser():
     parser = argparse.ArgumentParser(prog="anvil-serving harness")
     actions = parser.add_subparsers(dest="action", required=True)
-    sync = actions.add_parser("sync").add_subparsers(dest="target", required=True).add_parser("openclaw")
+    sync_targets = actions.add_parser("sync").add_subparsers(dest="target", required=True)
+    sync = sync_targets.add_parser("openclaw")
     sync.add_argument("--config", required=True)
     sync.add_argument("--out")
     sync.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
@@ -403,6 +439,17 @@ def _build_parser():
     sync.add_argument("--voice-model")
     sync.add_argument("--voice-api-key-env")
     sync.add_argument("--overwrite", action="store_true")
+    clients = sync_targets.add_parser("clients")
+    clients.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
+    clients.add_argument("--api-key-env", default="ANVIL_ROUTER_TOKEN")
+    clients.add_argument("--openclaw-config", default="~/.openclaw/openclaw.json")
+    clients.add_argument("--pi-models", default="~/.pi/agent/models.json")
+    clients.add_argument("--pi-settings", default="~/.pi/agent/settings.json")
+    clients.add_argument("--state-path", default="~/.anvil-serving/state/client-catalog.json")
+    clients.add_argument("--backup-root", default="~/.anvil-serving/backups/client-catalog")
+    clients.add_argument("--restart-openclaw-on-change", action="store_true")
+    clients.add_argument("--dry-run", action="store_true")
+    clients.add_argument("--timeout-seconds", type=int, default=15)
     restart = actions.add_parser("restart").add_subparsers(dest="target", required=True).add_parser("openclaw")
     restart.add_argument("--gateway-host")
     restart.add_argument("--gateway-user")
@@ -415,6 +462,25 @@ def _build_parser():
 def main(argv=None):
     args = _build_parser().parse_args(argv)
     if args.action == "sync":
+        if args.target == "clients":
+            from . import guard
+
+            return cmd_sync_clients(
+                base_url=args.base_url,
+                api_key_env=args.api_key_env,
+                openclaw_config=args.openclaw_config,
+                pi_models=args.pi_models,
+                pi_settings=args.pi_settings,
+                state_path=args.state_path,
+                backup_root=args.backup_root,
+                restart_openclaw_on_change=args.restart_openclaw_on_change,
+                dry_run=args.dry_run,
+                confirm=guard.confirmation_authorized(),
+                timeout_seconds=args.timeout_seconds,
+                _restart=lambda: cmd_restart_openclaw(
+                    timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+                ),
+            )
         return cmd_sync_openclaw(args.config, out=args.out, base_url=args.base_url,
                                  api_key_env=args.api_key_env, voice=args.voice,
                                  voice_realtime_url=args.voice_realtime_url,

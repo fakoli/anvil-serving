@@ -13,6 +13,7 @@ in-process data-plane operation.
 | --- | --- | --- |
 | Check deployment ownership | `topology validate` | Use `topology show` for the declaration or `topology resolve` for one command. |
 | Update OpenClaw integration | `harness sync openclaw --dry-run` | Apply with `--confirm`, then check `harness status openclaw`. |
+| Refresh Mini model limits | `harness sync clients --dry-run` | Review the exact router hash and per-alias limits, then apply with `--confirm`. |
 | Connect an MCP client locally | `mcp tools` | Configure the client to run `mcp serve` over stdio. |
 | Operate a split host | `controller serve` | Probe it with `controller status`, then point `mcp serve` at it. |
 | Add optional telemetry | `collectors configure` | Validate offline, then use `collectors inspect` for one bounded read. |
@@ -33,6 +34,7 @@ in-process data-plane operation.
 | Command | Purpose |
 | --- | --- |
 | `harness sync openclaw` | Render, merge, or apply the OpenClaw provider integration. |
+| `harness sync clients` | Reconcile local OpenClaw and Pi limits from authenticated router metadata. |
 | `harness restart openclaw` | Restart one local or remote OpenClaw gateway. |
 | `harness status openclaw` | Read bounded OpenClaw gateway status. |
 
@@ -97,7 +99,7 @@ OpenClaw sync is a render-first workflow:
 
 ```bash
 anvil-serving harness sync openclaw --config configs/example.toml --dry-run
-anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --base-url http://100.64.0.10:8000/v1 --skills --confirm
+anvil-serving harness sync openclaw --config configs/example.toml --out openclaw.json --base-url http://100.64.0.10:8000/v1 --confirm
 ```
 
 The router configuration supplies direct aliases and their tier context limits. `--base-url`
@@ -105,11 +107,12 @@ defaults to `http://127.0.0.1:8000/v1`; when OpenClaw runs on another host, set
 the router address that gateway can reach. Credential flags name environment
 variables—secret values are never written into an operator command.
 
-A remote sync uses strict-host-key OpenSSH, reads the existing configuration,
-merges only Anvil-owned provider/agent/skill/voice keys, backs up the target,
-and writes it back. `--overwrite` deliberately replaces instead. Add `--voice`
-for the Anvil Voice Talk provider and `--restart` only when the applied target
-is the gateway's real configuration.
+A local sync reads the existing output configuration, merges only Anvil-owned
+provider/agent/voice keys, backs up the target, and writes it back.
+`--overwrite` deliberately replaces instead. Run the command on the client
+host that owns the file. Add `--voice` for the Anvil Voice Talk provider and
+restart the gateway separately only after the applied target is its real
+configuration.
 
 Lifecycle and status remain separate:
 
@@ -123,6 +126,31 @@ anvil-serving harness status openclaw --topology operator-topology.toml --target
 Restart issues one bounded command. Status is read-only, defaults to a
 120-second process deadline, caps stdout and stderr at 64 KiB each, and marks
 truncation explicitly.
+
+For a model-swapping Mini, use the catalog reconciler on Mini itself:
+
+```bash
+anvil-serving harness sync clients \
+  --base-url https://router.example.ts.net/v1 \
+  --restart-openclaw-on-change \
+  --dry-run
+anvil-serving harness sync clients \
+  --base-url https://router.example.ts.net/v1 \
+  --restart-openclaw-on-change \
+  --confirm
+```
+
+It authenticates using the environment variable named by `--api-key-env`,
+cross-checks `/v1/router/status` against `/v1/models/capabilities`, and refuses
+to write unless every routed tier declares both context and maximum output.
+The command preserves provider credentials, unrelated client configuration,
+and existing compaction policies; it verifies that compaction reserves fit the
+smallest selected model context. Changed files are atomically replaced only
+after a complete private backup bundle is created. State is keyed by the
+router's secret-free config hash plus full client-file hashes, so repeated runs
+are no-ops while local drift is repaired. `--restart-openclaw-on-change`
+restarts the gateway at most once per router config hash and retries a failed
+restart on the next run.
 
 ## MCP
 

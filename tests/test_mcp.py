@@ -67,6 +67,14 @@ def test_openclaw_sync_schema_is_direct_alias_only():
     assert "native_provider" not in properties
 
 
+def test_client_catalog_sync_schema_is_secret_reference_only_and_guarded():
+    properties = mcp.TOOLS["client_catalog_sync"]["inputSchema"]["properties"]
+    assert "api_key" not in properties
+    assert {"api_key_env", "dry_run", "confirm", "restart_openclaw_on_change"} <= set(properties)
+    with pytest.raises(mcp.ToolError, match="raw api_key"):
+        mcp.tool_client_catalog_sync({"api_key": "never"})
+
+
 def test_voice_manage_schema_exposes_topology_dispatch_context():
     properties = mcp.TOOLS["voice_manage"]["inputSchema"]["properties"]
     assert {

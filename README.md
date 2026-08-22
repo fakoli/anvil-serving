@@ -7,7 +7,7 @@
 > **Benchmark and serve local models through one explicit capability gateway.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.23.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.34.3-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 </div>
@@ -40,7 +40,8 @@ vision.video = "primary-local"
 
 Send one of those aliases as the chat `model`. Matching is case-insensitive
 after trimming; compatibility prefixes are not accepted. `/v1/models` advertises the
-configured aliases. Unknown or missing chat aliases return 404. An unavailable
+configured aliases plus each alias's declared `context_window` and
+`max_output_tokens`. Unknown or missing chat aliases return 404. An unavailable
 selected tier returns an exhaustion error, not an alternate model.
 The authenticated `/v1/models/capacity` endpoint joins declared model/GPU
 capacity with bounded live engine telemetry; it does not operate a serve or

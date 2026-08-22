@@ -34,7 +34,9 @@ operator-owned and remains unchanged.
   a clean 404.
 - A configured alias is proxied only to its declared local tier. A non-ready or quiesced tier
   receives a 503; the router does not select an alternate model.
-- `GET /v1/models` advertises the configured aliases and purpose-model endpoints.
+- `GET /v1/models` advertises configured aliases with each alias's declared
+  `context_window` and `max_output_tokens`; clients such as Hermes can consume
+  that standard discovery metadata without an explicit per-model override.
 - Router tokens are environment variables, never literal provider configuration values.
 - Lifecycle, preflight, benchmark, and promotion are explicit Anvil Serving operations. They are
   outside the request path.
@@ -57,6 +59,21 @@ anvil-serving eval preflight \
   --model <served-model> \
   --confirm
 ```
+
+OpenClaw and Pi releases that do not consume the authenticated capability
+endpoint can be reconciled locally from the same router contract:
+
+```bash
+anvil-serving harness sync clients \
+  --base-url https://router.example.ts.net/v1 \
+  --restart-openclaw-on-change \
+  --dry-run
+```
+
+This sync preserves credentials and compaction policy, validates the router
+status/capability alias closure, and keeps distinct model limits distinct (for
+example, a large Primary window and a smaller Secondary window). Apply only
+after reviewing the config hash and model matrix, using `--confirm`.
 
 Use `GET /v1/decisions` for metadata-only diagnostics such as requested alias, selected tier,
 status, and token counts. It is not a routing-policy or model-selection API.

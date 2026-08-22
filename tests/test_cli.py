@@ -887,6 +887,17 @@ def test_cli_remote_eval_rejects_operator_manifest_before_transport(tmp_path, mo
             {"config": "router.toml", "out": "openclaw.json", "confirm": True, "dry_run": False},
         ),
         (
+            ["harness", "sync", "clients"],
+            "harness-sync-clients",
+            "client_catalog_sync",
+            {
+                "base_url": "https://router.test.ts.net/v1",
+                "confirm": True,
+                "dry_run": False,
+                "restart_openclaw_on_change": True,
+            },
+        ),
+        (
             ["harness", "restart", "openclaw"],
             "harness-restart-openclaw",
             "openclaw_gateway_restart",
@@ -929,6 +940,12 @@ def test_cli_remote_harness_operations_are_typed_and_controller_first(
     )
     leaf_args = {
         "openclaw_sync": ["--confirm", "--config", "router.toml", "--out", "openclaw.json"],
+        "client_catalog_sync": [
+            "--confirm",
+            "--base-url",
+            "https://router.test.ts.net/v1",
+            "--restart-openclaw-on-change",
+        ],
         "openclaw_gateway_restart": ["--confirm"],
         "openclaw_gateway_status": ["--timeout-seconds", "7"],
     }[tool]
