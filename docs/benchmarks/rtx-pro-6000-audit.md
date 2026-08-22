@@ -133,6 +133,7 @@ local measurement).
 `docs/findings/2026-08-01-dual-pro-tp2-campaign-evidence/compatibility-brief.md`;
 `docs/findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md`;
 `docs/findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090.md`;
+`docs/findings/2026-08-21-qwen38-27b-gguf-250k-rtx5090.md`;
 `docs/findings/README.md`; `docs/index.md`;
 `examples/fakoli-dark/README.md`;
 `skills/anvil-serving-benchmark-docs/SKILL.md`.

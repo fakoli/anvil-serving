@@ -67,6 +67,12 @@ def _identities(
     endpoint = preflight.get("observed", {}).get("endpoint", {}) if preflight else {}
     adapters = assets.get("assets", {}) if assets else {}
     suite = profile["suites"][spec["suite"]]
+    parameters = spec.get("parameters", {})
+    topology_kind = (
+        "co-resident-benchmark-client"
+        if parameters.get("client_topology") == "co-resident"
+        else "isolated-benchmark-worker"
+    )
 
     def declared_or(name: str, fallback: Any) -> Any:
         value = declared.get(name)
@@ -84,12 +90,20 @@ def _identities(
             adapters.get("worker-base", {"status": "not-applicable"}),
         ),
         "hardware": declared_or("hardware", dict(worker) or {"worker_id": spec["worker"]["id"]}),
-        "topology": declared_or("topology", {"kind": "isolated-benchmark-worker", "worker_id": spec["worker"]["id"]}),
+        "topology": declared_or(
+            "topology", {"kind": topology_kind, "worker_id": spec["worker"]["id"]}
+        ),
         "context": declared_or(
             "context",
             {
                 "configured_tokens": endpoint.get("configured_context", "unavailable"),
                 "profile_buckets": suite.get("token_buckets", "not-applicable"),
+                "selected_buckets": parameters.get(
+                    "token_buckets", suite.get("token_buckets", "not-applicable")
+                ),
+                "output_headroom_tokens": parameters.get(
+                    "output_headroom_tokens", suite.get("output_headroom_tokens", "not-applicable")
+                ),
             },
         ),
         "concurrency": declared_or("concurrency", {"requests": 1, "workers": 1}),

@@ -1,0 +1,62 @@
+{
+  "schema": "routed-client-smoke/v1",
+  "observed_date": "2026-08-22",
+  "candidate": {
+    "model": "Qwen3.8-27B",
+    "quantization": "GGUF Q4_0 weights and KV",
+    "runtime": "llama.cpp b10548",
+    "context_tokens": 262144,
+    "speculation": "matching Q4_0 MTP head, maximum 3 draft tokens",
+    "multimodal": "F16 vision projector; image supported; native video unsupported"
+  },
+  "test_topology": {
+    "client_host": "Fakoli Mini",
+    "router_host": "Fakoli Dark",
+    "model_host": "RTX 5090 qualification host",
+    "alias": "llm.secondary",
+    "persistent_changes": false
+  },
+  "positive_results": {
+    "openclaw": {
+      "marker_exact": true,
+      "tool_result_continuation": true,
+      "winner_provider_exact": true,
+      "winner_model_exact": true,
+      "fallback_used": false,
+      "marker_latency_ms": 11269
+    },
+    "hermes": {
+      "marker_exact": true,
+      "tool_result_continuation": true,
+      "usage_provider": "custom",
+      "usage_model": "llm.secondary",
+      "completed": true,
+      "failed": false,
+      "tool_call_count": 1,
+      "tool_turn_api_calls": 2
+    }
+  },
+  "negative_control": {
+    "attempts": 2,
+    "condition": "wrong Hermes provider selector",
+    "visible_marker_exact": true,
+    "requested_model_observed": false,
+    "classification": "fail",
+    "impact": "client-observed provider and model are mandatory gates"
+  },
+  "router_metadata_observed_during_test": {
+    "declared_context_tokens": 131072,
+    "declared_engine": "sglang",
+    "declared_quantization": "radixark_nvfp4_weights_fp8_kv",
+    "matches_live_candidate": false
+  },
+  "gates": {
+    "short_routed_identity": "pass",
+    "routed_tool_continuation": "pass",
+    "fallback_detection": "pass",
+    "truthful_configuration_fingerprint": "fail",
+    "routed_250k_declared_capacity": "fail",
+    "promotion": "not_authorized"
+  },
+  "redaction": "Private addresses, endpoint identities, credentials, session paths, and unsanitized client output are omitted."
+}

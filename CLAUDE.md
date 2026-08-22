@@ -7,6 +7,13 @@ authenticated capability gateway. Its current product center is repeatable
 local serving, preflight, and benchmark evidence. It is not an intent-driven
 model router.
 
+Every routing surface is serving-engine agnostic. Chat, purpose-model, and
+audio routes select declared aliases or model names, endpoints, dialects,
+capabilities, readiness, and admission state. They never select on a runtime
+brand, container image, quantization, weight format, or launch mechanism. Any
+serving engine may back a route when its bounded adapter satisfies the declared
+protocol and capability contract.
+
 The gateway accepts Anthropic Messages, OpenAI Chat Completions, and the
 supported stateless Responses subset. `[router.model_routes]` is the complete
 chat vocabulary: one normalized caller alias maps to exactly one local tier.
@@ -88,6 +95,17 @@ vision.video = "primary-local"
 Aliases are lowercase after trimming; compatibility prefixes are not accepted.
 They map only to local tiers. The tier's `model` is the concrete
 upstream served model name and must not be confused with the public alias.
+
+`engine`, `quantization`, runtime image, and engine-specific parameters are
+deployment or observability metadata, not route-selection inputs. Engine-specific
+launch flags, lifecycle operations, health/metrics parsing, and kernel tuning
+belong in manifests, recipes, or bounded adapters behind the tier contract.
+They may enrich readiness and evidence, but must not introduce implicit engine
+preference, fallback, or model substitution. This applies equally when a tier
+is backed by llama.cpp, NInfer, SGLang, vLLM, TensorRT-LLM, or another compatible
+local engine. It also includes running Unsloth or an Unsloth-provided serving
+stack: whether Unsloth supplies quantized artifacts, launch tooling, or the
+upstream server, the router sees only the declared endpoint contract.
 
 Embeddings and reranking route by exact configured model on their dedicated
 endpoints. STT/TTS routes are operator-selected under `/v1/audio/*`. ComfyUI is
