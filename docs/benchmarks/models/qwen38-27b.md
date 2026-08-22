@@ -31,6 +31,20 @@ rose 80.5% at 4K and 67.9% at 64K, but SGLang's separately loaded 5.73 GB MTP
 draft left only 70,231 KV tokens. Median 64K end-to-end latency was also 1.9%
 slower. The candidate is rejected as a 128K replacement; EXL3, NInfer, vLLM
 TurboQuant, and alternative NVFP4 recipes remain research leads only.
+The later 2026-08-21 managed llama.cpp campaign qualified Unsloth GGUF Q4_0
+with its matching Q4_0 MTP head at 262,144 tokens on the RTX 5090. It passed
+exact retrieval at 253,822 actual prompt tokens with an 8,192-token output
+reserve, long tools after 110K, agentic 16/18, neutral 101-turn endurance 3/3,
+and images 18/18. MTP raised matched short decode from 69.1 to 104.1 tok/s.
+It is the preferred RTX 5090 `FAST-TIER` challenger, but the independent SWE
+gate is incomplete and no route or promotion changed. Conventional Q6_K with
+the same MTP head was disqualified by the conservative 32 GB capacity screen.
+The 2026-08-22 routed follow-up passed real OpenClaw and Hermes identity plus
+shell-tool/result-continuation smokes. It did not clear the 250K route gate:
+the bounded test route still declared the earlier 131,072-token SGLang/NVFP4
+compatibility fingerprint and video capability. Promotion remains closed until
+the router and client catalogs truthfully describe the 262K llama.cpp image-only
+recipe and routed acceptance passes with a 250,000-token minimum.
 
 ## Immutable identity
 
@@ -56,6 +70,14 @@ TurboQuant, and alternative NVFP4 recipes remain research leads only.
   `lmsysorg/sglang:dev@sha256:8acc563e39f4e79118cc3c11cb5a8893ca8da140b2280cdd24a9f3bfe38835a0`;
   image-label source revision
   `f825d729363136a2d4a4b330fa694d0b37a878fa`.
+- RTX 5090 GGUF Q4_0 qualification revision:
+  `unsloth/Qwen3.8-27B-GGUF@4ca720788d1e01f1bff70c033e0d0028fd02e502`;
+  matching Q4_0 MTP head and F16 vision projector from the same revision.
+- Conventional Q6_K screen identity:
+  `bartowski/Qwen3.8-27B-GGUF@f0eec4a4bb4975114a030d048952d83c0a53c034`.
+- llama.cpp qualification runtime: b10548, commit
+  `a298422da78eb75e440a7de0ca408af64d323d93`, image digest
+  `sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac`.
 
 ## Tested hardware and topology
 
@@ -108,6 +130,13 @@ of eight images and two videos. The managed recipe is
 `configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm-recipe.toml`; the
 otherwise matched 64K recipe is retained as rollback.
 
+The later GGUF arm uses llama.cpp at 262,144 tokens and concurrency one with
+Q4_0 K/V, full layer and projector offload, Flash Attention, batch 2,048,
+microbatch 512, Jinja templating, and reasoning disabled. The preferred arm
+adds the same-revision Q4_0 MTP head with three maximum draft tokens and Q4_0
+draft K/V. The no-spec arm is the matched control. Startup VRAM was 22,254 MiB
+without speculation and 25,408 MiB with MTP.
+
 The rejected DFlash2 arm kept the same target snapshot and stable served name,
 but used the separately pinned draft, DFLASH with eight draft tokens, the
 official RTX 5090 memory fraction 0.945, float32 Mamba state, full-memory ratio
@@ -120,6 +149,22 @@ fraction 0.945. It allocated 70,262 KV tokens; its reproducible recipe is
 `configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-dflash2-debug-recipe.toml`.
 
 ## Evidence by measurement class
+
+On the RTX 5090 GGUF campaign, the no-spec and MTP arms both passed retrieval
+at 32K, 131K, 200K, 250K, and a 253,822-actual-token envelope. The latter kept
+8,192 output tokens in reserve. MTP measured 104.1 tok/s short decode versus
+69.1 for the control, with 0.74 versus 0.91 seconds E2E. The preferred arm also
+passed tools 20/20, a schema-valid tool call after 110,875 actual prompt tokens,
+agentic 16/18, neutral 101-request endurance 3/3, and images 18/18. Its 91.57%
+cumulative MTP acceptance is repetition-biased; the earlier mixed workload was
+75.2%. SWE-bench is incomplete because the required isolated-worker controller
+transport was unavailable, and native video is unsupported by this recipe.
+The subsequent real-client smoke passed OpenClaw and Hermes exact identity,
+no-fallback, and shell-tool/result continuation. The visible-answer negative
+control also proved that a wrong Hermes provider selector can silently select
+a fallback model, so client usage identity is a required gate. The 250K routed
+gate remains closed on stale 131,072-token compatibility metadata.
+See the [250K qualification](../../findings/2026-08-21-qwen38-27b-gguf-250k-rtx5090.md).
 
 Both official variants passed the thinking-disabled functional gate, repeated
 coding/tool/session checks, adaptive reasoning-control probes, and retrieval

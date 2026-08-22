@@ -300,10 +300,19 @@ def _endpoint_models(base_url: str, api_key: str | None, timeout: float) -> list
     rows = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(rows, list):
         raise ValueError("endpoint /models response is malformed")
-    return [
-        row["id"] for row in rows
-        if isinstance(row, dict) and isinstance(row.get("id"), str)
-    ]
+    models = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        model_id = row.get("id")
+        if isinstance(model_id, str) and model_id not in models:
+            models.append(model_id)
+        aliases = row.get("aliases")
+        if isinstance(aliases, list):
+            for alias in aliases:
+                if isinstance(alias, str) and alias not in models:
+                    models.append(alias)
+    return models
 
 
 def _public_case(case: dict[str, Any]) -> dict[str, Any]:

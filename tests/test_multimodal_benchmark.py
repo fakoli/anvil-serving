@@ -150,6 +150,30 @@ def test_assertions_are_deterministic_and_casefolded():
     assert all(result["passed"] for result in results)
 
 
+def test_endpoint_identity_accepts_llama_cpp_aliases(monkeypatch):
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _limit):
+            return json.dumps({
+                "data": [{
+                    "id": "compatibility-alias",
+                    "aliases": ["compatibility-alias", "truthful-candidate-alias"],
+                }]
+            }).encode("utf-8")
+
+    monkeypatch.setattr(multimodal.urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
+
+    assert multimodal._endpoint_models("http://127.0.0.1:30000/v1", None, 30) == [
+        "compatibility-alias",
+        "truthful-candidate-alias",
+    ]
+
+
 def test_dry_run_validates_without_endpoint_or_artifact(monkeypatch, tmp_path, capsys):
     image = _media(tmp_path, "scene.png", b"\x89PNG\r\n\x1a\nscene")
     corpus = _manifest(tmp_path, [_case([image])])

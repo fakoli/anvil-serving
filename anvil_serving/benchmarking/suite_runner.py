@@ -41,7 +41,10 @@ def _usage_tokens(response: Mapping[str, Any], name: str) -> int | None:
 def _calibrated_counter(
     *, endpoint: Mapping[str, str], key: str | None, caller: ChatCaller, timeout: float
 ) -> tuple[Callable[[str], int], dict[str, Any]]:
-    sample = "token calibration phrase 0123456789. " * 128
+    sample = "token calibration phrase 0123456789.\n" + "\n".join(
+        f"Reference paragraph {index:07d}: neutral cobalt ledger material for calibration."
+        for index in range(512)
+    )
     result = caller(
         endpoint["base_url"],
         endpoint["model"],
@@ -64,11 +67,112 @@ def _calibrated_counter(
         return max(1, math.ceil(len(text) / chars_per_token))
 
     return counter, {
-        "method": "endpoint-usage-ratio/v1",
+        "method": "endpoint-usage-filler-ratio/v2",
         "sample_chars": len(sample),
         "sample_prompt_tokens": prompt_tokens,
         "chars_per_token": chars_per_token,
         "request_id": result.get("request_id"),
+    }
+
+
+def _context_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) -> dict[str, Any]:
+    cases = parameters.get("case_ids", suite["cases"])
+    if (
+        not isinstance(cases, list)
+        or not cases
+        or any(not isinstance(item, str) or not item for item in cases)
+        or len(set(cases)) != len(cases)
+    ):
+        raise BenchmarkJobError(
+            "bad_context_case_ids",
+            "context case_ids must be a non-empty list of unique strings",
+        )
+    unsupported = sorted(set(cases) - NATIVE_CONTEXT_CASES)
+    if unsupported:
+        raise BenchmarkJobError(
+            "unsupported_context_case",
+            "context case_ids include cases without an executable native adapter",
+            {"cases": unsupported},
+        )
+
+    buckets = parameters.get("token_buckets", suite["token_buckets"])
+    if (
+        not isinstance(buckets, list)
+        or not buckets
+        or any(
+            not isinstance(item, int)
+            or isinstance(item, bool)
+            or not 128 <= item <= 1048576
+            for item in buckets
+        )
+        or buckets != sorted(set(buckets))
+    ):
+        raise BenchmarkJobError(
+            "bad_context_buckets",
+            "context token_buckets must be sorted unique integers from 128 through 1048576",
+        )
+
+    positions = parameters.get("positions", suite["positions"])
+    if (
+        not isinstance(positions, list)
+        or not positions
+        or any(
+            not isinstance(item, (int, float))
+            or isinstance(item, bool)
+            or not 0 <= item <= 1
+            for item in positions
+        )
+        or len(set(positions)) != len(positions)
+    ):
+        raise BenchmarkJobError(
+            "bad_context_positions",
+            "context positions must be a non-empty list of unique values from 0 through 1",
+        )
+
+    repetitions = parameters.get("repetitions", suite["repetitions"])
+    if (
+        not isinstance(repetitions, int)
+        or isinstance(repetitions, bool)
+        or not 1 <= repetitions <= 20
+    ):
+        raise BenchmarkJobError(
+            "bad_context_repetitions", "context repetitions must be from 1 through 20"
+        )
+    headroom = parameters.get("output_headroom_tokens", suite["output_headroom_tokens"])
+    if (
+        not isinstance(headroom, int)
+        or isinstance(headroom, bool)
+        or not 1 <= headroom <= 65536
+    ):
+        raise BenchmarkJobError(
+            "bad_context_headroom", "context output_headroom_tokens must be from 1 through 65536"
+        )
+    advertised = parameters.get("advertised_context")
+    if advertised is not None:
+        if (
+            not isinstance(advertised, int)
+            or isinstance(advertised, bool)
+            or not 128 <= advertised <= 1048576
+        ):
+            raise BenchmarkJobError(
+                "bad_advertised_context", "advertised_context must be from 128 through 1048576"
+            )
+        if buckets[-1] + headroom > advertised:
+            raise BenchmarkJobError(
+                "context_capacity_exceeded",
+                "selected context bucket exceeds advertised capacity after output headroom",
+                {
+                    "advertised_context": advertised,
+                    "requested_tokens": buckets[-1],
+                    "output_headroom_tokens": headroom,
+                },
+            )
+    return {
+        "case_ids": list(cases),
+        "token_buckets": list(buckets),
+        "positions": [float(item) for item in positions],
+        "repetitions": repetitions,
+        "output_headroom_tokens": headroom,
     }
 
 
@@ -80,13 +184,6 @@ def run_context_suite(
 ) -> dict[str, Any]:
     """Execute deterministic context cases and return raw observations plus a curve."""
     suite = profile["suites"]["context"]
-    unsupported = sorted(set(suite["cases"]) - NATIVE_CONTEXT_CASES)
-    if unsupported:
-        raise BenchmarkJobError(
-            "unsupported_context_case",
-            "profile selects context cases without an executable adapter",
-            {"cases": unsupported},
-        )
     endpoint = spec["endpoint"]
     key = resolve_api_key(endpoint.get("auth_env"))
     timeout = min(float(spec["timeout_s"]), 900.0)
@@ -94,6 +191,7 @@ def run_context_suite(
         endpoint=endpoint, key=key, caller=caller, timeout=timeout
     )
     parameters = spec.get("parameters", {})
+    selection = _context_selection(suite, parameters)
     case_limit = parameters.get("case_limit")
     if case_limit is not None and (
         not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
@@ -102,10 +200,10 @@ def run_context_suite(
     observations = []
     request_ids = []
     attempted = 0
-    for bucket in suite["token_buckets"]:
-        for case_type in suite["cases"]:
-            for position in suite["positions"]:
-                for repetition in range(suite["repetitions"]):
+    for bucket in selection["token_buckets"]:
+        for case_type in selection["case_ids"]:
+            for position in selection["positions"]:
+                for repetition in range(selection["repetitions"]):
                     if case_limit is not None and attempted >= case_limit:
                         break
                     case, expected = build_native_context_case(
@@ -123,7 +221,7 @@ def run_context_suite(
                             endpoint["model"],
                             key,
                             [{"role": "user", "content": case["prompt"]}],
-                            max_tokens=suite["output_headroom_tokens"],
+                            max_tokens=selection["output_headroom_tokens"],
                             timeout=timeout,
                         )
                         response = result["response"]
@@ -175,6 +273,7 @@ def run_context_suite(
     return {
         "schema": "anvil-serving.context-suite-run/v1",
         "calibration": calibration,
+        "selection": selection,
         "request_ids": sorted(set(request_ids)),
         "observations": observations,
         "curve": curve,
@@ -226,6 +325,99 @@ def _fixture_result(scenario: Mapping[str, Any], call_index: int, call: Mapping[
     return {"error": "unexpected deterministic tool call"}
 
 
+def _run_long_session_case(
+    scenario: Mapping[str, Any],
+    expected: Mapping[str, Any],
+    *,
+    endpoint: Mapping[str, str],
+    key: str | None,
+    max_tokens: int,
+    timeout: float,
+    caller: ChatCaller,
+    chat_template_kwargs: Mapping[str, Any] | None,
+    reasoning_effort: str | None,
+) -> tuple[dict[str, Any], list[str]]:
+    """Execute every scripted user turn so endurance evidence has real token growth."""
+    scripted_users = [
+        copy.deepcopy(item) for item in scenario["messages"] if item.get("role") == "user"
+    ]
+    messages: list[dict[str, Any]] = []
+    growth: list[int] = []
+    request_ids: list[str] = []
+    turns: list[dict[str, Any]] = []
+    final_answer = ""
+    failure = None
+    reasoning_present = False
+    for index, user_message in enumerate(scripted_users):
+        messages.append(user_message)
+        try:
+            response = caller(
+                endpoint["base_url"],
+                endpoint["model"],
+                key,
+                messages,
+                max_tokens=max_tokens if index == len(scripted_users) - 1 else min(max_tokens, 64),
+                timeout=timeout,
+                tools=None,
+                chat_template_kwargs=chat_template_kwargs,
+                reasoning_effort=reasoning_effort,
+            )
+            payload = response["response"]
+            prompt_tokens = _usage_tokens(payload, "prompt_tokens")
+            if prompt_tokens is not None:
+                growth.append(prompt_tokens)
+            if response.get("request_id"):
+                request_ids.append(response["request_id"])
+            message = _message(payload)
+            calls = _normalized_tool_calls(message)
+            if calls:
+                raise BenchmarkJobError(
+                    "parser_error", "long-session response unexpectedly contained tool calls"
+                )
+            content = message.get("content")
+            if not isinstance(content, str) or not content.strip():
+                raise BenchmarkJobError(
+                    "parser_error", "long-session response has no visible assistant content"
+                )
+            reasoning = message.get("reasoning_content") or message.get("reasoning")
+            reasoning_chars = len(reasoning) if isinstance(reasoning, str) else 0
+            reasoning_present = reasoning_present or reasoning_chars > 0
+            choices = payload.get("choices")
+            first_choice = choices[0] if isinstance(choices, list) and choices else {}
+            turns.append({
+                "latency_ms": response["latency_s"] * 1000,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": _usage_tokens(payload, "completion_tokens"),
+                "finish_reason": (
+                    first_choice.get("finish_reason")
+                    if isinstance(first_choice, Mapping)
+                    else None
+                ),
+                "reasoning_chars": reasoning_chars,
+                "tool_call_count": 0,
+            })
+            if index == len(scripted_users) - 1:
+                final_answer = content
+            else:
+                messages.append({"role": "assistant", "content": content})
+        except BenchmarkJobError as exc:
+            failure = {"code": exc.code, "message": exc.message}
+            break
+        except Exception as exc:
+            failure = {"code": "endpoint_error", "message": str(exc)[:1024]}
+            break
+    trace = {
+        "tool_calls": [],
+        "final_answer": final_answer,
+        "history": copy.deepcopy(messages),
+        "history_prompt_tokens": growth,
+        "failure": failure,
+        "reasoning_present": reasoning_present,
+        "turns": turns,
+    }
+    return score_agentic_trace(scenario, expected, trace), request_ids
+
+
 def _run_agentic_case(
     scenario: Mapping[str, Any],
     expected: Mapping[str, Any],
@@ -239,6 +431,18 @@ def _run_agentic_case(
     chat_template_kwargs: Mapping[str, Any] | None = None,
     reasoning_effort: str | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
+    if expected.get("require_token_growth"):
+        return _run_long_session_case(
+            scenario,
+            expected,
+            endpoint=endpoint,
+            key=key,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            caller=caller,
+            chat_template_kwargs=chat_template_kwargs,
+            reasoning_effort=reasoning_effort,
+        )
     messages = copy.deepcopy(scenario["messages"])
     observed_calls = []
     growth = []

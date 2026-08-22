@@ -63,6 +63,25 @@ def test_records_worker_endpoint_and_unsupported_telemetry(tmp_path):
     assert artifact["observed"]["endpoint"]["authentication"] == "none"
 
 
+def test_llama_cpp_alias_and_nested_context_are_accepted(tmp_path):
+    artifact = run_benchmark_preflight(
+        _spec(endpoint={
+            "base_url": "http://127.0.0.1:8000/v1",
+            "model": "truthful-candidate-alias",
+        }),
+        run_root=str(tmp_path / "runs"),
+        requirements={"model_host_id": "model-host"},
+        opener=_opener([{
+            "id": "compatibility-alias",
+            "aliases": ["compatibility-alias", "truthful-candidate-alias"],
+            "meta": {"n_ctx": 262144},
+        }]),
+    )
+
+    assert artifact["passed"] is True
+    assert artifact["observed"]["endpoint"]["configured_context"] == 262144
+
+
 def test_missing_model_host_identity_fails_isolation_closed(tmp_path):
     artifact = run_benchmark_preflight(
         _spec(parameters={}),
@@ -77,6 +96,26 @@ def test_missing_model_host_identity_fails_isolation_closed(tmp_path):
         "code": "model_host_identity_absent",
         "detail": "model host identity was not declared",
     }
+
+
+def test_explicit_co_resident_client_requires_matching_model_host(tmp_path):
+    artifact = run_benchmark_preflight(
+        _spec(parameters={
+            "client_topology": "co-resident",
+            "model_host_id": "benchmark-worker",
+        }),
+        run_root=str(tmp_path / "runs"),
+        opener=_opener(),
+    )
+
+    isolation = next(item for item in artifact["checks"] if item["name"] == "worker_isolation")
+    assert isolation == {
+        "name": "worker_isolation",
+        "passed": True,
+        "code": None,
+        "detail": "co-resident benchmark client explicitly declared",
+    }
+    assert artifact["passed"] is True
 
 
 def test_missing_credentials_and_authorization_are_distinct(monkeypatch, tmp_path):

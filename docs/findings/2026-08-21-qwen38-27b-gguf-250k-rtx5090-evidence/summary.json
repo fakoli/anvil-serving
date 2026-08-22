@@ -1,0 +1,93 @@
+{
+  "schema": "anvil-serving/benchmark-summary/v1",
+  "date": "2026-08-21",
+  "decision": "fast-tier-challenger-no-promotion",
+  "hardware": {
+    "gpu": "NVIDIA RTX 5090",
+    "vram_mib": 32607,
+    "compute_capability": "sm_120",
+    "driver": "610.88",
+    "physical_ram_gib": 32,
+    "docker_wsl_available_gib": 16.2
+  },
+  "runtime": {
+    "name": "llama.cpp server",
+    "build": "b10548",
+    "commit": "a298422da78eb75e440a7de0ca408af64d323d93",
+    "image_digest": "sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac"
+  },
+  "candidate": {
+    "official_base_repository": "Qwen/Qwen3.8-27B",
+    "official_base_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+    "repository": "unsloth/Qwen3.8-27B-GGUF",
+    "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "quantization": "Q4_0",
+    "context": 262144,
+    "concurrency": 1,
+    "kv_cache": "Q4_0",
+    "speculation": "draft-mtp:max3",
+    "startup_vram_mib": 25408,
+    "late_vram_mib": 25460,
+    "chat_template": "embedded GGUF via --jinja",
+    "tool_call_parser": "llama.cpp Jinja/OpenAI server path; no separate parser flag",
+    "reasoning_parser": "reasoning disabled; deepseek wire format",
+    "cuda_toolkit_build": null,
+    "cuda_compatibility_note": "measured successfully with driver 610.88 on sm_120"
+  },
+  "matched_short": {
+    "no_spec": {"ttft_s": 0.24, "prefill_tps": 14881, "decode_tps": 69.1, "e2e_s": 0.91},
+    "mtp3": {"ttft_s": 0.29, "prefill_tps": 12352, "decode_tps": 104.1, "e2e_s": 0.74}
+  },
+  "mtp_acceptance": {
+    "cumulative_accepted": 17606,
+    "cumulative_drafted": 19227,
+    "cumulative_rate": 0.9157,
+    "mixed_workload_accepted": 792,
+    "mixed_workload_drafted": 1053,
+    "mixed_workload_rate": 0.7521
+  },
+  "long_prefill_250k": {
+    "prompt_tps": 1050.16,
+    "prompt_elapsed_s": 237.95,
+    "decode_tps": 60.49,
+    "draft_accepted": 65,
+    "drafted": 66,
+    "gpu_utilization_percent_approx": 99,
+    "power_w_approx": 460,
+    "temperature_c_range": [59, 61],
+    "kv_bytes": null,
+    "kv_bytes_note": "runtime did not expose standalone per-request KV bytes"
+  },
+  "context": [
+    {"requested": 32768, "actual_range": [32742, 32746], "passed": 12, "attempted": 12, "mean_elapsed_s": 12.47},
+    {"requested": 131072, "actual_range": [130942, 130946], "passed": 12, "attempted": 12, "mean_elapsed_s": 83.25},
+    {"requested": 200000, "actual_range": [199862, 199886], "passed": 7, "attempted": 7, "mean_elapsed_s": 164.98},
+    {"requested": 250000, "actual_range": [249862, 249886], "passed": 7, "attempted": 7, "mean_elapsed_s": 240.72},
+    {"requested": 253952, "actual": 253822, "output_reserve": 8192, "passed": 1, "attempted": 1, "mean_elapsed_s": 246.72}
+  ],
+  "correctness": {
+    "tools": "20/20",
+    "long_tool_actual_prompt_tokens": 110875,
+    "long_tool": "pass",
+    "agentic_scout": "16/18",
+    "neutral_endurance": "3/3 x 101 requests",
+    "privacy_worded_endurance": "0/3 refusal control",
+    "multimodal": "18/18",
+    "swe_bench": "incomplete-controller-transport-unavailable",
+    "video": "unsupported"
+  },
+  "q6_screen": {
+    "repository": "bartowski/Qwen3.8-27B-GGUF",
+    "revision": "f0eec4a4bb4975114a030d048952d83c0a53c034",
+    "quantization": "Q6_K",
+    "same_mtp_max_tokens_interval": [101867, 199930],
+    "margin_gib_interval_at_258192": [-2.888, -0.977],
+    "decision": "disqualified-policy-infeasible"
+  },
+  "promotion_blockers": [
+    "independent SWE worker controller transport unavailable",
+    "container health probe targets image-default port instead of recipe port",
+    "non-consecutive token position warnings during endurance"
+  ],
+  "restoration": "exact pre-test 128K managed recipe restored and preflight passed"
+}

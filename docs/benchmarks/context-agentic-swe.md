@@ -15,6 +15,11 @@ These are evaluation jobs, not model lifecycle commands. Submission, preflight,
 execution, cancellation, evidence retrieval, and owned cleanup do not start,
 stop, reroute, or promote a model.
 
+Agentic long-session cases are true incremental conversations: the worker sends
+each scripted turn, retains the endpoint's actual reply, and requires strictly
+increasing reported prompt tokens. Prefilling one synthetic transcript is not
+an endurance measurement.
+
 ## Worker boundary
 
 Run repository workloads on a registered, isolated benchmark worker. The
@@ -42,6 +47,11 @@ Before a measured campaign, verify:
 - `/models` returns the exact router alias and observed context;
 - prepared repositories and images match their immutable revisions or digests;
 - the owned evidence directory is writable.
+
+The default repository benchmark topology is isolated. An explicitly selected
+`co-resident` client topology is permitted for endpoint-only context or agentic
+diagnostics, but its artifacts must retain that topology as a performance and
+isolation caveat; it must not be presented as isolated repository execution.
 
 SWE-bench evaluation images are normally Linux x86-64. The managed adapter
 selects `linux/amd64`; an Apple Silicon worker must prove that its configured

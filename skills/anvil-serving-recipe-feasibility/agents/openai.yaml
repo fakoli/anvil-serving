@@ -1,0 +1,4 @@
+interface:
+  display_name: "Anvil Serving Recipe Feasibility"
+  short_description: "Eliminate infeasible model-serving recipes with math"
+  default_prompt: "Use $anvil-serving-recipe-feasibility to bound model-serving recipes, expose unknown variables, and eliminate infeasible candidates before benchmarking."
