@@ -4,6 +4,34 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.3] - 2026-08-22
+
+### Added
+
+- `harness sync clients` and the matching `client_catalog_sync` MCP/controller
+  tool reconcile local OpenClaw and Pi model catalogs from the router's
+  authenticated status and capability endpoints. The fail-closed transaction
+  cross-checks exact alias closure, requires per-tier context and output
+  limits, preserves client credentials and compaction policy, creates complete
+  private backups before atomic writes, repairs local drift, and can restart
+  OpenClaw once per secret-free router config hash.
+
+### Changed
+
+- OpenAI-compatible `GET /v1/models` entries now include each configured
+  alias's declared `context_window` and `max_output_tokens`. Standard discovery
+  consumers such as Hermes can follow model swaps without a static context
+  override, while authenticated capability/readiness endpoints remain the
+  authoritative detailed contract.
+
+### Security
+
+- Client reconciliation accepts credential environment-variable names only,
+  disables proxy and redirect handling for authenticated metadata requests,
+  bounds response and config sizes, refuses symlink targets, validates
+  compaction headroom before mutation, and emits sanitized receipts without
+  client documents or token values.
+
 ## [0.34.2] - 2026-08-20
 
 ### Fixed

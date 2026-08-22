@@ -18,7 +18,8 @@ authorization.
 
 The useful MCP surface is `router_status`, `decision_summary`, `serves_status`,
 `serves_manage`, `serves_promote`, `preflight_probe`, `benchmark_probe`,
-`benchmark_artifact`, `voice_manage`, and `openclaw_sync`. The request path is intentionally
+`benchmark_artifact`, `voice_manage`, `openclaw_sync`, and
+`client_catalog_sync`. The request path is intentionally
 separate: callers choose a configured direct alias and the gateway proxies it to one local tier.
 
 The canonical voice operations procedure is

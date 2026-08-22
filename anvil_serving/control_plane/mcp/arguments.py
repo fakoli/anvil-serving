@@ -23,6 +23,7 @@ RAW_SECRET_AWARE_TOOLS = frozenset(
         "benchmark_artifact",
         "benchmark_probe",
         "decision_summary",
+        "client_catalog_sync",
         "openclaw_sync",
         "preflight_probe",
     }
