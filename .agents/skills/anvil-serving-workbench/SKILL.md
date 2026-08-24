@@ -109,6 +109,13 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   CLI-only, so return its preview and name the missing MCP wrapper. Require an
   exact target and the documented confirmation gate before apply, then run
   preflight before either capacity or quality benchmarks.
+- Candidate recovery and test transaction: use
+  `.agents/skills/anvil-serving-candidate-operations/SKILL.md` when the request
+  combines credential loading, a Windows/WSL GPU lane, an unhealthy
+  recipe-loaded container, a recipe/profile switch, candidate testing, and
+  restoration. Keep diagnosis and lifecycle on the managed Anvil surfaces;
+  do not collapse container health, endpoint readiness, preflight, and model
+  qualification into one check.
 - Voice lifecycle: preview audio with `voice_manage` and the persistent
   Realtime proxy with `voice_proxy_manage`; live lifecycle changes on the
   owning host require `confirm=true` plus `dry_run=false`.
@@ -165,6 +172,11 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   manual reclaim after a `reclaimed` result. Ad-hoc Compose, voice, request-time
   ComfyUI loads, and the request-triggered multiplexer remain outside that
   policy. Treat changing the persistent opt-in as a reviewed host mutation.
+  On a Windows/WSL host, use the general
+  `host-operations:windows-gpu-lane-hygiene` plugin skill when installed to
+  separate active compute allocation from WDDM/driver reservation; otherwise
+  follow the same evidence contract locally and report the missing reusable
+  plugin.
 - Public/private config work: use `operator_config_inventory` first for
   metadata-only classification and dependency closure. Use
   `operator_config_export` only for the resulting safe versionable files and
