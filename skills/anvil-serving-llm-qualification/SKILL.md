@@ -26,7 +26,10 @@ Read `references/evidence-contract.md` before starting.
    prove failure. Before retrying, inspect whether the one downloader container
    remains active. Never start competing writers against the same cache.
 6. Load one isolated candidate at a time with a pinned recipe and discovered
-   GPU UUID. Do not change a live alias.
+   GPU UUID. For a Windows/WSL GPU lane, credential handoff, unhealthy loaded
+   recipe, managed switch, or restore transaction, use
+   `.agents/skills/anvil-serving-candidate-operations/SKILL.md`. Do not change
+   a live alias.
 7. Diagnose startup failures down-stack: caller, product status/logs, container
    exit/health, then engine/model-download error. Retain the earliest actionable
    error.
