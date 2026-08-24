@@ -40,9 +40,12 @@ vision.video = "primary-local"
 
 Send one of those aliases as the chat `model`. Matching is case-insensitive
 after trimming; compatibility prefixes are not accepted. `/v1/models` advertises the
-configured aliases plus each alias's declared `context_window` and
-`max_output_tokens`. Unknown or missing chat aliases return 404. An unavailable
-selected tier returns an exhaustion error, not an alternate model.
+configured aliases plus each alias's effective `context_window` and
+`max_output_tokens`. A tier may keep its served model and context explicitly
+configured, or opt into bounded metadata reported by its inference service.
+The alias-to-tier route stays static in both modes. Unknown or missing chat
+aliases return 404. An unavailable selected tier returns an exhaustion error,
+not an alternate model.
 The authenticated `/v1/models/capacity` endpoint joins declared model/GPU
 capacity with bounded live engine telemetry; it does not operate a serve or
 grant the router GPU-device access.

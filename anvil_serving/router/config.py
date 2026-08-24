@@ -36,6 +36,10 @@ VALID_DIALECTS = {DIALECT_OPENAI, DIALECT_ANTHROPIC}
 PRIVACY_LOCAL = "local"
 VALID_PRIVACY = {PRIVACY_LOCAL}
 
+METADATA_CONFIGURED = "configured"
+METADATA_UPSTREAM = "upstream"
+VALID_METADATA_SOURCES = {METADATA_CONFIGURED, METADATA_UPSTREAM}
+
 # Purpose-model kinds (ADR-0017 §7 / gpu-reservations:T010): non-chat inference
 # surfaces the front door routes by MODEL NAME (never through the chat
 # intent/policy pipeline). Each kind maps to exactly one front-door endpoint.
@@ -92,13 +96,13 @@ _REQUIRED_TIER_KEYS = (
     "id",
     "base_url",
     "dialect",
-    "context_limit",
     "privacy",
     "tool_support",
     "auth_env",
 )
 _TIER_KEYS = frozenset({
     *_REQUIRED_TIER_KEYS,
+    "context_limit",
     "model",
     "extra_body",
     "extra_body_defaults",
@@ -110,6 +114,7 @@ _TIER_KEYS = frozenset({
     "max_output_tokens",
     "health_path",
     "model_identity",
+    "metadata_source",
 })
 _ROUTER_KEYS = frozenset({
     "tiers",
@@ -164,6 +169,11 @@ class Tier:
     tool_support: bool
     auth_env: str  # NAME of the env var holding the secret, never the secret
     model: Optional[str] = None  # concrete provider model id (e.g. "claude-opus-4-20250514")
+    # ``configured`` keeps ``model`` and ``context_limit`` authoritative in
+    # router TOML. ``upstream`` delegates both values to the inference
+    # service's bounded runtime metadata and keeps this dataclass's zero/None
+    # placeholders out of admission and public discovery.
+    metadata_source: str = METADATA_CONFIGURED
     # Optional inline-table of extra JSON-serialisable keys merged verbatim into the
     # upstream request body (genericity:T003) -- e.g. a local vLLM/SGLang server's
     # `chat_template_kwargs: {enable_thinking: false}` to defend against the
@@ -421,12 +431,33 @@ def _parse_tier(raw: object) -> Tier:
             f"tier {tid!r}: privacy {privacy!r} not in {sorted(VALID_PRIVACY)}"
         )
 
-    context_limit = raw["context_limit"]
-    # bool is a subclass of int; reject it explicitly.
-    if isinstance(context_limit, bool) or not isinstance(context_limit, int) or context_limit <= 0:
+    metadata_source = raw.get("metadata_source", METADATA_CONFIGURED)
+    if metadata_source not in VALID_METADATA_SOURCES:
         raise ConfigError(
-            f"tier {tid!r}: context_limit must be a positive int, got {context_limit!r}"
+            f"tier {tid!r}: metadata_source {metadata_source!r} not in "
+            f"{sorted(VALID_METADATA_SOURCES)}"
         )
+
+    raw_context_limit = raw.get("context_limit")
+    if metadata_source == METADATA_UPSTREAM:
+        if "context_limit" in raw:
+            raise ConfigError(
+                f"tier {tid!r}: metadata_source='upstream' forbids "
+                "context_limit; the inference service is authoritative"
+            )
+        context_limit = 0
+    else:
+        # bool is a subclass of int; reject it explicitly.
+        if (
+            isinstance(raw_context_limit, bool)
+            or not isinstance(raw_context_limit, int)
+            or raw_context_limit <= 0
+        ):
+            raise ConfigError(
+                f"tier {tid!r}: context_limit must be a positive int when "
+                f"metadata_source='configured', got {raw_context_limit!r}"
+            )
+        context_limit = raw_context_limit
 
     tool_support = raw["tool_support"]
     if not isinstance(tool_support, bool):
@@ -455,12 +486,23 @@ def _parse_tier(raw: object) -> Tier:
             f"tier {tid!r}: model must be a string or absent, got {tier_model!r}"
         )
 
-    # A local tier without an explicit served-model-name is a footgun: the
+    if metadata_source == METADATA_UPSTREAM and tier_model is not None:
+        raise ConfigError(
+            f"tier {tid!r}: metadata_source='upstream' forbids model; the "
+            "inference service is authoritative"
+        )
+
+    # A configured local tier without an explicit served-model-name is a
+    # footgun: the
     # caller alias is forwarded upstream as the model id, and vLLM/SGLang reject
     # an unknown model with HTTP 404.
     # Warn (non-fatal) at load so a misconfigured local tier is caught here, not
     # as a confusing per-request 404. (genericity:R001)
-    if privacy == PRIVACY_LOCAL and tier_model is None:
+    if (
+        privacy == PRIVACY_LOCAL
+        and metadata_source == METADATA_CONFIGURED
+        and tier_model is None
+    ):
         print(
             f"[anvil-serving] WARNING: local tier {tid!r} has no `model` set; the "
             f"request's routing token will be forwarded upstream as the model id "
@@ -506,6 +548,13 @@ def _parse_tier(raw: object) -> Tier:
 
     engine = _parse_str_field(raw.get("engine"), "engine")
     quantization = _parse_str_field(raw.get("quantization"), "quantization")
+    if metadata_source == METADATA_UPSTREAM and (
+        engine is not None or quantization is not None
+    ):
+        raise ConfigError(
+            f"tier {tid!r}: metadata_source='upstream' forbids engine and "
+            "quantization; report only values observed from the inference service"
+        )
 
     # ``params``: inline-table of JSON-serialisable tuning knobs (advisory tier
     # metadata; NOT forwarded upstream -- that is extra_body). Absent -> None.
@@ -524,6 +573,15 @@ def _parse_tier(raw: object) -> Tier:
                 f"tier {tid!r}: params must be JSON-serialisable: {e}"
             ) from e
         params = MappingProxyType(dict(raw_params))
+        if (
+            metadata_source == METADATA_UPSTREAM
+            and raw_params.get("fingerprint") is not None
+        ):
+            raise ConfigError(
+                f"tier {tid!r}: metadata_source='upstream' forbids "
+                "params.fingerprint; report only identity observed from the "
+                "inference service"
+            )
 
     # ``timeout``: per-tier transport timeout (seconds). Overrides the global
     # relay_timeout for this tier's backend when set. bool is an int subclass --
@@ -568,11 +626,15 @@ def _parse_tier(raw: object) -> Tier:
             isinstance(raw_max_output_tokens, bool)
             or not isinstance(raw_max_output_tokens, int)
             or raw_max_output_tokens <= 0
-            or raw_max_output_tokens > context_limit
+            or (
+                metadata_source == METADATA_CONFIGURED
+                and raw_max_output_tokens > context_limit
+            )
         ):
             raise ConfigError(
                 f"tier {tid!r}: max_output_tokens must be a positive integer "
-                f"no greater than context_limit ({context_limit}) or absent, "
+                f"no greater than the configured context_limit ({context_limit}) "
+                f"when metadata_source='configured', or absent, "
                 f"got {raw_max_output_tokens!r}"
             )
         tier_max_output_tokens = raw_max_output_tokens
@@ -611,6 +673,21 @@ def _parse_tier(raw: object) -> Tier:
             raise ConfigError(
                 f"tier {tid!r}: model_identity requires health_path"
             )
+    if metadata_source == METADATA_UPSTREAM:
+        if dialect != DIALECT_OPENAI:
+            raise ConfigError(
+                f"tier {tid!r}: metadata_source='upstream' currently requires "
+                "dialect='openai'"
+            )
+        if health_path is None:
+            raise ConfigError(
+                f"tier {tid!r}: metadata_source='upstream' requires health_path"
+            )
+        if raw_model_identity:
+            raise ConfigError(
+                f"tier {tid!r}: metadata_source='upstream' cannot also set "
+                "model_identity; runtime metadata replaces configured exact identity"
+            )
 
     return Tier(
         id=tid,
@@ -621,6 +698,7 @@ def _parse_tier(raw: object) -> Tier:
         tool_support=tool_support,
         auth_env=auth_env,
         model=tier_model or None,
+        metadata_source=metadata_source,
         extra_body=extra_body,
         extra_body_defaults=extra_body_defaults,
         engine=engine,
