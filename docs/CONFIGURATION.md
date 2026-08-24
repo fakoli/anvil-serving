@@ -224,6 +224,44 @@ Each alias must map to one configured local tier. A tier cannot stand in for a
 caller-visible alias; use an explicit route table. The route does not create a
 fallback pool.
 
+### Inference-owned model metadata
+
+Use `metadata_source = "upstream"` when an operator changes the model or
+context at a single-model OpenAI-compatible inference endpoint independently
+of the router:
+
+```toml
+[[router.tiers]]
+id = "secondary-local"
+base_url = "http://100.64.0.10:39038/v1"
+dialect = "openai"
+metadata_source = "upstream"
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_SECONDARY_LOCAL_KEY"
+health_path = "/health"
+max_concurrency = 1
+
+[router.model_routes]
+llm.secondary = "secondary-local"
+```
+
+Do not set `model`, `context_limit`, `engine`, `quantization`,
+`model_identity`, or `params.fingerprint` on an upstream-owned tier. The
+router probes health and requires exactly one entry from `GET /v1/models`.
+It reads the served identity and context from that model card when available.
+For llama.cpp it also reads the bounded, read-only `GET /props` response for
+`n_ctx`, quantization, build, slot, and modality facts. A missing context,
+ambiguous catalog, malformed value, or identity disagreement fails closed.
+
+The result is cached for `availability_probe_interval` seconds. After that
+bounded interval, replacing the model or context at the same endpoint updates
+request admission and the router's model metadata without a router config
+edit. The public alias and its exact tier mapping do not change, and a failed
+request is never retried against another model. `max_output_tokens`,
+`tool_support`, `params.capabilities`, and media-admission limits remain router
+safety policy rather than inferred model claims.
+
 ## `[server]`
 
 ```toml
@@ -268,8 +306,11 @@ deployments. Unset keys mean no file I/O.
 
 ## `[[router.tiers]]`
 
-Every chat tier needs `id`, `base_url`, `model`, `dialect`, `context_limit`,
-`privacy = "local"`, `tool_support`, and `auth_env`. `base_url` is an
+Every chat tier needs `id`, `base_url`, `dialect`, `privacy = "local"`,
+`tool_support`, and `auth_env`. The default `metadata_source = "configured"`
+also requires `model` and `context_limit`. An upstream-owned tier instead
+requires `metadata_source = "upstream"` and `health_path`, and omits both
+values as described above. `base_url` is an
 OpenAI- or Anthropic-compatible base URL; use `127.0.0.1`, never `localhost`,
 for same-host serves. Optional `health_path`, `timeout`, `max_concurrency`,
 `max_output_tokens`, `extra_body`, and `extra_body_defaults` control relay behavior. `engine`,
@@ -302,7 +343,9 @@ The allowlisted capacity keys are `gpu_role`, `gpu_name`,
 `gpu_memory_total_mib`, `model_memory_gib`, `kv_cache_capacity_tokens`,
 `scheduler_max_num_seqs`, `image_limit`, and `video_limit`. Other `params`
 values are never returned. These values are operator-declared measurements,
-not runtime discovery.
+not runtime discovery. On an upstream-owned tier, keep only stable host or
+router-policy facts here; do not copy mutable model, KV-cache, or scheduler
+values that can drift when the inference service changes.
 
 `image_limit` and `video_limit` become enforced request admission controls only
 when `media_admission_enabled = true`. An enabled policy must also provide
@@ -338,7 +381,8 @@ surface: an operator maps these to the model's `compat` in OpenClaw config
 `GET /v1/models/fingerprints`: `model_revision`, `engine_version`,
 `image_digest`, and `config_fingerprint`. Unknown fields in either section stay
 private. The endpoint reports missing evidence as `null`; it never fabricates a
-digest or revision.
+digest or revision. An upstream-owned tier forbids this configured fingerprint
+and instead reports allowlisted live values under `served_configuration`.
 
 See the
 [router observability API](THIN-CAPABILITY-GATEWAY.md#router-observability-api)
