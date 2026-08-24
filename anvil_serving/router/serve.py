@@ -15,6 +15,7 @@ import os
 import sys
 import threading
 import time
+from dataclasses import replace
 from http.server import ThreadingHTTPServer
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
 
@@ -24,12 +25,14 @@ from .availability import (
     AlwaysAvailable,
     AvailabilityResult,
     HttpHealthAvailability,
+    resolve_runtime_tier,
     safe_check,
 )
 from .backends import RelayBackend
 from .backends.relay import DiscoveryTransport, Transport, discover_single_model
 from .config import (
     ConfigError,
+    METADATA_UPSTREAM,
     PRIVACY_LOCAL,
     RouterConfig,
     Tier,
@@ -171,7 +174,7 @@ def build_backend_for_tier(
         raise ConfigError(
             f"direct model route tier {tier.id!r} must have privacy='local'"
         )
-    if tier.model is None:
+    if tier.model is None and tier.metadata_source != METADATA_UPSTREAM:
         tier = discover_single_model(tier, transport=model_discovery_transport)
     return RelayBackend(tier, env=env, transport=transport, timeout=timeout)
 
@@ -339,9 +342,27 @@ class RoutingBackend:
         def _elapsed_ms() -> int:
             return max(0, int((time.monotonic() - started) * 1000))
 
-        tier = self._config.route_tier(request.model)
-        if tier is None:
+        configured_tier = self._config.route_tier(request.model)
+        if configured_tier is None:
             raise NoAvailableTierError(request.model, (), kind="unknown_model")
+
+        tier = configured_tier
+        readiness: Optional[AvailabilityResult] = None
+        if tier.metadata_source == METADATA_UPSTREAM:
+            readiness = self._availability_for(tier)
+            effective_tier = resolve_runtime_tier(tier, readiness)
+            if effective_tier is None:
+                self._record(
+                    request,
+                    tier,
+                    served=False,
+                    reason="upstream_metadata_unavailable",
+                    outcome="skipped",
+                )
+                raise NoAvailableTierError(
+                    request.model, (tier.id,), kind="unavailable"
+                )
+            tier = effective_tier
 
         self._apply_output_cap(request, tier)
 
@@ -370,7 +391,8 @@ class RoutingBackend:
         if backend is None:
             self._record(request, tier, served=False, reason="backend_unbound")
             raise NoAvailableTierError(request.model, (tier.id,))
-        readiness = self._availability_for(tier)
+        if readiness is None:
+            readiness = self._availability_for(tier)
         if not readiness.available:
             self._record(request, tier, served=False, reason="unavailable", outcome="skipped")
             raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
@@ -379,8 +401,14 @@ class RoutingBackend:
             self._record(request, tier, served=False, reason="quiesced", outcome="skipped")
             raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
 
+        relay_request = request
+        if configured_tier.metadata_source == METADATA_UPSTREAM:
+            # Preserve the stable public alias on the original request and in
+            # decision/response metadata. Only the private relay copy carries
+            # the inference service's currently observed model id.
+            relay_request = replace(request, model=tier.model)
         try:
-            upstream = backend.generate(request)
+            upstream = backend.generate(relay_request)
         except BaseException as exc:
             self._record(
                 request,
@@ -451,7 +479,7 @@ class RoutingBackend:
         )
 
     def model_discovery(self) -> dict:
-        return models_payload(self._config)
+        return models_payload(self._config, self._availability)
 
     def model_capabilities(self, query: Mapping[str, list[str]]) -> dict:
         return build_model_capabilities(self._config, self._availability, query)
@@ -501,6 +529,12 @@ class RoutingBackend:
                 "readiness_reason": readiness.reason,
                 "expected_model": readiness.expected_model,
                 "observed_model": readiness.observed_model,
+                "observed_context_limit": (
+                    readiness.runtime_metadata.context_limit
+                    if readiness.runtime_metadata is not None
+                    else None
+                ),
+                "metadata_source": tier.metadata_source,
             })
         return {"tiers": rows}
 
@@ -518,7 +552,10 @@ class RoutingBackend:
 
     def readmit_tier(self, tier_id: str) -> dict:
         tier = self._config.tier(tier_id)
-        if not tier.model_identity or not tier.health_path or not tier.model:
+        dynamic_metadata = tier.metadata_source == METADATA_UPSTREAM
+        if not dynamic_metadata and (
+            not tier.model_identity or not tier.health_path or not tier.model
+        ):
             return {"readmitted": False, "reason": "identity_not_configured", "status": self.transition_status(tier_id)}
         invalidate = getattr(self._availability, "invalidate", None)
         if callable(invalidate):
@@ -526,8 +563,14 @@ class RoutingBackend:
         readiness = self._availability_for(tier)
         identity_verified = (
             readiness.available
-            and readiness.expected_model == tier.model
-            and readiness.observed_model == tier.model
+            and (
+                resolve_runtime_tier(tier, readiness) is not None
+                if dynamic_metadata
+                else (
+                    readiness.expected_model == tier.model
+                    and readiness.observed_model == tier.model
+                )
+            )
         )
         if not identity_verified:
             return {
@@ -546,6 +589,12 @@ class RoutingBackend:
                 "readiness_reason": readiness.reason,
                 "expected_model": readiness.expected_model,
                 "observed_model": readiness.observed_model,
+                "observed_context_limit": (
+                    readiness.runtime_metadata.context_limit
+                    if readiness.runtime_metadata is not None
+                    else None
+                ),
+                "metadata_source": tier.metadata_source,
             }]},
         }
 

@@ -57,3 +57,4 @@ people and the chat logs.
 | [0035](0035-fleet-configuration-reconciliation.md) | Fleet configuration reconciliation: git as the state store, controller-mediated install and adopt | Accepted |
 | [0036](0036-voice-relocation-and-qualification-host.md) | Voice relocates to the opportunistic macOS node; the freed discrete-GPU host becomes the qualification and ComfyUI host | Proposed |
 | [0037](0037-caller-side-prompt-lane-classification.md) | Caller-side prompt-lane classification: an advisory encoder sidecar outside the gateway | Proposed |
+| [0038](0038-inference-owned-model-metadata.md) | Inference-owned model metadata behind stable capability aliases | Accepted |

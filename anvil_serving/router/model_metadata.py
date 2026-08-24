@@ -16,8 +16,8 @@ from typing import Mapping, Optional
 
 from anvil_serving import __version__
 
-from .availability import AvailabilityResult, safe_check
-from .config import RouterConfig, Tier, normalize_model_alias
+from .availability import AvailabilityResult, resolve_runtime_tier, safe_check
+from .config import METADATA_UPSTREAM, RouterConfig, Tier, normalize_model_alias
 from .model_capacity import _nonnegative_int
 
 
@@ -113,8 +113,12 @@ def _readiness(availability: object, tier: Tier) -> AvailabilityResult:
     return safe_check(availability, tier, include_exception_name=False)
 
 
-def _safe_readiness(availability: object, tier: Tier) -> dict:
-    result = _readiness(availability, tier)
+def _safe_readiness(
+    availability: object,
+    tier: Tier,
+    result: Optional[AvailabilityResult] = None,
+) -> dict:
+    result = result or _readiness(availability, tier)
     return {
         "loaded": result.available,
         "state": (
@@ -163,12 +167,23 @@ def build_model_capabilities(
         if selected_alias is not None and selected_alias not in aliases:
             continue
         capabilities = _params_section(tier, CAPABILITIES_PARAMS_KEY)
+        readiness = _readiness(availability, tier)
+        effective = resolve_runtime_tier(tier, readiness)
+        reported = effective or tier
         rows.append({
             "object": "model_capabilities",
             "id": tier.id,
             "aliases": aliases,
-            "model": tier.model,
-            "context_limit_tokens": tier.context_limit,
+            "model": (
+                reported.model
+                if tier.metadata_source != METADATA_UPSTREAM or effective is not None
+                else None
+            ),
+            "context_limit_tokens": (
+                reported.context_limit
+                if reported.context_limit > 0
+                else None
+            ),
             "tools": {"supported": tier.tool_support},
             "modalities": _safe_modalities(capabilities.get("modalities")),
             "thinking": _thinking(capabilities.get("thinking")),
@@ -178,7 +193,7 @@ def build_model_capabilities(
                 "images_per_request": _nonnegative_int(capabilities.get("images_per_request")),
                 "video_per_request": _nonnegative_int(capabilities.get("video_per_request")),
             },
-            "readiness": _safe_readiness(availability, tier),
+            "readiness": _safe_readiness(availability, tier, readiness),
         })
     return {"object": "list", "data": rows}
 
@@ -194,17 +209,52 @@ def build_model_fingerprints(
         aliases = aliases_by_tier.get(tier.id, [])
         if selected_alias is not None and selected_alias not in aliases:
             continue
-        fingerprint = _params_section(tier, FINGERPRINT_PARAMS_KEY)
         readiness = _readiness(availability, tier)
+        effective = resolve_runtime_tier(tier, readiness)
+        reported = effective or tier
+        fingerprint = (
+            {}
+            if tier.metadata_source == METADATA_UPSTREAM
+            else _params_section(tier, FINGERPRINT_PARAMS_KEY)
+        )
         rows.append({
             "object": "model_fingerprint",
             "id": tier.id,
             "aliases": aliases,
-            "model": tier.model,
+            "model": (
+                reported.model
+                if tier.metadata_source != METADATA_UPSTREAM or effective is not None
+                else None
+            ),
             "fingerprint": {key: _safe_text(fingerprint.get(key)) for key in _FINGERPRINT_KEYS},
             "served_identity": {
                 "expected": _safe_text(readiness.expected_model),
                 "observed": _safe_text(readiness.observed_model),
+            },
+            "served_configuration": {
+                "metadata_source": tier.metadata_source,
+                "context_limit_tokens": (
+                    reported.context_limit
+                    if reported.context_limit > 0
+                    else None
+                ),
+                "engine": reported.engine,
+                "quantization": reported.quantization,
+                "engine_version": (
+                    readiness.runtime_metadata.engine_version
+                    if readiness.runtime_metadata is not None
+                    else None
+                ),
+                "max_concurrency": (
+                    readiness.runtime_metadata.max_concurrency
+                    if readiness.runtime_metadata is not None
+                    else tier.max_concurrency
+                ),
+                "modalities": (
+                    list(readiness.runtime_metadata.modalities)
+                    if readiness.runtime_metadata is not None
+                    else []
+                ),
             },
             "readiness": {
                 "loaded": readiness.available,
@@ -234,8 +284,13 @@ def _canonical_public_config(config: RouterConfig) -> bytes:
             "id": tier.id,
             "aliases": aliases_by_tier.get(tier.id, []),
             "model": tier.model,
+            "metadata_source": tier.metadata_source,
             "dialect": tier.dialect,
-            "context_limit_tokens": tier.context_limit,
+            "context_limit_tokens": (
+                None
+                if tier.metadata_source == METADATA_UPSTREAM
+                else tier.context_limit
+            ),
             "max_output_tokens": tier.max_output_tokens,
             "tool_support": tier.tool_support,
             "engine": tier.engine,

@@ -19,17 +19,35 @@ separate benchmark and preflight tools.
 """
 from __future__ import annotations
 
-import threading
-import time
 import json
 import os
+import re
+import threading
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, replace
 from typing import Callable, Dict, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
-from .config import PRIVACY_LOCAL, RouterConfig, Tier
+from .config import METADATA_UPSTREAM, PRIVACY_LOCAL, RouterConfig, Tier
+
+
+_SAFE_METADATA_TEXT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+ -]{0,255}")
+_CONTEXT_KEYS = ("max_model_len", "max_context_length", "context_length")
+
+
+@dataclass(frozen=True)
+class RuntimeModelMetadata:
+    """Allowlisted inference-service facts adopted by an upstream-owned tier."""
+
+    model: str
+    context_limit: int
+    engine: Optional[str] = None
+    quantization: Optional[str] = None
+    engine_version: Optional[str] = None
+    max_concurrency: Optional[int] = None
+    modalities: tuple[str, ...] = ()
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -67,12 +85,17 @@ class AvailabilityResult:
     observed_model: Optional[str] = None
     latency_ms: Optional[int] = None
     checked_at: Optional[float] = None
+    runtime_metadata: Optional[RuntimeModelMetadata] = None
 
 
 class AlwaysAvailable:
     """Backwards-compatible availability implementation with no network I/O."""
 
     def check(self, tier: Tier) -> AvailabilityResult:
+        if tier.metadata_source == METADATA_UPSTREAM:
+            return AvailabilityResult(
+                False, "unavailable", "upstream_metadata_not_configured"
+            )
         return AvailabilityResult(
             True, "ready", "availability_not_configured",
             expected_model=tier.model if tier.model_identity else None,
@@ -195,6 +218,11 @@ class HttpHealthAvailability:
         parsed = urlsplit(tier.base_url)
         return urlunsplit((parsed.scheme, parsed.netloc, "/v1/models", "", ""))
 
+    @staticmethod
+    def _props_url(tier: Tier) -> str:
+        parsed = urlsplit(tier.base_url)
+        return urlunsplit((parsed.scheme, parsed.netloc, "/props", "", ""))
+
     def _probe(self, url: str, tier: Tier) -> AvailabilityResult:
         request = urllib.request.Request(url, method="GET")
         try:
@@ -210,7 +238,7 @@ class HttpHealthAvailability:
             )
 
         if isinstance(status, int) and 200 <= status < 400:
-            if tier.model_identity:
+            if tier.model_identity or tier.metadata_source == METADATA_UPSTREAM:
                 return self._probe_identity(tier)
             return AvailabilityResult(True, "ready", "health_passed")
         code = status if isinstance(status, int) else "unknown"
@@ -254,21 +282,179 @@ class HttpHealthAvailability:
             data = document["data"]
             if not isinstance(data, list):
                 raise ValueError("bad data")
-            model_ids = [
-                item.get("id") for item in data
+            model_entries = [
+                item
+                for item in data
                 if isinstance(item, dict) and isinstance(item.get("id"), str)
             ]
+            model_ids = [item["id"] for item in model_entries]
         except Exception:  # noqa: BLE001 - raw parser details are not status
             return AvailabilityResult(
                 False, "unavailable", "identity_malformed", expected
             )
         observed = model_ids[0][:256] if model_ids else None
+        if tier.metadata_source == METADATA_UPSTREAM:
+            if len(model_entries) != 1:
+                return AvailabilityResult(
+                    False,
+                    "unavailable",
+                    "upstream_metadata_model_count",
+                    None,
+                    observed,
+                )
+            return self._runtime_metadata_result(
+                tier,
+                model_entries[0],
+                headers=headers,
+            )
         if expected in model_ids:
             return AvailabilityResult(
                 True, "ready", "identity_passed", expected, expected
             )
         return AvailabilityResult(
             False, "unavailable", "identity_mismatch", expected, observed
+        )
+
+    @staticmethod
+    def _positive_int(value: object, *, maximum: int = 10_000_000) -> Optional[int]:
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not 0 < value <= maximum
+        ):
+            return None
+        return value
+
+    @staticmethod
+    def _safe_metadata_text(value: object) -> Optional[str]:
+        if not isinstance(value, str) or _SAFE_METADATA_TEXT_RE.fullmatch(value) is None:
+            return None
+        return value
+
+    @classmethod
+    def _context_from_model_card(cls, entry: Mapping[str, object]) -> Optional[int]:
+        for key in _CONTEXT_KEYS:
+            value = cls._positive_int(entry.get(key))
+            if value is not None:
+                return value
+        return None
+
+    def _read_props(
+        self, tier: Tier, *, headers: Mapping[str, str]
+    ) -> Optional[Mapping[str, object]]:
+        request = urllib.request.Request(
+            self._props_url(tier), headers=dict(headers), method="GET"
+        )
+        try:
+            with self._opener(request, timeout=self._probe_timeout) as response:
+                status = getattr(response, "status", None) or response.getcode()
+                if not isinstance(status, int) or not 200 <= status < 300:
+                    return None
+                payload = response.read(self._probe_max_bytes + 1)
+        except Exception:  # noqa: BLE001 - absence is a stable metadata miss
+            return None
+        if len(payload) > self._probe_max_bytes:
+            return None
+        try:
+            document = json.loads(payload)
+        except Exception:  # noqa: BLE001 - raw parser details stay private
+            return None
+        return document if isinstance(document, Mapping) else None
+
+    @classmethod
+    def _modalities_from_props(cls, props: Mapping[str, object]) -> tuple[str, ...]:
+        raw = props.get("modalities")
+        if not isinstance(raw, Mapping):
+            return ()
+        modalities = {"text"}
+        if raw.get("vision") is True or raw.get("image") is True:
+            modalities.add("image")
+        for name in ("video", "audio"):
+            if raw.get(name) is True:
+                modalities.add(name)
+        return tuple(sorted(modalities))
+
+    def _runtime_metadata_result(
+        self,
+        tier: Tier,
+        entry: Mapping[str, object],
+        *,
+        headers: Mapping[str, str],
+    ) -> AvailabilityResult:
+        model = self._safe_metadata_text(entry.get("id"))
+        if model is None:
+            return AvailabilityResult(
+                False, "unavailable", "upstream_metadata_model_invalid"
+            )
+
+        context_limit = self._context_from_model_card(entry)
+        engine = self._safe_metadata_text(entry.get("owned_by"))
+        quantization = None
+        engine_version = None
+        max_concurrency = None
+        modalities: tuple[str, ...] = ()
+
+        # vLLM and SGLang publish max_model_len in the OpenAI model card.
+        # llama.cpp publishes the running context and additional descriptive
+        # facts from its read-only GET /props endpoint.
+        props = None
+        if context_limit is None or engine == "llamacpp":
+            props = self._read_props(tier, headers=headers)
+        if props is not None:
+            props_alias = self._safe_metadata_text(props.get("model_alias"))
+            if props_alias is not None and props_alias != model:
+                return AvailabilityResult(
+                    False,
+                    "unavailable",
+                    "upstream_metadata_identity_mismatch",
+                    None,
+                    model,
+                )
+            settings = props.get("default_generation_settings")
+            if context_limit is None and isinstance(settings, Mapping):
+                context_limit = self._positive_int(settings.get("n_ctx"))
+            quantization = self._safe_metadata_text(props.get("model_ftype"))
+            engine_version = self._safe_metadata_text(props.get("build_info"))
+            max_concurrency = self._positive_int(
+                props.get("total_slots"), maximum=100_000
+            )
+            modalities = self._modalities_from_props(props)
+
+        if context_limit is None:
+            return AvailabilityResult(
+                False,
+                "unavailable",
+                "upstream_metadata_context_missing",
+                None,
+                model,
+            )
+        if (
+            tier.max_output_tokens is not None
+            and tier.max_output_tokens > context_limit
+        ):
+            return AvailabilityResult(
+                False,
+                "unavailable",
+                "upstream_metadata_output_limit_conflict",
+                None,
+                model,
+            )
+        metadata = RuntimeModelMetadata(
+            model=model,
+            context_limit=context_limit,
+            engine=engine,
+            quantization=quantization,
+            engine_version=engine_version,
+            max_concurrency=max_concurrency,
+            modalities=modalities,
+        )
+        return AvailabilityResult(
+            True,
+            "ready",
+            "upstream_metadata_passed",
+            None,
+            model,
+            runtime_metadata=metadata,
         )
 
     def invalidate(self, tier_id: Optional[str] = None) -> None:
@@ -311,9 +497,34 @@ def safe_check(
         return AvailabilityResult(False, "unavailable", reason)
 
 
+def resolve_runtime_tier(
+    tier: Tier, readiness: AvailabilityResult
+) -> Optional[Tier]:
+    """Return the effective runtime tier, or ``None`` when discovery is incomplete."""
+    if tier.metadata_source != METADATA_UPSTREAM:
+        return tier
+    metadata = readiness.runtime_metadata
+    if not readiness.available or metadata is None:
+        return None
+    return replace(
+        tier,
+        model=metadata.model,
+        context_limit=metadata.context_limit,
+        engine=metadata.engine,
+        quantization=metadata.quantization,
+        max_concurrency=(
+            tier.max_concurrency
+            if tier.max_concurrency is not None
+            else metadata.max_concurrency
+        ),
+    )
+
+
 __all__ = [
     "AlwaysAvailable",
     "AvailabilityResult",
     "HttpHealthAvailability",
+    "RuntimeModelMetadata",
+    "resolve_runtime_tier",
     "safe_check",
 ]

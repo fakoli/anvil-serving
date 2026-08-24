@@ -20,8 +20,8 @@ from dataclasses import dataclass
 from typing import Callable, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
-from .availability import AvailabilityResult, safe_check
-from .config import RouterConfig, Tier, normalize_model_alias
+from .availability import AvailabilityResult, resolve_runtime_tier, safe_check
+from .config import METADATA_UPSTREAM, RouterConfig, Tier, normalize_model_alias
 
 CAPACITY_PARAMS_KEY = "capacity"
 _MAX_METRICS_BYTES = 1024 * 1024
@@ -200,7 +200,7 @@ def _integer_arg(query: Mapping[str, list[str]], name: str) -> Optional[int]:
 def _scenario(
     query: Mapping[str, list[str]],
     *,
-    context_limit: int,
+    context_limit: Optional[int],
     image_limit: Optional[int],
     video_limit: Optional[int],
     image_tokens_estimate: Optional[int],
@@ -245,7 +245,11 @@ def _scenario(
             input_tokens + (image_tokens or 0) + (video_tokens or 0)
             + output_tokens
         )
-        within_context = context_tokens <= context_limit
+        within_context = (
+            context_tokens <= context_limit
+            if context_limit is not None
+            else None
+        )
     if (
         within_image_limit is False
         or within_video_limit is False
@@ -354,7 +358,13 @@ def build_model_capacity(
             capacity.get("video_tokens_estimate")
         )
         kv_capacity = _positive_int(capacity.get("kv_cache_capacity_tokens"))
-        live = _metrics(metrics_provider, tier)
+        ready = _readiness(availability, tier)
+        effective = resolve_runtime_tier(tier, ready)
+        reported = effective or tier
+        context_limit = (
+            reported.context_limit if reported.context_limit > 0 else None
+        )
+        live = _metrics(metrics_provider, reported)
         values = dict(live.values) if live.status == "available" else {}
         usage = values.get("kv_cache_usage_fraction")
         used_tokens = None
@@ -367,12 +377,15 @@ def build_model_capacity(
             used_tokens = round(kv_capacity * usage)
             remaining_tokens = kv_capacity - used_tokens
 
-        ready = _readiness(availability, tier)
         rows.append({
             "object": "model_capacity",
             "id": tier.id,
             "aliases": aliases,
-            "model": tier.model,
+            "model": (
+                reported.model
+                if tier.metadata_source != METADATA_UPSTREAM or effective is not None
+                else None
+            ),
             "loaded": ready.available,
             "readiness": {
                 "state": ready.state,
@@ -381,8 +394,8 @@ def build_model_capacity(
                 else "unavailable",
             },
             "engine": {
-                "name": tier.engine,
-                "quantization": tier.quantization,
+                "name": reported.engine,
+                "quantization": reported.quantization,
             },
             "gpu": {
                 "role": gpu_role,
@@ -392,11 +405,11 @@ def build_model_capacity(
                 ),
             },
             "capacity": {
-                "context_limit_tokens": tier.context_limit,
+                "context_limit_tokens": context_limit,
                 "kv_cache_capacity_tokens": kv_capacity,
                 "full_context_concurrency": (
-                    round(kv_capacity / tier.context_limit, 3)
-                    if kv_capacity is not None
+                    round(kv_capacity / context_limit, 3)
+                    if kv_capacity is not None and context_limit is not None
                     else None
                 ),
                 "configured_max_concurrency": tier.max_concurrency,
@@ -432,7 +445,7 @@ def build_model_capacity(
             },
             "scenario": _scenario(
                 query,
-                context_limit=tier.context_limit,
+                context_limit=context_limit,
                 image_limit=image_limit,
                 video_limit=video_limit,
                 image_tokens_estimate=image_tokens_estimate,

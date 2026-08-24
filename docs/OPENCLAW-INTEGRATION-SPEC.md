@@ -34,9 +34,10 @@ operator-owned and remains unchanged.
   a clean 404.
 - A configured alias is proxied only to its declared local tier. A non-ready or quiesced tier
   receives a 503; the router does not select an alternate model.
-- `GET /v1/models` advertises configured aliases with each alias's declared
-  `context_window` and `max_output_tokens`; clients such as Hermes can consume
-  that standard discovery metadata without an explicit per-model override.
+- `GET /v1/models` advertises configured aliases with each alias's effective
+  configured or inference-reported `context_window` and its router-owned
+  `max_output_tokens`; clients such as Hermes can consume that standard
+  discovery metadata without an explicit per-model override.
 - Router tokens are environment variables, never literal provider configuration values.
 - Lifecycle, preflight, benchmark, and promotion are explicit Anvil Serving operations. They are
   outside the request path.
@@ -74,6 +75,11 @@ This sync preserves credentials and compaction policy, validates the router
 status/capability alias closure, and keeps distinct model limits distinct (for
 example, a large Primary window and a smaller Secondary window). Apply only
 after reviewing the config hash and model matrix, using `--confirm`.
+
+When a tier uses `metadata_source = "upstream"`, an inference-service model or
+context replacement at the same endpoint is visible after the router's bounded
+metadata refresh interval. OpenClaw continues sending the stable alias; neither
+its provider configuration nor the router route table needs a model-name edit.
 
 Use `GET /v1/decisions` for metadata-only diagnostics such as requested alias, selected tier,
 status, and token counts. It is not a routing-policy or model-selection API.
