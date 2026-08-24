@@ -1,0 +1,4 @@
+interface:
+  display_name: "Anvil Serving Candidate Operations"
+  short_description: "Recover, switch, test, and restore model candidates."
+  default_prompt: "Use $anvil-serving-candidate-operations to prepare the GPU lane, switch this managed candidate, test it, and restore the starting state."
