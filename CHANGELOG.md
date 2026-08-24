@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Chat tiers may opt into `metadata_source = "upstream"` so a stable capability
+  alias reads the active single-model identity, context, and allowlisted runtime
+  configuration from its OpenAI-compatible inference service. Metadata refresh
+  is bounded by the readiness cache and fails closed without changing the
+  configured alias-to-tier route.
+
+### Fixed
+
+- Router discovery, admission, capacity, capabilities, and fingerprint views
+  no longer require duplicated static model/context facts for an
+  upstream-owned tier, preventing stale Qwen version and context reporting
+  after a same-endpoint serve replacement.
+
 ## [0.35.0] - 2026-08-22
 
 ### Added
