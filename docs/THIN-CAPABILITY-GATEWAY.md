@@ -21,10 +21,18 @@ vision.general = "vision-local"
 vision.video = "video-local"
 ```
 
-The chosen tier remains subject to its declared context and tool capabilities,
-health/readiness probes, and concurrency admission. If it is unavailable or
+The chosen tier remains subject to its configured or inference-reported
+context, declared tool capabilities, health/readiness probes, and concurrency
+admission. If it is unavailable or
 admission is exhausted, the gateway returns its configured exhaustion response;
 it does not select a substitute tier.
+
+The alias-to-tier map is always configured and exact. A tier may optionally set
+`metadata_source = "upstream"` so its one OpenAI-compatible inference service
+owns the current served-model identity and context. The router refreshes those
+facts through bounded readiness metadata and fails closed when the service is
+ambiguous or incomplete. This is runtime configuration discovery, not inferred
+routing, model selection, or lifecycle control.
 
 ## What remains in the request path
 
@@ -65,17 +73,17 @@ metrics. Except for `GET /healthz`, the normal router bearer token or
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /v1/models` | OpenAI-shaped configured aliases with declared context and output limits for client discovery. |
+| `GET /v1/models` | OpenAI-shaped configured aliases with effective configured or observed context and output limits for client discovery. |
 | `GET /v1/models/capacity` | Declared GPU/model capacity, bounded live engine signals, and request-scenario arithmetic. |
 | `GET /v1/models/capabilities` | Tools, modalities, thinking behavior, context, and multimodal limits. |
-| `GET /v1/models/fingerprints` | Declared checkpoint/engine identity plus identity observed by readiness. |
+| `GET /v1/models/fingerprints` | Configured identity evidence or allowlisted model configuration observed from an upstream-owned inference service. |
 | `GET /v1/router/status` | Package version, uptime, aliases, tier counts, and a secret-free effective-config hash. |
 | `GET /v1/stats` | Tokens, bytes, outcomes, and latency percentiles over the current decision-log buffer. |
 | `GET /v1/requests/{request_id}` | Metadata-only trace for an exact sanitized request identifier. |
 | `GET /metrics` | Prometheus gauges for router-buffer aggregates and current model capacity/load. |
 
 The unauthenticated OpenAI-compatible discovery list exposes only aliases and
-their declared context/output limits; it does not expose upstream identity,
+their effective context/output limits; it does not expose upstream identity,
 readiness, or private topology. Authenticated model endpoints and `/v1/stats`
 accept `model=<configured-alias>`. Capacity also
 accepts `gpu_role`, `images`, `input_tokens`, `image_tokens`, and
