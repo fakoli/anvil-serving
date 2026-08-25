@@ -1,6 +1,6 @@
 site_name: anvil-serving
 site_description: >-
-  Benchmark and serve local models through a thin capability gateway.
+  Benchmark and serve local models through an explicit capability meta-router.
 site_url: https://fakoli.github.io/anvil-serving/
 repo_url: https://github.com/fakoli/anvil-serving
 repo_name: fakoli/anvil-serving
@@ -50,13 +50,14 @@ nav:
       - Serve lifecycle commands: cli/serves.md
       - Models & recipes commands: cli/models.md
       - Model settings example: MODEL-SETTINGS-EXAMPLE.md
-  - Route through the gateway:
+  - Route through the meta-router:
+      - Capability meta-router: META-ROUTER.md
       - Architecture: ARCHITECTURE.md
       - Fleet state & replication: FLEET-STATE.md
       - 'Strategy: make divergence loud': STRATEGY-MAKE-DIVERGENCE-LOUD.md
       - 'Product discovery: personas': PRODUCT-DISCOVERY-PERSONAS.md
       - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
-      - Thin capability gateway: THIN-CAPABILITY-GATEWAY.md
+      - Meta-router request path: THIN-CAPABILITY-GATEWAY.md
       - Configuration reference: CONFIGURATION.md
       - Embeddings & reranking: PURPOSE-MODELS.md
       - Router commands: cli/router.md
@@ -161,6 +162,8 @@ nav:
       - 'ADR-0035: Fleet configuration reconciliation': adr/0035-fleet-configuration-reconciliation.md
       - 'ADR-0036: Voice relocation and qualification host': adr/0036-voice-relocation-and-qualification-host.md
       - 'ADR-0037: Caller-side prompt-lane classification': adr/0037-caller-side-prompt-lane-classification.md
+      - 'ADR-0038: Inference-owned model metadata': adr/0038-inference-owned-model-metadata.md
+      - 'ADR-0039: Capability meta-router': adr/0039-capability-meta-router.md
   - Changelog: changelog.md
 
 markdown_extensions:
