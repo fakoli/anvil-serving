@@ -104,6 +104,7 @@ config change. See [Evaluation & benchmark commands](cli/eval.md) and
 ## Related
 
 - [Configuration reference](CONFIGURATION.md) — full router configuration contract.
-- [Thin capability gateway](THIN-CAPABILITY-GATEWAY.md) — endpoint boundary and error behavior.
+- [Capability meta-router](META-ROUTER.md) — product boundary and authority model.
+- [Meta-router request path](THIN-CAPABILITY-GATEWAY.md) — endpoint and error behavior.
 - [Router commands](cli/router.md) — running and reloading the router.
 - [Terminology](TERMINOLOGY.md) — tier, alias, serve, and evidence vocabulary.
