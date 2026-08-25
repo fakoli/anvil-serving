@@ -1,8 +1,15 @@
-# Thin capability gateway
+# Capability meta-router request path
 
 anvil-serving exposes measured local capabilities through one authenticated,
 OpenAI- and Anthropic-compatible endpoint. It does not infer workload intent,
 rank candidate models, apply quality profiles, or retry another model.
+
+At the product level this is a **capability meta-router**: it keeps a stable
+capability contract in front of a configured tier whose concrete serving
+metadata may change. At the implementation level it remains a **thin
+capability gateway**: the request path authenticates, validates, translates,
+admits, streams, and relays without gaining selection or lifecycle authority.
+See [Capability meta-router](META-ROUTER.md) for the complete authority model.
 
 ## Contract
 
@@ -33,6 +40,20 @@ owns the current served-model identity and context. The router refreshes those
 facts through bounded readiness metadata and fails closed when the service is
 ambiguous or incomplete. This is runtime configuration discovery, not inferred
 routing, model selection, or lifecycle control.
+
+## Authority boundary
+
+| Fact or decision | Authority |
+| --- | --- |
+| Caller-visible capability alias | `[router.model_routes]` |
+| Alias-to-tier mapping and endpoint | Operator-owned router configuration |
+| Mutable served model and context | Router config, or the selected inference service in upstream mode |
+| Tool, media, output, readiness, and concurrency policy | Router configuration |
+| Model quality and promotion | Recorded evaluation plus a human-gated operator transaction |
+
+The router combines these authorities only after the alias has selected its
+one tier. An upstream response can update the description of that tier; it
+cannot change the route.
 
 ## What remains in the request path
 
@@ -119,5 +140,6 @@ reserve both while other GPU inference is offline. The gateway provides one
 stable endpoint across those services without pretending capabilities or VRAM
 heaps are interchangeable.
 
-See [Configuration](CONFIGURATION.md), [Architecture](ARCHITECTURE.md), and
-[ADR-0028](adr/0028-serving-benchmarks-and-thin-capability-gateway.md).
+See [Configuration](CONFIGURATION.md), [Architecture](ARCHITECTURE.md),
+[ADR-0028](adr/0028-serving-benchmarks-and-thin-capability-gateway.md), and
+[ADR-0039](adr/0039-capability-meta-router.md).

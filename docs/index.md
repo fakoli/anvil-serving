@@ -1,13 +1,15 @@
-![anvil-serving - local model serving and benchmarking](assets/banner.png)
+![anvil-serving - local model serving and a capability meta-router](assets/banner.png)
 
 # anvil-serving
 
-> **Run local models, prove they work, and serve them through a thin capability gateway.**
+> **Run local models, prove they work, and expose them through a capability meta-router.**
 
 anvil-serving manages local model serves, qualifies them with preflight checks, records
-benchmark evidence, and exposes explicit model aliases over OpenAI- and Anthropic-compatible
-endpoints. Each configured alias maps to exactly one local tier. The router is a proxy
-boundary — not an intent classifier, not an automatic model selector.
+benchmark evidence, and exposes stable capability aliases over OpenAI- and
+Anthropic-compatible endpoints. Each configured alias maps to exactly one local tier. The
+selected inference service may own its mutable served-model metadata, while the router owns
+the alias, tier mapping, policy, and protocol boundary. That makes Anvil Serving a capability
+meta-router — not an intent classifier and not an automatic model selector.
 
 Models are interchangeable subjects of evaluation here. The docs below describe capabilities;
 the [evidence layer](benchmarks/index.md) records which models currently occupy which tier and
@@ -20,7 +22,7 @@ what was measured to put them there.
 | **Serve models** — catalog, artifacts, recipes, and the serve lifecycle | [Catalog, artifacts & recipes](MODEL-LIFECYCLE.md) | `models`, `serves` |
 | **Promote and roll back** — the guarded transaction that changes what callers get | [Promote and roll back](MODEL-PROMOTION.md) | `serves promote`, `router quiesce/drain/readmit` |
 | **Qualify & benchmark** — prove an endpoint is a capability, not just reachable | [Evaluation & benchmarks](cli/eval.md) | `eval` |
-| **Route through the gateway** — direct aliases, auth, streaming, admission | [Thin capability gateway](THIN-CAPABILITY-GATEWAY.md) | `router` |
+| **Route through the meta-router** — capabilities, auth, streaming, admission | [Capability meta-router](META-ROUTER.md) | `router` |
 | **Embeddings & reranking** — dedicated purpose models routed by exact model name | [Embeddings & reranking](PURPOSE-MODELS.md) | `router` |
 | **Voice & audio** — STT/TTS serves, realtime bridge, audio routes | [Voice pipeline](VOICE.md) | `voice` |
 | **Operate the host** — GPU budget, WSL/Docker repair, tailnet edge, observability | [Operator playbooks](OPERATOR-PLAYBOOKS.md) | `host`, `edge`, `collectors`, `dashboard`, `topology` |
@@ -61,6 +63,7 @@ reference pages stay true as models change.
 | Read this | When you need |
 | --- | --- |
 | [Architecture](ARCHITECTURE.md) | System components and deployment shapes. |
+| [Capability meta-router](META-ROUTER.md) | Product category, authority split, and non-goals. |
 | [Configuration reference](CONFIGURATION.md) | Router, serve, and voice configuration. |
 | [Command index](CLI.md) | Every command family and flag. |
 | [Troubleshooting](TROUBLESHOOTING.md) | Diagnose aliases, serves, auth, and preflight. |

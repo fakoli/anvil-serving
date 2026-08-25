@@ -2,10 +2,11 @@
 
 ## Product
 
-anvil-serving is a local-model serving and benchmark substrate with a thin,
-authenticated capability gateway. Its current product center is repeatable
-local serving, preflight, and benchmark evidence. It is not an intent-driven
-model router.
+anvil-serving is a local-model serving and benchmark substrate with an
+explicit capability meta-router, implemented as a thin authenticated gateway.
+Its current product center is repeatable local serving, preflight, benchmark
+evidence, and stable capability contracts over mutable local inference
+services. It is not an intent-driven model router.
 
 Every routing surface is serving-engine agnostic. Chat, purpose-model, and
 audio routes select declared aliases or model names, endpoints, dialects,
@@ -19,6 +20,12 @@ supported stateless Responses subset. `[router.model_routes]` is the complete
 chat vocabulary: one normalized caller alias maps to exactly one local tier.
 Unknown or missing aliases return 404. A selected tier that cannot serve returns
 an error; it is not replaced by another tier.
+
+"Meta-router" names the authority split, not a model-selection algorithm. The
+caller owns the requested capability alias; operator configuration owns the
+single alias-to-tier mapping, endpoint, and policy; and an opted-in inference
+service owns only its mutable served-model metadata. The router validates and
+projects those facts without changing the selected tier.
 
 The gateway retains token authentication, protocol/tool translation, true
 upstream SSE relay, readiness, admission control, and metadata-only
@@ -163,9 +170,11 @@ Use model depth at decision boundaries, then reduce it for bounded execution:
 ## Documentation
 
 - `README.md` — product framing and quick start
+- `docs/META-ROUTER.md` — product category, authority model, and invariants
 - `docs/ARCHITECTURE.md` — current request path and topology
-- `docs/CONFIGURATION.md` — direct-gateway configuration contract
+- `docs/CONFIGURATION.md` — capability and metadata-authority configuration
 - `docs/OPERATOR-PRIVACY.md` — public/private repository and evidence boundary
-- `docs/THIN-CAPABILITY-GATEWAY.md` — gateway boundary and omissions
+- `docs/THIN-CAPABILITY-GATEWAY.md` — meta-router request path and omissions
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — harness ownership and direct aliases
 - `docs/adr/0028-serving-benchmarks-and-thin-capability-gateway.md` — rationale
+- `docs/adr/0039-capability-meta-router.md` — meta-router product decision
