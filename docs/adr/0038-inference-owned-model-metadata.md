@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-08-24
 - **Relates to:** ADR-0028 (thin capability gateway); ADR-0032 (public product,
-  private operator state); ADR-0033 (durability and plane contract)
+  private operator state); ADR-0033 (durability and plane contract); ADR-0039
+  (capability meta-router)
 
 ## Context
 
@@ -65,6 +66,10 @@ responses. The route still resolves to one configured tier, with no retry,
 fallback, classifier, or cross-model selection. Router-owned policy such as
 tool permission, media admission, output ceilings, and concurrency remains
 configured explicitly.
+
+This is the inference-owned metadata mechanism inside the capability
+meta-router defined by ADR-0039. It changes the authority for mutable facts
+about the selected serve, not the authority for route selection.
 
 ## Consequences
 

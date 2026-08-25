@@ -1,19 +1,23 @@
 # Architecture
 
-anvil-serving is a serving and benchmark substrate with a thin capability
-gateway. It owns repeatable lifecycle and evidence around local model serves,
-not semantic model selection.
+anvil-serving is a serving and benchmark substrate with an explicit
+capability meta-router, implemented as a thin gateway. It owns repeatable
+lifecycle and evidence around local model serves, plus a stable capability
+contract over their mutable configurations. It does not perform semantic model
+selection.
 
 ```mermaid
 flowchart LR
     C["client or harness"] --> A["authenticated front door"]
     A --> D["dialect translation"]
-    D --> R{"explicit model alias"}
+    D --> R{"explicit capability alias"}
     R -->|"llm.primary"| H["configured primary-local tier"]
-    R -->|"llm.voice"| F["configured voice tier"]
+    R -->|"llm.secondary"| F["configured secondary-local tier"]
     R -->|"unknown"| X["404"]
-    H --> S["SSE / normalized response"]
-    F --> S
+    H --> HM["configured served metadata"]
+    F --> FM["bounded metadata from selected service"]
+    HM --> S["admission + SSE / normalized response"]
+    FM --> S
     S --> L["metadata-only DecisionLog"]
 ```
 
@@ -28,6 +32,24 @@ SSE responses. There is exactly one selected tier per accepted chat request.
 The front door also has deterministic purpose-model endpoints for embeddings
 and reranking, plus normalized audio endpoints. They have separate
 operator-configured route tables and never join the chat route vocabulary.
+
+## Meta-router authority planes
+
+The architecture separates identity, topology, served configuration, and
+evidence so each mutable fact has one authority:
+
+| Plane | Authority | Runtime effect |
+| --- | --- | --- |
+| Capability | Caller alias plus `[router.model_routes]` | Selects exactly one tier or returns 404 |
+| Topology and policy | Operator-owned router configuration | Fixes endpoint, dialect, auth reference, readiness, and safety rules |
+| Served configuration | Router config or the selected inference service | Supplies model identity, context, and allowlisted runtime facts for admission and metadata |
+| Request | Router | Authenticates, validates, admits, translates, streams, and relays to the selected endpoint |
+| Evidence and promotion | Evaluation artifacts and guarded operator commands | Determines whether configuration should change; never selects per request |
+
+In upstream-owned mode, the router asks only the endpoint selected by the
+configured route. Metadata resolution is therefore downstream of route
+selection. It cannot introduce a second candidate, fallback, or endpoint
+choice. See [Capability meta-router](META-ROUTER.md).
 
 ## Capability topology
 
