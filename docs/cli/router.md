@@ -2,7 +2,7 @@
 
 [CLI overview](../CLI.md) · [Model serves](serves.md) · [Models & recipes](models.md)
 
-The `router` family operates the deployed OpenAI-compatible data plane. Use it
+The `router` family operates the deployed capability meta-router data plane. Use it
 to run the router directly, manage its service lifecycle, inspect its endpoint,
 and perform guarded tier transitions.
 
@@ -177,7 +177,8 @@ backing serves had been off for hours with no signal anywhere. See
 
 ## Related references
 
-- [Thin capability gateway](../THIN-CAPABILITY-GATEWAY.md)
+- [Capability meta-router](../META-ROUTER.md)
+- [Meta-router request path](../THIN-CAPABILITY-GATEWAY.md)
 - [Configuration](../CONFIGURATION.md)
 - [Operator playbooks](../OPERATOR-PLAYBOOKS.md)
 - [Troubleshooting](../TROUBLESHOOTING.md)

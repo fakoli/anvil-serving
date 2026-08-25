@@ -1,8 +1,16 @@
 # Configuration reference
 
-The router configuration is TOML. It defines local serving endpoints and an
-explicit, closed capability vocabulary. Configuration stores environment-variable
+The router configuration is TOML. It defines local serving endpoints, an
+explicit closed capability vocabulary, and which authority supplies mutable
+served-model metadata for each tier. Configuration stores environment-variable
 names for credentials, never credential literals.
+
+The capability route and metadata authority are separate decisions. The
+operator always owns `alias -> tier -> endpoint`; `metadata_source` decides
+only whether the router config or that already-selected inference service owns
+the tier's served model, context, and allowlisted runtime facts. No setting in
+this file enables intent routing, candidate ranking, or fallback. See
+[Capability meta-router](META-ROUTER.md).
 
 ## Configuration locations
 
@@ -223,6 +231,17 @@ returns 404.
 Each alias must map to one configured local tier. A tier cannot stand in for a
 caller-visible alias; use an explicit route table. The route does not create a
 fallback pool.
+
+### Metadata authority modes
+
+| Mode | Authority for mutable served-model facts | Use when |
+| --- | --- | --- |
+| `configured` (default) | Router configuration | Router and inference settings are released together. |
+| `upstream` | The already-selected single-model inference service | The model or context can change independently at a stable endpoint. |
+
+Both modes use the same exact alias-to-tier route. The difference affects
+effective metadata, request admission, and the served model id relayed to that
+endpoint; it never affects tier selection.
 
 ### Inference-owned model metadata
 

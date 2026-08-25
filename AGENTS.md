@@ -6,8 +6,8 @@
 
 ## What you're working in
 
-A local-model serving and benchmark substrate plus a thin capability gateway
-(`anvil_serving/router/`).
+A local-model serving and benchmark substrate plus an explicit capability
+meta-router implemented as a thin gateway (`anvil_serving/router/`).
 (`eval usage`, `models sync`, `serves render`, `eval preflight`, `eval benchmark run`,
 `serves multiplex`, plus `init`, `doctor`, and `host gpus`). The router is shipped: token-authed
 containerized service, cross-dialect tool translation, true upstream SSE streaming,

@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.35.1] - 2026-08-24
+
 ### Added
 
 - Chat tiers may opt into `metadata_source = "upstream"` so a stable capability
@@ -13,6 +15,24 @@ All notable changes to this project are documented here. The format is based on
   configuration from its OpenAI-compatible inference service. Metadata refresh
   is bounded by the readiness cache and fails closed without changing the
   configured alias-to-tier route.
+
+- Documented Anvil Serving as an explicit capability meta-router: callers use
+  stable capability aliases, operators own exact alias-to-tier routes and
+  safety policy, and selected inference services may own only their mutable
+  served configuration. The thin direct gateway remains the request-path
+  implementation, with no intent classification, automatic model selection,
+  or fallback.
+
+### Changed
+
+- Product, architecture, configuration, getting-started, terminology, CLI,
+  navigation, and decision documentation now use one authority model for
+  stable capability identity versus mutable served-model metadata. ADR-0039
+  records the meta-router framing without superseding ADR-0028's direct-gateway
+  decision.
+- The Dockerfile version label and public router/voice Compose defaults now
+  identify the locally built `anvil-serving:0.35.1` image. This source release
+  does not publish a container-registry artifact or deploy that image.
 
 ### Fixed
 
@@ -2275,7 +2295,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.35.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.35.1...HEAD
+[0.35.1]: https://github.com/fakoli/anvil-serving/compare/v0.35.0...v0.35.1
 [0.35.0]: https://github.com/fakoli/anvil-serving/compare/v0.34.3...v0.35.0
 [0.21.0]: https://github.com/fakoli/anvil-serving/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/fakoli/anvil-serving/compare/v0.19.0...v0.20.0
