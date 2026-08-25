@@ -1,22 +1,25 @@
 <div align="center">
 
-![anvil-serving - local model serving and a thin capability gateway](docs/assets/banner.png)
+![anvil-serving - local model serving and a capability meta-router](docs/assets/banner.png)
 
 # anvil-serving
 
-> **Benchmark and serve local models through one explicit capability gateway.**
+> **Benchmark and serve local models through one explicit capability meta-router.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.35.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.35.1-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 </div>
 
 anvil-serving runs and benchmarks local model serves, then exposes their named
-capabilities through one authenticated endpoint. It is deliberately a thin
-gateway: a caller chooses a configured `model` alias, and that alias maps to
-one local tier. There is no request classifier, quality-profile router,
-semantic fallback, cloud escalation, or hidden substitute model.
+capabilities through one authenticated endpoint. Its product category is an
+explicit **capability meta-router**: callers use a stable capability alias,
+operators map that alias to exactly one tier, and the selected inference
+service may report mutable facts about the model and context it currently
+serves. The implementation remains a deliberately thin gateway. There is no
+request classifier, quality-profile router, semantic fallback, cloud
+escalation, or hidden substitute model.
 
 The reference topology has two equivalent RTX PRO 6000 Blackwell Max-Q GPUs.
 In split mode, compatible LLM, Omni, voice, purpose-model, and ComfyUI workloads
@@ -27,7 +30,7 @@ placement. The gateway keeps authentication, dialect translation, streaming,
 readiness, admission, and decision evidence consistent across those
 capabilities.
 
-## Direct capability contract
+## Capability meta-router contract
 
 ```toml
 [router.model_routes]
@@ -58,6 +61,21 @@ Purpose models and audio are equally explicit: embeddings and reranking use
 their configured model names on dedicated endpoints, while STT/TTS use
 operator-configured audio routes. ComfyUI is lifecycle-managed rather than a
 chat capability.
+
+The word **meta** describes the separation between a stable caller contract
+and the mutable configuration behind it. It does not mean that Anvil Serving
+chooses among models. The complete request path is:
+
+1. The caller chooses a declared capability alias such as `llm.secondary`.
+2. Operator configuration maps that alias to exactly one tier and endpoint.
+3. The selected tier supplies configured metadata, or its one inference
+   service supplies bounded live model metadata when explicitly enabled.
+4. The router validates readiness and admission, then relays to that same
+   endpoint or fails closed.
+
+See [Capability meta-router](docs/META-ROUTER.md) for the authority model and
+the product decisions that keep dynamic metadata separate from dynamic route
+selection.
 
 ## Quick start
 
@@ -104,7 +122,7 @@ mapping is an exposure decision, not a model promotion claim.
 
 | Surface | Purpose |
 |---|---|
-| `anvil-serving router run` | Authenticated Anthropic/OpenAI-compatible capability gateway. |
+| `anvil-serving router run` | Authenticated Anthropic/OpenAI-compatible capability meta-router. |
 | `anvil-serving serves` | Compose-backed lifecycle, GPU reservations, and split/exclusive TP=2 mode transactions. |
 | `anvil-serving eval preflight` | Functional qualification of a concrete endpoint. |
 | `anvil-serving eval benchmark` | Capacity and quality evidence collection. |
@@ -126,10 +144,11 @@ controller, and ordinary CLI remain stdlib-only.
 
 - [Start here for the next internet model recipe](START_HERE.md)
 - [Getting started](docs/GETTING-STARTED.md)
+- [Capability meta-router](docs/META-ROUTER.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Configuration](docs/CONFIGURATION.md)
 - [Public product and private operator state](docs/OPERATOR-PRIVACY.md)
-- [Thin capability gateway](docs/THIN-CAPABILITY-GATEWAY.md)
+- [Meta-router request path](docs/THIN-CAPABILITY-GATEWAY.md)
 - [CLI reference](docs/CLI.md)
 - [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md)
 - [Fakoli Mini to Dark remote control](examples/fakoli-dark/REMOTE-CONTROL.md)

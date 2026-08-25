@@ -63,6 +63,12 @@ recipes. The model names below (`gpt-oss-20b`, `qwen35-awq-local`) are not magic
 `model` values the two tiers in `configs/example.toml` declare; if your serves run different
 models, change the config's tier `model` fields (and these commands) to match.
 
+For a single-model endpoint whose model or context changes independently, use
+`metadata_source = "upstream"` and omit duplicated `model` and
+`context_limit` values. The capability alias still maps to exactly one tier;
+only the selected serve's effective metadata is refreshed. See
+[Capability meta-router](META-ROUTER.md).
+
 **Fastest path for a full machine — `anvil-serving init`.** Rather than hand-writing the manifests
 and compose files, bare `anvil-serving init` scaffolds the whole operational set (all `serves*.toml`
 manifests with their group tags, the compose files, `operator-topology.toml`, `.env.example`, and
@@ -164,8 +170,9 @@ to need on a first run:
 
 ## Next Steps
 
-- Read [Architecture](ARCHITECTURE.md) for the concise system overview, then
-  [Thin capability gateway](THIN-CAPABILITY-GATEWAY.md) for the current design rationale.
+- Read [Capability meta-router](META-ROUTER.md) for the product and authority
+  model, [Architecture](ARCHITECTURE.md) for the system overview, then the
+  [meta-router request path](THIN-CAPABILITY-GATEWAY.md) for runtime details.
 - Read the [Configuration reference](CONFIGURATION.md) to adapt `configs/example.toml` to your
   serves, and the [CLI reference](CLI.md) for the full command surface.
 - Read [Public product and private operator state](OPERATOR-PRIVACY.md) before

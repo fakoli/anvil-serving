@@ -1,2 +1,2 @@
-"""anvil-serving — right-size and run a local LLM serving tier from your coding-agent usage."""
-__version__ = "0.35.0"
+"""Local-model serving and benchmarks behind an explicit capability meta-router."""
+__version__ = "0.35.1"
