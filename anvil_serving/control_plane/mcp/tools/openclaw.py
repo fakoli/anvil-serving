@@ -240,6 +240,7 @@ def tool_client_catalog_sync(args: dict) -> dict:
         result = sync_clients(
             base_url=base_url,
             api_key_env=api_key_env,
+            clients=_str_arg(args, "clients", "openclaw,pi"),
             openclaw_config=_str_arg(
                 args, "openclaw_config", "~/.openclaw/openclaw.json"
             ),
@@ -404,6 +405,7 @@ FAMILY = ToolFamily(
                 {
                     "base_url": {"type": "string"},
                     "api_key_env": {"type": "string"},
+                    "clients": {"type": "string"},
                     "openclaw_config": {"type": "string"},
                     "pi_models": {"type": "string"},
                     "pi_settings": {"type": "string"},
