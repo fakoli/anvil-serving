@@ -40,6 +40,13 @@ METADATA_CONFIGURED = "configured"
 METADATA_UPSTREAM = "upstream"
 VALID_METADATA_SOURCES = {METADATA_CONFIGURED, METADATA_UPSTREAM}
 
+CONTEXT_ADMISSION_ESTIMATE = "estimate"
+CONTEXT_ADMISSION_UPSTREAM = "upstream"
+VALID_CONTEXT_ADMISSION = {
+    CONTEXT_ADMISSION_ESTIMATE,
+    CONTEXT_ADMISSION_UPSTREAM,
+}
+
 # Purpose-model kinds (ADR-0017 §7 / gpu-reservations:T010): non-chat inference
 # surfaces the front door routes by MODEL NAME (never through the chat
 # intent/policy pipeline). Each kind maps to exactly one front-door endpoint.
@@ -115,6 +122,7 @@ _TIER_KEYS = frozenset({
     "health_path",
     "model_identity",
     "metadata_source",
+    "context_admission",
 })
 _ROUTER_KEYS = frozenset({
     "tiers",
@@ -174,6 +182,12 @@ class Tier:
     # service's bounded runtime metadata and keeps this dataclass's zero/None
     # placeholders out of admission and public discovery.
     metadata_source: str = METADATA_CONFIGURED
+    # ``estimate`` keeps the router's stdlib-only conservative token estimate
+    # as the text context gate. ``upstream`` is an explicit opt-in for an
+    # exact-identity local inference service whose own tokenizer enforces the
+    # declared context window. The selected tier remains direct-only; this
+    # never permits fallback or substitution.
+    context_admission: str = CONTEXT_ADMISSION_ESTIMATE
     # Optional inline-table of extra JSON-serialisable keys merged verbatim into the
     # upstream request body (genericity:T003) -- e.g. a local vLLM/SGLang server's
     # `chat_template_kwargs: {enable_thinking: false}` to defend against the
@@ -689,6 +703,24 @@ def _parse_tier(raw: object) -> Tier:
                 "model_identity; runtime metadata replaces configured exact identity"
             )
 
+    context_admission = raw.get(
+        "context_admission", CONTEXT_ADMISSION_ESTIMATE
+    )
+    if context_admission not in VALID_CONTEXT_ADMISSION:
+        raise ConfigError(
+            f"tier {tid!r}: context_admission {context_admission!r} not in "
+            f"{sorted(VALID_CONTEXT_ADMISSION)}"
+        )
+    if (
+        context_admission == CONTEXT_ADMISSION_UPSTREAM
+        and metadata_source != METADATA_UPSTREAM
+        and not raw_model_identity
+    ):
+        raise ConfigError(
+            f"tier {tid!r}: context_admission='upstream' requires either "
+            "metadata_source='upstream' or model_identity=true"
+        )
+
     return Tier(
         id=tid,
         base_url=base_url,
@@ -699,6 +731,7 @@ def _parse_tier(raw: object) -> Tier:
         auth_env=auth_env,
         model=tier_model or None,
         metadata_source=metadata_source,
+        context_admission=context_admission,
         extra_body=extra_body,
         extra_body_defaults=extra_body_defaults,
         engine=engine,
