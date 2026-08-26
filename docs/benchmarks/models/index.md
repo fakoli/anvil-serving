@@ -9,7 +9,8 @@ evidence class, decision boundary, failures, and dated history.
 
 | Dossier | Current decision | Contents |
 |---|---|---|
-| [DeepSeek V4 Flash 0731](deepseek-v4-flash.md) | `current` text Primary | Infernal Invocation r15 B12X/DSpark K5, exclusive TP=2 at 393K; matched no-spec A/B, 351K direct and 340K routed retrieval; r33 is the managed rollback |
+| [Qwen3.8 Flash Next](qwen38-flash-next.md) | `current` text Primary | RadixArk ModelOpt NVFP4, exclusive TP=2 at 262K/c1; 253,325-token direct and routed retrieval, tools 20/20, bounded quality, and real OpenClaw/Hermes/Pi acceptance |
+| [DeepSeek V4 Flash 0731](deepseek-v4-flash.md) | former text Primary / retained evidence | Infernal Invocation r18/r15 B12X/DSpark K5 promotion history, matched no-spec A/B, long-context capacity, and client acceptance |
 | [Qwen3.8 27B](qwen38-27b.md) | former single service / retained recipe | Official FP8 SGLang TP=1/393K/MTP `3/1/4` text/image/OCR/video evidence |
 | [Agents-A1](agents-a1.md) | historical promotion / retained recipe | Thinking-disabled FP8 Primary-era evidence; BF16 control and compact NVFP4 text profile |
 | [Qwen3.5 122B](qwen35-122b.md) | `rollback` | Immediate NVFP4 rollback and historical MXFP4 |
