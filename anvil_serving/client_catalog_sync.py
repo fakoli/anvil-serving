@@ -390,7 +390,7 @@ def _render_pi_documents(
     if pi_provider is None:
         pi_provider = {
             "api": "openai-completions",
-            "apiKey": api_key_env,
+            "apiKey": "$" + api_key_env,
             "authHeader": True,
             "baseUrl": _safe_base_url(base_url),
             "compat": dict(PI_ANVIL_COMPAT),
@@ -399,6 +399,8 @@ def _render_pi_documents(
         providers["anvil"] = pi_provider
     elif not isinstance(pi_provider, dict):
         raise ClientCatalogError("Pi Anvil provider must be an object")
+    if pi_provider.get("apiKey") == api_key_env:
+        pi_provider["apiKey"] = "$" + api_key_env
     old_pi_models = _models_by_id(pi_provider.get("models"))
     rendered_rows = []
     for alias in pi_aliases:
