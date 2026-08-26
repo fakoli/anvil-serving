@@ -315,6 +315,34 @@ def test_pi_only_does_not_require_or_restart_openclaw(tmp_path):
     assert restarts == []
 
 
+def test_pi_only_seeds_missing_anvil_provider_from_router_contract(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    pi_models = json.loads(pi_models_path.read_text())
+    pi_models["providers"].pop("anvil")
+    pi_models_path.write_text(json.dumps(pi_models), encoding="utf-8")
+
+    result = _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(primary_context=262_144)),
+        confirm=True,
+        dry_run=False,
+    )
+
+    assert result["changed"] == ["pi_models", "pi_settings"]
+    rendered = json.loads(pi_models_path.read_text())
+    provider = rendered["providers"]["anvil"]
+    assert provider["baseUrl"] == "https://router.example.ts.net/v1"
+    assert provider["apiKey"] == "ANVIL_ROUTER_TOKEN"
+    assert provider["authHeader"] is True
+    assert provider["api"] == "openai-completions"
+    assert provider["compat"]["maxTokensField"] == "max_tokens"
+    assert provider["compat"]["supportsUsageInStreaming"] is True
+    by_id = {row["id"]: row for row in provider["models"]}
+    assert by_id["llm.primary"]["contextWindow"] == 262_144
+    assert by_id["llm.primary"]["maxTokens"] == 8192
+
+
 def test_invalid_client_selection_fails_before_metadata_request(tmp_path):
     opener = _Opener(*_catalog())
     with pytest.raises(ClientCatalogError, match="clients must select"):

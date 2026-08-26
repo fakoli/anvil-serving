@@ -26,6 +26,14 @@ PI_ALIASES = ("llm.primary", "llm.secondary", "vision.general", "vision.ocr")
 OPENCLAW_EXCLUDED_ALIASES = frozenset({"llm.auxiliary"})
 COMPACTION_EXCLUDED_ALIASES = frozenset({"llm.voice"})
 CLIENT_TARGETS = ("openclaw", "pi")
+PI_ANVIL_COMPAT = {
+    "maxTokensField": "max_tokens",
+    "supportsDeveloperRole": False,
+    "supportsReasoningEffort": True,
+    "supportsStore": False,
+    "supportsUsageInStreaming": True,
+    "thinkingFormat": "openai",
+}
 
 
 class ClientCatalogError(ValueError):
@@ -365,6 +373,9 @@ def _render_pi_documents(
     catalog: Mapping,
     pi_models: Mapping,
     pi_settings: Mapping,
+    *,
+    base_url: str,
+    api_key_env: str,
 ) -> tuple[dict, dict]:
     models = catalog.get("models")
     if not isinstance(models, Mapping):
@@ -374,9 +385,20 @@ def _render_pi_documents(
         raise ClientCatalogError("Pi requires llm.primary and llm.secondary in the router catalog")
 
     rendered_pi_models = json.loads(json.dumps(pi_models))
-    pi_provider = rendered_pi_models.setdefault("providers", {}).get("anvil")
-    if not isinstance(pi_provider, dict):
-        raise ClientCatalogError("Pi Anvil provider is missing")
+    providers = rendered_pi_models.setdefault("providers", {})
+    pi_provider = providers.get("anvil")
+    if pi_provider is None:
+        pi_provider = {
+            "api": "openai-completions",
+            "apiKey": api_key_env,
+            "authHeader": True,
+            "baseUrl": _safe_base_url(base_url),
+            "compat": dict(PI_ANVIL_COMPAT),
+            "models": [],
+        }
+        providers["anvil"] = pi_provider
+    elif not isinstance(pi_provider, dict):
+        raise ClientCatalogError("Pi Anvil provider must be an object")
     old_pi_models = _models_by_id(pi_provider.get("models"))
     rendered_rows = []
     for alias in pi_aliases:
@@ -419,6 +441,8 @@ def render_client_documents(
     openclaw: Mapping,
     pi_models: Mapping,
     pi_settings: Mapping,
+    base_url: str = "http://127.0.0.1:8000/v1",
+    api_key_env: str = "ANVIL_ROUTER_TOKEN",
 ) -> tuple[dict, dict, dict]:
     """Render client documents while preserving credentials and compaction policy."""
     rendered_openclaw = _render_openclaw_document(catalog, openclaw)
@@ -426,6 +450,8 @@ def render_client_documents(
         catalog,
         pi_models,
         pi_settings,
+        base_url=base_url,
+        api_key_env=api_key_env,
     )
     return rendered_openclaw, rendered_pi_models, rendered_pi_settings
 
@@ -592,6 +618,8 @@ def sync_clients(
             catalog,
             _read_json_file(paths["pi_models"]),
             _read_json_file(paths["pi_settings"]),
+            base_url=base_url,
+            api_key_env=api_key_env,
         )
         desired["pi_models"] = _json_bytes(rendered_pi[0])
         desired["pi_settings"] = _json_bytes(rendered_pi[1])
