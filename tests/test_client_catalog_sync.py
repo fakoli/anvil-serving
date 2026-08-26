@@ -333,7 +333,7 @@ def test_pi_only_seeds_missing_anvil_provider_from_router_contract(tmp_path):
     rendered = json.loads(pi_models_path.read_text())
     provider = rendered["providers"]["anvil"]
     assert provider["baseUrl"] == "https://router.example.ts.net/v1"
-    assert provider["apiKey"] == "ANVIL_ROUTER_TOKEN"
+    assert provider["apiKey"] == "$ANVIL_ROUTER_TOKEN"
     assert provider["authHeader"] is True
     assert provider["api"] == "openai-completions"
     assert provider["compat"]["maxTokensField"] == "max_tokens"
@@ -341,6 +341,24 @@ def test_pi_only_seeds_missing_anvil_provider_from_router_contract(tmp_path):
     by_id = {row["id"]: row for row in provider["models"]}
     assert by_id["llm.primary"]["contextWindow"] == 262_144
     assert by_id["llm.primary"]["maxTokens"] == 8192
+
+
+def test_pi_only_repairs_bare_api_key_environment_name(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    pi_models = json.loads(pi_models_path.read_text())
+    pi_models["providers"]["anvil"]["apiKey"] = "ANVIL_ROUTER_TOKEN"
+    pi_models_path.write_text(json.dumps(pi_models), encoding="utf-8")
+
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+
+    rendered = json.loads(pi_models_path.read_text())
+    assert rendered["providers"]["anvil"]["apiKey"] == "$ANVIL_ROUTER_TOKEN"
 
 
 def test_invalid_client_selection_fails_before_metadata_request(tmp_path):
