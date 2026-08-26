@@ -36,9 +36,9 @@ class _Opener:
         return _Response(self.payloads.pop(0))
 
 
-def _catalog(*, missing_output=False, config_sha=CONFIG_SHA):
+def _catalog(*, missing_output=False, config_sha=CONFIG_SHA, primary_context=1_048_576):
     models = [
-        ("primary", ["llm.primary"], 1_048_576, ["text"], True),
+        ("primary", ["llm.primary"], primary_context, ["text"], True),
         ("secondary", ["llm.secondary", "vision.general", "vision.ocr"], 131_072, ["text", "image"], True),
         ("voice", ["llm.voice"], 32_768, ["text"], False),
         ("aux", ["llm.auxiliary"], 65_536, ["text"], False),
@@ -123,7 +123,16 @@ def _write_inputs(root: Path, *, bad_pi_compaction=False):
     return openclaw, pi_models, pi_settings
 
 
-def _run(root: Path, *, opener, confirm=False, dry_run=True, restart=None, restart_on_change=False):
+def _run(
+    root: Path,
+    *,
+    opener,
+    clients="openclaw,pi",
+    confirm=False,
+    dry_run=True,
+    restart=None,
+    restart_on_change=False,
+):
     openclaw, pi_models, pi_settings = (
         root / "openclaw.json",
         root / "models.json",
@@ -131,6 +140,7 @@ def _run(root: Path, *, opener, confirm=False, dry_run=True, restart=None, resta
     )
     return sync_clients(
         base_url="https://router.example.ts.net/v1",
+        clients=clients,
         openclaw_config=str(openclaw),
         pi_models=str(pi_models),
         pi_settings=str(pi_settings),
@@ -245,6 +255,81 @@ def test_config_hash_restart_is_retried_once_and_drift_is_repaired(tmp_path):
     )
     assert repaired["changed"] == ["openclaw"]
     assert restarts == ["restart"]
+
+
+def test_openclaw_only_accepts_current_safeguard_schema_without_pi(tmp_path):
+    openclaw_path, pi_models_path, pi_settings_path = _write_inputs(tmp_path)
+    payload = json.loads(openclaw_path.read_text())
+    payload["agents"]["defaults"]["compaction"] = {
+        "mode": "safeguard",
+        "keepRecentTokens": 30_000,
+        "maxActiveTranscriptBytes": "20mb",
+        "memoryFlush": {
+            "forceFlushTranscriptBytes": "15mb",
+            "model": "anvil/llm.primary",
+        },
+        "notifyUser": True,
+    }
+    openclaw_path.write_text(json.dumps(payload), encoding="utf-8")
+    pi_models_path.unlink()
+    pi_settings_path.unlink()
+
+    result = _run(
+        tmp_path,
+        clients="openclaw",
+        opener=_Opener(*_catalog(primary_context=262_144)),
+        confirm=True,
+        dry_run=False,
+    )
+
+    assert result["clients"] == ["openclaw"]
+    assert result["changed"] == ["openclaw"]
+    rendered = json.loads(openclaw_path.read_text())
+    primary = next(
+        row
+        for row in rendered["models"]["providers"]["anvil"]["models"]
+        if row["id"] == "llm.primary"
+    )
+    assert primary["contextWindow"] == 262_144
+    assert rendered["agents"]["defaults"]["compaction"] == payload["agents"]["defaults"]["compaction"]
+
+
+def test_pi_only_does_not_require_or_restart_openclaw(tmp_path):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+    openclaw_path.unlink()
+    restarts = []
+
+    result = _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+        restart=lambda: restarts.append("restart") or 0,
+        restart_on_change=True,
+    )
+
+    assert result["clients"] == ["pi"]
+    assert result["changed"] == ["pi_models", "pi_settings"]
+    assert result["openclaw_restarted"] is False
+    assert restarts == []
+
+
+def test_invalid_client_selection_fails_before_metadata_request(tmp_path):
+    opener = _Opener(*_catalog())
+    with pytest.raises(ClientCatalogError, match="clients must select"):
+        _run(tmp_path, clients="openclaw,unknown", opener=opener)
+    assert opener.requests == []
+
+
+def test_pi_still_requires_explicit_compaction_reserve(tmp_path):
+    _, _, pi_settings_path = _write_inputs(tmp_path)
+    payload = json.loads(pi_settings_path.read_text())
+    payload["compaction"].pop("reserveTokens")
+    pi_settings_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ClientCatalogError, match="Pi compaction reserveTokens"):
+        _run(tmp_path, clients="pi", opener=_Opener(*_catalog()))
 
 
 def test_missing_output_or_incompatible_compaction_fails_before_write(tmp_path):
