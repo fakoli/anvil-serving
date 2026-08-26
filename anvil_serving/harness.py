@@ -391,6 +391,7 @@ def cmd_status_openclaw(**kwargs):
 
 
 def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
+                     clients="openclaw,pi",
                      openclaw_config="~/.openclaw/openclaw.json",
                      pi_models="~/.pi/agent/models.json",
                      pi_settings="~/.pi/agent/settings.json",
@@ -405,6 +406,7 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
         result = sync_clients(
             base_url=base_url,
             api_key_env=api_key_env,
+            clients=clients,
             openclaw_config=openclaw_config,
             pi_models=pi_models,
             pi_settings=pi_settings,
@@ -442,6 +444,11 @@ def _build_parser():
     clients = sync_targets.add_parser("clients")
     clients.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
     clients.add_argument("--api-key-env", default="ANVIL_ROUTER_TOKEN")
+    clients.add_argument(
+        "--clients",
+        default="openclaw,pi",
+        help="comma-separated clients to reconcile: openclaw, pi, or both",
+    )
     clients.add_argument("--openclaw-config", default="~/.openclaw/openclaw.json")
     clients.add_argument("--pi-models", default="~/.pi/agent/models.json")
     clients.add_argument("--pi-settings", default="~/.pi/agent/settings.json")
@@ -468,6 +475,7 @@ def main(argv=None):
             return cmd_sync_clients(
                 base_url=args.base_url,
                 api_key_env=args.api_key_env,
+                clients=args.clients,
                 openclaw_config=args.openclaw_config,
                 pi_models=args.pi_models,
                 pi_settings=args.pi_settings,

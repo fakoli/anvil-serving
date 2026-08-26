@@ -52,6 +52,7 @@ def commands() -> CommandNode:
                             allowed=(
                                 "base_url",
                                 "api_key_env",
+                                "clients",
                                 "openclaw_config",
                                 "pi_models",
                                 "pi_settings",
