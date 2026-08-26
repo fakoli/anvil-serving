@@ -182,13 +182,21 @@ def test_responses_accepts_bounded_stateless_codex_controls_without_policy_overr
         "reasoning": {"effort": "high", "summary": "auto"},
         "parallel_tool_calls": False,
         "truncation": "disabled",
+        "chat_template_kwargs": {"enable_thinking": False},
     })
 
     assert "reasoning_effort" not in request.raw
+    assert request.raw["chat_template_kwargs"] == {"enable_thinking": False}
     with pytest.raises(DialectError, match="parallel_tool_calls"):
         ResponsesDialect().parse_request({"model": "chat", "input": "hi", "parallel_tool_calls": True})
     with pytest.raises(DialectError, match="truncation"):
         ResponsesDialect().parse_request({"model": "chat", "input": "hi", "truncation": "auto"})
+    with pytest.raises(DialectError, match="chat_template_kwargs"):
+        ResponsesDialect().parse_request({
+            "model": "chat",
+            "input": "hi",
+            "chat_template_kwargs": {"enable_thinking": "false"},
+        })
 
 
 @pytest.mark.parametrize(
