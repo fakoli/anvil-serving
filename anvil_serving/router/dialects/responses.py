@@ -22,6 +22,7 @@ _SUPPORTED_FIELDS = frozenset(
         "include",
         "input",
         "instructions",
+        "chat_template_kwargs",
         "max_output_tokens",
         "model",
         "parallel_tool_calls",
@@ -259,6 +260,19 @@ class ResponsesDialect:
         for field in ("temperature", "top_p"):
             if field in body:
                 converted[field] = body[field]
+        if "chat_template_kwargs" in body:
+            chat_template_kwargs = body["chat_template_kwargs"]
+            if (
+                not isinstance(chat_template_kwargs, Mapping)
+                or set(chat_template_kwargs) != {"enable_thinking"}
+                or not isinstance(chat_template_kwargs.get("enable_thinking"), bool)
+            ):
+                raise DialectError(
+                    400,
+                    "invalid_request_error",
+                    "chat_template_kwargs must contain only boolean enable_thinking",
+                )
+            converted["chat_template_kwargs"] = dict(chat_template_kwargs)
         if "max_output_tokens" in body:
             converted["max_completion_tokens"] = body["max_output_tokens"]
         tools = body.get("tools")
