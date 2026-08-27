@@ -17,6 +17,7 @@ import urllib.request
 
 
 DEFAULT_OPENCLAW_CONFIG = "~/.openclaw/openclaw.json"
+DEFAULT_HERMES_CONFIG = "~/.hermes/config.yaml"
 DEFAULT_PI_MODELS = "~/.pi/agent/models.json"
 DEFAULT_PI_SETTINGS = "~/.pi/agent/settings.json"
 DEFAULT_STATE = "~/.anvil-serving/state/client-catalog.json"
@@ -25,7 +26,7 @@ DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 PI_ALIASES = ("llm.primary", "llm.secondary", "vision.general", "vision.ocr")
 OPENCLAW_EXCLUDED_ALIASES = frozenset({"llm.auxiliary"})
 COMPACTION_EXCLUDED_ALIASES = frozenset({"llm.voice"})
-CLIENT_TARGETS = ("openclaw", "pi")
+CLIENT_TARGETS = ("openclaw", "hermes", "pi")
 PI_ANVIL_COMPAT = {
     "maxTokensField": "max_tokens",
     "supportsDeveloperRole": False,
@@ -47,7 +48,7 @@ def _normalize_clients(value: str) -> tuple[str, ...]:
     invalid = sorted(set(requested) - set(CLIENT_TARGETS))
     if not requested or invalid:
         raise ClientCatalogError(
-            "clients must select openclaw, pi, or both"
+            "clients must select one or more of: openclaw, hermes, pi"
         )
     return tuple(target for target in CLIENT_TARGETS if target in requested)
 
@@ -478,6 +479,179 @@ def _read_json_file(path: Path, *, required: bool = True) -> dict:
     return payload
 
 
+def _read_text_file(path: Path) -> str:
+    if path.is_symlink():
+        raise ClientCatalogError("refusing symbolic-link client config: %s" % path)
+    if not path.exists() or not path.is_file():
+        raise ClientCatalogError("required client config does not exist: %s" % path)
+    if path.stat().st_size > DEFAULT_MAX_RESPONSE_BYTES:
+        raise ClientCatalogError("client config exceeds the size limit: %s" % path)
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ClientCatalogError("client config is not valid UTF-8 text: %s" % path) from exc
+
+
+def _yaml_block(
+    lines: list[str],
+    *,
+    key: str,
+    indent: int,
+    start: int = 0,
+    end: int | None = None,
+) -> tuple[int, int]:
+    """Locate one ordinary block-mapping key without interpreting YAML values."""
+    end = len(lines) if end is None else end
+    prefix = " " * indent + key + ":"
+    matches = []
+    for index in range(start, end):
+        line = lines[index]
+        if line.startswith(prefix):
+            suffix = line[len(prefix):].strip()
+            if not suffix or suffix.startswith("#"):
+                matches.append(index)
+    if len(matches) != 1:
+        raise ClientCatalogError(
+            "Hermes config must contain exactly one %s mapping" % key
+        )
+    block_start = matches[0]
+    block_end = end
+    for index in range(block_start + 1, end):
+        stripped = lines[index].lstrip(" ")
+        if not stripped or stripped.startswith("#"):
+            continue
+        current_indent = len(lines[index]) - len(stripped)
+        if current_indent <= indent:
+            block_end = index
+            break
+    return block_start + 1, block_end
+
+
+def _yaml_scalar(
+    lines: list[str],
+    *,
+    key: str,
+    indent: int,
+    start: int,
+    end: int,
+) -> tuple[int, str, str]:
+    prefix = " " * indent + key + ":"
+    matches = []
+    for index in range(start, end):
+        line = lines[index]
+        if line.startswith(prefix):
+            matches.append((index, line[len(prefix):]))
+    if len(matches) != 1:
+        raise ClientCatalogError(
+            "Hermes config must contain exactly one %s scalar in the selected block" % key
+        )
+    index, suffix = matches[0]
+    value, marker, comment = suffix.partition("#")
+    return index, value.strip(), ((" #" + comment) if marker else "")
+
+
+def _replace_yaml_integer(
+    lines: list[str],
+    *,
+    key: str,
+    indent: int,
+    start: int,
+    end: int,
+    value: int,
+) -> None:
+    index, current, comment = _yaml_scalar(
+        lines,
+        key=key,
+        indent=indent,
+        start=start,
+        end=end,
+    )
+    try:
+        parsed = int(current)
+    except ValueError as exc:
+        raise ClientCatalogError("Hermes %s must be an integer scalar" % key) from exc
+    if isinstance(parsed, bool) or parsed <= 0:
+        raise ClientCatalogError("Hermes %s must be a positive integer" % key)
+    lines[index] = " " * indent + key + ": " + str(value) + comment
+
+
+def _render_hermes_document(catalog: Mapping, source: str) -> bytes:
+    """Patch the selected Hermes Anvil model limits without parsing credentials."""
+    if "\t" in source:
+        raise ClientCatalogError("Hermes config must use spaces for indentation")
+    newline = "\r\n" if "\r\n" in source else "\n"
+    trailing_newline = source.endswith(("\n", "\r"))
+    lines = source.splitlines()
+
+    models = catalog.get("models")
+    if not isinstance(models, Mapping):
+        raise ClientCatalogError("catalog models are invalid")
+
+    model_start, model_end = _yaml_block(lines, key="model", indent=0)
+    _, provider, _ = _yaml_scalar(
+        lines, key="provider", indent=2, start=model_start, end=model_end
+    )
+    _, default_model, _ = _yaml_scalar(
+        lines, key="default", indent=2, start=model_start, end=model_end
+    )
+    if provider != "anvil":
+        raise ClientCatalogError("Hermes selected provider must be anvil")
+    selected = models.get(default_model)
+    if not isinstance(selected, Mapping):
+        raise ClientCatalogError("Hermes selected model is absent from the router catalog")
+    _replace_yaml_integer(
+        lines,
+        key="max_tokens",
+        indent=2,
+        start=model_start,
+        end=model_end,
+        value=selected["max_output_tokens"],
+    )
+
+    providers_start, providers_end = _yaml_block(lines, key="providers", indent=0)
+    anvil_start, anvil_end = _yaml_block(
+        lines,
+        key="anvil",
+        indent=2,
+        start=providers_start,
+        end=providers_end,
+    )
+    _replace_yaml_integer(
+        lines,
+        key="context_length",
+        indent=4,
+        start=anvil_start,
+        end=anvil_end,
+        value=selected["context_window"],
+    )
+    provider_models_start, provider_models_end = _yaml_block(
+        lines,
+        key="models",
+        indent=4,
+        start=anvil_start,
+        end=anvil_end,
+    )
+    selected_start, selected_end = _yaml_block(
+        lines,
+        key=default_model,
+        indent=6,
+        start=provider_models_start,
+        end=provider_models_end,
+    )
+    _replace_yaml_integer(
+        lines,
+        key="context_length",
+        indent=8,
+        start=selected_start,
+        end=selected_end,
+        value=selected["context_window"],
+    )
+    rendered = newline.join(lines)
+    if trailing_newline:
+        rendered += newline
+    return rendered.encode("utf-8")
+
+
 def _json_bytes(payload: Mapping) -> bytes:
     return (json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
 
@@ -583,6 +757,7 @@ def sync_clients(
     api_key_env: str = "ANVIL_ROUTER_TOKEN",
     clients: str = "openclaw,pi",
     openclaw_config: str = DEFAULT_OPENCLAW_CONFIG,
+    hermes_config: str = DEFAULT_HERMES_CONFIG,
     pi_models: str = DEFAULT_PI_MODELS,
     pi_settings: str = DEFAULT_PI_SETTINGS,
     state_path: str = DEFAULT_STATE,
@@ -606,6 +781,7 @@ def sync_clients(
     )
     paths = {
         "openclaw": Path(os.path.expanduser(openclaw_config)),
+        "hermes": Path(os.path.expanduser(hermes_config)),
         "pi_models": Path(os.path.expanduser(pi_models)),
         "pi_settings": Path(os.path.expanduser(pi_settings)),
         "state": Path(os.path.expanduser(state_path)),
@@ -614,6 +790,10 @@ def sync_clients(
     if "openclaw" in selected_clients:
         desired["openclaw"] = _json_bytes(
             _render_openclaw_document(catalog, _read_json_file(paths["openclaw"]))
+        )
+    if "hermes" in selected_clients:
+        desired["hermes"] = _render_hermes_document(
+            catalog, _read_text_file(paths["hermes"])
         )
     if "pi" in selected_clients:
         rendered_pi = _render_pi_documents(

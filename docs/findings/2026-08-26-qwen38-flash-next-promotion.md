@@ -19,9 +19,12 @@ The engine revision is `d91c3682b0b429e4c70df63cd57f819588ce29b0`.
 Authenticated routed coding, structured JSON, 253,325-prompt-token retrieval,
 tools 20/20, streaming tools, tool-result continuation, and the Responses API
 passed. Real OpenClaw, Hermes, and Pi turns selected `llm.primary`, completed
-through the local route, and did not fall back. DeepSeek is no longer the
-reference text Primary. Active host assignments and raw client evidence remain
-private operator state.
+through the local route, and did not fall back. All three clients now advertise
+the same 262,144-token context and 8,192-token output cap from authenticated
+router metadata; OpenClaw and Pi retained their compaction settings, and Hermes
+retained its selected Anvil provider. DeepSeek is no longer the reference text
+Primary. Active host assignments and raw client evidence remain private
+operator state.
 
 ## Exact recipe
 
@@ -53,6 +56,7 @@ aggregate sharded VRAM, not unified memory.
 | Direct long tool use | valid tool call after 105,756 measured prompt tokens in 4.664 s |
 | Routed Primary | coding, JSON, 253,325-token retrieval in 28.38 s, tools 20/20, streaming tools, and tool-result continuation all passed |
 | Responses API | completed with exact `READY`; default request emitted no reasoning |
+| Client catalog | Hermes, Pi, and OpenClaw each declare 262,144 context tokens and 8,192 max output tokens for `llm.primary` |
 | Real clients | OpenClaw, Hermes, and Pi passed exact route/model acceptance without fallback |
 | Native boundary | 262,137 prompt tokens plus one output accepted; a forced-output probe reached 262,142 visible sequence tokens; 262,138 prompt tokens was the first rejected size |
 
@@ -93,10 +97,12 @@ converted into a pass:
 4. Router admission rejected an exact upstream context contract and the
    Responses adapter rejected bounded thinking control. Both product defects
    were fixed with regression coverage before the final routed rerun.
-5. Hermes had credential drift and Pi lacked a usable Anvil provider reference.
-   The managed client synchronizer now seeds Pi from authenticated router
-   metadata, uses environment-key interpolation, and is idempotent. Fresh real
-   Hermes, Pi, and OpenClaw requests then passed.
+5. Hermes had credential drift and a stale 393,216-token model override, while
+   Pi lacked a usable Anvil provider reference. The managed client synchronizer
+   now reconciles Hermes, Pi, and OpenClaw from one authenticated router
+   snapshot, uses environment-key references, preserves client compaction and
+   unrelated settings, and is idempotent. Fresh real Hermes, Pi, and OpenClaw
+   requests then passed.
 
 A separate failed final rerun using a stale operator-shell credential is
 retained privately as authentication evidence. The successful public claim is

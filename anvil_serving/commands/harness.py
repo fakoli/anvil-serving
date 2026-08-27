@@ -41,7 +41,7 @@ def commands() -> CommandNode:
                     ),
                     _resource_node(
                         "clients",
-                        "Reconcile OpenClaw and Pi from authenticated router metadata.",
+                        "Reconcile OpenClaw, Hermes, and Pi from authenticated router metadata.",
                         "anvil_serving.harness",
                         role="gateway",
                         options=CONFIRM_OPTIONS,
@@ -54,6 +54,7 @@ def commands() -> CommandNode:
                                 "api_key_env",
                                 "clients",
                                 "openclaw_config",
+                                "hermes_config",
                                 "pi_models",
                                 "pi_settings",
                                 "state_path",
