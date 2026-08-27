@@ -8,11 +8,12 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained text deployment is RadixArk Qwen3.8 Flash Next NVFP4 at
+The maintained text/image/OCR/video deployment is RadixArk Qwen3.8 Flash Next NVFP4 at
 exclusive TP=2/262,144 across both equal cards, router concurrency one, and a
 client contract of 253,952 prompt tokens plus an 8,192-token output reserve.
 The current runtime profile is the hash-gated SGLang PR #36556 SM120 QSA fast
-path with matched NEXTN/MTP3 `3/1/4`.
+path with matched NEXTN/MTP3 `3/1/4`; media admission is fail-closed at four
+images or one video.
 The former DeepSeek V4 Flash 0731 Infernal Invocation r18 1M and r15 393K deployments and
 official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
 retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
@@ -28,6 +29,26 @@ This page is the public, searchable summary of the model and end-to-end benchmar
 
 The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-26**.
 
+## Qwen3.8 Flash Next vision promotion and context curve (2026-08-26)
+
+The exact already-promoted TP=2 service passed the full 15-case multimodal
+corpus twice directly at 30/30. Isolated routed repeats scored 27/30 then
+30/30; live authenticated repeats scored 29/30 then 28/30, or 57/60 strict.
+Every live miss retained a semantically correct observation that omitted one
+literal rubric word. Image, video, and mixed direct latency p50 measured
+0.636/1.236/1.147 seconds. Media admission, malformed input, video SSE, and
+grounded tool edges passed 8/8, followed by the complete text Primary
+regression suite.
+
+A separate c1 sweep completed 25/25 requests at six context targets. Median
+decode measured 155.9 tok/s at 4K, 114.7 at 128K, and 112.9 at the 254K target
+with 245,000 actual prompt tokens. The service reports 6.275 GiB KV per TP
+rank, 12.55 GiB aggregate, and 516,032 server tokens. The full-reserve proof
+remains 253,703 actual prompt tokens plus an 8,192-token output request at
+102.0 decode tok/s. `vision.general`, `vision.ocr`, and `vision.video` now
+select this exact current service with a c1, four-image/one-video contract. See
+the [vision promotion and raw artifacts](findings/2026-08-26-qwen38-flash-next-vision-promotion.md).
+
 ## Qwen3.8 Flash Next QSA-fast MTP3 fix-forward promotion (2026-08-26)
 
 The exact RadixArk revision and digest-pinned SGLang image were fixed forward
@@ -42,8 +63,9 @@ MTP3 measured 154.9 tok/s decode at 4K, 134.1 at 128K, and 102.0 on a
 4K/128K rates are 2.33x/1.93x the matched no-speculation control and
 12.1x/10.7x the former portable-QSA lane. A fresh synchronized-client run then
 passed Hermes, Pi, and OpenClaw through `llm.primary`; Pi and OpenClaw reported
-the 262,144-token catalog contract and no fallback occurred. This is now the
-human-authorized text Primary; multimodal remains unpromoted. See the
+the 262,144-token catalog contract and no fallback occurred. This became the
+human-authorized text Primary and was expanded in place by the vision campaign
+above. See the
 [QSA-fast promotion finding](findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md).
 
 ## Initial Qwen3.8 Flash Next NVFP4 262K promotion (2026-08-26)

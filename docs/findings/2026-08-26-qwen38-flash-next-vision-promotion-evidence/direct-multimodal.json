@@ -1,0 +1,2355 @@
+{
+  "aggregates": {
+    "case": {
+      "cc-video-cat-opening-door": {
+        "attempts": 2,
+        "latency_p50_seconds": 2.802519,
+        "latency_p95_seconds": 4.274238,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "cc-video-chemical-traffic-light": {
+        "attempts": 2,
+        "latency_p50_seconds": 3.443515,
+        "latency_p95_seconds": 3.728901,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-chart": {
+        "attempts": 2,
+        "latency_p50_seconds": 0.6121369999999999,
+        "latency_p95_seconds": 0.630356,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-ocr": {
+        "attempts": 2,
+        "latency_p50_seconds": 0.256911,
+        "latency_p95_seconds": 0.259485,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-scene": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.4323835,
+        "latency_p95_seconds": 2.00705,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-spatial-count": {
+        "attempts": 2,
+        "latency_p50_seconds": 0.1936935,
+        "latency_p95_seconds": 0.215581,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-ui": {
+        "attempts": 2,
+        "latency_p50_seconds": 0.6651585,
+        "latency_p95_seconds": 0.689264,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "mixed-video-four-images": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.3025769999999999,
+        "latency_p95_seconds": 1.48457,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "mixed-video-one-image": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.05677,
+        "latency_p95_seconds": 1.174367,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "multi-image-comparison": {
+        "attempts": 2,
+        "latency_p50_seconds": 0.664921,
+        "latency_p95_seconds": 0.678755,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "video-continuity-120s": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.4587645,
+        "latency_p95_seconds": 1.907984,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "video-event-localization-60s": {
+        "attempts": 2,
+        "latency_p50_seconds": 0.9826485,
+        "latency_p95_seconds": 1.246099,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "video-ocr-30s": {
+        "attempts": 2,
+        "latency_p50_seconds": 0.409659,
+        "latency_p95_seconds": 0.501917,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "video-state-change-30s": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.5548190000000002,
+        "latency_p95_seconds": 1.883563,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "video-temporal-order-10s": {
+        "attempts": 2,
+        "latency_p50_seconds": 0.73832,
+        "latency_p95_seconds": 0.80758,
+        "pass_rate": 1.0,
+        "passed": 2
+      }
+    },
+    "modality": {
+      "image": {
+        "attempts": 12,
+        "latency_p50_seconds": 0.6357045,
+        "latency_p95_seconds": 2.00705,
+        "pass_rate": 1.0,
+        "passed": 12
+      },
+      "mixed": {
+        "attempts": 4,
+        "latency_p50_seconds": 1.1474755,
+        "latency_p95_seconds": 1.48457,
+        "pass_rate": 1.0,
+        "passed": 4
+      },
+      "video": {
+        "attempts": 14,
+        "latency_p50_seconds": 1.236087,
+        "latency_p95_seconds": 4.274238,
+        "pass_rate": 1.0,
+        "passed": 14
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_id": "cc-video-cat-opening-door",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 490171,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "cc/cat-opening-door-normalized.mp4",
+          "sha256": "b01ffe7800a3f74eead304a06bf35ece0e8917e107e1ce1e25837f3b5611cb61"
+        }
+      ],
+      "modality": "video",
+      "output": "The animal in the video is a cat, and its main action is opening a door.\n\nHere is a breakdown of how the cat accomplishes this:\n- **Initial Assessment:** The orange tabby cat starts by looking up at the closed door and its handle.\n- **First Attempt:** It jumps up and places its front paws on the door, trying to get leverage near the handle.\n- **Investigating the Bottom:** The cat drops down and begins pawing and pushing at the bottom edge of the door.\n- **Second Attempt:** It jumps up again, reaching higher on the door, possibly trying to manipulate the handle or push the door open from a different angle.\n- **Final Push:** After dropping down once more, the cat focuses its efforts on pushing the lower part of the door with its head and body. This persistent pushing causes the door to slowly swing open, revealing the room beyond.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 4.274238,
+      "usage": {
+        "completion_tokens": 189,
+        "prompt_tokens": 11808,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 11594
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 11997
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "cat"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "door"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "cc-video-cat-opening-door",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 490171,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "cc/cat-opening-door-normalized.mp4",
+          "sha256": "b01ffe7800a3f74eead304a06bf35ece0e8917e107e1ce1e25837f3b5611cb61"
+        }
+      ],
+      "modality": "video",
+      "output": "The animal in the video is a cat, and its main action is opening a door.\n\n---",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 1.3308,
+      "usage": {
+        "completion_tokens": 21,
+        "prompt_tokens": 11808,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 11594
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 11829
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "cat"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "door"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "cc-video-chemical-traffic-light",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 459852,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "cc/chemical-traffic-light-normalized.mp4",
+          "sha256": "1ab998a0339eaedb8494392be2c11f02bf9ce2f632fb01cf51b7089990d18f9c"
+        }
+      ],
+      "modality": "video",
+      "output": "The experiment shown in the video is called the \"Chemical Traffic Light.\" It involves a bottle containing a yellow liquid, which changes color when shaken. The visible color changes are from yellow to green, then to red, and finally back to yellow.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "num_frames": 24
+      },
+      "seconds": 3.158129,
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 12221,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 11704
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 12272
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "color"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "cc-video-chemical-traffic-light",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 459852,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "cc/chemical-traffic-light-normalized.mp4",
+          "sha256": "1ab998a0339eaedb8494392be2c11f02bf9ce2f632fb01cf51b7089990d18f9c"
+        }
+      ],
+      "modality": "video",
+      "output": "The experiment shown in the video is called the \"Chemical Traffic Light.\" It involves a large glass bottle filled with a yellow liquid. The video begins by showing the bottle on a table, and then text appears on the screen indicating the contents of the bottle: NaOH (sodium hydroxide), dextrose (glucose), and 1% indigo carmine. Indigo carmine is a chemical indicator that changes color based on its oxidation state.\n\nAfter the introduction, a hand enters the frame and shakes the bottle vigorously. As the bottle is shaken, the liquid inside changes from yellow to green. This change occurs because the indigo carmine is oxidized when it comes into contact with oxygen from the air mixed into the solution during shaking. The text on the screen confirms this, stating, \"Green is the oxidized state.\"\n\nOnce the shaking stops, the bottle is placed back on the table, and the liquid gradually changes color again. It transitions from green to orange, and finally back to yellow. This sequence of color changes mimics the appearance of a traffic light, hence the name \"Chemical Traffic Light.\"\n\nThe color changes can be explained as follows:\n- **Yellow**: The initial state of the solution, where the indigo carmine is in its reduced form.\n- **Green**: The oxidized state of the indigo carmine, achieved by shaking the bottle to introduce oxygen.\n- **Orange**: An intermediate state as the indigo carmine begins to reduce back to its original form.\n- **Yellow**: The final state, where the indigo carmine is fully reduced again.\n\nThis experiment demonstrates the reversible redox reaction of indigo carmine in the presence of sodium hydroxide and glucose, making it a visually engaging and educational demonstration of chemical indicators and oxidation-reduction reactions.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "num_frames": 24
+      },
+      "seconds": 3.728901,
+      "usage": {
+        "completion_tokens": 376,
+        "prompt_tokens": 12221,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 11704
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 12597
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "color"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the bar chart titled \"QUARTERLY UNITS\", here are the quarters and their corresponding values in ascending quarter order:\n\n- **Q1**: 10 units  \n- **Q2**: 20 units  \n- **Q3**: 30 units\n\nThe chart shows a clear upward trend in units sold or produced each quarter.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.630356,
+      "usage": {
+        "completion_tokens": 74,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 323
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the bar chart titled \"QUARTERLY UNITS\", here are the quarters and their corresponding values in ascending quarter order:\n\n- **Q1**: 10 units  \n- **Q2**: 20 units  \n- **Q3**: 30 units  \n\nThe chart shows a clear upward trend in units sold or produced each quarter.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.593918,
+      "usage": {
+        "completion_tokens": 74,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 323
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.259485,
+      "usage": {
+        "completion_tokens": 21,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 266
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.254337,
+      "usage": {
+        "completion_tokens": 21,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 266
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the image provided, here is a description of the scene and a report of every prominent label.\n\n### Scene Description\n\nThe image is a simple, minimalist graphic with a dark navy blue background. It uses basic geometric shapes and text to represent a scene.\n\n- At the top, the phrase \"SUNNY DAY\" is written in large, bold, yellow capital letters.\n- Below that, on the left side, the words \"RED CAR\" appear in white capital letters. Directly beneath this text is a solid red rectangle, representing the car.\n- Spanning the bottom portion of the image is a wide, dark green rectangle. On the right side of this green area, the words \"GREEN PARK\" are written in white capital letters. The red rectangle (the car) is positioned so that its bottom edge aligns with the top edge of the green rectangle (the park), suggesting the car is at or near the park.\n\nThe overall composition is flat and diagrammatic, using color and text labels to clearly identify each element.\n\n---\n\n### Prominent Labels (Verbatim)\n\nThe following labels appear in the image exactly as written:\n\n- SUNNY DAY\n- RED CAR\n- GREEN PARK",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 2.00705,
+      "usage": {
+        "completion_tokens": 251,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 500
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "The image depicts a simple, stylized scene with a dark blue background. At the top, in bold yellow capital letters, is the label \"SUNNY DAY\". Below that, on the left side, there's a red rectangle labeled \"RED CAR\" in white capital letters. Beneath the red car, spanning most of the width of the image, is a green rectangle labeled \"GREEN PARK\" in white capital letters. The overall composition suggests a minimalist representation of a sunny day with a red car parked in or near a green park.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.857717,
+      "usage": {
+        "completion_tokens": 110,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 359
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        }
+      ],
+      "modality": "image",
+      "output": "three",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.215581,
+      "usage": {
+        "completion_tokens": 2,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 251
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        }
+      ],
+      "modality": "image",
+      "output": "three",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.171806,
+      "usage": {
+        "completion_tokens": 2,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 251
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the image provided:\n\n- **Application Name**: ANVIL SERVING  \n- **Status**: READY  \n- **GPU Percentage**: 42%\n\nThis appears to be a status dashboard or monitoring display for an application called \u201cAnvil Serving,\u201d indicating it is currently ready to handle requests and is utilizing 42% of available GPU resources.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.641053,
+      "usage": {
+        "completion_tokens": 74,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 319
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the image provided:\n\n- **Application Name**: ANVIL SERVING  \n- **Status**: READY (displayed in green)  \n- **GPU Usage**: 42 percent (displayed in blue)\n\nThis appears to be a status dashboard or monitoring interface for an application called \u201cAnvil Serving,\u201d indicating it is currently ready to handle requests and is using 42% of available GPU resources.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.689264,
+      "usage": {
+        "completion_tokens": 86,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 331
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "mixed-video-four-images",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 14731,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "video-ocr-30s.mp4",
+          "sha256": "05c6cd1b1a9b4939f513944717f06d02dd5be54dd18b27870dccf2449b457e34"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "mixed",
+      "output": "Based on the provided images, here is the requested information:\n\n- **Numeric Codes:**\n  - The first code, found in the initial set of images, is `7291`.\n  - The second code, found in the third image, is `42917`.\n\n- **Red Object:**\n  - In the second image, the red object is labeled as a \"RED CAR\".\n\n- **Highest Chart Quarter:**\n  - The fourth image displays a bar chart titled \"QUARTERLY UNITS\".\n  - The quarters and their corresponding values are: Q1 (10), Q2 (20), and Q3 (30).\n  - The highest quarter is Q3 with a value of 30.\n\n- **Dashboard Status:**\n  - The fifth image shows a dashboard with the heading \"ANVIL SERVING\".\n  - The status displayed within the box is \"STATUS READY\".",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 1.48457,
+      "usage": {
+        "completion_tokens": 199,
+        "prompt_tokens": 2737,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 880,
+          "video_tokens": 1680
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2936
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "7291"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "Q3"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ready"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "mixed-video-four-images",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 14731,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "video-ocr-30s.mp4",
+          "sha256": "05c6cd1b1a9b4939f513944717f06d02dd5be54dd18b27870dccf2449b457e34"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "mixed",
+      "output": "Based on the inspection of the five media inputs provided, here is the requested information:\n\n- **Numeric Codes:** The two numeric codes found in the images are **7291** (from the first image) and **42917** (from the third image).\n- **Red Object:** The red object is a rectangle labeled **RED CAR** (from the second image).\n- **Highest Chart Quarter:** In the bar chart (fourth image), the highest quarter is **Q3**, with a value of 30.\n- **Dashboard Status:** The status shown on the dashboard (fifth image) is **STATUS READY**.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 1.120584,
+      "usage": {
+        "completion_tokens": 136,
+        "prompt_tokens": 2737,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 880,
+          "video_tokens": 1680
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2873
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "7291"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "Q3"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ready"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "mixed-video-one-image",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 11627,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "temporal-order-10s.mp4",
+          "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "mixed",
+      "output": "Based on the video frames provided, here is a report of the ordered colors and the dashboard's status:\n\n**Ordered Colors:**\nThe video displays text in a specific sequence of colors:\n- **First:** The text \"FIRST RED\" appears in red.\n- **Then:** The text \"THEN GREEN\" appears in green.\n\n**Dashboard Status:**\nThe final frame shows a dashboard with the following information:\n- **Title:** ANVIL SERVING\n- **Status:** STATUS READY (displayed in green text)\n- **GPU Usage:** GPU 42 PERCENT (displayed in blue text)",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "fps": 1.0
+      },
+      "seconds": 0.939173,
+      "usage": {
+        "completion_tokens": 129,
+        "prompt_tokens": 848,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220,
+          "video_tokens": 560
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 977
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green"
+            ]
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ready"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "mixed-video-one-image",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 11627,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "temporal-order-10s.mp4",
+          "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "mixed",
+      "output": "Based on the video frames provided, here is a report of the ordered colors and the dashboard's status:\n\n**Ordered Colors:**\nThe video displays text in two distinct colors, in the following order:\n- **First:** Red (with the text \"FIRST RED\")\n- **Then:** Green (with the text \"THEN GREEN\")\n\n**Dashboard Status:**\nThe final frame shows a dashboard titled \"ANVIL SERVING\" with the following status information:\n- **Status:** READY (displayed in green text)\n- **GPU Usage:** 42 PERCENT (displayed in blue text)",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "fps": 1.0
+      },
+      "seconds": 1.174367,
+      "usage": {
+        "completion_tokens": 127,
+        "prompt_tokens": 848,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 220,
+          "video_tokens": 560
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 975
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green"
+            ]
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ready"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "multi-image-comparison",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        }
+      ],
+      "modality": "image",
+      "output": "Let's compare the two meters step by step.\n\n- **Meter A** shows a value of **25 percent**.\n- **Meter B** shows a value of **75 percent**.\n\nSince 75 is greater than 25, **Meter B is higher**.\n\n\u2705 **Final Answer: Meter B is higher, with a value of 75 percent.**",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.651087,
+      "usage": {
+        "completion_tokens": 79,
+        "prompt_tokens": 471,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 440
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 550
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "multi-image-comparison",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the information provided in the two images, let's compare the meters:\n\n- **Meter A** shows a value of 25 percent.\n- **Meter B** shows a value of 75 percent.\n\nBy comparing the two values, $75\\%$ is greater than $25\\%$.\n\n---\n\nThe meter that is higher is **Meter B**, and its percentage is **75 percent**.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.678755,
+      "usage": {
+        "completion_tokens": 91,
+        "prompt_tokens": 471,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 440
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 562
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-continuity-120s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 23622,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "continuity-120s.mp4",
+          "sha256": "1ebc5459ed8c158ffb8294a0317005a13198748c529a49b66a2f76ff1c982b95"
+        }
+      ],
+      "modality": "video",
+      "output": "Based on the video frames provided, here are the phases in the order they appear:\n\n1.  **PHASE ALPHA** (appears first, in red text)\n2.  **PHASE BETA** (appears second, in orange text)\n3.  **PHASE GAMMA** (appears third, in green text)",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "num_frames": 32
+      },
+      "seconds": 1.907984,
+      "usage": {
+        "completion_tokens": 74,
+        "prompt_tokens": 7292,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 6720
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 7366
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "alpha",
+              "beta",
+              "gamma"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-continuity-120s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 23622,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "continuity-120s.mp4",
+          "sha256": "1ebc5459ed8c158ffb8294a0317005a13198748c529a49b66a2f76ff1c982b95"
+        }
+      ],
+      "modality": "video",
+      "output": "The phases appear in the following order:\n\n1. **Phase Alpha** (0:00 - 0:39)\n2. **Phase Beta** (0:40 - 1:19)\n3. **Phase Gamma** (1:20 - 1:58)",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "num_frames": 32
+      },
+      "seconds": 1.009545,
+      "usage": {
+        "completion_tokens": 66,
+        "prompt_tokens": 7292,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 6720
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 7358
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "alpha",
+              "beta",
+              "gamma"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-event-localization-60s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13829,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "event-localization-60s.mp4",
+          "sha256": "5e0f40b3760e009f8ea0035b96bb4a8654fea58e0bb8a31a838eb78b224e7cbf"
+        }
+      ],
+      "modality": "video",
+      "output": "The localized event, 'ALERT AT 42 SECONDS', is present in the video from the 42 to 47-second mark.\n\n```json\n[\n    {\"event_start_time\": 42, \"event_end_time\": 47}\n]\n```",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "fps": 1.0
+      },
+      "seconds": 1.246099,
+      "usage": {
+        "completion_tokens": 61,
+        "prompt_tokens": 3651,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 3360
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 3712
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "alert"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-event-localization-60s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13829,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "event-localization-60s.mp4",
+          "sha256": "5e0f40b3760e009f8ea0035b96bb4a8654fea58e0bb8a31a838eb78b224e7cbf"
+        }
+      ],
+      "modality": "video",
+      "output": "The localized event is a red text alert that reads \"ALERT AT 42 SECONDS\". It appears on screen for a brief period.\n\nThe timestamp for this event is from 42 to 46 seconds.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "fps": 1.0
+      },
+      "seconds": 0.719198,
+      "usage": {
+        "completion_tokens": 47,
+        "prompt_tokens": 3651,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 3360
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 3698
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "alert"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-ocr-30s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 14731,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "video-ocr-30s.mp4",
+          "sha256": "05c6cd1b1a9b4939f513944717f06d02dd5be54dd18b27870dccf2449b457e34"
+        }
+      ],
+      "modality": "video",
+      "output": "ANVIL VIDEO OCR\nCODE 7291",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 0.501917,
+      "usage": {
+        "completion_tokens": 13,
+        "prompt_tokens": 1836,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 1680
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 1849
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL VIDEO OCR"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "7291"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-ocr-30s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 14731,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "video-ocr-30s.mp4",
+          "sha256": "05c6cd1b1a9b4939f513944717f06d02dd5be54dd18b27870dccf2449b457e34"
+        }
+      ],
+      "modality": "video",
+      "output": "ANVIL VIDEO OCR\nCODE 7291",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "num_frames": 16
+      },
+      "seconds": 0.317401,
+      "usage": {
+        "completion_tokens": 13,
+        "prompt_tokens": 1836,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 1680
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 1849
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL VIDEO OCR"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "7291"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-state-change-30s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 14552,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "state-change-30s.mp4",
+          "sha256": "4d720486425afff4a7450f0f7f3ce6e3eea591e063b66e48fc953415b9172e62"
+        }
+      ],
+      "modality": "video",
+      "output": "Based on the sequence of images provided, here is a description of the state change in temporal order:\n\n- **Initial State (0.0s - 14.0s):** The video begins with a static display showing the text \"DOOR CLOSED\" in white capital letters against a dark blue background. This state persists for the first 14 seconds.\n- **Transition (15.0s):** At the 15-second mark, there is a brief transition frame where the text appears distorted and glitched, showing a mix of the previous white text and the new green text.\n- **Final State (16.0s - 28.0s):** Immediately following the transition, the display changes to show the text \"DOOR OPEN\" in bright green capital letters on the same dark blue background. This new state remains static until the end of the provided frames at 28 seconds.\n\nIn summary, the system depicted transitions from a \"DOOR CLOSED\" state to a \"DOOR OPEN\" state, with a brief visual glitch marking the change.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "fps": 1.0
+      },
+      "seconds": 1.883563,
+      "usage": {
+        "completion_tokens": 223,
+        "prompt_tokens": 1832,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 1680
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 2055
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "closed",
+              "open"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-state-change-30s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 14552,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "state-change-30s.mp4",
+          "sha256": "4d720486425afff4a7450f0f7f3ce6e3eea591e063b66e48fc953415b9172e62"
+        }
+      ],
+      "modality": "video",
+      "output": "Based on the video frames provided, here is the description of the state change in temporal order:\n\n*   **Initial State (00:00 - 00:14):** The video begins with a static display on a dark blue background. The text \"DOOR CLOSED\" is shown in white, capital letters. This state remains unchanged for the first 14 seconds.\n*   **State Change (00:15):** At the 15-second mark, the text on the screen changes.\n*   **Final State (00:15 - 00:28):** The text changes to \"DOOR OPEN\" and the color changes from white to bright green. This new state remains static until the end of the video.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "fps": 1.0
+      },
+      "seconds": 1.226075,
+      "usage": {
+        "completion_tokens": 159,
+        "prompt_tokens": 1832,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 1680
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 1991
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "closed",
+              "open"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-temporal-order-10s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 11627,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "temporal-order-10s.mp4",
+          "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+        }
+      ],
+      "modality": "video",
+      "output": "Based on the video frames provided, the two states in the order they appear are:\n\n1.  **FIRST RED**: The text \"FIRST RED\" is displayed in red letters on a dark blue background.\n2.  **THEN GREEN**: The text \"THEN GREEN\" is displayed in green letters on a dark blue background.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": {
+        "fps": 1.0
+      },
+      "seconds": 0.66906,
+      "usage": {
+        "completion_tokens": 68,
+        "prompt_tokens": 624,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 560
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 692
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "video-temporal-order-10s",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 11627,
+          "kind": "video",
+          "mime": "video/mp4",
+          "path": "temporal-order-10s.mp4",
+          "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+        }
+      ],
+      "modality": "video",
+      "output": "The video shows two states in the following order:\n\n1.  **FIRST RED**: The video begins with the text \"FIRST RED\" displayed in red font on a dark blue background. This state is visible from 0.0 seconds to 4.0 seconds.\n2.  **THEN GREEN**: The video then transitions to the text \"THEN GREEN\" displayed in green font on the same dark blue background. This state is visible from 5.0 seconds to 9.0 seconds.",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": {
+        "fps": 1.0
+      },
+      "seconds": 0.80758,
+      "usage": {
+        "completion_tokens": 103,
+        "prompt_tokens": 624,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "video_tokens": 560
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 727
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    }
+  ],
+  "configuration": {
+    "allowed_finish_reasons": [
+      "length",
+      "stop"
+    ],
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "concurrency": 1,
+    "max_images_per_request": 4,
+    "max_tokens": 512,
+    "max_videos_per_request": 1,
+    "reasoning_effort": null,
+    "thinking_mode": "disabled",
+    "timeout_seconds": 900.0
+  },
+  "corpus": {
+    "cases": [
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "id": "image-scene",
+        "media": [
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Describe the scene and report every prominent label. Use the labels verbatim.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ocr",
+        "media": [
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Transcribe all visible text exactly. Preserve every number.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "id": "image-chart",
+        "media": [
+          {
+            "bytes": 12635,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "chart.png",
+            "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Read the chart and report each quarter with its value in ascending quarter order.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ui",
+        "media": [
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Report the application name, status, and GPU percentage.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "id": "image-spatial-count",
+        "media": [
+          {
+            "bytes": 8785,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "spatial.png",
+            "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Count the blue boxes. Reply with the count written as an English word.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "id": "multi-image-comparison",
+        "media": [
+          {
+            "bytes": 8000,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-a.png",
+            "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+          },
+          {
+            "bytes": 7679,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-b.png",
+            "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Compare the two meters. Identify which meter is higher and report its percentage.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green"
+            ]
+          }
+        ],
+        "id": "video-temporal-order-10s",
+        "media": [
+          {
+            "bytes": 11627,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "temporal-order-10s.mp4",
+            "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+          }
+        ],
+        "modality": "video",
+        "prompt": "Report the two states in the order they appear.",
+        "repetitions": 2,
+        "sampling": {
+          "fps": 1.0
+        }
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "closed",
+              "open"
+            ]
+          }
+        ],
+        "id": "video-state-change-30s",
+        "media": [
+          {
+            "bytes": 14552,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "state-change-30s.mp4",
+            "sha256": "4d720486425afff4a7450f0f7f3ce6e3eea591e063b66e48fc953415b9172e62"
+          }
+        ],
+        "modality": "video",
+        "prompt": "Describe the state change in temporal order.",
+        "repetitions": 2,
+        "sampling": {
+          "fps": 1.0
+        }
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "alert"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "video-event-localization-60s",
+        "media": [
+          {
+            "bytes": 13829,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "event-localization-60s.mp4",
+            "sha256": "5e0f40b3760e009f8ea0035b96bb4a8654fea58e0bb8a31a838eb78b224e7cbf"
+          }
+        ],
+        "modality": "video",
+        "prompt": "Identify the localized event and report its timestamp in seconds.",
+        "repetitions": 2,
+        "sampling": {
+          "fps": 1.0
+        }
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL VIDEO OCR"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "7291"
+          }
+        ],
+        "id": "video-ocr-30s",
+        "media": [
+          {
+            "bytes": 14731,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "video-ocr-30s.mp4",
+            "sha256": "05c6cd1b1a9b4939f513944717f06d02dd5be54dd18b27870dccf2449b457e34"
+          }
+        ],
+        "modality": "video",
+        "prompt": "Transcribe every stable text label and preserve the numeric code.",
+        "repetitions": 2,
+        "sampling": {
+          "num_frames": 16
+        }
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "alpha",
+              "beta",
+              "gamma"
+            ]
+          }
+        ],
+        "id": "video-continuity-120s",
+        "media": [
+          {
+            "bytes": 23622,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "continuity-120s.mp4",
+            "sha256": "1ebc5459ed8c158ffb8294a0317005a13198748c529a49b66a2f76ff1c982b95"
+          }
+        ],
+        "modality": "video",
+        "prompt": "Report all phases in the order they appear across the full video.",
+        "repetitions": 2,
+        "sampling": {
+          "num_frames": 32
+        }
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "red",
+              "green"
+            ]
+          },
+          {
+            "type": "contains_casefold",
+            "value": "ready"
+          }
+        ],
+        "id": "mixed-video-one-image",
+        "media": [
+          {
+            "bytes": 11627,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "temporal-order-10s.mp4",
+            "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+          },
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+          }
+        ],
+        "modality": "mixed",
+        "prompt": "Report the video's ordered colors and the dashboard's status.",
+        "repetitions": 2,
+        "sampling": {
+          "fps": 1.0
+        }
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "7291"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "Q3"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "ready"
+          }
+        ],
+        "id": "mixed-video-four-images",
+        "media": [
+          {
+            "bytes": 14731,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "video-ocr-30s.mp4",
+            "sha256": "05c6cd1b1a9b4939f513944717f06d02dd5be54dd18b27870dccf2449b457e34"
+          },
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+          },
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          },
+          {
+            "bytes": 12635,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "chart.png",
+            "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+          },
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+          }
+        ],
+        "modality": "mixed",
+        "prompt": "Inspect all five media inputs. Report both numeric codes, the red object, the highest chart quarter, and the dashboard status.",
+        "repetitions": 2,
+        "sampling": {
+          "num_frames": 16
+        }
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "color"
+          }
+        ],
+        "id": "cc-video-chemical-traffic-light",
+        "media": [
+          {
+            "bytes": 459852,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "cc/chemical-traffic-light-normalized.mp4",
+            "sha256": "1ab998a0339eaedb8494392be2c11f02bf9ce2f632fb01cf51b7089990d18f9c"
+          }
+        ],
+        "modality": "video",
+        "prompt": "Describe the experiment and the visible color changes.",
+        "repetitions": 2,
+        "sampling": {
+          "num_frames": 24
+        }
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "cat"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "door"
+          }
+        ],
+        "id": "cc-video-cat-opening-door",
+        "media": [
+          {
+            "bytes": 490171,
+            "kind": "video",
+            "mime": "video/mp4",
+            "path": "cc/cat-opening-door-normalized.mp4",
+            "sha256": "b01ffe7800a3f74eead304a06bf35ece0e8917e107e1ce1e25837f3b5611cb61"
+          }
+        ],
+        "modality": "video",
+        "prompt": "Identify the animal and describe the main action it completes.",
+        "repetitions": 2,
+        "sampling": {
+          "num_frames": 16
+        }
+      }
+    ],
+    "path": "benchmarks/corpora/agents-a1-v1/corpus.json",
+    "provenance": {
+      "creative_commons": {
+        "attribution": "cc/README.md",
+        "role": "supplementary generalization evidence"
+      },
+      "observed_date": "2026-07-28",
+      "synthetic": {
+        "generator": "generate.py",
+        "license": "CC0-1.0",
+        "runtime_image": "vllm/vllm-openai:nightly-f25953cc59f9b4ba9b04b16228d2b86dcfbcbdb1"
+      }
+    },
+    "schema": "multimodal-corpus/v1",
+    "sha256": "ebff9dcc87a7fd13f801fc19eeea7271aec01a99fe560d721be99c1c9becad49"
+  },
+  "failed_attempts": 0,
+  "finished_at": "2026-08-27T03:41:16Z",
+  "identity": {
+    "base_url": "http://127.0.0.1:39081/v1",
+    "engine_build_ref": null,
+    "engine_revision": "d91c3682b0b429e4c70df63cd57f819588ce29b0",
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, TP=2, PCIe without NVLink, WSL2",
+    "model": "qwen38-flash-next-radixark-nvfp4-sglang-qsa-fast-tp2-262k-mtp3",
+    "model_revision": "7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+    "runtime_image": "sha256:59f06adce6f91401adf443bd168d45fdb2044d77671fd591c7c57a29d851cbae",
+    "served_models": [
+      "qwen38-flash-next-radixark-nvfp4-sglang-qsa-fast-tp2-262k-mtp3"
+    ]
+  },
+  "passed": true,
+  "passed_attempts": 30,
+  "requests": 30,
+  "run_id": "multimodal-20260827T034041Z",
+  "schema": "multimodal-benchmark-evidence/v1",
+  "started_at": "2026-08-27T03:40:41Z"
+}
