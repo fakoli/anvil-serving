@@ -36,9 +36,9 @@ class _Opener:
         return _Response(self.payloads.pop(0))
 
 
-def _catalog(*, missing_output=False, config_sha=CONFIG_SHA):
+def _catalog(*, missing_output=False, config_sha=CONFIG_SHA, primary_context=1_048_576):
     models = [
-        ("primary", ["llm.primary"], 1_048_576, ["text"], True),
+        ("primary", ["llm.primary"], primary_context, ["text"], True),
         ("secondary", ["llm.secondary", "vision.general", "vision.ocr"], 131_072, ["text", "image"], True),
         ("voice", ["llm.voice"], 32_768, ["text"], False),
         ("aux", ["llm.auxiliary"], 65_536, ["text"], False),
@@ -123,7 +123,47 @@ def _write_inputs(root: Path, *, bad_pi_compaction=False):
     return openclaw, pi_models, pi_settings
 
 
-def _run(root: Path, *, opener, confirm=False, dry_run=True, restart=None, restart_on_change=False):
+def _write_hermes(root: Path):
+    hermes = root / "hermes.yaml"
+    hermes.write_text(
+        """model:
+  default: llm.primary
+  provider: anvil
+  max_tokens: 5120
+custom_providers:
+  - name: preserve-me
+    model: llm.primary
+    models:
+      llm.primary:
+        context_length: 393216
+providers:
+  anvil:
+    key_env: ANVIL_ROUTER_TOKEN
+    default_model: llm.primary
+    context_length: 393216
+    models:
+      llm.primary:
+        context_length: 393216
+      llm.secondary:
+        context_length: 131072
+unrelated:
+  enabled: true
+""",
+        encoding="utf-8",
+    )
+    return hermes
+
+
+def _run(
+    root: Path,
+    *,
+    opener,
+    clients="openclaw,pi",
+    confirm=False,
+    dry_run=True,
+    restart=None,
+    restart_on_change=False,
+):
     openclaw, pi_models, pi_settings = (
         root / "openclaw.json",
         root / "models.json",
@@ -131,7 +171,9 @@ def _run(root: Path, *, opener, confirm=False, dry_run=True, restart=None, resta
     )
     return sync_clients(
         base_url="https://router.example.ts.net/v1",
+        clients=clients,
         openclaw_config=str(openclaw),
+        hermes_config=str(root / "hermes.yaml"),
         pi_models=str(pi_models),
         pi_settings=str(pi_settings),
         state_path=str(root / "state.json"),
@@ -245,6 +287,180 @@ def test_config_hash_restart_is_retried_once_and_drift_is_repaired(tmp_path):
     )
     assert repaired["changed"] == ["openclaw"]
     assert restarts == ["restart"]
+
+
+def test_openclaw_only_accepts_current_safeguard_schema_without_pi(tmp_path):
+    openclaw_path, pi_models_path, pi_settings_path = _write_inputs(tmp_path)
+    payload = json.loads(openclaw_path.read_text())
+    payload["agents"]["defaults"]["compaction"] = {
+        "mode": "safeguard",
+        "keepRecentTokens": 30_000,
+        "maxActiveTranscriptBytes": "20mb",
+        "memoryFlush": {
+            "forceFlushTranscriptBytes": "15mb",
+            "model": "anvil/llm.primary",
+        },
+        "notifyUser": True,
+    }
+    openclaw_path.write_text(json.dumps(payload), encoding="utf-8")
+    pi_models_path.unlink()
+    pi_settings_path.unlink()
+
+    result = _run(
+        tmp_path,
+        clients="openclaw",
+        opener=_Opener(*_catalog(primary_context=262_144)),
+        confirm=True,
+        dry_run=False,
+    )
+
+    assert result["clients"] == ["openclaw"]
+    assert result["changed"] == ["openclaw"]
+    rendered = json.loads(openclaw_path.read_text())
+    primary = next(
+        row
+        for row in rendered["models"]["providers"]["anvil"]["models"]
+        if row["id"] == "llm.primary"
+    )
+    assert primary["contextWindow"] == 262_144
+    assert rendered["agents"]["defaults"]["compaction"] == payload["agents"]["defaults"]["compaction"]
+
+
+def test_pi_only_does_not_require_or_restart_openclaw(tmp_path):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+    openclaw_path.unlink()
+    restarts = []
+
+    result = _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+        restart=lambda: restarts.append("restart") or 0,
+        restart_on_change=True,
+    )
+
+    assert result["clients"] == ["pi"]
+    assert result["changed"] == ["pi_models", "pi_settings"]
+    assert result["openclaw_restarted"] is False
+    assert restarts == []
+
+
+def test_pi_only_seeds_missing_anvil_provider_from_router_contract(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    pi_models = json.loads(pi_models_path.read_text())
+    pi_models["providers"].pop("anvil")
+    pi_models_path.write_text(json.dumps(pi_models), encoding="utf-8")
+
+    result = _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(primary_context=262_144)),
+        confirm=True,
+        dry_run=False,
+    )
+
+    assert result["changed"] == ["pi_models", "pi_settings"]
+    rendered = json.loads(pi_models_path.read_text())
+    provider = rendered["providers"]["anvil"]
+    assert provider["baseUrl"] == "https://router.example.ts.net/v1"
+    assert provider["apiKey"] == "$ANVIL_ROUTER_TOKEN"
+    assert provider["authHeader"] is True
+    assert provider["api"] == "openai-completions"
+    assert provider["compat"]["maxTokensField"] == "max_tokens"
+    assert provider["compat"]["supportsUsageInStreaming"] is True
+    by_id = {row["id"]: row for row in provider["models"]}
+    assert by_id["llm.primary"]["contextWindow"] == 262_144
+    assert by_id["llm.primary"]["maxTokens"] == 8192
+
+
+def test_pi_only_repairs_bare_api_key_environment_name(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    pi_models = json.loads(pi_models_path.read_text())
+    pi_models["providers"]["anvil"]["apiKey"] = "ANVIL_ROUTER_TOKEN"
+    pi_models_path.write_text(json.dumps(pi_models), encoding="utf-8")
+
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+
+    rendered = json.loads(pi_models_path.read_text())
+    assert rendered["providers"]["anvil"]["apiKey"] == "$ANVIL_ROUTER_TOKEN"
+
+
+def test_hermes_only_repairs_selected_limits_and_preserves_other_yaml(tmp_path):
+    _write_inputs(tmp_path)
+    hermes_path = _write_hermes(tmp_path)
+
+    result = _run(
+        tmp_path,
+        clients="hermes",
+        opener=_Opener(*_catalog(primary_context=262_144)),
+        confirm=True,
+        dry_run=False,
+    )
+
+    assert result["clients"] == ["hermes"]
+    assert result["changed"] == ["hermes"]
+    rendered = hermes_path.read_text(encoding="utf-8")
+    assert "  max_tokens: 8192\n" in rendered
+    assert "    context_length: 262144\n" in rendered
+    assert "        context_length: 262144\n" in rendered
+    assert "      llm.secondary:\n        context_length: 131072\n" in rendered
+    assert "  - name: preserve-me" in rendered
+    assert "        context_length: 393216\nproviders:" in rendered
+    assert "unrelated:\n  enabled: true\n" in rendered
+
+    second = _run(
+        tmp_path,
+        clients="hermes",
+        opener=_Opener(*_catalog(primary_context=262_144)),
+        confirm=True,
+        dry_run=False,
+    )
+    assert second["changed"] == []
+    assert second["backup_created"] is False
+
+
+def test_hermes_wrong_selected_provider_fails_before_write(tmp_path):
+    _write_inputs(tmp_path)
+    hermes_path = _write_hermes(tmp_path)
+    source = hermes_path.read_text(encoding="utf-8").replace(
+        "  provider: anvil\n", "  provider: other\n"
+    )
+    hermes_path.write_text(source, encoding="utf-8")
+
+    with pytest.raises(ClientCatalogError, match="selected provider"):
+        _run(
+            tmp_path,
+            clients="hermes",
+            opener=_Opener(*_catalog(primary_context=262_144)),
+            confirm=True,
+            dry_run=False,
+        )
+    assert hermes_path.read_text(encoding="utf-8") == source
+
+
+def test_invalid_client_selection_fails_before_metadata_request(tmp_path):
+    opener = _Opener(*_catalog())
+    with pytest.raises(ClientCatalogError, match="clients must select"):
+        _run(tmp_path, clients="openclaw,unknown", opener=opener)
+    assert opener.requests == []
+
+
+def test_pi_still_requires_explicit_compaction_reserve(tmp_path):
+    _, _, pi_settings_path = _write_inputs(tmp_path)
+    payload = json.loads(pi_settings_path.read_text())
+    payload["compaction"].pop("reserveTokens")
+    pi_settings_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ClientCatalogError, match="Pi compaction reserveTokens"):
+        _run(tmp_path, clients="pi", opener=_Opener(*_catalog()))
 
 
 def test_missing_output_or_incompatible_compaction_fails_before_write(tmp_path):

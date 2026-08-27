@@ -1,0 +1,87 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "RadixArk/Qwen3.8-Flash-Next-NVFP4"
+status = "qualification-candidate"
+source = "2026-08-25 RadixArk publisher recipe translated to a conservative first-load SM120/WSL2 TP=2 compatibility lane"
+family = "qwen3.8-flash-next-multimodal-moe"
+total_params_b = 180
+
+[recipe.download]
+repo = "RadixArk/Qwen3.8-Flash-Next-NVFP4"
+revision = "7b719225242aacd3dbd3f9407468c2ee9a9d2594"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2; exclusive TP=2 compatibility experiment. Publisher validation used B200/B300/GB300-class native Linux hardware, not this host."
+
+[recipe.serve]
+engine = "sglang-qwen38-flash-next-day-zero"
+allow_cuda_visible_devices_index = true
+image = "lmsysorg/sglang@sha256:59f06adce6f91401adf443bd168d45fdb2044d77671fd591c7c57a29d851cbae"
+entrypoint = [
+  "bash",
+  "-lc",
+  '''set -e; LP=/sgl-workspace/sglang/python/sglang/srt/layers/logits_processor.py; if [ "$(grep -c 'enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,' "$LP")" = "1" ]; then sed -i 's/enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,/enabled=False,/' "$LP"; echo 'anvil patch: multimem logits gatherer disabled (NCCL fallback)'; elif grep -q 'enabled=False,' "$LP"; then echo 'anvil patch: multimem gatherer already disabled'; else echo 'anvil patch: logits gatherer anchor drift' >&2; exit 3; fi; QP=/sgl-workspace/sglang/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py; if [ "$(sed -n '/^    def _forward_paged_attention(/,/^        trtllm_decode =/p' "$QP" | grep -c '^        if not q.is_cuda:$')" = "1" ]; then sed -i '/^    def _forward_paged_attention(/,/^        trtllm_decode =/s/^        if not q\.is_cuda:$/        if True:  # Anvil WSL2 SM120 portable QSA decode fallback/' "$QP"; echo 'anvil patch: portable QSA sparse decode enabled'; elif grep -q 'Anvil WSL2 SM120 portable QSA decode fallback' "$QP"; then echo 'anvil patch: portable QSA sparse decode already enabled'; else echo 'anvil patch: QSA sparse decode anchor drift' >&2; exit 4; fi; exec python3 -m sglang.launch_server "$@"''',
+  "qwen38-flash-next",
+]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--RadixArk--Qwen3.8-Flash-Next-NVFP4/snapshots/7b719225242aacd3dbd3f9407468c2ee9a9d2594"
+quantization = "NVIDIA ModelOpt NVFP4 W4A4 routed experts; BF16 attention, GDN, QSA, shared experts, vision, and MTP; FP8 PLE tables dequantized to BF16 at load"
+context_tokens = 32768
+port = 39078
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-flash-next-radixark-nvfp4-tp2-32k"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+]
+flags = [
+  "--served-model-name qwen38-flash-next-radixark-nvfp4-tp2-32k",
+  "--tp 2",
+  "--quantization modelopt_fp4",
+  "--fp4-gemm-backend flashinfer_cutlass",
+  "--page-size 64",
+  "--mamba-scheduler-strategy extra_buffer",
+  "--mamba-track-interval 64",
+  "--chunked-prefill-size 4096",
+  "--max-running-requests 1",
+  "--context-length 32768",
+  "--mem-fraction-static 0.80",
+  "--no-ple-offload-embedding",
+  "--disable-custom-all-reduce",
+  "--disable-cuda-graph",
+  "--disable-flashinfer-autotune",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--host 0.0.0.0",
+  "--port 39078",
+]
+note = "First-load compatibility candidate only. It retains the publisher's TP=2, ModelOpt FP4, FlashInfer CUTLASS, page-size-64, extra-buffer GDN scheduling, track interval 64, and 4096-token chunked prefill. It deliberately starts at 32768 context and concurrency one, keeps MTP/speculation and auto-truncation off, prevents the large PLE embedding CPU offload under the WSL2 memory cap, and disables CUDA graphs/custom all-reduce for the first SM120 boot. The fail-closed entrypoint patches the known WSL2 symmetric-memory logits crash to the existing NCCL fallback and selects SGLang's built-in device-agnostic QSA reference only for sparse decode because the pinned image's FA4 CuTe fallback fails MLIR compilation on SM120. The weights and prefill path remain unchanged, but the portable QSA decoder is a performance compatibility lane that requires broader correctness and speed qualification. Health, served identity, and one direct smoke are startup evidence, not qualification or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "compatibility", "coding-agent", "multimodal", "tool-use"]
+rationale = "Establishes whether the private candidate checkpoint and pinned day-zero qwen4_exp SGLang image can boot and serve correctly on the local dual-SM120 WSL2 host before raising context, concurrency, graphs, PLE placement, or speculation."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-Flash-Next",
+  "https://github.com/sgl-project/sglang/blob/main/docs/advanced_features/server_arguments.md",
+]
+community = [
+  "https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4/tree/7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+  "https://x.com/unslothai/status/2092639558815060281",
+]
+local = []

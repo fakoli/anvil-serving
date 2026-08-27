@@ -332,8 +332,20 @@ requires `metadata_source = "upstream"` and `health_path`, and omits both
 values as described above. `base_url` is an
 OpenAI- or Anthropic-compatible base URL; use `127.0.0.1`, never `localhost`,
 for same-host serves. Optional `health_path`, `timeout`, `max_concurrency`,
-`max_output_tokens`, `extra_body`, and `extra_body_defaults` control relay behavior. `engine`,
+`max_output_tokens`, `context_admission`, `extra_body`, and
+`extra_body_defaults` control relay behavior. `engine`,
 `quantization`, and `params` are descriptive serve metadata.
+
+`context_admission = "estimate"` is the default. It rejects a text request
+before relay when the router's stdlib-only conservative token estimate exceeds
+the tier's context window. For a directly selected, exact-identity local serve
+whose inference engine enforces context with the model's real tokenizer,
+`context_admission = "upstream"` delegates that one text boundary check to the
+same selected endpoint. This opt-in requires either `model_identity = true` or
+`metadata_source = "upstream"`; it never enables a retry, fallback, or alternate
+model. Router usage and decision counters remain estimates. Explicitly enabled
+media admission remains router-enforced because it also owns declared visual
+token and media-count policy.
 
 `max_output_tokens` is an optional per-tier runtime safety ceiling. When a
 caller requests a larger completion budget, the router forwards the request
