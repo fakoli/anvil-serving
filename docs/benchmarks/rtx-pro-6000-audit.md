@@ -86,7 +86,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-26-qwen38-flash-next-promotion.md`;
 `docs/findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md`;
 `docs/findings/2026-08-26-qwen38-flash-next-vision-promotion.md`;
-`docs/findings/2026-08-26-qwen38-flash-next-vision-promotion-evidence/social-summary.md`;
+`docs/findings/2026-08-26-qwen38-flash-next-vision-promotion-evidence/publication-summary.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/closed/2026-07-27-release-sweep-fixes.md`;
 `.tickets/closed/2026-07-28-agents-a1-multimodal-qualification.md`;

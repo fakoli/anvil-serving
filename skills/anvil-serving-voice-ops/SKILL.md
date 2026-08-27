@@ -122,6 +122,9 @@ evidence.
   Publish a meaningful retained result through
   `skills/anvil-serving-benchmark-docs/SKILL.md`; keep measured hardware
   separate from protected/co-resident hardware and retain `promoted=false`.
+  Use that contract's publication-ready result card and publication summary when the retained
+  voice artifact is meaningful; a format-only refresh does not rerun the
+  bounded voice benchmark.
 - Multi-sample STT qualification:
   use `anvil-serving voice corpus prepare|validate` and
   `anvil-serving voice benchmark --scope stt` through the canonical
