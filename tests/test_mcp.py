@@ -74,9 +74,13 @@ def test_client_catalog_sync_schema_is_secret_reference_only_and_guarded():
         "api_key_env",
         "clients",
         "hermes_config",
+        "hermes_bin",
+        "hermes_home",
+        "hermes_profiles",
         "dry_run",
         "confirm",
         "restart_openclaw_on_change",
+        "restart_hermes_on_change",
     } <= set(properties)
     with pytest.raises(mcp.ToolError, match="raw api_key"):
         mcp.tool_client_catalog_sync({"api_key": "never"})
