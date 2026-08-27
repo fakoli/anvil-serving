@@ -1,0 +1,60 @@
+{
+  "schema": "mini-qwen38-flash-next-vision-acceptance/v2",
+  "observed_at_start": "2026-08-27T04:21:33Z",
+  "observed_at_end": "2026-08-27T04:30:41Z",
+  "route_alias": "vision.general",
+  "catalog": {
+    "context_window": 262144,
+    "max_output_tokens": 8192,
+    "input": [
+      "text",
+      "image"
+    ],
+    "sync_changed_files": [],
+    "sync_restart_required": false
+  },
+  "clients": {
+    "hermes": {
+      "path": "normal_cli_auxiliary_image",
+      "exit_code": 0,
+      "elapsed_seconds": 11.12,
+      "expected": {
+        "ANVIL READY": true,
+        "42917": true,
+        "42": true
+      },
+      "passed": true
+    },
+    "pi": {
+      "version": "0.84.2",
+      "path": "normal_extension_loaded_tty",
+      "exit_code": 0,
+      "expected": {
+        "ANVIL READY": true,
+        "42917": true,
+        "42": true
+      },
+      "passed": true,
+      "caveat": {
+        "non_tty_normal_timed_out_seconds": 150.019,
+        "non_tty_minimal_timed_out_seconds": 150.021,
+        "non_tty_stdout_chars": 0,
+        "boundary": "Pi succeeds through its ordinary TTY path; captured non-TTY automation remains an open client-runtime defect."
+      }
+    },
+    "openclaw": {
+      "path": "running_gateway_dynamic_image_tool",
+      "exit_code": 0,
+      "elapsed_seconds": 6.268,
+      "health_status": 200,
+      "expected": {
+        "ANVIL READY": true,
+        "42917": true,
+        "42": true
+      },
+      "passed": true
+    }
+  },
+  "fixture_removed": true,
+  "passed": true
+}

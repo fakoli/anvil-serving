@@ -9,7 +9,7 @@ evidence class, decision boundary, failures, and dated history.
 
 | Dossier | Current decision | Contents |
 |---|---|---|
-| [Qwen3.8 Flash Next](qwen38-flash-next.md) | `current` text Primary | RadixArk ModelOpt NVFP4, exclusive TP=2 at 262K/c1; hash-gated SM120 QSA-fast plus MTP3, 154.9/134.1 tok/s at 4K/128K, full-reserve request, bounded quality, and fresh OpenClaw/Hermes/Pi acceptance |
+| [Qwen3.8 Flash Next](qwen38-flash-next.md) | `current` text/image/OCR/video Primary | RadixArk ModelOpt NVFP4, exclusive TP=2 at 262K/c1; hash-gated SM120 QSA-fast plus MTP3; direct vision 30/30, live routed repeats 57/60 strict, four-image/one-video admission, 155.9/114.7/112.9 median decode tok/s at 4K/128K/254K targets, full-reserve request, and fresh OpenClaw/Hermes/Pi acceptance |
 | [DeepSeek V4 Flash 0731](deepseek-v4-flash.md) | former text Primary / retained evidence | Infernal Invocation r18/r15 B12X/DSpark K5 promotion history, matched no-spec A/B, long-context capacity, and client acceptance |
 | [Qwen3.8 27B](qwen38-27b.md) | former single service / retained recipe | Official FP8 SGLang TP=1/393K/MTP `3/1/4` text/image/OCR/video evidence |
 | [Agents-A1](agents-a1.md) | historical promotion / retained recipe | Thinking-disabled FP8 Primary-era evidence; BF16 control and compact NVFP4 text profile |
