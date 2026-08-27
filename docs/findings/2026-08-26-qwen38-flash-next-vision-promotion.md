@@ -9,6 +9,44 @@ QSA-fast MTP3, text/image/video, 262,144 tokens, concurrency one
 `vision.ocr`, and `vision.video`; admit at most four images or one video per
 request
 
+<!-- benchmark-result-card/v1 -->
+## Result card
+
+> Local Qwen3.8 Flash Next NVFP4 on two RTX PRO 6000 Blackwell Max-Q cards
+> sustained 112.9 decode tok/s at a 245,000-token prompt and passed direct
+> vision 30/30 plus live routed vision 57/60 under the qualified c1 contract.
+
+| Setup | Qualified value |
+|---|---|
+| Model | RadixArk Qwen3.8 Flash Next NVFP4, revision `7b719225` |
+| Hardware | 2x RTX PRO 6000 Blackwell Max-Q, TP=2 over PCIe without NVLink, WSL2 |
+| Runtime | SGLang `d91c3682`, image `sha256:59f06adc`, QSA-fast, NEXTN `3/1/4`, BF16/auto KV |
+| Recipe | [Managed QSA-fast MTP3 recipe at `81bcfc13`](https://github.com/fakoli/anvil-serving/blob/81bcfc133ccfeee1ca10b1542345d5046f5c74f2/configs/qwen38-flash-next-radixark-nvfp4-sglang-sm120-qsa-fast-tp2-262k-mtp3-recipe.toml) |
+| Measurement path | Client-observed direct text on one warm running service; direct and authenticated live-routed media |
+| Contract | 262,144-token route, 8,192-token output reserve, c1, thinking disabled, four images or one video |
+| Evidence | `functional`, `capacity`, and `quality`; complete with retained strict-scoring misses |
+| Decision | `current`; human-approved expansion of the existing Primary to three explicit vision aliases |
+
+| Headline measurement | Local result | Conditions |
+|---|---:|---|
+| 4K-target text | 155.9 decode tok/s; 0.141 s TTFT | 3,613 actual prompt tokens, p50 of 5, c1 |
+| 128K-target text | 114.7 decode tok/s; 18.1K effective prefill tok/s | 125,447 actual prompt tokens, p50 of 5, c1 |
+| 254K-target text | 112.9 decode tok/s; 8.94K effective prefill tok/s | 245,000 actual prompt tokens, p50 of 2, c1 |
+| Full-reserve gate | 253,703 prompt + 8,192 requested output; 102.0 decode tok/s | separate single capacity proof, c1 |
+| Vision corpus | 30/30 direct; 57/60 live routed | 15 cases repeated twice per path; strict literal rubric |
+| Direct media latency | 0.636 / 1.236 / 1.147 s p50 | image / video / mixed, 12 / 14 / 4 attempts |
+
+**Why it matters:** one managed c1 service now supplies the text Primary plus
+explicit image, OCR, and video routes while retaining a 253,952-plus-8,192
+client envelope.
+
+**Important caveat:** the three live routed misses were semantically correct
+but failed the declared literal rubric, and the 516,032-token KV pool is 8,256
+tokens short of two complete 262,144-token windows. This is not a c2 result.
+
+[Evidence manifest](2026-08-26-qwen38-flash-next-vision-promotion-evidence/README.md) ·
+[Publication summary](2026-08-26-qwen38-flash-next-vision-promotion-evidence/publication-summary.md)
+
 ## Outcome
 
 The already-promoted
@@ -23,12 +61,13 @@ This is the strongest bounded multimodal result currently recorded for this
 exact model and host. It is not a claim that the model is generally strongest,
 lossless, or better than untested checkpoints.
 
-## Shareable configuration
+## Reproducible configuration
 
 | Item | Qualified value |
 |---|---|
 | Model | RadixArk Qwen3.8 Flash Next NVFP4, revision `7b719225` |
 | Runtime | SGLang `d91c3682`, image `sha256:59f06adc`, exact PR #36556 SM120 QSA gate |
+| Recipe | [Managed QSA-fast MTP3 recipe at `81bcfc13`](https://github.com/fakoli/anvil-serving/blob/81bcfc133ccfeee1ca10b1542345d5046f5c74f2/configs/qwen38-flash-next-radixark-nvfp4-sglang-sm120-qsa-fast-tp2-262k-mtp3-recipe.toml) |
 | Hardware | 2x RTX PRO 6000 Blackwell Max-Q, TP=2 over PCIe without NVLink, WSL2 |
 | Context / concurrency | 262,144 tokens / c1 |
 | Speculation | NEXTN steps/top-k/draft `3/1/4` |

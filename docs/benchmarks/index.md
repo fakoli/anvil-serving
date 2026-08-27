@@ -14,6 +14,11 @@ configuration — TTFT, throughput, context, reasoning mode, and recipe link —
 in one place, grouped by card. If you have one of these GPUs and want to know
 what runs on it and how well, start there.
 
+For the compact publication contract, use the
+**[finding format](finding-format.md)**. It defines screenshot-ready result
+cards, X and Reddit variants, accessible alt text, and a claim ledger back to
+the full finding and raw artifacts.
+
 ## Browse by hardware
 
 | Hardware | Current role | Start here |
@@ -170,6 +175,8 @@ Full comparison rules, instrument definitions, and artifact requirements:
   hardware and date.
 - [Findings index](../findings/README.md) — the dated reports with full
   commands, raw artifacts, and failure cases.
+- [Finding publication format](finding-format.md) — compact result and copy
+  formats without weakening evidence boundaries.
 - [External benchmarks](../EXTERNAL-BENCHMARKS.md) — advisory priors imported
   from official and community sources, kept separate from local results.
 - [Chronological campaign archive](../BENCHMARKS.md) — the stable-URL summary

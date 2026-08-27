@@ -54,8 +54,12 @@ Read `references/evidence-contract.md` before starting.
     visible answers, allowed finish reasons, matching media hashes, valid
     tools, and no OOM/parser corruption.
 15. Restore the exact starting serve/router state. Re-run focused and full
-    repository gates, then publish raw artifacts, a dated finding, and a
-    precision/modality decision table.
+    repository gates, then delegate publication to
+    `skills/anvil-serving-benchmark-docs/SKILL.md` for the raw artifacts, dated
+    finding, precision/modality decision table, and required publication-ready
+    result card and publication summary. For a format-only refresh backed by complete
+    retained artifacts, reconcile the published values without restarting the
+    serve or rerunning the benchmark.
 
 ## Decisions
 

@@ -28,7 +28,64 @@ Use `not-qualified` in prose for failed/incomplete configurations, with the
 canonical evidence label `compatibility-only` or `historical-invalid` and the
 decision label `rejected` or `no-promotion`.
 
-## Finding template
+## Publication-ready finding v1
+
+Every local `functional`, `capacity`, or `quality` finding has two compact,
+derivative views in addition to its complete narrative and raw evidence:
+
+1. A result card near the top of the finding, marked with
+   `<!-- benchmark-result-card/v1 -->` and based on `templates/finding.md`.
+2. A companion publication summary, marked with
+   `<!-- benchmark-publication-summary/v1 -->` and based on
+   `templates/publication-summary.md`.
+
+The result card contains one bounded local outcome, the exact setup, three to
+six headline measurements with their conditions, why the result matters, the
+most important caveat or failure, and links to the evidence manifest and
+publication summary. The exact setup includes the managed recipe or reproduction path and the
+measurement layer: direct or routed online endpoint, offline engine, or kernel
+microbenchmark, plus warm/cold state when relevant. The detailed narrative
+follows it; the card does not replace any required identity, method, failure,
+or decision detail.
+
+The publication summary contains canonical facts, managed recipe, measurement path,
+copy-ready X/short-post text, a Reddit title and body, screenshot alt text, and
+a claim ledger. Every metric or capability claim in the copy maps to a finding
+section or raw artifact. State that results are local. Do not use `best`,
+`fastest`, `strongest`, or equivalent comparison language without naming and
+supporting the exact comparison set and calculation.
+
+Project formatting limits are at most 260 literal characters for the preferred
+X/short-post variant, with 280 as the hard validation limit, and at most 120
+characters for the preferred Reddit title. Subreddit rules can be stricter and
+must be checked at posting time. Include the canonical finding URL inside the
+short-post character count. Platform copy and screenshots never become evidence,
+qualification, or promotion authority.
+
+Research-only, release/readiness-only, and failed-load findings may use the
+card, but their publication summary is optional unless a compact public
+communication is required.
+
+### Repository-only format migration
+
+A format-only migration does not require a live rerun when retained public
+artifacts already provide:
+
+- immutable model, runtime, recipe, hardware, and topology identity;
+- context, output reserve, concurrency, sampling/reasoning, and modality
+  configuration;
+- measurement path, warm/cold state, workload/corpus identity, sample counts,
+  statistics, and metric definitions;
+- request-level or aggregate machine-readable results, including failures;
+  and
+- the decision, promotion boundary, and raw artifact links.
+
+Generate the card and publication summary from those artifacts and add a consistency
+test for the published headline values. If a required value is absent or only
+exists as an unsupported prose claim, disclose the gap instead of inferring it
+or running a live benchmark without separate authorization.
+
+## Detailed finding template
 
 State date, repository revision, host/topology, measured hardware, protected
 hardware, exact model/image/engine identity, recipe, workload, gate outcomes,

@@ -97,6 +97,10 @@ protected/co-resident topology, corpus provenance, schedule, primary and
 synthetic metrics, failures, restoration state, capability boundaries, and a
 non-promotion decision. Update the run catalog, model dossier, and measured
 hardware page through that canonical publication contract.
+For a complete retained `stt-benchmark-evidence/v1` artifact, create the
+publication-ready result card and publication summary from the recorded human/synthetic split,
+WER/CER, latency, throughput, concurrency, failures, and restoration fields;
+do not rerun STT solely for a format-only refresh.
 
 Maintain a friction log while running:
 

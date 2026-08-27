@@ -9,8 +9,9 @@ address, GPU UUID, personal path, media bytes, or data URL.
 ## Compact outputs
 
 - [`summary.json`](summary.json) - machine-readable decision summary
-- [`throughput-summary.csv`](throughput-summary.csv) - shareable six-size table
-- [`social-summary.md`](social-summary.md) - compact copy-ready result block
+- [`throughput-summary.csv`](throughput-summary.csv) - compact six-size table
+- [`publication-summary.md`](publication-summary.md) - platform variants, alt
+  text, and claim ledger
 
 ## Context and throughput
 
