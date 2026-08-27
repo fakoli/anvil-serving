@@ -1,0 +1,89 @@
+{
+  "schema": "anvil-serving.qualification-summary/v1",
+  "date": "2026-08-26",
+  "repository_base_revision": "f0733d2e86f75e9f3c3b510c7d76c178659037e2",
+  "model": "RadixArk/Qwen3.8-Flash-Next-NVFP4",
+  "model_revision": "7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+  "image_digest": "sha256:59f06adce6f91401adf443bd168d45fdb2044d77671fd591c7c57a29d851cbae",
+  "engine_revision": "d91c3682b0b429e4c70df63cd57f819588ce29b0",
+  "sglang_qsa_patch_revision": "dac5523d1e5d2f4297fec40ef02fc76fb0f662d1",
+  "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition over PCIe without NVLink",
+  "topology": "exclusive TP=2 under WSL2",
+  "served_context_tokens": 262144,
+  "client_prompt_tokens": 253952,
+  "client_output_reserve_tokens": 8192,
+  "concurrency": 1,
+  "reasoning_contract": "thinking disabled",
+  "kv_dtype": "auto (BF16 path)",
+  "offload": "none",
+  "current_recipe": "configs/qwen38-flash-next-radixark-nvfp4-sglang-sm120-qsa-fast-tp2-262k-mtp3-recipe.toml",
+  "matched_control_recipe": "configs/qwen38-flash-next-radixark-nvfp4-sglang-sm120-qsa-fast-tp2-262k-nospec-recipe.toml",
+  "performance": {
+    "portable_qsa_no_spec": {
+      "decode_tokens_per_second_4k_c1": 12.801,
+      "decode_tokens_per_second_128k_c1": 12.544
+    },
+    "qsa_fast_no_spec": {
+      "ttft_seconds_4k_c1": 0.14,
+      "e2e_seconds_4k_c1": 0.69,
+      "decode_tokens_per_second_4k_c1": 66.6,
+      "ttft_seconds_128k_c1": 12.18,
+      "prefill_tokens_per_second_128k_c1": 10057.0,
+      "decode_tokens_per_second_128k_c1": 69.4,
+      "full_reserve_prompt_tokens": 253703,
+      "full_reserve_ttft_seconds": 27.131,
+      "full_reserve_prefill_tokens_per_second": 9350.9,
+      "full_reserve_decode_tokens_per_second": 66.9
+    },
+    "qsa_fast_mtp3": {
+      "ttft_seconds_4k_c1": 0.15,
+      "e2e_seconds_4k_c1": 0.36,
+      "decode_tokens_per_second_4k_c1": 154.9,
+      "ttft_seconds_128k_c1": 12.67,
+      "prefill_tokens_per_second_128k_c1": 9664.0,
+      "decode_tokens_per_second_128k_c1": 134.1,
+      "full_reserve_prompt_tokens": 253703,
+      "full_reserve_output_request_tokens": 8192,
+      "full_reserve_ttft_seconds": 29.214,
+      "full_reserve_prefill_tokens_per_second": 8684.3,
+      "full_reserve_decode_tokens_per_second": 102.0
+    },
+    "mtp3_speedup_over_matched_control": {
+      "decode_4k": 2.33,
+      "decode_128k": 1.93
+    },
+    "mtp3_speedup_over_portable_qsa": {
+      "decode_4k": 12.1,
+      "decode_128k": 10.7
+    }
+  },
+  "gates": {
+    "exact_identity": true,
+    "startup_patch_hash_and_import": true,
+    "direct_functional": true,
+    "long_context_retrieval_128k": true,
+    "full_reserve_request": true,
+    "tools": "20/20",
+    "bounded_intelligence": "6/6",
+    "session_continuation": "3/3",
+    "repeated_tools": "3/3",
+    "quality_regression_observed": false,
+    "router_transition_identity": true,
+    "hermes_client_acceptance": true,
+    "pi_client_acceptance": true,
+    "openclaw_client_acceptance": true,
+    "openclaw_context_tokens": 262144,
+    "pi_context_tokens": 262144
+  },
+  "failed_vllm_lane": {
+    "model": "Inferact/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "103a7608316173ca6edd49929544244de7ffda70",
+    "attempts": [
+      "default NCCL initialization failed before weight load",
+      "WSL2 NCCL controls exposed V2 runner UVA failure before weight load",
+      "V1 runner loaded approximately 85.76 GiB per card, then compile autotuning OOMed before KV allocation"
+    ],
+    "decision": "exact tested vLLM recipes empirically disqualified; no universal checkpoint or 262K infeasibility claim"
+  },
+  "decision": "human-authorized current text Primary on the locally qualified QSA-fast MTP3 recipe; no multimodal promotion"
+}

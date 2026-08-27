@@ -1,0 +1,83 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "Inferact/Qwen3.8-Flash-Next-NVFP4"
+status = "qualification-candidate"
+source = "2026-08-26 official vLLM Qwen3.8 Flash-Next recipe translated to a conservative dual-SM120 WSL2 no-speculation lane; attempt 02 adds only proven WSL2 NCCL controls"
+family = "qwen3.8-flash-next-multimodal-moe"
+total_params_b = 180
+active_params_b = 6
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-Flash-Next-NVFP4"
+revision = "103a7608316173ca6edd49929544244de7ffda70"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2; exclusive TP=2 qualification lane. The official recipe is not validated upstream on this host or topology."
+
+[recipe.serve]
+engine = "vllm-qwen38-flash-next-day-zero"
+allow_cuda_visible_devices_index = true
+image = "vllm/vllm-openai@sha256:0aea30240f3e3d9ffae8526643950e170eb5fa07fc427016a9dd90892afa2aa3"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-Flash-Next-NVFP4/snapshots/103a7608316173ca6edd49929544244de7ffda70"
+quantization = "Inferact ModelOpt NVFP4 routed experts with BF16 PLE and non-expert tensors; BF16/auto KV cache"
+context_tokens = 262144
+port = 39079
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-flash-next-inferact-nvfp4-vllm-tp2-262k-nospec-wsl2-nccl"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+]
+flags = [
+  "--revision 103a7608316173ca6edd49929544244de7ffda70",
+  "--tokenizer-revision 103a7608316173ca6edd49929544244de7ffda70",
+  "--served-model-name qwen38-flash-next-inferact-nvfp4-vllm-tp2-262k-nospec-wsl2-nccl",
+  "--tensor-parallel-size 2",
+  "--distributed-executor-backend mp",
+  "--max-model-len 262144",
+  "--gpu-memory-utilization 0.90",
+  "--max-num-seqs 1",
+  "--max-num-batched-tokens 8192",
+  "--kv-cache-dtype auto",
+  "--enable-prefix-caching",
+  "--no-enable-flashinfer-autotune",
+  "--disable-custom-all-reduce",
+  "--language-model-only",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--reasoning-parser qwen3",
+  "--host 0.0.0.0",
+  "--port 39079",
+]
+note = "Attempt 02 keeps the 262144-token, concurrency-one, no-speculation quality control and adds only the WSL2 NCCL controls already proven by the local managed TP=2 lane. It disables unsupported InfiniBand and peer-to-peer transport, disables NCCL cuMem allocation paths under WSL2, and enables NCCL diagnostics. It intentionally excludes privileged mode, CPU PLE offload, VLLM_PLE_FP8_CHECKPOINT, forced NCCL P2P levels, VLLM_SKIP_P2P_CHECK, TORCH_CUDA_ARCH_LIST, PYTORCH_ALLOC_CONF, FP8 KV, MTP, and a higher memory fraction. This recipe is not promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "compatibility", "long-context", "coding-agent", "tool-use", "text"]
+rationale = "Tests whether the dedicated vLLM day-zero implementation removes the measured portable sparse-decode bottleneck while preserving full native context and no-loss quality controls after a one-variable WSL2 transport correction."
+
+[recipe.sources]
+official = [
+  "https://github.com/vllm-project/recipes/blob/8cdf25b5cef1e85f2d3ea87a79c82f609e00a8d6/models/Qwen/Qwen3.8-Flash-Next.yaml",
+  "https://huggingface.co/Inferact/Qwen3.8-Flash-Next-NVFP4/tree/103a7608316173ca6edd49929544244de7ffda70",
+  "https://huggingface.co/Qwen/Qwen3.8-Flash-Next",
+]
+community = [
+  "https://x.com/unslothai/status/2092639558815060281",
+]
+local = [
+  "docs/findings/2026-08-26-qwen38-flash-next-promotion.md",
+  "docs/findings/2026-08-26-qwen38-flash-next-inferact-vllm-262k-evidence/attempt-01-default-nccl.md",
+]

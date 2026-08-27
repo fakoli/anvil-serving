@@ -1,0 +1,207 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "qwen38-flash-next-inferact-vllm-tp2-262k-nospec-preload",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 253952,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "promoted Qwen3.8 Primary client contract",
+        "observed_at": "2026-08-26",
+        "notes": "Leaves 8192 tokens for visible output or reasoning inside the native 262144-token window."
+      },
+      "output_reserve": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "promoted Qwen3.8 Primary client contract",
+        "observed_at": "2026-08-26"
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "sequences",
+      "status": "assumed",
+      "source": "single-agent long-context qualification lane",
+      "observed_at": "2026-08-26"
+    },
+    "physical_vram_bytes": {
+      "value": 205283917824,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "nvidia-smi 97887 MiB per RTX PRO 6000 across two cards",
+      "observed_at": "2026-08-26"
+    },
+    "vram_reserves": {
+      "co_resident": {
+        "kind": "physical",
+        "variable": {
+          "value": 0,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "exclusive TP2 qualification lane after managed unload",
+          "observed_at": "2026-08-26"
+        }
+      },
+      "desktop_driver_headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 6442450944,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "campaign safe-operating policy: 3 GiB per card",
+          "observed_at": "2026-08-26"
+        }
+      },
+      "allocator_uncertainty": {
+        "kind": "policy",
+        "variable": {
+          "value": 1610612736,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "campaign uncertainty band: 768 MiB per card",
+          "observed_at": "2026-08-26"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "no-regression qualification hard gate",
+        "observed_at": "2026-08-26"
+      },
+      "max_relative_quality_loss": {
+        "value": 0.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "operator request to detect and reject quality decrease",
+        "observed_at": "2026-08-26"
+      },
+      "min_tasks_per_hour_ratio": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "candidate must not reduce successful agent work versus the promoted control",
+        "observed_at": "2026-08-26"
+      }
+    }
+  },
+  "tracked_variables": {
+    "checkpoint_storage_bytes": {
+      "value": 182827801113,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "Hugging Face repository metadata at the pinned revision",
+      "observed_at": "2026-08-26",
+      "notes": "Artifact storage is not used as a proxy for GPU resident allocation."
+    },
+    "bf16_ple_checkpoint_bytes": {
+      "value": 102400491520,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "safetensors header metadata at the pinned revision",
+      "observed_at": "2026-08-26",
+      "notes": "CPU PLE offload is excluded because this working set exceeds the bounded WSL2 memory envelope."
+    },
+    "wsl2_memory_limit_bytes": {
+      "value": 68719476736,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "operator .wslconfig memory setting",
+      "observed_at": "2026-08-26"
+    },
+    "baseline_128k_decode_tokens_per_second": {
+      "value": 12.544,
+      "unit": "tokens/second",
+      "status": "measured",
+      "source": "promoted RadixArk/SGLang 128K concurrency-one local result",
+      "observed_at": "2026-08-26"
+    },
+    "external_128k_decode_tokens_per_second": {
+      "value": 131.0,
+      "unit": "tokens/second",
+      "status": "confirmed",
+      "source": "operator-provided external 2x Max-Q result for this exact model recipe",
+      "observed_at": "2026-08-26",
+      "notes": "Non-local recipe prior only; it is not a local qualification result."
+    }
+  },
+  "candidates": [
+    {
+      "id": "inferact-nvfp4-vllm-tp2-262k-nospec-gmu090",
+      "runtime_context_limit_tokens": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "official Qwen3.8 Flash-Next configuration and vLLM recipe",
+        "observed_at": "2026-08-26"
+      },
+      "measured_max_stable_context_tokens": {
+        "status": "unknown",
+        "unit": "tokens",
+        "notes": "Measure with the exact managed recipe on the local SM120 WSL2 TP2 host."
+      },
+      "resident_components": {
+        "runtime_allocation": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Checkpoint bytes do not establish exact GPU placement, materialization, or fixed runtime allocation."
+        }
+      },
+      "per_sequence_components": {
+        "scheduler_and_recurrent_state": {
+          "status": "unknown",
+          "unit": "bytes/sequence",
+          "notes": "Measure from startup and allocator evidence for this dedicated vLLM build."
+        }
+      },
+      "per_token_components": {
+        "target_kv": {
+          "status": "unknown",
+          "unit": "bytes/token",
+          "notes": "The exact hybrid attention KV density has not been measured locally in vLLM."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "concurrency-one independent sequence without speculation",
+        "observed_at": "2026-08-26"
+      },
+      "metrics": {
+        "deterministic_pass_rate": {
+          "status": "unknown",
+          "unit": "ratio",
+          "notes": "Run exact retrieval, JSON, tool, parser, and protocol gates."
+        },
+        "quality_score": {
+          "status": "unknown",
+          "unit": "ratio",
+          "notes": "Run the matched repeated intelligence, session, and tool suite."
+        },
+        "reference_quality_score": {
+          "value": 1.0,
+          "unit": "ratio",
+          "status": "measured",
+          "source": "promoted RadixArk/SGLang repeated quality control passed 12 of 12 deterministic cases",
+          "observed_at": "2026-08-26"
+        },
+        "successful_tasks_per_hour": {
+          "status": "unknown",
+          "unit": "tasks/hour",
+          "notes": "Measure end-to-end agent work only after protocol and quality gates pass."
+        },
+        "reference_tasks_per_hour": {
+          "status": "unknown",
+          "unit": "tasks/hour",
+          "notes": "The promoted control has decode throughput evidence but no matched tasks-per-hour measurement."
+        }
+      },
+      "hard_failures": []
+    }
+  ]
+}
