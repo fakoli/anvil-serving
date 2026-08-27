@@ -1,0 +1,98 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "RadixArk/Qwen3.8-Flash-Next-NVFP4"
+status = "qualification-candidate"
+source = "2026-08-26 matched NEXTN MTP3 arm for the upstream SGLang PR 36556 SM120 QSA fast path"
+family = "qwen3.8-flash-next-multimodal-moe"
+total_params_b = 180
+
+[recipe.download]
+repo = "RadixArk/Qwen3.8-Flash-Next-NVFP4"
+revision = "7b719225242aacd3dbd3f9407468c2ee9a9d2594"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2; exclusive TP=2 compatibility experiment. Publisher validation used B200/B300/GB300-class native Linux hardware, not this host."
+
+[recipe.serve]
+engine = "sglang-qwen38-flash-next-day-zero-pr36556"
+allow_cuda_visible_devices_index = true
+image = "lmsysorg/sglang@sha256:59f06adce6f91401adf443bd168d45fdb2044d77671fd591c7c57a29d851cbae"
+entrypoint = [
+  "bash",
+  "-lc",
+  '''set -e; grep -q 'enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,' /sgl-workspace/sglang/python/sglang/srt/layers/logits_processor.py || { echo 'anvil patch: logits gatherer anchor drift' >&2; exit 3; }; sed -i 's/enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,/enabled=False,/' /sgl-workspace/sglang/python/sglang/srt/layers/logits_processor.py; grep -q 'enabled=False,' /sgl-workspace/sglang/python/sglang/srt/layers/logits_processor.py || { echo 'anvil patch: logits gatherer postcondition failed' >&2; exit 4; }; echo 'c959835d05d0f395ad7eae4330cf264af9f6f7c1bff3d45a39bb953d2536f5f2  /sgl-workspace/sglang/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py' | sha256sum -c -; sed -i 's/from sglang.srt.utils import is_sm100_supported/from sglang.srt.utils import is_sm100_supported, is_sm120_supported/' /sgl-workspace/sglang/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py; sed -i 's/if not is_sm100_supported():/if not (is_sm100_supported() or is_sm120_supported()):/' /sgl-workspace/sglang/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py; echo 'a6b003ed21b3be8ba763e8627aee39baee3d84184f5bf0fc650a1a6b853119d3  /sgl-workspace/sglang/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py' | sha256sum -c -; python3 -c "from flashinfer.decode import trtllm_batch_decode_with_kv_cache; print('anvil patch: exact SGLang PR 36556 SM120 TRTLLM QSA fast path ready')"; exec python3 -m sglang.launch_server "$@"''',
+  "qwen38-flash-next-qsa-fast-mtp3",
+]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--RadixArk--Qwen3.8-Flash-Next-NVFP4/snapshots/7b719225242aacd3dbd3f9407468c2ee9a9d2594"
+quantization = "NVIDIA ModelOpt NVFP4 W4A4 routed experts; BF16 attention, GDN, QSA, shared experts, vision, and MTP; FP8 PLE tables dequantized to BF16 at load"
+context_tokens = 262144
+port = 39081
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-flash-next-radixark-nvfp4-sglang-qsa-fast-tp2-262k-mtp3"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_DISABLE=1",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+]
+flags = [
+  "--served-model-name qwen38-flash-next-radixark-nvfp4-sglang-qsa-fast-tp2-262k-mtp3",
+  "--tp 2",
+  "--quantization modelopt_fp4",
+  "--fp4-gemm-backend flashinfer_cutlass",
+  "--attention-backend triton",
+  "--linear-attn-prefill-backend triton",
+  "--linear-attn-decode-backend flashinfer",
+  "--mamba-ssm-dtype bfloat16",
+  "--page-size 64",
+  "--mamba-scheduler-strategy extra_buffer",
+  "--mamba-track-interval 64",
+  "--chunked-prefill-size 4096",
+  "--max-running-requests 1",
+  "--context-length 262144",
+  "--mem-fraction-static 0.80",
+  "--no-ple-offload-embedding",
+  "--disable-custom-all-reduce",
+  "--cuda-graph-max-bs-decode 1",
+  "--speculative-algorithm NEXTN",
+  "--speculative-num-steps 3",
+  "--speculative-eagle-topk 1",
+  "--speculative-num-draft-tokens 4",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--host 0.0.0.0",
+  "--port 39081",
+]
+note = "Matched MTP3 arm for the PR-36556 QSA fast-path recipe. Model, revision, image, primary-path patch and hashes, TP2, 262144 context, BF16 KV, memory fraction, backends, batching, graph cap, transport, parsers, and offload policy match the no-speculation arm. The only intended performance variable is SGLang NEXTN with three steps, top-k one, and four draft tokens, matching SGLang's official low-latency cookbook. Credit it only if matched end-to-end work improves and every deterministic and repeated quality gate remains passing. FP8 KV and CPU PLE offload remain excluded. This recipe is not promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "compatibility", "long-context", "coding-agent", "tool-use", "low-latency", "speculative-decoding"]
+rationale = "Measures the official NEXTN/MTP3 low-latency preset only after the exact PR-36556 target-only control is qualified."
+
+[recipe.sources]
+official = [
+  "https://github.com/sgl-project/sglang/pull/36556/commits/dac5523d1e5d2f4297fec40ef02fc76fb0f662d1",
+  "https://github.com/sgl-project/sglang/issues/36531",
+  "https://github.com/sgl-project/sglang/issues/36532",
+  "https://github.com/sgl-project/sglang/issues/36545",
+  "https://github.com/sgl-project/sglang/pull/36496",
+  "https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4/tree/7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+]
+local = [
+  "configs/qwen38-flash-next-radixark-nvfp4-sglang-sm120-qsa-fast-tp2-262k-nospec-recipe.toml",
+  "docs/findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md",
+  "docs/findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-evidence/summary.json",
+]
