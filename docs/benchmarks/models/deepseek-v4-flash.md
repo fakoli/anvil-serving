@@ -9,7 +9,9 @@ structured tools 160/160 plus the complete functional batches, client-shaped
 reserve probes, short c8 and long c2 capacity, a matched no-spec A/B, and a
 clean reload gate. After operator authorization, the guarded transaction,
 authenticated routed functional gate, Mini generation-2 convergence, and real
-Hermes/Pi/OpenClaw acceptance passed. r18 is the current text `llm.primary`.
+Hermes/Pi/OpenClaw acceptance passed. r18 remained the text `llm.primary`
+until the 2026-08-26 Qwen3.8 Flash Next promotion and is now retained
+historical evidence.
 
 The 2026-08-16 public record documents human approval of Martin Vit's
 Infernal Invocation r15 B12X TP=2 DSpark K5 profile for the text
@@ -17,8 +19,8 @@ Infernal Invocation r15 B12X TP=2 DSpark K5 profile for the text
 sequences. It passed 351,118 actual prompt tokens directly, 340,119 through
 the authenticated router, repeated tools/session/diff/timeout checks 12/12,
 short c8 and long c2 capacity, and OpenClaw-compatible Anthropic wire calls.
-The r15 record is now historical. The prior r33 393K profile is the fixed-port
-managed recovery target for r18.
+The r15 record is now historical. The prior r33 393K profile was the
+fixed-port managed recovery target while r18 was current.
 
 A derived WSL2 image also qualified native CPU KV offload at a 262,144
 served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
@@ -31,7 +33,7 @@ tokens. A matched batch-token A/B then reduced profiled activation memory by
 the same functional and 119,503-token capacity gates. The later r33 DSpark arm
 reported 725,543 GPU KV tokens and passed 238,507-, 339,310-, and
 359,900-actual-token direct requests without host offload. Review date:
-2026-08-21.
+2026-08-26.
 
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
 not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
@@ -65,7 +67,7 @@ figure is aggregate VRAM, not unified memory.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
-The current working profile uses image digest
+The former r18 profile uses image digest
 `sha256:414ec7d0d28358cfd8af0697f330f5c8acbb80e4dc4e5ba69c9fd5b5855ea804`,
 vLLM integration tree `f0fa1cefc1865d316c2478525f550e7646addc40`, B12X tree
 `75787c7a7431b3bea414d2ebf5f2b8671b23eb33`, W4A8 kernels, FP8 compressed
@@ -282,12 +284,11 @@ decision, source classifications, subreddit coverage, and required gates.
 ## Decision and promotion state
 
 2026-08-21 Infernal Invocation r18 promotion: the exact digest-pinned K5
-profile is the human-approved current `llm.primary` at 1,048,576 tokens with
+profile was the human-approved `llm.primary` at 1,048,576 tokens with
 maxseq8 and batch4,096. The matched no-spec arm is rejected for deployment
 performance. The guarded router transaction, Mini context/compaction
-convergence, and real Hermes/Pi/OpenClaw acceptance passed. r33 393K remains
-the fixed-port managed recovery target. The automatic exclusive-to-exclusive
-rollback defect remains open and is not claimed as live-proven.
+convergence, and real Hermes/Pi/OpenClaw acceptance passed. The profile became
+historical when Qwen3.8 Flash Next was promoted on 2026-08-26.
 
 2026-08-16 Infernal Invocation r15 promotion: after explicit human approval,
 the digest-pinned K5 profile became the exclusive TP=2 text `llm.primary` at

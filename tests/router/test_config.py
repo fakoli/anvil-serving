@@ -165,6 +165,34 @@ def test_per_tier_output_cap_is_optional_and_bounded_by_context(tmp_path):
             load(_write(tmp_path, invalid))
 
 
+def test_upstream_context_admission_requires_exact_identity_readiness(tmp_path):
+    config = load(_write(tmp_path, _ONE_TIER))
+    assert config.tier("primary").context_admission == "estimate"
+
+    delegated = _ONE_TIER.replace(
+        "tool_support = true",
+        '''tool_support = true
+health_path = "/health"
+model_identity = true
+context_admission = "upstream"''',
+    )
+    assert load(_write(tmp_path, delegated)).tier("primary").context_admission == "upstream"
+
+    without_identity = _ONE_TIER.replace(
+        "tool_support = true",
+        'tool_support = true\ncontext_admission = "upstream"',
+    )
+    with pytest.raises(ConfigError, match="context_admission='upstream'.*model_identity"):
+        load(_write(tmp_path, without_identity))
+
+    invalid = _ONE_TIER.replace(
+        "tool_support = true",
+        'tool_support = true\ncontext_admission = "tokenizer"',
+    )
+    with pytest.raises(ConfigError, match="context_admission.*not in"):
+        load(_write(tmp_path, invalid))
+
+
 def test_purpose_model_routes_remain_independent_of_chat_aliases(tmp_path):
     config = load(_write(tmp_path, _ONE_TIER + """
 [[router.purpose_models]]

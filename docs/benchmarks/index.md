@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-17.**
+**Last evidence review: 2026-08-26.**
 
 ## Start with the numbers
 
@@ -44,11 +44,12 @@ commands; it does not claim a live model result by itself.
 
 ## Production aliases and recent controls
 
-1. **DeepSeek V4 Flash 0731 Infernal Invocation r15 DSpark K5** — `current`
-   text Primary at 393,216 tokens in exclusive TP=2 across both RTX PRO 6000
-   cards; eight admitted sequences and a router concurrency ceiling of two.
-2. **DeepSeek V4 Flash 0731 r33 DSpark K5** — immediate managed exclusive
-   TP=2 rollback at the same 393,216-token limit and fixed endpoint.
+1. **RadixArk Qwen3.8 Flash Next NVFP4** — `current` text Primary at 262,144
+   tokens in exclusive TP=2 across both RTX PRO 6000 cards, with router
+   concurrency one and a 253,952-plus-8,192 client envelope.
+2. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
+   Primary profiles with retained TP=2 long-context, performance, quality, and
+   real-client evidence.
 3. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
    former text/image/OCR/video deployments with retained managed recipes.
 4. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
@@ -58,11 +59,19 @@ commands; it does not claim a live model result by itself.
    controls.
 6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
-7. **RadixArk Qwen3.8 27B NVFP4** — current RTX 5090 multimodal challenger;
+7. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
    direct 128K text/tools/image/OCR/video evidence, no route or promotion.
 
+On 2026-08-26, after the explicit human gate, the exact RadixArk Qwen3.8 Flash
+Next NVFP4 revision became the text Primary at TP=2/262K/c1. Direct and routed
+retrieval passed at 253,325 prompt tokens while retaining an 8,192-token output
+reserve; routed tools 20/20, Responses, repeated bounded quality, and real
+OpenClaw/Hermes/Pi acceptance passed. See the
+[Qwen3.8 Flash Next dossier](models/qwen38-flash-next.md) and
+[promotion record](../findings/2026-08-26-qwen38-flash-next-promotion.md).
+
 On 2026-08-16, after the explicit human gate, the exact digest-pinned r15
-TP=2/393K profile became the text Primary. A matched control measured K5 at
+TP=2/393K profile became the text Primary at that date. A matched control measured K5 at
 150.0 versus 76.4 tok/s median decode at 4K/c1 and 119.245 versus 76.767 at
 32K/c1. Direct retrieval passed at 351,118 actual tokens and authenticated
 routed retrieval at 340,119; tools, streaming, Responses, c8, c2 long-context,
@@ -99,7 +108,7 @@ challenger, but remains direct-only and `no-promotion`; GUI action-loop, routed
 admission, concurrency, and FP8-KV scale follow-up remain open. See the
 [128K qualification](../findings/2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md).
 
-The 2026-08-14 matched vLLM split remains the exact rollback. Its routed FP8
+The 2026-08-14 matched vLLM split remains retained historical evidence. Its routed FP8
 tools 20/20, BF16 media 30/30, and one 32-image request remain historical
 capability evidence, not a current admission declaration.
 

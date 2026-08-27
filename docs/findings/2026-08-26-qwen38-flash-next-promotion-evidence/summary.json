@@ -1,0 +1,104 @@
+{
+  "schema": "anvil-serving.public-benchmark-summary/v1",
+  "captured_date": "2026-08-26",
+  "decision": "human-authorized-reference-promotion",
+  "identity": {
+    "checkpoint": "RadixArk/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+    "served_model": "qwen38-flash-next-radixark-nvfp4-tp2-262k",
+    "engine": "SGLang",
+    "engine_revision": "d91c3682b0b429e4c70df63cd57f819588ce29b0",
+    "image_digest": "sha256:59f06adce6f91401adf443bd168d45fdb2044d77671fd591c7c57a29d851cbae"
+  },
+  "recipe": {
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "topology": "exclusive TP=2 over PCIe without NVLink under WSL2",
+    "context_tokens": 262144,
+    "client_prompt_budget_tokens": 253952,
+    "client_output_reserve_tokens": 8192,
+    "configured_concurrency": 1,
+    "kv_pool_tokens": 416064,
+    "quantization": "NVIDIA ModelOpt NVFP4 W4A4 routed experts; BF16 attention, GDN, QSA, shared experts, vision, and MTP; FP8 PLE tables dequantized to BF16 at load",
+    "speculative_decoding": false,
+    "compatibility_lane": "portable QSA sparse decode plus NCCL logits fallback"
+  },
+  "functional": {
+    "direct_needle_prompt_tokens": 253325,
+    "direct_needle_seconds": 17.606,
+    "direct_long_tool_prompt_tokens": 105756,
+    "direct_long_tool_seconds": 4.664,
+    "routed_needle_prompt_tokens": 253325,
+    "routed_needle_seconds": 28.38,
+    "routed_tools_passed": 20,
+    "routed_tools_attempted": 20,
+    "streaming_tool_passed": true,
+    "tool_result_continuation_passed": true,
+    "responses_api_passed": true,
+    "responses_exact_output": "READY",
+    "client_catalog": {
+      "alias": "llm.primary",
+      "context_tokens": 262144,
+      "max_output_tokens": 8192,
+      "openclaw": "matched",
+      "hermes": "matched",
+      "pi": "matched"
+    },
+    "real_clients": {
+      "openclaw": "passed",
+      "hermes": "passed",
+      "pi": "passed"
+    }
+  },
+  "quality": {
+    "thinking_mode": "disabled",
+    "repetitions": 3,
+    "intelligence_attempts": 6,
+    "intelligence_passed": 6,
+    "session_attempts": 3,
+    "session_passed": 3,
+    "tool_attempts": 3,
+    "tool_passed": 3,
+    "failures": 0
+  },
+  "capacity": {
+    "four_k_c1": {
+      "completed": 5,
+      "failed": 0,
+      "ttft_p50_ms": 214.612,
+      "e2e_p50_ms": 2627.492,
+      "decode_tok_s_p50": 12.801
+    },
+    "four_k_c2_queue_diagnostic": {
+      "completed": 4,
+      "failed": 0,
+      "ttft_p50_ms": 2821.929,
+      "e2e_p50_ms": 5290.454,
+      "decode_tok_s_p50": 12.445,
+      "interpretation": "requests completed behind the configured one-running-request scheduler; c2 is not the promoted admission contract"
+    },
+    "one_hundred_twenty_eight_k_c1": {
+      "completed": 1,
+      "failed": 0,
+      "prompt_tokens": 125442,
+      "ttft_ms": 11961.075,
+      "e2e_ms": 13794.578,
+      "decode_tok_s": 12.544
+    },
+    "native_boundary": {
+      "largest_accepted_prompt_tokens_with_one_output": 262137,
+      "accepted_visible_sequence_tokens": 262142,
+      "first_rejected_prompt_tokens": 262138
+    }
+  },
+  "retained_failures_and_fixes": [
+    "SM120 WSL2 symmetric-memory logits initialization failed before the exact NCCL fallback was selected.",
+    "The pinned sparse-attention FA4 CuTe path failed MLIR compilation on SM120; the qualified lane uses SGLang's device-agnostic QSA sparse decoder.",
+    "The first long-tool generator undershot 100000 measured prompt tokens; a calibrated 125000-target rerun passed at 105756 measured tokens.",
+    "Router admission originally rejected an exact upstream context contract and the Responses adapter rejected a bounded thinking control; both product defects were fixed and regression-tested.",
+    "Hermes credential drift and a stale 393216-token model override, plus Pi's missing Anvil provider/environment-key reference, were repaired; all three clients now match the 262144/8192 router contract and passed without fallback."
+  ],
+  "publication": {
+    "raw_operator_artifacts": "retained outside the public repository",
+    "sanitization": "No credentials, addresses, GPU UUIDs, machine-local paths, or raw client configuration are included."
+  }
+}

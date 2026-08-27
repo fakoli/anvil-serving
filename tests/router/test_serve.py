@@ -20,13 +20,26 @@ def _request(model="llm.primary", *, raw=None, content="hello"):
     return InternalRequest(model=model, messages=(Message("user", content),), raw=raw or {})
 
 
-def _routing(*, backends=None, admission=None, max_output_tokens=None):
+def _routing(*, backends=None, admission=None, max_output_tokens=None,
+             upstream_context_admission=False):
     config = load(_CONFIG)
-    if max_output_tokens is not None:
+    if max_output_tokens is not None or upstream_context_admission:
         config = replace(
             config,
             tiers=tuple(
-                replace(tier, max_output_tokens=max_output_tokens)
+                replace(
+                    tier,
+                    max_output_tokens=(
+                        max_output_tokens
+                        if max_output_tokens is not None
+                        else tier.max_output_tokens
+                    ),
+                    context_admission=(
+                        "upstream"
+                        if upstream_context_admission
+                        else tier.context_admission
+                    ),
+                )
                 if tier.id == "primary-local"
                 else tier
                 for tier in config.tiers
@@ -59,6 +72,27 @@ def test_direct_route_enforces_context_before_relaying():
 
     assert error.value.kind == "over_context"
     assert routing._decision_log.records[-1].attempts[0].reason == "over_context"
+
+
+def test_upstream_context_admission_delegates_exact_token_count_without_fallback():
+    seen = []
+
+    class CapturingBackend:
+        def generate(self, request):
+            seen.append(request.model)
+            return iter(("accepted",))
+
+    routing = _routing(
+        backends={
+            "primary-local": CapturingBackend(),
+            "omni-local": StaticBackend(["wrong-tier"]),
+        },
+        upstream_context_admission=True,
+    )
+
+    assert list(routing.generate(_request(content="x " * 262_145))) == ["accepted"]
+    assert seen == ["llm.primary"]
+    assert routing._decision_log.records[-1].served_tier == "primary-local"
 
 
 def test_quiesced_target_is_unavailable_without_substitution():
