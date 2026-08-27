@@ -54,6 +54,11 @@ a campaign input.
    latency, acceptance, and tasks/hour back into the same input. Replace an
    estimate only when the new source and date are recorded; retain the earlier
    artifact as chronological evidence.
+9. When startup fails, separate transport initialization, runner capability,
+   resident model state, compile/autotune workspace, and KV allocation. A
+   pre-KV compile OOM can empirically disqualify the exact recipe and replace
+   measured resident/workspace unknowns, but it does not prove the requested
+   context or the checkpoint itself physically infeasible.
 
 ## Integrity rules
 
