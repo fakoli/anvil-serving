@@ -44,10 +44,11 @@ commands; it does not claim a live model result by itself.
 
 ## Production aliases and recent controls
 
-1. **RadixArk Qwen3.8 Flash Next NVFP4** — `current` text Primary at 262,144
-   tokens in exclusive TP=2 across both RTX PRO 6000 cards, with router
-   concurrency one, a 253,952-plus-8,192 client envelope, and the qualified
-   hash-gated SM120 QSA-fast MTP3 profile.
+1. **RadixArk Qwen3.8 Flash Next NVFP4** — `current` text/image/OCR/video
+   Primary at 262,144 tokens in exclusive TP=2 across both RTX PRO 6000 cards,
+   with router concurrency one, four-image/one-video admission, a
+   253,952-plus-8,192 client envelope, and the qualified hash-gated SM120
+   QSA-fast MTP3 profile.
 2. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
    Primary profiles with retained TP=2 long-context, performance, quality, and
    real-client evidence.
@@ -66,12 +67,13 @@ commands; it does not claim a live model result by itself.
 On 2026-08-26, after the explicit human gate, the exact RadixArk Qwen3.8 Flash
 Next NVFP4 revision became the text Primary at TP=2/262K/c1 and was then fixed
 forward to the hash-gated PR #36556 SM120 QSA fast path with matched MTP3
-`3/1/4`. MTP3 passed the full-reserve request, tools 20/20, bounded quality
-12/12, exact routed identity, and fresh OpenClaw/Hermes/Pi acceptance. It
-measured 154.9 tok/s at 4K and 134.1 at 128K, 2.33x and 1.93x the matched
-no-speculation decode rates. See the
+`3/1/4`. It subsequently expanded in place to image/OCR/video after direct
+media 30/30, live routed repeats 57/60 strict, edge cases 8/8, a six-size
+context curve, and fresh OpenClaw/Hermes/Pi vision acceptance. It measured
+155.9 tok/s at 4K, 114.7 at the new 128K target sweep, and 112.9 at the 254K
+target; the separate full-reserve gate retained 102.0 tok/s. See the
 [Qwen3.8 Flash Next dossier](models/qwen38-flash-next.md) and
-[QSA-fast promotion record](../findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md).
+[vision promotion record](../findings/2026-08-26-qwen38-flash-next-vision-promotion.md).
 
 On 2026-08-16, after the explicit human gate, the exact digest-pinned r15
 TP=2/393K profile became the text Primary at that date. A matched control measured K5 at

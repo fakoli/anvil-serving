@@ -1,0 +1,120 @@
+{
+  "schema": "qwen38-flash-next-vision-promotion-summary/v1",
+  "date": "2026-08-26",
+  "decision": {
+    "state": "current",
+    "aliases": [
+      "llm.primary",
+      "vision.general",
+      "vision.ocr",
+      "vision.video"
+    ],
+    "context_window": 262144,
+    "max_output_tokens": 8192,
+    "max_concurrency": 1,
+    "images_per_request": 4,
+    "videos_per_request": 1,
+    "thinking_default": "disabled"
+  },
+  "identity": {
+    "model": "RadixArk/Qwen3.8-Flash-Next-NVFP4",
+    "model_revision": "7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+    "served_name": "qwen38-flash-next-radixark-nvfp4-sglang-qsa-fast-tp2-262k-mtp3",
+    "runtime_image_digest": "sha256:59f06adce6f91401adf443bd168d45fdb2044d77671fd591c7c57a29d851cbae",
+    "engine_revision": "d91c3682b0b429e4c70df63cd57f819588ce29b0",
+    "qsa_patch_commit": "dac5523d1e5d2f4297fec40ef02fc76fb0f662d1",
+    "speculation": {
+      "method": "NEXTN",
+      "steps": 3,
+      "top_k": 1,
+      "draft_tokens": 4
+    }
+  },
+  "hardware": {
+    "gpu": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "topology": "TP=2 over PCIe without NVLink under WSL2",
+    "aggregate_vram_gb": 192,
+    "aggregate_vram_is_unified": false
+  },
+  "memory": {
+    "kv_dtype": "BF16/auto",
+    "kv_cache_gib_per_rank": 6.275,
+    "kv_cache_gib_aggregate": 12.55,
+    "maximum_server_tokens": 516032,
+    "full_context_windows_arithmetic": 1.968505859375,
+    "two_full_windows_token_shortfall": 8256,
+    "static_memory_fraction": 0.8,
+    "startup_available_gib_per_rank": 19.008,
+    "weights_gib_per_rank": 65.031
+  },
+  "context_sweep": {
+    "measurement_protocol": "capacity-v3",
+    "concurrency": 1,
+    "temperature": 0,
+    "max_output_request_tokens": 512,
+    "requests": 25,
+    "completed": 25,
+    "failed": 0,
+    "rows": [
+      {"target_context": 4096, "actual_prompt_p50": 3613, "repetitions": 5, "ttft_p50_s": 0.141, "effective_prefill_p50_tok_s": 25627.1, "decode_p50_tok_s": 155.9, "e2e_p50_s": 0.340},
+      {"target_context": 32768, "actual_prompt_p50": 29797, "repetitions": 5, "ttft_p50_s": 2.247, "effective_prefill_p50_tok_s": 13261.0, "decode_p50_tok_s": 130.1, "e2e_p50_s": 2.569},
+      {"target_context": 65536, "actual_prompt_p50": 61681, "repetitions": 5, "ttft_p50_s": 3.255, "effective_prefill_p50_tok_s": 18953.1, "decode_p50_tok_s": 132.4, "e2e_p50_s": 3.453},
+      {"target_context": 131072, "actual_prompt_p50": 125447, "repetitions": 5, "ttft_p50_s": 6.932, "effective_prefill_p50_tok_s": 18095.8, "decode_p50_tok_s": 114.7, "e2e_p50_s": 7.192},
+      {"target_context": 196608, "actual_prompt_p50": 189209, "repetitions": 3, "ttft_p50_s": 20.066, "effective_prefill_p50_tok_s": 9429.4, "decode_p50_tok_s": 120.5, "e2e_p50_s": 20.257},
+      {"target_context": 253952, "actual_prompt_p50": 245000, "repetitions": 2, "ttft_p50_s": 27.345, "effective_prefill_p50_tok_s": 8938.4, "decode_p50_tok_s": 112.9, "e2e_p50_s": 27.549}
+    ],
+    "full_reserve_separate_gate": {
+      "actual_prompt_tokens": 253703,
+      "max_output_request_tokens": 8192,
+      "ttft_s": 29.214,
+      "effective_prefill_tok_s": 8684.3,
+      "decode_tok_s": 102.0,
+      "physical_tokens_remaining": 8441
+    }
+  },
+  "multimodal": {
+    "corpus_sha256": "ebff9dcc87a7fd13f801fc19eeea7271aec01a99fe560d721be99c1c9becad49",
+    "cases": 15,
+    "attempts_per_run": 30,
+    "direct": {"passed": 30, "attempts": 30},
+    "isolated_router_runs": [
+      {"passed": 27, "attempts": 30},
+      {"passed": 30, "attempts": 30}
+    ],
+    "live_router_runs": [
+      {"passed": 29, "attempts": 30},
+      {"passed": 28, "attempts": 30}
+    ],
+    "live_strict_total": {"passed": 57, "attempts": 60},
+    "strict_failure_boundary": "All five routed misses across four runs were semantically correct outputs that omitted one literal rubric word; they remain recorded failures.",
+    "direct_latency_seconds": {
+      "image": {"attempts": 12, "p50": 0.6357045, "p95": 2.00705},
+      "video": {"attempts": 14, "p50": 1.236087, "p95": 4.274238},
+      "mixed": {"attempts": 4, "p50": 1.1474755, "p95": 1.48457}
+    },
+    "media_token_ranges": {
+      "image": {"minimum": 220, "maximum": 440},
+      "video": {"minimum": 560, "maximum": 11704},
+      "mixed_image": {"minimum": 220, "maximum": 880},
+      "mixed_video": {"minimum": 560, "maximum": 1680}
+    }
+  },
+  "router": {
+    "isolated_edges": {"passed": 8, "attempts": 8},
+    "live_edges": {"passed": 8, "attempts": 8},
+    "post_media_primary_regression": "passed",
+    "ocr_preflight": "passed"
+  },
+  "clients": {
+    "hermes": "passed normal auxiliary-image path",
+    "pi": "passed normal extension-loaded TTY path; non-TTY capture hangs",
+    "openclaw": "passed running gateway dynamic image-tool path"
+  },
+  "caveats": [
+    "The deterministic corpus is bounded transport, grounding, OCR, and repeatability evidence, not a broad academic vision benchmark.",
+    "Effective prefill includes client-observed scheduling and first-token work.",
+    "The 512-output-request context sweep does not replace the separate 8192-token full-reserve proof.",
+    "Concurrency above one, higher media counts, FP8 KV, alternate memory fractions, and alternate multimedia worker/cache settings are not qualified.",
+    "Pi 0.84.2 captured non-TTY mode hangs even though its ordinary TTY client path passes."
+  ]
+}

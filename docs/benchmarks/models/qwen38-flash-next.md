@@ -3,11 +3,13 @@
 ## Current status and review date
 
 The 2026-08-26 record qualifies and promotes the RadixArk ModelOpt NVFP4
-checkpoint as the human-authorized text `llm.primary` reference on two RTX PRO
-6000 Blackwell Max-Q cards at exclusive TP=2. The served window is 262,144
-tokens with a client contract of 253,952 prompt tokens plus 8,192 output tokens
-and concurrency one. Authenticated routing and real OpenClaw, Hermes, and Pi
-acceptance passed. Review date: 2026-08-26.
+checkpoint as the human-authorized `llm.primary`, `vision.general`,
+`vision.ocr`, and `vision.video` reference on two RTX PRO 6000 Blackwell Max-Q
+cards at exclusive TP=2. The served window is 262,144 tokens with a client
+contract of 253,952 prompt tokens plus 8,192 output tokens and concurrency
+one. Authenticated routing and real OpenClaw, Hermes, and Pi acceptance passed.
+Media admission is fail-closed at four images or one video. Review date:
+2026-08-26.
 
 ## Immutable identity
 
@@ -26,8 +28,9 @@ dequantized to BF16 at load. This dossier makes no lossless-quantization claim.
 
 Two RTX PRO 6000 Blackwell Max-Q cards under WSL2, assigned exclusively to one
 TP=2 owner over PCIe without NVLink. Aggregate VRAM is 192 GB but is not
-unified memory. The current MTP3 startup reported a 516,032-token maximum
-server token allocation; the matched no-speculation arm reported 415,744.
+unified memory. The current MTP3 startup reported 6.275 GiB of KV cache per TP
+rank, 12.55 GiB aggregate, and a 516,032-token maximum server allocation; the
+matched no-speculation arm reported 415,744 tokens.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
@@ -60,19 +63,32 @@ is retained as the slower same-day correctness baseline.
   154.9 tok/s decode at 4K/c1; at 128K it measured 12.67 s TTFT, 9,664
   prefill tok/s, and 134.1 decode tok/s. MTP3 improved matched decode 2.33x at
   4K and 1.93x at 128K without a bounded quality regression.
+- multimodal: the hash-pinned 15-case corpus passed 30/30 direct. Isolated
+  router repeats scored 27/30 and 30/30; live repeats scored 29/30 and 28/30,
+  or 57/60 strict. Every routed miss was a correct observation that omitted
+  one literal rubric word. Router admission/SSE/tool/error edges passed 8/8.
+- context curve: 25/25 c1 requests completed at six targets from 4K through
+  254K. Median decode was 155.9 tok/s at 4K, 114.7 at 128K, and 112.9 at the
+  254K target with 245,000 actual prompt tokens. These 512-output-request rows
+  remain separate from the 8,192-token full-reserve capacity proof.
 - live acceptance: fresh OpenClaw, Hermes, and Pi turns selected the Primary,
   returned the fresh marker without fallback, and Pi/OpenClaw reported the
-  262,144-token catalog contract.
+  262,144-token catalog contract. Their explicit vision references remain
+  `vision.general`; fresh image-path acceptance is retained with the vision
+  promotion.
 
 See the [QSA-fast MTP3 promotion record](../../findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md)
-and [sanitized evidence](../../findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-evidence/summary.json).
+and [vision-promotion record](../../findings/2026-08-26-qwen38-flash-next-vision-promotion.md),
+plus their sanitized evidence bundles.
 
 ## Decision and promotion state
 
-This is the current text Primary reference for the exact promoted operator
-profile. The 253,952-plus-8,192 client envelope and concurrency-one admission
-are part of the contract. The c2 queue diagnostic is not a c2 qualification.
-Multimodal weights being present does not promote image, OCR, or video aliases.
+This is the current text/image/OCR/video Primary reference for the exact
+promoted operator profile. The 253,952-plus-8,192 client envelope,
+concurrency-one admission, four-image limit, one-video limit, and
+thinking-disabled default are part of the contract. The c2 queue diagnostic is
+not a c2 qualification. A different media limit, KV dtype, worker/cache policy,
+or concurrent-media shape requires a fresh gate.
 
 The portable QSA decoder remains a correctness-qualified historical control.
 The current SM120 fast path and MTP3 result cannot transfer to another runtime,
@@ -94,11 +110,13 @@ functional, quality, capacity, and client gates.
 - Exact-context router admission, Responses bounded-thinking translation,
   Hermes catalog drift, and Pi provider seeding were fixed forward before the
   final client acceptance. These product/configuration fixes do not broaden
-  the model qualification beyond the recorded text Primary contract.
+  the model qualification beyond the recorded c1 text/image/OCR/video
+  contract.
 
 ## Dated run history
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-08-26 | Full multimodal corpus, context curve, and vision-route/client promotion | current text/image/OCR/video Primary; direct 30/30; live 57/60 strict; edges 8/8; 25/25 context requests |
 | 2026-08-26 | QSA-fast plus matched MTP3 qualification and fix-forward promotion | current text Primary; 154.9 tok/s at 4K and 134.1 at 128K; direct/routed/client gates pass |
 | 2026-08-26 | Portable-QSA 262K TP=2 qualification and initial promotion | superseded same day; retained correctness and failure baseline |
