@@ -73,6 +73,7 @@ def test_client_catalog_sync_schema_is_secret_reference_only_and_guarded():
     assert {
         "api_key_env",
         "clients",
+        "hermes_config",
         "dry_run",
         "confirm",
         "restart_openclaw_on_change",

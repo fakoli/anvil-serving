@@ -211,7 +211,7 @@ def tool_openclaw_sync(args: dict) -> dict:
 
 
 def tool_client_catalog_sync(args: dict) -> dict:
-    """Preview or apply the fail-closed OpenClaw/Pi capability reconciler."""
+    """Preview or apply the fail-closed OpenClaw/Hermes/Pi capability reconciler."""
     from .... import harness
     from ....client_catalog_sync import ClientCatalogError, sync_clients
 
@@ -243,6 +243,9 @@ def tool_client_catalog_sync(args: dict) -> dict:
             clients=_str_arg(args, "clients", "openclaw,pi"),
             openclaw_config=_str_arg(
                 args, "openclaw_config", "~/.openclaw/openclaw.json"
+            ),
+            hermes_config=_str_arg(
+                args, "hermes_config", "~/.hermes/config.yaml"
             ),
             pi_models=_str_arg(args, "pi_models", "~/.pi/agent/models.json"),
             pi_settings=_str_arg(args, "pi_settings", "~/.pi/agent/settings.json"),
@@ -398,7 +401,7 @@ FAMILY = ToolFamily(
         },
         "client_catalog_sync": {
             "description": (
-                "Reconcile local OpenClaw and Pi model limits from authenticated "
+                "Reconcile local OpenClaw, Hermes, and Pi model limits from authenticated "
                 "router status and capability metadata. Requires confirm=true to write."
             ),
             "inputSchema": _schema(
@@ -407,6 +410,7 @@ FAMILY = ToolFamily(
                     "api_key_env": {"type": "string"},
                     "clients": {"type": "string"},
                     "openclaw_config": {"type": "string"},
+                    "hermes_config": {"type": "string"},
                     "pi_models": {"type": "string"},
                     "pi_settings": {"type": "string"},
                     "state_path": {"type": "string"},

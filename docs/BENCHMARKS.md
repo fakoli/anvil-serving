@@ -11,7 +11,7 @@
 The maintained text deployment is RadixArk Qwen3.8 Flash Next NVFP4 at
 exclusive TP=2/262,144 across both equal cards, router concurrency one, and a
 client contract of 253,952 prompt tokens plus an 8,192-token output reserve.
-The former DeepSeek Infernal Invocation r18 1M and r15 393K deployments and
+The former DeepSeek V4 Flash 0731 Infernal Invocation r18 1M and r15 393K deployments and
 official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
 retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
 split remain qualified rollback- or promotion-era evidence. The earlier r16
