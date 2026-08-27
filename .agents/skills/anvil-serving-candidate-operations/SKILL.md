@@ -72,6 +72,11 @@ router policy, and an isolated test does not require an alias change.
 4. Use raw Docker only for the narrowest read-only diagnosis when the Anvil
    surface cannot expose required status or logs. Record that missing capability
    as a product gap and return to managed commands for mutation.
+5. On Windows/WSL, fix one startup layer per managed recipe: establish NCCL
+   transport first, then runner compatibility, then model load/compile, and only
+   then KV/context capacity. Preserve each exact failure. A transport fix is not
+   evidence that the model fits, and a compile OOM before KV allocation is not a
+   measured context limit.
 
 ## Qualify the candidate
 
