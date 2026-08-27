@@ -1,0 +1,175 @@
+{
+  "schema": "qwen38-flash-next-router-multimodal-acceptance/v1",
+  "label": "live",
+  "observed_at": "2026-08-27T03:58:12Z",
+  "router_base_url": "http://127.0.0.1:8000/v1",
+  "model_aliases": [
+    "vision.general",
+    "vision.ocr",
+    "vision.video"
+  ],
+  "media": {
+    "scene.png": {
+      "bytes": 13187,
+      "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+    },
+    "ocr.png": {
+      "bytes": 15916,
+      "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+    },
+    "chart.png": {
+      "bytes": 12635,
+      "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+    },
+    "ui.png": {
+      "bytes": 16940,
+      "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+    },
+    "temporal-order-10s.mp4": {
+      "bytes": 11627,
+      "sha256": "4d82c50cd2e500fc58df6d4930efec12649a0eaf236bee53d0d7c7ca84e35980"
+    }
+  },
+  "tests": {
+    "mixed_one_video_four_images": {
+      "status": 200,
+      "latency_ms": 2086.681,
+      "payload": {
+        "id": "chatcmpl-25ca2af1911a4ff2885f46b3",
+        "object": "chat.completion",
+        "created": 1787803091,
+        "model": "vision.general",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "Based on the provided video frames, here is the requested information:\n\n- **Ordered video colors:** The text appears in the following color order: Red, then Green.\n- **Image numeric code:** The numeric code shown is 42917.\n- **Red object:** The red object identified in the image is a \"RED CAR\".\n- **Highest chart quarter:** According to the \"QUARTERLY UNITS\" bar chart, Q3 is the highest quarter with 30 units.\n- **Dashboard status:** The status displayed on the dashboard is \"STATUS READY\"."
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 1523,
+          "completion_tokens": 123,
+          "total_tokens": 1646,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      "passed": true
+    },
+    "five_image_overflow": {
+      "status": 413,
+      "latency_ms": 12.434,
+      "content_type": "application/json",
+      "error": {
+        "error": {
+          "type": "payload_too_large",
+          "message": "request exceeds the configured media limits"
+        }
+      },
+      "passed": true
+    },
+    "two_video_overflow": {
+      "status": 413,
+      "latency_ms": 11.964,
+      "content_type": "application/json",
+      "error": {
+        "error": {
+          "type": "payload_too_large",
+          "message": "request exceeds the configured media limits"
+        }
+      },
+      "passed": true
+    },
+    "malformed_video": {
+      "status": 400,
+      "latency_ms": 6.984,
+      "content_type": "application/json",
+      "error": {
+        "error": {
+          "type": "invalid_request_error",
+          "message": "model upstream rejected the request"
+        }
+      },
+      "passed": true
+    },
+    "malformed_image": {
+      "status": 400,
+      "latency_ms": 16.31,
+      "content_type": "application/json",
+      "error": {
+        "error": {
+          "type": "invalid_request_error",
+          "message": "model upstream rejected the request"
+        }
+      },
+      "passed": true
+    },
+    "streaming_video": {
+      "status": 200,
+      "latency_ms": 474.315,
+      "content_type": "text/event-stream",
+      "data_events": 17,
+      "done_seen": true,
+      "content": "Based on the text displayed in the video frames, the two colors in order are:\n\n1.  **Red** (from the text \"FIRST RED\")\n2.  **Green** (from the text \"THEN GREEN\")",
+      "passed": true
+    },
+    "video_grounded_tool": {
+      "status": 200,
+      "latency_ms": 403.806,
+      "payload": {
+        "id": "chatcmpl-47872aad39f84d5e877958a9",
+        "object": "chat.completion",
+        "created": 1787803092,
+        "model": "vision.video",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": null,
+              "tool_calls": [
+                {
+                  "id": "call_4038183189804a0daef2ac1e",
+                  "type": "function",
+                  "function": {
+                    "name": "record_sequence",
+                    "arguments": "{\"first\": \"red\", \"second\": \"green\"}"
+                  }
+                }
+              ]
+            },
+            "finish_reason": "tool_calls"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 909,
+          "completion_tokens": 39,
+          "total_tokens": 948,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      "passed": true
+    },
+    "unsupported_anthropic_video": {
+      "status": 400,
+      "latency_ms": 12.045,
+      "content_type": "application/json",
+      "error": {
+        "type": "error",
+        "error": {
+          "type": "invalid_request_error",
+          "message": "cross-dialect video translation is unsupported"
+        }
+      },
+      "passed": true
+    }
+  },
+  "passed": true,
+  "logging_policy": "No media bytes, data URLs, or bearer tokens are retained."
+}
