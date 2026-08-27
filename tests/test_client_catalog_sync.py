@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -34,6 +35,147 @@ class _Opener:
     def open(self, request, timeout):
         self.requests.append((request, timeout))
         return _Response(self.payloads.pop(0))
+
+
+class _HermesRunner:
+    def __init__(self, states):
+        self.states = states
+        self.sets = []
+
+    @staticmethod
+    def _completed(*, returncode=0, stdout="", stderr=""):
+        return SimpleNamespace(
+            returncode=returncode,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    def __call__(self, argv, **_kwargs):
+        profile = argv[2]
+        command = argv[3:]
+        if command[:2] == ["config", "get"]:
+            key = command[2]
+            if key not in self.states[profile]:
+                return self._completed(returncode=1, stderr="missing")
+            return self._completed(stdout=json.dumps(self.states[profile][key]))
+        if command[:2] == ["config", "set"]:
+            key, raw = command[2:4]
+            try:
+                value = json.loads(raw)
+            except json.JSONDecodeError:
+                value = raw
+            if key.startswith("providers."):
+                target = self.states[profile].setdefault("providers", {})
+                parts = key.split(".")[1:]
+                for part in parts[:-1]:
+                    target = target.setdefault(part, {})
+                target[parts[-1]] = value
+            else:
+                section, _, field = key.rpartition(".")
+                if section:
+                    self.states[profile].setdefault(section, {})[field] = value
+                else:
+                    self.states[profile][key] = value
+            self.sets.append((profile, key))
+            return self._completed()
+        if command[:2] == ["config", "unset"]:
+            key = command[2]
+            target = self.states[profile]
+            parts = key.split(".")
+            for part in parts[:-1]:
+                target = target[part]
+            target.pop(parts[-1], None)
+            self.sets.append((profile, key))
+            return self._completed()
+        if command == ["config", "check"]:
+            return self._completed(stdout="valid")
+        raise AssertionError("unexpected Hermes command: %r" % argv)
+
+
+def _write_hermes_profiles(root: Path):
+    home = root / "hermes-home"
+    (home / "profiles").mkdir(parents=True)
+    profiles = (
+        "default",
+        "anvil-primary",
+        "anvil-secondary",
+        "ox-alpha",
+        "work-profile",
+    )
+    for profile in profiles:
+        path = (
+            home / "config.yaml"
+            if profile == "default"
+            else home / "profiles" / profile / "config.yaml"
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("profile: %s\n" % profile, encoding="utf-8")
+
+    def anvil_state(alias, max_tokens):
+        return {
+            "model": {
+                "provider": "anvil",
+                "default": alias,
+                "max_tokens": max_tokens,
+            },
+            "compression": {
+                "enabled": True,
+                "threshold": 0.5,
+                "target_ratio": 0.2,
+            },
+            "auxiliary.vision": {
+                "provider": "anvil",
+                "model": "vision.general",
+            },
+            "auxiliary.compression": {"provider": "auto"},
+            "providers": {
+                "anvil": {
+                    "default_model": "llm.primary",
+                    "context_length": 393_216,
+                    "extra_body": {
+                        "chat_template_kwargs": {"enable_thinking": False}
+                    },
+                    "models": {
+                        "llm.primary": {"context_length": 393_216},
+                        "llm.secondary": {"context_length": 131_072},
+                        "retired.alias": {"context_length": 1},
+                    },
+                }
+            },
+            "custom_providers": [
+                {
+                    "name": "anvil-primary",
+                    "base_url": "https://router.example.ts.net/v1",
+                    "key_env": "ANVIL_ROUTER_TOKEN",
+                    "model": "llm.primary",
+                    "models": {
+                        "llm.primary": {"context_length": 393_216},
+                        "retired.alias": {"context_length": 1},
+                    },
+                }
+            ],
+        }
+
+    states = {
+        "default": anvil_state("llm.primary", 8192),
+        "anvil-primary": anvil_state("llm.primary", 5120),
+        "anvil-secondary": anvil_state("llm.secondary", 5120),
+        "work-profile": anvil_state("llm.secondary", 5120),
+        "ox-alpha": {
+            "model": {
+                "provider": "openrouter",
+                "default": "stealth/ox-alpha",
+                "max_tokens": 4096,
+            },
+            "compression": {
+                "enabled": True,
+                "threshold": 0.5,
+                "target_ratio": 0.2,
+            },
+            "providers": {"openrouter": {}},
+        },
+    }
+    return home, states
 
 
 def _catalog(*, missing_output=False, config_sha=CONFIG_SHA, primary_context=1_048_576):
@@ -444,6 +586,153 @@ def test_hermes_wrong_selected_provider_fails_before_write(tmp_path):
             dry_run=False,
         )
     assert hermes_path.read_text(encoding="utf-8") == source
+
+
+def test_hermes_profile_sync_repairs_each_anvil_contract_and_skips_external(tmp_path):
+    _write_inputs(tmp_path)
+    home, states = _write_hermes_profiles(tmp_path)
+    runner = _HermesRunner(states)
+
+    preview = sync_clients(
+        base_url="https://router.example.ts.net/v1",
+        clients="hermes",
+        hermes_bin="hermes",
+        hermes_home=str(home),
+        hermes_profiles="all",
+        state_path=str(tmp_path / "state.json"),
+        backup_root=str(tmp_path / "backups"),
+        environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"},
+        opener=_Opener(*_catalog(primary_context=262_144)),
+        hermes_run=runner,
+    )
+
+    assert preview["changed"] == [
+        "hermes:default",
+        "hermes:anvil-primary",
+        "hermes:anvil-secondary",
+        "hermes:work-profile",
+    ]
+    by_profile = {row["profile"]: row for row in preview["hermes_profiles"]}
+    assert by_profile["default"]["context_window"] == 262_144
+    assert by_profile["anvil-secondary"]["context_window"] == 131_072
+    assert by_profile["ox-alpha"] == {
+        "profile": "ox-alpha",
+        "managed": False,
+        "provider": "openrouter",
+        "model": "stealth/ox-alpha",
+        "changed_keys": [],
+    }
+    assert "secret-never-returned" not in json.dumps(preview)
+    assert runner.sets == []
+
+    restarts = []
+    applied = sync_clients(
+        base_url="https://router.example.ts.net/v1",
+        clients="hermes",
+        hermes_bin="hermes",
+        hermes_home=str(home),
+        hermes_profiles="all",
+        state_path=str(tmp_path / "state.json"),
+        backup_root=str(tmp_path / "backups"),
+        restart_hermes_on_change=True,
+        dry_run=False,
+        confirm=True,
+        environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"},
+        opener=_Opener(*_catalog(primary_context=262_144)),
+        hermes_run=runner,
+        restart_hermes=lambda: restarts.append("default") or 0,
+    )
+
+    assert applied["hermes_restarted"] is True
+    assert applied["backup_created"] is True
+    assert restarts == ["default"]
+    assert states["default"]["model"]["context_length"] == 262_144
+    assert states["anvil-primary"]["model"]["max_tokens"] == 8192
+    assert states["anvil-secondary"]["model"]["context_length"] == 131_072
+    assert states["work-profile"]["auxiliary.compression"]["context_length"] == 131_072
+    assert states["ox-alpha"]["model"]["max_tokens"] == 4096
+    custom = states["anvil-secondary"]["custom_providers"][0]
+    assert custom["model"] == "llm.secondary"
+    assert custom["models"]["llm.primary"]["context_length"] == 262_144
+    assert custom["models"]["vision.general"]["context_length"] == 131_072
+    assert "retired.alias" not in custom["models"]
+    provider = states["anvil-secondary"]["providers"]["anvil"]
+    assert provider["default_model"] == "llm.secondary"
+    assert provider["context_length"] == 131_072
+    assert provider["models"] == {
+        "llm.primary": {"context_length": 262_144},
+        "llm.secondary": {"context_length": 131_072},
+    }
+    assert "extra_body" not in provider
+
+    second = sync_clients(
+        base_url="https://router.example.ts.net/v1",
+        clients="hermes",
+        hermes_bin="hermes",
+        hermes_home=str(home),
+        hermes_profiles="all",
+        state_path=str(tmp_path / "state.json"),
+        backup_root=str(tmp_path / "backups"),
+        restart_hermes_on_change=True,
+        dry_run=False,
+        confirm=True,
+        environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"},
+        opener=_Opener(*_catalog(primary_context=262_144)),
+        hermes_run=runner,
+        restart_hermes=lambda: pytest.fail("idempotent sync restarted Hermes"),
+    )
+    assert second["changed"] == []
+    assert second["backup_created"] is False
+    assert second["hermes_restarted"] is False
+
+
+def test_hermes_profile_sync_rejects_unsafe_compaction_before_write(tmp_path):
+    _write_inputs(tmp_path)
+    home, states = _write_hermes_profiles(tmp_path)
+    states["anvil-primary"]["compression"]["target_ratio"] = 0.6
+    runner = _HermesRunner(states)
+
+    with pytest.raises(ClientCatalogError, match="target_ratio must remain below"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1",
+            clients="hermes",
+            hermes_bin="hermes",
+            hermes_home=str(home),
+            hermes_profiles="all",
+            state_path=str(tmp_path / "state.json"),
+            backup_root=str(tmp_path / "backups"),
+            dry_run=False,
+            confirm=True,
+            environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"},
+            opener=_Opener(*_catalog(primary_context=262_144)),
+            hermes_run=runner,
+        )
+    assert runner.sets == []
+    assert not (tmp_path / "state.json").exists()
+
+
+def test_hermes_profile_sync_requires_anvil_custom_provider_before_write(tmp_path):
+    _write_inputs(tmp_path)
+    home, states = _write_hermes_profiles(tmp_path)
+    states["anvil-primary"]["custom_providers"] = []
+    runner = _HermesRunner(states)
+
+    with pytest.raises(ClientCatalogError, match="no Anvil custom provider"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1",
+            clients="hermes",
+            hermes_bin="hermes",
+            hermes_home=str(home),
+            hermes_profiles="all",
+            state_path=str(tmp_path / "state.json"),
+            backup_root=str(tmp_path / "backups"),
+            dry_run=False,
+            confirm=True,
+            environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"},
+            opener=_Opener(*_catalog(primary_context=262_144)),
+            hermes_run=runner,
+        )
+    assert runner.sets == []
 
 
 def test_invalid_client_selection_fails_before_metadata_request(tmp_path):
