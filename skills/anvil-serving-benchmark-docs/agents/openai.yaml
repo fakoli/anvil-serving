@@ -1,4 +1,4 @@
 interface:
   display_name: "Anvil Serving Benchmark Docs"
-  short_description: "Publish and maintain benchmark documentation"
-  default_prompt: "Use $anvil-serving-benchmark-docs to publish or refresh model benchmark documentation without changing serving state."
+  short_description: "Publish evidence-backed benchmark findings"
+  default_prompt: "Use $anvil-serving-benchmark-docs to publish or refresh evidence-backed, publication-ready model benchmark documentation without changing serving state."

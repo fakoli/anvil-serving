@@ -150,7 +150,10 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   promotion, or rollback, complete the publication phase through
   `skills/anvil-serving-benchmark-docs/SKILL.md`. Update the finding/index, run
   catalog, model dossier, and measured hardware page as one transaction; do
-  not treat publication as serve or route authority.
+  not treat publication as serve or route authority. Let that canonical skill
+  decide the publication-ready result-card/publication-summary requirements. For format-only
+  work, reconcile complete retained artifacts rather than submitting a new
+  benchmark job or touching live serving state.
 - Promotion evidence: assemble status, gateway probes, preflight, benchmark
   artifacts, serve/direct-alias config diffs, and reviewer recommendation with
   `promoted=false`.

@@ -46,4 +46,9 @@ Publish:
 - failures and friction log;
 - final precision/modality decision table and restoration evidence.
 
+Complete publication through `skills/anvil-serving-benchmark-docs/SKILL.md`,
+including its publication-ready result card, publication summary, and artifact-consistency
+checks. A format-only migration uses complete retained artifacts and does not
+authorize a model load or benchmark rerun.
+
 Evidence publication does not authorize production promotion.

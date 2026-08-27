@@ -1,6 +1,6 @@
 ---
 name: anvil-serving-benchmark-docs
-description: Publish and maintain hardware-first benchmark documentation in anvil-serving. Use whenever a model is newly configured, served, benchmarked, qualified, promoted, rolled back, or fails meaningfully, including LLM, vision, Omni, STT, and TTS results. Separates measured hardware from protected/co-resident topology and local evidence from research priors; never authorizes a serve or route change.
+description: Publish and maintain hardware-first, publication-ready benchmark documentation in anvil-serving. Use whenever a model is newly configured, served, benchmarked, qualified, promoted, rolled back, or fails meaningfully, including LLM, vision, Omni, STT, and TTS results. Separates measured hardware from protected/co-resident topology and local evidence from research priors; never authorizes a serve or route change.
 ---
 
 # Anvil Serving Benchmark Docs
@@ -26,7 +26,22 @@ editing.
 5. Stop rather than converting missing identity, failed loads, reasoning
    exhaustion, partial artifacts, or topology observations into qualification.
 
-## 2. Apply the publication matrix
+## 2. Reuse retained evidence for format-only work
+
+When the request is to migrate or improve an existing finding, do not load a
+model, restart a serve, or rerun a benchmark merely to populate the new format.
+Use the retained manifest and machine-readable artifacts when they contain the
+exact identity, configuration, measurement protocol, sample counts,
+distributions, failures, decision, and raw evidence links required by the
+publication contract.
+
+Derive headline values from those artifacts and reconcile the result card,
+publication summary, and detailed finding in tests. Do not reconstruct a missing metric
+from prose, round incompatible measurements into agreement, or turn an absent
+field into a claim. Record a publication gap when the retained evidence is
+insufficient; a format migration is not authority for a live rerun.
+
+## 3. Apply the publication matrix
 
 For every meaningful result:
 
@@ -51,7 +66,31 @@ new finding is reachable from the findings index, run catalog, dossier, and
 hardware page; verify that the run-catalog row links both its dossier and
 finding. Do not leave a finding-only update for a later pass.
 
-## 3. Preserve decision boundaries
+## 4. Make measured findings publication-ready
+
+For a local `functional`, `capacity`, or `quality` result, add both:
+
+- a `benchmark-result-card/v1` near the top of the finding using
+  `templates/finding.md`; and
+- a companion `benchmark-publication-summary/v1` publication summary using
+  `templates/publication-summary.md`.
+
+Follow `docs/benchmarks/finding-format.md` and the exact rules in the
+publication contract. Put the local hardware/configuration, context,
+concurrency, managed recipe, measurement path (online/routed, offline, or
+kernel-level), warm/cold state, important negative result, and evidence link
+close to every headline number. Include copy-ready short-post and Reddit
+variants, accessible screenshot alt text, and a claim ledger that maps each
+public claim to the finding or raw artifact.
+
+Treat the card and publication summary as derivative views. They never replace the dated
+finding or raw artifacts, and a platform-ready sentence must not broaden the
+measurement universe into a universal `best`, `fastest`, or `strongest` claim.
+Research-only, readiness-only, and failed-load findings may use a result card;
+their publication summary is optional unless a compact public communication is
+required.
+
+## 5. Preserve decision boundaries
 
 Publishing documentation never authorizes `serves up`, `serves promote`,
 router configuration, alias changes, teardown, or rollback. Record
@@ -61,7 +100,7 @@ promotion occurred. Preserve negative and incomplete runs.
 Do not rewrite an older finding to match a newer conclusion. Add a new finding
 or linked erratum; keep stable URLs and compatibility pages.
 
-## 4. Validate
+## 6. Validate
 
 Run the installed `skill-creator` skill's `quick_validate.py` against
 `skills/anvil-serving-benchmark-docs`, then run:
