@@ -23684,7 +23684,9 @@
         "allowed_arguments": [
           "base_url",
           "api_key_env",
+          "clients",
           "openclaw_config",
+          "hermes_config",
           "pi_models",
           "pi_settings",
           "state_path",
@@ -23704,7 +23706,7 @@
         "tool": "client_catalog_sync"
       },
       "resource_role": "gateway",
-      "summary": "Reconcile OpenClaw and Pi from authenticated router metadata.",
+      "summary": "Reconcile OpenClaw, Hermes, and Pi from authenticated router metadata.",
       "transports": [
         "local",
         "controller"

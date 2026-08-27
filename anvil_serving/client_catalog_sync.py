@@ -17,6 +17,7 @@ import urllib.request
 
 
 DEFAULT_OPENCLAW_CONFIG = "~/.openclaw/openclaw.json"
+DEFAULT_HERMES_CONFIG = "~/.hermes/config.yaml"
 DEFAULT_PI_MODELS = "~/.pi/agent/models.json"
 DEFAULT_PI_SETTINGS = "~/.pi/agent/settings.json"
 DEFAULT_STATE = "~/.anvil-serving/state/client-catalog.json"
@@ -25,10 +26,31 @@ DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 PI_ALIASES = ("llm.primary", "llm.secondary", "vision.general", "vision.ocr")
 OPENCLAW_EXCLUDED_ALIASES = frozenset({"llm.auxiliary"})
 COMPACTION_EXCLUDED_ALIASES = frozenset({"llm.voice"})
+CLIENT_TARGETS = ("openclaw", "hermes", "pi")
+PI_ANVIL_COMPAT = {
+    "maxTokensField": "max_tokens",
+    "supportsDeveloperRole": False,
+    "supportsReasoningEffort": True,
+    "supportsStore": False,
+    "supportsUsageInStreaming": True,
+    "thinkingFormat": "openai",
+}
 
 
 class ClientCatalogError(ValueError):
     """A remote catalog or local client invariant failed before mutation."""
+
+
+def _normalize_clients(value: str) -> tuple[str, ...]:
+    if not isinstance(value, str):
+        raise ClientCatalogError("clients must be a comma-separated string")
+    requested = [item.strip() for item in value.split(",") if item.strip()]
+    invalid = sorted(set(requested) - set(CLIENT_TARGETS))
+    if not requested or invalid:
+        raise ClientCatalogError(
+            "clients must select one or more of: openclaw, hermes, pi"
+        )
+    return tuple(target for target in CLIENT_TARGETS if target in requested)
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -260,46 +282,48 @@ def _validate_compaction(
         raise ClientCatalogError("OpenClaw compaction mode must remain safeguard")
     if label == "Pi" and compaction.get("enabled") is not True:
         raise ClientCatalogError("Pi compaction must remain enabled")
+    reserve_declared = reserve_key in compaction
     reserve = compaction.get(reserve_key)
     recent = compaction.get(recent_key)
-    if any(not isinstance(value, int) or isinstance(value, bool) or value < 0 for value in (reserve, recent)):
+    thresholds = (reserve, recent) if reserve_declared else (recent,)
+    if any(
+        not isinstance(value, int) or isinstance(value, bool) or value < 0
+        for value in thresholds
+    ):
         raise ClientCatalogError("%s compaction token thresholds must be non-negative integers" % label)
+    if label == "Pi" and not reserve_declared:
+        raise ClientCatalogError("Pi compaction reserveTokens must remain configured")
     if label == "OpenClaw":
         floor = compaction.get("reserveTokensFloor")
-        if not isinstance(floor, int) or isinstance(floor, bool) or floor < reserve:
+        if floor is not None and (
+            not isinstance(floor, int)
+            or isinstance(floor, bool)
+            or floor < 0
+            or (reserve_declared and floor < reserve)
+        ):
             raise ClientCatalogError(
-                "OpenClaw reserveTokensFloor must be an integer no lower than reserveTokens"
+                "OpenClaw reserveTokensFloor must be a non-negative integer no lower than reserveTokens"
             )
     max_output = max(model["max_output_tokens"] for model in models)
     min_context = min(model["context_window"] for model in models)
-    if reserve < max_output:
+    if reserve_declared and reserve < max_output:
         raise ClientCatalogError(
             "%s compaction reserve must be at least the largest selected max output" % label
         )
-    if reserve + recent >= min_context:
+    effective_reserve = reserve if reserve_declared else max_output
+    if effective_reserve + recent >= min_context:
         raise ClientCatalogError(
             "%s compaction reserve plus recent tokens must fit the smallest selected context" % label
         )
 
 
-def render_client_documents(
-    catalog: Mapping,
-    *,
-    openclaw: Mapping,
-    pi_models: Mapping,
-    pi_settings: Mapping,
-) -> tuple[dict, dict, dict]:
-    """Render client documents while preserving credentials and compaction policy."""
+def _render_openclaw_document(catalog: Mapping, openclaw: Mapping) -> dict:
     models = catalog.get("models")
     if not isinstance(models, Mapping):
         raise ClientCatalogError("catalog models are invalid")
     openclaw_aliases = [
         alias for alias in models if alias not in OPENCLAW_EXCLUDED_ALIASES
     ]
-    pi_aliases = [alias for alias in PI_ALIASES if alias in models]
-    if "llm.primary" not in pi_aliases or "llm.secondary" not in pi_aliases:
-        raise ClientCatalogError("Pi requires llm.primary and llm.secondary in the router catalog")
-
     rendered_openclaw = json.loads(json.dumps(openclaw))
     provider = (
         rendered_openclaw.setdefault("models", {})
@@ -343,11 +367,41 @@ def render_client_documents(
         reserve_key="reserveTokens",
         recent_key="keepRecentTokens",
     )
+    return rendered_openclaw
+
+
+def _render_pi_documents(
+    catalog: Mapping,
+    pi_models: Mapping,
+    pi_settings: Mapping,
+    *,
+    base_url: str,
+    api_key_env: str,
+) -> tuple[dict, dict]:
+    models = catalog.get("models")
+    if not isinstance(models, Mapping):
+        raise ClientCatalogError("catalog models are invalid")
+    pi_aliases = [alias for alias in PI_ALIASES if alias in models]
+    if "llm.primary" not in pi_aliases or "llm.secondary" not in pi_aliases:
+        raise ClientCatalogError("Pi requires llm.primary and llm.secondary in the router catalog")
 
     rendered_pi_models = json.loads(json.dumps(pi_models))
-    pi_provider = rendered_pi_models.setdefault("providers", {}).get("anvil")
-    if not isinstance(pi_provider, dict):
-        raise ClientCatalogError("Pi Anvil provider is missing")
+    providers = rendered_pi_models.setdefault("providers", {})
+    pi_provider = providers.get("anvil")
+    if pi_provider is None:
+        pi_provider = {
+            "api": "openai-completions",
+            "apiKey": "$" + api_key_env,
+            "authHeader": True,
+            "baseUrl": _safe_base_url(base_url),
+            "compat": dict(PI_ANVIL_COMPAT),
+            "models": [],
+        }
+        providers["anvil"] = pi_provider
+    elif not isinstance(pi_provider, dict):
+        raise ClientCatalogError("Pi Anvil provider must be an object")
+    if pi_provider.get("apiKey") == api_key_env:
+        pi_provider["apiKey"] = "$" + api_key_env
     old_pi_models = _models_by_id(pi_provider.get("models"))
     rendered_rows = []
     for alias in pi_aliases:
@@ -381,6 +435,27 @@ def render_client_documents(
         reserve_key="reserveTokens",
         recent_key="keepRecentTokens",
     )
+    return rendered_pi_models, rendered_pi_settings
+
+
+def render_client_documents(
+    catalog: Mapping,
+    *,
+    openclaw: Mapping,
+    pi_models: Mapping,
+    pi_settings: Mapping,
+    base_url: str = "http://127.0.0.1:8000/v1",
+    api_key_env: str = "ANVIL_ROUTER_TOKEN",
+) -> tuple[dict, dict, dict]:
+    """Render client documents while preserving credentials and compaction policy."""
+    rendered_openclaw = _render_openclaw_document(catalog, openclaw)
+    rendered_pi_models, rendered_pi_settings = _render_pi_documents(
+        catalog,
+        pi_models,
+        pi_settings,
+        base_url=base_url,
+        api_key_env=api_key_env,
+    )
     return rendered_openclaw, rendered_pi_models, rendered_pi_settings
 
 
@@ -402,6 +477,179 @@ def _read_json_file(path: Path, *, required: bool = True) -> dict:
     if not isinstance(payload, dict):
         raise ClientCatalogError("client config must contain a JSON object: %s" % path)
     return payload
+
+
+def _read_text_file(path: Path) -> str:
+    if path.is_symlink():
+        raise ClientCatalogError("refusing symbolic-link client config: %s" % path)
+    if not path.exists() or not path.is_file():
+        raise ClientCatalogError("required client config does not exist: %s" % path)
+    if path.stat().st_size > DEFAULT_MAX_RESPONSE_BYTES:
+        raise ClientCatalogError("client config exceeds the size limit: %s" % path)
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ClientCatalogError("client config is not valid UTF-8 text: %s" % path) from exc
+
+
+def _yaml_block(
+    lines: list[str],
+    *,
+    key: str,
+    indent: int,
+    start: int = 0,
+    end: int | None = None,
+) -> tuple[int, int]:
+    """Locate one ordinary block-mapping key without interpreting YAML values."""
+    end = len(lines) if end is None else end
+    prefix = " " * indent + key + ":"
+    matches = []
+    for index in range(start, end):
+        line = lines[index]
+        if line.startswith(prefix):
+            suffix = line[len(prefix):].strip()
+            if not suffix or suffix.startswith("#"):
+                matches.append(index)
+    if len(matches) != 1:
+        raise ClientCatalogError(
+            "Hermes config must contain exactly one %s mapping" % key
+        )
+    block_start = matches[0]
+    block_end = end
+    for index in range(block_start + 1, end):
+        stripped = lines[index].lstrip(" ")
+        if not stripped or stripped.startswith("#"):
+            continue
+        current_indent = len(lines[index]) - len(stripped)
+        if current_indent <= indent:
+            block_end = index
+            break
+    return block_start + 1, block_end
+
+
+def _yaml_scalar(
+    lines: list[str],
+    *,
+    key: str,
+    indent: int,
+    start: int,
+    end: int,
+) -> tuple[int, str, str]:
+    prefix = " " * indent + key + ":"
+    matches = []
+    for index in range(start, end):
+        line = lines[index]
+        if line.startswith(prefix):
+            matches.append((index, line[len(prefix):]))
+    if len(matches) != 1:
+        raise ClientCatalogError(
+            "Hermes config must contain exactly one %s scalar in the selected block" % key
+        )
+    index, suffix = matches[0]
+    value, marker, comment = suffix.partition("#")
+    return index, value.strip(), ((" #" + comment) if marker else "")
+
+
+def _replace_yaml_integer(
+    lines: list[str],
+    *,
+    key: str,
+    indent: int,
+    start: int,
+    end: int,
+    value: int,
+) -> None:
+    index, current, comment = _yaml_scalar(
+        lines,
+        key=key,
+        indent=indent,
+        start=start,
+        end=end,
+    )
+    try:
+        parsed = int(current)
+    except ValueError as exc:
+        raise ClientCatalogError("Hermes %s must be an integer scalar" % key) from exc
+    if isinstance(parsed, bool) or parsed <= 0:
+        raise ClientCatalogError("Hermes %s must be a positive integer" % key)
+    lines[index] = " " * indent + key + ": " + str(value) + comment
+
+
+def _render_hermes_document(catalog: Mapping, source: str) -> bytes:
+    """Patch the selected Hermes Anvil model limits without parsing credentials."""
+    if "\t" in source:
+        raise ClientCatalogError("Hermes config must use spaces for indentation")
+    newline = "\r\n" if "\r\n" in source else "\n"
+    trailing_newline = source.endswith(("\n", "\r"))
+    lines = source.splitlines()
+
+    models = catalog.get("models")
+    if not isinstance(models, Mapping):
+        raise ClientCatalogError("catalog models are invalid")
+
+    model_start, model_end = _yaml_block(lines, key="model", indent=0)
+    _, provider, _ = _yaml_scalar(
+        lines, key="provider", indent=2, start=model_start, end=model_end
+    )
+    _, default_model, _ = _yaml_scalar(
+        lines, key="default", indent=2, start=model_start, end=model_end
+    )
+    if provider != "anvil":
+        raise ClientCatalogError("Hermes selected provider must be anvil")
+    selected = models.get(default_model)
+    if not isinstance(selected, Mapping):
+        raise ClientCatalogError("Hermes selected model is absent from the router catalog")
+    _replace_yaml_integer(
+        lines,
+        key="max_tokens",
+        indent=2,
+        start=model_start,
+        end=model_end,
+        value=selected["max_output_tokens"],
+    )
+
+    providers_start, providers_end = _yaml_block(lines, key="providers", indent=0)
+    anvil_start, anvil_end = _yaml_block(
+        lines,
+        key="anvil",
+        indent=2,
+        start=providers_start,
+        end=providers_end,
+    )
+    _replace_yaml_integer(
+        lines,
+        key="context_length",
+        indent=4,
+        start=anvil_start,
+        end=anvil_end,
+        value=selected["context_window"],
+    )
+    provider_models_start, provider_models_end = _yaml_block(
+        lines,
+        key="models",
+        indent=4,
+        start=anvil_start,
+        end=anvil_end,
+    )
+    selected_start, selected_end = _yaml_block(
+        lines,
+        key=default_model,
+        indent=6,
+        start=provider_models_start,
+        end=provider_models_end,
+    )
+    _replace_yaml_integer(
+        lines,
+        key="context_length",
+        indent=8,
+        start=selected_start,
+        end=selected_end,
+        value=selected["context_window"],
+    )
+    rendered = newline.join(lines)
+    if trailing_newline:
+        rendered += newline
+    return rendered.encode("utf-8")
 
 
 def _json_bytes(payload: Mapping) -> bytes:
@@ -474,11 +722,20 @@ def _restore_backup(bundle: Path) -> None:
             source.unlink()
 
 
-def _summary(catalog: Mapping, *, changed: list[str], backup: Path | None, restarted: bool, dry_run: bool) -> dict:
+def _summary(
+    catalog: Mapping,
+    *,
+    clients: tuple[str, ...],
+    changed: list[str],
+    backup: Path | None,
+    restarted: bool,
+    dry_run: bool,
+) -> dict:
     models = catalog["models"]
     return {
         "config_sha256": catalog["config_sha256"],
         "package_version": catalog.get("package_version"),
+        "clients": list(clients),
         "models": [
             {
                 "id": alias,
@@ -498,7 +755,9 @@ def sync_clients(
     *,
     base_url: str,
     api_key_env: str = "ANVIL_ROUTER_TOKEN",
+    clients: str = "openclaw,pi",
     openclaw_config: str = DEFAULT_OPENCLAW_CONFIG,
+    hermes_config: str = DEFAULT_HERMES_CONFIG,
     pi_models: str = DEFAULT_PI_MODELS,
     pi_settings: str = DEFAULT_PI_SETTINGS,
     state_path: str = DEFAULT_STATE,
@@ -511,7 +770,8 @@ def sync_clients(
     opener=None,
     restart: Callable[[], int] | None = None,
 ) -> dict:
-    """Reconcile OpenClaw and Pi from one authenticated router snapshot."""
+    """Reconcile selected Mini clients from one authenticated router snapshot."""
+    selected_clients = _normalize_clients(clients)
     catalog = fetch_client_catalog(
         base_url=base_url,
         api_key_env=api_key_env,
@@ -521,29 +781,46 @@ def sync_clients(
     )
     paths = {
         "openclaw": Path(os.path.expanduser(openclaw_config)),
+        "hermes": Path(os.path.expanduser(hermes_config)),
         "pi_models": Path(os.path.expanduser(pi_models)),
         "pi_settings": Path(os.path.expanduser(pi_settings)),
         "state": Path(os.path.expanduser(state_path)),
     }
-    current = {
-        "openclaw": _read_json_file(paths["openclaw"]),
-        "pi_models": _read_json_file(paths["pi_models"]),
-        "pi_settings": _read_json_file(paths["pi_settings"]),
-    }
-    rendered = render_client_documents(catalog, **current)
-    desired = {
-        "openclaw": _json_bytes(rendered[0]),
-        "pi_models": _json_bytes(rendered[1]),
-        "pi_settings": _json_bytes(rendered[2]),
-    }
+    desired = {}
+    if "openclaw" in selected_clients:
+        desired["openclaw"] = _json_bytes(
+            _render_openclaw_document(catalog, _read_json_file(paths["openclaw"]))
+        )
+    if "hermes" in selected_clients:
+        desired["hermes"] = _render_hermes_document(
+            catalog, _read_text_file(paths["hermes"])
+        )
+    if "pi" in selected_clients:
+        rendered_pi = _render_pi_documents(
+            catalog,
+            _read_json_file(paths["pi_models"]),
+            _read_json_file(paths["pi_settings"]),
+            base_url=base_url,
+            api_key_env=api_key_env,
+        )
+        desired["pi_models"] = _json_bytes(rendered_pi[0])
+        desired["pi_settings"] = _json_bytes(rendered_pi[1])
     changed = [name for name in desired if _file_sha256(paths[name]) != _sha256_bytes(desired[name])]
     prior_state = _read_json_file(paths["state"], required=False)
     restart_pending = (
-        restart_openclaw_on_change
+        "openclaw" in selected_clients
+        and restart_openclaw_on_change
         and prior_state.get("openclaw_restarted_sha256") != catalog["config_sha256"]
     )
     if dry_run or not confirm:
-        return _summary(catalog, changed=changed, backup=None, restarted=False, dry_run=True)
+        return _summary(
+            catalog,
+            clients=selected_clients,
+            changed=changed,
+            backup=None,
+            restarted=False,
+            dry_run=True,
+        )
 
     backup = None
     if changed:
@@ -560,9 +837,12 @@ def sync_clients(
             _restore_backup(backup)
             raise
 
+    prior_hashes = prior_state.get("file_sha256")
+    file_hashes = dict(prior_hashes) if isinstance(prior_hashes, Mapping) else {}
+    file_hashes.update({name: _file_sha256(paths[name]) for name in desired})
     state = {
         "config_sha256": catalog["config_sha256"],
-        "file_sha256": {name: _file_sha256(paths[name]) for name in desired},
+        "file_sha256": file_hashes,
         "openclaw_restarted_sha256": prior_state.get("openclaw_restarted_sha256"),
     }
     _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
@@ -577,7 +857,14 @@ def sync_clients(
         restarted = True
         state["openclaw_restarted_sha256"] = catalog["config_sha256"]
         _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
-    return _summary(catalog, changed=changed, backup=backup, restarted=restarted, dry_run=False)
+    return _summary(
+        catalog,
+        clients=selected_clients,
+        changed=changed,
+        backup=backup,
+        restarted=restarted,
+        dry_run=False,
+    )
 
 
 __all__ = [

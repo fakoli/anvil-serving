@@ -8,12 +8,10 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained text deployment is DeepSeek V4 Flash 0731 Infernal Invocation
-r18 with DSpark K5 at exclusive TP=2/1,048,576 across both equal cards and
-router concurrency one. The r33 393K profile is its immediate fixed-port
-managed recovery target; the automatic exclusive-to-exclusive rollback defect
-remains open, so recovery uses the guarded mode transition. The former r15
-393K deployment and
+The maintained text deployment is RadixArk Qwen3.8 Flash Next NVFP4 at
+exclusive TP=2/262,144 across both equal cards, router concurrency one, and a
+client contract of 253,952 prompt tokens plus an 8,192-token output reserve.
+The former DeepSeek V4 Flash 0731 Infernal Invocation r18 1M and r15 393K deployments and
 official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
 retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
 split remain qualified rollback- or promotion-era evidence. The earlier r16
@@ -26,7 +24,27 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-22**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-26**.
+
+## Qwen3.8 Flash Next NVFP4 262K promotion (2026-08-26)
+
+The exact RadixArk ModelOpt NVFP4 revision `7b719225` was qualified through a
+digest-pinned SGLang image on both RTX PRO 6000 cards at exclusive TP=2,
+262,144 context, concurrency one, no speculation, and the bounded SM120/WSL2
+portable-QSA compatibility lane. Direct and authenticated routed retrieval
+passed at 253,325 prompt tokens while retaining an 8,192-token output reserve.
+Routed coding, JSON, tools 20/20, streaming tools, tool-result continuation,
+and Responses passed; the repeated thinking-disabled suite passed intelligence
+6/6, session 3/3, and tools 3/3.
+
+The engine reported 416,064 KV tokens. At 4K/c1 it measured 214.612 ms median
+TTFT, 2.627 s median E2E, and 12.801 tok/s median decode. A c2 diagnostic
+completed 4/4 but queued behind the one-running-request scheduler, so the
+promoted admission contract remains c1. Real OpenClaw, Hermes, and Pi turns
+selected the Primary and completed without fallback after credential drift and
+Pi provider/env-reference defects were repaired. The human-authorized
+fix-forward promotion is complete; DeepSeek is now retained historical
+evidence. See the [promotion finding](findings/2026-08-26-qwen38-flash-next-promotion.md).
 
 ## Qwen3.8 27B GGUF 250K qualification on RTX 5090 (2026-08-21)
 

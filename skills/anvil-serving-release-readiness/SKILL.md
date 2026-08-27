@@ -1,6 +1,6 @@
 ---
 name: anvil-serving-release-readiness
-description: Gate an Anvil Serving package release and coordinated live deployment across Windows, Fakoli Dark, Fakoli Mini, the controller, router, Pi, and OpenClaw. Use when a change will be merged, tagged, published, or deployed and exact manifest dependencies, version parity, rollback, and outage-free client smokes must be proven.
+description: Gate an Anvil Serving package release and coordinated live deployment across Windows, Fakoli Dark, Fakoli Mini, the controller, router, Hermes, Pi, and OpenClaw. Use when a change will be merged, tagged, published, or deployed and exact manifest dependencies, version parity, recovery policy, and outage-free client smokes must be proven.
 ---
 
 # Anvil Serving Release Readiness
@@ -21,10 +21,12 @@ grant model-promotion authority.
    active routes, serve owners, operating mode, GPU reservations, shared
    memory, and OpenClaw MCP availability. Record which host executes each
    command.
-4. Name the active model/profile, rollback serve/profile, and alias behavior.
-   Do not assume a standalone rollback alias: record which public alias the
-   rollback profile preserves and the backing identity it restores. A package
-   release must not silently change a route; a route change remains
+4. Name the active model/profile, alias behavior, and recovery policy. When
+   rollback is allowed, name the rollback serve/profile and which public alias
+   and backing identity it restores. When the operator explicitly requires
+   fix-forward, record the same-selected-model restart/rebuild or known-good
+   selected-profile recovery path; never silently substitute the prior model.
+   A package release must not silently change a route; a route change remains
    human-gated.
 5. Declare build CPU and memory ceilings before compiling on an interactive
    workstation. Do not consume all host threads or RAM by default.
@@ -68,10 +70,12 @@ grant model-promotion authority.
 4. Establish exact version parity across the Windows CLI, Mini CLI/bridge,
    Dark CLI/controller, and router. A mixed-version deployment is incomplete
    even when one endpoint is healthy.
-5. Stop and execute the documented rollback when the controller cannot parse
-   the manifest, a required mount is absent, the router loses its target or
-   rollback router profile, route identity changes unexpectedly, or an in-scope
-   client path becomes unavailable.
+5. Stop normal progression when the controller cannot parse the manifest, a
+   required mount is absent, the router loses its target, route identity changes
+   unexpectedly, or an in-scope client path becomes unavailable. Execute the
+   declared recovery policy: rollback when authorized, or restore the exact
+   selected model/profile through the recorded fix-forward path. Fix-forward
+   authority does not permit silent fallback or a prior-model substitution.
 
 ## 4. Prove the live contract before closure
 
@@ -81,14 +85,20 @@ installed CLI only as a verified fallback.
 1. Controller: `operation_contracts`, serve status, operating-mode status,
    reservations, bounded logs, and zero unresolved ownership.
 2. Router: build/config identity, readiness, advertised aliases, exact
-   `llm.primary` identity, and context/concurrency metadata. Validate that the
-   rollback router profile preserves the intended stable public alias and maps
-   it to the expected rollback model identity. Treat an auxiliary alias such
-   as `llm.rollback` as profile-specific, not a universal rollback contract.
-   Unknown or unavailable routes must remain fail-closed.
-3. Model/client: run the real Pi and OpenClaw request shape, including tools and
-   tool-result continuation when affected. A long-context needle or protocol
-   preflight does not replace this client-shaped smoke.
+   `llm.primary` identity, and context/concurrency metadata. When rollback is
+   allowed, validate that its router profile preserves the intended stable
+   public alias and maps it to the expected rollback model identity. Treat an
+   auxiliary alias such as `llm.rollback` as profile-specific, not a universal
+   rollback contract. Unknown or unavailable routes must remain fail-closed.
+3. Model/client catalog: reconcile Hermes, Pi, and OpenClaw from the same
+   authenticated router snapshot. Verify each selected alias advertises the
+   exact router `context_limit_tokens` and `max_output_tokens`, preserves its
+   provider/auth references and compaction policy, and has no silent fallback.
+   Use dry-run, confirmed apply, and an idempotent second dry-run where the
+   managed surface supports them. Then run the real Hermes, Pi, and OpenClaw
+   request shapes, including tools and tool-result continuation when affected.
+   A long-context needle or protocol preflight does not replace these
+   client-shaped smokes.
 4. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is
@@ -117,7 +127,7 @@ Return a compact readiness matrix with these rows:
 | Package | clean-install exact version and published artifact |
 | Files | manifest-derived host files and read-only container mounts |
 | Parity | Windows, Mini, Dark, controller, and router exact versions |
-| Route | active/rollback profile alias parity, identities, readiness, context/concurrency |
-| Client | Pi/OpenClaw real-shape smoke with reasoning and tools |
+| Route | active/recovery profile alias parity, identities, readiness, context/concurrency |
+| Client | Hermes/Pi/OpenClaw catalog parity and real-shape smokes with reasoning and tools |
 | Safety | exclusive ownership, blocked competitors, clean shared memory |
-| Closure | no outage, or explicit rollback/degraded state |
+| Closure | no outage, or explicit recovered/degraded state under the declared policy |

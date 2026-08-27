@@ -2,7 +2,7 @@
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark, Windows 11 with
-Docker Desktop/WSL2. **Reviewed and last locally measured:** 2026-08-21.
+Docker Desktop/WSL2. **Reviewed and last locally measured:** 2026-08-26.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -17,11 +17,11 @@ The two GPU roles are symmetric. Split mode can place independent workloads on
 the cards. Exclusive TP=2 mode assigns both roles to one declared owner and
 blocks every other inference workload until the mode is left; the cards are
 connected over PCIe without NVLink, so 192 GB is aggregate rather than unified
-memory. The public 2026-08-21 finding records the human-approved
-DeepSeek V4 Flash 0731 Infernal Invocation r18 exclusive TP=2 text Primary.
-The earlier Qwen3.8
-single-service and split profiles remain retained history, while r33 is the
-immediate managed DeepSeek rollback. Earlier findings also retain the r16
+memory. The public 2026-08-26 finding records the human-approved RadixArk
+Qwen3.8 Flash Next NVFP4 exclusive TP=2 text Primary at 262,144 tokens and
+concurrency one. The earlier Qwen3.8 27B single-service and split profiles and
+the DeepSeek Infernal Invocation r18/r15 promotions remain retained history.
+Earlier findings also retain the r16
 650K promotion, 262K retune, and r27 image-upgrade history. Active assignments
 remain private operator state;
 Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
@@ -30,14 +30,14 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
-| 1 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | `current`, 2026-08-21 r18 promotion | Infernal Invocation r18 B12X/DSpark K5 owns text Primary at exclusive TP=2, 1,048,576 tokens, eight engine sequences, router concurrency one; routed and real-client acceptance passed |
-| 2 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | immediate managed recovery target for r18 | Exclusive TP=2 r33 text profile at 393,216 tokens on the same fixed endpoint; direct capacity through 359,900 actual prompt tokens; automatic promotion rollback P1 remains open |
+| 1 | [Qwen3.8 Flash Next](../models/qwen38-flash-next.md) | `current`, 2026-08-26 promotion | RadixArk ModelOpt NVFP4 owns text Primary at exclusive TP=2, 262,144 tokens, router concurrency one, and an 8,192-token output reserve; routed and real-client acceptance passed |
+| 2 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | former `current`, 2026-08-21 r18 promotion | Retained Infernal Invocation r18 B12X/DSpark K5 TP=2/1,048,576 promotion evidence |
 | 3 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | former `current`, 2026-08-16 r15 promotion | Retained Infernal Invocation r15 B12X/DSpark K5 TP=2/393,216 promotion evidence |
 | 4 | [Qwen3.8 27B](../models/qwen38-27b.md) | former single service and split | Retained official-FP8 SGLang text/image/OCR/video profile and FP8/BF16 vLLM split recipes |
-| 5 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Not started or selected by this promotion's restoration contract |
-| 6 | [Agents-A1](../models/agents-a1.md) plus Omni | historical managed split restoration | Agents-A1 retains FP8 text/image/video evidence |
-| 7 | [Laguna S 2.1](../models/laguna-s-2.1.md) | retained rollback-era recipe | Thinking disabled |
-| 8 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | retained rollback-era recipe | Strict unified-diff caveat |
+| 5 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Historical qualification evidence |
+| 6 | [Agents-A1](../models/agents-a1.md) plus Omni | historical managed split | Agents-A1 retains FP8 text/image/video evidence |
+| 7 | [Laguna S 2.1](../models/laguna-s-2.1.md) | retained historical recipe | Thinking disabled |
+| 8 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | retained historical recipe | Strict unified-diff caveat |
 
 ## Comparable quality and context
 
@@ -45,8 +45,9 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 | Candidate | Repeated quality | Capacity and context evidence | Decision |
 |---|---|---|---|
-| DeepSeek V4 Flash 0731, Infernal Invocation r18 B12X + DSpark K5, batch 4,096, maxseq8, 1M | complete direct and routed functional gates; clean post-reload gate; intelligence/session/tools 12/12; additional structured tools 160/160; real Hermes/Pi/OpenClaw acceptance | K5/no-spec 4K decode 142.1/76.4 tok/s and 32K decode 129.5/76.3; calibrated 1,040,063 actual prompt tokens pass; c8 short 8/8 and c2 at 490,861 prompt tokens/request; 1,323,176 KV tokens / 1.26 full windows | human-approved `current` text Primary; r33 393K managed recovery target; automatic exclusive rollback P1 open |
-| DeepSeek V4 Flash 0731, Infernal Invocation r15 B12X + DSpark K5, batch 4,096, maxseq8, 393K | full direct functional gate; repeated tools/session/unified-diff/timeout 12/12; authenticated routed tools and OpenClaw-compatible Anthropic basic/tool paths pass | K5/no-spec 4K decode 150.0/76.4 tok/s and 32K decode 119.245/76.767; direct 351,118 and routed 340,119 actual prompt tokens pass; c8 short 8/8 and c2 long 2/2; 797,689 KV tokens / 2.03 full windows | human-approved `current` text Primary; r33 fixed-port managed rollback; actual Mini OpenClaw turn remains open |
+| Qwen3.8 Flash Next RadixArk NVFP4, SGLang, TP=2, 262K/c1 | thinking-disabled intelligence 6/6, session 3/3, tools 3/3; complete direct and routed functional/tool gates; real OpenClaw/Hermes/Pi acceptance | 253,325-token direct and routed retrieval with 8,192-token reserve; tools 20/20; 416,064 KV tokens; 4K/c1 214.612 ms TTFT and 12.801 tok/s decode; 125,442-token request 11.961 s TTFT | human-authorized `current` text Primary; portable QSA compatibility lane; c1 only |
+| DeepSeek V4 Flash 0731, Infernal Invocation r18 B12X + DSpark K5, batch 4,096, maxseq8, 1M | complete direct and routed functional gates; clean post-reload gate; intelligence/session/tools 12/12; additional structured tools 160/160; real Hermes/Pi/OpenClaw acceptance | K5/no-spec 4K decode 142.1/76.4 tok/s and 32K decode 129.5/76.3; calibrated 1,040,063 actual prompt tokens pass; c8 short 8/8 and c2 at 490,861 prompt tokens/request; 1,323,176 KV tokens / 1.26 full windows | former human-approved text Primary; retained evidence |
+| DeepSeek V4 Flash 0731, Infernal Invocation r15 B12X + DSpark K5, batch 4,096, maxseq8, 393K | full direct functional gate; repeated tools/session/unified-diff/timeout 12/12; authenticated routed tools and OpenClaw-compatible Anthropic basic/tool paths pass | K5/no-spec 4K decode 150.0/76.4 tok/s and 32K decode 119.245/76.767; direct 351,118 and routed 340,119 actual prompt tokens pass; c8 short 8/8 and c2 long 2/2; 797,689 KV tokens / 2.03 full windows | former human-approved text Primary; retained evidence; actual Mini OpenClaw turn remained open |
 | DeepSeek V4 Flash 0731, r33 B12X + DSpark K5, batch 4,096, maxseq16, 393K | prior repeated high-reasoning suite retained; routed functional checks passed except legacy long-needle calibration and trivial-prompt reasoning-evidence checks; OpenClaw/Hermes 393K/32K/high client paths passed | direct 238,507/339,310/359,900 actual prompt tokens passed; largest 65.2 s TTFT and 5,599 effective prefill tok/s; engine 725,543 KV tokens / 1.845 full windows | historical Primary; now managed TP=2 rollback; routed/OpenClaw/Hermes >300K and SWE score remain open |
 | DeepSeek V4 Flash 0731, r33 B12X target-only/no-spec, batch 4,096 | functional preflight 6/6 at high reasoning; same repeated broad-quality suite not rerun | 119,503 actual prompt tokens; 17.364 s TTFT, 7,344 effective prefill tok/s, 75.20 decode tok/s; minimum-rank KV 15.99 GiB; engine reports 553,243 KV tokens with unresolved byte/token-accounting caveat | healthy direct-only A/B winner for capacity; next arm GPU-only 393K; `no-promotion` |
 | DeepSeek V4 Flash 0731, r33 B12X target-only/no-spec | intelligence 6/6, session 3/3, tools 3/3 at high reasoning; functional preflight 6/6 | 119,503 actual prompt tokens; 17.445 s TTFT, 7,537 effective prefill tok/s, 73.86 decode tok/s; 283,917-token GPU KV allocation; context-target calibration caveat retained | priority `challenger`, `no-promotion`; 393K FP8-KV plus 16 GiB host-offload recipe translated but not loaded |
@@ -113,7 +114,8 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
-| DeepSeek V4 Flash 0731 Infernal Invocation r18 B12X + DSpark K5, batch 4,096, TP=2 | 1,048,576 | 8 engine; router 1 | FP8 compressed MLA KV, GPU-only; 1,323,176 reported KV tokens; 1,040,063 actual prompt tokens pass; c8 short and c2 at 490,861 tokens/request pass; matched no-spec control retained; promoted current Primary |
+| Qwen3.8 Flash Next RadixArk NVFP4, SGLang, TP=2 | 262,144 | 1 | 416,064 reported KV tokens; 253,325-token direct/routed retrieval with 8,192-token output reserve; native boundary accepted 262,137 prompt tokens plus one output; no speculation; portable QSA sparse decode |
+| DeepSeek V4 Flash 0731 Infernal Invocation r18 B12X + DSpark K5, batch 4,096, TP=2 | 1,048,576 | 8 engine; router 1 | FP8 compressed MLA KV, GPU-only; 1,323,176 reported KV tokens; 1,040,063 actual prompt tokens pass; c8 short and c2 at 490,861 tokens/request pass; matched no-spec control retained; former Primary |
 | DeepSeek V4 Flash 0731 Infernal Invocation r15 B12X + DSpark K5, batch 4,096, TP=2 | 393,216 | 8 engine; router 2 | FP8 compressed MLA KV, GPU-only; 797,689 reported KV tokens; 351,118 direct and 340,119 routed actual prompt tokens passed; c8 short and c2 at 99,175 tokens/request passed; matched no-spec control retained |
 | Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, TP=1 MTP=3 multimodal | 393,216 | 1 each | All pass the earlier 18/18 image corpus; official FP8 later passed video 14/14 and live admitted 28/28 at two images/one video; NVFP4 video plus broader concurrency, memory-pressure, and quality gates remain open |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, TP=1 MTP=3 | 393,216 | 1 each | Both pass 389K retrieval and cross-card gates; official FP8 averages 111.3 decode tok/s, NVFP4 98.1 with 0.448 s TTFT; CPU transport passes bounded image/OCR on both but full media and host-memory-pressure gates remain open |
@@ -163,14 +165,21 @@ profile and then qualified for one video; Inferact NVFP4 remains no-promotion.
 
 ## Recent changes
 
+- 2026-08-26: the exact RadixArk Qwen3.8 Flash Next NVFP4 revision and
+  digest-pinned SGLang image qualified at exclusive TP=2/262,144/c1. Direct
+  and authenticated routed 253,325-token retrieval retained an 8,192-token
+  output reserve; intelligence 6/6, session 3/3, routed tools 20/20,
+  streaming, tool-result continuation, Responses, and real OpenClaw/Hermes/Pi
+  acceptance passed. After the human-authorized fix-forward transaction it is
+  the current text Primary. The portable QSA decoder limits decode to about
+  12.8 tok/s and remains part of the exact compatibility contract.
 - 2026-08-21: the exact digest-pinned Infernal Invocation r18 K5 profile
   qualified at 1,048,576 tokens with 1,040,063-token retrieval, complete
   functional and post-reload gates, agentic 12/12, additional tools 160/160,
   client-shaped reserves, c8 short, c2 long, and a matched no-spec A/B. The
   operator-authorized guarded promotion, exact routed identity/API/tool gate,
   Mini generation-2 convergence, and real Hermes/Pi/OpenClaw acceptance passed.
-  r18 is the current text Primary. r33 393K is the managed recovery target;
-  automatic exclusive-to-exclusive promotion rollback remains an open P1.
+  r18 was the current text Primary until the 2026-08-26 Qwen promotion.
 - 2026-08-16: after explicit human approval, the digest-pinned DeepSeek
   Infernal Invocation r15 K5 profile became the exclusive TP=2 text Primary at
   393,216 tokens. Matched K5/no-spec performance, 351,118-token direct and

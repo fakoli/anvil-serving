@@ -31,6 +31,9 @@ CONTEXT = {
 @contextlib.contextmanager
 def running_controller(**kwargs):
     kwargs.setdefault("allow_unauthenticated_loopback", True)
+    # Hermetic by default: a developer's real operator-home token must not
+    # silently turn local unauthenticated-loopback fixtures into auth servers.
+    kwargs.setdefault("env", {})
     with tempfile.TemporaryDirectory(prefix="anvil-controller-test-") as temp_dir:
         kwargs.setdefault("idempotency_db_path", os.path.join(temp_dir, "operations.sqlite3"))
         httpd = controller.make_server("127.0.0.1", 0, **kwargs)
@@ -1654,7 +1657,7 @@ def test_resolve_auth_token_missing_names_sources(tmp_path, monkeypatch):
 
 
 def test_controller_status_succeeds_with_dotenv_only_token(token_only_in_config_env):
-    with running_controller() as (host, port):
+    with running_controller(env=None) as (host, port):
         exit_code = controller.status(
             "http://%s:%s" % (host, port), max_response_bytes=1024 * 1024
         )

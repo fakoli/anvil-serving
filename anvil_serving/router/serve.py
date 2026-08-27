@@ -32,6 +32,7 @@ from .backends import RelayBackend
 from .backends.relay import DiscoveryTransport, Transport, discover_single_model
 from .config import (
     ConfigError,
+    CONTEXT_ADMISSION_UPSTREAM,
     METADATA_UPSTREAM,
     PRIVACY_LOCAL,
     RouterConfig,
@@ -366,7 +367,10 @@ class RoutingBackend:
 
         self._apply_output_cap(request, tier)
 
-        if self._prompt_tokens(request) > tier.context_limit:
+        if (
+            tier.context_admission != CONTEXT_ADMISSION_UPSTREAM
+            and self._prompt_tokens(request) > tier.context_limit
+        ):
             self._record(request, tier, served=False, reason="over_context", outcome="skipped")
             raise NoAvailableTierError(request.model, (tier.id,), kind="over_context")
         media = evaluate_media_admission(
