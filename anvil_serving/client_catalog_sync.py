@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import shutil
 import stat
+import subprocess
 import tempfile
 import urllib.error
 import urllib.parse
@@ -18,6 +19,8 @@ import urllib.request
 
 DEFAULT_OPENCLAW_CONFIG = "~/.openclaw/openclaw.json"
 DEFAULT_HERMES_CONFIG = "~/.hermes/config.yaml"
+DEFAULT_HERMES_BIN = "~/.local/bin/hermes"
+DEFAULT_HERMES_HOME = "~/.hermes"
 DEFAULT_PI_MODELS = "~/.pi/agent/models.json"
 DEFAULT_PI_SETTINGS = "~/.pi/agent/settings.json"
 DEFAULT_STATE = "~/.anvil-serving/state/client-catalog.json"
@@ -27,6 +30,15 @@ PI_ALIASES = ("llm.primary", "llm.secondary", "vision.general", "vision.ocr")
 OPENCLAW_EXCLUDED_ALIASES = frozenset({"llm.auxiliary"})
 COMPACTION_EXCLUDED_ALIASES = frozenset({"llm.voice"})
 CLIENT_TARGETS = ("openclaw", "hermes", "pi")
+HERMES_PROFILE_KEYS = (
+    "model",
+    "compression",
+    "auxiliary.vision",
+    "auxiliary.compression",
+    "providers",
+    "custom_providers",
+)
+HERMES_LEGACY_TEXT_ALIASES = ("llm.primary", "llm.secondary")
 PI_ANVIL_COMPAT = {
     "maxTokensField": "max_tokens",
     "supportsDeveloperRole": False,
@@ -652,6 +664,423 @@ def _render_hermes_document(catalog: Mapping, source: str) -> bytes:
     return rendered.encode("utf-8")
 
 
+def _normalize_hermes_profiles(value: str) -> tuple[str, ...] | None:
+    if not isinstance(value, str):
+        raise ClientCatalogError("hermes_profiles must be 'all' or comma-separated names")
+    requested = [item.strip() for item in value.split(",") if item.strip()]
+    if not requested:
+        raise ClientCatalogError("hermes_profiles must not be empty")
+    if len(requested) == 1 and requested[0] == "all":
+        return None
+    for profile in requested:
+        if (
+            profile in {".", ".."}
+            or "/" in profile
+            or "\\" in profile
+            or profile.startswith("-")
+        ):
+            raise ClientCatalogError("invalid Hermes profile name: %s" % profile)
+    if len(set(requested)) != len(requested):
+        raise ClientCatalogError("Hermes profile selection contains duplicates")
+    return tuple(requested)
+
+
+def _discover_hermes_profile_configs(
+    hermes_home: str,
+    hermes_profiles: str,
+) -> dict[str, Path]:
+    home = Path(os.path.expanduser(hermes_home))
+    if home.is_symlink() or not home.is_dir():
+        raise ClientCatalogError("Hermes home is not a regular directory")
+    discovered: dict[str, Path] = {}
+    default = home / "config.yaml"
+    if default.exists():
+        if default.is_symlink() or not default.is_file():
+            raise ClientCatalogError("Hermes default config is not a regular file")
+        discovered["default"] = default
+    profiles = home / "profiles"
+    if profiles.exists():
+        if profiles.is_symlink() or not profiles.is_dir():
+            raise ClientCatalogError("Hermes profiles path is not a regular directory")
+        for directory in sorted(profiles.iterdir(), key=lambda item: item.name):
+            if directory.is_symlink() or not directory.is_dir():
+                continue
+            config = directory / "config.yaml"
+            if not config.exists():
+                continue
+            if config.is_symlink() or not config.is_file():
+                raise ClientCatalogError(
+                    "Hermes profile config is not a regular file: %s"
+                    % directory.name
+                )
+            discovered[directory.name] = config
+    selected = _normalize_hermes_profiles(hermes_profiles)
+    if selected is None:
+        if not discovered:
+            raise ClientCatalogError("Hermes has no discoverable profile configs")
+        return discovered
+    missing = [profile for profile in selected if profile not in discovered]
+    if missing:
+        raise ClientCatalogError(
+            "Hermes profile config is missing: %s" % ", ".join(missing)
+        )
+    return {profile: discovered[profile] for profile in selected}
+
+
+def _run_hermes(
+    hermes_bin: str,
+    profile: str,
+    arguments: list[str],
+    *,
+    timeout_seconds: int,
+    run,
+):
+    try:
+        return run(
+            [os.path.expanduser(hermes_bin), "-p", profile, *arguments],
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise ClientCatalogError(
+            "Hermes profile command failed for %s" % profile
+        ) from exc
+
+
+def _read_hermes_profile_key(
+    hermes_bin: str,
+    profile: str,
+    key: str,
+    *,
+    timeout_seconds: int,
+    run,
+    required: bool,
+):
+    completed = _run_hermes(
+        hermes_bin,
+        profile,
+        ["config", "get", key, "--json"],
+        timeout_seconds=timeout_seconds,
+        run=run,
+    )
+    if completed.returncode:
+        if required:
+            raise ClientCatalogError(
+                "Hermes profile %s has no readable %s configuration"
+                % (profile, key)
+            )
+        return None
+    try:
+        return json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise ClientCatalogError(
+            "Hermes profile %s returned invalid JSON for %s" % (profile, key)
+        ) from exc
+
+
+def _read_hermes_profile(
+    hermes_bin: str,
+    profile: str,
+    *,
+    timeout_seconds: int,
+    run,
+) -> dict:
+    result = {}
+    for key in HERMES_PROFILE_KEYS:
+        result[key] = _read_hermes_profile_key(
+            hermes_bin,
+            profile,
+            key,
+            timeout_seconds=timeout_seconds,
+            run=run,
+            required=key in {"model", "compression", "providers"},
+        )
+    return result
+
+
+def _hermes_ratio(value, *, label: str) -> float:  # noqa: ANN001
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ClientCatalogError("%s must be a numeric ratio" % label)
+    parsed = float(value)
+    if not 0 < parsed < 1:
+        raise ClientCatalogError(
+            "%s must be greater than zero and less than one" % label
+        )
+    return parsed
+
+
+def render_hermes_profile_plan(
+    catalog: Mapping,
+    current: Mapping,
+    *,
+    profile: str,
+) -> dict:
+    """Return a secret-free plan for one isolated Hermes profile."""
+    models = catalog.get("models")
+    if not isinstance(models, Mapping):
+        raise ClientCatalogError("catalog models are invalid")
+    model = current.get("model")
+    if not isinstance(model, Mapping):
+        raise ClientCatalogError(
+            "Hermes profile %s has no model configuration" % profile
+        )
+    provider = model.get("provider")
+    alias = model.get("default")
+    if provider != "anvil":
+        return {
+            "profile": profile,
+            "managed": False,
+            "provider": provider,
+            "model": alias,
+            "changed_keys": [],
+            "updates": {},
+        }
+    selected = models.get(alias)
+    if not isinstance(alias, str) or not isinstance(selected, Mapping):
+        raise ClientCatalogError(
+            "Hermes profile %s selects an Anvil alias absent from the router"
+            % profile
+        )
+
+    compression = current.get("compression")
+    if not isinstance(compression, Mapping) or compression.get("enabled") is not True:
+        raise ClientCatalogError(
+            "Hermes profile %s compression must remain enabled" % profile
+        )
+    threshold = _hermes_ratio(
+        compression.get("threshold"), label="Hermes compression.threshold"
+    )
+    target_ratio = _hermes_ratio(
+        compression.get("target_ratio"),
+        label="Hermes compression.target_ratio",
+    )
+    if target_ratio >= threshold:
+        raise ClientCatalogError(
+            "Hermes compression target_ratio must remain below threshold"
+        )
+    if int(selected["context_window"] * (1 - threshold)) < selected["max_output_tokens"]:
+        raise ClientCatalogError(
+            "Hermes profile %s compression leaves less headroom than max output"
+            % profile
+        )
+
+    vision = models.get("vision.general")
+    if not isinstance(vision, Mapping) or "image" not in vision.get("input", []):
+        raise ClientCatalogError("router has no image-capable vision.general alias")
+    vision_current = current.get("auxiliary.vision")
+    vision_current = vision_current if isinstance(vision_current, Mapping) else {}
+    compression_current = current.get("auxiliary.compression")
+    compression_current = (
+        compression_current if isinstance(compression_current, Mapping) else {}
+    )
+    updates = {
+        "model.context_length": selected["context_window"],
+        "model.max_tokens": selected["max_output_tokens"],
+        "auxiliary.vision.provider": "anvil",
+        "auxiliary.vision.model": "vision.general",
+        "auxiliary.compression.context_length": selected["context_window"],
+    }
+    current_values = {
+        "model.context_length": model.get("context_length"),
+        "model.max_tokens": model.get("max_tokens"),
+        "auxiliary.vision.provider": vision_current.get("provider"),
+        "auxiliary.vision.model": vision_current.get("model"),
+        "auxiliary.compression.context_length": compression_current.get(
+            "context_length"
+        ),
+    }
+
+    providers = current.get("providers")
+    provider_config = (
+        providers.get(provider) if isinstance(providers, Mapping) else None
+    )
+    if not isinstance(provider_config, Mapping):
+        raise ClientCatalogError(
+            "Hermes profile %s has no Anvil provider configuration" % profile
+        )
+    old_provider_models = provider_config.get("models")
+    old_provider_models = (
+        old_provider_models if isinstance(old_provider_models, Mapping) else {}
+    )
+    rendered_provider_models = {}
+    for model_id in HERMES_LEGACY_TEXT_ALIASES:
+        metadata = models.get(model_id)
+        if not isinstance(metadata, Mapping):
+            continue
+        existing = old_provider_models.get(model_id)
+        row = dict(existing) if isinstance(existing, Mapping) else {}
+        row["context_length"] = metadata["context_window"]
+        rendered_provider_models[model_id] = row
+    updates.update(
+        {
+            "providers.%s.default_model" % provider: alias,
+            "providers.%s.context_length" % provider: selected["context_window"],
+            "providers.%s.models" % provider: rendered_provider_models,
+        }
+    )
+    current_values.update(
+        {
+            "providers.%s.default_model" % provider: provider_config.get(
+                "default_model"
+            ),
+            "providers.%s.context_length" % provider: provider_config.get(
+                "context_length"
+            ),
+            "providers.%s.models" % provider: old_provider_models,
+        }
+    )
+    unsets = []
+    extra_body = provider_config.get("extra_body")
+    if isinstance(extra_body, Mapping) and "chat_template_kwargs" in extra_body:
+        remaining_extra_body = dict(extra_body)
+        remaining_extra_body.pop("chat_template_kwargs")
+        extra_body_key = "providers.%s.extra_body" % provider
+        if remaining_extra_body:
+            updates[extra_body_key] = remaining_extra_body
+            current_values[extra_body_key] = extra_body
+        else:
+            unsets.append(extra_body_key)
+
+    custom_providers = current.get("custom_providers")
+    rendered_custom = (
+        json.loads(json.dumps(custom_providers))
+        if isinstance(custom_providers, list)
+        else []
+    )
+    custom_changed = False
+    anvil_custom_found = False
+    for custom in rendered_custom:
+        if not isinstance(custom, dict):
+            continue
+        name = custom.get("name")
+        if not isinstance(name, str) or not name.casefold().startswith("anvil"):
+            continue
+        anvil_custom_found = True
+        if custom.get("model") != alias:
+            custom["model"] = alias
+            custom_changed = True
+        old_models = custom.get("models")
+        rendered_models = dict(old_models) if isinstance(old_models, Mapping) else {}
+        for model_id, metadata in models.items():
+            existing = rendered_models.get(model_id)
+            row = dict(existing) if isinstance(existing, Mapping) else {}
+            if row.get("context_length") != metadata["context_window"]:
+                row["context_length"] = metadata["context_window"]
+                custom_changed = True
+            rendered_models[model_id] = row
+        for model_id in tuple(rendered_models):
+            if model_id not in models:
+                rendered_models.pop(model_id)
+                custom_changed = True
+        custom["models"] = rendered_models
+    if not anvil_custom_found:
+        raise ClientCatalogError(
+            "Hermes profile %s has no Anvil custom provider catalog" % profile
+        )
+    if custom_changed:
+        updates["custom_providers"] = rendered_custom
+        current_values["custom_providers"] = custom_providers
+
+    changed_update_keys = [
+        key for key, value in updates.items() if current_values.get(key) != value
+    ]
+    changed_keys = [*changed_update_keys, *unsets]
+    return {
+        "profile": profile,
+        "managed": True,
+        "provider": provider,
+        "model": alias,
+        "context_window": selected["context_window"],
+        "max_output_tokens": selected["max_output_tokens"],
+        "compression": {
+            "enabled": True,
+            "threshold": threshold,
+            "target_ratio": target_ratio,
+        },
+        "vision_model": "vision.general",
+        "vision_context_window": vision["context_window"],
+        "changed_keys": changed_keys,
+        "updates": {key: updates[key] for key in changed_update_keys},
+        "unsets": unsets,
+    }
+
+
+def plan_hermes_profiles(
+    catalog: Mapping,
+    *,
+    hermes_bin: str,
+    hermes_home: str,
+    hermes_profiles: str,
+    timeout_seconds: int,
+    run=subprocess.run,
+) -> tuple[list[dict], dict[str, Path]]:
+    configs = _discover_hermes_profile_configs(hermes_home, hermes_profiles)
+    rows = []
+    for profile in configs:
+        current = _read_hermes_profile(
+            hermes_bin,
+            profile,
+            timeout_seconds=timeout_seconds,
+            run=run,
+        )
+        rows.append(render_hermes_profile_plan(catalog, current, profile=profile))
+    return rows, configs
+
+
+def _hermes_config_value(value) -> str:  # noqa: ANN001
+    if isinstance(value, (dict, list, bool, int, float)):
+        return json.dumps(value, separators=(",", ":"))
+    return str(value)
+
+
+def _apply_hermes_profile_plans(
+    rows: list[Mapping],
+    *,
+    hermes_bin: str,
+    timeout_seconds: int,
+    run=subprocess.run,
+) -> None:
+    for row in rows:
+        profile = row["profile"]
+        for key in row.get("unsets", []):
+            completed = _run_hermes(
+                hermes_bin,
+                profile,
+                ["config", "unset", key],
+                timeout_seconds=timeout_seconds,
+                run=run,
+            )
+            if completed.returncode:
+                raise ClientCatalogError(
+                    "Hermes profile %s removal failed for %s" % (profile, key)
+                )
+        for key, value in row.get("updates", {}).items():
+            completed = _run_hermes(
+                hermes_bin,
+                profile,
+                ["config", "set", key, _hermes_config_value(value)],
+                timeout_seconds=timeout_seconds,
+                run=run,
+            )
+            if completed.returncode:
+                raise ClientCatalogError(
+                    "Hermes profile %s update failed for %s" % (profile, key)
+                )
+        if row.get("updates") or row.get("unsets"):
+            checked = _run_hermes(
+                hermes_bin,
+                profile,
+                ["config", "check"],
+                timeout_seconds=timeout_seconds,
+                run=run,
+            )
+            if checked.returncode:
+                raise ClientCatalogError(
+                    "Hermes profile %s failed config validation" % profile
+                )
+
+
 def _json_bytes(payload: Mapping) -> bytes:
     return (json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
 
@@ -729,6 +1158,8 @@ def _summary(
     changed: list[str],
     backup: Path | None,
     restarted: bool,
+    hermes_rows: list[Mapping] | None,
+    hermes_restarted: bool,
     dry_run: bool,
 ) -> dict:
     models = catalog["models"]
@@ -747,6 +1178,26 @@ def _summary(
         "changed": changed,
         "backup_created": backup is not None,
         "openclaw_restarted": restarted,
+        "hermes_profiles": [
+            {
+                key: row[key]
+                for key in (
+                    "profile",
+                    "managed",
+                    "provider",
+                    "model",
+                    "context_window",
+                    "max_output_tokens",
+                    "compression",
+                    "vision_model",
+                    "vision_context_window",
+                    "changed_keys",
+                )
+                if key in row
+            }
+            for row in (hermes_rows or [])
+        ],
+        "hermes_restarted": hermes_restarted,
         "dry_run": dry_run,
     }
 
@@ -758,17 +1209,23 @@ def sync_clients(
     clients: str = "openclaw,pi",
     openclaw_config: str = DEFAULT_OPENCLAW_CONFIG,
     hermes_config: str = DEFAULT_HERMES_CONFIG,
+    hermes_bin: str = DEFAULT_HERMES_BIN,
+    hermes_home: str = DEFAULT_HERMES_HOME,
+    hermes_profiles: str | None = None,
     pi_models: str = DEFAULT_PI_MODELS,
     pi_settings: str = DEFAULT_PI_SETTINGS,
     state_path: str = DEFAULT_STATE,
     backup_root: str = DEFAULT_BACKUP_ROOT,
     restart_openclaw_on_change: bool = False,
+    restart_hermes_on_change: bool = False,
     dry_run: bool = True,
     confirm: bool = False,
     timeout_seconds: int = 15,
     environ: Mapping[str, str] | None = None,
     opener=None,
     restart: Callable[[], int] | None = None,
+    restart_hermes: Callable[[], int] | None = None,
+    hermes_run=subprocess.run,
 ) -> dict:
     """Reconcile selected Mini clients from one authenticated router snapshot."""
     selected_clients = _normalize_clients(clients)
@@ -787,14 +1244,26 @@ def sync_clients(
         "state": Path(os.path.expanduser(state_path)),
     }
     desired = {}
+    hermes_rows: list[dict] = []
+    hermes_configs: dict[str, Path] = {}
     if "openclaw" in selected_clients:
         desired["openclaw"] = _json_bytes(
             _render_openclaw_document(catalog, _read_json_file(paths["openclaw"]))
         )
     if "hermes" in selected_clients:
-        desired["hermes"] = _render_hermes_document(
-            catalog, _read_text_file(paths["hermes"])
-        )
+        if hermes_profiles:
+            hermes_rows, hermes_configs = plan_hermes_profiles(
+                catalog,
+                hermes_bin=hermes_bin,
+                hermes_home=hermes_home,
+                hermes_profiles=hermes_profiles,
+                timeout_seconds=timeout_seconds,
+                run=hermes_run,
+            )
+        else:
+            desired["hermes"] = _render_hermes_document(
+                catalog, _read_text_file(paths["hermes"])
+            )
     if "pi" in selected_clients:
         rendered_pi = _render_pi_documents(
             catalog,
@@ -805,12 +1274,28 @@ def sync_clients(
         )
         desired["pi_models"] = _json_bytes(rendered_pi[0])
         desired["pi_settings"] = _json_bytes(rendered_pi[1])
-    changed = [name for name in desired if _file_sha256(paths[name]) != _sha256_bytes(desired[name])]
+    changed = [
+        name
+        for name in desired
+        if _file_sha256(paths[name]) != _sha256_bytes(desired[name])
+    ]
+    changed.extend(
+        "hermes:" + row["profile"]
+        for row in hermes_rows
+        if row.get("changed_keys")
+    )
     prior_state = _read_json_file(paths["state"], required=False)
-    restart_pending = (
+    openclaw_restart_pending = (
         "openclaw" in selected_clients
         and restart_openclaw_on_change
         and prior_state.get("openclaw_restarted_sha256") != catalog["config_sha256"]
+    )
+    hermes_restart_pending = (
+        restart_hermes_on_change
+        and any(
+            row.get("profile") == "default" and row.get("changed_keys")
+            for row in hermes_rows
+        )
     )
     if dry_run or not confirm:
         return _summary(
@@ -819,27 +1304,76 @@ def sync_clients(
             changed=changed,
             backup=None,
             restarted=False,
+            hermes_rows=hermes_rows,
+            hermes_restarted=False,
             dry_run=True,
         )
 
     backup = None
     if changed:
+        backup_paths = [
+            (
+                hermes_configs[name.split(":", 1)[1]]
+                if name.startswith("hermes:")
+                else paths[name]
+            )
+            for name in changed
+        ]
         backup = _backup(
-            [paths[name] for name in changed],
+            backup_paths,
             Path(os.path.expanduser(backup_root)),
             catalog["config_sha256"],
         )
         try:
-            for name in changed:
+            for name in desired:
+                if name not in changed:
+                    continue
                 mode = stat.S_IMODE(paths[name].stat().st_mode) if paths[name].exists() else 0o600
                 _atomic_write(paths[name], desired[name], mode=mode)
+            if hermes_rows:
+                _apply_hermes_profile_plans(
+                    hermes_rows,
+                    hermes_bin=hermes_bin,
+                    timeout_seconds=timeout_seconds,
+                    run=hermes_run,
+                )
+                verified_rows, _ = plan_hermes_profiles(
+                    catalog,
+                    hermes_bin=hermes_bin,
+                    hermes_home=hermes_home,
+                    hermes_profiles=hermes_profiles or "default",
+                    timeout_seconds=timeout_seconds,
+                    run=hermes_run,
+                )
+                if any(row.get("changed_keys") for row in verified_rows):
+                    raise ClientCatalogError(
+                        "Hermes profile verification still reports configuration drift"
+                    )
         except Exception:
             _restore_backup(backup)
             raise
 
+    hermes_restarted = False
+    if hermes_restart_pending:
+        restart_hermes = restart_hermes or (lambda: 1)
+        if restart_hermes() != 0:
+            if backup is not None:
+                _restore_backup(backup)
+                restart_hermes()
+            raise ClientCatalogError(
+                "Hermes profile reconciliation was restored after gateway restart failed"
+            )
+        hermes_restarted = True
+
     prior_hashes = prior_state.get("file_sha256")
     file_hashes = dict(prior_hashes) if isinstance(prior_hashes, Mapping) else {}
     file_hashes.update({name: _file_sha256(paths[name]) for name in desired})
+    file_hashes.update(
+        {
+            "hermes:" + profile: _file_sha256(path)
+            for profile, path in hermes_configs.items()
+        }
+    )
     state = {
         "config_sha256": catalog["config_sha256"],
         "file_sha256": file_hashes,
@@ -848,7 +1382,7 @@ def sync_clients(
     _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
 
     restarted = False
-    if restart_pending:
+    if openclaw_restart_pending:
         restart = restart or (lambda: 1)
         if restart() != 0:
             raise ClientCatalogError(
@@ -863,6 +1397,8 @@ def sync_clients(
         changed=changed,
         backup=backup,
         restarted=restarted,
+        hermes_rows=hermes_rows,
+        hermes_restarted=hermes_restarted,
         dry_run=False,
     )
 
@@ -871,5 +1407,7 @@ __all__ = [
     "ClientCatalogError",
     "fetch_client_catalog",
     "render_client_documents",
+    "render_hermes_profile_plan",
+    "plan_hermes_profiles",
     "sync_clients",
 ]
