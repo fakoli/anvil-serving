@@ -233,6 +233,12 @@ def tool_client_catalog_sync(args: dict) -> dict:
         False,
         name="restart_openclaw_on_change",
     )
+    restart_hermes_on_change = _arg_bool(
+        args.get("restart_hermes_on_change"),
+        False,
+        name="restart_hermes_on_change",
+    )
+    hermes_bin = _str_arg(args, "hermes_bin", "~/.local/bin/hermes")
     timeout_seconds = _bounded_int_arg(
         args, "timeout_seconds", 15, min_value=1, max_value=300
     )
@@ -247,6 +253,9 @@ def tool_client_catalog_sync(args: dict) -> dict:
             hermes_config=_str_arg(
                 args, "hermes_config", "~/.hermes/config.yaml"
             ),
+            hermes_bin=hermes_bin,
+            hermes_home=_str_arg(args, "hermes_home", "~/.hermes"),
+            hermes_profiles=_str_arg(args, "hermes_profiles", "") or None,
             pi_models=_str_arg(args, "pi_models", "~/.pi/agent/models.json"),
             pi_settings=_str_arg(args, "pi_settings", "~/.pi/agent/settings.json"),
             state_path=_str_arg(
@@ -258,11 +267,16 @@ def tool_client_catalog_sync(args: dict) -> dict:
                 "~/.anvil-serving/backups/client-catalog",
             ),
             restart_openclaw_on_change=restart_on_change,
+            restart_hermes_on_change=restart_hermes_on_change,
             dry_run=dry_run,
             confirm=confirm,
             timeout_seconds=timeout_seconds,
             restart=lambda: harness.cmd_restart_openclaw(
                 timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+            ),
+            restart_hermes=lambda: harness._restart_hermes_default(
+                hermes_bin=hermes_bin,
+                timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
             ),
         )
     except (OSError, ClientCatalogError) as exc:
@@ -401,7 +415,7 @@ FAMILY = ToolFamily(
         },
         "client_catalog_sync": {
             "description": (
-                "Reconcile local OpenClaw, Hermes, and Pi model limits from authenticated "
+                "Reconcile local OpenClaw, Hermes profiles, and Pi model limits from authenticated "
                 "router status and capability metadata. Requires confirm=true to write."
             ),
             "inputSchema": _schema(
@@ -411,11 +425,15 @@ FAMILY = ToolFamily(
                     "clients": {"type": "string"},
                     "openclaw_config": {"type": "string"},
                     "hermes_config": {"type": "string"},
+                    "hermes_bin": {"type": "string"},
+                    "hermes_home": {"type": "string"},
+                    "hermes_profiles": {"type": "string"},
                     "pi_models": {"type": "string"},
                     "pi_settings": {"type": "string"},
                     "state_path": {"type": "string"},
                     "backup_root": {"type": "string"},
                     "restart_openclaw_on_change": {"type": "boolean"},
+                    "restart_hermes_on_change": {"type": "boolean"},
                     "dry_run": {"type": "boolean"},
                     "confirm": {"type": "boolean"},
                     "timeout_seconds": _bounded_integer_schema(1, 300, 15),

@@ -34,7 +34,7 @@ in-process data-plane operation.
 | Command | Purpose |
 | --- | --- |
 | `harness sync openclaw` | Render, merge, or apply the OpenClaw provider integration. |
-| `harness sync clients` | Reconcile local OpenClaw and Pi limits from authenticated router metadata. |
+| `harness sync clients` | Reconcile local OpenClaw, isolated Hermes profiles, and Pi limits from authenticated router metadata. |
 | `harness restart openclaw` | Restart one local or remote OpenClaw gateway. |
 | `harness status openclaw` | Read bounded OpenClaw gateway status. |
 
@@ -132,11 +132,17 @@ For a model-swapping Mini, use the catalog reconciler on Mini itself:
 ```bash
 anvil-serving harness sync clients \
   --base-url https://router.example.ts.net/v1 \
+  --clients openclaw,hermes,pi \
+  --hermes-profiles all \
   --restart-openclaw-on-change \
+  --restart-hermes-on-change \
   --dry-run
 anvil-serving harness sync clients \
   --base-url https://router.example.ts.net/v1 \
+  --clients openclaw,hermes,pi \
+  --hermes-profiles all \
   --restart-openclaw-on-change \
+  --restart-hermes-on-change \
   --confirm
 ```
 
@@ -145,12 +151,29 @@ cross-checks `/v1/router/status` against `/v1/models/capabilities`, and refuses
 to write unless every routed tier declares both context and maximum output.
 The command preserves provider credentials, unrelated client configuration,
 and existing compaction policies; it verifies that compaction reserves fit the
-smallest selected model context. Changed files are atomically replaced only
-after a complete private backup bundle is created. State is keyed by the
+smallest selected model context. With `--hermes-profiles all`, every discovered
+Hermes profile is read through the Hermes CLI. Anvil-backed profiles receive
+their independently routed context, maximum output, `vision.general`, and
+compression-helper context. Their existing compaction threshold and target
+ratio must remain enabled and safe; profiles backed by other providers are
+reported but not modified. The command preserves provider credential
+references, aligns the legacy Anvil provider's selected text aliases, and
+removes stale alias metadata only inside the Anvil provider. It also removes
+the legacy `chat_template_kwargs` request override when present because the
+router contract does not accept that provider-specific field.
+Changed files are atomically replaced only after a complete private backup
+bundle is created. State is keyed by the
 router's secret-free config hash plus full client-file hashes, so repeated runs
 are no-ops while local drift is repaired. `--restart-openclaw-on-change`
 restarts the gateway at most once per router config hash and retries a failed
-restart on the next run.
+restart on the next run. `--restart-hermes-on-change` restarts only the default
+Hermes gateway and only when that active profile changed.
+
+Hermes profiles have independent environment files. The catalog reconciler
+never copies credential values between them. Before acceptance, authenticate a
+metadata-only router probe from each profile's own environment and require the
+expected success status; a fallback-produced answer is not proof that the
+profile reached Anvil.
 
 ## MCP
 

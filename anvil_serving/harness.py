@@ -390,16 +390,39 @@ def cmd_status_openclaw(**kwargs):
     return 0 if result["ok"] else 1
 
 
+def _restart_hermes_default(*, hermes_bin, timeout_seconds):
+    try:
+        return subprocess.run(
+            [
+                os.path.expanduser(hermes_bin),
+                "-p",
+                "default",
+                "gateway",
+                "restart",
+            ],
+            capture_output=True,
+            timeout=timeout_seconds,
+        ).returncode
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return 1
+
+
 def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
                      clients="openclaw,pi",
                      openclaw_config="~/.openclaw/openclaw.json",
                      hermes_config="~/.hermes/config.yaml",
+                     hermes_bin="~/.local/bin/hermes",
+                     hermes_home="~/.hermes",
+                     hermes_profiles=None,
                      pi_models="~/.pi/agent/models.json",
                      pi_settings="~/.pi/agent/settings.json",
                      state_path="~/.anvil-serving/state/client-catalog.json",
                      backup_root="~/.anvil-serving/backups/client-catalog",
-                     restart_openclaw_on_change=False, dry_run=True, confirm=False,
-                     timeout_seconds=15, _opener=None, _restart=None, _environ=None):
+                     restart_openclaw_on_change=False,
+                     restart_hermes_on_change=False,
+                     dry_run=True, confirm=False, timeout_seconds=15,
+                     _opener=None, _restart=None, _restart_hermes=None,
+                     _hermes_run=subprocess.run, _environ=None):
     """Reconcile Mini clients from authenticated router model metadata."""
     from .client_catalog_sync import ClientCatalogError, sync_clients
 
@@ -410,16 +433,22 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
             clients=clients,
             openclaw_config=openclaw_config,
             hermes_config=hermes_config,
+            hermes_bin=hermes_bin,
+            hermes_home=hermes_home,
+            hermes_profiles=hermes_profiles,
             pi_models=pi_models,
             pi_settings=pi_settings,
             state_path=state_path,
             backup_root=backup_root,
             restart_openclaw_on_change=restart_openclaw_on_change,
+            restart_hermes_on_change=restart_hermes_on_change,
             dry_run=dry_run,
             confirm=confirm,
             timeout_seconds=timeout_seconds,
             opener=_opener,
             restart=_restart,
+            restart_hermes=_restart_hermes,
+            hermes_run=_hermes_run,
             environ=_environ,
         )
     except (OSError, ClientCatalogError) as exc:
@@ -453,11 +482,18 @@ def _build_parser():
     )
     clients.add_argument("--openclaw-config", default="~/.openclaw/openclaw.json")
     clients.add_argument("--hermes-config", default="~/.hermes/config.yaml")
+    clients.add_argument("--hermes-bin", default="~/.local/bin/hermes")
+    clients.add_argument("--hermes-home", default="~/.hermes")
+    clients.add_argument(
+        "--hermes-profiles",
+        help="'all' or comma-separated profile names; enables profile-aware Hermes sync",
+    )
     clients.add_argument("--pi-models", default="~/.pi/agent/models.json")
     clients.add_argument("--pi-settings", default="~/.pi/agent/settings.json")
     clients.add_argument("--state-path", default="~/.anvil-serving/state/client-catalog.json")
     clients.add_argument("--backup-root", default="~/.anvil-serving/backups/client-catalog")
     clients.add_argument("--restart-openclaw-on-change", action="store_true")
+    clients.add_argument("--restart-hermes-on-change", action="store_true")
     clients.add_argument("--dry-run", action="store_true")
     clients.add_argument("--timeout-seconds", type=int, default=15)
     restart = actions.add_parser("restart").add_subparsers(dest="target", required=True).add_parser("openclaw")
@@ -481,16 +517,24 @@ def main(argv=None):
                 clients=args.clients,
                 openclaw_config=args.openclaw_config,
                 hermes_config=args.hermes_config,
+                hermes_bin=args.hermes_bin,
+                hermes_home=args.hermes_home,
+                hermes_profiles=args.hermes_profiles,
                 pi_models=args.pi_models,
                 pi_settings=args.pi_settings,
                 state_path=args.state_path,
                 backup_root=args.backup_root,
                 restart_openclaw_on_change=args.restart_openclaw_on_change,
+                restart_hermes_on_change=args.restart_hermes_on_change,
                 dry_run=args.dry_run,
                 confirm=guard.confirmation_authorized(),
                 timeout_seconds=args.timeout_seconds,
                 _restart=lambda: cmd_restart_openclaw(
                     timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+                ),
+                _restart_hermes=lambda: _restart_hermes_default(
+                    hermes_bin=args.hermes_bin,
+                    timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
                 ),
             )
         return cmd_sync_openclaw(args.config, out=args.out, base_url=args.base_url,
