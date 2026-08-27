@@ -393,6 +393,7 @@ def cmd_status_openclaw(**kwargs):
 def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
                      clients="openclaw,pi",
                      openclaw_config="~/.openclaw/openclaw.json",
+                     hermes_config="~/.hermes/config.yaml",
                      pi_models="~/.pi/agent/models.json",
                      pi_settings="~/.pi/agent/settings.json",
                      state_path="~/.anvil-serving/state/client-catalog.json",
@@ -408,6 +409,7 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
             api_key_env=api_key_env,
             clients=clients,
             openclaw_config=openclaw_config,
+            hermes_config=hermes_config,
             pi_models=pi_models,
             pi_settings=pi_settings,
             state_path=state_path,
@@ -447,9 +449,10 @@ def _build_parser():
     clients.add_argument(
         "--clients",
         default="openclaw,pi",
-        help="comma-separated clients to reconcile: openclaw, pi, or both",
+        help="comma-separated clients to reconcile: openclaw, hermes, pi",
     )
     clients.add_argument("--openclaw-config", default="~/.openclaw/openclaw.json")
+    clients.add_argument("--hermes-config", default="~/.hermes/config.yaml")
     clients.add_argument("--pi-models", default="~/.pi/agent/models.json")
     clients.add_argument("--pi-settings", default="~/.pi/agent/settings.json")
     clients.add_argument("--state-path", default="~/.anvil-serving/state/client-catalog.json")
@@ -477,6 +480,7 @@ def main(argv=None):
                 api_key_env=args.api_key_env,
                 clients=args.clients,
                 openclaw_config=args.openclaw_config,
+                hermes_config=args.hermes_config,
                 pi_models=args.pi_models,
                 pi_settings=args.pi_settings,
                 state_path=args.state_path,

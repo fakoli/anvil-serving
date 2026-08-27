@@ -35,6 +35,14 @@
     "tool_result_continuation_passed": true,
     "responses_api_passed": true,
     "responses_exact_output": "READY",
+    "client_catalog": {
+      "alias": "llm.primary",
+      "context_tokens": 262144,
+      "max_output_tokens": 8192,
+      "openclaw": "matched",
+      "hermes": "matched",
+      "pi": "matched"
+    },
     "real_clients": {
       "openclaw": "passed",
       "hermes": "passed",
@@ -87,7 +95,7 @@
     "The pinned sparse-attention FA4 CuTe path failed MLIR compilation on SM120; the qualified lane uses SGLang's device-agnostic QSA sparse decoder.",
     "The first long-tool generator undershot 100000 measured prompt tokens; a calibrated 125000-target rerun passed at 105756 measured tokens.",
     "Router admission originally rejected an exact upstream context contract and the Responses adapter rejected a bounded thinking control; both product defects were fixed and regression-tested.",
-    "Hermes credential drift and Pi's missing Anvil provider/environment-key reference were repaired, then all three real Mini clients passed without fallback."
+    "Hermes credential drift and a stale 393216-token model override, plus Pi's missing Anvil provider/environment-key reference, were repaired; all three clients now match the 262144/8192 router contract and passed without fallback."
   ],
   "publication": {
     "raw_operator_artifacts": "retained outside the public repository",

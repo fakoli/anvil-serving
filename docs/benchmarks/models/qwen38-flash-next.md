@@ -28,7 +28,7 @@ Two RTX PRO 6000 Blackwell Max-Q cards under WSL2, assigned exclusively to one
 TP=2 owner over PCIe without NVLink. Aggregate VRAM is 192 GB but is not
 unified memory. The engine reported a 416,064-token KV pool.
 
-## Qualified recipe
+## Engine, quantization, KV, context, and concurrency recipe
 
 The [262K recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-flash-next-radixark-nvfp4-sglang-tp2-262k-recipe.toml)
 pins the exact weights and image. It uses page size 64, extra-buffer GDN
@@ -62,7 +62,7 @@ not generic SGLang guidance.
 See the [dated promotion record](../../findings/2026-08-26-qwen38-flash-next-promotion.md)
 and [sanitized evidence](../../findings/2026-08-26-qwen38-flash-next-promotion-evidence/summary.json).
 
-## Decision boundary
+## Decision and promotion state
 
 This is the current text Primary reference for the exact promoted operator
 profile. The 253,952-plus-8,192 client envelope and concurrency-one admission
@@ -74,7 +74,21 @@ failure and performance evidence when evaluating a future FA4, graph, PLE,
 or speculative-decoding lane; none can inherit this promotion without its own
 matched functional, quality, capacity, and client gates.
 
-## Dated history
+## Failures and gotchas
+
+- The pinned symmetric-memory logits path failed on SM120/WSL2; the qualified
+  recipe uses the exact-revision NCCL fallback.
+- The pinned FA4 CuTe sparse decoder failed MLIR compilation; the qualified
+  lane uses SGLang's device-agnostic QSA decoder and records its lower decode
+  performance.
+- The first long-tool generator undershot 100K measured tokens and was rerun
+  with a calibrated prompt. That failed attempt is not counted as a pass.
+- Exact-context router admission, Responses bounded-thinking translation,
+  Hermes catalog drift, and Pi provider seeding were fixed forward before the
+  final client acceptance. These product/configuration fixes do not broaden
+  the model qualification beyond the recorded text Primary contract.
+
+## Dated run history
 
 | Date | Event | Result |
 |---|---|---|
