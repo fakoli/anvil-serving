@@ -33,23 +33,27 @@ Read `references/evidence-contract.md` before starting.
 7. Diagnose startup failures down-stack: caller, product status/logs, container
    exit/health, then engine/model-download error. Retain the earliest actionable
    error.
-8. For missing hardware-specific MoE/GEMM config warnings or measured kernel
+8. For a hardware-gated upstream kernel patch, pin the upstream commit, verify
+   the exact source and result hashes, and fail startup unless the required
+   symbol imports or the engine logs prove the intended path loaded. Treat the
+   patch as an exact recipe artifact, not generic runtime guidance.
+9. For missing hardware-specific MoE/GEMM config warnings or measured kernel
    bottlenecks, use `skills/anvil-serving-kernel-tuning/SKILL.md`. Do not
    recommend a generated tune without the identical untuned-versus-tuned A/B.
-9. Run thinking-disabled functional gates first. Use default thinking only as a
+10. Run thinking-disabled functional gates first. Use default thinking only as a
    bounded diagnostic lane.
-10. Run capacity at declared context/concurrency points. Keep at least the
+11. Run capacity at declared context/concurrency points. Keep at least the
    campaign’s output/reasoning headroom.
-11. For images/video, run direct endpoint preflight and
+12. For images/video, run direct endpoint preflight and
     `eval benchmark multimodal` before router work. If direct `video_url` fails,
     publish the failure and stop routed video qualification.
-12. If direct video passes, verify same-dialect preservation, fail-closed
+13. If direct video passes, verify same-dialect preservation, fail-closed
     unsupported translation, admission/count/token limits, streaming, tools,
     malformed media, and an isolated router configuration.
-13. A profile passes only with exact identity, all deterministic assertions,
+14. A profile passes only with exact identity, all deterministic assertions,
     visible answers, allowed finish reasons, matching media hashes, valid
     tools, and no OOM/parser corruption.
-14. Restore the exact starting serve/router state. Re-run focused and full
+15. Restore the exact starting serve/router state. Re-run focused and full
     repository gates, then publish raw artifacts, a dated finding, and a
     precision/modality decision table.
 
@@ -57,6 +61,11 @@ Read `references/evidence-contract.md` before starting.
 
 - Separate official/community claims from locally measured results.
 - Compare quantized profiles only after every hard gate passes.
+- Compare speculation to an otherwise identical no-speculation control. Keep
+  model, revision, image, patch, TP, context, concurrency, KV dtype, memory
+  fraction, backends, batching, graph capture, transport, parsers, and offload
+  policy fixed; do not inherit a KV dtype already known to fail that hardware
+  path.
 - Prefer a quant only when it meets the campaign’s declared memory or
   throughput improvement threshold relative to the next higher precision.
 - Limit a known-crashing vision quant to a text-only role; do not infer future

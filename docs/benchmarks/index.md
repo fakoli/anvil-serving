@@ -46,7 +46,8 @@ commands; it does not claim a live model result by itself.
 
 1. **RadixArk Qwen3.8 Flash Next NVFP4** — `current` text Primary at 262,144
    tokens in exclusive TP=2 across both RTX PRO 6000 cards, with router
-   concurrency one and a 253,952-plus-8,192 client envelope.
+   concurrency one, a 253,952-plus-8,192 client envelope, and the qualified
+   hash-gated SM120 QSA-fast MTP3 profile.
 2. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
    Primary profiles with retained TP=2 long-context, performance, quality, and
    real-client evidence.
@@ -63,12 +64,14 @@ commands; it does not claim a live model result by itself.
    direct 128K text/tools/image/OCR/video evidence, no route or promotion.
 
 On 2026-08-26, after the explicit human gate, the exact RadixArk Qwen3.8 Flash
-Next NVFP4 revision became the text Primary at TP=2/262K/c1. Direct and routed
-retrieval passed at 253,325 prompt tokens while retaining an 8,192-token output
-reserve; routed tools 20/20, Responses, repeated bounded quality, and real
-OpenClaw/Hermes/Pi acceptance passed. See the
+Next NVFP4 revision became the text Primary at TP=2/262K/c1 and was then fixed
+forward to the hash-gated PR #36556 SM120 QSA fast path with matched MTP3
+`3/1/4`. MTP3 passed the full-reserve request, tools 20/20, bounded quality
+12/12, exact routed identity, and fresh OpenClaw/Hermes/Pi acceptance. It
+measured 154.9 tok/s at 4K and 134.1 at 128K, 2.33x and 1.93x the matched
+no-speculation decode rates. See the
 [Qwen3.8 Flash Next dossier](models/qwen38-flash-next.md) and
-[promotion record](../findings/2026-08-26-qwen38-flash-next-promotion.md).
+[QSA-fast promotion record](../findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md).
 
 On 2026-08-16, after the explicit human gate, the exact digest-pinned r15
 TP=2/393K profile became the text Primary at that date. A matched control measured K5 at

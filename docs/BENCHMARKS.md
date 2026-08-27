@@ -11,6 +11,8 @@
 The maintained text deployment is RadixArk Qwen3.8 Flash Next NVFP4 at
 exclusive TP=2/262,144 across both equal cards, router concurrency one, and a
 client contract of 253,952 prompt tokens plus an 8,192-token output reserve.
+The current runtime profile is the hash-gated SGLang PR #36556 SM120 QSA fast
+path with matched NEXTN/MTP3 `3/1/4`.
 The former DeepSeek V4 Flash 0731 Infernal Invocation r18 1M and r15 393K deployments and
 official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
 retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
@@ -26,7 +28,25 @@ This page is the public, searchable summary of the model and end-to-end benchmar
 
 The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-26**.
 
-## Qwen3.8 Flash Next NVFP4 262K promotion (2026-08-26)
+## Qwen3.8 Flash Next QSA-fast MTP3 fix-forward promotion (2026-08-26)
+
+The exact RadixArk revision and digest-pinned SGLang image were fixed forward
+from the same-day portable-QSA profile to the hash-gated PR #36556 SM120 QSA
+fast path. A matched no-speculation/MTP3 `3/1/4` A/B kept TP=2, 262,144
+context, concurrency one, BF16 KV, backends, graph cap, transport, parsers, and
+offload policy fixed. Both arms passed the direct functional suite, 128K and
+full-reserve capacity, tools 20/20, and bounded quality 12/12.
+
+MTP3 measured 154.9 tok/s decode at 4K, 134.1 at 128K, and 102.0 on a
+253,703-actual-prompt-token request with an 8,192-token output request. Those
+4K/128K rates are 2.33x/1.93x the matched no-speculation control and
+12.1x/10.7x the former portable-QSA lane. A fresh synchronized-client run then
+passed Hermes, Pi, and OpenClaw through `llm.primary`; Pi and OpenClaw reported
+the 262,144-token catalog contract and no fallback occurred. This is now the
+human-authorized text Primary; multimodal remains unpromoted. See the
+[QSA-fast promotion finding](findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md).
+
+## Initial Qwen3.8 Flash Next NVFP4 262K promotion (2026-08-26)
 
 The exact RadixArk ModelOpt NVFP4 revision `7b719225` was qualified through a
 digest-pinned SGLang image on both RTX PRO 6000 cards at exclusive TP=2,
@@ -43,8 +63,10 @@ completed 4/4 but queued behind the one-running-request scheduler, so the
 promoted admission contract remains c1. Real OpenClaw, Hermes, and Pi turns
 selected the Primary and completed without fallback after credential drift and
 Pi provider/env-reference defects were repaired. The human-authorized
-fix-forward promotion is complete; DeepSeek is now retained historical
-evidence. See the [promotion finding](findings/2026-08-26-qwen38-flash-next-promotion.md).
+initial promotion completed and DeepSeek became retained historical evidence.
+This portable-QSA lane was superseded later the same day by the QSA-fast MTP3
+fix-forward profile above. See the
+[initial promotion finding](findings/2026-08-26-qwen38-flash-next-promotion.md).
 
 ## Qwen3.8 27B GGUF 250K qualification on RTX 5090 (2026-08-21)
 
