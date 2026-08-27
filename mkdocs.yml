@@ -116,6 +116,7 @@ nav:
               - Gemma 4 E4B Fast: benchmarks/models/gemma4-e4b.md
       - Run catalog: benchmarks/runs.md
       - Methodology & evidence rules: benchmarks/methodology.md
+      - Finding publication format: benchmarks/finding-format.md
       - Evaluation & benchmark commands: cli/eval.md
       - External benchmarks: EXTERNAL-BENCHMARKS.md
       - Findings index: findings/README.md

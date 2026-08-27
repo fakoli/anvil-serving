@@ -26,6 +26,10 @@ measurement, configuration, or conclusion.
 
 - Add and index a sanitized dated narrative with the exact revision/configuration, topology,
   method, evidence type, result, failures, and caveats.
+- For local functional, capacity, or quality results, add the result card and companion
+  publication summary defined by the [finding format](../benchmarks/finding-format.md).
+  Platform copy remains derivative; it never replaces the finding, raw evidence, or promotion
+  gate.
 - Keep only the bounded raw JSON/CSV/text needed to audit the claim. Each new raw file must be at
   most 1 MiB, and all checked-in raw evidence from one experiment, qualification, promotion, or
   evidence packet must total at most 5 MiB. Splitting paths or narratives does not reset the limit.
