@@ -23,7 +23,7 @@ router and unrelated inference services were not changed
 | Models | FLUX.2 Klein 4B FP8 plus Qwen3 4B encoder and FLUX.2 VAE; Wan2.2 TI2V 5B FP16 plus UMT5 FP8 encoder and Wan2.2 VAE; exact revisions and SHA-256 identities in the evidence |
 | Hardware | one NVIDIA GeForce RTX 5090, 32,607 MiB, sm_120; isolated Windows 11 / Docker Desktop / WSL2 lane |
 | Runtime | ComfyUI v0.33.4 at `7a131a3a`; digest-pinned base; CUDA 13.0; PyTorch 2.13.0+cu130; exact curated custom-node revisions |
-| Managed recipes | [`Dockerfile.comfyui`](../../examples/fakoli-dark/Dockerfile.comfyui), [`serves.comfyui.toml`](../../examples/fakoli-dark/serves.comfyui.toml), and [workflow bundle](../../configs/media/workflows/registry.json) |
+| Managed recipes | `examples/fakoli-dark/Dockerfile.comfyui`, `examples/fakoli-dark/serves.comfyui.toml`, and `configs/media/workflows/registry.json` |
 | Measurement path | direct loopback managed ComfyUI; qualification-only durable jobs; cold model load; c1; no router or agent client |
 | Contracts | image 512×512 / four steps; video 512×288 / 17 frames / eight steps / 16 fps |
 | Evidence | `functional`, `capacity`; exact model/runtime compatibility and format decoding pass |
