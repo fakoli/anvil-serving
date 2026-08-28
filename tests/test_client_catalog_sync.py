@@ -783,6 +783,7 @@ def test_hermes_media_sync_installs_scoped_mcp_and_packaged_skill_idempotently(
         "hermes:anvil-primary",
     ]
     assert preview["dryRun"] is True
+    assert preview["tokenEnv"] == "ANVIL_ROUTER_TOKEN"
     assert not skill_path.exists()
     assert runner.sets == []
 
@@ -809,7 +810,7 @@ def test_hermes_media_sync_installs_scoped_mcp_and_packaged_skill_idempotently(
     assert server == runner.servers["anvil-primary"]
     assert server["args"][3] == "${ANVIL_MEDIA_MCP_URL}"
     assert server["env"] == {
-        "ANVIL_CONTROLLER_TOKEN": "${ANVIL_CONTROLLER_TOKEN}"
+        "ANVIL_ROUTER_TOKEN": "${ANVIL_ROUTER_TOKEN}"
     }
     assert server["tools"]["resources"] is False
     assert server["tools"]["prompts"] is False

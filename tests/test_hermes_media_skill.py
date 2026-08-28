@@ -58,7 +58,8 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
         if token.startswith("mcp__anvil_media__media_")
     }
     assert referenced == PUBLIC_TOOLS
-    assert "${ANVIL_CONTROLLER_TOKEN}" in config
+    assert "${ANVIL_ROUTER_TOKEN}" in config
+    assert "${ANVIL_CONTROLLER_TOKEN}" not in config
     assert "${ANVIL_MEDIA_MCP_URL}" in config
     assert "Bearer " not in config
     assert "media_worker_" not in text

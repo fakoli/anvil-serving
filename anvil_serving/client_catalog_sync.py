@@ -1383,7 +1383,7 @@ def sync_hermes_media(
     backup_root: str = DEFAULT_HERMES_MEDIA_BACKUP_ROOT,
     anvil_command: str = "anvil-serving",
     mcp_url_env: str = "ANVIL_MEDIA_MCP_URL",
-    token_env: str = "ANVIL_CONTROLLER_TOKEN",
+    token_env: str = "ANVIL_ROUTER_TOKEN",
     restart_hermes_on_change: bool = False,
     dry_run: bool = True,
     confirm: bool = False,
