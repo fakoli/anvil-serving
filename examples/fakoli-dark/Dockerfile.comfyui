@@ -56,7 +56,7 @@ RUN mkdir -p /opt/anvil \
 COPY install-comfyui-node.sh /opt/anvil/install-comfyui-node.sh
 
 RUN echo "${INSTALLER_SHA256}  /opt/anvil/install-comfyui-node.sh" | sha256sum --check --strict \
-    && test "$(git -c safe.directory=/app -C /app rev-parse HEAD)" = "$COMFYUI_IMAGE_REV"
+    && test "$(git -c safe.directory=/app -C /app rev-parse HEAD)" = "$COMFYUI_RELEASE_REV"
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     sh /opt/anvil/install-comfyui-node.sh comfyui-manager https://github.com/Comfy-Org/ComfyUI-Manager.git "$COMFYUI_MANAGER_REV" "$COMFYUI_MANAGER_REQUIREMENTS_SHA256"
