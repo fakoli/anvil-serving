@@ -12,6 +12,7 @@ from anvil_serving.media.comfyui import WorkflowCompatibility
 from anvil_serving.media.contracts import JobState, ParameterBinding, ParameterSpec, RenderedWorkflow, WorkflowDescriptor
 from anvil_serving.media.errors import MediaError
 from anvil_serving.media.jobs import MediaJobStore
+from anvil_serving.media.lifecycle import MediaWorkerLifecycle
 from anvil_serving.media.operations import MediaOperations
 from anvil_serving.media.workflows import canonical_digest
 
@@ -264,6 +265,188 @@ def test_retry_recovers_crash_before_cold_worker_preview(tmp_path):
     assert recovered["created"] is False
     assert recovered["job"]["state"] == JobState.AWAITING_APPROVAL.value
     assert preview_calls == [(accepted.id, "hermes", "media-worker")]
+    assert backend.submissions == 0
+
+
+def test_failed_approved_cold_start_can_issue_a_fresh_approval(tmp_path):
+    class UnavailableBackend(_Backend):
+        def compatibility(self, workflow):
+            raise MediaError(
+                "backend_unavailable",
+                "backend unavailable",
+                status=503,
+            )
+
+    backend = UnavailableBackend()
+
+    def preview(_job_id, _principal, service):
+        return {
+            "transactionId": "fresh-preview-transaction",
+            "service": service,
+            "action": "prepare",
+            "humanRequired": True,
+            "manifest": "serves.comfyui.toml",
+        }
+
+    operations = MediaOperations(
+        _Registry(),
+        MediaJobStore(tmp_path / "jobs.sqlite3"),
+        ArtifactStore(tmp_path / "artifacts"),
+        lifecycle_preview=preview,
+    )
+    job, _ = operations.jobs.create(
+        principal="hermes",
+        workflow_id="image.test",
+        workflow_version="v1",
+        input_digest=canonical_digest({"prompt": "mountain"}),
+        idempotency_key="failed-cold-start",
+    )
+    operations.jobs.transition(
+        job.id,
+        JobState.PREPARING,
+        principal="hermes",
+        reason="approved_start_failed",
+    )
+
+    retried = operations.workflow_run(
+        "image.test",
+        "v1",
+        {"prompt": "mountain"},
+        principal="hermes",
+        idempotency_key="failed-cold-start",
+        backend=backend,
+    )
+
+    assert retried["created"] is False
+    assert retried["job"]["id"] == job.id
+    assert retried["job"]["state"] == JobState.AWAITING_APPROVAL.value
+    assert retried["job"]["approval"]["transactionId"] == (
+        "fresh-preview-transaction"
+    )
+    assert backend.submissions == 0
+
+
+def test_inflight_cold_start_does_not_mint_a_second_approval(tmp_path):
+    backend = _ColdBackend()
+
+    def preview(_job_id, _principal, service):
+        return {
+            "transactionId": "inflight-transaction",
+            "service": service,
+            "action": "prepare",
+            "humanRequired": False,
+            "manifest": "serves.comfyui.toml",
+        }
+
+    operations = MediaOperations(
+        _Registry(),
+        MediaJobStore(tmp_path / "jobs.sqlite3"),
+        ArtifactStore(tmp_path / "artifacts"),
+        lifecycle_preview=preview,
+    )
+    job, _ = operations.jobs.create(
+        principal="hermes",
+        workflow_id="image.test",
+        workflow_version="v1",
+        input_digest=canonical_digest({"prompt": "mountain"}),
+        idempotency_key="inflight-cold-start",
+    )
+    operations.jobs.transition(
+        job.id,
+        JobState.PREPARING,
+        principal="hermes",
+        reason="approved_start_inflight",
+    )
+
+    retried = operations.workflow_run(
+        "image.test",
+        "v1",
+        {"prompt": "mountain"},
+        principal="hermes",
+        idempotency_key="inflight-cold-start",
+        backend=backend,
+    )
+
+    assert retried["job"]["state"] == JobState.PREPARING.value
+    assert "approval" not in retried["job"]
+    assert backend.submissions == 0
+
+
+def test_operations_refresh_real_failed_lifecycle_approval(tmp_path):
+    backend = _ColdBackend()
+    store = MediaJobStore(tmp_path / "jobs.sqlite3")
+    mutation_calls = []
+
+    def status(_args):
+        return {
+            "ok": True,
+            "result": {
+                "serves": [
+                    {
+                        "name": "media-worker",
+                        "running": False,
+                        "health_status": None,
+                    }
+                ]
+            },
+        }
+
+    def manage(args):
+        if args["dry_run"]:
+            return {"applied": False, "plan": ["managed-serve-up"]}
+        mutation_calls.append(dict(args))
+        raise RuntimeError("managed start failed")
+
+    lifecycle = MediaWorkerLifecycle(
+        store,
+        status_operation=status,
+        manage_operation=manage,
+    )
+    operations = MediaOperations(
+        _Registry(),
+        store,
+        ArtifactStore(tmp_path / "artifacts"),
+        lifecycle_preview=lambda job_id, principal, service: lifecycle.prepare(
+            job_id,
+            principal=principal,
+            service=service,
+            manifest="serves.comfyui.toml",
+        ).as_dict(),
+    )
+    waiting = operations.workflow_run(
+        "image.test",
+        "v1",
+        {"prompt": "mountain"},
+        principal="hermes",
+        idempotency_key="real-failed-cold-start",
+        backend=backend,
+    )
+    first_transaction = waiting["job"]["approval"]["transactionId"]
+
+    with pytest.raises(RuntimeError, match="managed start failed"):
+        lifecycle.prepare(
+            waiting["job"]["id"],
+            principal="hermes",
+            service="media-worker",
+            manifest="serves.comfyui.toml",
+            transaction_id=first_transaction,
+            confirm=True,
+            human_approved=True,
+        )
+
+    retried = operations.workflow_run(
+        "image.test",
+        "v1",
+        {"prompt": "mountain"},
+        principal="hermes",
+        idempotency_key="real-failed-cold-start",
+        backend=backend,
+    )
+
+    assert retried["job"]["id"] == waiting["job"]["id"]
+    assert retried["job"]["state"] == JobState.AWAITING_APPROVAL.value
+    assert retried["job"]["approval"]["transactionId"] != first_transaction
+    assert len(mutation_calls) == 1
     assert backend.submissions == 0
 
 
