@@ -82,6 +82,7 @@ import urllib.request
 import urllib.error
 
 from .paths import config_path, resolve_topology_path, runtime_url
+from .operator_output import redact
 
 try:
     import tomllib  # Python 3.11+
@@ -102,6 +103,30 @@ SERVE_PROFILES_SCHEMA = "anvil-serving/serve-profiles/v1"
 
 # States meaning the container exists but is already stopped (nothing to free).
 _STOPPED = ("exited", "created", "dead")
+_MAX_COMMAND_FAILURE_CHARS = 8192
+
+
+def _command_failure_text(result, env=None):
+    """Return a bounded, redacted tail from a failed lifecycle command.
+
+    Compose/BuildKit puts the actionable build failure at the end of a long
+    progress stream.  Keeping the tail makes ``serves up`` useful even when no
+    container exists yet for ``serves logs`` while preventing an unbounded or
+    credential-bearing subprocess transcript from reaching operator output.
+    """
+    raw = str(result.stderr or result.stdout or "command returned non-zero").strip()
+    secret_values = tuple(
+        str(value)
+        for name, value in (env or {}).items()
+        if value and re.search(r"(?i)(?:credential|password|secret|token|key)", str(name))
+    )
+    safe = str(redact(raw, secrets=secret_values))
+    if len(safe) <= _MAX_COMMAND_FAILURE_CHARS:
+        return safe
+    return "...[truncated to final %d characters]...\n%s" % (
+        _MAX_COMMAND_FAILURE_CHARS,
+        safe[-_MAX_COMMAND_FAILURE_CHARS:],
+    )
 
 
 def _record_lifecycle_event(kind, payload):
@@ -4219,7 +4244,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
         for step in steps:
             r = _run(step, capture_output=True, text=True, env=env)
             if r.returncode != 0:
-                print("  FAILED: %s" % (r.stderr or r.stdout or "").strip())
+                print("  FAILED: %s" % _command_failure_text(r, env))
                 rc = 1
                 break
         else:
