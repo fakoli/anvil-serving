@@ -266,6 +266,11 @@ def validate_schema_value(
             f"{field!r} must have type {expected}",
         )
     if isinstance(value, str):
+        if len(value) < int(schema_value.get("minLength", 0)):
+            raise ToolError(
+                "bad_argument",
+                f"{field!r} is shorter than its length limit",
+            )
         if len(value) > int(schema_value.get("maxLength", MAX_SCHEMA_STRING)):
             raise ToolError(
                 "bad_argument",
@@ -298,6 +303,34 @@ def validate_schema_value(
         if isinstance(item_schema, Mapping):
             for index, item in enumerate(value):
                 validate_schema_value(item, item_schema, f"{field}[{index}]")
+    if isinstance(value, Mapping):
+        if len(value) > int(schema_value.get("maxProperties", MAX_SCHEMA_ITEMS)):
+            raise ToolError(
+                "bad_argument",
+                f"{field!r} contains too many properties",
+            )
+        properties = schema_value.get("properties", {})
+        if isinstance(properties, Mapping):
+            unknown = sorted(set(value) - set(properties))
+            if unknown and schema_value.get("additionalProperties") is False:
+                raise ToolError(
+                    "bad_argument",
+                    f"{field!r} contains unknown properties",
+                    {"fields": unknown},
+                )
+            missing = [
+                name for name in schema_value.get("required", []) if name not in value
+            ]
+            if missing:
+                raise ToolError(
+                    "missing_argument",
+                    f"{field!r} is missing required properties",
+                    {"fields": missing},
+                )
+            for name, item in value.items():
+                child = properties.get(name)
+                if isinstance(child, Mapping):
+                    validate_schema_value(item, child, f"{field}.{name}")
     if isinstance(value, float) and not math.isfinite(value):
         raise ToolError(
             "bad_argument",

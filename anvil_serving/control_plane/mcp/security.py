@@ -7,6 +7,9 @@ import os
 import re
 import socket
 import urllib.parse
+import contextvars
+from contextlib import contextmanager
+from dataclasses import dataclass
 from collections.abc import Mapping
 from typing import Any
 
@@ -14,6 +17,61 @@ from ...operator_output import redact
 from ...paths import runtime_url
 from ..controller.security import _is_safe_private_ip, _is_tailscale_ip
 from .errors import ToolError
+
+
+MEDIA_SCOPES = frozenset(
+    {"media:read", "media:submit", "media:cancel", "media:cross-principal", "operator:media"}
+)
+
+
+@dataclass(frozen=True)
+class CallerContext:
+    principal: str
+    scopes: frozenset[str]
+
+
+_CALLER_CONTEXT: contextvars.ContextVar[CallerContext | None] = contextvars.ContextVar(
+    "anvil_mcp_caller_context", default=None
+)
+
+
+def normalize_caller_context(value: Mapping[str, Any] | None) -> CallerContext | None:
+    if value is None:
+        return None
+    principal = value.get("principal")
+    scopes = value.get("scopes")
+    if (
+        not isinstance(principal, str)
+        or not principal
+        or len(principal) > 128
+        or not isinstance(scopes, (list, tuple, set, frozenset))
+        or any(not isinstance(scope, str) or not scope or len(scope) > 128 for scope in scopes)
+    ):
+        raise ToolError("invalid_caller_context", "authenticated caller context is invalid")
+    return CallerContext(principal, frozenset(scopes))
+
+
+@contextmanager
+def caller_context(value: Mapping[str, Any] | None):
+    normalized = normalize_caller_context(value)
+    token = _CALLER_CONTEXT.set(normalized)
+    try:
+        yield normalized
+    finally:
+        _CALLER_CONTEXT.reset(token)
+
+
+def require_scope(scope: str) -> CallerContext:
+    caller = _CALLER_CONTEXT.get()
+    if caller is None:
+        raise ToolError("authentication_required", "authenticated media caller context is required")
+    if scope not in caller.scopes and "operator:media" not in caller.scopes:
+        raise ToolError(
+            "scope_denied",
+            "caller is not authorized for this media operation",
+            {"requiredScope": scope},
+        )
+    return caller
 
 
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")

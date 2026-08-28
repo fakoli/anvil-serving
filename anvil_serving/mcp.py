@@ -117,11 +117,29 @@ def _target_context(value: Any) -> dict[str, Any]:
     )
 
 
-def list_tools() -> list[dict]:
-    return _list_catalog_tools(TOOLS, TARGET_CONTEXT_SCHEMA)
+def list_tools(
+    *,
+    caller: Mapping[str, Any] | None = None,
+    audience: str | None = None,
+) -> list[dict]:
+    scopes = None
+    if caller is not None:
+        raw_scopes = caller.get("scopes", ())
+        scopes = frozenset(raw_scopes) if isinstance(raw_scopes, (list, tuple, set, frozenset)) else frozenset()
+    return _list_catalog_tools(
+        TOOLS,
+        TARGET_CONTEXT_SCHEMA,
+        granted_scopes=scopes,
+        audience=audience,
+    )
 
 
-def call_tool(name: str, arguments: Optional[dict] = None) -> dict:
+def call_tool(
+    name: str,
+    arguments: Optional[dict] = None,
+    *,
+    caller: Mapping[str, Any] | None = None,
+) -> dict:
     return _call_catalog_tool(
         TOOLS,
         name,
@@ -129,6 +147,7 @@ def call_tool(name: str, arguments: Optional[dict] = None) -> dict:
         validate_arguments=validate_tool_arguments,
         fail=_fail,
         redact_text=_redact_text,
+        caller=caller,
     )
 
 
