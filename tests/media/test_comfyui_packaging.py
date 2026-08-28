@@ -76,6 +76,8 @@ def test_workflow_bundle_and_required_model_identities_are_pinned():
         descriptor = _json(descriptor_path)
         if descriptor.get("schema") != "anvil-serving.media-workflow/v1":
             continue
+        assert descriptor["available"] is False
+        assert descriptor["unavailable_reasons"] == ["quality_unreviewed"]
         graph = _json(SOURCE_BUNDLE / descriptor["graph"])
         entry = locked[(descriptor["id"], descriptor["version"])]
         assert entry["graph_sha256"] == canonical_digest(graph) == descriptor["graph_digest"]

@@ -30,6 +30,7 @@ class MediaLifecycleReceipt:
     preexisting: bool
     human_required: bool
     controller_receipt: Mapping[str, Any]
+    manifest: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -41,6 +42,7 @@ class MediaLifecycleReceipt:
             "preexisting": self.preexisting,
             "humanRequired": self.human_required,
             "controllerReceipt": dict(self.controller_receipt),
+            "manifest": self.manifest,
         }
 
 
@@ -78,6 +80,7 @@ class MediaWorkerLifecycle:
                     owns_instance INTEGER NOT NULL CHECK(owns_instance IN (0,1)),
                     preexisting INTEGER NOT NULL CHECK(preexisting IN (0,1)),
                     receipt_json TEXT NOT NULL,
+                    manifest TEXT NOT NULL DEFAULT '',
                     lease_expires_at TEXT NOT NULL DEFAULT '',
                     generation INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
@@ -109,6 +112,10 @@ class MediaWorkerLifecycle:
                 db.execute(
                     "ALTER TABLE media_lifecycle_transactions ADD COLUMN generation INTEGER NOT NULL DEFAULT 1"
                 )
+            if "manifest" not in columns:
+                db.execute(
+                    "ALTER TABLE media_lifecycle_transactions ADD COLUMN manifest TEXT NOT NULL DEFAULT ''"
+                )
 
     def prepare(
         self,
@@ -127,9 +134,11 @@ class MediaWorkerLifecycle:
             job = self.store.get(job_id, principal=principal)
             if job.state in TERMINAL_STATES:
                 raise MediaError("job_terminal", "terminal media jobs cannot prepare a worker", status=409)
+            existing = self._reserved_for_service(service)
+            if existing is not None:
+                _require_manifest_match(existing, manifest)
             status = self._status_operation({"manifest": manifest, "names": [service]})
             status_row = _selected_status(status, service)
-            existing = self._reserved_for_service(service)
             running = status_row.get("running") is True and status_row.get("health_status") is not None
             approved = bool(confirm and human_approved)
 
@@ -162,7 +171,12 @@ class MediaWorkerLifecycle:
                     receipt = _receipt_from_row(existing, action="prepare")
                 else:
                     receipt = self._record(
-                        job_id, service, owns=False, preexisting=True, controller=status
+                        job_id,
+                        service,
+                        manifest=manifest,
+                        owns=False,
+                        preexisting=True,
+                        controller=status,
                     )
                 if approved and job.state in {
                     JobState.ACCEPTED,
@@ -187,7 +201,13 @@ class MediaWorkerLifecycle:
                         "confirm": False,
                     }
                 )
-                receipt = self._ephemeral(service, "prepare", controller, human_required=True)
+                receipt = self._ephemeral(
+                    service,
+                    "prepare",
+                    controller,
+                    human_required=True,
+                    manifest=manifest,
+                )
                 if job.state == JobState.ACCEPTED:
                     self.store.transition(
                         job_id,
@@ -198,7 +218,7 @@ class MediaWorkerLifecycle:
                     )
                 return receipt
 
-            claimed, owner = self._claim_prepare(job_id, service)
+            claimed, owner = self._claim_prepare(job_id, service, manifest)
             if not owner:
                 if claimed["status"] == "releasing":
                     raise MediaError(
@@ -265,9 +285,15 @@ class MediaWorkerLifecycle:
             self.store.get(job_id, principal=principal)
             row = self._transaction_for_job(job_id)
             if row is None:
-                return self._ephemeral("", "teardown", {"reason": "not_owned"})
+                return self._ephemeral(
+                    "", "teardown", {"reason": "not_owned"}, manifest=manifest
+                )
             service = row["service"]
-            status = self._status_operation({"manifest": manifest, "names": [service]})
+            _require_manifest_match(row, manifest)
+            bound_manifest = row["manifest"]
+            status = self._status_operation(
+                {"manifest": bound_manifest, "names": [service]}
+            )
             status_row = _selected_status(status, service)
             running = status_row.get("running") is True and status_row.get("health_status") is not None
             row = self._recover_phase(row, running=running, for_teardown=True)
@@ -289,6 +315,7 @@ class MediaWorkerLifecycle:
                     {"reason": "release_in_progress"},
                     transaction_id=row["id"],
                     owns=True,
+                    manifest=bound_manifest,
                 )
             if not self._all_jobs_terminal(row["id"]):
                 return self._ephemeral(
@@ -296,13 +323,14 @@ class MediaWorkerLifecycle:
                     "teardown",
                     {"reason": "owned_jobs_nonterminal"},
                     transaction_id=row["id"],
+                    manifest=bound_manifest,
                 )
             approved = bool(confirm and human_approved)
             if not approved:
                 controller = self._manage_operation(
                     {
                         "action": "down",
-                        "manifest": manifest,
+                        "manifest": bound_manifest,
                         "names": [service],
                         "dry_run": True,
                         "confirm": False,
@@ -315,6 +343,7 @@ class MediaWorkerLifecycle:
                     human_required=True,
                     transaction_id=row["id"],
                     owns=True,
+                    manifest=bound_manifest,
                 )
             claimed = self._claim_release(row["id"])
             if not claimed:
@@ -324,12 +353,13 @@ class MediaWorkerLifecycle:
                     {"reason": "release_in_progress"},
                     transaction_id=row["id"],
                     owns=True,
+                    manifest=bound_manifest,
                 )
             try:
                 controller = self._manage_operation(
                     {
                         "action": "down",
-                        "manifest": manifest,
+                        "manifest": bound_manifest,
                         "names": [service],
                         "dry_run": False,
                         "confirm": True,
@@ -350,7 +380,15 @@ class MediaWorkerLifecycle:
                 controller=controller,
             )
             return MediaLifecycleReceipt(
-                row["id"], service, "teardown", True, True, False, False, controller
+                row["id"],
+                service,
+                "teardown",
+                True,
+                True,
+                False,
+                False,
+                controller,
+                bound_manifest,
             )
 
     def status(self, job_id: str, *, principal: str) -> dict[str, Any]:
@@ -366,6 +404,7 @@ class MediaWorkerLifecycle:
         job_id: str,
         service: str,
         *,
+        manifest: str,
         owns: bool,
         preexisting: bool,
         controller: Mapping[str, Any],
@@ -380,6 +419,7 @@ class MediaWorkerLifecycle:
                     (service,),
                 ).fetchone()
                 if existing is not None:
+                    _require_manifest_match(existing, manifest)
                     db.execute(
                         "INSERT OR IGNORE INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
                         (existing["id"], job_id),
@@ -387,8 +427,8 @@ class MediaWorkerLifecycle:
                     db.execute("COMMIT")
                     return _receipt_from_row(existing, action="prepare")
             db.execute(
-                "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,lease_expires_at,generation,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                (transaction_id, service, "active" if owns else "observed", int(owns), int(preexisting), _json(controller), "", 1, now, now),
+                "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,manifest,lease_expires_at,generation,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (transaction_id, service, "active" if owns else "observed", int(owns), int(preexisting), _json(controller), manifest, "", 1, now, now),
             )
             db.execute(
                 "INSERT INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
@@ -397,7 +437,7 @@ class MediaWorkerLifecycle:
             db.execute("COMMIT")
         return MediaLifecycleReceipt(
             transaction_id, service, "prepare", bool(controller.get("applied", owns)), owns,
-            preexisting, False, controller
+            preexisting, False, controller, manifest
         )
 
     def _ephemeral(
@@ -409,10 +449,11 @@ class MediaWorkerLifecycle:
         human_required: bool = False,
         transaction_id: str = "",
         owns: bool = False,
+        manifest: str = "",
     ) -> MediaLifecycleReceipt:
         return MediaLifecycleReceipt(
             transaction_id or secrets.token_urlsafe(18), service, action, False, owns, False,
-            human_required, controller
+            human_required, controller, manifest
         )
 
     def _reserved_for_service(self, service: str) -> sqlite3.Row | None:
@@ -422,7 +463,9 @@ class MediaWorkerLifecycle:
                 (service,),
             ).fetchone()
 
-    def _claim_prepare(self, job_id: str, service: str) -> tuple[sqlite3.Row, bool]:
+    def _claim_prepare(
+        self, job_id: str, service: str, manifest: str = ""
+    ) -> tuple[sqlite3.Row, bool]:
         transaction_id = secrets.token_urlsafe(18)
         now = utc_now().isoformat()
         lease_expires_at = (
@@ -436,6 +479,7 @@ class MediaWorkerLifecycle:
                 (service,),
             ).fetchone()
             if existing is not None:
+                _require_manifest_match(existing, manifest)
                 db.execute(
                     "INSERT OR IGNORE INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
                     (existing["id"], job_id),
@@ -443,8 +487,8 @@ class MediaWorkerLifecycle:
                 db.execute("COMMIT")
                 return existing, False
             db.execute(
-                "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,lease_expires_at,generation,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                (transaction_id, service, "preparing", 1, 0, _json(pending), lease_expires_at, 1, now, now),
+                "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,manifest,lease_expires_at,generation,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (transaction_id, service, "preparing", 1, 0, _json(pending), manifest, lease_expires_at, 1, now, now),
             )
             db.execute(
                 "INSERT INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
@@ -549,7 +593,7 @@ class MediaWorkerLifecycle:
 
 
 def _selected_status(result: Mapping[str, Any], service: str) -> Mapping[str, Any]:
-    payload = result.get("result", result)
+    payload = result.get("data", result.get("result", result))
     rows = payload.get("serves", []) if isinstance(payload, Mapping) else []
     matches = [row for row in rows if isinstance(row, Mapping) and row.get("name") == service]
     if len(matches) != 1:
@@ -598,6 +642,7 @@ def _approval_request(
                 "job_id": job_id,
                 "principal": principal,
                 "service": receipt.service,
+                "manifest": receipt.manifest,
                 "dry_run": False,
                 "confirm": True,
                 "human_approved": True,
@@ -613,8 +658,18 @@ def _receipt_from_row(
     return MediaLifecycleReceipt(
         row["id"], row["service"], action,
         bool(controller.get("applied")) if applied is None else applied,
-        bool(row["owns_instance"]), bool(row["preexisting"]), False, controller
+        bool(row["owns_instance"]), bool(row["preexisting"]), False, controller,
+        row["manifest"],
     )
+
+
+def _require_manifest_match(row: Mapping[str, Any], manifest: str) -> None:
+    if row["manifest"] != manifest:
+        raise MediaError(
+            "media_worker_manifest_mismatch",
+            "media worker lifecycle manifest does not match the reserved transaction",
+            status=409,
+        )
 
 
 def _json(value: Mapping[str, Any]) -> str:

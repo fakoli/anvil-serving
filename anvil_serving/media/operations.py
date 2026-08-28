@@ -326,9 +326,11 @@ def _approval_request(
     receipt: Mapping[str, Any],
 ) -> dict[str, Any]:
     transaction_id = receipt.get("transactionId")
+    manifest = receipt.get("manifest")
     if (
         not isinstance(transaction_id, str)
         or not transaction_id
+        or not isinstance(manifest, str)
         or receipt.get("service") != service
         or receipt.get("action") != "prepare"
         or receipt.get("humanRequired") is not True
@@ -351,6 +353,7 @@ def _approval_request(
                 "job_id": job_id,
                 "principal": principal,
                 "service": service,
+                "manifest": manifest,
                 "dry_run": False,
                 "confirm": True,
                 "human_approved": True,
