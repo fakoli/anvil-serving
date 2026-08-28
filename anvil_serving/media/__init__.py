@@ -21,6 +21,7 @@ from .backends import BackendOutput, BackendStatus
 from .workflows import WorkflowRegistry, canonical_digest
 from .worker import MediaJobReconciler, ProgressUpdate, normalize_progress_event
 from .cancellation import CancellationResult, MediaCancellationService
+from .admission import MediaAdmissionDecision, MediaAdmissionService
 
 __all__ = [
     "ArtifactPayload",
@@ -32,6 +33,8 @@ __all__ = [
     "JobState",
     "ComfyUIClient",
     "MediaArtifact",
+    "MediaAdmissionDecision",
+    "MediaAdmissionService",
     "MediaBackend",
     "MediaError",
     "MediaJob",
