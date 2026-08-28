@@ -16,9 +16,12 @@ from .contracts import (
 from .errors import MediaError
 from .jobs import MediaJobStore
 from .comfyui import ComfyUIClient, WorkflowCompatibility
+from .artifacts import ArtifactPayload, ArtifactStore
 from .workflows import WorkflowRegistry, canonical_digest
 
 __all__ = [
+    "ArtifactPayload",
+    "ArtifactStore",
     "JobEvent",
     "JobState",
     "ComfyUIClient",
