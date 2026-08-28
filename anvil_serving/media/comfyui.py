@@ -307,5 +307,26 @@ class ComfyUIClient:
             raise MediaError("backend_response_too_large", "ComfyUI response exceeds its byte limit", status=502)
         return payload
 
+    def delete_queued_prompt(self, prompt_id: str) -> None:
+        if not isinstance(prompt_id, str) or not _PROMPT_ID_RE.fullmatch(prompt_id):
+            raise MediaError("invalid_backend_prompt", "backend prompt identity is invalid")
+        body = json.dumps({"delete": [prompt_id]}, separators=(",", ":")).encode("utf-8")
+        self.request_bytes(
+            "POST",
+            "/queue",
+            body=body,
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            max_bytes=64 * 1024,
+        )
+
+    def interrupt_exclusive_prompt(self) -> None:
+        self.request_bytes(
+            "POST",
+            "/interrupt",
+            body=b"{}",
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            max_bytes=64 * 1024,
+        )
+
 
 __all__ = ["ComfyUIClient", "WorkflowCompatibility"]

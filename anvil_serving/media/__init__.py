@@ -20,12 +20,14 @@ from .artifacts import ArtifactPayload, ArtifactStore
 from .backends import BackendOutput, BackendStatus
 from .workflows import WorkflowRegistry, canonical_digest
 from .worker import MediaJobReconciler, ProgressUpdate, normalize_progress_event
+from .cancellation import CancellationResult, MediaCancellationService
 
 __all__ = [
     "ArtifactPayload",
     "ArtifactStore",
     "BackendOutput",
     "BackendStatus",
+    "CancellationResult",
     "JobEvent",
     "JobState",
     "ComfyUIClient",
@@ -34,6 +36,7 @@ __all__ = [
     "MediaError",
     "MediaJob",
     "MediaJobStore",
+    "MediaCancellationService",
     "MediaJobReconciler",
     "ParameterBinding",
     "ParameterSpec",
