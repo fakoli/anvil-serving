@@ -20,10 +20,10 @@ from anvil_serving.control_plane.mcp.tools import models as model_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "a467a502ae134b064fff6bbc705260b627eec308b09561af6116d11ab23eb20a"
+    "ceca4cdd6f590443eb65c789f1716b79a3e3b034594205d4fbeaadb91f2e446c"
 )
 HANDLER_MAP_SHA256 = (
-    "db181ffbe193407857db73cc9c3f376a21408eb13a6d60b92e562837cc89f42f"
+    "68980c61999d3ca0d0a5f597c4bbef781a4ee7616db01950781b8bdcd2b543a5"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -38,6 +38,18 @@ TOOL_NAMES = [
     "serves_promote",
     "serves_mode",
     "serves_logs",
+    "media_worker_prepare",
+    "media_worker_status",
+    "media_worker_logs",
+    "media_worker_teardown",
+    "media_capabilities",
+    "media_workflow_list",
+    "media_workflow_show",
+    "media_workflow_validate",
+    "media_workflow_run",
+    "media_job_status",
+    "media_job_cancel",
+    "media_artifact_inspect",
     "voice_manage",
     "voice_proxy_manage",
     "doctor_summary",
@@ -122,6 +134,8 @@ def test_explicit_ordered_families_compose_the_public_catalog():
         "operations",
         "router",
         "serves",
+        "media-worker",
+        "media",
         "voice",
         "host",
         "models",
