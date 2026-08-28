@@ -67,6 +67,7 @@ COPY --from=docker-cli --chown=root:root \
     /usr/local/libexec/docker/cli-plugins/docker-compose
 
 ENV ANVIL_SERVING_HOME=/etc/anvil \
+    DOCKER_CONFIG=/tmp/docker-config \
     ANVIL_SERVING_LOOPBACK_ALIAS=host.docker.internal
 
 EXPOSE 8765
