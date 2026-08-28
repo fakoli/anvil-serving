@@ -141,6 +141,12 @@ def _serves_cli_argv(
         # operator's consent — pass it through, or the child EOFs to "No" and
         # every confirmed rm/adopt silently aborts.
         argv.append("--yes")
+    if action == "up":
+        # A restricted resource-owner controller may manage only the declared
+        # serve. Router lifecycle is a separate authority owned by the gateway
+        # host, so never inherit the local CLI's co-located-router convenience
+        # side effect in this controller subprocess.
+        argv.append("--no-router")
     if not compose:
         argv += ["--manifest", manifest]
     argv += names
