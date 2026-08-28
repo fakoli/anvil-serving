@@ -218,6 +218,36 @@ def test_missing_task_and_terminal_cancel_use_a2a_1_0_errors(tmp_path):
     assert repeated["error"]["data"][0]["reason"] == "TASK_NOT_CANCELABLE"
 
 
+def test_streaming_methods_without_sse_use_canonical_a2a_error_info(tmp_path):
+    tasks = service(tmp_path)
+
+    for request_id, method in enumerate(
+        ("SendStreamingMessage", "SubscribeToTask"), start=1
+    ):
+        response = handle_jsonrpc(
+            {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": method,
+                "params": {},
+            },
+            tasks=tasks,
+            caller=CALLER,
+        )
+
+        assert response["error"] == {
+            "code": -32004,
+            "message": "Operation is not supported",
+            "data": [
+                {
+                    "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                    "reason": "UNSUPPORTED_OPERATION",
+                    "domain": "a2a-protocol.org",
+                }
+            ],
+        }
+
+
 def test_send_message_blocks_by_default_until_terminal(tmp_path):
     tasks = service(tmp_path)
     request = send_request()
