@@ -36,6 +36,12 @@ modern SDK. The test controller also verifies bearer authentication, modern
 downstream protocol metadata, schema validation before dispatch, and tool
 calls, including named media workflow parity.
 
+The packaged Hermes example at
+[`examples/hermes/`](../examples/hermes/README.md) uses this bridge with an
+explicit caller-only media tool allowlist. Its skill consumes only named
+workflow, durable job, and authenticated artifact contracts; it does not gain
+media-worker lifecycle authority.
+
 Commit changes to the TypeScript source, lockfile, and generated asset
 together. Do not put controller token values in npm configuration, source
 files, arguments, or fixtures. An OpenClaw `mcp.servers` entry may contain the
