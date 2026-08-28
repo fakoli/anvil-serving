@@ -11,7 +11,7 @@ from anvil_serving import mcp
 def _job(store: MediaJobStore, key: str = "request-one"):
     return store.create(
         principal="hermes",
-        workflow_id="image.flux2-dev-fp8mixed-v1",
+        workflow_id="image.flux2-klein-4b-fp8-v1",
         workflow_version="v1",
         input_digest="a" * 64,
         idempotency_key=key,

@@ -93,8 +93,8 @@ never accepts raw ComfyUI graphs or private backend output paths.
 
 ```bash
 anvil-serving media capabilities --json
-anvil-serving media workflow show image.flux2-dev-fp8mixed-v1 --version v1 --json
-anvil-serving media workflow validate image.flux2-dev-fp8mixed-v1 --version v1 \
+anvil-serving media workflow show image.flux2-klein-4b-fp8-v1 --version v1 --json
+anvil-serving media workflow validate image.flux2-klein-4b-fp8-v1 --version v1 \
   --backend-url http://127.0.0.1:8188 --target host-role:media-worker --json
 anvil-serving media job status JOB_ID --principal CALLER_ID --json
 anvil-serving media artifact inspect ARTIFACT_ID --principal CALLER_ID --json

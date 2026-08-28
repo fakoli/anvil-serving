@@ -4,7 +4,8 @@
 - **Date:** 2026-08-27
 - **Relates to:** ADR-0017; ADR-0036; ADR-0040
 - **Sources observed:**
-  [ComfyUI FLUX.2 Dev tutorial](https://docs.comfy.org/tutorials/flux/flux-2-dev),
+  [ComfyUI FLUX.2 Klein tutorial](https://docs.comfy.org/tutorials/flux/flux-2-klein),
+  [BFL FLUX.2 Klein 4B FP8 artifact](https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8),
   [ComfyUI Wan2.2 tutorial](https://docs.comfy.org/tutorials/video/wan/wan2_2)
 
 ## Context
@@ -23,7 +24,7 @@ independent quality disposition are all proven on the selected media worker.
 
 | Policy | Image candidate | Video candidate |
 | --- | --- | --- |
-| Stable ID | `image.flux2-dev-fp8mixed-v1` | `video.wan2.2-ti2v-5b-v1` |
+| Stable ID | `image.flux2-klein-4b-fp8-v1` | `video.wan2.2-ti2v-5b-v1` |
 | Kind | text-to-image | text-to-video |
 | Output | `image/png` | `video/mp4` |
 | Maximum dimensions | 1024 × 1024 | 832 × 480 |
@@ -37,8 +38,16 @@ independent quality disposition are all proven on the selected media worker.
 | Total queued jobs | 4 | 2 |
 | Backend concurrency | 1 | 1 |
 
-The image candidate follows ComfyUI's native FLUX.2 Dev FP8-mixed workflow
-shape. The video baseline deliberately chooses the native Wan2.2 TI2V 5B
+The image candidate follows ComfyUI's native distilled FLUX.2 Klein 4B
+workflow shape. Its pinned diffusion model, text encoder, and VAE total
+12,451,817,860 bytes. The previously considered FLUX.2 Dev FP8-mixed bundle
+was removed before download: its three required checkpoints total
+71,376,710,595 bytes, exceeding the target host's combined 32 GB VRAM and
+approximately 31 GB RAM even before runtime workspace and operating-system
+reserves. That is a feasibility rejection of the exact recipe, not a quality
+judgment about FLUX.2 Dev.
+
+The video baseline deliberately chooses the native Wan2.2 TI2V 5B
 workflow before the larger two-expert 14B variants: the official ComfyUI guide
 states that the 5B workflow supports text and image conditioning and fits with
 native offload on much smaller VRAM. This is a feasibility prior, not local

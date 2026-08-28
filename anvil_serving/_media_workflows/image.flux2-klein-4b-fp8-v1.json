@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.media-workflow/v1",
+  "id": "image.flux2-klein-4b-fp8-v1",
+  "version": "v1",
+  "kind": "image",
+  "service_target": "media-worker",
+  "graph": "image.flux2-klein-4b-fp8-v1.graph.json",
+  "graph_digest": "991b63b8c61ff4322d72b8ae81ef43656f4905ddf4b0709c1989b84cfb8f2e4f",
+  "parameters": {
+    "prompt": {"kind": "string", "max_length": 4096},
+    "seed": {"kind": "integer", "minimum": 0, "maximum": 9223372036854775807},
+    "width": {"kind": "integer", "minimum": 256, "maximum": 1024},
+    "height": {"kind": "integer", "minimum": 256, "maximum": 1024},
+    "steps": {"kind": "integer", "minimum": 1, "maximum": 20}
+  },
+  "bindings": [
+    {"parameter": "prompt", "node": "4", "input": "text"},
+    {"parameter": "seed", "node": "7", "input": "noise_seed"},
+    {"parameter": "width", "node": "6", "input": "width"},
+    {"parameter": "width", "node": "10", "input": "width"},
+    {"parameter": "height", "node": "6", "input": "height"},
+    {"parameter": "height", "node": "10", "input": "height"},
+    {"parameter": "steps", "node": "10", "input": "steps"}
+  ],
+  "output_nodes": ["13"],
+  "output_mime_types": ["image/png"],
+  "required_features": ["flux2-klein"],
+  "required_nodes": ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "ConditioningZeroOut", "EmptyFlux2LatentImage", "RandomNoise", "CFGGuider", "KSamplerSelect", "Flux2Scheduler", "SamplerCustomAdvanced", "VAEDecode", "SaveImage"],
+  "required_models": ["flux-2-klein-4b-fp8.safetensors", "qwen_3_4b.safetensors", "flux2-vae.safetensors"],
+  "available": false,
+  "unavailable_reasons": ["capacity_unqualified", "quality_unreviewed"],
+  "limits": {"request_bytes": 65536, "artifact_bytes": 33554432, "timeout_seconds": 600, "retention_seconds": 86400, "queue_depth": 4, "concurrency": 1}
+}
