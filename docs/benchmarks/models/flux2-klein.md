@@ -2,7 +2,8 @@
 
 ## Current status and review date
 
-Functionally and capacity qualified image-generation candidate;
+Functionally, capacity, routed/client, and bounded-quality qualified
+image-generation candidate;
 `available=false`, `no-promotion`. Review date: 2026-08-28.
 
 ## Immutable identity
@@ -16,7 +17,9 @@ identities are recorded in the workflow bundle lock and dated evidence.
 ## Tested hardware and topology
 
 One RTX 5090, 32,607 MiB, in an isolated Windows 11 / Docker Desktop / WSL2
-media lane. The router and unrelated inference services were unchanged.
+media lane. Direct qualification and an exact-build cross-host candidate with
+Fakoli Dark gateway and real Hermes client were tested. Production router and
+unrelated inference services were unchanged.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
@@ -29,21 +32,27 @@ cache and language-model context are not applicable to this diffusion workflow.
 
 `functional`, `capacity`: decodable 258,472-byte PNG in 9.859 seconds, peak
 12,919 MiB from a 943 MiB worker baseline, max queue running one and pending
-zero. Perceptual `quality` was not evaluated.
+zero. A later exact-build live pass produced two additional PNGs through the
+cold approval and real-Hermes paths. Both passed independent prompt-adherence
+review; artifact delivery, ranges, missing-object behavior, signatures, sizes,
+and hashes passed.
 
 ## Decision and promotion state
 
-Retain as an unavailable candidate. Independent perceptual review, routed
-acceptance, Hermes acceptance, and a separate human live-enable gate remain
-open.
+Retain as an unavailable candidate. The bounded routed/Hermes and two-sample
+quality gates passed, but a broader image-quality corpus, production cutover,
+and separate live-enable gate remain open.
 
 ## Failures and gotchas
 
 The first attempts exposed missing native build dependencies in the derived
 runtime. The durable image now contains the compiler and C library headers.
 One cold c1 run is not a throughput distribution or quality ranking.
+Two visually successful routed samples do not establish broad text rendering,
+hands, counting, seed-repeatability, or production deployment quality.
 
 ## Dated run history
 
+- [2026-08-28 media gateway live validation](../../findings/2026-08-28-media-gateway-live-validation.md)
 - [2026-08-28 ComfyUI media qualification](../../findings/2026-08-28-comfyui-media-qualification.md)
 - [2026-08-27 feasibility screen](../../findings/2026-08-27-media-gateway-comfyui-evidence/feasibility-result.md)

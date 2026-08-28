@@ -1,0 +1,167 @@
+{
+  "schema": "anvil-serving-media-live-validation/v1",
+  "date": "2026-08-28",
+  "decision": {
+    "image": "bounded_quality_pass_no_promotion",
+    "video": "bounded_quality_fail_no_promotion",
+    "production_cutover": false,
+    "workflow_availability_changed": false
+  },
+  "source": {
+    "package_version": "0.35.1",
+    "controller_idempotency_merge": "7920752d7a3cdc6aaee7408abd2011e9ce2a76ea",
+    "candidate_merge": "19320de6b4fa83814ebffc0ac3b6a6ce1234ae7a",
+    "wheel": {
+      "name": "anvil_serving-0.35.1-py3-none-any.whl",
+      "bytes": 1395378,
+      "sha256": "43643570eae62510f70cadb82895543347a0a729df687025bf355fb380407a73"
+    }
+  },
+  "topology": {
+    "gateway_host": "Fakoli Dark",
+    "resource_host": "Fakoli Mid Mod",
+    "client_host": "Fakoli Mini",
+    "measured_gpu": "NVIDIA GeForce RTX 5090",
+    "gpu_total_mib": 32607,
+    "gpu_architecture": "sm_120",
+    "deployment_kind": "isolated_exact_build_candidate",
+    "production_services_replaced": false
+  },
+  "runtime": {
+    "comfyui_version": "0.33.4",
+    "comfyui_revision": "7a131a3afadc8200120f67f9236311a2c48b7445",
+    "cuda": "13.0",
+    "pytorch": "2.13.0+cu130",
+    "node_on_client": "22.23.2"
+  },
+  "protocol": {
+    "wrong_token_http_status": 401,
+    "modern_mcp_version": "2026-07-28",
+    "media_tool_count": 8,
+    "agent_card": "pass",
+    "a2a_version": "1.0",
+    "stdio_bridge_real_hermes": "pass"
+  },
+  "workflows": {
+    "image": {
+      "id": "image.flux2-klein-4b-fp8-v1",
+      "graph_sha256": "991b63b8c61ff4322d72b8ae81ef43656f4905ddf4b0709c1989b84cfb8f2e4f",
+      "request_shape": {
+        "width": 512,
+        "height": 512,
+        "steps": 4,
+        "concurrency": 1
+      }
+    },
+    "video": {
+      "id": "video.wan2.2-ti2v-5b-v1",
+      "graph_sha256": "bd12b2de2a33bbedc91d7ad6120714f3c3adbd174694ac74d6f0213ecef9572e",
+      "request_shape": {
+        "width": 512,
+        "height": 288,
+        "frames": 17,
+        "steps": 8,
+        "fps": 16,
+        "concurrency": 1
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "path": "cold_approval_image",
+      "media_type": "image/png",
+      "bytes": 248804,
+      "sha256": "2d7628b8ccc371888324c4d18b640188b02eef1b3838b02cf6d7d07f95d99f4c",
+      "full_download": "pass_200",
+      "range_download": "pass_206",
+      "missing_artifact": "pass_404",
+      "signature_size_hash": "pass",
+      "independent_review": {
+        "prompt_adherence": "pass",
+        "quality": "pass",
+        "caveat": "minor watering-nozzle source ambiguity"
+      }
+    },
+    {
+      "path": "real_hermes_image",
+      "media_type": "image/png",
+      "bytes": 397383,
+      "sha256": "226cf4c2040306c40967d3a487c389f83f389a320e270944c3c6e245072b2ec6",
+      "full_download": "pass_200",
+      "range_download": "pass_206",
+      "missing_artifact": "pass_404",
+      "signature_size_hash": "pass",
+      "independent_review": {
+        "prompt_adherence": "pass",
+        "quality": "pass_with_caveats",
+        "caveat": "small signature-like mark and slightly ambiguous lantern geometry"
+      }
+    },
+    {
+      "path": "real_hermes_video",
+      "media_type": "video/mp4",
+      "bytes": 117738,
+      "sha256": "083d8a54ca07d77b3f99de150506901a283817de6f89b071d4eb05abe5cc370f",
+      "full_download": "pass_200",
+      "range_download": "pass_206",
+      "missing_artifact": "pass_404",
+      "signature_size_hash": "pass",
+      "decode": {
+        "codec": "h264",
+        "width": 512,
+        "height": 288,
+        "frames": 17,
+        "fps": 16,
+        "duration_seconds": 1.0625
+      },
+      "contact_sheet_sha256": "eb0ff048a9ae15f9a5c965a0e00b7b40e4b8cd3a1f75ce172765aff2be1c88af",
+      "independent_review": {
+        "prompt_adherence": "fail",
+        "quality": "fail",
+        "observed": "severe block smearing, chromatic separation, repeated distorted structures, and a strong horizontal streak; requested subject and clear-sky scene not reliably identifiable",
+        "temporal_smoothness": "unassessed_from_contact_sheet"
+      }
+    }
+  ],
+  "idempotency_and_a2a": {
+    "lifecycle_approval_replay_identical": true,
+    "second_worker_start": false,
+    "a2a_replayed_mcp_video_job": true,
+    "second_video_execution": false,
+    "task_projection_match": true,
+    "completed_task_cancel_error": "TASK_NOT_CANCELABLE"
+  },
+  "cold_backend_control": {
+    "hermes_tools_observed": [
+      "media_capabilities",
+      "media_workflow_show",
+      "media_workflow_validate"
+    ],
+    "validation_error": "backend_unavailable",
+    "workflow_run_called": false,
+    "worker_prepare_called": false,
+    "jobs_before": 3,
+    "jobs_after": 3,
+    "worker_started": false
+  },
+  "restoration": {
+    "managed_worker": "absent",
+    "gpu_used_mib": 448,
+    "reservation_committed_mib": 0,
+    "reservation_free_mib": 28511,
+    "reservation_owners": [],
+    "candidate_listeners": 0,
+    "candidate_runtime_removed": true,
+    "disposable_hermes_profile_removed": true,
+    "original_hermes_profile_active": true,
+    "original_hermes_mcp_servers": 0
+  },
+  "retained_caveats": [
+    "The exact Wan2.2 sample failed bounded spatial and prompt-adherence review.",
+    "A contact sheet cannot establish temporal smoothness or camera motion.",
+    "A legacy Windows PowerShell download client stalled after a partial transfer; a separate standard-library client passed the same authenticated transfer and framing checks.",
+    "HERMES_PROFILE alone did not scope administrative configuration; explicit profile selection was used and the original default was restored.",
+    "The isolated exact-build candidate did not replace the production router/controller.",
+    "Binary artifacts are not publicly retained; only sizes, hashes, decode facts, and review records are published."
+  ]
+}
