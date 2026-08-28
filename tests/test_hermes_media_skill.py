@@ -13,6 +13,7 @@ from tests.a2a.test_tasks import CALLER, service
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "examples" / "hermes" / "skills" / "anvil-media" / "SKILL.md"
+PACKAGED_SKILL = ROOT / "anvil_serving" / "_hermes_skills" / "anvil-media" / "SKILL.md"
 README = ROOT / "examples" / "hermes" / "README.md"
 PUBLIC_TOOLS = {
     "media_capabilities",
@@ -48,6 +49,7 @@ def _structured(response: dict) -> dict:
 
 def test_packaged_hermes_skill_is_narrow_and_secret_free():
     text = SKILL.read_text(encoding="utf-8")
+    assert PACKAGED_SKILL.read_bytes() == SKILL.read_bytes()
     config = README.read_text(encoding="utf-8")
     assert text.startswith("---\nname: anvil-media\n")
     referenced = {
@@ -110,13 +112,16 @@ def test_hermes_shaped_mcp_flow_reaches_worker_and_retrieves_owned_artifact(tmp_
     assert status["artifacts"][0]["id"] == artifact.id
 
     inspected = _structured(
-        gateway.mcp_request(
+        inspection_response := gateway.mcp_request(
             _rpc("media_artifact_inspect", {"artifact_id": artifact.id}, 3)
         )
     )["artifact"]
+    image_content = inspection_response["result"]["content"][1]
     payload = gateway.artifact(artifact.id)
     assert inspected["resource"] == f"/artifacts/{artifact.id}"
     assert inspected["sha256"] == artifact.sha256
+    assert image_content["type"] == "image"
+    assert image_content["mimeType"] == "image/png"
     assert payload.data == b"\x89PNG\r\n\x1a\nhermes-smoke"
 
 

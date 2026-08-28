@@ -2,6 +2,7 @@
 
 - **Status:** Accepted for implementation; live availability remains qualification-gated
 - **Date:** 2026-08-27
+- **Amended:** 2026-08-28 — explicit image quality profiles, latency, and Hermes delivery
 - **Relates to:** ADR-0017; ADR-0036; ADR-0040
 - **Sources observed:**
   [ComfyUI FLUX.2 Klein tutorial](https://docs.comfy.org/tutorials/flux/flux-2-klein),
@@ -59,6 +60,20 @@ sampling or frame fields may be bound. Raw graphs, node IDs, model filenames,
 paths, URLs, and installation choices are never caller inputs. Seeds are
 unsigned 64-bit integers; prompts are at most 4,096 UTF-8 characters.
 
+The image descriptor may expose three explicit quality profiles:
+
+| Profile | Exact locked parameters | Meaning |
+| --- | --- | --- |
+| `draft` | 512 × 512, four steps | smallest and fastest declared image setting |
+| `standard` | 768 × 768, four steps | default balanced setting |
+| `high` | 1024 × 1024, four steps | largest declared image setting |
+
+All profiles resolve inside the same immutable workflow. They do not select a
+different model, host, backend, or provider, and the caller cannot override a
+profile-owned field. Profile labels describe settings rather than guaranteeing
+perceptual quality. Availability still requires independent evidence for the
+settings made callable by an operator deployment.
+
 ## Lifecycle and exposure policy
 
 - Cold ComfyUI never starts from an ordinary media call. The durable job enters
@@ -71,8 +86,17 @@ unsigned 64-bit integers; prompts are at most 4,096 UTF-8 characters.
 - The Hermes baseline is the bundled Node 20+ stdio compatibility bridge to
   modern stateless MCP. Direct Streamable HTTP is the preferred transport once
   the installed Hermes MCP client proves the `2026-07-28` contract.
-- Full media is returned as an authenticated resource link. Only a bounded
-  image preview may be inline; video is never embedded in a tool result.
+- Full media is retained behind an authenticated resource link. An image no
+  larger than six binary MiB may additionally be returned as native MCP image
+  content; its base64 envelope stays below the ten-MiB controller/SDK framing
+  bound. Larger images and all video remain resource-only.
+- The selected quality profile is durable job metadata. Job status derives
+  phase and end-to-end latency from ordered durable events. MCP artifact
+  inspection may additionally return a bounded native image content block so
+  Hermes can present the generated image without exposing a credential.
+- A profile-aware caller uses the published `profiledParameterSchema`; the
+  complete legacy `schema` remains compatible. Qualification must decode the
+  artifact and prove its dimensions match the exact selected profile.
 - Retention expiry removes the Anvil-owned copy. Source backend files are not
   an artifact API and are governed by the media-worker's private policy.
 

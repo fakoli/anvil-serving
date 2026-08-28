@@ -48,6 +48,88 @@ def test_restart_preserves_ordered_state_and_backend_prompt(tmp_path):
     assert [event.sequence for event in reopened.events] == [1, 2]
 
 
+def test_restart_preserves_selected_quality_profile(tmp_path):
+    target = store(tmp_path)
+    accepted, _ = target.create(
+        principal="hermes",
+        workflow_id="image.test-v1",
+        workflow_version="v1",
+        input_digest="a" * 64,
+        idempotency_key="quality-request",
+        quality_profile="high",
+        now=NOW,
+    )
+    reopened = store(tmp_path).get(accepted.id, principal="hermes")
+    assert reopened.quality_profile == "high"
+    assert reopened.as_public_dict()["qualityProfile"] == "high"
+
+
+def test_v1_job_store_migrates_forward_without_losing_jobs(tmp_path):
+    path = tmp_path / "media-jobs.sqlite3"
+    with sqlite3.connect(path) as db:
+        db.executescript(
+            """
+            CREATE TABLE media_schema (version INTEGER NOT NULL);
+            INSERT INTO media_schema(version) VALUES (1);
+            CREATE TABLE media_jobs (
+                id TEXT PRIMARY KEY,
+                principal TEXT NOT NULL,
+                workflow_id TEXT NOT NULL,
+                workflow_version TEXT NOT NULL,
+                state TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                input_digest TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                backend_prompt_id TEXT NOT NULL DEFAULT '',
+                approval_json TEXT,
+                UNIQUE(principal, workflow_id, workflow_version, idempotency_key)
+            );
+            CREATE TABLE media_job_events (
+                job_id TEXT NOT NULL REFERENCES media_jobs(id) ON DELETE CASCADE,
+                sequence INTEGER NOT NULL,
+                state TEXT NOT NULL,
+                at TEXT NOT NULL,
+                reason TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY(job_id, sequence)
+            );
+            CREATE TABLE media_job_artifacts (
+                job_id TEXT NOT NULL REFERENCES media_jobs(id) ON DELETE CASCADE,
+                artifact_json TEXT NOT NULL,
+                PRIMARY KEY(job_id, artifact_json)
+            );
+            """
+        )
+        timestamp = NOW.isoformat()
+        db.execute(
+            "INSERT INTO media_jobs VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                "job_0123456789abcdef",
+                "hermes",
+                "image.test-v1",
+                "v1",
+                "accepted",
+                timestamp,
+                timestamp,
+                "a" * 64,
+                "legacy-request",
+                "",
+                None,
+            ),
+        )
+        db.execute(
+            "INSERT INTO media_job_events VALUES (?,?,?,?,?)",
+            ("job_0123456789abcdef", 1, "accepted", timestamp, ""),
+        )
+    reopened = MediaJobStore(path)
+    legacy = reopened.get("job_0123456789abcdef", principal="hermes")
+    assert legacy.quality_profile == ""
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT version FROM media_schema").fetchone()[0] == 2
+        columns = {row[1] for row in db.execute("PRAGMA table_info(media_jobs)")}
+    assert "quality_profile" in columns
+
+
 def test_cross_principal_lookup_is_indistinguishable_from_absence(tmp_path):
     target = store(tmp_path)
     accepted, _ = create(target)

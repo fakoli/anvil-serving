@@ -900,6 +900,17 @@ def test_cli_remote_eval_rejects_operator_manifest_before_transport(tmp_path, mo
             },
         ),
         (
+            ["harness", "sync", "hermes-media"],
+            "harness-sync-hermes-media",
+            "hermes_media_sync",
+            {
+                "confirm": True,
+                "dry_run": False,
+                "hermes_profiles": "default,anvil-primary",
+                "restart_hermes_on_change": True,
+            },
+        ),
+        (
             ["harness", "restart", "openclaw"],
             "harness-restart-openclaw",
             "openclaw_gateway_restart",
@@ -949,6 +960,12 @@ def test_cli_remote_harness_operations_are_typed_and_controller_first(
             "--hermes-profiles",
             "all",
             "--restart-openclaw-on-change",
+            "--restart-hermes-on-change",
+        ],
+        "hermes_media_sync": [
+            "--confirm",
+            "--hermes-profiles",
+            "default,anvil-primary",
             "--restart-hermes-on-change",
         ],
         "openclaw_gateway_restart": ["--confirm"],

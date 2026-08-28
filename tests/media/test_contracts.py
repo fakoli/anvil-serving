@@ -10,6 +10,7 @@ from anvil_serving.media import (
     MediaJob,
     ParameterBinding,
     ParameterSpec,
+    QualityProfile,
     WorkflowDescriptor,
 )
 
@@ -78,12 +79,79 @@ def test_workflow_descriptor_is_immutable_and_has_one_target():
     assert "service_target" not in workflow.as_public_dict()
 
 
+def test_quality_profiles_lock_server_owned_parameters_and_publish_exact_settings():
+    workflow = descriptor(
+        quality_profiles={
+            "draft": QualityProfile("Fast draft", {"width": 256}),
+            "high": QualityProfile("Largest output", {"width": 1024}),
+        },
+        default_quality_profile="draft",
+    )
+    resolved, selected = workflow.resolve_parameters(
+        {"prompt": "owl"},
+        quality_profile="high",
+    )
+    assert selected == "high"
+    assert resolved == {"width": 1024, "prompt": "owl"}
+    public = workflow.as_public_dict()
+    assert public["defaultQualityProfile"] == "draft"
+    assert [item["id"] for item in public["qualityProfiles"]] == ["draft", "high"]
+    assert public["qualityProfileParameters"] == ["width"]
+    assert public["profiledParameterSchema"] == {
+        "type": "object",
+        "properties": {"prompt": {"type": "string", "maxLength": 32}},
+        "required": ["prompt"],
+        "additionalProperties": False,
+        "maxProperties": 1,
+    }
+    assert public["schema"]["required"] == ["prompt", "width"]
+    with pytest.raises(MediaError) as override:
+        workflow.resolve_parameters(
+            {"prompt": "owl", "width": 512},
+            quality_profile="high",
+        )
+    assert override.value.code == "quality_profile_parameter_override"
+
+
 def test_job_transition_is_monotonic_and_terminal_is_final():
     running = job().transition(JobState.QUEUED).transition(JobState.RUNNING)
     completed = running.transition(JobState.COMPLETED, reason="ok")
     assert [event.sequence for event in completed.events] == [1, 2, 3, 4]
     with pytest.raises(MediaError, match="cannot transition"):
         completed.transition(JobState.RUNNING)
+
+
+def test_job_latency_is_derived_from_durable_events():
+    preparing = job(quality_profile="standard").transition(
+        JobState.PREPARING,
+        at=NOW + dt.timedelta(seconds=1),
+    )
+    submitting = preparing.transition(
+        JobState.SUBMITTING,
+        at=NOW + dt.timedelta(seconds=2),
+    )
+    queued = submitting.transition(
+        JobState.QUEUED,
+        at=NOW + dt.timedelta(seconds=3),
+    )
+    running = queued.transition(
+        JobState.RUNNING,
+        at=NOW + dt.timedelta(seconds=5),
+    )
+    completed = running.transition(
+        JobState.COMPLETED,
+        at=NOW + dt.timedelta(seconds=11),
+    )
+    public = completed.as_public_dict()
+    assert public["qualityProfile"] == "standard"
+    assert public["latency"] == {
+        "recordedSeconds": 11.0,
+        "acceptedToQueuedSeconds": 3.0,
+        "submissionSeconds": 1.0,
+        "queueSeconds": 2.0,
+        "endToEndSeconds": 11.0,
+        "generationSeconds": 6.0,
+    }
 
 
 def test_public_records_hide_private_fields_and_generated_bytes():
