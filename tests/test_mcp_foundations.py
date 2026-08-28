@@ -17,17 +17,19 @@ from anvil_serving.control_plane.mcp import catalog
 from anvil_serving.control_plane.mcp.tools import TOOL_FAMILIES
 from anvil_serving.control_plane.mcp.tools import host as host_tools
 from anvil_serving.control_plane.mcp.tools import models as model_tools
+from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "bb810ae923e172a5dfdcd86df5df911a6ec4d80d71383f927c5542b6e651b33c"
+    "57c5953560e955a23f4462bb6395d93993881f5ae63b6342a155c6c01b09246e"
 )
 HANDLER_MAP_SHA256 = (
-    "ecad07eefd9fb0888829122287537c38193580069cb5cebf4eb7e649545da36e"
+    "e7395d43bce83b73e56229ed19a4fb5c84997620ee08d3bd63ecd149d263d672"
 )
 TOOL_NAMES = [
     "operation_contracts",
     "router_status",
+    "router_fleet_status",
     "router_logs",
     "router_manage",
     "router_transition",
@@ -185,6 +187,29 @@ def test_host_shared_memory_tools_preview_and_apply(monkeypatch):
     })
     assert applied["data"]["applied"] is True
     assert observed == [{"confirm": True}]
+
+
+def test_router_fleet_status_tool_uses_installed_runtime_probe(monkeypatch):
+    seen = {}
+    report = {
+        "rows": [],
+        "checked": 0,
+        "unreachable": 0,
+        "unreachable_aliases": [],
+        "probe_perspective": "router-runtime",
+        "evidence_source": "installed-router",
+    }
+    monkeypatch.setattr(
+        "anvil_serving.router_manage.installed_fleet_status",
+        lambda **kwargs: seen.update(kwargs) or report,
+    )
+
+    result = router_tools.tool_router_fleet_status(
+        {"timeout": 7}
+    )
+
+    assert result["data"] == report
+    assert seen == {"container": "anvil-router", "timeout": 7.0}
 
 
 def test_operation_contracts_resolve_against_the_composed_public_catalog():

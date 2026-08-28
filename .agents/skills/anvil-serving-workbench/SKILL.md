@@ -45,7 +45,7 @@ narration.
 
 ## MCP Tool Map
 
-- Gateway: `router_status`, `router_logs`, `router_manage`,
+- Gateway: `router_status`, `router_fleet_status`, `router_logs`, `router_manage`,
   `router_transition`, and `decision_summary`.
 - Serves and residency: `serves_status`, `reservation_status`,
   `serves_manage`, `serves_mode`, `serves_logs`, and `serves_promote`.
@@ -94,7 +94,8 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 
 ## Playbook Selection
 
-- Readiness: inspect `operation_contracts`, `router_status`, `serves_status`,
+- Readiness: inspect `operation_contracts`, `router_status`,
+  `router_fleet_status`, `serves_status`,
   `reservation_status`, `doctor_summary`, `host_summary`, `gpu_inventory`,
   `models_inventory`, and configured endpoint status. Use
   `observability_collect` only for bounded declared capabilities.
@@ -142,7 +143,7 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   require confirmation before writing. Use `hermes_media_sync` to install the
   narrow media MCP catalog and packaged Hermes skill; keep credentials as
   environment references and verify a second preview is empty.
-- Router operations: use `router_status`, bounded `router_logs`,
+- Router operations: use `router_status`, `router_fleet_status`, bounded `router_logs`,
   `router_manage`, `router_transition`, and `decision_summary`; lifecycle and
   tier-transition mutation is preview-first and live only with `confirm=true`
   plus `dry_run=false`.
