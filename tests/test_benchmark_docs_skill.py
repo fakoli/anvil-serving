@@ -29,6 +29,27 @@ REFERENCE_PUBLICATION = (
 )
 REFERENCE_SUMMARY = REFERENCE_PUBLICATION.parent / "summary.json"
 REFERENCE_THROUGHPUT = REFERENCE_PUBLICATION.parent / "throughput-summary.csv"
+RETAINED_64_FINDING = (
+    ROOT / "docs" / "findings" / "2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090.md"
+)
+RETAINED_64_EVIDENCE = (
+    ROOT
+    / "docs"
+    / "findings"
+    / "2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-evidence"
+)
+RETAINED_128_FINDING = (
+    ROOT
+    / "docs"
+    / "findings"
+    / "2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md"
+)
+RETAINED_128_EVIDENCE = (
+    ROOT
+    / "docs"
+    / "findings"
+    / "2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k-evidence"
+)
 
 
 def _section(text: str, heading: str) -> str:
@@ -276,6 +297,152 @@ def test_reference_publication_metrics_reconcile_with_retained_artifacts():
     assert f"{summary_rows[4096]['decode_p50_tok_s']:.1f}" in x_post
     assert "30/30 direct" in x_post
     assert "57/60 live routed" in x_post
+
+
+def test_retained_5090_findings_use_publication_ready_format():
+    pairs = (
+        (RETAINED_64_FINDING, RETAINED_64_EVIDENCE),
+        (RETAINED_128_FINDING, RETAINED_128_EVIDENCE),
+    )
+    for finding_path, evidence_dir in pairs:
+        finding = finding_path.read_text(encoding="utf-8")
+        publication = (evidence_dir / "publication-summary.md").read_text(
+            encoding="utf-8"
+        )
+        manifest = (evidence_dir / "README.md").read_text(encoding="utf-8")
+        card = _section(finding, "## Result card")
+
+        assert "<!-- benchmark-result-card/v1 -->" in finding
+        for required in (
+            "| Model |",
+            "| Hardware |",
+            "| Runtime |",
+            "| Recipe |",
+            "| Measurement path |",
+            "| Contract |",
+            "| Evidence |",
+            "| Decision |",
+            "| Headline measurement | Local result | Conditions |",
+            "**Why it matters:**",
+            "**Important caveat:**",
+            "[Evidence manifest]",
+            "[Publication summary]",
+        ):
+            assert required in card
+
+        assert "<!-- benchmark-publication-summary/v1 -->" in publication
+        for required in (
+            "**Model identity:**",
+            "**Runtime identity:**",
+            "**Recipe:**",
+            "**Measurement path:**",
+            "## Claim ledger",
+            "## Screenshot alt text",
+        ):
+            assert required in publication
+
+        x_post = _fenced_block(
+            _section(publication, "## X / short post"), "text"
+        )
+        reddit_title = _fenced_block(_section(publication, "## Reddit"), "text")
+        assert len(x_post) <= 260
+        assert x_post.startswith("Local ")
+        assert len(reddit_title) <= 120
+        assert "https://fakoli.github.io/anvil-serving/findings/" in x_post
+
+        assert "format-only" in manifest
+        assert "no benchmark was" in " ".join(manifest.split()).casefold()
+        assert "127.0.0.1" not in publication
+        assert "127.0.0.1" not in manifest
+
+
+def test_retained_64k_publication_reconciles_with_raw_evidence():
+    finding = RETAINED_64_FINDING.read_text(encoding="utf-8")
+    publication = (RETAINED_64_EVIDENCE / "publication-summary.md").read_text(
+        encoding="utf-8"
+    )
+    multimodal = json.loads(
+        (RETAINED_64_EVIDENCE / "multimodal-c1.json").read_text(encoding="utf-8")
+    )
+    preflight = json.loads(
+        (RETAINED_64_EVIDENCE / "preflight-functional-60k.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    identity = multimodal["identity"]
+    for text in (finding, publication):
+        assert identity["model"] in text
+        assert identity["model_revision"] in text
+        assert identity["engine_revision"] in text
+        assert identity["runtime_image"].split("@", 1)[1] in text
+        assert f"{multimodal['passed_attempts']}/{multimodal['requests']}" in text
+        for modality in ("image", "mixed", "video"):
+            result = multimodal["aggregates"]["modality"][modality]
+            assert f"{result['passed']}/{result['attempts']}" in text
+            assert f"{result['latency_p50_seconds']:.3f}" in text
+
+    needle = next(row for row in preflight["results"] if "needle" in row["name"])
+    tools = next(row for row in preflight["results"] if "tool batch" in row["name"])
+    assert needle["passed"] is True
+    assert "ctx~60000" in needle["detail"]
+    assert tools["passed"] is True
+    assert "20/20 clean" in tools["detail"]
+    for text in (finding, publication):
+        assert "20/20" in text
+        assert "60,000" in text
+
+
+def test_retained_128k_publication_reconciles_with_raw_evidence():
+    finding = RETAINED_128_FINDING.read_text(encoding="utf-8")
+    publication = (RETAINED_128_EVIDENCE / "publication-summary.md").read_text(
+        encoding="utf-8"
+    )
+    multimodal = json.loads(
+        (RETAINED_128_EVIDENCE / "multimodal-c1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    boundary = json.loads(
+        (RETAINED_128_EVIDENCE / "count-boundaries-c1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    invalid = json.loads(
+        (
+            RETAINED_128_EVIDENCE
+            / "count-boundaries-invalid-expectations.json"
+        ).read_text(encoding="utf-8")
+    )
+    needle = json.loads(
+        (
+            RETAINED_128_EVIDENCE / "preflight-needle-119675-tokens.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    identity = multimodal["identity"]
+    observation = needle["observations"][0]
+    for text in (finding, publication):
+        assert identity["model"] in text
+        assert identity["model_revision"] in text
+        assert identity["engine_revision"] in text
+        assert identity["runtime_image"].split("@", 1)[1] in text
+        assert f"{multimodal['passed_attempts']}/{multimodal['requests']}" in text
+        assert f"{boundary['passed_attempts']}/{boundary['requests']}" in text
+        assert f"{invalid['passed_attempts']}/{invalid['requests']}" in text
+        assert f"{observation['usage']['prompt_tokens']:,}" in text
+        assert f"{observation['usage']['completion_tokens']:,}" in text
+        assert f"{observation['seconds']:.3f}" in text
+        for modality in ("image", "mixed", "video"):
+            result = multimodal["aggregates"]["modality"][modality]
+            assert f"{result['passed']}/{result['attempts']}" in text
+            assert f"{result['latency_p50_seconds']:.3f}" in text
+
+    assert boundary["configuration"]["max_images_per_request"] == 8
+    assert boundary["configuration"]["max_videos_per_request"] == 2
+    assert invalid["failed_attempts"] == 2
+    assert invalid["aggregates"]["modality"]["image"]["passed"] == 0
+    assert invalid["aggregates"]["modality"]["video"]["passed"] == 2
 
 
 def test_every_dossier_uses_the_common_contract():
