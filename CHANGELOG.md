@@ -26,6 +26,9 @@ All notable changes to this project are documented here. The format is based on
 - Hermes media reconciliation now verifies raw environment references while
   tolerating Hermes CLI's resolved `config get` output, avoiding perpetual
   drift without ever persisting resolved credentials.
+- The packaged Hermes media skill now treats intermediate narration as
+  incomplete and continues generation until a terminal or genuinely blocking
+  state.
 - Router config installation now writes canonical UTF-8/LF bytes through a
   binary Docker stdin pipe, preventing Windows text mode from changing the
   deployed artifact after validation.
