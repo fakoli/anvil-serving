@@ -194,6 +194,27 @@ def test_dispatch_confirmation_authorizes_nested_guard_for_one_call(monkeypatch)
     assert not guard.confirm("outside", _input=lambda prompt: "no")
 
 
+def test_media_command_family_is_complete_and_bounded():
+    expected = {
+        ("media", "capabilities"),
+        ("media", "workflow", "list"),
+        ("media", "workflow", "show"),
+        ("media", "workflow", "validate"),
+        ("media", "workflow", "run"),
+        ("media", "job", "status"),
+        ("media", "job", "cancel"),
+        ("media", "artifact", "inspect"),
+    }
+    leaves = {
+        tuple(node.name for node in path)
+        for path in _paths()
+        if path[-1].handler is not None
+    }
+    assert expected <= leaves
+    for path in expected:
+        assert _leaf(path).output_policy == "bounded"
+
+
 def test_router_transition_receives_consumed_dispatch_confirmation(monkeypatch, capsys):
     seen = {}
 

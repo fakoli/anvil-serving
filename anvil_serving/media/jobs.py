@@ -146,6 +146,37 @@ class MediaJobStore:
             db.execute("COMMIT")
         return self.get(job_id, principal=principal), True
 
+    def lookup_idempotency(
+        self,
+        *,
+        principal: str,
+        workflow_id: str,
+        workflow_version: str,
+        input_digest: str,
+        idempotency_key: str,
+    ) -> MediaJob | None:
+        """Return a matching retry before admission, or reject key reuse."""
+        if (
+            not isinstance(idempotency_key, str)
+            or not idempotency_key
+            or len(idempotency_key) > MAX_IDEMPOTENCY_KEY
+        ):
+            raise MediaError("invalid_idempotency_key", "idempotency key is outside policy")
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT id,input_digest FROM media_jobs WHERE principal=? AND workflow_id=? AND workflow_version=? AND idempotency_key=?",
+                (principal, workflow_id, workflow_version, idempotency_key),
+            ).fetchone()
+        if row is None:
+            return None
+        if row["input_digest"] != input_digest:
+            raise MediaError(
+                "idempotency_conflict",
+                "idempotency key was already used with different inputs",
+                status=409,
+            )
+        return self.get(row["id"], principal=principal)
+
     def get(self, job_id: str, *, principal: str | None = None, allow_cross_principal: bool = False) -> MediaJob:
         with self._connect() as db:
             row = db.execute("SELECT * FROM media_jobs WHERE id=?", (job_id,)).fetchone()

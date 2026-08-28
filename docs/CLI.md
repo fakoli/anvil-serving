@@ -19,7 +19,7 @@ compact manifest contract are recorded in
 | Catalog, artifacts, and recipes | `models` | [Models & recipes](cli/models.md) |
 | Quality gates and benchmarks | `eval` | [Evaluation & benchmarks](cli/eval.md) |
 | Setup and host operations | `init`, `doctor`, `upgrade`, `host`, `dashboard` | [Host & setup](cli/host.md) |
-| Topology and integrations | `topology`, `harness`, `mcp`, `controller`, `collectors`, `edge` | [Control plane & integrations](cli/control-plane.md) |
+| Topology and integrations | `topology`, `harness`, `mcp`, `controller`, `collectors`, `edge`, `media` | [Control plane & integrations](cli/control-plane.md) |
 | Audio and realtime speech | `voice` | [Voice](cli/voice.md) |
 
 If you are looking for serve recipes, start with
@@ -83,6 +83,26 @@ separator.
   command host/runtime, transport, or another resolution option opts into it, the
   dispatcher uses the operator config-home topology.
 - Examples use `127.0.0.1`, because loopback is host-relative.
+
+## Media
+
+`anvil-serving media` is the bounded operator-visible path for the same named
+workflow, durable job, cancellation, and opaque artifact records exposed by the
+gateway protocols. Callers select an exact workflow ID and version; the CLI
+never accepts raw ComfyUI graphs or private backend output paths.
+
+```bash
+anvil-serving media capabilities --json
+anvil-serving media workflow show image.flux2-dev-fp8mixed-v1 --version v1 --json
+anvil-serving media workflow validate image.flux2-dev-fp8mixed-v1 --version v1 \
+  --backend-url http://127.0.0.1:8188 --target host-role:media-worker --json
+anvil-serving media job status JOB_ID --principal CALLER_ID --json
+anvil-serving media artifact inspect ARTIFACT_ID --principal CALLER_ID --json
+```
+
+Workflow runs and cancellation are guarded mutations. Target selection resolves
+one declared `media-worker` or `media-gateway` resource owner; lifecycle changes
+remain behind the managed serve preview and confirmation contract.
 
 ## Complete command index
 
@@ -240,6 +260,18 @@ required operands, choices, and defaults.
 | `voice sidecar validate` | Validate a sidecar manifest. | `read` / `bounded` | - |
 | `voice sidecar command` | Render a sidecar command. | `read` / `bounded` | - |
 | `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | - |
+| `media` | Inspect and run bounded managed media workflows. | `read` / `bounded` | - |
+| `media capabilities` | List deterministic media capabilities. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root` |
+| `media workflow` | Inspect, validate, and run named workflows. | `read` / `bounded` | - |
+| `media workflow list` | List named workflows. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root` |
+| `media workflow show` | Show one named workflow. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--version` |
+| `media workflow validate` | Validate one workflow against its selected worker. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--version`<br>`--backend-url` |
+| `media workflow run` | Submit one bounded named media workflow. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--idempotency-key`<br>`--backend-url` |
+| `media job` | Inspect and cancel durable media jobs. | `read` / `bounded` | - |
+| `media job status` | Inspect one durable media job. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal` |
+| `media job cancel` | Cancel one caller-owned media job. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal` |
+| `media artifact` | Inspect authenticated media artifacts. | `read` / `bounded` | - |
+| `media artifact inspect` | Inspect opaque artifact metadata. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal` |
 | `harness` | Manage harness integration. | `read` / `bounded` | - |
 | `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
 | `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
