@@ -1,0 +1,100 @@
+{
+  "schema": "anvil-serving/hermes-image-quality-production/v1",
+  "date": "2026-08-28",
+  "package_version": "0.36.0",
+  "executable_fix_forward_revision": "57910c7",
+  "topology": {
+    "gateway": "Fakoli Dark",
+    "resource_owner": "Fakoli Mid Mod",
+    "client": "Fakoli Mini",
+    "measured_hardware": "NVIDIA GeForce RTX 5090",
+    "vram_mib": 32607,
+    "concurrency": 1
+  },
+  "workflow": {
+    "id": "image.flux2-klein-4b-fp8-v1",
+    "model_revision": "5b4408e59397a4a37ccb46afe426d8ed86379441",
+    "encoder_vae_revision": "5f526678002e43af5551dadb73ce2e8c91b43afe",
+    "graph_sha256": "991b63b8c61ff4322d72b8ae81ef43656f4905ddf4b0709c1989b84cfb8f2e4f",
+    "comfyui_revision": "7a131a3afadc8200120f67f9236311a2c48b7445",
+    "available": true,
+    "promoted": false
+  },
+  "profiles": [
+    {
+      "name": "draft",
+      "width": 512,
+      "height": 512,
+      "steps": 4,
+      "artifact_bytes": 321710,
+      "artifact_sha256": "67867fe51555273db2a0b1fe5b2306cf25c6512841f6dc8582729bce0a3fcd56",
+      "gateway_e2e_seconds": 1.352,
+      "generation_seconds": 0.101,
+      "hermes_wall_seconds": 38.354,
+      "independent_visual_review": "pass"
+    },
+    {
+      "name": "standard",
+      "width": 768,
+      "height": 768,
+      "steps": 4,
+      "artifact_bytes": 766691,
+      "artifact_sha256": "6d88d55d012cbf6b333e5150c825aa11b30990907f2efd6dcf128b15d4b5d063",
+      "gateway_e2e_seconds": 1.242,
+      "generation_seconds": 0.128,
+      "hermes_wall_seconds": 24.420,
+      "independent_visual_review": "pass"
+    },
+    {
+      "name": "high",
+      "width": 1024,
+      "height": 1024,
+      "steps": 4,
+      "artifact_bytes": 1495385,
+      "artifact_sha256": "7c3874ca68ea65cd752e981ca8297bf31f6245106c9ef1d9cd7e6d3cdef92a7e",
+      "gateway_e2e_seconds": 1.650,
+      "generation_seconds": 0.189,
+      "hermes_wall_seconds": 41.962,
+      "independent_visual_review": "pass"
+    }
+  ],
+  "cold_lifecycle": {
+    "profile": "draft",
+    "width": 512,
+    "height": 512,
+    "steps": 4,
+    "artifact_bytes": 363074,
+    "artifact_sha256": "ebb6f351c07c2109bea995ffb7dd03e48c40667b53d2b5e0aa8bc1b056c1b3ce",
+    "submission_seconds": 0.061,
+    "recorded_final_approval_wait_seconds": 151.78,
+    "accepted_to_queued_seconds": 2035.526,
+    "queue_seconds": 10.0,
+    "generation_seconds": 0.1,
+    "e2e_seconds": 2045.626,
+    "post_approval_hermes_wall_seconds": 47.788,
+    "includes_fix_forward_iterations": true,
+    "independent_visual_review": "pass",
+    "final_worker_state": "absent",
+    "final_committed_mib": 0,
+    "final_free_media_envelope_mib": 28511
+  },
+  "controls": {
+    "current_token": "pass",
+    "retired_token": "401",
+    "incorrect_token": "401",
+    "hermes_media_tool_count": 8,
+    "caller_dimension_override": "quality_profile_parameter_override",
+    "video": "quality_failed",
+    "fallback": false,
+    "unrelated_qwen_service_preserved": true,
+    "orphan_descendants_after_teardown": 0
+  },
+  "evidence_labels": [
+    "functional",
+    "capacity",
+    "bounded-quality",
+    "routed-client-acceptance",
+    "production-cutover"
+  ],
+  "boundary": "One c1 image per warm profile plus one cold draft over two prompts. No broad quality, tier ranking, arbitrary-size, video-quality, or steady-state cold-start claim."
+}
