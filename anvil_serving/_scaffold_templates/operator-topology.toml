@@ -13,6 +13,10 @@ allow_model_workloads = false
 id = "dark-model-capable"
 allow_model_workloads = true
 
+[[capacity_policies]]
+id = "media-model-capable"
+allow_model_workloads = true
+
 [[hosts]]
 id = "fakoli-mini"
 roles = ["gateway", "operator", "proxy"]
@@ -27,6 +31,13 @@ address = "192.0.2.20"
 os = "windows"
 capacity_policy = "dark-model-capable"
 
+[[hosts]]
+id = "media-node"
+roles = ["media", "serve"]
+address = "192.0.2.30"
+os = "windows"
+capacity_policy = "media-model-capable"
+
 [[runtimes]]
 id = "mini-native"
 host = "fakoli-mini"
@@ -40,6 +51,16 @@ role = "native"
 [[runtimes]]
 id = "dark-docker"
 host = "fakoli-dark"
+role = "docker"
+
+[[runtimes]]
+id = "media-native"
+host = "media-node"
+role = "native"
+
+[[runtimes]]
+id = "media-docker"
+host = "media-node"
 role = "docker"
 
 [[gpu_roles]]
@@ -118,6 +139,24 @@ runtime = "dark-docker"
 endpoint = "http://192.0.2.20:8000/v1"
 endpoint_kind = "data-plane"
 workload = "service"
+
+[[resources]]
+id = "anvil-media-gateway"
+role = "media-gateway"
+host = "fakoli-dark"
+runtime = "dark-docker"
+endpoint = "http://192.0.2.20:8000"
+endpoint_kind = "data-plane"
+workload = "service"
+
+[[resources]]
+id = "anvil-media-worker"
+role = "media-worker"
+host = "media-node"
+runtime = "media-docker"
+endpoint = "http://127.0.0.1:8188"
+endpoint_kind = "host-relative-loopback"
+workload = "media"
 
 # This is the router's authenticated /v1/audio/* surface, not a second
 # listener. It normalizes the raw Dark-only STT/TTS serves below.
@@ -238,6 +277,17 @@ allowed_operations = [
   "voice-audio-status",
   "voice-audio-logs",
 ]
+
+[[transports]]
+id = "media-controller"
+kind = "controller"
+host = "media-node"
+runtime = "media-native"
+endpoint = "http://192.0.2.30:8766"
+auth_env = "ANVIL_CONTROLLER_TOKEN"
+expected_node = "media-node"
+allowed_operations = ["serves-up", "serves-down", "serves-status", "serves-logs"]
+
 # The controller is the durable Tailscale path. SSH is only a credential-free
 # bootstrap/recovery transport; verify its placeholder host key before use.
 [[transports]]
