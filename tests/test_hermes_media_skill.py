@@ -67,6 +67,8 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
     assert "class_type" not in text and "output_nodes" not in text
     assert "Intermediate narration" in text
     assert "until the job is terminal" in text
+    assert "Reply in the user's language" in text
+    assert "Omit internal bookkeeping" in text
 
 
 def test_hermes_shaped_mcp_flow_reaches_worker_and_retrieves_owned_artifact(tmp_path):
