@@ -42,7 +42,7 @@
       "parameters": {"width": 768, "height": 768, "steps": 4}
     }
   },
-  "available": false,
-  "unavailable_reasons": ["quality_unreviewed"],
+  "available": true,
+  "unavailable_reasons": [],
   "limits": {"request_bytes": 65536, "artifact_bytes": 33554432, "timeout_seconds": 600, "retention_seconds": 86400, "queue_depth": 4, "concurrency": 1}
 }

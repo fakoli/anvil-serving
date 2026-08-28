@@ -23,6 +23,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- The production media deployment now has a least-authority, media-only
+  lifecycle controller, host-local state shared with the router, and explicit
+  environment-owned backend/controller origins; the general Dark controller
+  remains outside the media authority boundary.
 - Native image MCP responses now share one six-MiB binary/ten-MiB framed
   transport budget across artifact inspection, the remote controller client,
   and the official SDK stdio bridge instead of failing above the former
@@ -33,6 +37,9 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- The FLUX.2 Klein image workflow is available after five independently
+  reviewed routed/qualification samples, including all three declared quality
+  profiles. The failed Wan2.2 workflow remains unavailable.
 - Package metadata, the Dockerfile label, and the byte-synchronized public
   router and voice Compose defaults now identify `anvil-serving:0.36.0`.
 
