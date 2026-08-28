@@ -32,6 +32,9 @@ SSE responses. There is exactly one selected tier per accepted chat request.
 The front door also has deterministic purpose-model endpoints for embeddings
 and reranking, plus normalized audio endpoints. They have separate
 operator-configured route tables and never join the chat route vocabulary.
+The same authenticated origin may additionally expose MCP, A2A, and opaque
+artifact routes. Those routes adapt to a durable operation service; they do
+not enter the inference relay or gain authority over lifecycle or placement.
 
 ## Meta-router authority planes
 
@@ -44,12 +47,21 @@ evidence so each mutable fact has one authority:
 | Topology and policy | Operator-owned router configuration | Fixes endpoint, dialect, auth reference, readiness, and safety rules |
 | Served configuration | Router config or the selected inference service | Supplies model identity, context, and allowlisted runtime facts for admission and metadata |
 | Request | Router | Authenticates, validates, admits, translates, streams, and relays to the selected endpoint |
+| Media operation | Durable media service | Validates named workflows and owns idempotent jobs, cancellation, reconciliation, and artifact metadata |
+| Protocol projection | MCP and A2A adapters | Authorizes and projects the operation service; never owns execution state |
+| Remote operation | Controller | Dispatches allowlisted typed operations and records confirmation/lifecycle receipts |
+| Resource execution | Declared resource-owning host | Owns managed ComfyUI lifecycle, GPU reservations, and backend execution |
 | Evidence and promotion | Evaluation artifacts and guarded operator commands | Determines whether configuration should change; never selects per request |
 
 In upstream-owned mode, the router asks only the endpoint selected by the
 configured route. Metadata resolution is therefore downstream of route
 selection. It cannot introduce a second candidate, fallback, or endpoint
 choice. See [Capability meta-router](META-ROUTER.md).
+
+For media work, operator configuration likewise maps one named workflow
+version to one media service and resource owner. The gateway never accepts a
+raw ComfyUI graph, proxies backend routes, or substitutes another workflow or
+host. See [ADR-0040](adr/0040-media-gateway-and-controller-authority.md).
 
 ## Capability topology
 

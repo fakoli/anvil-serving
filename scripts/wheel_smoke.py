@@ -27,6 +27,13 @@ required = (
     package / "_benchmark_profiles" / "smoke.json",
     package / "_benchmark_profiles" / "scout.json",
     package / "_benchmark_profiles" / "deep.json",
+    package / "_node" / "mcp_proxy.mjs",
+    package / "_media_workflows" / "bundle.lock.json",
+    package / "_media_workflows" / "registry.json",
+    package / "_media_workflows" / "image.flux2-klein-4b-fp8-v1.json",
+    package / "_media_workflows" / "image.flux2-klein-4b-fp8-v1.graph.json",
+    package / "_media_workflows" / "video.wan2.2-ti2v-5b-v1.json",
+    package / "_media_workflows" / "video.wan2.2-ti2v-5b-v1.graph.json",
 )
 missing = [str(path) for path in required if not path.is_file()]
 if missing:
@@ -186,6 +193,13 @@ def run_smoke(
                 "anvil_serving/_benchmark_profiles/smoke.json",
                 "anvil_serving/_benchmark_profiles/scout.json",
                 "anvil_serving/_benchmark_profiles/deep.json",
+                "anvil_serving/_node/mcp_proxy.mjs",
+                "anvil_serving/_media_workflows/bundle.lock.json",
+                "anvil_serving/_media_workflows/registry.json",
+                "anvil_serving/_media_workflows/image.flux2-klein-4b-fp8-v1.json",
+                "anvil_serving/_media_workflows/image.flux2-klein-4b-fp8-v1.graph.json",
+                "anvil_serving/_media_workflows/video.wan2.2-ti2v-5b-v1.json",
+                "anvil_serving/_media_workflows/video.wan2.2-ti2v-5b-v1.graph.json",
             ],
         }
 

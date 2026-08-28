@@ -17,6 +17,7 @@ import threading
 import time
 from dataclasses import replace
 from http.server import ThreadingHTTPServer
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
 
 from .admission import AdmissionLease, TierAdmission
@@ -51,6 +52,7 @@ from .decision_log import (
 from .discovery import models_payload
 from .dialects.translate import has_tool_artifacts
 from .front_door import make_server
+from .gateway import ProtocolGateway
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult, estimate_tokens
 from .media_admission import evaluate_media_admission
 from .model_capacity import (
@@ -73,7 +75,24 @@ from .router_telemetry import (
 )
 from .tier_health import build_tier_health
 from .. import envfile
+from .. import mcp as mcp_facade
+from ..a2a.tasks import A2AMediaTasks
+from ..control_plane.mcp.controller_client import remote_controller_request
+from ..control_plane.mcp.errors import ToolError
+from ..control_plane.mcp.protocol import (
+    CLIENT_CAPABILITIES_META_KEY,
+    CLIENT_INFO_META_KEY,
+    PROTOCOL_VERSION_META_KEY,
+)
 from ..graceful import serve_until_signal
+from ..media.artifacts import ArtifactStore
+from ..media.cli import DEFAULT_REGISTRY
+from ..media.comfyui import ComfyUIClient
+from ..media.errors import MediaError
+from ..media.jobs import MediaJobStore
+from ..media.operations import MediaOperations
+from ..media.worker import MediaArtifactCapture, MediaJobReconciler, MediaReconciliationLoop
+from ..media.workflows import WorkflowRegistry
 from ..paths import config_path as operator_config_path
 from ..paths import first_existing
 
@@ -716,6 +735,70 @@ def _durable_admission(path: str, config: RouterConfig) -> TierAdmission:
     return admission
 
 
+def _media_lifecycle_preview(
+    controller_url: str,
+    token: str,
+) -> Callable[[str, str, str], Mapping[str, Any]]:
+    """Build a bounded operator-controller preview used only for cold workers."""
+
+    def preview(job_id: str, principal: str, service: str) -> Mapping[str, Any]:
+        request = {
+            "jsonrpc": "2.0",
+            "id": "media-lifecycle-preview",
+            "method": "tools/call",
+            "params": {
+                "name": "media_worker_prepare",
+                "arguments": {
+                    "job_id": job_id,
+                    "principal": principal,
+                    "service": service,
+                    "dry_run": True,
+                    "confirm": False,
+                    "human_approved": False,
+                },
+                "_meta": {
+                    PROTOCOL_VERSION_META_KEY: mcp_facade.PROTOCOL_VERSION,
+                    CLIENT_CAPABILITIES_META_KEY: {},
+                    CLIENT_INFO_META_KEY: {
+                        "name": "anvil-media-gateway",
+                        "version": mcp_facade.SERVER_INFO["version"],
+                    },
+                },
+            },
+        }
+        try:
+            response = remote_controller_request(controller_url, request, token)
+        except ToolError as exc:
+            raise MediaError(exc.code, exc.message, status=503, details=exc.details) from exc
+        rpc_error = response.get("error")
+        if isinstance(rpc_error, Mapping):
+            data = rpc_error.get("data")
+            code = data.get("code") if isinstance(data, Mapping) else None
+            raise MediaError(
+                code if isinstance(code, str) else "media_lifecycle_preview_failed",
+                "the controller rejected the managed media worker preview",
+                status=503,
+            )
+        result = response.get("result")
+        envelope = result.get("structuredContent") if isinstance(result, Mapping) else None
+        if not isinstance(envelope, Mapping) or envelope.get("ok") is not True:
+            raise MediaError(
+                "media_lifecycle_preview_invalid",
+                "controller returned an invalid media worker preview envelope",
+                status=502,
+            )
+        data = envelope.get("data")
+        if not isinstance(data, Mapping):
+            raise MediaError(
+                "media_lifecycle_preview_invalid",
+                "controller returned invalid media worker preview data",
+                status=502,
+            )
+        return data
+
+    return preview
+
+
 def build_server(
     config_path: str,
     *,
@@ -806,10 +889,69 @@ def build_server(
             transport=audio_transport,
             decision_log=routing._decision_log,
         )
+    gateway: Optional[ProtocolGateway] = None
+    media_worker: Optional[MediaReconciliationLoop] = None
+    if server_config.media_principal is not None:
+        backend_url = environ.get("ANVIL_MEDIA_BACKEND_URL")
+        if not backend_url:
+            raise ConfigError(
+                "media gateway is enabled but ANVIL_MEDIA_BACKEND_URL is not set"
+            )
+        state_path = environ.get(
+            "ANVIL_MEDIA_STATE_DB",
+            str(Path.home() / ".anvil-serving" / "media-jobs.sqlite3"),
+        )
+        artifact_root = environ.get(
+            "ANVIL_MEDIA_ARTIFACT_ROOT",
+            str(Path.home() / ".anvil-serving" / "media-artifacts"),
+        )
+        registry_path = environ.get(
+            "ANVIL_MEDIA_WORKFLOW_REGISTRY", str(DEFAULT_REGISTRY)
+        )
+        controller_url = (environ.get("ANVIL_MEDIA_CONTROLLER_URL") or "").strip()
+        controller_token = (environ.get("ANVIL_MEDIA_CONTROLLER_TOKEN") or "").strip()
+        if bool(controller_url) != bool(controller_token):
+            raise ConfigError(
+                "ANVIL_MEDIA_CONTROLLER_URL and ANVIL_MEDIA_CONTROLLER_TOKEN must be configured together"
+            )
+        operations = MediaOperations(
+            WorkflowRegistry(registry_path),
+            MediaJobStore(state_path),
+            ArtifactStore(artifact_root),
+            lifecycle_preview=(
+                _media_lifecycle_preview(controller_url, controller_token)
+                if controller_url
+                else None
+            ),
+        )
+        media_backend = ComfyUIClient(backend_url)
+        gateway = ProtocolGateway(
+            caller={
+                "principal": server_config.media_principal,
+                "scopes": server_config.media_scopes,
+            },
+            tasks=A2AMediaTasks(operations, media_backend),
+            registry=operations.registry,
+            artifacts=operations.artifacts,
+            public_origin=server_config.media_public_origin or "",
+        )
+        media_worker = MediaReconciliationLoop(
+            MediaJobReconciler(
+                operations.jobs,
+                media_backend.history,
+                MediaArtifactCapture(
+                    operations.registry,
+                    operations.artifacts,
+                    media_backend,
+                ),
+                getattr(media_backend, "find_prompt", None),
+            ),
+            maintenance=operations.artifacts.prune,
+        )
     httpd = make_server(
         host, port, routing, timeout=timeout, model_routes=config.model_routes,
         exhaustion_status=config.exhaustion_status, auth_token=auth_token,
-        purpose=purpose, audio=audio,
+        purpose=purpose, audio=audio, gateway=gateway,
     )
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
@@ -817,6 +959,24 @@ def build_server(
     httpd.anvil_admission = routing._admission  # type: ignore[attr-defined]
     httpd.anvil_purpose = purpose  # type: ignore[attr-defined]
     httpd.anvil_audio = audio  # type: ignore[attr-defined]
+    httpd.anvil_gateway = gateway  # type: ignore[attr-defined]
+    httpd.anvil_media_worker = media_worker  # type: ignore[attr-defined]
+    if media_worker is not None:
+        original_server_close = httpd.server_close
+        close_lock = threading.Lock()
+        closed = False
+
+        def close_media_server() -> None:
+            nonlocal closed
+            with close_lock:
+                if closed:
+                    return
+                closed = True
+            media_worker.stop()
+            original_server_close()
+
+        httpd.server_close = close_media_server  # type: ignore[method-assign]
+        media_worker.start()
     return httpd
 
 
@@ -845,6 +1005,11 @@ def serve(
     audio = getattr(httpd, "anvil_audio", None)
     if audio is not None:
         routes += "".join(", POST " + path for path in audio.paths)
+    if getattr(httpd, "anvil_gateway", None) is not None:
+        routes += (
+            ", POST /mcp, POST /a2a, GET /.well-known/agent-card.json, "
+            "GET /artifacts/{opaque-id}"
+        )
     print(
         f"anvil-serving front door on http://{actual_host}:{actual_port}\n"
         f"  tiers bound: {', '.join(httpd.anvil_tiers) or '(none)'}\n"  # type: ignore[attr-defined]

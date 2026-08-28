@@ -1,0 +1,73 @@
+{
+  "schema": "anvil-serving.media-release-readiness/v1",
+  "observed_at": "2026-08-28",
+  "source": {
+    "base_revision": "be2c4e3e82c5c459d41a49c2b339de279309e2a4",
+    "executable_candidate_revision": "2dd3652c6fbbd72ae932f6c90713153e829dbd80",
+    "private_operator_candidate_revision": "250a8e6052dfc266e57add7a03065ab837cdeeeb",
+    "release_packet_scope": "evidence-only commit follows executable candidate",
+    "anvil_serving_version": "0.35.1",
+    "mcp_bridge_version": "0.18.0"
+  },
+  "workflow_identity": {
+    "image": {
+      "id": "image.flux2-klein-4b-fp8-v1",
+      "version": "v1",
+      "graph_sha256": "991b63b8c61ff4322d72b8ae81ef43656f4905ddf4b0709c1989b84cfb8f2e4f"
+    },
+    "video": {
+      "id": "video.wan2.2-ti2v-5b-v1",
+      "version": "v1",
+      "graph_sha256": "bd12b2de2a33bbedc91d7ad6120714f3c3adbd174694ac74d6f0213ecef9572e"
+    }
+  },
+  "verification": {
+    "full_python": {"passed": 4342, "skipped": 9, "seconds": 184.34},
+    "media_protocol_matrix": {"passed": 959, "seconds": 16.32},
+    "focused_approval_a2a_regressions": {"passed": 45, "seconds": 10.33},
+    "hermes_skill_tests": {"passed": 3, "seconds": 0.31},
+    "private_operator_tests": {"passed": 20, "seconds": 2.958},
+    "node_bridge_tests": {"passed": 2},
+    "node_audit_vulnerabilities": 0,
+    "ruff": "pass",
+    "mkdocs_strict": "pass",
+    "markdown_files_checked": 420,
+    "cli_reference_files_checked": 806,
+    "semantic_secret_files_checked": 1991,
+    "semantic_secret_findings": 0,
+    "public_archive_gitleaks": "pass",
+    "private_archive_gitleaks": "pass",
+    "distribution_build": "pass",
+    "twine": "pass",
+    "isolated_wheel_smoke": "pass"
+  },
+  "qualified_worker": {
+    "runtime_release": "v0.33.4",
+    "runtime_revision": "7a131a3afadc8200120f67f9236311a2c48b7445",
+    "image_peak_vram_mib": 12919,
+    "video_peak_vram_mib": 18263,
+    "final_container_state": "absent",
+    "final_gpu_used_mib": 448,
+    "final_reservation_committed_mib": 0,
+    "router_changed": false
+  },
+  "source_merge": {
+    "status": "candidate_pending_rereview",
+    "approval_gate": "independent_adversarial_review"
+  },
+  "live_enablement": {
+    "status": "human_required",
+    "deployed": false,
+    "routes_changed": false,
+    "workflows_available": false,
+    "workflows_promoted": false,
+    "worker_running": false,
+    "blockers": [
+      "independent_perceptual_quality_disposition",
+      "merged_revision_endpoint_parity",
+      "real_hermes_acceptance",
+      "deployed_artifact_delivery_and_rollback",
+      "explicit_human_enablement_authorization"
+    ]
+  }
+}

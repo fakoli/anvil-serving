@@ -25,6 +25,7 @@ what was measured to put them there.
 | **Route through the meta-router** — capabilities, auth, streaming, admission | [Capability meta-router](META-ROUTER.md) | `router` |
 | **Embeddings & reranking** — dedicated purpose models routed by exact model name | [Embeddings & reranking](PURPOSE-MODELS.md) | `router` |
 | **Voice & audio** — STT/TTS serves, realtime bridge, audio routes | [Voice pipeline](VOICE.md) | `voice` |
+| **Generate images & video** — bounded named workflows and durable artifacts | [Media commands](CLI.md#media) | `media` |
 | **Operate the host** — GPU budget, WSL/Docker repair, tailnet edge, observability | [Operator playbooks](OPERATOR-PLAYBOOKS.md) | `host`, `edge`, `collectors`, `dashboard`, `topology` |
 | **Integrate a harness** — MCP/controller tools and provider config for agents | [Agent workbench](WORKBENCH.md) | `workbench`, `harness`, `mcp`, `controller` |
 
@@ -53,7 +54,7 @@ reference pages stay true as models change.
 | [Benchmarks overview](benchmarks/index.md) | Hardware-first current decisions and evidence labels. |
 | [Model dossiers](benchmarks/models/index.md) | Per-model status, recipe, and decision boundary. |
 | [RTX PRO 6000](benchmarks/hardware/rtx-pro-6000.md) | Primary LLM measurements and rollback chain. |
-| [RTX 5090](benchmarks/hardware/rtx-5090.md) | Omni, vision, and STT/TTS measurements. |
+| [RTX 5090](benchmarks/hardware/rtx-5090.md) | Image/video generation, Omni, vision, and STT/TTS measurements. |
 | [Result archive](BENCHMARKS.md) | Chronological campaigns and historical comparisons. |
 | [Findings](findings/README.md) | Dated evidence snapshots, immutable once published. |
 | [Decisions (ADRs)](adr/README.md) | Why the architecture is shaped the way it is. |

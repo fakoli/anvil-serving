@@ -7,7 +7,10 @@ The bridge uses the official Model Context Protocol TypeScript SDK `2.0.0`.
 Its stdio side accepts initialize-based clients through protocol
 `2025-11-25` and stateless clients pinned to `2026-07-28`. Its HTTP client side
 is pinned to `2026-07-28` and connects only to the authenticated Anvil
-controller.
+gateway/controller endpoint. Tool discovery is mirrored dynamically, including
+the caller-scoped `media_*` family, so legacy Hermes-era and modern clients see
+the same normalized schemas and results authorized for the bridge token. The
+bridge never contains a ComfyUI endpoint, workflow graph, or controller token.
 
 ## Requirements
 
@@ -31,7 +34,13 @@ npm audit
 bridge against the exact legacy SDK generation observed in OpenClaw and the
 modern SDK. The test controller also verifies bearer authentication, modern
 downstream protocol metadata, schema validation before dispatch, and tool
-calls.
+calls, including named media workflow parity.
+
+The packaged Hermes example at
+[`examples/hermes/`](../examples/hermes/README.md) uses this bridge with an
+explicit caller-only media tool allowlist. Its skill consumes only named
+workflow, durable job, and authenticated artifact contracts; it does not gain
+media-worker lifecycle authority.
 
 Commit changes to the TypeScript source, lockfile, and generated asset
 together. Do not put controller token values in npm configuration, source

@@ -6,10 +6,13 @@ import json
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from ... import __version__
 from ...operator_output import redact
 from .errors import ToolError
 
 
+SERVER_INFO = {"name": "anvil-serving", "version": __version__}
+PROTOCOL_VERSION = "2026-07-28"
 PROXY_METHODS = frozenset({"tools/list", "tools/call"})
 RESULT_TYPE_COMPLETE = "complete"
 PROTOCOL_VERSION_META_KEY = "io.modelcontextprotocol/protocolVersion"

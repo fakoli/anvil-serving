@@ -372,9 +372,22 @@ class ServerConfig:
     auth_env: Optional[str] = None
     admission_state_path: Optional[str] = None
     decision_log_path: Optional[str] = None
+    media_principal: Optional[str] = None
+    media_scopes: tuple[str, ...] = ()
+    media_public_origin: Optional[str] = None
 
 
-_SERVER_KEYS = frozenset({"auth_env", "admission_state_path", "decision_log_path"})
+_SERVER_KEYS = frozenset({
+    "auth_env",
+    "admission_state_path",
+    "decision_log_path",
+    "media_principal",
+    "media_scopes",
+    "media_public_origin",
+})
+_MEDIA_SCOPES = frozenset(
+    {"media:read", "media:submit", "media:cancel", "media:cross-principal", "operator:media"}
+)
 
 
 def load_server_config(path: str) -> ServerConfig:
@@ -405,6 +418,44 @@ def load_server_config(path: str) -> ServerConfig:
     if auth_env is not None:
         _validate_auth_env(auth_env, "[server].auth_env")
 
+    media_principal = server.get("media_principal")
+    raw_media_scopes = server.get("media_scopes")
+    media_public_origin = server.get("media_public_origin")
+    media_fields = (media_principal, raw_media_scopes, media_public_origin)
+    if any(value is not None for value in media_fields):
+        if auth_env is None:
+            raise ConfigError("[server] media gateway fields require auth_env")
+        if (
+            not isinstance(media_principal, str)
+            or not media_principal
+            or len(media_principal) > 128
+        ):
+            raise ConfigError("[server].media_principal must be a non-empty string up to 128 characters")
+        if (
+            not isinstance(raw_media_scopes, list)
+            or not raw_media_scopes
+            or len(raw_media_scopes) != len(set(raw_media_scopes))
+            or any(scope not in _MEDIA_SCOPES for scope in raw_media_scopes)
+        ):
+            raise ConfigError(
+                "[server].media_scopes must be a unique non-empty list of supported media scopes"
+            )
+        if not isinstance(media_public_origin, str) or not media_public_origin:
+            raise ConfigError("[server].media_public_origin must be a non-empty http(s) origin")
+        parsed_origin = urllib.parse.urlsplit(media_public_origin)
+        if (
+            parsed_origin.scheme not in {"http", "https"}
+            or not parsed_origin.hostname
+            or parsed_origin.username is not None
+            or parsed_origin.password is not None
+            or parsed_origin.path not in {"", "/"}
+            or parsed_origin.query
+            or parsed_origin.fragment
+        ):
+            raise ConfigError("[server].media_public_origin must be an http(s) origin without credentials or a path")
+    else:
+        raw_media_scopes = []
+
     paths: dict[str, Optional[str]] = {}
     for key in ("admission_state_path", "decision_log_path"):
         value = server.get(key)
@@ -416,6 +467,9 @@ def load_server_config(path: str) -> ServerConfig:
         auth_env=auth_env,
         admission_state_path=paths["admission_state_path"],
         decision_log_path=paths["decision_log_path"],
+        media_principal=media_principal,
+        media_scopes=tuple(raw_media_scopes),
+        media_public_origin=media_public_origin,
     )
 
 

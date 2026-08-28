@@ -1,0 +1,442 @@
+{
+    "schema": "anvil-serving.recipe-feasibility-result/v1",
+    "campaign": "media-gateway-comfyui-rtx5090-first-workflows",
+    "equations": {
+        "required_tokens": "sum(requirements.tokens)",
+        "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+        "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+        "relative_quality_loss": "1 - quality/reference_quality",
+        "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+        "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+    },
+    "required_tokens": {
+        "min": 0,
+        "max": 0
+    },
+    "physical_available_bytes": {
+        "min": 33721155584,
+        "max": 33721155584
+    },
+    "policy_available_bytes": {
+        "min": 29426188288,
+        "max": 29426188288
+    },
+    "candidates": [
+        {
+            "id": "image-flux2-klein-4b-fp8-v1",
+            "classification": "benchmark-survivor",
+            "reasons": [
+                "resource bounds pass; behavioral evidence remains incomplete"
+            ],
+            "axes": {
+                "context_limit": "pass",
+                "measured_context": "not-measured",
+                "measured_context_evidence_status": "not-supplied",
+                "memory": "pass",
+                "correctness": {
+                    "status": "unknown",
+                    "missing_variables": [
+                        "deterministic_pass_rate"
+                    ]
+                },
+                "quality": {
+                    "status": "unknown",
+                    "missing_variables": [
+                        "quality_score",
+                        "reference_quality_score"
+                    ]
+                },
+                "warm_e2e_speed": {
+                    "status": "unknown",
+                    "missing_variables": [
+                        "warm_e2e_seconds",
+                        "no_spec_warm_e2e_seconds"
+                    ]
+                },
+                "tasks_per_hour": {
+                    "status": "unknown",
+                    "missing_variables": [
+                        "successful_tasks_per_hour",
+                        "reference_tasks_per_hour"
+                    ]
+                }
+            },
+            "required_tokens": {
+                "min": 0,
+                "max": 0
+            },
+            "demand_bytes": {
+                "min": 13525559684,
+                "max": 17991966943
+            },
+            "physical_available_bytes": {
+                "min": 33721155584,
+                "max": 33721155584
+            },
+            "policy_available_bytes": {
+                "min": 29426188288,
+                "max": 29426188288
+            },
+            "physical_margin_bytes": {
+                "min": 15729188641,
+                "max": 20195595900
+            },
+            "policy_margin_bytes": {
+                "min": 11434221345,
+                "max": 15900628604
+            },
+            "estimated_max_tokens_physical": {
+                "min": 15729188641,
+                "max": 20195595900
+            },
+            "estimated_max_tokens_policy": {
+                "min": 11434221345,
+                "max": 15900628604
+            },
+            "load_bearing_unknowns": [],
+            "planning_bound_inputs": [
+                "requirements.concurrency",
+                "requirements.vram_reserves.desktop_driver_headroom.variable",
+                "candidates[0].resident_components.model_allocation_proxy",
+                "candidates[0].resident_components.runtime_graph_workspace"
+            ],
+            "missing_evidence": [
+                "deterministic_pass_rate",
+                "measured_max_stable_context_tokens",
+                "no_spec_warm_e2e_seconds",
+                "quality_score",
+                "reference_quality_score",
+                "reference_tasks_per_hour",
+                "successful_tasks_per_hour",
+                "warm_e2e_seconds"
+            ]
+        },
+        {
+            "id": "video-wan2.2-ti2v-5b-v1",
+            "classification": "benchmark-survivor",
+            "reasons": [
+                "resource bounds pass; behavioral evidence remains incomplete"
+            ],
+            "axes": {
+                "context_limit": "pass",
+                "measured_context": "not-measured",
+                "measured_context_evidence_status": "not-supplied",
+                "memory": "pass",
+                "correctness": {
+                    "status": "unknown",
+                    "missing_variables": [
+                        "deterministic_pass_rate"
+                    ]
+                },
+                "quality": {
+                    "status": "unknown",
+                    "missing_variables": [
+                        "quality_score",
+                        "reference_quality_score"
+                    ]
+                },
+                "warm_e2e_speed": {
+                    "status": "unknown",
+                    "missing_variables": [
+                        "warm_e2e_seconds",
+                        "no_spec_warm_e2e_seconds"
+                    ]
+                },
+                "tasks_per_hour": {
+                    "status": "unknown",
+                    "missing_variables": [
+                        "successful_tasks_per_hour",
+                        "reference_tasks_per_hour"
+                    ]
+                }
+            },
+            "required_tokens": {
+                "min": 0,
+                "max": 0
+            },
+            "demand_bytes": {
+                "min": 19218708529,
+                "max": 24254430672
+            },
+            "physical_available_bytes": {
+                "min": 33721155584,
+                "max": 33721155584
+            },
+            "policy_available_bytes": {
+                "min": 29426188288,
+                "max": 29426188288
+            },
+            "physical_margin_bytes": {
+                "min": 9466724912,
+                "max": 14502447055
+            },
+            "policy_margin_bytes": {
+                "min": 5171757616,
+                "max": 10207479759
+            },
+            "estimated_max_tokens_physical": {
+                "min": 9466724912,
+                "max": 14502447055
+            },
+            "estimated_max_tokens_policy": {
+                "min": 5171757616,
+                "max": 10207479759
+            },
+            "load_bearing_unknowns": [],
+            "planning_bound_inputs": [
+                "requirements.concurrency",
+                "requirements.vram_reserves.desktop_driver_headroom.variable",
+                "candidates[1].resident_components.model_allocation_proxy",
+                "candidates[1].resident_components.runtime_graph_workspace"
+            ],
+            "missing_evidence": [
+                "deterministic_pass_rate",
+                "measured_max_stable_context_tokens",
+                "no_spec_warm_e2e_seconds",
+                "quality_score",
+                "reference_quality_score",
+                "reference_tasks_per_hour",
+                "successful_tasks_per_hour",
+                "warm_e2e_seconds"
+            ]
+        }
+    ],
+    "variables": [
+        {
+            "path": "tracked_variables.physical_system_ram_bytes",
+            "status": "measured",
+            "unit": "bytes",
+            "min": 33190932480,
+            "max": 33190932480,
+            "source": "Win32_ComputerSystem",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "tracked_variables.docker_vm_memory_bytes",
+            "status": "measured",
+            "unit": "bytes",
+            "min": 16196648960,
+            "max": 16196648960,
+            "source": "docker info MemTotal",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "tracked_variables.system_ram_peak_bytes",
+            "status": "unknown",
+            "unit": "bytes",
+            "min": null,
+            "max": null,
+            "source": null,
+            "observed_at": null,
+            "notes": "Measure during each managed generation; checkpoint bytes do not establish offload residency."
+        },
+        {
+            "path": "requirements.tokens.media_token_budget",
+            "status": "confirmed",
+            "unit": "tokens",
+            "min": 0,
+            "max": 0,
+            "source": "ComfyUI diffusion workflows do not allocate an LLM KV cache",
+            "observed_at": "2026-08-27",
+            "notes": "Prompt encoder memory is represented in resident allocation, not as token KV."
+        },
+        {
+            "path": "requirements.concurrency",
+            "status": "assumed",
+            "unit": "jobs",
+            "min": 1,
+            "max": 1,
+            "source": "first-release workflow policy",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "requirements.physical_vram_bytes",
+            "status": "measured",
+            "unit": "bytes",
+            "min": 34190917632,
+            "max": 34190917632,
+            "source": "nvidia-smi RTX 5090 total memory",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "requirements.vram_reserves.observed_background.variable",
+            "status": "measured",
+            "unit": "bytes",
+            "min": 469762048,
+            "max": 469762048,
+            "source": "idle nvidia-smi used memory before qualification",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "requirements.vram_reserves.desktop_driver_headroom.variable",
+            "status": "assumed",
+            "unit": "bytes",
+            "min": 4294967296,
+            "max": 4294967296,
+            "source": "managed ComfyUI 32 GiB reference envelope",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[0].runtime_context_limit_tokens",
+            "status": "confirmed",
+            "unit": "tokens",
+            "min": 0,
+            "max": 0,
+            "source": "media workflow has no LLM context requirement",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[0].resident_components.model_allocation_proxy",
+            "status": "estimated",
+            "unit": "bytes",
+            "min": 12451817860,
+            "max": 13696999647,
+            "source": "exact three-file checkpoint total through a 10 percent allocation band",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[0].resident_components.runtime_graph_workspace",
+            "status": "estimated",
+            "unit": "bytes",
+            "min": 1073741824,
+            "max": 4294967296,
+            "source": "pre-start ComfyUI diffusion workspace planning band",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[0].per_token_components.calculator_sentinel",
+            "status": "confirmed",
+            "unit": "bytes/token",
+            "min": 1,
+            "max": 1,
+            "source": "nonzero structural denominator for a zero-token media workload",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[0].kv_token_multiplier",
+            "status": "confirmed",
+            "unit": "copies",
+            "min": 1,
+            "max": 1,
+            "source": "calculator structural sentinel",
+            "observed_at": "2026-08-27",
+            "notes": "Required media token count is zero, so the sentinel contributes zero demand."
+        },
+        {
+            "path": "candidates[0].tracked_variables.logical_checkpoint_bytes",
+            "status": "confirmed",
+            "unit": "bytes",
+            "min": 12451817860,
+            "max": 12451817860,
+            "source": "pinned Hugging Face artifact metadata",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[0].tracked_variables.peak_vram_bytes",
+            "status": "unknown",
+            "unit": "bytes",
+            "min": null,
+            "max": null,
+            "source": null,
+            "observed_at": null,
+            "notes": "Requires a managed local generation."
+        },
+        {
+            "path": "requirements.thresholds.min_deterministic_pass_rate",
+            "status": "assumed",
+            "unit": "ratio",
+            "min": 1.0,
+            "max": 1.0,
+            "source": "qualification hard gate",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[1].runtime_context_limit_tokens",
+            "status": "confirmed",
+            "unit": "tokens",
+            "min": 0,
+            "max": 0,
+            "source": "media workflow has no LLM context requirement",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[1].resident_components.model_allocation_proxy",
+            "status": "estimated",
+            "unit": "bytes",
+            "min": 18144966705,
+            "max": 19959463376,
+            "source": "exact three-file checkpoint total through a 10 percent allocation band",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[1].resident_components.runtime_graph_workspace",
+            "status": "estimated",
+            "unit": "bytes",
+            "min": 1073741824,
+            "max": 4294967296,
+            "source": "pre-start ComfyUI video workspace planning band",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[1].per_token_components.calculator_sentinel",
+            "status": "confirmed",
+            "unit": "bytes/token",
+            "min": 1,
+            "max": 1,
+            "source": "nonzero structural denominator for a zero-token media workload",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[1].kv_token_multiplier",
+            "status": "confirmed",
+            "unit": "copies",
+            "min": 1,
+            "max": 1,
+            "source": "calculator structural sentinel",
+            "observed_at": "2026-08-27",
+            "notes": "Required media token count is zero, so the sentinel contributes zero demand."
+        },
+        {
+            "path": "candidates[1].tracked_variables.logical_checkpoint_bytes",
+            "status": "confirmed",
+            "unit": "bytes",
+            "min": 18144966705,
+            "max": 18144966705,
+            "source": "pinned Hugging Face artifact metadata",
+            "observed_at": "2026-08-27",
+            "notes": null
+        },
+        {
+            "path": "candidates[1].tracked_variables.peak_vram_bytes",
+            "status": "unknown",
+            "unit": "bytes",
+            "min": null,
+            "max": null,
+            "source": null,
+            "observed_at": null,
+            "notes": "Requires a managed local generation."
+        }
+    ],
+    "unresolved_variables": [
+        "tracked_variables.system_ram_peak_bytes",
+        "candidates[0].tracked_variables.peak_vram_bytes",
+        "candidates[1].tracked_variables.peak_vram_bytes"
+    ],
+    "promotion_authority": false
+}
