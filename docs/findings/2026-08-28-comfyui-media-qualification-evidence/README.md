@@ -15,5 +15,4 @@ paths, or credentials.
 The separate
 [2026-08-27 feasibility packet](../2026-08-27-media-gateway-comfyui-evidence/feasibility-result.md)
 records the pre-download capacity screening. Exact model and runtime pins are
-also maintained in
-[`bundle.lock.json`](../../../configs/media/workflows/bundle.lock.json).
+also maintained in `configs/media/workflows/bundle.lock.json`.
