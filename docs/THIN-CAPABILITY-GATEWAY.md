@@ -82,7 +82,11 @@ metadata and do not add model selection or lifecycle authority.
 Purpose models are deterministic model-name routes on `/v1/embeddings` and
 `/v1/rerank`. Audio routes are deterministic operator-selected STT/TTS routes
 under `/v1/audio/*`. ComfyUI is lifecycle-managed separately and is not a chat
-model route.
+model route. Optional `/mcp`, `/a2a`, Agent Card, and opaque artifact handlers
+share the authenticated origin but adapt to a durable operation service rather
+than the inference relay. They accept only named allowlisted workflows, and
+all lifecycle mutations remain typed controller operations executed by the
+declared resource owner.
 
 ## Router observability API
 
@@ -142,4 +146,5 @@ heaps are interchangeable.
 
 See [Configuration](CONFIGURATION.md), [Architecture](ARCHITECTURE.md),
 [ADR-0028](adr/0028-serving-benchmarks-and-thin-capability-gateway.md), and
-[ADR-0039](adr/0039-capability-meta-router.md).
+[ADR-0039](adr/0039-capability-meta-router.md), and
+[ADR-0040](adr/0040-media-gateway-and-controller-authority.md).
