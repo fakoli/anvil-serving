@@ -6,16 +6,11 @@ from typing import Callable, Optional, Sequence
 
 from ... import mcp
 from .errors import ControllerError
+from .tool_names import mcp_tool_name as _mcp_tool_name
 
 
 ListToolsFunc = Callable[[], list[dict]]
 CallToolFunc = Callable[[str, Optional[dict]], dict]
-
-
-def _mcp_tool_name(name: str) -> str:
-    """Translate declared topology operation names to MCP catalog names."""
-    return name.replace("-", "_")
-
 
 def _validated_tool_catalog(
     list_tools_func: ListToolsFunc,
