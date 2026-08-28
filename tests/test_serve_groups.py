@@ -348,7 +348,7 @@ def test_shipped_example_manifests_authored_groups():
     assert by_name["reranker"] == {"embedding", "auxiliary-stack"}
     assert by_name["stt"] == {"voice", "omni-voice-stack"}
     assert by_name["tts"] == {"voice", "omni-voice-stack"}
-    assert by_name["comfyui"] == {"comfy", "media"}
+    assert by_name["media-worker"] == {"comfy", "media"}
 
 
 def test_shipped_example_experiment_serves_untagged():
@@ -368,5 +368,5 @@ def test_shipped_example_group_catalog():
     assert catalog["omni-voice-stack"] == ["omni-small", "stt", "tts"]
     assert catalog["auxiliary-stack"] == ["embeddings", "reranker"]
     assert catalog["voice"] == ["stt", "tts", "realtime-proxy"]
-    assert catalog["comfy"] == ["comfyui"]
-    assert catalog["media"] == ["comfyui"]
+    assert catalog["comfy"] == ["media-worker"]
+    assert catalog["media"] == ["media-worker"]
