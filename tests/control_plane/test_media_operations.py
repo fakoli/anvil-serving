@@ -64,6 +64,39 @@ def test_prepare_requires_three_part_gate_and_attaches_receipt(tmp_path):
     assert updated.approval["operatorAction"]["arguments"]["manifest"] == ""
 
 
+def test_remote_controller_envelope_projects_applied_prepare_receipt(tmp_path):
+    store = MediaJobStore(tmp_path / "jobs.sqlite3")
+    job = _job(store)
+    lifecycle = MediaWorkerLifecycle(
+        store,
+        status_operation=_status(running=False),
+        manage_operation=lambda args: {
+            "ok": True,
+            "data": {
+                "applied": not args["dry_run"],
+                "plan": ["managed-serve-up"],
+            },
+        },
+    )
+    preview = lifecycle.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+    )
+
+    applied = lifecycle.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+        transaction_id=preview.transaction_id,
+        confirm=True,
+        human_approved=True,
+    )
+
+    assert applied.applied is True
+    assert applied.owns_instance is True
+
+
 def test_prepare_binds_exact_manifest_across_preview_apply_and_teardown(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
     job = _job(store)
