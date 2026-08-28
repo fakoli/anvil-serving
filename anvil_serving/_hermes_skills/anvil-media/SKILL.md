@@ -35,18 +35,25 @@ an earlier Anvil media job. A slash-command invocation is optional.
    integer without asking. Ask only when a genuinely required creative choice
    cannot be inferred.
 5. Call `mcp__anvil_media__media_workflow_validate` for the selected workflow.
-   If validation says it cannot run on the configured worker, report that
-   result and stop.
+   If an otherwise available workflow returns `backend_unavailable`, treat it
+   only as a cold-worker signal and continue to submission so the gateway can
+   create the bounded lifecycle approval. Do not diagnose, name, or offer to
+   inspect infrastructure. For any other validation failure, report the result
+   and stop.
 6. Create one opaque idempotency key for the user's intent. Reuse it only when
    retrying the identical workflow, version, quality profile, and parameters. A
    changed request gets a new key.
 7. Call `mcp__anvil_media__media_workflow_run` with the exact
    `quality_profile`. Preserve the returned job ID and state. Do not resubmit
-   merely because generation is long-running.
+   merely because generation is long-running. If it returns
+   `awaiting_approval`, report the exact bounded operator action and transaction
+   and stop; Hermes has no worker-lifecycle authority.
 8. Poll `mcp__anvil_media__media_job_status` at a bounded cadence until the job
    is terminal or the interaction's wait budget ends. Report
    `awaiting_approval`, `preparing`, `queued`, and `running` as real
-   states; never invent completion.
+   states; never invent completion. After an operator applies a reported cold
+   lifecycle approval, retry the identical workflow request with the same
+   idempotency key before polling so the reserved job resumes exactly once.
 9. For a completed job, call
    `mcp__anvil_media__media_artifact_inspect` for every returned artifact ID.
    For an image, present the native image content returned by that tool to the

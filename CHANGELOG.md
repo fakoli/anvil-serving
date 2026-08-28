@@ -29,6 +29,9 @@ All notable changes to this project are documented here. The format is based on
 - The packaged Hermes media skill now treats intermediate narration as
   incomplete and continues generation until a terminal or genuinely blocking
   state.
+- Cold-worker validation no longer strands Hermes before submission: the skill
+  proceeds on `backend_unavailable` so the gateway can return its bounded,
+  operator-approved lifecycle transaction.
 - Router config installation now writes canonical UTF-8/LF bytes through a
   binary Docker stdin pipe, preventing Windows text mode from changing the
   deployed artifact after validation.
