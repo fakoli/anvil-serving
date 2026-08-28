@@ -22,6 +22,7 @@ from .catalog import (
     _validated_tool_catalog,
 )
 from .errors import ControllerError
+from .operation_context import controller_operation_context, is_confirmed_mutation
 from .security import (
     _REQUEST_ID_HEADER,
     _extract_request_token,
@@ -566,9 +567,15 @@ def make_handler(
 
             with store.executing(idempotency_key):
                 try:
-                    envelope = _response_with_request_id(
-                        call_tool_func(tool_name, arguments), request_id, auth_token
-                    )
+                    if is_confirmed_mutation(arguments):
+                        with controller_operation_context(idempotency_key, context):
+                            envelope = _response_with_request_id(
+                                call_tool_func(tool_name, arguments), request_id, auth_token
+                            )
+                    else:
+                        envelope = _response_with_request_id(
+                            call_tool_func(tool_name, arguments), request_id, auth_token
+                        )
                     if not isinstance(envelope, dict):
                         raise TypeError("MCP tool result must be an object")
                 except Exception:
