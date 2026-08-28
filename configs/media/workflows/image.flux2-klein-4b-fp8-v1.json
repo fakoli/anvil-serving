@@ -24,7 +24,7 @@
   ],
   "output_nodes": ["13"],
   "output_mime_types": ["image/png"],
-  "required_features": ["flux2-klein"],
+  "required_features": ["supports_model_type_tags"],
   "required_nodes": ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "ConditioningZeroOut", "EmptyFlux2LatentImage", "RandomNoise", "CFGGuider", "KSamplerSelect", "Flux2Scheduler", "SamplerCustomAdvanced", "VAEDecode", "SaveImage"],
   "required_models": ["flux-2-klein-4b-fp8.safetensors", "qwen_3_4b.safetensors", "flux2-vae.safetensors"],
   "available": false,

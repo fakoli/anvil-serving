@@ -33,15 +33,16 @@ def opener_for(values, seen):
 
 
 def inventory(workflow):
-    return {
+    values = {
         "/system_stats": {"system": {"comfyui_version": "pinned"}},
         "/features": list(workflow.required_features),
-        "/object_info": {name: {} for name in workflow.required_nodes},
         "/models/diffusion_models": list(workflow.required_models),
         "/models/text_encoders": [],
         "/models/vae": [],
         "/models/checkpoints": [],
     }
+    values.update({f"/object_info/{name}": {name: {}} for name in workflow.required_nodes})
+    return values
 
 
 def test_compatibility_checks_all_bounded_surfaces_and_preserves_quality_gate():
@@ -54,13 +55,17 @@ def test_compatibility_checks_all_bounded_surfaces_and_preserves_quality_gate():
     assert result.ready is True
     assert result.available is False
     assert result.reasons == workflow.unavailable_reasons
-    assert [url.rsplit("/", 1)[-1] for _, url, _ in seen[:3]] == ["system_stats", "features", "object_info"]
+    assert [url.rsplit("/", 1)[-1] for _, url, _ in seen[:3]] == [
+        "system_stats",
+        "features",
+        workflow.required_nodes[0],
+    ]
 
 
 def test_missing_node_is_normalized_without_private_metadata():
     workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1")
     values = inventory(workflow)
-    values["/object_info"].pop("SaveImage")
+    values["/object_info/SaveImage"] = {}
     result = ComfyUIClient(
         "http://127.0.0.1:8188",
         opener=opener_for(values, []),

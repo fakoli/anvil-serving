@@ -24,7 +24,7 @@
   ],
   "output_nodes": ["8"],
   "output_mime_types": ["video/mp4"],
-  "required_features": ["wan2.2"],
+  "required_features": ["supports_model_type_tags"],
   "required_nodes": ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "EmptyHunyuanLatentVideo", "KSampler", "VAEDecode", "VHS_VideoCombine"],
   "required_models": ["wan2.2_ti2v_5B_fp16.safetensors", "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "wan2.2_vae.safetensors"],
   "available": false,
