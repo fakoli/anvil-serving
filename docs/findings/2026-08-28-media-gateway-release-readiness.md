@@ -4,7 +4,9 @@
 
 **Source base:** `be2c4e3e82c5c459d41a49c2b339de279309e2a4`
 
-**Executable candidate tested:** `de4064ff5e6adf2338cdd5645d73e352860cc4d1`
+**Executable candidate tested:** `073a605b00218832427c5323a308ab39291a7e3e`
+
+**Private operator candidate:** `250a8e64e445cc1d464ed3db3bd1386cf476757b`
 
 **Package / bridge versions:** Anvil Serving `0.35.1`; bundled MCP bridge
 `0.18.0`
@@ -29,9 +31,9 @@ Functional and capacity measurements remain in the
 | Existing `/v1` router | Full router suite plus byte-comparison fixture with the gateway enabled and disabled | pass | unchanged |
 | Modern MCP | Scoped catalog, schema, auth-before-dispatch, audience-filtered discovery and execution, and gateway protocol tests | pass | not deployed |
 | Legacy stdio MCP | Node 20 bridge test against MCP SDK 1.29 and the same modern upstream controller contract | pass | Hermes not installed or changed |
-| A2A | Agent Card, submission, polling, streaming, cancellation, canonical errors, ProtoJSON metadata, and cross-principal tests | pass | not deployed |
-| Durable media operations | Atomic admission/idempotency, ordered transitions, cancellation, continuously running reconciliation, scoped artifact ownership, expiry, and range tests | pass | not enabled |
-| Managed worker | Controller previews, cold-start approval wiring, confirmation gates, reservation ownership, lease-based crash recovery, cross-process prepare/release serialization, logs, and rollback tests | pass | isolated qualification ended absent |
+| A2A | Agent Card, version-header negotiation, submission, polling, interrupted-state return, streaming, cancellation, canonical errors, ProtoJSON metadata, and cross-principal tests | pass | not deployed |
+| Durable media operations | Atomic admission/idempotency, process-safe first-open schema initialization, ordered transitions, cancellation, continuously running reconciliation, scoped artifact ownership, expiry, and range tests | pass | not enabled |
+| Managed worker | Same-host gateway/lifecycle state, bounded resource-owner proxying, exact manifest binding, controller previews, cold-start approval wiring, confirmation gates, reservation ownership, lease-based crash recovery, cross-process prepare/release serialization, logs, and rollback tests | pass | isolated qualification ended absent |
 | Image workflow | Exact graph/model/runtime pins; decodable PNG; 12,919 MiB peak; clean rollback | functional/capacity pass | quality `human_required`; unavailable |
 | Video workflow | Exact graph/model/runtime pins; decodable H.264 MP4; 18,263 MiB peak; clean rollback | functional/capacity pass | quality `human_required`; unavailable |
 | Hermes skill | Eight-tool allowlist, caller-only scopes, identical-request idempotency, truthful approval/unavailable handling, artifact retrieval smoke | pass | no real-client acceptance yet |
@@ -67,8 +69,8 @@ exposure.
 
 | Gate | Result |
 | --- | --- |
-| Full Python regression | `4308 passed, 9 skipped` in 178.70 seconds |
-| Media/A2A/controller/router matrix | `586 passed` |
+| Full Python regression | `4320 passed, 9 skipped` in 182.26 seconds |
+| Media/A2A/controller/router matrix | `700 passed` in 88.32 seconds |
 | Hermes-focused Python contract | `20 passed` with adjacent MCP/gateway coverage |
 | Legacy + modern Node MCP bridge | 2 tests passed; generated bridge rebuilt |
 | Node dependency audit | zero vulnerabilities after lock-only transitive updates to `fast-uri 3.1.6` and `hono 4.13.5` |
@@ -102,8 +104,16 @@ MCP audience enforcement, production reconciliation, atomic admission,
 lifecycle crash recovery, cold-start approval wiring, A2A conformance,
 artifact read scope, CLI dry-run consistency, offline bundle recovery, and
 stale release evidence. The executable candidate above closes those findings
-with regression coverage. Source merge remains pending an independent re-review
-of the final immutable public and private candidate revisions.
+with regression coverage. Its immutable follow-up scan then blocked on four
+remaining boundaries: distributed lifecycle state/manifest identity, blocking
+A2A interrupted states, A2A version negotiation, and stale caller-visible
+workflow blockers. The executable and private candidates above close those
+findings with a two-controller state-locality contract, exact manifest binding,
+1.0 version enforcement, and descriptors that retain only
+`quality_unreviewed`. The focused matrix additionally exposed and closed a
+cold-database schema initialization race. Source merge remains pending an
+independent re-review of the final immutable public and private candidate
+revisions.
 
 ## Remaining live gates
 
