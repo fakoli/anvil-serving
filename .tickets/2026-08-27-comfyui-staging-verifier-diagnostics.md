@@ -25,5 +25,8 @@ digest-pinned staging image. This BusyBox build supports check mode only as
 
 ## Verification
 
-Pending the focused bundle tests, resumed managed stage, and full repository
-gate.
+- Focused bundle tests passed.
+- Managed staging resumed the exact complete partial and placed it atomically.
+- Final inventory verified all six required model files by exact size and
+  SHA-256; unrelated pre-existing model files were preserved.
+- The full repository gate remains part of the enclosing change.

@@ -25,5 +25,8 @@ nodes and exact model inventories.
 
 ## Verification
 
-Pending focused adapter tests, repeated live workflow validation, and the full
-repository gate.
+- Twelve focused adapter, packaging, and workflow tests passed.
+- Both live workflows reported ready with no missing features, nodes, or
+  models; normal availability remained false for the declared policy gates.
+- Both qualification-only compatibility checks passed before execution.
+- The full repository gate remains part of the enclosing change.
