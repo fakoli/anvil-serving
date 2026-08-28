@@ -143,9 +143,18 @@ class ComfyUIClient:
         if not ready:
             return WorkflowCompatibility(workflow.id, workflow.version, False, False, reasons=("not_ready",))
         features_raw = self.request_json("GET", "/features")
-        nodes_raw = self.request_json("GET", "/object_info")
         features = _bounded_strings(features_raw, label="feature")
-        nodes = _bounded_strings(nodes_raw, label="node")
+        nodes: set[str] = set()
+        # A current ComfyUI installation with curated node packs can return an
+        # /object_info document far larger than the bounded metadata policy.
+        # Compatibility only needs the descriptor's explicit node set, so use
+        # ComfyUI's class-scoped endpoint and keep every response bounded.
+        for required_node in workflow.required_nodes:
+            node_path = "/object_info/" + urllib.parse.quote(required_node, safe="")
+            node_raw = self.request_json("GET", node_path)
+            nodes.update(_bounded_strings(node_raw, label="node"))
+            if len(nodes) > MAX_METADATA_ITEMS:
+                raise MediaError("backend_metadata_too_large", "ComfyUI node inventory is unbounded")
         models: set[str] = set()
         for folder in ("diffusion_models", "text_encoders", "vae", "checkpoints"):
             inventory = self.request_json("GET", f"/models/{folder}")
