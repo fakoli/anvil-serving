@@ -6,6 +6,33 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-08-28
+
+### Added
+
+- Named image workflows can publish explicit server-owned `draft`, `standard`,
+  and `high` quality profiles. Media jobs persist the selected profile and
+  expose durable phase and end-to-end latency through MCP and A2A.
+- `harness sync hermes-media` preview/applies the packaged Hermes image/video
+  skill and media-only MCP allowlist with backups, profile verification,
+  idempotent reconciliation, and environment-only credential references.
+- Authenticated image artifact inspection can return bounded native MCP image
+  content so Hermes receives the generated image; video remains resource-only.
+- Media workflow and qualification CLI calls accept exact quality profiles;
+  qualification verifies decoded dimensions against the resolved profile.
+
+### Fixed
+
+- Native image MCP responses now share one six-MiB binary/ten-MiB framed
+  transport budget across artifact inspection, the remote controller client,
+  and the official SDK stdio bridge instead of failing above the former
+  one-MiB proxy response ceiling.
+
+### Changed
+
+- Package metadata, the Dockerfile label, and the byte-synchronized public
+  router and voice Compose defaults now identify `anvil-serving:0.36.0`.
+
 ## [0.35.1] - 2026-08-24
 
 ### Added

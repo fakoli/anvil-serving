@@ -76,8 +76,27 @@ class MediaOperations:
         idempotency_key: str,
         backend: ComfyUIClient,
         qualification: bool = False,
+        quality_profile: str | None = None,
     ) -> dict[str, Any]:
-        rendered = self.registry.render(workflow_id, version, parameters)
+        if quality_profile is None:
+            rendered = self.registry.render(workflow_id, version, parameters)
+        else:
+            selected_profile = quality_profile
+            if not selected_profile:
+                selected_profile = self.registry.get(
+                    workflow_id,
+                    version,
+                ).default_quality_profile
+            if selected_profile:
+                rendered = self.registry.render(
+                    workflow_id,
+                    version,
+                    parameters,
+                    quality_profile=selected_profile,
+                )
+            else:
+                rendered = self.registry.render(workflow_id, version, parameters)
+        resolved_parameters = rendered.resolved_parameters or parameters
         if qualification:
             candidate = replace(rendered.descriptor, available=True, unavailable_reasons=())
             rendered = replace(rendered, descriptor=candidate)
@@ -107,24 +126,25 @@ class MediaOperations:
                 raise
             return self._request_lifecycle_approval(
                 rendered,
-                parameters,
+                resolved_parameters,
                 principal=principal,
                 idempotency_key=idempotency_key,
             )
         if not compatibility.ready and not qualification:
             return self._request_lifecycle_approval(
                 rendered,
-                parameters,
+                resolved_parameters,
                 principal=principal,
                 idempotency_key=idempotency_key,
             )
         decision, job, created = MediaAdmissionService(self.jobs).admit(
             rendered.descriptor,
-            parameters,
+            resolved_parameters,
             principal=principal,
             backend_ready=compatibility.available,
             input_digest=rendered.parameters_digest,
             idempotency_key=idempotency_key,
+            quality_profile=rendered.quality_profile,
         )
         if not decision.allowed:
             raise MediaError(
@@ -163,6 +183,7 @@ class MediaOperations:
             backend_ready=True,
             input_digest=rendered.parameters_digest,
             idempotency_key=idempotency_key,
+            quality_profile=rendered.quality_profile,
         )
         if not decision.allowed:
             raise MediaError(
@@ -511,9 +532,18 @@ def parameters_from_json(raw: str, *, max_bytes: int = 65536) -> dict[str, Any]:
     return value
 
 
-def stable_request_key(workflow_id: str, version: str, parameters: Mapping[str, Any]) -> str:
+def stable_request_key(
+    workflow_id: str,
+    version: str,
+    parameters: Mapping[str, Any],
+    *,
+    quality_profile: str = "",
+) -> str:
+    request = {"workflow": workflow_id, "version": version, "parameters": parameters}
+    if quality_profile:
+        request["qualityProfile"] = quality_profile
     payload = json.dumps(
-        {"workflow": workflow_id, "version": version, "parameters": parameters},
+        request,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,

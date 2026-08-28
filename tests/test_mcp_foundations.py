@@ -20,10 +20,10 @@ from anvil_serving.control_plane.mcp.tools import models as model_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "d8cde346480ff523720745af42c9a90c737997a820fc8d088aa90e366c8ffe12"
+    "bb810ae923e172a5dfdcd86df5df911a6ec4d80d71383f927c5542b6e651b33c"
 )
 HANDLER_MAP_SHA256 = (
-    "68980c61999d3ca0d0a5f597c4bbef781a4ee7616db01950781b8bdcd2b543a5"
+    "ecad07eefd9fb0888829122287537c38193580069cb5cebf4eb7e649545da36e"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -67,6 +67,7 @@ TOOL_NAMES = [
     "openclaw_gateway_restart",
     "openclaw_gateway_status",
     "client_catalog_sync",
+    "hermes_media_sync",
     "benchmark_harness_prepare",
     "benchmark_harness_status",
     "benchmark_harness_cleanup",
@@ -565,3 +566,40 @@ def test_remote_controller_request_bounds_response_body():
         )
 
     assert exc_info.value.code == "controller_response_too_large"
+
+
+def test_remote_controller_request_admits_bounded_native_image_result():
+    request = _request("tools/call", request_id=11, name="media_artifact_inspect")
+    image_data = "A" * (2 * 1024 * 1024)
+    payload = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 11,
+            "result": {
+                "resultType": "complete",
+                "content": [
+                    {"type": "image", "data": image_data, "mimeType": "image/png"}
+                ],
+            },
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, size):
+            assert len(payload) < size
+            return payload
+
+    result = mcp.remote_controller_request(
+        "http://127.0.0.1:8765",
+        request,
+        "secret",
+        opener=lambda _request, timeout: Response(),
+    )
+    assert result["result"]["content"][0]["data"] == image_data

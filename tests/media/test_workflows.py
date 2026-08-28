@@ -39,6 +39,36 @@ def test_render_binds_only_declared_inputs_without_mutating_registry():
     assert again.graph["4"]["inputs"]["text"] == "second"
 
 
+def test_render_applies_exact_quality_profile_without_caller_owned_tuning():
+    registry = WorkflowRegistry(ROOT / "registry.json")
+    descriptor = registry.get("image.flux2-klein-4b-fp8-v1", "v1")
+    assert descriptor.default_quality_profile == "standard"
+    rendered = registry.render(
+        "image.flux2-klein-4b-fp8-v1",
+        "v1",
+        {"prompt": "a brass owl", "seed": 7},
+        quality_profile="high",
+    )
+    assert rendered.quality_profile == "high"
+    assert rendered.resolved_parameters == {
+        "width": 1024,
+        "height": 1024,
+        "steps": 4,
+        "prompt": "a brass owl",
+        "seed": 7,
+    }
+    assert rendered.graph["6"]["inputs"]["width"] == 1024
+    assert rendered.graph["10"]["inputs"]["steps"] == 4
+    with pytest.raises(MediaError) as override:
+        registry.render(
+            "image.flux2-klein-4b-fp8-v1",
+            "v1",
+            {"prompt": "owl", "seed": 8, "width": 512},
+            quality_profile="high",
+        )
+    assert override.value.code == "quality_profile_parameter_override"
+
+
 def test_unknown_parameter_and_workflow_fail_before_render():
     registry = WorkflowRegistry(ROOT / "registry.json")
     with pytest.raises(MediaError, match="unknown fields"):
