@@ -48,7 +48,9 @@ def inventory(workflow):
 
 
 def test_compatibility_checks_all_bounded_surfaces_and_preserves_quality_gate():
-    workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1")
+    workflow = WorkflowRegistry(ROOT / "registry.json").get(
+        "video.wan2.2-ti2v-5b-v1", "v1"
+    )
     seen = []
     result = ComfyUIClient(
         "http://127.0.0.1:8188",
