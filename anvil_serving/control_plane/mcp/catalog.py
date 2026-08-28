@@ -8,6 +8,7 @@ from typing import Any
 
 from ...commands import CommandNode
 from .errors import ToolError
+from .security import caller_context
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,8 @@ def build_catalog(specifications: Mapping[str, Mapping[str, Any]]) -> dict[str, 
         description = raw_spec.get("description")
         schema = raw_spec.get("inputSchema")
         handler = raw_spec.get("handler")
+        audience = raw_spec.get("audience")
+        required_scope = raw_spec.get("requiredScope")
         if not isinstance(description, str) or not description:
             raise RuntimeError("MCP tool %r has no description" % name)
         if not isinstance(schema, Mapping) or schema.get("type") != "object":
@@ -48,6 +51,12 @@ def build_catalog(specifications: Mapping[str, Mapping[str, Any]]) -> dict[str, 
             )
         if not callable(handler):
             raise RuntimeError("MCP tool %r has no callable handler" % name)
+        if audience is not None and audience not in {"media"}:
+            raise RuntimeError("MCP tool %r has an invalid audience" % name)
+        if required_scope is not None and (
+            audience != "media" or not isinstance(required_scope, str) or not required_scope
+        ):
+            raise RuntimeError("MCP tool %r has an invalid required scope" % name)
         catalog[name] = dict(raw_spec)
     return catalog
 
@@ -125,6 +134,9 @@ def operation_declarations(
 def list_tools(
     tools: Mapping[str, Mapping[str, Any]],
     target_context_schema: Mapping[str, Any],
+    *,
+    granted_scopes: frozenset[str] | None = None,
+    audience: str | None = None,
 ) -> list[dict]:
     return [
         {
@@ -134,9 +146,21 @@ def list_tools(
             "_meta": {
                 "anvil/targetContextSchema": target_context_schema,
                 "anvil/operationContractTool": "operation_contracts",
+                **(
+                    {"anvil/requiredScope": spec["requiredScope"]}
+                    if spec.get("requiredScope")
+                    else {}
+                ),
             },
         }
         for name, spec in tools.items()
+        if (audience is None or spec.get("audience") == audience)
+        and (
+            granted_scopes is None
+            or spec.get("requiredScope") is None
+            or spec.get("requiredScope") in granted_scopes
+            or "operator:media" in granted_scopes
+        )
     ]
 
 
@@ -148,6 +172,7 @@ def call_tool(
     validate_arguments: Callable[[str, Mapping[str, Any]], dict[str, Any]],
     fail: Callable[[str, str, Mapping[str, Any] | None], dict],
     redact_text: Callable[[str], str],
+    caller: Mapping[str, Any] | None = None,
 ) -> dict:
     """Dispatch by one direct dictionary lookup."""
 
@@ -164,7 +189,8 @@ def call_tool(
         )
     try:
         validated = validate_arguments(name, arguments)
-        return spec["handler"](validated)
+        with caller_context(caller):
+            return spec["handler"](validated)
     except ToolError as exc:
         return fail(exc.code, exc.message, exc.details)
     except Exception as exc:

@@ -7,6 +7,7 @@ from .benchmarks import FAMILY as BENCHMARKS
 from .external_benchmarks import FAMILY as EXTERNAL_BENCHMARKS
 from .host import FAMILY as HOST
 from .media_worker import FAMILY as MEDIA_WORKER
+from .media import FAMILY as MEDIA
 from .models import FAMILY as MODELS
 from .openclaw import FAMILY as OPENCLAW
 from .operations import build_family as build_operations_family
@@ -23,6 +24,7 @@ TOOL_FAMILIES = (
     ROUTER,
     SERVES,
     MEDIA_WORKER,
+    MEDIA,
     VOICE,
     HOST,
     MODELS,
