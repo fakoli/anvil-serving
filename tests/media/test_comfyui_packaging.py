@@ -42,6 +42,7 @@ def test_runtime_and_custom_node_inputs_are_exactly_pinned():
     runtime = lock["runtime"]
     dockerfile = (EXAMPLE / "Dockerfile.comfyui").read_text(encoding="utf-8")
     assert re.search(r"(?m)^\s+gcc \\$", dockerfile)
+    assert re.search(r"(?m)^\s+libc6-dev \\$", dockerfile)
     installer = (EXAMPLE / "install-comfyui-node.sh").read_bytes()
     assert runtime["container"] in dockerfile
     assert runtime["linux_amd64_manifest_digest"] in dockerfile
