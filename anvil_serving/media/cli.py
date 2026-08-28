@@ -16,7 +16,7 @@ from .operations import MediaOperations, parameters_from_json, stable_request_ke
 from .workflows import WorkflowRegistry
 
 
-DEFAULT_REGISTRY = Path(__file__).resolve().parents[2] / "configs" / "media" / "workflows" / "registry.json"
+DEFAULT_REGISTRY = Path(__file__).resolve().parents[1] / "_media_workflows" / "registry.json"
 
 
 def _parser() -> argparse.ArgumentParser:
