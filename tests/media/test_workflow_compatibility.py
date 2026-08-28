@@ -1,4 +1,6 @@
+import io
 import json
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -90,3 +92,49 @@ def test_oversized_metadata_fails_closed():
     with pytest.raises(MediaError) as error:
         ComfyUIClient("http://127.0.0.1:8188", opener=lambda *_args, **_kwargs: Oversized()).compatibility(workflow)
     assert error.value.code == "backend_response_too_large"
+
+
+@pytest.mark.parametrize("status", [502, 503, 504])
+def test_proxy_unavailable_status_at_health_boundary_requests_cold_lifecycle(status):
+    workflow = WorkflowRegistry(ROOT / "registry.json").get(
+        "image.flux2-klein-4b-fp8-v1", "v1"
+    )
+
+    def unavailable(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            status,
+            "upstream unavailable",
+            {},
+            io.BytesIO(b""),
+        )
+
+    with pytest.raises(MediaError) as error:
+        ComfyUIClient("https://media.example.test/comfyui", opener=unavailable).compatibility(
+            workflow
+        )
+    assert error.value.code == "backend_unavailable"
+    assert error.value.status == 503
+    assert error.value.details == {}
+
+
+def test_nonavailability_http_error_at_health_boundary_remains_backend_error():
+    workflow = WorkflowRegistry(ROOT / "registry.json").get(
+        "image.flux2-klein-4b-fp8-v1", "v1"
+    )
+
+    def broken(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            500,
+            "backend failure",
+            {},
+            io.BytesIO(b""),
+        )
+
+    with pytest.raises(MediaError) as error:
+        ComfyUIClient("https://media.example.test/comfyui", opener=broken).compatibility(
+            workflow
+        )
+    assert error.value.code == "backend_http_error"
+    assert error.value.details["status"] == 500
