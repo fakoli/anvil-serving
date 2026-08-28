@@ -16,6 +16,9 @@ from ..media.operations import MediaOperations
 from .protocol import MEDIA_TO_TASK_STATE
 
 
+_BLOCKING_RETURN_STATES = TERMINAL_STATES | {JobState.AWAITING_APPROVAL}
+
+
 def _context_id(job_id: str) -> str:
     return "ctx_" + job_id.removeprefix("job_")
 
@@ -143,7 +146,11 @@ class A2AMediaTasks:
                     request["workflowId"], request["version"]
                 )
                 deadline = time.monotonic() + descriptor.timeout_seconds
-                while job.state not in TERMINAL_STATES:
+                # A2A blocking sends also return when execution is interrupted
+                # for caller input. Cold media workers use that state to expose
+                # the exact human-approval request instead of hanging until the
+                # workflow execution timeout.
+                while job.state not in _BLOCKING_RETURN_STATES:
                     if time.monotonic() >= deadline:
                         raise MediaError(
                             "a2a_blocking_timeout",

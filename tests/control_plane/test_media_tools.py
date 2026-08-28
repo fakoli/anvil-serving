@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from anvil_serving import mcp
 from anvil_serving.control_plane.mcp.tools import media
+from anvil_serving.control_plane.mcp.tools import media_worker
 from anvil_serving.media.comfyui import ComfyUIClient
 
 
@@ -124,3 +125,34 @@ def test_media_schema_bounds_nested_parameter_objects():
         caller=SUBMIT,
     )
     assert result["error"]["code"] == "bad_argument"
+
+
+def test_media_worker_manifest_defaults_at_the_resource_owner(monkeypatch):
+    observed = {}
+
+    def status(args):
+        observed.update(args)
+        return {"ok": True, "result": {"serves": []}}
+
+    monkeypatch.setenv("ANVIL_MEDIA_SERVE_MANIFEST", "serves.comfyui.toml")
+    monkeypatch.setattr(media_worker, "tool_serves_status", status)
+    result = media_worker.tool_media_worker_status({"service": "media-worker"})
+    assert result["ok"] is True
+    assert observed == {
+        "manifest": "serves.comfyui.toml",
+        "names": ["media-worker"],
+    }
+
+
+def test_explicit_media_worker_manifest_overrides_resource_owner_default(monkeypatch):
+    observed = {}
+    monkeypatch.setenv("ANVIL_MEDIA_SERVE_MANIFEST", "default-media.toml")
+    monkeypatch.setattr(
+        media_worker,
+        "tool_serves_status",
+        lambda args: observed.update(args) or {"ok": True, "result": {"serves": []}},
+    )
+    media_worker.tool_media_worker_status(
+        {"service": "media-worker", "manifest": "explicit-media.toml"}
+    )
+    assert observed["manifest"] == "explicit-media.toml"
