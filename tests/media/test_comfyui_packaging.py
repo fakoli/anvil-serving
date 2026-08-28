@@ -101,6 +101,7 @@ def test_managed_serve_is_bounded_healthy_and_lint_clean():
     assert serve["gpu_role"] == "media-compute"
     assert serve["vram_mib"] == 28672
     assert "docker-compose.comfyui.yml" in " ".join(serve["up"])
+    assert "--build" in serve["up"]
 
     compose = (EXAMPLE / "docker-compose.comfyui.yml").read_text(encoding="utf-8")
     assert "http://127.0.0.1:8188/system_stats" in compose
