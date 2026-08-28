@@ -17,11 +17,14 @@ from .errors import MediaError
 from .jobs import MediaJobStore
 from .comfyui import ComfyUIClient, WorkflowCompatibility
 from .artifacts import ArtifactPayload, ArtifactStore
+from .backends import BackendOutput, BackendStatus
 from .workflows import WorkflowRegistry, canonical_digest
 
 __all__ = [
     "ArtifactPayload",
     "ArtifactStore",
+    "BackendOutput",
+    "BackendStatus",
     "JobEvent",
     "JobState",
     "ComfyUIClient",
