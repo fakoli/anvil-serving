@@ -30,6 +30,7 @@
     "cli_reference_files_checked": 806,
     "semantic_secret_files_checked": 1989,
     "semantic_secret_findings": 0,
+    "gitleaks": "pass",
     "distribution_build": "pass",
     "twine": "pass",
     "isolated_wheel_smoke": "pass"
