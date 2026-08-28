@@ -9,6 +9,7 @@ USER root
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
         ffmpeg \
+        gcc \
         git \
         libegl1 \
         libgl1 \
