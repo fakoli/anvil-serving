@@ -7,6 +7,42 @@
 **Topology:** isolated Windows 11 / Docker Desktop / WSL2 qualification lane;
 no RTX PRO 6000 was measured, protected, or involved
 
+<!-- benchmark-result-card/v1 -->
+## Result card
+
+> RadixArk Qwen3.8 27B NVFP4 fit one RTX 5090 at 65,536 context and
+> concurrency one, then passed the retained long-context, tool-call, and
+> direct multimodal gates without changing any route or promotion state.
+
+| Setup | Qualified value |
+|---|---|
+| Model | `RadixArk/Qwen3.8-27B-NVFP4@554ebba9b5f1b79dc11246341960360e6ef05ef4`, served as `qwen38-27b-radixark-nvfp4-sglang-rtx5090-64k-mm` |
+| Hardware | one NVIDIA GeForce RTX 5090, 32,607 MiB, sm_120; isolated Windows 11 / Docker Desktop / WSL2 lane |
+| Runtime | SGLang `c4271c3fe1262fc2adbd162c33b25de5255251c5`; image `sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124`; ModelOpt NVFP4/FP8 weights, FP8 E4M3 KV, MTP disabled |
+| Recipe | [managed 64K multimodal recipe at `85b21147`](https://github.com/fakoli/anvil-serving/blob/85b2114745a1a66f30252876ab528d49f12e8a73/configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-64k-mm-recipe.toml) |
+| Measurement path | direct online managed endpoint; retained artifacts do not classify individual requests as cold or warm |
+| Contract | 65,536 context, c1, 512-token multimodal output cap, up to four images per corpus request, one video per corpus case, thinking disabled |
+| Evidence | `functional`, `capacity`, bounded deterministic `quality`; retained qualification complete |
+| Decision | `challenger`, `no-promotion`; no route, deployment, or live serving state changed |
+
+| Headline measurement | Local result | Conditions |
+|---|---:|---|
+| Long-context retrieval and tools | pass; 20/20 tools | approximately 60,000 prompt tokens, exact marker, `stop`; c1 |
+| Deterministic multimodal corpus | 30/30 | image 12/12, mixed 4/4, video 14/14; c1 |
+| Direct modality latency p50 | 0.886 / 1.548 / 1.648 s | image / mixed / video across the 30-attempt corpus |
+| Untested boundary | no result | controlled decode rate, c2+, routed acceptance, or action loop |
+
+**Why it matters:** This is a reproducible single-card local perception,
+long-context, and tool-formatting challenger with an exact managed rollback
+surface.
+
+**Important caveat:** The retained run is direct and concurrency one; it does
+not establish controlled decode throughput, routed media admission, broad GUI
+grounding, or end-to-end computer action.
+
+[Evidence manifest](2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-evidence/README.md)
+· [Publication summary](2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-evidence/publication-summary.md)
+
 ## Outcome
 
 The digest-pinned RadixArk Qwen3.8 27B ModelOpt NVFP4 checkpoint fits a single

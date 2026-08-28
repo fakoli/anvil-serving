@@ -7,6 +7,44 @@
 **Topology:** isolated Windows 11 / Docker Desktop / WSL2 qualification lane;
 no RTX PRO 6000 was measured, protected, or involved
 
+<!-- benchmark-result-card/v1 -->
+## Result card
+
+> RadixArk Qwen3.8 27B NVFP4 retained its direct RTX 5090 challenger status at
+> 131,072 context after passing a 119,675-token retrieval request, the 30-case
+> multimodal corpus, and the eight-image/two-video boundary corpus at c1.
+
+| Setup | Qualified value |
+|---|---|
+| Model | `RadixArk/Qwen3.8-27B-NVFP4@554ebba9b5f1b79dc11246341960360e6ef05ef4`, served as `qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm` |
+| Hardware | one NVIDIA GeForce RTX 5090, 32,607 MiB, sm_120; isolated Windows 11 / Docker Desktop / WSL2 lane |
+| Runtime | SGLang `c4271c3fe1262fc2adbd162c33b25de5255251c5`; image `sha256:506525a5907ea22c9d445afb7c03603959b912de034d86915cf17da814f1a124`; ModelOpt NVFP4/FP8 weights, FP8 E4M3 KV, MTP disabled |
+| Recipe | [managed 128K multimodal recipe at `85b21147`](https://github.com/fakoli/anvil-serving/blob/85b2114745a1a66f30252876ab528d49f12e8a73/configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm-recipe.toml) |
+| Measurement path | direct online managed endpoint; retained artifacts do not classify individual requests as cold or warm |
+| Contract | 131,072 context, 131,066 maximum input, c1, 512-token multimodal output cap, eight images or two videos, thinking disabled |
+| Evidence | `functional`, bounded deterministic `quality`, multimodal boundary; retained qualification complete |
+| Decision | retain direct 128K `challenger`, `no-promotion`; no route or deployment state changed; retain 64K rollback |
+
+| Headline measurement | Local result | Conditions |
+|---|---:|---|
+| Long-context retrieval | pass in 29.811 s | 119,675 prompt plus 14 completion tokens, exact marker, `stop`; c1 |
+| Established multimodal corpus | 30/30 | image 12/12, mixed 4/4, video 14/14; c1 |
+| Media-count boundary corpus | 4/4 | two eight-image and two two-video attempts; c1 |
+| Direct modality latency p50 | 0.882 / 1.535 / 1.602 s | image / mixed / video across the 30-attempt corpus |
+| Retained invalid-expectation artifact | 2/4 | both video attempts passed; both image rubrics named absent source labels |
+
+**Why it matters:** The exact managed 128K recipe preserves direct local
+long-context and multimodal coverage while recording a concrete media-count
+boundary and an exact 64K rollback.
+
+**Important caveat:** This remains direct, concurrency-one evidence with no
+controlled decode-rate benchmark or routed acceptance; the first image-boundary
+artifact failed because its rubric required labels absent from the source
+images and is retained alongside the corrected 4/4 run.
+
+[Evidence manifest](2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k-evidence/README.md)
+· [Publication summary](2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k-evidence/publication-summary.md)
+
 ## Outcome
 
 The separate 128K managed recipe passed its retention gates and replaced the
