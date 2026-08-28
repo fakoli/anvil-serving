@@ -19,6 +19,7 @@ from .comfyui import ComfyUIClient, WorkflowCompatibility
 from .artifacts import ArtifactPayload, ArtifactStore
 from .backends import BackendOutput, BackendStatus
 from .workflows import WorkflowRegistry, canonical_digest
+from .worker import MediaJobReconciler, ProgressUpdate, normalize_progress_event
 
 __all__ = [
     "ArtifactPayload",
@@ -33,13 +34,16 @@ __all__ = [
     "MediaError",
     "MediaJob",
     "MediaJobStore",
+    "MediaJobReconciler",
     "ParameterBinding",
     "ParameterSpec",
+    "ProgressUpdate",
     "RenderedWorkflow",
     "TERMINAL_STATES",
     "WorkflowDescriptor",
     "WorkflowCompatibility",
     "WorkflowRegistry",
     "canonical_digest",
+    "normalize_progress_event",
     "utc_now",
 ]
