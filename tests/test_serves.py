@@ -1728,6 +1728,31 @@ def test_command_failure_text_is_bounded_to_actionable_tail_and_redacted():
     assert "<redacted>" in rendered
 
 
+def test_cmd_up_captures_lifecycle_output_with_portable_utf8_decoder():
+    serve = [{
+        "name": "comfyui",
+        "container": "anvil-comfyui",
+        "port": 8188,
+        "health": "/system_stats",
+        "model": "comfyui-v0.33.4",
+        "up": ["docker", "compose", "up", "-d", "comfyui"],
+    }]
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        if argv[:3] == ["docker", "ps", "-a"]:
+            return proc(0)
+        return proc(0)
+
+    assert serves.cmd_up(serve, ["comfyui"], _run=run) == 0
+    compose_kwargs = next(
+        kwargs for argv, kwargs in calls if argv[:2] == ["docker", "compose"]
+    )
+    assert compose_kwargs["encoding"] == "utf-8"
+    assert compose_kwargs["errors"] == "replace"
+
+
 # ---- post-start storage write guard -----------------------------------------
 
 def _storage_run(uid="1000", gid="1000", mounts=None, denied=(),

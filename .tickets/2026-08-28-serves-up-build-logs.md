@@ -11,7 +11,9 @@ generic `command failed`. A bounded read-only Buildx history inspection was
 needed to identify Git's safe-directory rejection of the base image's `/app`
 checkout. The repeated managed run then exposed a second pinning error directly:
 the `/app` checkout is the ComfyUI release revision, not the distinct container
-source revision recorded in the lock.
+source revision recorded in the lock. The successful build finally exposed a
+Windows console issue: Compose emitted a byte outside CP1252, causing Python's
+background output reader to raise even though the worker became healthy.
 
 ## Resolution
 
@@ -20,6 +22,8 @@ source revision recorded in the lock.
   retaining the distinct pinned container-source revision as provenance.
 - Project the final bounded, credential-redacted lifecycle-command output from
   `serves up`, where BuildKit places the actionable failure.
+- Decode lifecycle subprocess output explicitly as UTF-8 with replacement so
+  undecodable progress bytes cannot hide the command result on Windows.
 - Keep the projection serving-engine agnostic and leave full runtime logs under
   the existing managed `serves logs` surface once a container exists.
 
