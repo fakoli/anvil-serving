@@ -4,7 +4,7 @@
 
 **Source base:** `be2c4e3e82c5c459d41a49c2b339de279309e2a4`
 
-**Executable candidate tested:** `073a605b00218832427c5323a308ab39291a7e3e`
+**Executable candidate tested:** `2dd3652c6fbbd72ae932f6c90713153e829dbd80`
 
 **Private operator candidate:** `250a8e6052dfc266e57add7a03065ab837cdeeeb`
 
@@ -31,9 +31,9 @@ Functional and capacity measurements remain in the
 | Existing `/v1` router | Full router suite plus byte-comparison fixture with the gateway enabled and disabled | pass | unchanged |
 | Modern MCP | Scoped catalog, schema, auth-before-dispatch, audience-filtered discovery and execution, and gateway protocol tests | pass | not deployed |
 | Legacy stdio MCP | Node 20 bridge test against MCP SDK 1.29 and the same modern upstream controller contract | pass | Hermes not installed or changed |
-| A2A | Agent Card, version-header negotiation, submission, polling, interrupted-state return, streaming, cancellation, canonical errors, ProtoJSON metadata, and cross-principal tests | pass | not deployed |
+| A2A | Agent Card, version-header negotiation, exact 1.0 per-operation request fields, explicit rejection of undeclared tenant routing, submission, polling, interrupted-state return, streaming, cancellation, canonical errors, ProtoJSON metadata, and cross-principal tests | pass | not deployed |
 | Durable media operations | Atomic admission/idempotency, process-safe first-open schema initialization, ordered transitions, cancellation, continuously running reconciliation, scoped artifact ownership, expiry, and range tests | pass | not enabled |
-| Managed worker | Same-host gateway/lifecycle state, bounded resource-owner proxying, exact manifest binding, controller previews, cold-start approval wiring, confirmation gates, reservation ownership, lease-based crash recovery, cross-process prepare/release serialization, logs, and rollback tests | pass | isolated qualification ended absent |
+| Managed worker | Same-host gateway/lifecycle state, bounded resource-owner proxying, exact manifest binding, controller previews, cold-start approval wiring, pre-mutation one-use approvals, status-only ambiguous-result recovery, confirmation gates, reservation ownership, lease-based crash recovery, cross-process prepare/release serialization, logs, and rollback tests | pass | isolated qualification ended absent |
 | Image workflow | Exact graph/model/runtime pins; decodable PNG; 12,919 MiB peak; clean rollback | functional/capacity pass | quality `human_required`; unavailable |
 | Video workflow | Exact graph/model/runtime pins; decodable H.264 MP4; 18,263 MiB peak; clean rollback | functional/capacity pass | quality `human_required`; unavailable |
 | Hermes skill | Eight-tool allowlist, caller-only scopes, identical-request idempotency, truthful approval/unavailable handling, artifact retrieval smoke | pass | no real-client acceptance yet |
@@ -69,9 +69,11 @@ exposure.
 
 | Gate | Result |
 | --- | --- |
-| Full Python regression | `4320 passed, 9 skipped` in 182.26 seconds |
-| Media/A2A/controller/router matrix | `700 passed` in 88.32 seconds |
-| Hermes-focused Python contract | `20 passed` with adjacent MCP/gateway coverage |
+| Full Python regression | `4342 passed, 9 skipped` in 184.34 seconds |
+| Changed-area media/A2A/controller/router matrix | `959 passed` in 16.32 seconds |
+| Approval-replay and A2A request-shape regressions | `45 passed` in 10.33 seconds |
+| Hermes-focused Python contract | `3 passed` in 0.31 seconds; adjacent MCP/gateway coverage is included in the changed-area matrix |
+| Private operator repository | `20 passed` in 2.958 seconds |
 | Legacy + modern Node MCP bridge | 2 tests passed; generated bridge rebuilt |
 | Node dependency audit | zero vulnerabilities after lock-only transitive updates to `fast-uri 3.1.6` and `hono 4.13.5` |
 | Python lint | repository-wide Ruff passed |
@@ -79,7 +81,7 @@ exposure.
 | Markdown links | 420 tracked Markdown files passed |
 | CLI reference audit | docs, skills, and full scopes passed; 806 full-scope files, zero violations |
 | Semantic secret hygiene | self-test passed; 1,991 tracked files, zero findings |
-| Signature secret hygiene | pinned Gitleaks image scanned the cleaned candidate with network disabled; zero findings |
+| Signature secret hygiene | pinned Gitleaks image scanned exact public and private Git archives with network disabled; zero findings |
 | Distribution build | wheel and sdist built in an isolated environment |
 | Distribution metadata | Twine passed both artifacts |
 | Isolated wheel smoke | package data, bridge, all media workflow assets, and router CLI passed |
@@ -111,7 +113,14 @@ workflow blockers. The executable and private candidates above close those
 findings with a two-controller state-locality contract, exact manifest binding,
 1.0 version enforcement, and descriptors that retain only
 `quality_unreviewed`. The focused matrix additionally exposed and closed a
-cold-database schema initialization race. Source merge remains pending an
+cold-database schema initialization race. The next immutable review blocked
+three more boundaries: reusable approval after an ambiguous lifecycle result,
+non-normative A2A operation parameter fields, and a release packet that still
+pinned an older executable. Candidate `2dd3652c` consumes approval and advances
+the job before mutation, permits recovery only through authoritative running
+status, requires a fresh preview after a failed outcome, and validates the
+standard 1.0 operation shapes. This evidence-only commit repins the packet to
+that executable and its exact gate results. Source merge remains pending an
 independent re-review of the final immutable public and private candidate
 revisions.
 
