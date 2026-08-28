@@ -14,6 +14,7 @@ from .contracts import (
     utc_now,
 )
 from .errors import MediaError
+from .jobs import MediaJobStore
 from .comfyui import ComfyUIClient, WorkflowCompatibility
 from .workflows import WorkflowRegistry, canonical_digest
 
@@ -25,6 +26,7 @@ __all__ = [
     "MediaBackend",
     "MediaError",
     "MediaJob",
+    "MediaJobStore",
     "ParameterBinding",
     "ParameterSpec",
     "RenderedWorkflow",
