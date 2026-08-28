@@ -191,6 +191,9 @@ whose catalog is restricted to the eight ordinary media tools. It stores only
 the environment references named by `--mcp-url-env` and `--token-env`, backs
 up every changed profile, validates through the Hermes CLI, and verifies the
 installed skill digest. It never grants worker lifecycle or operator tools.
+The default token reference is `ANVIL_ROUTER_TOKEN` because the media MCP URL
+is the router gateway; the separate controller credential is not valid for
+this caller-facing connection.
 The last preview must report no changes.
 
 Hermes profiles have independent environment files. The catalog reconciler

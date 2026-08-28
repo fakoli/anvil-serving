@@ -2,13 +2,13 @@
 
 Hermes can use the Anvil Gateway as a narrow media MCP server. The recommended
 baseline launches Anvil's packaged Node 20+ stdio bridge and lets the bridge
-connect to the authenticated gateway/controller endpoint. The skill under
+connect to the authenticated router gateway endpoint. The skill under
 `skills/anvil-media/` teaches Hermes the job and artifact flow without exposing
 the media worker implementation.
 
 ## MCP configuration
 
-Set `ANVIL_MEDIA_MCP_URL` and `ANVIL_CONTROLLER_TOKEN` in the owner-only Hermes
+Set `ANVIL_MEDIA_MCP_URL` and `ANVIL_ROUTER_TOKEN` in the owner-only Hermes
 environment. Store only their references in `~/.hermes/config.yaml`:
 
 ```yaml
@@ -21,9 +21,9 @@ mcp_servers:
       - --controller-url
       - "${ANVIL_MEDIA_MCP_URL}"
       - --auth-env
-      - ANVIL_CONTROLLER_TOKEN
+      - ANVIL_ROUTER_TOKEN
     env:
-      ANVIL_CONTROLLER_TOKEN: "${ANVIL_CONTROLLER_TOKEN}"
+      ANVIL_ROUTER_TOKEN: "${ANVIL_ROUTER_TOKEN}"
     tools:
       include:
         - media_capabilities
@@ -38,9 +38,10 @@ mcp_servers:
       prompts: false
 ```
 
-The explicit allowlist keeps operator tools out of Hermes even if the upstream
-controller has broader authority. Give the bridge token only `media:read`,
-`media:submit`, and `media:cancel` scopes. Do not grant operator or
+The explicit allowlist keeps operator tools out of Hermes even if the router's
+global catalog is broader. The gateway binds the authenticated Hermes media
+principal to `media:read`, `media:submit`, and `media:cancel`; never substitute
+the separate lifecycle-controller credential or grant operator or
 cross-principal scopes to an ordinary Hermes media profile.
 
 Install `skills/anvil-media/` as a Hermes skill, start a new Hermes session, and
@@ -71,7 +72,7 @@ the same opaque job and artifact identities:
 
 1. Hermes used the configured stdio MCP server and discovered only the
    allowlisted media tools.
-2. The bridge authenticated to the Anvil gateway/controller and preserved the
+2. The bridge authenticated to the Anvil router gateway and preserved the
    modern upstream MCP protocol metadata.
 3. A named workflow submission reached the selected managed media worker once,
    with the same idempotency key on any transport retry.
