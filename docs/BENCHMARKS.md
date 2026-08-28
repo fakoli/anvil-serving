@@ -48,7 +48,8 @@ structures, and a red streak. Both candidates therefore remain
 `quality_unreviewed` because two bounded samples do not clear broader production
 quality, and the video descriptor now fails closed as `quality_failed`. The
 binary artifact contract passed an independent client; a legacy Windows
-PowerShell partial-range client hung and remains a client-compatibility caveat.
+PowerShell download client stalled after a partial transfer and remains a
+client-compatibility caveat.
 See the [direct qualification](findings/2026-08-28-comfyui-media-qualification.md)
 and [live validation](findings/2026-08-28-media-gateway-live-validation.md).
 
