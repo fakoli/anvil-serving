@@ -423,8 +423,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         def _handle_protocol_get(self, route: str) -> None:
             if self.headers.get_all("Transfer-Encoding") or self.headers.get_all("Content-Length"):
-                self.close_connection = True
-                self._protocol_json_error(400, "invalid_request", "protocol GET must not include a body")
+                self._reject_get_body_framing("protocol GET must not include a body")
                 return
             if not self._authenticated():
                 self._protocol_json_error(401, "authentication_error", "invalid or missing API key")
@@ -582,6 +581,34 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self.connection.settimeout(prior_timeout)
             except Exception:
                 pass
+
+        def _reject_get_body_framing(self, message: str) -> None:
+            """Reject a framed GET without resetting its error response.
+
+            A close with unread request bytes can produce TCP RST on Windows,
+            truncating the response that explains the rejection.  Drain only
+            a single, strictly framed body within the bounded close-drain cap;
+            for every ambiguous or larger body, flush the response and absorb
+            only bytes already queued by the peer before closing.
+            """
+            transfer_encoding = self.headers.get_all("Transfer-Encoding") or []
+            content_lengths = self.headers.get_all("Content-Length") or []
+            length = 0
+            safely_framed = not transfer_encoding and len(content_lengths) == 1
+            if safely_framed and _DIGIT_RE.fullmatch(content_lengths[0]):
+                length = int(content_lengths[0])
+            else:
+                safely_framed = False
+            unread = not safely_framed or length > _CLOSE_DRAIN_CAP
+            if safely_framed and 0 < length <= _CLOSE_DRAIN_CAP:
+                try:
+                    unread = len(self.rfile.read(length)) != length
+                except Exception:
+                    unread = True
+            self.close_connection = True
+            self._error(400, "invalid_request", message)
+            if unread:
+                self._flush_closing_response()
 
         def _write_sse(self, dialect: Dialect, request) -> None:
             """Stream the backend's deltas as native SSE, flushed per event.
@@ -842,11 +869,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         or self.headers.get_all("Content-Length")
                     )
                     if has_body_framing:
-                        self.close_connection = True
-                        self._error(
-                            400,
-                            "invalid_request",
-                            "management GET must not include a body",
+                        self._reject_get_body_framing(
+                            "management GET must not include a body"
                         )
                     elif auth_token is None:
                         self._error(404, "not_found", f"no route {route}")

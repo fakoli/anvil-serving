@@ -27,6 +27,9 @@ All notable changes to this project are documented here. The format is based on
   transport budget across artifact inspection, the remote controller client,
   and the official SDK stdio bridge instead of failing above the former
   one-MiB proxy response ceiling.
+- Framed management and protocol GET rejections now drain a bounded declared
+  body before closing, preventing Windows TCP resets from truncating the 400
+  response.
 
 ### Changed
 
