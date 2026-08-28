@@ -60,6 +60,9 @@ FROM runtime AS controller
 # and Compose plugin required by managed lifecycle verbs; router images do not.
 COPY --from=docker-cli --chown=root:root /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-cli --chown=root:root \
+    /usr/local/libexec/docker/cli-plugins/docker-buildx \
+    /usr/local/libexec/docker/cli-plugins/docker-buildx
+COPY --from=docker-cli --chown=root:root \
     /usr/local/libexec/docker/cli-plugins/docker-compose \
     /usr/local/libexec/docker/cli-plugins/docker-compose
 
