@@ -1284,6 +1284,96 @@ def _hermes_media_server(
     }
 
 
+def _hermes_media_raw_block(config: Path) -> str | None:
+    """Return Hermes' raw ``mcp_servers.anvil-media`` YAML block.
+
+    ``hermes config get`` intentionally returns a resolved value, including
+    values loaded from the profile's ``.env`` file.  The reconciler must verify
+    that the file still contains environment references without retaining or
+    comparing the resolved credential.  Hermes itself owns this compact YAML
+    shape; this scanner only locates the one mapping written by ``config set``
+    and fails closed for duplicate or unexpected structure.
+    """
+
+    try:
+        if config.stat().st_size > DEFAULT_MAX_RESPONSE_BYTES:
+            return None
+        lines = config.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    parents = [index for index, line in enumerate(lines) if line == "mcp_servers:"]
+    if len(parents) != 1:
+        return None
+    parent = parents[0]
+    parent_end = next(
+        (
+            index
+            for index in range(parent + 1, len(lines))
+            if lines[index] and not lines[index][0].isspace()
+        ),
+        len(lines),
+    )
+    children = [
+        index
+        for index in range(parent + 1, parent_end)
+        if lines[index] == "  anvil-media:"
+    ]
+    if len(children) != 1:
+        return None
+    child = children[0]
+    child_end = next(
+        (
+            index
+            for index in range(child + 1, parent_end)
+            if lines[index]
+            and len(lines[index]) - len(lines[index].lstrip()) <= 2
+        ),
+        parent_end,
+    )
+    return "\n".join(lines[child:child_end])
+
+
+def _hermes_media_server_matches(
+    observed: object,
+    expected: Mapping,
+    *,
+    config: Path,
+    mcp_url_env: str,
+    token_env: str,
+) -> bool:
+    """Compare a resolved Hermes value while proving raw env references."""
+
+    if observed == expected:
+        return True
+    if not isinstance(observed, Mapping):
+        return False
+    block = _hermes_media_raw_block(config)
+    if block is None:
+        return False
+    url_reference = "${%s}" % mcp_url_env
+    token_reference = "${%s}" % token_env
+    stripped = [line.strip() for line in block.splitlines()]
+    if stripped.count("- " + url_reference) != 1:
+        return False
+    if stripped.count("%s: %s" % (token_env, token_reference)) != 1:
+        return False
+    try:
+        normalized = json.loads(json.dumps(observed))
+        expected_args = expected["args"]
+        observed_args = normalized["args"]
+        url_index = expected_args.index(url_reference)
+        if not isinstance(observed_args[url_index], str) or not observed_args[url_index]:
+            return False
+        observed_args[url_index] = url_reference
+        observed_token = normalized["env"][token_env]
+        if not isinstance(observed_token, str) or not observed_token:
+            return False
+        normalized["env"][token_env] = token_reference
+    except (KeyError, TypeError, ValueError, IndexError):
+        return False
+    return normalized == expected
+
+
 def sync_hermes_media(
     *,
     hermes_bin: str = DEFAULT_HERMES_BIN,
@@ -1331,7 +1421,13 @@ def sync_hermes_media(
         rows.append(
             {
                 "profile": profile,
-                "changed": current != server,
+                "changed": not _hermes_media_server_matches(
+                    current,
+                    server,
+                    config=configs[profile],
+                    mcp_url_env=mcp_url_env,
+                    token_env=token_env,
+                ),
                 "config": configs[profile],
             }
         )
@@ -1415,7 +1511,13 @@ def sync_hermes_media(
                     run=run,
                     required=True,
                 )
-                if observed != server:
+                if not _hermes_media_server_matches(
+                    observed,
+                    server,
+                    config=row["config"],
+                    mcp_url_env=mcp_url_env,
+                    token_env=token_env,
+                ):
                     raise ClientCatalogError(
                         "Hermes media MCP verification still reports configuration drift"
                     )
