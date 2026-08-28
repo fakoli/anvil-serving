@@ -15,6 +15,16 @@ VIDEO_OUTPUT_MODES = ("application/json", "video/mp4")
 TERMINAL_TASK_STATES = frozenset(
     {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED", "TASK_STATE_REJECTED"}
 )
+MEDIA_TO_TASK_STATE = {
+    "accepted": "TASK_STATE_SUBMITTED",
+    "awaiting_approval": "TASK_STATE_INPUT_REQUIRED",
+    "preparing": "TASK_STATE_WORKING",
+    "queued": "TASK_STATE_SUBMITTED",
+    "running": "TASK_STATE_WORKING",
+    "completed": "TASK_STATE_COMPLETED",
+    "failed": "TASK_STATE_FAILED",
+    "canceled": "TASK_STATE_CANCELED",
+}
 
 
 def bearer_security() -> tuple[dict, list[dict]]:
@@ -32,6 +42,7 @@ __all__ = [
     "IMAGE_OUTPUT_MODES",
     "INPUT_MODES",
     "JSONRPC_METHODS",
+    "MEDIA_TO_TASK_STATE",
     "TERMINAL_TASK_STATES",
     "VIDEO_OUTPUT_MODES",
     "bearer_security",
