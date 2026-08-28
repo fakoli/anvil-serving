@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.media-workflow-registry/v1",
+  "workflows": [
+    "image.flux2-dev-fp8mixed-v1.json",
+    "video.wan2.2-ti2v-5b-v1.json"
+  ]
+}

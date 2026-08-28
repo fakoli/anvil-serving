@@ -1,0 +1,137 @@
+{
+  "schema": "anvil-serving.media-bundle-lock/v1",
+  "observed_at": "2026-08-27",
+  "runtime": {
+    "comfyui_release": "v0.33.4",
+    "comfyui_release_revision": "7a131a3afadc8200120f67f9236311a2c48b7445",
+    "container": "obeliks/comfyui@sha256:4a40acf4790733dfeb38a92dc2b976c812a484264ff08362e7f8c0d5a16df3e9",
+    "linux_amd64_manifest_digest": "sha256:7bca86b31cd7321d47006b0124437bdcd20abaa101704e5a71177ec3a9e6b06e",
+    "container_source_revision": "825e7c47717da15260e14b516654cf36216abb61",
+    "python": "3.13.15",
+    "cuda": "13.0",
+    "torch": "2.13.0+cu130",
+    "torchvision": "0.28.0+cu130",
+    "torchaudio": "2.11.0+cu130",
+    "installer_sha256": "709343424884a495404191ef0984b85a7863bd8f76fa2573b3bd39e40f8ac14b"
+  },
+  "custom_nodes": [
+    {
+      "name": "ComfyUI-Crystools",
+      "repository": "https://github.com/crystian/ComfyUI-Crystools.git",
+      "revision": "2f18256c5b5063937106f29a8e0a7db3ae3869b7",
+      "requirements_sha256": "9ae8fae7f3f90337ede26e397fe83e4119ae2f14b1dace7cecc1d334ef31a982"
+    },
+    {
+      "name": "ComfyUI-Impact-Pack",
+      "repository": "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git",
+      "revision": "429d0159ad429e64d2b3916e6e7be9c22d025c3c",
+      "requirements_sha256": "a8220b5c17eabc1edb99739679b65907cc17d8d4dd0980f73fe638989b4365a8"
+    },
+    {
+      "name": "ComfyUI-KJNodes",
+      "repository": "https://github.com/kijai/ComfyUI-KJNodes.git",
+      "revision": "073efb07419f56cc714e099a82e49fbc23ad9263",
+      "requirements_sha256": "e8cc1fb089c6e74bb5f326e949fd89ea7653de0d193d7a385c38af44e66656bd"
+    },
+    {
+      "name": "ComfyUI-VideoHelperSuite",
+      "repository": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git",
+      "revision": "4ee72c065db22c9d96c2427954dc69e7b908444b",
+      "requirements_sha256": "dbf7158d81418ace41097db503440bb70f41b6250d5d0b3ab3b3c86271b7b2a3"
+    },
+    {
+      "name": "ComfyUI_essentials",
+      "repository": "https://github.com/cubiq/ComfyUI_essentials.git",
+      "revision": "9d9f4bedfc9f0321c19faf71855e228c93bd0dc9",
+      "requirements_sha256": "075836eae22a6c13bf4be71e92397096994f3cf8d748038773c681319795bdc3"
+    },
+    {
+      "name": "comfyui-manager",
+      "repository": "https://github.com/Comfy-Org/ComfyUI-Manager.git",
+      "revision": "97421c49658aaa8cf6e64736a8cb21697db3f866",
+      "requirements_sha256": "79e080784300a01c9057d0a1ad55a88d2df56d516fe7b1050663811b818da3d1"
+    },
+    {
+      "name": "comfyui_controlnet_aux",
+      "repository": "https://github.com/Fannovel16/comfyui_controlnet_aux.git",
+      "revision": "e8b689a513c3e6b63edc44066560ca5919c0576e",
+      "requirements_sha256": "3ed811fd0028017752d455366feee1a22f055885a1cac5ffce837d6dea2a26a3"
+    },
+    {
+      "name": "rgthree-comfy",
+      "repository": "https://github.com/rgthree/rgthree-comfy.git",
+      "revision": "6b76ee6f2c5a007710b5a16f97c94330d6ecc871",
+      "requirements_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "image.flux2-dev-fp8mixed-v1",
+      "version": "v1",
+      "graph_sha256": "3c995ee0db2c6c316251d1ca395a87adc9bdafd2e19b5f7e1f160df3680efa6d",
+      "models": [
+        {
+          "repository": "Comfy-Org/flux2-dev",
+          "revision": "ab9055628ea245000e610f2aa2c96f4746093546",
+          "path": "split_files/diffusion_models/flux2_dev_fp8mixed.safetensors",
+          "target": "diffusion_models/flux2_dev_fp8mixed.safetensors",
+          "size": 35455599592,
+          "sha256": "863a82e4ff950a42a6b0e80bea824828f129eb1a8fbbdbd9e8cb29859127b486"
+        },
+        {
+          "repository": "Comfy-Org/flux2-dev",
+          "revision": "ab9055628ea245000e610f2aa2c96f4746093546",
+          "path": "split_files/text_encoders/mistral_3_small_flux2_bf16.safetensors",
+          "target": "text_encoders/mistral_3_small_flux2_bf16.safetensors",
+          "size": 35584897447,
+          "sha256": "7d79902f60b1aeb3a6de2cfad02f4367b5e300a1387de3d03ac717cfa3df117c"
+        },
+        {
+          "repository": "Comfy-Org/flux2-dev",
+          "revision": "ab9055628ea245000e610f2aa2c96f4746093546",
+          "path": "split_files/vae/flux2-vae.safetensors",
+          "target": "vae/flux2-vae.safetensors",
+          "size": 336213556,
+          "sha256": "d64f3a68e1cc4f9f4e29b6e0da38a0204fe9a49f2d4053f0ec1fa1ca02f9c4b5"
+        }
+      ]
+    },
+    {
+      "id": "video.wan2.2-ti2v-5b-v1",
+      "version": "v1",
+      "graph_sha256": "767e9436ade6b8566963703f76808ebcca5e2602aac2f1da1eacd294d5eec581",
+      "models": [
+        {
+          "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "revision": "c4f60d30c55a624e35427060fdd217579a6c1d77",
+          "path": "split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors",
+          "target": "diffusion_models/wan2.2_ti2v_5B_fp16.safetensors",
+          "size": 9999658848,
+          "sha256": "456f901338bd9eadbded3828b819109a9b68e8a525ca5cf8d0049a69fcfeca1e"
+        },
+        {
+          "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "revision": "c4f60d30c55a624e35427060fdd217579a6c1d77",
+          "path": "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "target": "text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "size": 6735906897,
+          "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68"
+        },
+        {
+          "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "revision": "c4f60d30c55a624e35427060fdd217579a6c1d77",
+          "path": "split_files/vae/wan2.2_vae.safetensors",
+          "target": "vae/wan2.2_vae.safetensors",
+          "size": 1409400960,
+          "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "https://docs.comfy.org/tutorials/flux/flux-2-dev",
+    "https://docs.comfy.org/tutorials/video/wan/wan2_2",
+    "https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.33.4",
+    "https://hub.docker.com/r/obeliks/comfyui/tags"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.media-workflow/v1",
+  "id": "image.flux2-dev-fp8mixed-v1",
+  "version": "v1",
+  "kind": "image",
+  "service_target": "media-worker",
+  "graph": "image.flux2-dev-fp8mixed-v1.graph.json",
+  "graph_digest": "3c995ee0db2c6c316251d1ca395a87adc9bdafd2e19b5f7e1f160df3680efa6d",
+  "parameters": {
+    "prompt": {"kind": "string", "max_length": 4096},
+    "seed": {"kind": "integer", "minimum": 0, "maximum": 9223372036854775807},
+    "width": {"kind": "integer", "minimum": 256, "maximum": 1024},
+    "height": {"kind": "integer", "minimum": 256, "maximum": 1024},
+    "steps": {"kind": "integer", "minimum": 1, "maximum": 50}
+  },
+  "bindings": [
+    {"parameter": "prompt", "node": "4", "input": "text"},
+    {"parameter": "seed", "node": "6", "input": "seed"},
+    {"parameter": "width", "node": "5", "input": "width"},
+    {"parameter": "height", "node": "5", "input": "height"},
+    {"parameter": "steps", "node": "6", "input": "steps"}
+  ],
+  "output_nodes": ["8"],
+  "output_mime_types": ["image/png"],
+  "required_features": ["flux2"],
+  "required_nodes": ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "EmptySD3LatentImage", "KSampler", "VAEDecode", "SaveImage"],
+  "required_models": ["flux2_dev_fp8mixed.safetensors", "mistral_3_small_flux2_bf16.safetensors", "flux2-vae.safetensors"],
+  "available": false,
+  "unavailable_reasons": ["model_identity_unverified", "capacity_unqualified", "quality_unreviewed"],
+  "limits": {"request_bytes": 65536, "artifact_bytes": 33554432, "timeout_seconds": 600, "retention_seconds": 86400, "queue_depth": 4, "concurrency": 1}
+}

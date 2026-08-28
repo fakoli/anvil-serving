@@ -593,7 +593,9 @@ def test_scaffold_maps_capability_workloads_to_compute_roles(tmp_path):
         assert "COMPUTE_A_GPU_UUID" not in block
     for service in ("stt", "tts"):
         assert "COMPUTE_B_GPU_UUID" in service_block(voice, service)
-    assert "COMPUTE_B_GPU_UUID" in service_block(comfy, "comfyui")
+    comfy_block = service_block(comfy, "comfyui")
+    assert "MEDIA_WORKER_GPU_UUID" in comfy_block
+    assert "COMPUTE_B_GPU_UUID" not in comfy_block
 
     topology = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
     serves_manifest = (tmp_path / "serves.toml").read_text(encoding="utf-8")
