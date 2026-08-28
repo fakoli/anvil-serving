@@ -16,13 +16,13 @@ NOW = dt.datetime(2026, 8, 27, tzinfo=dt.timezone.utc)
 
 
 def ready_workflow():
-    configured = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-dev-fp8mixed-v1", "v1")
+    configured = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1")
     return dataclasses.replace(configured, available=True, unavailable_reasons=())
 
 
 def test_unqualified_workflow_fails_before_lifecycle(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
-    workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-dev-fp8mixed-v1", "v1")
+    workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1")
     result = MediaAdmissionService(store).evaluate(
         workflow, PARAMETERS, principal="hermes", backend_ready=False, lifecycle_preview={"wouldRun": ["managed"]}
     )

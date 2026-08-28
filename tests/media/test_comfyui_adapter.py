@@ -26,7 +26,7 @@ class Response:
 def test_submit_uses_exact_rendered_graph_and_anvil_client_identity():
     registry = WorkflowRegistry(ROOT / "registry.json")
     rendered = registry.render(
-        "image.flux2-dev-fp8mixed-v1",
+        "image.flux2-klein-4b-fp8-v1",
         "v1",
         {"prompt": "owl", "seed": 1, "width": 512, "height": 512, "steps": 10},
     )

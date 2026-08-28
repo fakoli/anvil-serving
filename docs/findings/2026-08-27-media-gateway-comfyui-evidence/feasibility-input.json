@@ -1,0 +1,204 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "media-gateway-comfyui-rtx5090-first-workflows",
+  "requirements": {
+    "tokens": {
+      "media_token_budget": {
+        "value": 0,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "ComfyUI diffusion workflows do not allocate an LLM KV cache",
+        "observed_at": "2026-08-27",
+        "notes": "Prompt encoder memory is represented in resident allocation, not as token KV."
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "jobs",
+      "status": "assumed",
+      "source": "first-release workflow policy",
+      "observed_at": "2026-08-27"
+    },
+    "physical_vram_bytes": {
+      "value": 34190917632,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "nvidia-smi RTX 5090 total memory",
+      "observed_at": "2026-08-27"
+    },
+    "vram_reserves": {
+      "observed_background": {
+        "kind": "physical",
+        "variable": {
+          "value": 469762048,
+          "unit": "bytes",
+          "status": "measured",
+          "source": "idle nvidia-smi used memory before qualification",
+          "observed_at": "2026-08-27"
+        }
+      },
+      "desktop_driver_headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 4294967296,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "managed ComfyUI 32 GiB reference envelope",
+          "observed_at": "2026-08-27"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "qualification hard gate",
+        "observed_at": "2026-08-27"
+      }
+    }
+  },
+  "tracked_variables": {
+    "physical_system_ram_bytes": {
+      "value": 33190932480,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "Win32_ComputerSystem",
+      "observed_at": "2026-08-27"
+    },
+    "docker_vm_memory_bytes": {
+      "value": 16196648960,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "docker info MemTotal",
+      "observed_at": "2026-08-27"
+    },
+    "system_ram_peak_bytes": {
+      "status": "unknown",
+      "unit": "bytes",
+      "notes": "Measure during each managed generation; checkpoint bytes do not establish offload residency."
+    }
+  },
+  "candidates": [
+    {
+      "id": "image-flux2-klein-4b-fp8-v1",
+      "runtime_context_limit_tokens": {
+        "value": 0,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "media workflow has no LLM context requirement",
+        "observed_at": "2026-08-27"
+      },
+      "resident_components": {
+        "model_allocation_proxy": {
+          "min": 12451817860,
+          "max": 13696999647,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "exact three-file checkpoint total through a 10 percent allocation band",
+          "observed_at": "2026-08-27"
+        },
+        "runtime_graph_workspace": {
+          "min": 1073741824,
+          "max": 4294967296,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "pre-start ComfyUI diffusion workspace planning band",
+          "observed_at": "2026-08-27"
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "calculator_sentinel": {
+          "value": 1,
+          "unit": "bytes/token",
+          "status": "confirmed",
+          "source": "nonzero structural denominator for a zero-token media workload",
+          "observed_at": "2026-08-27"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "confirmed",
+        "source": "calculator structural sentinel",
+        "observed_at": "2026-08-27",
+        "notes": "Required media token count is zero, so the sentinel contributes zero demand."
+      },
+      "tracked_variables": {
+        "logical_checkpoint_bytes": {
+          "value": 12451817860,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "pinned Hugging Face artifact metadata",
+          "observed_at": "2026-08-27"
+        },
+        "peak_vram_bytes": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Requires a managed local generation."
+        }
+      }
+    },
+    {
+      "id": "video-wan2.2-ti2v-5b-v1",
+      "runtime_context_limit_tokens": {
+        "value": 0,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "media workflow has no LLM context requirement",
+        "observed_at": "2026-08-27"
+      },
+      "resident_components": {
+        "model_allocation_proxy": {
+          "min": 18144966705,
+          "max": 19959463376,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "exact three-file checkpoint total through a 10 percent allocation band",
+          "observed_at": "2026-08-27"
+        },
+        "runtime_graph_workspace": {
+          "min": 1073741824,
+          "max": 4294967296,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "pre-start ComfyUI video workspace planning band",
+          "observed_at": "2026-08-27"
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "calculator_sentinel": {
+          "value": 1,
+          "unit": "bytes/token",
+          "status": "confirmed",
+          "source": "nonzero structural denominator for a zero-token media workload",
+          "observed_at": "2026-08-27"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "confirmed",
+        "source": "calculator structural sentinel",
+        "observed_at": "2026-08-27",
+        "notes": "Required media token count is zero, so the sentinel contributes zero demand."
+      },
+      "tracked_variables": {
+        "logical_checkpoint_bytes": {
+          "value": 18144966705,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "pinned Hugging Face artifact metadata",
+          "observed_at": "2026-08-27"
+        },
+        "peak_vram_bytes": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Requires a managed local generation."
+        }
+      }
+    }
+  ]
+}
