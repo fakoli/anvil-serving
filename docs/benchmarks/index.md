@@ -69,8 +69,9 @@ commands; it does not claim a live model result by itself.
 7. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
    direct 128K text/tools/image/OCR/video evidence, no route or promotion.
 8. **FLUX.2 Klein 4B FP8 and Wan2.2 TI2V 5B** — RTX 5090 ComfyUI
-   generation candidates with direct functional/capacity evidence; both remain
-   unavailable pending independent perceptual review and client acceptance.
+   generation candidates with direct and live Hermes/MCP acceptance. Two
+   FLUX.2 images passed bounded independent review; one Wan2.2 sample decoded
+   but failed prompt adherence. Both remain unavailable and unpromoted.
 
 On 2026-08-28, exact digest- and revision-pinned ComfyUI v0.33.4 workflows
 qualified a 512×512 FLUX.2 Klein PNG and a 17-frame, 512×288 Wan2.2 H.264 MP4
@@ -78,6 +79,12 @@ on one RTX 5090. Peak GPU memory was 12,919 MiB and 18,263 MiB respectively
 from a 943 MiB worker baseline. The worker was removed afterward; no workflow,
 route, or deployment was promoted. See the
 [media qualification](../findings/2026-08-28-comfyui-media-qualification.md).
+A later exact-build live pass exercised cold approval, real Hermes MCP image
+and video jobs, A2A replay, authenticated artifact delivery, cold-backend
+failure, and managed teardown. The image samples passed bounded visual review;
+the video sample failed spatial/prompt adherence, so neither workflow was
+promoted. See the
+[live validation](../findings/2026-08-28-media-gateway-live-validation.md).
 
 On 2026-08-26, after the explicit human gate, the exact RadixArk Qwen3.8 Flash
 Next NVFP4 revision became the text Primary at TP=2/262K/c1 and was then fixed
