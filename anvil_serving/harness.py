@@ -467,7 +467,7 @@ def cmd_sync_hermes_media(
     backup_root="~/.anvil-serving/backups/hermes-media",
     anvil_command="anvil-serving",
     mcp_url_env="ANVIL_MEDIA_MCP_URL",
-    token_env="ANVIL_CONTROLLER_TOKEN",
+    token_env="ANVIL_ROUTER_TOKEN",
     restart_hermes_on_change=False,
     dry_run=True,
     confirm=False,
@@ -553,7 +553,7 @@ def _build_parser():
     )
     hermes_media.add_argument("--anvil-command", default="anvil-serving")
     hermes_media.add_argument("--mcp-url-env", default="ANVIL_MEDIA_MCP_URL")
-    hermes_media.add_argument("--token-env", default="ANVIL_CONTROLLER_TOKEN")
+    hermes_media.add_argument("--token-env", default="ANVIL_ROUTER_TOKEN")
     hermes_media.add_argument("--restart-hermes-on-change", action="store_true")
     hermes_media.add_argument("--dry-run", action="store_true")
     hermes_media.add_argument("--timeout-seconds", type=int, default=15)

@@ -322,7 +322,7 @@ def tool_hermes_media_sync(args: dict) -> dict:
             ),
             anvil_command=_str_arg(args, "anvil_command", "anvil-serving"),
             mcp_url_env=_str_arg(args, "mcp_url_env", "ANVIL_MEDIA_MCP_URL"),
-            token_env=_str_arg(args, "token_env", "ANVIL_CONTROLLER_TOKEN"),
+            token_env=_str_arg(args, "token_env", "ANVIL_ROUTER_TOKEN"),
             restart_hermes_on_change=restart_on_change,
             dry_run=dry_run,
             confirm=confirm,
