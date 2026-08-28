@@ -1,6 +1,9 @@
 {
   "schema": "anvil-serving.media-bundle-lock/v1",
   "observed_at": "2026-08-27",
+  "staging": {
+    "container": "curlimages/curl@sha256:7c12af72ceb38b7432ab85e1a265cff6ae58e06f95539d539b654f2cfa64bb13"
+  },
   "runtime": {
     "comfyui_release": "v0.33.4",
     "comfyui_release_revision": "7a131a3afadc8200120f67f9236311a2c48b7445",

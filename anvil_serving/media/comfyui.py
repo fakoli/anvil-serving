@@ -132,7 +132,12 @@ class ComfyUIClient:
         except (UnicodeError, json.JSONDecodeError) as exc:
             raise MediaError("backend_response_invalid", "ComfyUI response is not valid JSON", status=502) from exc
 
-    def compatibility(self, workflow: WorkflowDescriptor) -> WorkflowCompatibility:
+    def compatibility(
+        self,
+        workflow: WorkflowDescriptor,
+        *,
+        qualification: bool = False,
+    ) -> WorkflowCompatibility:
         stats = self.request_json("GET", "/system_stats")
         ready = isinstance(stats, Mapping) and isinstance(stats.get("system"), Mapping)
         if not ready:
@@ -159,15 +164,16 @@ class ComfyUIClient:
             )
             if condition
         )
+        policy_reasons = () if qualification else workflow.unavailable_reasons
         return WorkflowCompatibility(
             workflow.id,
             workflow.version,
             True,
-            not reasons and workflow.available,
+            not reasons and (workflow.available or qualification),
             missing_features,
             missing_nodes,
             missing_models,
-            reasons or workflow.unavailable_reasons,
+            reasons or policy_reasons,
         )
 
     def submit(self, workflow: RenderedWorkflow, *, job_id: str) -> str:
