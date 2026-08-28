@@ -233,6 +233,7 @@ def test_media_worker_orchestrator_shares_gateway_state_and_proxies_resource_own
     assert all(call[2]["manifest"] == "serves.comfyui.toml" for call in observed)
     assert all(call[2]["manifest_from_operator_home"] is True for call in observed)
     assert all(call[3] == "resource-secret" for call in observed)
+    assert observed[1][2]["timeout_seconds"] == 1800
     assert all(
         call[4]["io.modelcontextprotocol/protocolVersion"] == mcp.PROTOCOL_VERSION
         for call in observed
@@ -255,7 +256,13 @@ def test_media_resource_controller_timeout_covers_bounded_child_operation(
     observed = []
 
     def remote(controller_url, request, token, *, timeout):
-        observed.append((request["params"]["name"], timeout))
+        observed.append(
+            (
+                request["params"]["name"],
+                timeout,
+                request["params"]["arguments"].get("timeout_seconds"),
+            )
+        )
         return {
             "jsonrpc": "2.0",
             "id": request["id"],
@@ -264,13 +271,11 @@ def test_media_resource_controller_timeout_covers_bounded_child_operation(
 
     monkeypatch.setattr(media_worker, "remote_controller_request", remote)
 
-    media_worker._resource_tool(
-        "serves_manage",
+    media_worker._resource_manage(
         {
             "action": "up",
             "confirm": True,
             "dry_run": False,
-            "timeout_seconds": 7200,
         },
     )
     media_worker._resource_tool(
@@ -278,7 +283,10 @@ def test_media_resource_controller_timeout_covers_bounded_child_operation(
         {"timeout_seconds": 600},
     )
 
-    assert observed == [("serves_manage", 7205), ("serves_logs", 605)]
+    assert observed == [
+        ("serves_manage", 1805, 1800),
+        ("serves_logs", 605, 600),
+    ]
 
 
 def test_resource_controller_serves_up_has_no_router_lifecycle_side_effect():

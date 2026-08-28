@@ -36,6 +36,7 @@ _REMOTE_CONTROLLER_DEFAULT_TIMEOUT_SECONDS = 30
 _REMOTE_CONTROLLER_COMPLETION_MARGIN_SECONDS = 5
 _SERVES_MANAGE_DEFAULT_TIMEOUT_SECONDS = 300
 _SERVES_LOGS_DEFAULT_TIMEOUT_SECONDS = 60
+_MEDIA_WORKER_START_TIMEOUT_SECONDS = 1800
 
 
 def _lifecycle() -> MediaWorkerLifecycle:
@@ -150,7 +151,13 @@ def _resource_status(args: Mapping[str, Any]) -> dict:
 
 
 def _resource_manage(args: Mapping[str, Any]) -> dict:
-    return _resource_tool("serves_manage", args)
+    bounded_args = dict(args)
+    if bounded_args.get("action") == "up":
+        bounded_args.setdefault(
+            "timeout_seconds",
+            _MEDIA_WORKER_START_TIMEOUT_SECONDS,
+        )
+    return _resource_tool("serves_manage", bounded_args)
 
 
 def _resource_logs(args: Mapping[str, Any]) -> dict:
