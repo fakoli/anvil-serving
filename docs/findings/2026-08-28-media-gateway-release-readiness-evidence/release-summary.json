@@ -4,7 +4,7 @@
   "source": {
     "base_revision": "be2c4e3e82c5c459d41a49c2b339de279309e2a4",
     "executable_candidate_revision": "073a605b00218832427c5323a308ab39291a7e3e",
-    "private_operator_candidate_revision": "250a8e64e445cc1d464ed3db3bd1386cf476757b",
+    "private_operator_candidate_revision": "250a8e6052dfc266e57add7a03065ab837cdeeeb",
     "release_packet_scope": "evidence-only commit follows executable candidate",
     "anvil_serving_version": "0.35.1",
     "mcp_bridge_version": "0.18.0"
