@@ -21,6 +21,7 @@ MEDIA_TO_TASK_STATE = {
     "accepted": "TASK_STATE_SUBMITTED",
     "awaiting_approval": "TASK_STATE_INPUT_REQUIRED",
     "preparing": "TASK_STATE_WORKING",
+    "submitting": "TASK_STATE_WORKING",
     "queued": "TASK_STATE_SUBMITTED",
     "running": "TASK_STATE_WORKING",
     "completed": "TASK_STATE_COMPLETED",

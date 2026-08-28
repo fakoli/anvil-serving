@@ -31,7 +31,7 @@ class MediaCancellationService:
         self,
         store: MediaJobStore,
         *,
-        delete_queued: Callable[[str], None],
+        delete_queued: Callable[[str], bool],
         interrupt_exclusive: Callable[[], None],
         owns_active_slot: Callable[[MediaJob], bool],
     ) -> None:
@@ -44,6 +44,8 @@ class MediaCancellationService:
         job = self.store.get(job_id, principal=principal)
         if job.state in TERMINAL_STATES:
             return CancellationResult(job, False, reason="already_terminal")
+        if job.state == JobState.SUBMITTING:
+            return CancellationResult(job, False, reason="submission_outcome_unknown")
         if job.state == JobState.RUNNING:
             if not job.backend_prompt_id or not self.owns_active_slot(job):
                 return CancellationResult(job, False, reason="running_not_exclusively_owned")
@@ -55,8 +57,12 @@ class MediaCancellationService:
                 reason="exclusive_running_prompt_interrupted",
             )
             return CancellationResult(changed, True, True, "canceled")
-        if job.state == JobState.QUEUED and job.backend_prompt_id:
-            self.delete_queued(job.backend_prompt_id)
+        if job.state == JobState.QUEUED:
+            if not job.backend_prompt_id:
+                return CancellationResult(job, False, reason="queued_prompt_unverified")
+            if self.delete_queued(job.backend_prompt_id) is not True:
+                current = self.store.get(job.id, principal=principal)
+                return CancellationResult(current, False, reason="queued_prompt_not_deleted")
         try:
             changed = self.store.transition(
                 job.id,

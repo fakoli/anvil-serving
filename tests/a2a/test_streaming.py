@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import time
+
 from anvil_serving.a2a.http import sse_frames
 from anvil_serving.a2a.tasks import stream_events
 from anvil_serving.media.contracts import JobState
 
-from .test_tasks import CALLER, send_request, service
+from .test_tasks import CALLER, cold_service, send_request, service
 
 
 def test_stream_replays_ordered_wrapper_events_and_matches_polling(tmp_path):
@@ -23,7 +25,13 @@ def test_stream_replays_ordered_wrapper_events_and_matches_polling(tmp_path):
         for update in updates
         if "statusUpdate" in update
     ]
-    assert states == ["TASK_STATE_SUBMITTED", "TASK_STATE_WORKING", "TASK_STATE_COMPLETED"]
+    assert states == [
+        "TASK_STATE_WORKING",
+        "TASK_STATE_WORKING",
+        "TASK_STATE_SUBMITTED",
+        "TASK_STATE_WORKING",
+        "TASK_STATE_COMPLETED",
+    ]
     assert updates[-1]["statusUpdate"]["metadata"]["sequence"] == job.events[-1].sequence
     assert tasks.get_task(job_id, caller=CALLER)["status"]["state"] == states[-1]
     frames = list(sse_frames("stream-one", updates))
@@ -53,5 +61,27 @@ def test_resume_cursor_returns_only_later_events(tmp_path):
     store.transition(task["id"], JobState.RUNNING, principal="hermes")
     job = store.get(task["id"], principal="hermes")
     updates = stream_events(job, after_sequence=2)
-    assert len(updates) == 1
-    assert updates[0]["statusUpdate"]["metadata"]["sequence"] == 3
+    assert [
+        update["statusUpdate"]["metadata"]["sequence"] for update in updates
+    ] == [3, 4, 5]
+
+
+def test_cold_worker_stream_closes_at_input_required_without_waiting(tmp_path):
+    tasks = cold_service(tmp_path)
+    task = tasks.send_message(
+        send_request()["params"], caller=CALLER, force_immediate=True
+    )["task"]
+
+    started = time.monotonic()
+    updates = list(
+        tasks.observe(
+            task["id"],
+            caller=CALLER,
+            after_sequence=task["metadata"]["sequence"],
+            timeout_seconds=5,
+            poll_interval=0.01,
+        )
+    )
+
+    assert time.monotonic() - started < 1
+    assert updates == []

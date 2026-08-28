@@ -198,17 +198,86 @@ class ComfyUIClient:
             raise MediaError("backend_response_invalid", "ComfyUI did not return a valid prompt identity", status=502)
         return prompt_id
 
+    def find_prompt(self, job_id: str) -> str | None:
+        """Recover a prompt accepted under the job's deterministic client id."""
+
+        if not isinstance(job_id, str) or not job_id or len(job_id) > 128:
+            raise MediaError("invalid_job", "media job identity is invalid")
+        client_id = "anvil-" + job_id
+        queue_response = self.request_json("GET", "/queue")
+        running, pending = _queue_records(queue_response)
+        matches = {
+            prompt_id
+            for record in (*running, *pending)
+            if (prompt_id := _record_prompt_for_client(record, client_id)) is not None
+        }
+        if len(matches) > 1:
+            raise MediaError(
+                "backend_prompt_ambiguous",
+                "ComfyUI returned multiple prompts for one media job",
+                status=502,
+            )
+        if matches:
+            return next(iter(matches))
+
+        history_response = self.request_json("GET", "/history")
+        if not isinstance(history_response, Mapping) or len(history_response) > MAX_METADATA_ITEMS:
+            raise MediaError(
+                "backend_response_invalid",
+                "ComfyUI history response is invalid or unbounded",
+                status=502,
+            )
+        for prompt_id, record in history_response.items():
+            if not isinstance(prompt_id, str) or not _PROMPT_ID_RE.fullmatch(prompt_id):
+                raise MediaError("backend_response_invalid", "ComfyUI history identity is invalid", status=502)
+            if not isinstance(record, Mapping):
+                raise MediaError("backend_response_invalid", "ComfyUI history record is invalid", status=502)
+            prompt_record = record.get("prompt")
+            if _record_client_id(prompt_record) == client_id:
+                matches.add(prompt_id)
+        if len(matches) > 1:
+            raise MediaError(
+                "backend_prompt_ambiguous",
+                "ComfyUI returned multiple prompts for one media job",
+                status=502,
+            )
+        return next(iter(matches), None)
+
     def queue(self) -> dict[str, int]:
         response = self.request_json("GET", "/queue")
-        if not isinstance(response, Mapping):
-            raise MediaError("backend_response_invalid", "ComfyUI queue response is invalid", status=502)
-        running = response.get("queue_running", [])
-        pending = response.get("queue_pending", [])
-        if not isinstance(running, list) or not isinstance(pending, list):
-            raise MediaError("backend_response_invalid", "ComfyUI queue response is invalid", status=502)
-        if len(running) + len(pending) > MAX_METADATA_ITEMS:
-            raise MediaError("backend_metadata_too_large", "ComfyUI queue response is unbounded", status=502)
+        running, pending = _queue_records(response)
         return {"running": len(running), "pending": len(pending)}
+
+    def prompt_state(self, prompt_id: str) -> str:
+        """Return authoritative queue/history placement for cancellation."""
+
+        _require_prompt_id(prompt_id)
+        response = self.request_json("GET", "/queue")
+        running, pending = _queue_records(response)
+        running_ids = {_record_prompt_id(record) for record in running}
+        pending_ids = {_record_prompt_id(record) for record in pending}
+        if prompt_id in running_ids:
+            return "running"
+        if prompt_id in pending_ids:
+            return "queued"
+        response = self.request_json(
+            "GET", "/history/" + urllib.parse.quote(prompt_id, safe="")
+        )
+        if not isinstance(response, Mapping):
+            raise MediaError("backend_response_invalid", "ComfyUI history response is invalid", status=502)
+        record = response.get(prompt_id)
+        if record is None:
+            return "absent"
+        if not isinstance(record, Mapping):
+            raise MediaError("backend_response_invalid", "ComfyUI history record is invalid", status=502)
+        status = record.get("status")
+        if not isinstance(status, Mapping):
+            return "running"
+        if status.get("completed") is True:
+            return "completed"
+        if status.get("status_str") in {"error", "failed"}:
+            return "failed"
+        return "running"
 
     def history(self, prompt_id: str) -> BackendStatus:
         if not isinstance(prompt_id, str) or not _PROMPT_ID_RE.fullmatch(prompt_id):
@@ -322,9 +391,10 @@ class ComfyUIClient:
             raise MediaError("backend_response_too_large", "ComfyUI response exceeds its byte limit", status=502)
         return payload
 
-    def delete_queued_prompt(self, prompt_id: str) -> None:
-        if not isinstance(prompt_id, str) or not _PROMPT_ID_RE.fullmatch(prompt_id):
-            raise MediaError("invalid_backend_prompt", "backend prompt identity is invalid")
+    def delete_queued_prompt(self, prompt_id: str) -> bool:
+        _require_prompt_id(prompt_id)
+        if self.prompt_state(prompt_id) != "queued":
+            return False
         body = json.dumps({"delete": [prompt_id]}, separators=(",", ":")).encode("utf-8")
         self.request_bytes(
             "POST",
@@ -333,6 +403,7 @@ class ComfyUIClient:
             headers={"Content-Type": "application/json", "Accept": "application/json"},
             max_bytes=64 * 1024,
         )
+        return self.prompt_state(prompt_id) == "absent"
 
     def interrupt_exclusive_prompt(self) -> None:
         self.request_bytes(
@@ -342,6 +413,51 @@ class ComfyUIClient:
             headers={"Content-Type": "application/json", "Accept": "application/json"},
             max_bytes=64 * 1024,
         )
+
+
+def _require_prompt_id(prompt_id: str) -> None:
+    if not isinstance(prompt_id, str) or not _PROMPT_ID_RE.fullmatch(prompt_id):
+        raise MediaError("invalid_backend_prompt", "backend prompt identity is invalid")
+
+
+def _queue_records(response: Any) -> tuple[list[Any], list[Any]]:
+    if not isinstance(response, Mapping):
+        raise MediaError("backend_response_invalid", "ComfyUI queue response is invalid", status=502)
+    running = response.get("queue_running", [])
+    pending = response.get("queue_pending", [])
+    if not isinstance(running, list) or not isinstance(pending, list):
+        raise MediaError("backend_response_invalid", "ComfyUI queue response is invalid", status=502)
+    if len(running) + len(pending) > MAX_METADATA_ITEMS:
+        raise MediaError("backend_metadata_too_large", "ComfyUI queue response is unbounded", status=502)
+    return running, pending
+
+
+def _record_prompt_id(record: Any) -> str:
+    if not isinstance(record, list) or len(record) < 4 or len(record) > 8:
+        raise MediaError("backend_response_invalid", "ComfyUI queue record is invalid", status=502)
+    prompt_id = record[1]
+    if not isinstance(prompt_id, str) or not _PROMPT_ID_RE.fullmatch(prompt_id):
+        raise MediaError("backend_response_invalid", "ComfyUI queue prompt identity is invalid", status=502)
+    return prompt_id
+
+
+def _record_client_id(record: Any) -> str | None:
+    if not isinstance(record, list) or len(record) < 4 or len(record) > 8:
+        raise MediaError("backend_response_invalid", "ComfyUI prompt record is invalid", status=502)
+    extra = record[3]
+    if not isinstance(extra, Mapping):
+        raise MediaError("backend_response_invalid", "ComfyUI prompt metadata is invalid", status=502)
+    client_id = extra.get("client_id")
+    if client_id is None:
+        return None
+    if not isinstance(client_id, str) or not client_id or len(client_id) > 256:
+        raise MediaError("backend_response_invalid", "ComfyUI client identity is invalid", status=502)
+    return client_id
+
+
+def _record_prompt_for_client(record: Any, client_id: str) -> str | None:
+    prompt_id = _record_prompt_id(record)
+    return prompt_id if _record_client_id(record) == client_id else None
 
 
 __all__ = ["ComfyUIClient", "WorkflowCompatibility"]

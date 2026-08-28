@@ -18,10 +18,10 @@ def create(store, *, key="one"):
     return job
 
 
-def service(store, calls, *, exclusive=False):
+def service(store, calls, *, exclusive=False, deleted=True):
     return MediaCancellationService(
         store,
-        delete_queued=lambda prompt: calls.append(("delete", prompt)),
+        delete_queued=lambda prompt: calls.append(("delete", prompt)) or deleted,
         interrupt_exclusive=lambda: calls.append(("interrupt", None)),
         owns_active_slot=lambda job: exclusive,
     )
@@ -45,6 +45,21 @@ def test_queued_cancellation_deletes_only_owned_prompt(tmp_path):
     calls = []
     result = service(store, calls).cancel(job.id, principal="hermes")
     assert result.job.state == JobState.CANCELED
+    assert calls == [("delete", "prompt_123")]
+
+
+def test_queued_to_running_race_fails_closed_after_delete_request(tmp_path):
+    store = MediaJobStore(tmp_path / "jobs.sqlite3")
+    job = create(store)
+    job = store.set_backend_prompt(job.id, "prompt_123", principal="hermes")
+    job = store.transition(job.id, JobState.QUEUED, principal="hermes")
+    calls = []
+    result = service(store, calls, deleted=False).cancel(
+        job.id, principal="hermes"
+    )
+    assert result.canceled is False
+    assert result.reason == "queued_prompt_not_deleted"
+    assert result.job.state == JobState.QUEUED
     assert calls == [("delete", "prompt_123")]
 
 

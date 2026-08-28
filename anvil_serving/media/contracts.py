@@ -16,6 +16,7 @@ _ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 _OPAQUE_RE = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 _MIME_RE = re.compile(r"^(?:image|video)/[a-z0-9][a-z0-9.+-]{0,63}$")
+SUBMISSION_RECOVERY_GRACE_SECONDS = 30
 
 
 def utc_now() -> dt.datetime:
@@ -34,10 +35,17 @@ def _identifier(value: str, field_name: str) -> str:
     return value
 
 
+def _principal(value: str, field_name: str) -> str:
+    if not isinstance(value, str) or not value or len(value) > 128:
+        raise MediaError("invalid_contract", f"{field_name} is invalid")
+    return value
+
+
 class JobState(str, Enum):
     ACCEPTED = "accepted"
     AWAITING_APPROVAL = "awaiting_approval"
     PREPARING = "preparing"
+    SUBMITTING = "submitting"
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -53,7 +61,12 @@ _TRANSITIONS = {
     JobState.AWAITING_APPROVAL: frozenset(
         {JobState.PREPARING, JobState.FAILED, JobState.CANCELED}
     ),
-    JobState.PREPARING: frozenset({JobState.QUEUED, JobState.FAILED, JobState.CANCELED}),
+    JobState.PREPARING: frozenset(
+        {JobState.SUBMITTING, JobState.QUEUED, JobState.FAILED, JobState.CANCELED}
+    ),
+    JobState.SUBMITTING: frozenset(
+        {JobState.QUEUED, JobState.FAILED}
+    ),
     JobState.QUEUED: frozenset({JobState.RUNNING, JobState.FAILED, JobState.CANCELED}),
     JobState.RUNNING: frozenset({JobState.COMPLETED, JobState.FAILED, JobState.CANCELED}),
     JobState.COMPLETED: frozenset(),
@@ -261,7 +274,7 @@ class MediaArtifact:
     def __post_init__(self) -> None:
         if not _OPAQUE_RE.fullmatch(self.id) or not _OPAQUE_RE.fullmatch(self.job_id):
             raise MediaError("invalid_contract", "artifact identity is invalid")
-        _identifier(self.principal, "artifact principal")
+        _principal(self.principal, "artifact principal")
         _identifier(self.workflow_id, "artifact workflow")
         _identifier(self.workflow_version, "artifact workflow version")
         if not _MIME_RE.fullmatch(self.media_type):
@@ -318,7 +331,7 @@ class MediaJob:
     def __post_init__(self) -> None:
         if not _OPAQUE_RE.fullmatch(self.id):
             raise MediaError("invalid_contract", "job identity is invalid")
-        _identifier(self.principal, "job principal")
+        _principal(self.principal, "job principal")
         _identifier(self.workflow_id, "job workflow")
         _identifier(self.workflow_version, "job workflow version")
         _timestamp(self.created_at, "job created_at")
@@ -327,6 +340,8 @@ class MediaJob:
             raise MediaError("invalid_contract", "job event history does not match state")
         if tuple(event.sequence for event in self.events) != tuple(range(1, len(self.events) + 1)):
             raise MediaError("invalid_contract", "job event sequence is not contiguous")
+        if self.input_digest and not _HEX64_RE.fullmatch(self.input_digest):
+            raise MediaError("invalid_contract", "job input digest is invalid")
 
     def transition(self, state: JobState, *, reason: str = "", at: dt.datetime | None = None) -> "MediaJob":
         if not isinstance(state, JobState):
@@ -362,7 +377,8 @@ class MediaJob:
 
 @runtime_checkable
 class MediaBackend(Protocol):
-    def submit(self, workflow: RenderedWorkflow) -> str: ...
+    def submit(self, workflow: RenderedWorkflow, *, job_id: str) -> str: ...
+    def find_prompt(self, job_id: str) -> str | None: ...
     def status(self, prompt_id: str) -> Mapping[str, Any]: ...
     def cancel(self, prompt_id: str) -> bool: ...
 
@@ -376,6 +392,7 @@ __all__ = [
     "ParameterBinding",
     "ParameterSpec",
     "RenderedWorkflow",
+    "SUBMISSION_RECOVERY_GRACE_SECONDS",
     "TERMINAL_STATES",
     "WorkflowDescriptor",
     "utc_now",
