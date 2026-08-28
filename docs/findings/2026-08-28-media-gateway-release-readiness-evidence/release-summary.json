@@ -3,7 +3,7 @@
   "observed_at": "2026-08-28",
   "source": {
     "base_revision": "be2c4e3e82c5c459d41a49c2b339de279309e2a4",
-    "executable_candidate_revision": "073a605b00218832427c5323a308ab39291a7e3e",
+    "executable_candidate_revision": "2dd3652c6fbbd72ae932f6c90713153e829dbd80",
     "private_operator_candidate_revision": "250a8e6052dfc266e57add7a03065ab837cdeeeb",
     "release_packet_scope": "evidence-only commit follows executable candidate",
     "anvil_serving_version": "0.35.1",
@@ -22,8 +22,11 @@
     }
   },
   "verification": {
-    "full_python": {"passed": 4320, "skipped": 9, "seconds": 182.26},
-    "media_protocol_matrix": {"passed": 700, "seconds": 88.32},
+    "full_python": {"passed": 4342, "skipped": 9, "seconds": 184.34},
+    "media_protocol_matrix": {"passed": 959, "seconds": 16.32},
+    "focused_approval_a2a_regressions": {"passed": 45, "seconds": 10.33},
+    "hermes_skill_tests": {"passed": 3, "seconds": 0.31},
+    "private_operator_tests": {"passed": 20, "seconds": 2.958},
     "node_bridge_tests": {"passed": 2},
     "node_audit_vulnerabilities": 0,
     "ruff": "pass",
@@ -32,7 +35,8 @@
     "cli_reference_files_checked": 806,
     "semantic_secret_files_checked": 1991,
     "semantic_secret_findings": 0,
-    "gitleaks": "pass",
+    "public_archive_gitleaks": "pass",
+    "private_archive_gitleaks": "pass",
     "distribution_build": "pass",
     "twine": "pass",
     "isolated_wheel_smoke": "pass"
