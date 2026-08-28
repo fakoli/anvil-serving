@@ -4,7 +4,7 @@
 
 **Source base:** `be2c4e3e82c5c459d41a49c2b339de279309e2a4`
 
-**Executable candidate tested:** `f83e050c3edf4e0755e97dbb8b6e8ea3a3169691`
+**Executable candidate tested:** `de4064ff5e6adf2338cdd5645d73e352860cc4d1`
 
 **Package / bridge versions:** Anvil Serving `0.35.1`; bundled MCP bridge
 `0.18.0`
@@ -27,11 +27,11 @@ Functional and capacity measurements remain in the
 | Boundary | Evidence | Source-merge result | Live result |
 | --- | --- | --- | --- |
 | Existing `/v1` router | Full router suite plus byte-comparison fixture with the gateway enabled and disabled | pass | unchanged |
-| Modern MCP | Scoped catalog, schema, auth-before-dispatch, and gateway protocol tests | pass | not deployed |
+| Modern MCP | Scoped catalog, schema, auth-before-dispatch, audience-filtered discovery and execution, and gateway protocol tests | pass | not deployed |
 | Legacy stdio MCP | Node 20 bridge test against MCP SDK 1.29 and the same modern upstream controller contract | pass | Hermes not installed or changed |
-| A2A | Agent Card, submission, polling, streaming, cancellation, and cross-principal tests | pass | not deployed |
-| Durable media operations | Idempotency, ordered transitions, cancellation, restart reconciliation, artifact ownership, expiry, and range tests | pass | not enabled |
-| Managed worker | Controller previews, confirmation gates, reservation ownership, cross-process prepare/release serialization, logs, and rollback tests | pass | isolated qualification ended absent |
+| A2A | Agent Card, submission, polling, streaming, cancellation, canonical errors, ProtoJSON metadata, and cross-principal tests | pass | not deployed |
+| Durable media operations | Atomic admission/idempotency, ordered transitions, cancellation, continuously running reconciliation, scoped artifact ownership, expiry, and range tests | pass | not enabled |
+| Managed worker | Controller previews, cold-start approval wiring, confirmation gates, reservation ownership, lease-based crash recovery, cross-process prepare/release serialization, logs, and rollback tests | pass | isolated qualification ended absent |
 | Image workflow | Exact graph/model/runtime pins; decodable PNG; 12,919 MiB peak; clean rollback | functional/capacity pass | quality `human_required`; unavailable |
 | Video workflow | Exact graph/model/runtime pins; decodable H.264 MP4; 18,263 MiB peak; clean rollback | functional/capacity pass | quality `human_required`; unavailable |
 | Hermes skill | Eight-tool allowlist, caller-only scopes, identical-request idempotency, truthful approval/unavailable handling, artifact retrieval smoke | pass | no real-client acceptance yet |
@@ -67,16 +67,16 @@ exposure.
 
 | Gate | Result |
 | --- | --- |
-| Full Python regression | `4291 passed, 9 skipped` in 168.41 seconds |
-| Media/A2A/controller/router matrix | `569 passed` |
+| Full Python regression | `4308 passed, 9 skipped` in 178.70 seconds |
+| Media/A2A/controller/router matrix | `586 passed` |
 | Hermes-focused Python contract | `20 passed` with adjacent MCP/gateway coverage |
 | Legacy + modern Node MCP bridge | 2 tests passed; generated bridge rebuilt |
 | Node dependency audit | zero vulnerabilities after lock-only transitive updates to `fast-uri 3.1.6` and `hono 4.13.5` |
 | Python lint | repository-wide Ruff passed |
 | Strict documentation build | passed after replacing links outside the MkDocs source tree with repository-path literals |
-| Markdown links | 419 tracked Markdown files passed |
+| Markdown links | 420 tracked Markdown files passed |
 | CLI reference audit | docs, skills, and full scopes passed; 806 full-scope files, zero violations |
-| Semantic secret hygiene | self-test passed; 1,989 tracked files, zero findings |
+| Semantic secret hygiene | self-test passed; 1,991 tracked files, zero findings |
 | Signature secret hygiene | pinned Gitleaks image scanned the cleaned candidate with network disabled; zero findings |
 | Distribution build | wheel and sdist built in an isolated environment |
 | Distribution metadata | Twine passed both artifacts |
@@ -96,6 +96,14 @@ full-suite result above. A direct Gitleaks scan of the developer worktree also
 reported seven ignored generated build/site copies. Those generated directories
 and the pytest cache were removed; the pinned no-network scan then passed the
 clean candidate with zero findings, matching CI's checkout shape.
+
+The first independent adversarial review blocked release with ten findings:
+MCP audience enforcement, production reconciliation, atomic admission,
+lifecycle crash recovery, cold-start approval wiring, A2A conformance,
+artifact read scope, CLI dry-run consistency, offline bundle recovery, and
+stale release evidence. The executable candidate above closes those findings
+with regression coverage. Source merge remains pending an independent re-review
+of the final immutable public and private candidate revisions.
 
 ## Remaining live gates
 
