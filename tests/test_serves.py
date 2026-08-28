@@ -1712,6 +1712,22 @@ def test_cmd_up_recreate_rescues_dead_container():
     assert ["bash", "serve-fast.sh"] in run.calls
 
 
+def test_command_failure_text_is_bounded_to_actionable_tail_and_redacted():
+    result = proc(
+        1,
+        "prefix:" + ("x" * 9000) + "\nAPI_KEY=visible-secret\nactionable build failure",
+    )
+    rendered = serves._command_failure_text(
+        result,
+        {"API_KEY": "visible-secret"},
+    )
+    assert rendered.startswith("...[truncated to final 8192 characters]...")
+    assert len(rendered) < 8300
+    assert "actionable build failure" in rendered
+    assert "visible-secret" not in rendered
+    assert "<redacted>" in rendered
+
+
 # ---- post-start storage write guard -----------------------------------------
 
 def _storage_run(uid="1000", gid="1000", mounts=None, denied=(),
