@@ -25615,6 +25615,15 @@
           "requires_confirmation": false,
           "summary": "Authenticated media principal.",
           "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--backend-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared adapter endpoint.",
+          "value_name": "URL"
         }
       ],
       "output_policy": "bounded",

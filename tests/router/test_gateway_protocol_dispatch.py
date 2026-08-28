@@ -4,6 +4,7 @@ import http.client
 import io
 import json
 import threading
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -12,12 +13,14 @@ import pytest
 from anvil_serving import mcp
 from anvil_serving.a2a.protocol import A2A_PATH, AGENT_CARD_PATH
 from anvil_serving.media.contracts import JobState
+from anvil_serving.media.backends import BackendOutput, BackendStatus
+from anvil_serving.media.comfyui import WorkflowCompatibility
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.gateway import ProtocolGateway
 from anvil_serving.router.config import ConfigError, load, load_server_config
 from anvil_serving.router.serve import build_server
 
-from tests.a2a.test_tasks import CALLER, send_request, service
+from tests.a2a.test_tasks import CALLER, Registry, send_request, service
 from tests.router.helpers import StaticBackend
 
 
@@ -25,12 +28,12 @@ CONFIG = Path(__file__).resolve().parents[2] / "configs" / "example.toml"
 
 
 @contextmanager
-def gateway_server(tmp_path, *, enabled=True):
+def gateway_server(tmp_path, *, enabled=True, caller=CALLER):
     tmp_path.mkdir(parents=True, exist_ok=True)
     tasks = service(tmp_path)
     gateway = (
         ProtocolGateway(
-            caller=CALLER,
+            caller=caller,
             tasks=tasks,
             registry=tasks.operations.registry,
             artifacts=tasks.operations.artifacts,
@@ -133,6 +136,28 @@ def test_artifact_delivery_is_opaque_scoped_and_range_bounded(tmp_path):
         assert b"source_path" not in raw
 
 
+def test_artifact_delivery_requires_media_read_scope(tmp_path):
+    caller = {"principal": "hermes", "scopes": ["media:submit"]}
+    with gateway_server(tmp_path, caller=caller) as (address, tasks):
+        job, _ = tasks.operations.jobs.create(
+            principal="hermes",
+            workflow_id="image.test",
+            workflow_version="v1",
+            input_digest="a" * 64,
+            idempotency_key="artifact-scope-request",
+        )
+        artifact = tasks.operations.artifacts.ingest(
+            job,
+            io.BytesIO(b"\x89PNG\r\n\x1a\ncontent"),
+            media_type="image/png",
+            max_bytes=1024,
+            retention_seconds=60,
+        )
+        status, _, raw = request(address, "GET", f"/artifacts/{artifact.id}")
+        assert status == 403
+        assert json.loads(raw)["error"]["type"] == "scope_denied"
+
+
 def test_protocol_auth_precedes_dispatch_and_unknown_routes_do_not_fallback(tmp_path):
     with gateway_server(tmp_path) as (address, _tasks):
         status, _, _ = request(
@@ -150,7 +175,7 @@ def test_protocol_auth_precedes_dispatch_and_unknown_routes_do_not_fallback(tmp_
         assert status == 404
 
 
-def test_a2a_sse_observes_terminal_job_without_owning_execution(tmp_path):
+def test_a2a_sse_rejects_terminal_task_subscription_without_mutation(tmp_path):
     with gateway_server(tmp_path) as (address, tasks):
         task = tasks.send_message(send_request()["params"], caller=CALLER)["task"]
         tasks.operations.jobs.transition(task["id"], JobState.CANCELED, principal="hermes")
@@ -168,8 +193,10 @@ def test_a2a_sse_observes_terminal_job_without_owning_execution(tmp_path):
             headers={"Accept": "text/event-stream"},
         )
         assert status == 200
-        assert headers["Content-Type"] == "text/event-stream"
-        assert b"TASK_STATE_CANCELED" in raw
+        assert headers["Content-Type"] == "application/json"
+        error = json.loads(raw)["error"]
+        assert error["code"] == -32004
+        assert error["data"][0]["reason"] == "UNSUPPORTED_OPERATION"
         assert tasks.operations.jobs.get(task["id"], principal="hermes").state == JobState.CANCELED
 
 
@@ -261,3 +288,172 @@ media_public_origin = "http://127.0.0.1:8080"
         assert server.anvil_gateway.artifacts is server.anvil_gateway.tasks.operations.artifacts
     finally:
         server.server_close()
+
+
+def test_media_lifecycle_preview_uses_bounded_controller_tool_call(monkeypatch):
+    import anvil_serving.router.serve as router_serve
+
+    observed = {}
+
+    def remote(controller_url, request, token):
+        observed.update(
+            {"controller_url": controller_url, "request": request, "token": token}
+        )
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {
+                "structuredContent": {
+                    "ok": True,
+                    "data": {
+                        "transactionId": "preview-transaction",
+                        "service": "media-worker",
+                        "action": "prepare",
+                        "humanRequired": True,
+                    },
+                }
+            },
+        }
+
+    monkeypatch.setattr(router_serve, "remote_controller_request", remote)
+    preview = router_serve._media_lifecycle_preview(
+        "http://127.0.0.1:8765",
+        "controller-secret",
+    )
+    receipt = preview("job_0123456789abcdef", "hermes", "media-worker")
+    assert receipt["humanRequired"] is True
+    assert observed["controller_url"] == "http://127.0.0.1:8765"
+    assert observed["token"] == "controller-secret"
+    request = observed["request"]
+    assert request["params"]["name"] == "media_worker_prepare"
+    assert request["params"]["arguments"] == {
+        "job_id": "job_0123456789abcdef",
+        "principal": "hermes",
+        "service": "media-worker",
+        "dry_run": True,
+        "confirm": False,
+        "human_approved": False,
+    }
+    assert request["params"]["_meta"][
+        "io.modelcontextprotocol/protocolVersion"
+    ] == mcp.PROTOCOL_VERSION
+
+
+def test_media_controller_url_and_token_are_an_atomic_configuration(tmp_path):
+    config_path = tmp_path / "router.toml"
+    config_path.write_text(
+        CONFIG.read_text(encoding="utf-8")
+        + """
+
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+media_principal = "hermes"
+media_scopes = ["media:read", "media:submit", "media:cancel"]
+media_public_origin = "http://127.0.0.1:8080"
+""",
+        encoding="utf-8",
+    )
+    config = load(str(config_path))
+    with pytest.raises(ConfigError, match="must be configured together"):
+        build_server(
+            str(config_path),
+            port=0,
+            backends={tier.id: StaticBackend(["ok"]) for tier in config.tiers},
+            env={
+                "ANVIL_ROUTER_TOKEN": "secret",
+                "ANVIL_MEDIA_BACKEND_URL": "http://127.0.0.1:8188",
+                "ANVIL_MEDIA_STATE_DB": str(tmp_path / "jobs.sqlite3"),
+                "ANVIL_MEDIA_ARTIFACT_ROOT": str(tmp_path / "artifacts"),
+                "ANVIL_MEDIA_WORKFLOW_REGISTRY": str(
+                    Path(__file__).resolve().parents[2]
+                    / "configs"
+                    / "media"
+                    / "workflows"
+                    / "registry.json"
+                ),
+                "ANVIL_MEDIA_CONTROLLER_URL": "http://127.0.0.1:8765",
+            },
+        )
+
+
+def test_build_server_reconciles_submissions_and_stops_worker(tmp_path, monkeypatch):
+    import anvil_serving.router.serve as router_serve
+
+    class CompletingBackend:
+        def __init__(self, _url):
+            pass
+
+        def compatibility(self, workflow, *, qualification=False):
+            return WorkflowCompatibility(workflow.id, workflow.version, True, True)
+
+        def submit(self, workflow, *, job_id):
+            return "prompt-completed"
+
+        def history(self, prompt_id):
+            return BackendStatus(
+                prompt_id,
+                "completed",
+                outputs=(BackendOutput("1", "private-output.png"),),
+            )
+
+        def fetch_output(self, output, *, max_bytes):
+            payload = b"\x89PNG\r\n\x1a\nproduction-output"
+            assert len(payload) <= max_bytes
+            return payload
+
+        def delete_queued_prompt(self, prompt_id):
+            raise AssertionError("completed prompt must not be deleted")
+
+        def interrupt_exclusive_prompt(self):
+            raise AssertionError("completed prompt must not be interrupted")
+
+    monkeypatch.setattr(router_serve, "WorkflowRegistry", lambda _path: Registry())
+    monkeypatch.setattr(router_serve, "ComfyUIClient", CompletingBackend)
+    config_path = tmp_path / "router.toml"
+    config_path.write_text(
+        CONFIG.read_text(encoding="utf-8")
+        + """
+
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+media_principal = "hermes"
+media_scopes = ["media:read", "media:submit", "media:cancel"]
+media_public_origin = "http://127.0.0.1:8080"
+""",
+        encoding="utf-8",
+    )
+    config = load(str(config_path))
+    server = build_server(
+        str(config_path),
+        port=0,
+        backends={tier.id: StaticBackend(["ok"]) for tier in config.tiers},
+        env={
+            "ANVIL_ROUTER_TOKEN": "secret",
+            "ANVIL_MEDIA_BACKEND_URL": "http://127.0.0.1:8188",
+            "ANVIL_MEDIA_STATE_DB": str(tmp_path / "jobs.sqlite3"),
+            "ANVIL_MEDIA_ARTIFACT_ROOT": str(tmp_path / "artifacts"),
+            "ANVIL_MEDIA_WORKFLOW_REGISTRY": str(tmp_path / "registry.json"),
+        },
+    )
+    worker = server.anvil_media_worker
+    try:
+        submitted = server.anvil_gateway.tasks.send_message(
+            send_request()["params"], caller=CALLER
+        )["task"]
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            job = server.anvil_gateway.tasks.operations.jobs.get(
+                submitted["id"], principal="hermes"
+            )
+            if job.state == JobState.COMPLETED:
+                break
+            time.sleep(0.02)
+        assert job.state == JobState.COMPLETED
+        assert len(job.artifacts) == 1
+        assert server.anvil_gateway.artifacts.read(
+            job.artifacts[0].id, principal="hermes"
+        ).data.startswith(b"\x89PNG")
+        assert worker.is_alive is True
+    finally:
+        server.server_close()
+    assert worker.is_alive is False

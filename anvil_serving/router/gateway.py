@@ -9,10 +9,13 @@ from typing import Any
 
 from .. import __version__, mcp
 from ..a2a.agent_card import build_agent_card
-from ..a2a.http import handle_jsonrpc, jsonrpc_error, sse_frames
+from ..a2a.http import error_from_exception, handle_jsonrpc, jsonrpc_error, sse_frames
 from ..a2a.tasks import A2AMediaTasks
 from ..control_plane.mcp.tools.media import service_context
+from ..control_plane.mcp.errors import ToolError
+from ..control_plane.mcp.security import caller_context, require_scope
 from ..media.artifacts import ArtifactPayload, ArtifactStore
+from ..media.contracts import TERMINAL_STATES
 from ..media.errors import MediaError
 from ..media.workflows import WorkflowRegistry
 
@@ -52,16 +55,28 @@ class ProtocolGateway:
         params = request["params"]
         try:
             if method == "SendStreamingMessage":
-                first = self.tasks.send_message(params, caller=self.caller)["task"]
+                first = self.tasks.send_message(
+                    params, caller=self.caller, force_immediate=True
+                )["task"]
             elif method == "SubscribeToTask":
                 task_id, after_sequence = _stream_task_request(params)
                 first = self.tasks.get_task(task_id, caller=self.caller)
+                job = self.tasks.operations.jobs.get(
+                    task_id,
+                    principal=str(self.caller.get("principal") or ""),
+                )
+                if job.state in TERMINAL_STATES:
+                    raise MediaError(
+                        "unsupported_operation",
+                        "terminal media tasks cannot be subscribed",
+                        status=409,
+                    )
                 if after_sequence > first["metadata"]["sequence"]:
                     raise MediaError("invalid_stream_cursor", "A2A stream cursor is invalid")
             else:
                 return jsonrpc_error(request_id, -32601, "method not found")
-        except MediaError as exc:
-            return jsonrpc_error(request_id, -32602, exc.code, detail=exc.message)
+        except (MediaError, ToolError) as exc:
+            return error_from_exception(request_id, exc)
 
         cursor = first["metadata"]["sequence"]
         updates = itertools.chain(
@@ -92,12 +107,15 @@ class ProtocolGateway:
         start: int | None = None,
         end: int | None = None,
     ) -> ArtifactPayload:
-        principal = self.caller.get("principal")
-        if not isinstance(principal, str) or not principal:
-            raise MediaError("authentication_required", "authenticated media caller is required", status=401)
+        try:
+            with caller_context(self.caller):
+                identity = require_scope("media:read")
+        except ToolError as exc:
+            status = 401 if exc.code in {"authentication_required", "invalid_caller_context"} else 403
+            raise MediaError(exc.code, exc.message, status=status) from exc
         return self.artifacts.read(
             artifact_id,
-            principal=principal,
+            principal=identity.principal,
             start=start,
             end=end,
         )

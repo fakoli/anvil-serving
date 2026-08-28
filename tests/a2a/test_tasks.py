@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import threading
+import time
+
 from anvil_serving.a2a.http import handle_jsonrpc
 from anvil_serving.a2a.tasks import A2AMediaTasks
 from anvil_serving.media.artifacts import ArtifactStore
 from anvil_serving.media.comfyui import ComfyUIClient, WorkflowCompatibility
-from anvil_serving.media.contracts import ParameterBinding, ParameterSpec, RenderedWorkflow, WorkflowDescriptor
+from anvil_serving.media.contracts import JobState, ParameterBinding, ParameterSpec, RenderedWorkflow, WorkflowDescriptor
 from anvil_serving.media.jobs import MediaJobStore
 from anvil_serving.media.operations import MediaOperations
 from anvil_serving.media.workflows import canonical_digest
@@ -98,6 +101,7 @@ def test_send_poll_and_cancel_project_one_shared_job(tmp_path):
     sent = handle_jsonrpc(send_request(), tasks=tasks, caller=CALLER)
     task = sent["result"]["task"]
     assert task["status"]["state"] == "TASK_STATE_SUBMITTED"
+    assert task["status"]["timestamp"].endswith("Z")
     assert task["metadata"]["workflow"] == {"id": "image.test", "version": "v1"}
     polled = handle_jsonrpc(
         {"jsonrpc": "2.0", "id": 2, "method": "GetTask", "params": {"id": task["id"]}},
@@ -119,7 +123,9 @@ def test_a2a_auth_and_cross_principal_match_domain_isolation(tmp_path):
         {"jsonrpc": "2.0", "id": 2, "method": "GetTask", "params": {"id": task_id}},
         tasks=tasks, caller={"principal": "another", "scopes": ["media:read"]},
     )
-    assert denied["error"]["message"] == "job_not_found"
+    assert denied["error"]["code"] == -32001
+    assert denied["error"]["message"] == "Task not found"
+    assert denied["error"]["data"][0]["reason"] == "TASK_NOT_FOUND"
     no_scope = handle_jsonrpc(
         {"jsonrpc": "2.0", "id": 3, "method": "CancelTask", "params": {"id": task_id}},
         tasks=tasks, caller={"principal": "hermes", "scopes": ["media:read"]},
@@ -134,3 +140,94 @@ def test_raw_graph_or_file_part_is_rejected_before_backend(tmp_path):
     response = handle_jsonrpc(request, tasks=tasks, caller=CALLER)
     assert response["error"]["message"] == "invalid_a2a_message"
     assert tasks.operations.jobs.nonterminal() == []
+
+
+def test_send_message_requires_message_id_and_canonical_error_details(tmp_path):
+    tasks = service(tmp_path)
+    request = send_request()
+    del request["params"]["message"]["messageId"]
+    response = handle_jsonrpc(request, tasks=tasks, caller=CALLER)
+    assert response["error"]["code"] == -32602
+    assert response["error"]["data"][0]["@type"] == (
+        "type.googleapis.com/google.rpc.BadRequest"
+    )
+    assert tasks.operations.jobs.nonterminal() == []
+
+
+def test_missing_task_and_terminal_cancel_use_a2a_1_0_errors(tmp_path):
+    tasks = service(tmp_path)
+    missing = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "GetTask",
+            "params": {"id": "job_missing-task-id"},
+        },
+        tasks=tasks,
+        caller=CALLER,
+    )
+    assert missing["error"]["code"] == -32001
+    assert isinstance(missing["error"]["data"], list)
+
+    task_id = handle_jsonrpc(send_request(2), tasks=tasks, caller=CALLER)["result"][
+        "task"
+    ]["id"]
+    handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "CancelTask",
+            "params": {"id": task_id},
+        },
+        tasks=tasks,
+        caller=CALLER,
+    )
+    repeated = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "CancelTask",
+            "params": {"id": task_id},
+        },
+        tasks=tasks,
+        caller=CALLER,
+    )
+    assert repeated["error"]["code"] == -32002
+    assert repeated["error"]["data"][0]["reason"] == "TASK_NOT_CANCELABLE"
+
+
+def test_send_message_blocks_by_default_until_terminal(tmp_path):
+    tasks = service(tmp_path)
+    request = send_request()
+    request["params"].pop("configuration")
+    responses = []
+
+    thread = threading.Thread(
+        target=lambda: responses.append(
+            handle_jsonrpc(request, tasks=tasks, caller=CALLER)
+        )
+    )
+    thread.start()
+    deadline = time.monotonic() + 5
+    jobs = []
+    while time.monotonic() < deadline:
+        jobs = tasks.operations.jobs.nonterminal()
+        if jobs:
+            break
+        time.sleep(0.01)
+    assert len(jobs) == 1
+    tasks.operations.jobs.transition(
+        jobs[0].id,
+        JobState.RUNNING,
+        principal="hermes",
+    )
+    tasks.operations.jobs.transition(
+        jobs[0].id,
+        JobState.COMPLETED,
+        principal="hermes",
+    )
+    thread.join(5)
+    assert not thread.is_alive()
+    assert responses[0]["result"]["task"]["status"]["state"] == (
+        "TASK_STATE_COMPLETED"
+    )

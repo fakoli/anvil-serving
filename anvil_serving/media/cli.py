@@ -74,6 +74,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--principal", required=True)
     run.add_argument("--idempotency-key", default="")
     run.add_argument("--backend-url", required=True)
+    run.add_argument("--dry-run", action="store_true")
 
     job = sub.add_parser("job")
     job_sub = job.add_subparsers(dest="action", required=True)
@@ -84,6 +85,7 @@ def _parser() -> argparse.ArgumentParser:
     _storage_options(cancel)
     _job_identity(cancel)
     cancel.add_argument("--backend-url", required=True)
+    cancel.add_argument("--dry-run", action="store_true")
 
     artifact = sub.add_parser("artifact")
     artifact_sub = artifact.add_subparsers(dest="action", required=True)
@@ -147,6 +149,33 @@ def run(args: argparse.Namespace) -> dict:
             runtime_gid=args.runtime_gid,
             dry_run=args.dry_run,
         )
+    if args.family == "workflow" and args.action == "run" and args.dry_run:
+        parameters = parameters_from_json(args.parameters)
+        registry = WorkflowRegistry(args.registry)
+        descriptor = registry.get(args.workflow_id, args.version)
+        rendered = registry.render(args.workflow_id, args.version, parameters)
+        key = args.idempotency_key or stable_request_key(
+            args.workflow_id, args.version, parameters
+        )
+        return {
+            "schema": "anvil-serving.media-workflow-run-plan/v1",
+            "dryRun": True,
+            "workflow": descriptor.as_public_dict(),
+            "parametersSha256": rendered.parameters_digest,
+            "idempotencyKey": key,
+            "backendContacted": False,
+            "jobSubmitted": False,
+        }
+    if args.family == "job" and args.action == "cancel" and args.dry_run:
+        return {
+            "schema": "anvil-serving.media-job-cancel-plan/v1",
+            "dryRun": True,
+            "jobId": args.job_id,
+            "principal": args.principal,
+            "backendContacted": False,
+            "stateChanged": False,
+            "ownershipCheckDeferred": True,
+        }
     operations = _operations(args)
     if args.family == "qualify":
         parameters = parameters_from_json(args.parameters)

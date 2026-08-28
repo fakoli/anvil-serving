@@ -9,6 +9,22 @@ READ = {"principal": "hermes", "scopes": ["media:read"]}
 SUBMIT = {"principal": "hermes", "scopes": ["media:submit"]}
 
 
+def _call_request(name: str) -> dict:
+    return {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": name,
+            "arguments": {},
+            "_meta": {
+                "io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION,
+                "io.modelcontextprotocol/clientCapabilities": {},
+            },
+        },
+    }
+
+
 def test_media_discovery_is_deterministic_and_scope_filtered():
     first = mcp.list_tools(caller=READ, audience="media")
     second = mcp.list_tools(caller=READ, audience="media")
@@ -19,6 +35,24 @@ def test_media_discovery_is_deterministic_and_scope_filtered():
     assert "media_job_cancel" not in names
     assert not any(name.startswith("media_worker_") for name in names)
     assert all(tool["inputSchema"]["additionalProperties"] is False for tool in first)
+
+
+def test_media_audience_rejects_hidden_operator_tool_calls(monkeypatch):
+    called = []
+    monkeypatch.setitem(
+        mcp.TOOLS["operation_contracts"],
+        "handler",
+        lambda _args: called.append(True) or {"ok": True},
+    )
+    response = mcp.handle_request(
+        _call_request("operation_contracts"), caller=READ, audience="media"
+    )
+    assert response["error"]["data"]["code"] == "unknown_tool"
+    direct = mcp.call_tool(
+        "operation_contracts", {}, caller=READ, audience="media"
+    )
+    assert direct["error"]["code"] == "unknown_tool"
+    assert called == []
 
 
 def test_scope_denial_precedes_registry_or_downstream_contact(monkeypatch):
