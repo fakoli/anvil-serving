@@ -241,6 +241,23 @@ class MediaJobStore:
             ).fetchall()
         return [self.get(row["id"], allow_cross_principal=True) for row in rows]
 
+    def active_counts(self, workflow_id: str, *, principal: str) -> dict[str, int]:
+        terminal = (JobState.COMPLETED.value, JobState.FAILED.value, JobState.CANCELED.value)
+        with self._connect() as db:
+            total = db.execute(
+                "SELECT COUNT(*) AS count FROM media_jobs WHERE workflow_id=? AND state NOT IN (?,?,?)",
+                (workflow_id, *terminal),
+            ).fetchone()["count"]
+            owned = db.execute(
+                "SELECT COUNT(*) AS count FROM media_jobs WHERE workflow_id=? AND principal=? AND state NOT IN (?,?,?)",
+                (workflow_id, principal, *terminal),
+            ).fetchone()["count"]
+            running = db.execute(
+                "SELECT COUNT(*) AS count FROM media_jobs WHERE workflow_id=? AND state=?",
+                (workflow_id, JobState.RUNNING.value),
+            ).fetchone()["count"]
+        return {"total": total, "principal": owned, "running": running}
+
 
 def _artifact_json(artifact: MediaArtifact) -> str:
     return json.dumps(
