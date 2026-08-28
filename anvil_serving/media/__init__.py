@@ -15,6 +15,7 @@ from .contracts import (
 )
 from .errors import MediaError
 from .jobs import MediaJobStore
+from .lifecycle import MediaLifecycleReceipt, MediaWorkerLifecycle
 from .comfyui import ComfyUIClient, WorkflowCompatibility
 from .artifacts import ArtifactPayload, ArtifactStore
 from .backends import BackendOutput, BackendStatus
@@ -39,6 +40,8 @@ __all__ = [
     "MediaError",
     "MediaJob",
     "MediaJobStore",
+    "MediaLifecycleReceipt",
+    "MediaWorkerLifecycle",
     "MediaCancellationService",
     "MediaJobReconciler",
     "ParameterBinding",
