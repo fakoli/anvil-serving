@@ -7,7 +7,7 @@
 > **Benchmark and serve local models through one explicit capability meta-router.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.35.1-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.36.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 </div>
@@ -60,7 +60,12 @@ Prometheus gauges. See the
 Purpose models and audio are equally explicit: embeddings and reranking use
 their configured model names on dedicated endpoints, while STT/TTS use
 operator-configured audio routes. ComfyUI is lifecycle-managed rather than a
-chat capability.
+chat capability. Its named media workflows may publish bounded, caller-selected
+quality profiles such as `draft`, `standard`, and `high`; each profile resolves
+to exact parameters inside the same workflow and never selects another model,
+host, backend, or provider. Durable media jobs report gateway-observed phase
+latency, and image artifacts within the six-MiB binary transport bound can
+return as native MCP image content.
 
 The word **meta** describes the separation between a stable caller contract
 and the mutable configuration behind it. It does not mean that Anvil Serving

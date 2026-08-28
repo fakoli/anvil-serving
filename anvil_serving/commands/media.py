@@ -65,6 +65,7 @@ def commands() -> CommandNode:
                         "anvil_serving.media.cli", role="media-worker", mutation="mutate", gpu=True,
                         options=CONFIRM_OPTIONS + IDENTITY_OPTIONS + BUNDLE_IDENTITY_OPTIONS + (
                             _option("--parameters", summary="Bounded JSON parameter object.", value_name="JSON"),
+                            _option("--quality-profile", summary="Exact declared quality profile.", value_name="PROFILE"),
                             _option("--backend-url", summary="Declared adapter endpoint.", value_name="URL"),
                             _option("--gpu-index", summary="Selected local GPU index.", value_name="INDEX"),
                             _option("--poll-seconds", summary="Bounded qualification poll interval.", value_name="SECONDS"),
@@ -103,6 +104,7 @@ def commands() -> CommandNode:
                         options=CONFIRM_OPTIONS + IDENTITY_OPTIONS + (
                             _option("--version", summary="Pinned workflow version.", value_name="VERSION"),
                             _option("--parameters", summary="Bounded JSON parameter object.", value_name="JSON"),
+                            _option("--quality-profile", summary="Exact declared quality profile.", value_name="PROFILE"),
                             _option("--idempotency-key", summary="Caller retry key.", value_name="KEY"),
                             _option("--backend-url", summary="Declared adapter endpoint.", value_name="URL"),
                         ),

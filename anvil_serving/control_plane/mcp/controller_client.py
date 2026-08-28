@@ -25,7 +25,10 @@ from ...transports import _NoRedirectHandler, _urlopen_no_proxy_no_redirect
 NoRedirectHandler = _NoRedirectHandler
 
 
-MAX_REMOTE_CONTROLLER_RESPONSE_BYTES = 1024 * 1024
+# Native image tool results are bounded to six binary MiB before base64
+# expansion. Ten MiB admits that response while remaining aligned with the
+# official MCP SDK's bounded stdio frame.
+MAX_REMOTE_CONTROLLER_RESPONSE_BYTES = 10 * 1024 * 1024
 MAX_ERROR_BODY_BYTES = 4096
 
 

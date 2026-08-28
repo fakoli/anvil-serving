@@ -27,6 +27,21 @@
   "required_features": ["supports_model_type_tags"],
   "required_nodes": ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "ConditioningZeroOut", "EmptyFlux2LatentImage", "RandomNoise", "CFGGuider", "KSamplerSelect", "Flux2Scheduler", "SamplerCustomAdvanced", "VAEDecode", "SaveImage"],
   "required_models": ["flux-2-klein-4b-fp8.safetensors", "qwen_3_4b.safetensors", "flux2-vae.safetensors"],
+  "default_quality_profile": "standard",
+  "quality_profiles": {
+    "draft": {
+      "description": "Fast 512 by 512 image generation at four distilled steps.",
+      "parameters": {"width": 512, "height": 512, "steps": 4}
+    },
+    "high": {
+      "description": "Largest declared 1024 by 1024 image at four distilled steps.",
+      "parameters": {"width": 1024, "height": 1024, "steps": 4}
+    },
+    "standard": {
+      "description": "Balanced 768 by 768 image generation at four distilled steps.",
+      "parameters": {"width": 768, "height": 768, "steps": 4}
+    }
+  },
   "available": false,
   "unavailable_reasons": ["quality_unreviewed"],
   "limits": {"request_bytes": 65536, "artifact_bytes": 33554432, "timeout_seconds": 600, "retention_seconds": 86400, "queue_depth": 4, "concurrency": 1}

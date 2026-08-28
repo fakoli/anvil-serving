@@ -388,6 +388,31 @@ def test_workflow_run_dry_run_validates_without_creating_state(tmp_path, monkeyp
     assert not artifacts.exists()
 
 
+def test_workflow_run_dry_run_resolves_exact_quality_profile(tmp_path, capsys):
+    state = tmp_path / "missing" / "jobs.sqlite3"
+    artifacts = tmp_path / "missing-artifacts"
+    assert main([
+        "workflow", "run", "image.flux2-klein-4b-fp8-v1",
+        "--version", "v1",
+        "--parameters", '{"prompt":"mountain","seed":7}',
+        "--quality-profile", "high",
+        "--principal", "hermes",
+        "--backend-url", "http://127.0.0.1:65534",
+        "--state-db", str(state),
+        "--artifact-root", str(artifacts),
+        "--dry-run",
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["qualityProfile"] == "high"
+    assert payload["workflow"]["profiledParameterSchema"]["required"] == [
+        "prompt",
+        "seed",
+    ]
+    assert payload["backendContacted"] is False
+    assert not state.exists()
+    assert not artifacts.exists()
+
+
 def test_job_cancel_dry_run_is_non_mutating_and_requires_backend_shape(tmp_path, capsys):
     state = tmp_path / "missing" / "jobs.sqlite3"
     artifacts = tmp_path / "missing-artifacts"

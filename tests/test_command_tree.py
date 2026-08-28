@@ -111,6 +111,9 @@ def test_manifest_records_recursive_paths_and_metadata():
     assert records["eval benchmark external export"]["mutation_class"] == "mutate"
     assert records["harness sync openclaw"]["remote_operation"]["tool"] == "openclaw_sync"
     assert records["harness sync clients"]["remote_operation"]["tool"] == "client_catalog_sync"
+    assert records["harness sync hermes-media"]["remote_operation"]["tool"] == (
+        "hermes_media_sync"
+    )
     assert records["harness restart openclaw"]["recovery_capable"] is True
     assert records["host wsl-config"]["execution_host_os"] == ["windows"]
     assert records["host restart-docker"]["execution_host_os"] == ["windows", "macos"]

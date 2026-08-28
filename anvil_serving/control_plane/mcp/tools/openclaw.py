@@ -284,6 +284,59 @@ def tool_client_catalog_sync(args: dict) -> dict:
     return _ok(result)
 
 
+def tool_hermes_media_sync(args: dict) -> dict:
+    """Preview or apply the narrow Hermes media MCP and skill reconciler."""
+
+    from .... import harness
+    from ....client_catalog_sync import ClientCatalogError, sync_hermes_media
+
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    restart_on_change = _arg_bool(
+        args.get("restart_hermes_on_change"),
+        False,
+        name="restart_hermes_on_change",
+    )
+    hermes_bin = _str_arg(args, "hermes_bin", "~/.local/bin/hermes")
+    timeout_seconds = _bounded_int_arg(
+        args,
+        "timeout_seconds",
+        15,
+        min_value=1,
+        max_value=120,
+    )
+    try:
+        result = sync_hermes_media(
+            hermes_bin=hermes_bin,
+            hermes_home=_str_arg(args, "hermes_home", "~/.hermes"),
+            hermes_profiles=_str_arg(args, "hermes_profiles", "default"),
+            skill_path=_str_arg(
+                args,
+                "skill_path",
+                "~/.hermes/skills/anvil-media/SKILL.md",
+            ),
+            backup_root=_str_arg(
+                args,
+                "backup_root",
+                "~/.anvil-serving/backups/hermes-media",
+            ),
+            anvil_command=_str_arg(args, "anvil_command", "anvil-serving"),
+            mcp_url_env=_str_arg(args, "mcp_url_env", "ANVIL_MEDIA_MCP_URL"),
+            token_env=_str_arg(args, "token_env", "ANVIL_CONTROLLER_TOKEN"),
+            restart_hermes_on_change=restart_on_change,
+            dry_run=dry_run,
+            confirm=confirm,
+            timeout_seconds=timeout_seconds,
+            restart_hermes=lambda: harness._restart_hermes_default(
+                hermes_bin=hermes_bin,
+                timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+            ),
+        )
+    except (OSError, ClientCatalogError) as exc:
+        raise ToolError("hermes_media_sync_failed", str(exc)) from exc
+    return _ok(result)
+
+
 def tool_openclaw_gateway_restart(args: dict) -> dict:
     from .... import harness
 
@@ -440,6 +493,29 @@ FAMILY = ToolFamily(
                 }
             ),
             "handler": tool_client_catalog_sync,
+        },
+        "hermes_media_sync": {
+            "description": (
+                "Install the narrow Anvil media MCP server and packaged Hermes skill. "
+                "Requires confirm=true to write."
+            ),
+            "inputSchema": _schema(
+                {
+                    "hermes_bin": {"type": "string"},
+                    "hermes_home": {"type": "string"},
+                    "hermes_profiles": {"type": "string"},
+                    "skill_path": {"type": "string"},
+                    "backup_root": {"type": "string"},
+                    "anvil_command": {"type": "string"},
+                    "mcp_url_env": {"type": "string"},
+                    "token_env": {"type": "string"},
+                    "restart_hermes_on_change": {"type": "boolean"},
+                    "dry_run": {"type": "boolean"},
+                    "confirm": {"type": "boolean"},
+                    "timeout_seconds": _bounded_integer_schema(1, 120, 15),
+                }
+            ),
+            "handler": tool_hermes_media_sync,
         },
     },
 )

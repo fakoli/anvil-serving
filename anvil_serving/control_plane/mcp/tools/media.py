@@ -70,7 +70,12 @@ def _backend(backend: ComfyUIClient | None) -> ComfyUIClient:
 
 def _translate(call):
     try:
-        return _ok(call())
+        data = call()
+        content = data.pop("_mcpContent", None)
+        result = _ok(data)
+        if content:
+            result["_mcpContent"] = content
+        return result
     except MediaError as exc:
         raise ToolError(exc.code, exc.message, exc.details) from exc
 
@@ -123,16 +128,22 @@ def tool_media_workflow_run(args: dict) -> dict:
     parameters = args.get("parameters")
     if not isinstance(parameters, Mapping):
         raise ToolError("bad_argument", "'parameters' must be an object")
-    return _translate(
-        lambda: operations.workflow_run(
-            _str_arg(args, "workflow_id", required=True),
-            _str_arg(args, "version", required=True),
+    workflow_id = _str_arg(args, "workflow_id", required=True)
+    version = _str_arg(args, "version", required=True)
+    requested_profile = _str_arg(args, "quality_profile", "")
+
+    def submit() -> dict:
+        return operations.workflow_run(
+            workflow_id,
+            version,
             dict(parameters),
             principal=caller.principal,
             idempotency_key=_str_arg(args, "idempotency_key", required=True),
             backend=_backend(backend),
+            quality_profile=requested_profile,
         )
-    )
+
+    return _translate(submit)
 
 
 def tool_media_job_status(args: dict) -> dict:
@@ -161,11 +172,20 @@ def tool_media_job_cancel(args: dict) -> dict:
 def tool_media_artifact_inspect(args: dict) -> dict:
     caller = require_scope("media:read")
     owner = _owner(args, caller)
-    return _translate(
-        lambda: _services()[0].artifact_inspect(
-            _str_arg(args, "artifact_id", required=True), principal=owner
+    operations, _ = _services()
+    artifact_id = _str_arg(args, "artifact_id", required=True)
+
+    def inspect() -> dict:
+        result = operations.artifact_inspect(artifact_id, principal=owner)
+        image_content = operations.artifacts.mcp_image_content(
+            artifact_id,
+            principal=owner,
         )
-    )
+        if image_content is not None:
+            result["_mcpContent"] = [image_content]
+        return result
+
+    return _translate(inspect)
 
 
 _WORKFLOW = {
@@ -210,6 +230,9 @@ FAMILY = ToolFamily(
                 **_WORKFLOW,
                 "parameters": {
                     "type": "object", "additionalProperties": True, "maxProperties": 32,
+                },
+                "quality_profile": {
+                    "type": "string", "minLength": 1, "maxLength": 128,
                 },
                 "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
             },

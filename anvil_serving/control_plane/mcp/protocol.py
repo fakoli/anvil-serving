@@ -44,16 +44,23 @@ def tool_result(
     server_info: Mapping[str, Any],
     context: dict[str, Any] | None = None,
 ) -> dict:
+    structured = dict(envelope)
+    extra_content = structured.pop("_mcpContent", ())
+    if not isinstance(extra_content, (list, tuple)) or any(
+        not isinstance(item, Mapping) for item in extra_content
+    ):
+        extra_content = ()
     result = {
         "resultType": RESULT_TYPE_COMPLETE,
         "content": [
             {
                 "type": "text",
-                "text": json.dumps(envelope, sort_keys=True),
+                "text": json.dumps(structured, sort_keys=True),
             }
-        ],
-        "structuredContent": envelope,
-        "isError": not envelope.get("ok", False),
+        ]
+        + [dict(item) for item in extra_content],
+        "structuredContent": structured,
+        "isError": not structured.get("ok", False),
         "_meta": {SERVER_INFO_META_KEY: dict(server_info)},
     }
     if context:

@@ -47,6 +47,7 @@ def _parser() -> argparse.ArgumentParser:
     _storage_options(qualify_run)
     _workflow_identity(qualify_run)
     qualify_run.add_argument("--parameters", required=True)
+    qualify_run.add_argument("--quality-profile", default="")
     qualify_run.add_argument("--principal", required=True)
     qualify_run.add_argument("--backend-url", required=True)
     qualify_run.add_argument("--bundle-lock", default=str(DEFAULT_LOCK))
@@ -71,6 +72,7 @@ def _parser() -> argparse.ArgumentParser:
     _storage_options(run)
     _workflow_identity(run)
     run.add_argument("--parameters", required=True)
+    run.add_argument("--quality-profile", default="")
     run.add_argument("--principal", required=True)
     run.add_argument("--idempotency-key", default="")
     run.add_argument("--backend-url", required=True)
@@ -130,6 +132,21 @@ def _operations(args: argparse.Namespace) -> MediaOperations:
     )
 
 
+def _render_request(registry, workflow_id, version, parameters, quality_profile):
+    descriptor = registry.get(workflow_id, version)
+    selected_profile = quality_profile or descriptor.default_quality_profile
+    if selected_profile:
+        rendered = registry.render(
+            workflow_id,
+            version,
+            parameters,
+            quality_profile=selected_profile,
+        )
+    else:
+        rendered = registry.render(workflow_id, version, parameters)
+    return descriptor, rendered
+
+
 def run(args: argparse.Namespace) -> dict:
     if args.family == "bundle":
         if args.action == "inventory":
@@ -152,12 +169,20 @@ def run(args: argparse.Namespace) -> dict:
     if args.family == "workflow" and args.action == "run" and args.dry_run:
         parameters = parameters_from_json(args.parameters)
         registry = WorkflowRegistry(args.registry)
-        descriptor = registry.get(args.workflow_id, args.version)
-        rendered = registry.render(args.workflow_id, args.version, parameters)
-        key = args.idempotency_key or stable_request_key(
-            args.workflow_id, args.version, parameters
+        descriptor, rendered = _render_request(
+            registry,
+            args.workflow_id,
+            args.version,
+            parameters,
+            args.quality_profile,
         )
-        return {
+        key = args.idempotency_key or stable_request_key(
+            args.workflow_id,
+            args.version,
+            parameters,
+            quality_profile=rendered.quality_profile,
+        )
+        result = {
             "schema": "anvil-serving.media-workflow-run-plan/v1",
             "dryRun": True,
             "workflow": descriptor.as_public_dict(),
@@ -166,6 +191,9 @@ def run(args: argparse.Namespace) -> dict:
             "backendContacted": False,
             "jobSubmitted": False,
         }
+        if rendered.quality_profile:
+            result["qualityProfile"] = rendered.quality_profile
+        return result
     if args.family == "job" and args.action == "cancel" and args.dry_run:
         return {
             "schema": "anvil-serving.media-job-cancel-plan/v1",
@@ -179,10 +207,15 @@ def run(args: argparse.Namespace) -> dict:
     operations = _operations(args)
     if args.family == "qualify":
         parameters = parameters_from_json(args.parameters)
-        descriptor = operations.registry.get(args.workflow_id, args.version)
-        rendered = operations.registry.render(args.workflow_id, args.version, parameters)
+        descriptor, rendered = _render_request(
+            operations.registry,
+            args.workflow_id,
+            args.version,
+            parameters,
+            args.quality_profile,
+        )
         if args.dry_run:
-            return {
+            result = {
                 "schema": "anvil-serving.media-qualification-plan/v1",
                 "dryRun": True,
                 "workflow": descriptor.as_public_dict(),
@@ -191,6 +224,9 @@ def run(args: argparse.Namespace) -> dict:
                 "jobSubmitted": False,
                 "promoted": False,
             }
+            if rendered.quality_profile:
+                result["qualityProfile"] = rendered.quality_profile
+            return result
         return qualify_media(
             args.workflow_id,
             args.version,
@@ -200,6 +236,7 @@ def run(args: argparse.Namespace) -> dict:
             artifacts=operations.artifacts,
             backend=ComfyUIClient(args.backend_url),
             principal=args.principal,
+            quality_profile=args.quality_profile,
             lock_path=args.bundle_lock,
             models_volume=args.models_volume,
             gpu_index=args.gpu_index,
@@ -217,7 +254,14 @@ def run(args: argparse.Namespace) -> dict:
         if args.action == "validate":
             return operations.workflow_validate(args.workflow_id, args.version, backend=backend)
         parameters = parameters_from_json(args.parameters)
-        key = args.idempotency_key or stable_request_key(args.workflow_id, args.version, parameters)
+        descriptor = operations.registry.get(args.workflow_id, args.version)
+        selected_profile = args.quality_profile or descriptor.default_quality_profile
+        key = args.idempotency_key or stable_request_key(
+            args.workflow_id,
+            args.version,
+            parameters,
+            quality_profile=selected_profile,
+        )
         return operations.workflow_run(
             args.workflow_id,
             args.version,
@@ -225,6 +269,7 @@ def run(args: argparse.Namespace) -> dict:
             principal=args.principal,
             idempotency_key=key,
             backend=backend,
+            quality_profile=args.quality_profile,
         )
     if args.family == "job":
         if args.action == "status":
