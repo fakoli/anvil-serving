@@ -9,10 +9,12 @@ import sys
 from pathlib import Path
 
 from .artifacts import ArtifactStore
+from .bundle import DEFAULT_LOCK, inventory as bundle_inventory, stage as bundle_stage
 from .comfyui import ComfyUIClient
 from .errors import MediaError
 from .jobs import MediaJobStore
 from .operations import MediaOperations, parameters_from_json, stable_request_key
+from .qualification import qualify as qualify_media
 from .workflows import WorkflowRegistry
 
 
@@ -27,6 +29,32 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="family", required=True)
     capabilities = sub.add_parser("capabilities")
     _storage_options(capabilities)
+
+    bundle = sub.add_parser("bundle")
+    bundle_sub = bundle.add_subparsers(dest="action", required=True)
+    inventory = bundle_sub.add_parser("inventory")
+    _bundle_identity(inventory)
+    stage = bundle_sub.add_parser("stage")
+    _bundle_identity(stage)
+    stage.add_argument("--user-volume", required=True)
+    stage.add_argument("--runtime-uid", type=int, default=1000)
+    stage.add_argument("--runtime-gid", type=int, default=1000)
+    stage.add_argument("--dry-run", action="store_true")
+
+    qualify = sub.add_parser("qualify")
+    qualify_sub = qualify.add_subparsers(dest="action", required=True)
+    qualify_run = qualify_sub.add_parser("run")
+    _storage_options(qualify_run)
+    _workflow_identity(qualify_run)
+    qualify_run.add_argument("--parameters", required=True)
+    qualify_run.add_argument("--principal", required=True)
+    qualify_run.add_argument("--backend-url", required=True)
+    qualify_run.add_argument("--bundle-lock", default=str(DEFAULT_LOCK))
+    qualify_run.add_argument("--models-volume", required=True)
+    qualify_run.add_argument("--gpu-index", type=int, default=0)
+    qualify_run.add_argument("--poll-seconds", type=float, default=2.0)
+    qualify_run.add_argument("--ffprobe", default="ffprobe")
+    qualify_run.add_argument("--dry-run", action="store_true")
 
     workflow = sub.add_parser("workflow")
     workflow_sub = workflow.add_subparsers(dest="action", required=True)
@@ -77,6 +105,13 @@ def _workflow_identity(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--version", required=True)
 
 
+def _bundle_identity(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("workflow_id")
+    parser.add_argument("--version", required=True)
+    parser.add_argument("--bundle-lock", default=str(DEFAULT_LOCK))
+    parser.add_argument("--models-volume", required=True)
+
+
 def _job_identity(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("job_id")
     parser.add_argument("--principal", required=True)
@@ -94,7 +129,54 @@ def _operations(args: argparse.Namespace) -> MediaOperations:
 
 
 def run(args: argparse.Namespace) -> dict:
+    if args.family == "bundle":
+        if args.action == "inventory":
+            return bundle_inventory(
+                args.workflow_id,
+                args.version,
+                lock_path=args.bundle_lock,
+                models_volume=args.models_volume,
+            )
+        return bundle_stage(
+            args.workflow_id,
+            args.version,
+            lock_path=args.bundle_lock,
+            models_volume=args.models_volume,
+            user_volume=args.user_volume,
+            runtime_uid=args.runtime_uid,
+            runtime_gid=args.runtime_gid,
+            dry_run=args.dry_run,
+        )
     operations = _operations(args)
+    if args.family == "qualify":
+        parameters = parameters_from_json(args.parameters)
+        descriptor = operations.registry.get(args.workflow_id, args.version)
+        rendered = operations.registry.render(args.workflow_id, args.version, parameters)
+        if args.dry_run:
+            return {
+                "schema": "anvil-serving.media-qualification-plan/v1",
+                "dryRun": True,
+                "workflow": descriptor.as_public_dict(),
+                "parametersSha256": rendered.parameters_digest,
+                "backendContacted": False,
+                "jobSubmitted": False,
+                "promoted": False,
+            }
+        return qualify_media(
+            args.workflow_id,
+            args.version,
+            parameters,
+            registry=operations.registry,
+            jobs=operations.jobs,
+            artifacts=operations.artifacts,
+            backend=ComfyUIClient(args.backend_url),
+            principal=args.principal,
+            lock_path=args.bundle_lock,
+            models_volume=args.models_volume,
+            gpu_index=args.gpu_index,
+            poll_seconds=args.poll_seconds,
+            ffprobe=args.ffprobe,
+        )
     if args.family == "capabilities":
         return operations.capabilities()
     if args.family == "workflow":

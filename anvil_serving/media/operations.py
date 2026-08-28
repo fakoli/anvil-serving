@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 from typing import Any, Mapping
 
 from .admission import MediaAdmissionService
@@ -66,8 +67,12 @@ class MediaOperations:
         principal: str,
         idempotency_key: str,
         backend: ComfyUIClient,
+        qualification: bool = False,
     ) -> dict[str, Any]:
         rendered = self.registry.render(workflow_id, version, parameters)
+        if qualification:
+            candidate = replace(rendered.descriptor, available=True, unavailable_reasons=())
+            rendered = replace(rendered, descriptor=candidate)
         existing = self.jobs.lookup_idempotency(
             principal=principal,
             workflow_id=workflow_id,
@@ -77,7 +82,11 @@ class MediaOperations:
         )
         if existing is not None:
             return {"job": existing.as_public_dict(), "created": False}
-        compatibility = backend.compatibility(rendered.descriptor)
+        compatibility = (
+            backend.compatibility(rendered.descriptor, qualification=True)
+            if qualification
+            else backend.compatibility(rendered.descriptor)
+        )
         decision = MediaAdmissionService(self.jobs).evaluate(
             rendered.descriptor,
             parameters,

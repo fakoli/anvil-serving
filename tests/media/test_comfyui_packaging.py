@@ -38,6 +38,7 @@ def test_public_runtime_scaffold_is_byte_identical_and_identity_free():
 
 def test_runtime_and_custom_node_inputs_are_exactly_pinned():
     lock = _json(SOURCE_BUNDLE / "bundle.lock.json")
+    assert re.fullmatch(r"[^@]+@sha256:[0-9a-f]{64}", lock["staging"]["container"])
     runtime = lock["runtime"]
     dockerfile = (EXAMPLE / "Dockerfile.comfyui").read_text(encoding="utf-8")
     installer = (EXAMPLE / "install-comfyui-node.sh").read_bytes()
