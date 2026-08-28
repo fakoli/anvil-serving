@@ -104,7 +104,7 @@ def test_stage_adds_only_missing_verified_assets_and_reinventories(tmp_path):
             downloaded = True
             return _completed(argv)
         if "curl --silent --show-error --fail" in script:
-            assert "sha256sum --check" in script
+            assert "sha256sum -c" in script
             assert "--strict" not in script
             downloaded = True
             return _completed(argv)
