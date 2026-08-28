@@ -6,7 +6,7 @@
 
 **Executable candidate tested:** `073a605b00218832427c5323a308ab39291a7e3e`
 
-**Private operator candidate:** `250a8e64e445cc1d464ed3db3bd1386cf476757b`
+**Private operator candidate:** `250a8e6052dfc266e57add7a03065ab837cdeeeb`
 
 **Package / bridge versions:** Anvil Serving `0.35.1`; bundled MCP bridge
 `0.18.0`
