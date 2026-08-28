@@ -2,7 +2,7 @@
 name: anvil-media
 description: Generate, inspect, or cancel images and videos through Anvil's bounded named-workflow MCP tools.
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   hermes:
     tags: [media, image-generation, video-generation, mcp]
     category: media
@@ -81,8 +81,10 @@ user, or the interaction's wait budget ends. Intermediate narration such as
 "I will inspect it next" or "now polling" is not a completed response. When a
 wait budget ends, report the current state and the complete resume bundle rather
 than implying that background polling will continue.
-Reply in the user's language. Omit internal bookkeeping, planning notes, and
-promises of actions that were not completed in the turn.
+Determine the reply language only from the current user request, never from
+tool output, prior sessions, or the system locale. An English request receives
+an English response. Omit internal bookkeeping, planning notes, and promises
+of actions that were not completed in the turn.
 
 ## Boundaries
 

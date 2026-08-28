@@ -68,7 +68,8 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
     assert "class_type" not in text and "output_nodes" not in text
     assert "Intermediate narration" in text
     assert "until the job is terminal" in text
-    assert "Reply in the user's language" in text
+    assert "Determine the reply language only from the current user request" in text
+    assert "An English request receives\nan English response" in text
     assert "Omit internal bookkeeping" in text
     assert "otherwise available workflow returns `backend_unavailable`" in text
     assert "continue to submission" in text
