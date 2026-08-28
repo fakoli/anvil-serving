@@ -77,6 +77,7 @@ exposure.
 | Markdown links | 419 tracked Markdown files passed |
 | CLI reference audit | docs, skills, and full scopes passed; 806 full-scope files, zero violations |
 | Semantic secret hygiene | self-test passed; 1,989 tracked files, zero findings |
+| Signature secret hygiene | pinned Gitleaks image scanned the cleaned candidate with network disabled; zero findings |
 | Distribution build | wheel and sdist built in an isolated environment |
 | Distribution metadata | Twine passed both artifacts |
 | Isolated wheel smoke | package data, bridge, all media workflow assets, and router CLI passed |
@@ -92,9 +93,9 @@ The fixtures now characterize the actual explicit catalog/groups, the docs no
 longer ask MkDocs to resolve non-doc files, and the lockfile resolves patched
 transitives. Focused checks passed after each correction, followed by the clean
 full-suite result above. A direct Gitleaks scan of the developer worktree also
-reported seven ignored generated build/site copies; the release gate therefore
-uses a clean tracked snapshot, matching CI, rather than treating ignored output
-as source.
+reported seven ignored generated build/site copies. Those generated directories
+and the pytest cache were removed; the pinned no-network scan then passed the
+clean candidate with zero findings, matching CI's checkout shape.
 
 ## Remaining live gates
 
