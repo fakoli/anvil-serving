@@ -8,9 +8,10 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
+from ..controller.operation_context import current_controller_operation_context
 from .errors import ToolError
 from .security import ENV_NAME_RE, redact_secret, safe_controller_url
 from ...transports import _NoRedirectHandler, _urlopen_no_proxy_no_redirect
@@ -131,7 +132,6 @@ def remote_controller_request(
     controller_url = _mcp_endpoint(safe_controller_url(controller_url))
     if opener is None:
         opener = urlopen_no_proxy_no_redirect
-    body = json.dumps(request, separators=(",", ":")).encode("utf-8")
     method = request.get("method")
     params = request.get("params")
     metadata = params.get("_meta") if isinstance(params, dict) else None
@@ -145,6 +145,29 @@ def remote_controller_request(
             "bad_mcp_request",
             "remote MCP requests require method and protocolVersion metadata",
         )
+    forwarded_operation = current_controller_operation_context()
+    arguments = params.get("arguments") if isinstance(params, Mapping) else None
+    confirmed_mutation = (
+        method == "tools/call"
+        and isinstance(arguments, Mapping)
+        and arguments.get("confirm") is True
+        and arguments.get("dry_run") is not True
+    )
+    if confirmed_mutation and forwarded_operation is not None:
+        existing_context = params.get("context")
+        if (
+            existing_context is not None
+            and existing_context != forwarded_operation.execution
+        ):
+            raise ToolError(
+                "controller_operation_context_mismatch",
+                "nested controller request context does not match the active operation",
+            )
+        forwarded_params = dict(params)
+        forwarded_params["context"] = dict(forwarded_operation.execution)
+        request = {**request, "params": forwarded_params}
+        params = forwarded_params
+    body = json.dumps(request, separators=(",", ":")).encode("utf-8")
     headers = {
         "Accept": "application/json, text/event-stream",
         "Content-Type": "application/json",
@@ -152,6 +175,8 @@ def remote_controller_request(
         "Mcp-Method": method,
         **controller_auth_headers(token),
     }
+    if confirmed_mutation and forwarded_operation is not None:
+        headers["X-Anvil-Idempotency-Key"] = forwarded_operation.idempotency_key
     if method == "tools/call" and isinstance(params, dict):
         name = params.get("name")
         if isinstance(name, str):
