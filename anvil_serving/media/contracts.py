@@ -59,10 +59,21 @@ _TRANSITIONS = {
         {JobState.AWAITING_APPROVAL, JobState.PREPARING, JobState.QUEUED, JobState.FAILED, JobState.CANCELED}
     ),
     JobState.AWAITING_APPROVAL: frozenset(
-        {JobState.PREPARING, JobState.FAILED, JobState.CANCELED}
+        {
+            JobState.AWAITING_APPROVAL,
+            JobState.PREPARING,
+            JobState.FAILED,
+            JobState.CANCELED,
+        }
     ),
     JobState.PREPARING: frozenset(
-        {JobState.SUBMITTING, JobState.QUEUED, JobState.FAILED, JobState.CANCELED}
+        {
+            JobState.AWAITING_APPROVAL,
+            JobState.SUBMITTING,
+            JobState.QUEUED,
+            JobState.FAILED,
+            JobState.CANCELED,
+        }
     ),
     JobState.SUBMITTING: frozenset(
         {JobState.QUEUED, JobState.FAILED}

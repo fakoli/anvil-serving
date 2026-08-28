@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
+from ..media.errors import MediaError
+
 
 A2A_VERSION = "1.0"
 A2A_LEGACY_DEFAULT_VERSION = "0.3"
@@ -38,6 +43,21 @@ def bearer_security() -> tuple[dict, list[dict]]:
     )
 
 
+def reject_undeclared_tenant(params: Mapping[str, Any]) -> None:
+    """Fail explicitly when a request supplies an undeclared interface tenant."""
+
+    if "tenant" not in params:
+        return
+    tenant = params["tenant"]
+    if not isinstance(tenant, str) or not tenant or len(tenant) > 128:
+        raise MediaError("invalid_a2a_request", "A2A tenant is invalid")
+    raise MediaError(
+        "unsupported_operation",
+        "A2A tenant routing is not declared by this AgentInterface",
+        status=409,
+    )
+
+
 __all__ = [
     "A2A_PATH",
     "A2A_LEGACY_DEFAULT_VERSION",
@@ -51,4 +71,5 @@ __all__ = [
     "TERMINAL_TASK_STATES",
     "VIDEO_OUTPUT_MODES",
     "bearer_security",
+    "reject_undeclared_tenant",
 ]

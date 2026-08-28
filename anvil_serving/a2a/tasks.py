@@ -13,7 +13,7 @@ from ..media.comfyui import ComfyUIClient
 from ..media.contracts import JobEvent, JobState, MediaArtifact, MediaJob, TERMINAL_STATES
 from ..media.errors import MediaError
 from ..media.operations import MediaOperations
-from .protocol import MEDIA_TO_TASK_STATE
+from .protocol import MEDIA_TO_TASK_STATE, reject_undeclared_tenant
 
 
 _BLOCKING_RETURN_STATES = TERMINAL_STATES | {JobState.AWAITING_APPROVAL}
@@ -234,14 +234,23 @@ class A2AMediaTasks:
 
 
 def _media_request(params: Mapping[str, Any]) -> dict[str, Any]:
-    if not isinstance(params, Mapping) or set(params) - {"message", "configuration", "metadata"}:
+    if not isinstance(params, Mapping) or set(params) - {
+        "tenant",
+        "message",
+        "configuration",
+        "metadata",
+    }:
         raise MediaError("invalid_a2a_request", "A2A message request contains unknown fields")
+    reject_undeclared_tenant(params)
     try:
         encoded = json.dumps(params, separators=(",", ":"), allow_nan=False).encode("utf-8")
     except (TypeError, ValueError) as exc:
         raise MediaError("invalid_a2a_request", "A2A request must contain JSON values") from exc
     if len(encoded) > 65536:
         raise MediaError("invalid_a2a_request", "A2A request exceeds its byte limit")
+    request_metadata = params.get("metadata", {})
+    if not isinstance(request_metadata, Mapping) or len(request_metadata) > 32:
+        raise MediaError("invalid_a2a_request", "A2A request metadata is invalid")
     configuration = params.get("configuration", {})
     if not isinstance(configuration, Mapping) or set(configuration) - {
         "acceptedOutputModes",
