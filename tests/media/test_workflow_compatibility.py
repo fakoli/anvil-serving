@@ -45,7 +45,7 @@ def inventory(workflow):
 
 
 def test_compatibility_checks_all_bounded_surfaces_and_preserves_quality_gate():
-    workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-dev-fp8mixed-v1", "v1")
+    workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1")
     seen = []
     result = ComfyUIClient(
         "http://127.0.0.1:8188",
@@ -58,7 +58,7 @@ def test_compatibility_checks_all_bounded_surfaces_and_preserves_quality_gate():
 
 
 def test_missing_node_is_normalized_without_private_metadata():
-    workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-dev-fp8mixed-v1", "v1")
+    workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1")
     values = inventory(workflow)
     values["/object_info"].pop("SaveImage")
     result = ComfyUIClient(
@@ -81,7 +81,7 @@ def test_oversized_metadata_fails_closed():
         def read(self, size=-1):
             return b"{" + b"x" * size
 
-    workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-dev-fp8mixed-v1", "v1")
+    workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1")
     with pytest.raises(MediaError) as error:
         ComfyUIClient("http://127.0.0.1:8188", opener=lambda *_args, **_kwargs: Oversized()).compatibility(workflow)
     assert error.value.code == "backend_response_too_large"
