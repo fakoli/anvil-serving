@@ -98,7 +98,13 @@ def handle_jsonrpc(
         elif method == "CancelTask":
             result = tasks.cancel_task(_task_id(params), caller=caller)
         elif method in {"SendStreamingMessage", "SubscribeToTask"}:
-            return jsonrpc_error(request_id, -32004, "streaming method requires SSE")
+            return error_from_exception(
+                request_id,
+                MediaError(
+                    "unsupported_operation",
+                    "streaming method requires SSE",
+                ),
+            )
         else:
             return jsonrpc_error(request_id, -32601, "method not found")
     except (MediaError, ToolError) as exc:
