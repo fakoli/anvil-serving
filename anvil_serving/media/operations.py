@@ -209,11 +209,11 @@ class MediaOperations:
         principal: str,
         created: bool,
     ) -> dict[str, Any]:
-        """Persist or recover the exact lifecycle preview for an accepted job."""
+        """Persist or recover the exact lifecycle preview for a reserved job."""
 
         with self._submit_lock:
             current = self.jobs.get(job_id, principal=principal)
-            if current.state != JobState.ACCEPTED:
+            if current.state not in {JobState.ACCEPTED, JobState.PREPARING}:
                 return {"job": current.as_public_dict(), "created": False}
             try:
                 if self._lifecycle_preview is None:
@@ -227,19 +227,31 @@ class MediaOperations:
                     principal,
                     rendered.descriptor.service_target,
                 )
+                current = self.jobs.get(job_id, principal=principal)
+                if (
+                    current.state == JobState.PREPARING
+                    and receipt.get("humanRequired") is not True
+                ):
+                    # The prior approved apply still owns its bounded lease.
+                    # Report the durable state without minting a second
+                    # approval or replaying its mutation.
+                    return {"job": current.as_public_dict(), "created": False}
                 approval = _approval_request(
                     job_id,
                     principal,
                     rendered.descriptor.service_target,
                     receipt,
                 )
-                current = self.jobs.get(job_id, principal=principal)
-                if current.state == JobState.ACCEPTED:
+                if current.state in {JobState.ACCEPTED, JobState.PREPARING}:
                     current = self.jobs.transition(
                         job_id,
                         JobState.AWAITING_APPROVAL,
                         principal=principal,
-                        reason="media_worker_start_requires_approval",
+                        reason=(
+                            "media_worker_start_retry_requires_approval"
+                            if current.state == JobState.PREPARING
+                            else "media_worker_start_requires_approval"
+                        ),
                         approval=approval,
                     )
                 elif current.state != JobState.AWAITING_APPROVAL:
@@ -370,11 +382,28 @@ class MediaOperations:
             current = self.jobs.get(job_id, principal=principal)
             if current.state != JobState.PREPARING:
                 return {"job": current.as_public_dict(), "created": False}
-            compatibility = (
-                backend.compatibility(rendered.descriptor, qualification=True)
-                if qualification
-                else backend.compatibility(rendered.descriptor)
-            )
+            try:
+                compatibility = (
+                    backend.compatibility(rendered.descriptor, qualification=True)
+                    if qualification
+                    else backend.compatibility(rendered.descriptor)
+                )
+            except MediaError as exc:
+                if exc.code != "backend_unavailable" or qualification:
+                    raise
+                return self._preview_lifecycle(
+                    job_id,
+                    rendered,
+                    principal=principal,
+                    created=False,
+                )
+            if not compatibility.ready and not qualification:
+                return self._preview_lifecycle(
+                    job_id,
+                    rendered,
+                    principal=principal,
+                    created=False,
+                )
             if not compatibility.ready or not compatibility.available:
                 raise MediaError(
                     "media_service_unavailable",
