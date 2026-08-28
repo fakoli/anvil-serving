@@ -132,6 +132,22 @@ class A2AMediaTasks:
         with caller_context(caller):
             identity = require_scope("media:submit")
             request = _media_request(params)
+            descriptor = self.operations.registry.get(
+                request["workflowId"], request["version"]
+            )
+            accepted_output_modes = request["acceptedOutputModes"]
+            supported_output_modes = {
+                "application/json",
+                *descriptor.output_mime_types,
+            }
+            if accepted_output_modes and not (
+                set(accepted_output_modes) & supported_output_modes
+            ):
+                raise MediaError(
+                    "content_type_not_supported",
+                    "none of the accepted output modes is supported",
+                    status=409,
+                )
             result = self.operations.workflow_run(
                 request["workflowId"],
                 request["version"],
@@ -142,9 +158,6 @@ class A2AMediaTasks:
             )
             job = self.operations.jobs.get(result["job"]["id"], principal=identity.principal)
             if not force_immediate and not request["returnImmediately"]:
-                descriptor = self.operations.registry.get(
-                    request["workflowId"], request["version"]
-                )
                 deadline = time.monotonic() + descriptor.timeout_seconds
                 # A2A blocking sends also return when execution is interrupted
                 # for caller input. Cold media workers use that state to expose
@@ -215,7 +228,7 @@ class A2AMediaTasks:
             for update in updates:
                 yield update
             cursor = max(cursor, job.events[-1].sequence)
-            if job.state in TERMINAL_STATES or time.monotonic() >= deadline:
+            if job.state in _BLOCKING_RETURN_STATES or time.monotonic() >= deadline:
                 return
             time.sleep(poll_interval)
 
@@ -230,11 +243,40 @@ def _media_request(params: Mapping[str, Any]) -> dict[str, Any]:
     if len(encoded) > 65536:
         raise MediaError("invalid_a2a_request", "A2A request exceeds its byte limit")
     configuration = params.get("configuration", {})
-    if not isinstance(configuration, Mapping) or set(configuration) - {"returnImmediately"}:
+    if not isinstance(configuration, Mapping) or set(configuration) - {
+        "acceptedOutputModes",
+        "historyLength",
+        "taskPushNotificationConfig",
+        "returnImmediately",
+    }:
         raise MediaError("invalid_a2a_request", "A2A configuration is unsupported")
+    if "taskPushNotificationConfig" in configuration:
+        raise MediaError(
+            "push_notification_not_supported",
+            "task push notifications are not supported",
+            status=409,
+        )
     return_immediately = configuration.get("returnImmediately", False)
     if not isinstance(return_immediately, bool):
         raise MediaError("invalid_a2a_request", "A2A returnImmediately must be boolean")
+    accepted_output_modes = configuration.get("acceptedOutputModes", [])
+    if (
+        not isinstance(accepted_output_modes, list)
+        or len(accepted_output_modes) > 16
+        or any(
+            not isinstance(mode, str) or not mode or len(mode) > 128
+            for mode in accepted_output_modes
+        )
+    ):
+        raise MediaError("invalid_a2a_request", "A2A acceptedOutputModes is invalid")
+    history_length = configuration.get("historyLength", 0)
+    if (
+        isinstance(history_length, bool)
+        or not isinstance(history_length, int)
+        or history_length < 0
+        or history_length > 1000
+    ):
+        raise MediaError("invalid_a2a_request", "A2A historyLength is invalid")
     message = params.get("message")
     if (
         not isinstance(message, Mapping)
@@ -271,6 +313,8 @@ def _media_request(params: Mapping[str, Any]) -> dict[str, Any]:
         **dict(data),
         "parameters": dict(data["parameters"]),
         "returnImmediately": return_immediately,
+        "acceptedOutputModes": tuple(accepted_output_modes),
+        "historyLength": history_length,
     }
 
 

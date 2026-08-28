@@ -28,7 +28,17 @@ def jsonrpc_error(
 _A2A_ERRORS = {
     "job_not_found": (-32001, "Task not found", "TASK_NOT_FOUND"),
     "task_not_cancelable": (-32002, "Task is not cancelable", "TASK_NOT_CANCELABLE"),
+    "push_notification_not_supported": (
+        -32003,
+        "Push notification is not supported",
+        "PUSH_NOTIFICATION_NOT_SUPPORTED",
+    ),
     "unsupported_operation": (-32004, "Operation is not supported", "UNSUPPORTED_OPERATION"),
+    "content_type_not_supported": (
+        -32005,
+        "Content type is not supported",
+        "CONTENT_TYPE_NOT_SUPPORTED",
+    ),
 }
 
 
@@ -94,7 +104,9 @@ def handle_jsonrpc(
         if method == "SendMessage":
             result = tasks.send_message(params, caller=caller)
         elif method == "GetTask":
-            result = tasks.get_task(_task_id(params), caller=caller)
+            result = tasks.get_task(
+                _task_id(params, history_length=True), caller=caller
+            )
         elif method == "CancelTask":
             result = tasks.cancel_task(_task_id(params), caller=caller)
         elif method in {"SendStreamingMessage", "SubscribeToTask"}:
@@ -118,9 +130,26 @@ def sse_frames(request_id: Any, updates: Iterable[Mapping[str, Any]]) -> Iterabl
         yield ("data: " + json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n\n").encode("utf-8")
 
 
-def _task_id(params: Mapping[str, Any]) -> str:
-    if set(params) - {"id", "historyLength", "afterSequence"}:
+def _task_id(
+    params: Mapping[str, Any], *, history_length: bool = False
+) -> str:
+    allowed = {"id", "metadata"}
+    if history_length:
+        allowed.add("historyLength")
+    if set(params) - allowed:
         raise MediaError("invalid_a2a_request", "A2A task request contains unknown fields")
+    metadata = params.get("metadata", {})
+    if not isinstance(metadata, Mapping) or len(metadata) > 32:
+        raise MediaError("invalid_a2a_request", "A2A task metadata is invalid")
+    if history_length:
+        requested_history = params.get("historyLength", 0)
+        if (
+            isinstance(requested_history, bool)
+            or not isinstance(requested_history, int)
+            or requested_history < 0
+            or requested_history > 1000
+        ):
+            raise MediaError("invalid_a2a_request", "A2A historyLength is invalid")
     task_id = params.get("id")
     if not isinstance(task_id, str) or not task_id or len(task_id) > 128:
         raise MediaError("invalid_a2a_request", "A2A task id is invalid")

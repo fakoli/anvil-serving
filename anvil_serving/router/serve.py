@@ -944,6 +944,7 @@ def build_server(
                     operations.artifacts,
                     media_backend,
                 ),
+                getattr(media_backend, "find_prompt", None),
             ),
             maintenance=operations.artifacts.prune,
         )

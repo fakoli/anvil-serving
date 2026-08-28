@@ -63,6 +63,7 @@ class Backend(ComfyUIClient):
 
     def delete_queued_prompt(self, prompt_id):
         self.deleted.append(prompt_id)
+        return True
 
 
 class ColdBackend(Backend):
@@ -246,6 +247,73 @@ def test_streaming_methods_without_sse_use_canonical_a2a_error_info(tmp_path):
                 }
             ],
         }
+
+
+def test_send_configuration_accepts_standard_output_and_history_fields(tmp_path):
+    tasks = service(tmp_path)
+    request = send_request()
+    request["params"]["configuration"] = {
+        "acceptedOutputModes": ["image/png"],
+        "historyLength": 0,
+        "returnImmediately": True,
+    }
+
+    response = handle_jsonrpc(request, tasks=tasks, caller=CALLER)
+
+    assert response["result"]["task"]["status"]["state"] == (
+        "TASK_STATE_SUBMITTED"
+    )
+
+
+def test_send_configuration_maps_push_and_output_errors_canonically(tmp_path):
+    tasks = service(tmp_path)
+    push = send_request()
+    push["params"]["configuration"] = {
+        "taskPushNotificationConfig": {"url": "https://example.test/callback"},
+        "returnImmediately": True,
+    }
+    push_error = handle_jsonrpc(push, tasks=tasks, caller=CALLER)["error"]
+    assert push_error["code"] == -32003
+    assert push_error["data"][0]["reason"] == "PUSH_NOTIFICATION_NOT_SUPPORTED"
+
+    unsupported = send_request(2)
+    unsupported["params"]["configuration"] = {
+        "acceptedOutputModes": ["audio/mpeg"],
+        "returnImmediately": True,
+    }
+    output_error = handle_jsonrpc(unsupported, tasks=tasks, caller=CALLER)["error"]
+    assert output_error["code"] == -32005
+    assert output_error["data"][0]["reason"] == "CONTENT_TYPE_NOT_SUPPORTED"
+    assert tasks.operations.jobs.nonterminal() == []
+
+
+def test_get_and_cancel_task_use_a2a_1_0_parameter_shapes(tmp_path):
+    tasks = service(tmp_path)
+    task_id = handle_jsonrpc(send_request(), tasks=tasks, caller=CALLER)["result"][
+        "task"
+    ]["id"]
+    fetched = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "GetTask",
+            "params": {"id": task_id, "historyLength": 0, "metadata": {}},
+        },
+        tasks=tasks,
+        caller=CALLER,
+    )
+    assert fetched["result"]["id"] == task_id
+    rejected = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "CancelTask",
+            "params": {"id": task_id, "historyLength": 1},
+        },
+        tasks=tasks,
+        caller=CALLER,
+    )
+    assert rejected["error"]["code"] == -32602
 
 
 def test_send_message_blocks_by_default_until_terminal(tmp_path):

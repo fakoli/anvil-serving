@@ -270,7 +270,12 @@ def qualify(
             retention_seconds=descriptor.retention_seconds,
         )
 
-    reconciler = MediaJobReconciler(jobs, backend.history, capture)
+    reconciler = MediaJobReconciler(
+        jobs,
+        backend.history,
+        capture,
+        getattr(backend, "find_prompt", None),
+    )
     deadline = started + descriptor.timeout_seconds
     while job.state not in TERMINAL_STATES:
         used, observed_total = _gpu_memory_mib(gpu_index, runner=gpu_runner)

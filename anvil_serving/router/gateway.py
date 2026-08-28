@@ -59,7 +59,7 @@ class ProtocolGateway:
                     params, caller=self.caller, force_immediate=True
                 )["task"]
             elif method == "SubscribeToTask":
-                task_id, after_sequence = _stream_task_request(params)
+                task_id = _stream_task_request(params)
                 first = self.tasks.get_task(task_id, caller=self.caller)
                 job = self.tasks.operations.jobs.get(
                     task_id,
@@ -71,8 +71,6 @@ class ProtocolGateway:
                         "terminal media tasks cannot be subscribed",
                         status=409,
                     )
-                if after_sequence > first["metadata"]["sequence"]:
-                    raise MediaError("invalid_stream_cursor", "A2A stream cursor is invalid")
             else:
                 return jsonrpc_error(request_id, -32601, "method not found")
         except (MediaError, ToolError) as exc:
@@ -121,16 +119,16 @@ class ProtocolGateway:
         )
 
 
-def _stream_task_request(params: Mapping[str, Any]) -> tuple[str, int]:
-    if set(params) - {"id", "afterSequence"}:
+def _stream_task_request(params: Mapping[str, Any]) -> str:
+    if set(params) - {"id", "metadata"}:
         raise MediaError("invalid_a2a_request", "A2A stream request contains unknown fields")
     task_id = params.get("id")
-    after = params.get("afterSequence", 0)
     if not isinstance(task_id, str) or not task_id or len(task_id) > 128:
         raise MediaError("invalid_a2a_request", "A2A task id is invalid")
-    if isinstance(after, bool) or not isinstance(after, int) or after < 0:
-        raise MediaError("invalid_stream_cursor", "A2A stream cursor is invalid")
-    return task_id, after
+    metadata = params.get("metadata", {})
+    if not isinstance(metadata, Mapping) or len(metadata) > 32:
+        raise MediaError("invalid_a2a_request", "A2A stream metadata is invalid")
+    return task_id
 
 
 __all__ = ["ARTIFACT_PREFIX", "MCP_PATH", "ProtocolGateway"]

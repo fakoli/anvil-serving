@@ -11,7 +11,14 @@ from typing import Any, Callable, Mapping
 from .backends import BackendOutput, BackendStatus
 from .artifacts import ArtifactStore
 from .comfyui import ComfyUIClient
-from .contracts import JobState, MediaArtifact, MediaJob, TERMINAL_STATES
+from .contracts import (
+    JobState,
+    MediaArtifact,
+    MediaJob,
+    SUBMISSION_RECOVERY_GRACE_SECONDS,
+    TERMINAL_STATES,
+    utc_now,
+)
 from .errors import MediaError
 from .jobs import MediaJobStore
 from .workflows import WorkflowRegistry
@@ -66,14 +73,67 @@ class MediaJobReconciler:
         store: MediaJobStore,
         history: Callable[[str], BackendStatus],
         capture: Callable[[MediaJob, BackendOutput], MediaArtifact] | None = None,
+        find_prompt: Callable[[str], str | None] | None = None,
     ) -> None:
         self.store = store
         self.history = history
         self.capture = capture
+        self.find_prompt = find_prompt
 
     def reconcile(self, job: MediaJob) -> MediaJob:
         if job.state in TERMINAL_STATES:
             return job
+        if not job.backend_prompt_id:
+            age = (utc_now() - job.updated_at).total_seconds()
+            if job.state == JobState.SUBMITTING:
+                if self.find_prompt is not None:
+                    try:
+                        prompt_id = self.find_prompt(job.id)
+                    except MediaError:
+                        if age < SUBMISSION_RECOVERY_GRACE_SECONDS:
+                            raise
+                        return self.store.transition(
+                            job.id,
+                            JobState.FAILED,
+                            principal=job.principal,
+                            reason="backend_submission_recovery_failed",
+                        )
+                    if prompt_id is not None:
+                        job = self.store.set_backend_prompt(
+                            job.id,
+                            prompt_id,
+                            principal=job.principal,
+                        )
+                    elif age >= SUBMISSION_RECOVERY_GRACE_SECONDS:
+                        return self.store.transition(
+                            job.id,
+                            JobState.FAILED,
+                            principal=job.principal,
+                            reason="backend_submission_outcome_unknown",
+                        )
+                    else:
+                        return job
+                elif age >= SUBMISSION_RECOVERY_GRACE_SECONDS:
+                    return self.store.transition(
+                        job.id,
+                        JobState.FAILED,
+                        principal=job.principal,
+                        reason="backend_submission_recovery_unavailable",
+                    )
+                else:
+                    return job
+            elif (
+                job.state == JobState.ACCEPTED
+                and age >= SUBMISSION_RECOVERY_GRACE_SECONDS
+            ):
+                return self.store.transition(
+                    job.id,
+                    JobState.FAILED,
+                    principal=job.principal,
+                    reason="accepted_recovery_required",
+                )
+            else:
+                return job
         if not job.backend_prompt_id:
             return job
         status = self.history(job.backend_prompt_id)
@@ -126,15 +186,21 @@ class MediaJobReconciler:
         order = {
             JobState.ACCEPTED: 0,
             JobState.PREPARING: 1,
-            JobState.QUEUED: 2,
-            JobState.RUNNING: 3,
+            JobState.SUBMITTING: 2,
+            JobState.QUEUED: 3,
+            JobState.RUNNING: 4,
         }
         if job.state == JobState.AWAITING_APPROVAL:
             return job
         if job.state not in order or order[job.state] >= order[target]:
             return job
         current = job
-        for state in (JobState.PREPARING, JobState.QUEUED, JobState.RUNNING):
+        for state in (
+            JobState.PREPARING,
+            JobState.SUBMITTING,
+            JobState.QUEUED,
+            JobState.RUNNING,
+        ):
             if order[state] <= order[current.state] or order[state] > order[target]:
                 continue
             current = self.store.transition(current.id, state, principal=current.principal)
