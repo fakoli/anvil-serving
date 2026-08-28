@@ -98,11 +98,17 @@ class MediaJobStore:
                 );
                 """
             )
+            # Schema initialization is process-safe, not merely instance-safe.
+            # Without the immediate transaction, two first-open callers can
+            # both observe an empty media_schema table and insert duplicate
+            # version rows.
+            db.execute("BEGIN IMMEDIATE")
             rows = db.execute("SELECT version FROM media_schema").fetchall()
             if not rows:
                 db.execute("INSERT INTO media_schema(version) VALUES (?)", (SCHEMA_VERSION,))
             elif len(rows) != 1 or rows[0]["version"] != SCHEMA_VERSION:
                 raise MediaError("job_store_schema", "media job-state schema version is unsupported", status=500)
+            db.execute("COMMIT")
 
     def create(
         self,
