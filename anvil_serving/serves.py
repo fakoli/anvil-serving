@@ -4242,7 +4242,14 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
             continue
         env = _serve_env(s)
         for step in steps:
-            r = _run(step, capture_output=True, text=True, env=env)
+            r = _run(
+                step,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=env,
+            )
             if r.returncode != 0:
                 print("  FAILED: %s" % _command_failure_text(r, env))
                 rc = 1
