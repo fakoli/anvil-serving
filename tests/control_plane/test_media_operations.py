@@ -465,7 +465,7 @@ def _expire_lifecycle_lease(state_path, transaction_id):
         )
 
 
-def test_expired_prepare_claim_recovers_after_controller_crash(tmp_path):
+def test_expired_prepare_claim_requires_fresh_approval_after_controller_crash(tmp_path):
     state_path = tmp_path / "jobs.sqlite3"
     store = MediaJobStore(state_path)
     job = _job(store)
@@ -490,7 +490,128 @@ def test_expired_prepare_claim_recovers_after_controller_crash(tmp_path):
         status_operation=_status(running=False),
         manage_operation=lambda args: calls.append(dict(args)) or {"applied": True},
     )
+    with pytest.raises(MediaError) as consumed:
+        restarted.prepare(
+            job.id,
+            principal="hermes",
+            service="media-worker",
+            transaction_id=preview.transaction_id,
+            confirm=True,
+            human_approved=True,
+        )
+    assert consumed.value.code == "media_lifecycle_approval_consumed"
+    assert calls == []
+
+    fresh = restarted.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+    )
+    assert fresh.transaction_id != claimed["id"]
+    assert restarted.store.get(job.id, principal="hermes").approval[
+        "transactionId"
+    ] == fresh.transaction_id
     recovered = restarted.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+        transaction_id=fresh.transaction_id,
+        confirm=True,
+        human_approved=True,
+    )
+    assert recovered.applied is True
+    assert [call["action"] for call in calls] == ["up", "up"]
+
+
+def test_failed_prepare_approval_is_one_use_and_requires_a_fresh_preview(tmp_path):
+    state_path = tmp_path / "jobs.sqlite3"
+    store = MediaJobStore(state_path)
+    job = _job(store)
+    mutating_calls = []
+
+    def ambiguous_manage(args):
+        if not args["dry_run"]:
+            mutating_calls.append(dict(args))
+            raise RuntimeError("outcome is unknown")
+        return {"applied": False}
+
+    lifecycle = MediaWorkerLifecycle(
+        store,
+        status_operation=_status(running=False),
+        manage_operation=ambiguous_manage,
+    )
+    preview = lifecycle.prepare(
+        job.id, principal="hermes", service="media-worker"
+    )
+    with pytest.raises(RuntimeError, match="outcome is unknown"):
+        lifecycle.prepare(
+            job.id,
+            principal="hermes",
+            service="media-worker",
+            transaction_id=preview.transaction_id,
+            confirm=True,
+            human_approved=True,
+        )
+    assert store.get(job.id, principal="hermes").state == JobState.PREPARING
+
+    with pytest.raises(MediaError) as replay:
+        lifecycle.prepare(
+            job.id,
+            principal="hermes",
+            service="media-worker",
+            transaction_id=preview.transaction_id,
+            confirm=True,
+            human_approved=True,
+        )
+    assert replay.value.code == "media_lifecycle_approval_consumed"
+    assert len(mutating_calls) == 1
+
+    fresh = lifecycle.prepare(
+        job.id, principal="hermes", service="media-worker"
+    )
+    assert fresh.transaction_id != preview.transaction_id
+    assert store.get(job.id, principal="hermes").state == (
+        JobState.AWAITING_APPROVAL
+    )
+
+
+def test_failed_prepare_recovers_only_from_authoritative_running_status(tmp_path):
+    state_path = tmp_path / "jobs.sqlite3"
+    store = MediaJobStore(state_path)
+    job = _job(store)
+    mutating_calls = []
+    running = False
+
+    def status(_args):
+        return _status(running=running)({})
+
+    def ambiguous_manage(args):
+        nonlocal running
+        if not args["dry_run"]:
+            mutating_calls.append(dict(args))
+            running = True
+            raise RuntimeError("response was lost")
+        return {"applied": False}
+
+    lifecycle = MediaWorkerLifecycle(
+        store,
+        status_operation=status,
+        manage_operation=ambiguous_manage,
+    )
+    preview = lifecycle.prepare(
+        job.id, principal="hermes", service="media-worker"
+    )
+    with pytest.raises(RuntimeError, match="response was lost"):
+        lifecycle.prepare(
+            job.id,
+            principal="hermes",
+            service="media-worker",
+            transaction_id=preview.transaction_id,
+            confirm=True,
+            human_approved=True,
+        )
+
+    recovered = lifecycle.prepare(
         job.id,
         principal="hermes",
         service="media-worker",
@@ -499,8 +620,60 @@ def test_expired_prepare_claim_recovers_after_controller_crash(tmp_path):
         human_approved=True,
     )
     assert recovered.applied is True
-    assert recovered.transaction_id == claimed["id"]
-    assert [call["action"] for call in calls] == ["up"]
+    assert recovered.controller_receipt == {
+        "applied": True,
+        "observedRunning": True,
+        "previousPhase": "failed",
+        "recovered": True,
+    }
+    assert len(mutating_calls) == 1
+
+
+def test_unapproved_retry_observes_ambiguous_started_worker_as_owned(tmp_path):
+    state_path = tmp_path / "jobs.sqlite3"
+    store = MediaJobStore(state_path)
+    job = _job(store)
+    mutating_calls = []
+    running = False
+
+    def status(_args):
+        return _status(running=running)({})
+
+    def ambiguous_manage(args):
+        nonlocal running
+        if not args["dry_run"]:
+            mutating_calls.append(dict(args))
+            running = True
+            raise RuntimeError("response was lost")
+        return {"applied": False}
+
+    lifecycle = MediaWorkerLifecycle(
+        store,
+        status_operation=status,
+        manage_operation=ambiguous_manage,
+    )
+    preview = lifecycle.prepare(
+        job.id, principal="hermes", service="media-worker"
+    )
+    with pytest.raises(RuntimeError, match="response was lost"):
+        lifecycle.prepare(
+            job.id,
+            principal="hermes",
+            service="media-worker",
+            transaction_id=preview.transaction_id,
+            confirm=True,
+            human_approved=True,
+        )
+
+    recovered = lifecycle.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+    )
+    assert recovered.transaction_id == preview.transaction_id
+    assert recovered.owns_instance is True
+    assert recovered.preexisting is False
+    assert len(mutating_calls) == 1
 
 
 def test_expired_prepare_claim_observes_started_worker_and_advances_job(tmp_path):

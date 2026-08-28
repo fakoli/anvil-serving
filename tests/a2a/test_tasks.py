@@ -297,16 +297,38 @@ def test_get_and_cancel_task_use_a2a_1_0_parameter_shapes(tmp_path):
             "jsonrpc": "2.0",
             "id": 2,
             "method": "GetTask",
-            "params": {"id": task_id, "historyLength": 0, "metadata": {}},
+            "params": {"id": task_id, "historyLength": 0},
         },
         tasks=tasks,
         caller=CALLER,
     )
     assert fetched["result"]["id"] == task_id
-    rejected = handle_jsonrpc(
+    rejected_metadata = handle_jsonrpc(
         {
             "jsonrpc": "2.0",
             "id": 3,
+            "method": "GetTask",
+            "params": {"id": task_id, "metadata": {}},
+        },
+        tasks=tasks,
+        caller=CALLER,
+    )
+    assert rejected_metadata["error"]["code"] == -32602
+    rejected_tenant = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "GetTask",
+            "params": {"tenant": "undeclared", "id": task_id},
+        },
+        tasks=tasks,
+        caller=CALLER,
+    )
+    assert rejected_tenant["error"]["code"] == -32004
+    rejected = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
             "method": "CancelTask",
             "params": {"id": task_id, "historyLength": 1},
         },
@@ -314,6 +336,29 @@ def test_get_and_cancel_task_use_a2a_1_0_parameter_shapes(tmp_path):
         caller=CALLER,
     )
     assert rejected["error"]["code"] == -32602
+    canceled = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 6,
+            "method": "CancelTask",
+            "params": {"id": task_id, "metadata": {"reason": "caller"}},
+        },
+        tasks=tasks,
+        caller=CALLER,
+    )
+    assert canceled["result"]["status"]["state"] == "TASK_STATE_CANCELED"
+
+
+def test_send_message_rejects_undeclared_standard_tenant_without_dispatch(tmp_path):
+    tasks = service(tmp_path)
+    request = send_request()
+    request["params"]["tenant"] = "undeclared"
+
+    response = handle_jsonrpc(request, tasks=tasks, caller=CALLER)
+
+    assert response["error"]["code"] == -32004
+    assert response["error"]["data"][0]["reason"] == "UNSUPPORTED_OPERATION"
+    assert tasks.operations.jobs.nonterminal() == []
 
 
 def test_send_message_blocks_by_default_until_terminal(tmp_path):

@@ -136,20 +136,83 @@ class MediaWorkerLifecycle:
             if job.state in TERMINAL_STATES:
                 raise MediaError("job_terminal", "terminal media jobs cannot prepare a worker", status=409)
             approved = bool(confirm and human_approved)
+            recovering_approval = False
             if approved:
-                _require_persisted_approval(
+                recovering_approval = _require_persisted_approval(
                     job,
                     transaction_id=transaction_id,
                     principal=principal,
                     service=service,
                     manifest=manifest,
                 )
+                if not recovering_approval:
+                    approved_transaction = self._transaction_for_approval(
+                        transaction_id,
+                        job_id=job_id,
+                    )
+                    recovering_approval = (
+                        approved_transaction["status"] != "awaiting_approval"
+                    )
             existing = self._reserved_for_service(service)
             if existing is not None:
                 _require_manifest_match(existing, manifest)
             status = self._status_operation({"manifest": manifest, "names": [service]})
             status_row = _selected_status(status, service)
             running = status_row.get("running") is True and status_row.get("health_status") is not None
+            if recovering_approval:
+                return self._recover_consumed_prepare(
+                    job_id,
+                    principal=principal,
+                    service=service,
+                    manifest=manifest,
+                    transaction_id=transaction_id,
+                    existing=existing,
+                    running=running,
+                )
+            if not approved and job.state == JobState.PREPARING:
+                approval = job.approval
+                approved_transaction_id = (
+                    approval.get("transactionId")
+                    if isinstance(approval, Mapping)
+                    else ""
+                )
+                _require_persisted_approval(
+                    job,
+                    transaction_id=approved_transaction_id,
+                    principal=principal,
+                    service=service,
+                    manifest=manifest,
+                )
+                prior = self._transaction_for_approval(
+                    approved_transaction_id,
+                    job_id=job_id,
+                )
+                if prior["status"] in {"preparing", "failed"} and running:
+                    return self._recover_consumed_prepare(
+                        job_id,
+                        principal=principal,
+                        service=service,
+                        manifest=manifest,
+                        transaction_id=approved_transaction_id,
+                        existing=existing,
+                        running=True,
+                    )
+                if prior["status"] == "preparing":
+                    if not _lease_expired(prior):
+                        return _receipt_from_row(prior, action="prepare")
+                    self._set_transaction_status(
+                        prior["id"],
+                        expected="preparing",
+                        status="failed",
+                        controller={
+                            "applied": False,
+                            "recovered": True,
+                            "observedRunning": False,
+                            "previousPhase": "preparing",
+                        },
+                    )
+                    if existing is not None and existing["id"] == prior["id"]:
+                        existing = None
             if existing is not None:
                 existing = self._recover_phase(
                     existing,
@@ -232,12 +295,25 @@ class MediaWorkerLifecycle:
                     manifest=manifest,
                     controller=controller,
                 )
-                if job.state == JobState.ACCEPTED:
+                pending_transaction = (
+                    job.approval.get("transactionId")
+                    if isinstance(job.approval, Mapping)
+                    else None
+                )
+                if job.state in {JobState.ACCEPTED, JobState.PREPARING} or (
+                    job.state == JobState.AWAITING_APPROVAL
+                    and pending_transaction != receipt.transaction_id
+                ):
                     self.store.transition(
                         job_id,
                         JobState.AWAITING_APPROVAL,
                         principal=principal,
-                        reason="media_worker_start_requires_approval",
+                        reason=(
+                            "media_worker_start_retry_requires_approval"
+                            if job.state
+                            in {JobState.PREPARING, JobState.AWAITING_APPROVAL}
+                            else "media_worker_start_requires_approval"
+                        ),
                         approval=_approval_request(job_id, principal, receipt),
                     )
                 return receipt
@@ -266,6 +342,19 @@ class MediaWorkerLifecycle:
                     )
                 return receipt
 
+            preparing_receipt = _receipt_from_row(claimed, action="prepare")
+            if job.state == JobState.AWAITING_APPROVAL:
+                self.store.transition(
+                    job_id,
+                    JobState.PREPARING,
+                    principal=principal,
+                    reason="media_worker_start_approved",
+                    approval=_approval_request(
+                        job_id,
+                        principal,
+                        preparing_receipt,
+                    ),
+                )
             try:
                 controller = self._manage_operation(
                     {
@@ -277,28 +366,36 @@ class MediaWorkerLifecycle:
                     }
                 )
             except Exception:
-                self._set_transaction_status(
+                try:
+                    self._set_transaction_status(
+                        claimed["id"],
+                        expected="preparing",
+                        status="failed",
+                        controller={"applied": False, "error": "manage_failed"},
+                    )
+                except MediaError as transition_error:
+                    current = self._transaction_for_approval(
+                        claimed["id"],
+                        job_id=job_id,
+                    )
+                    if current["status"] != "active":
+                        raise transition_error
+                raise
+            try:
+                claimed = self._set_transaction_status(
                     claimed["id"],
                     expected="preparing",
-                    status="failed",
-                    controller={"applied": False, "error": "manage_failed"},
+                    status="active",
+                    controller=controller,
                 )
-                raise
-            claimed = self._set_transaction_status(
-                claimed["id"],
-                expected="preparing",
-                status="active",
-                controller=controller,
-            )
+            except MediaError as transition_error:
+                claimed = self._transaction_for_approval(
+                    claimed["id"],
+                    job_id=job_id,
+                )
+                if claimed["status"] != "active":
+                    raise transition_error
             receipt = _receipt_from_row(claimed, action="prepare")
-            if job.state in {JobState.ACCEPTED, JobState.AWAITING_APPROVAL}:
-                self.store.transition(
-                    job_id,
-                    JobState.PREPARING,
-                    principal=principal,
-                    reason="media_worker_start_approved",
-                    approval=_approval_request(job_id, principal, receipt),
-                )
             return receipt
 
     def teardown(
@@ -579,7 +676,7 @@ class MediaWorkerLifecycle:
                     "SELECT t.* FROM media_lifecycle_transactions t "
                     "JOIN media_lifecycle_jobs j ON j.transaction_id=t.id "
                     "WHERE t.id=? AND j.job_id=? "
-                    "AND t.status IN ('awaiting_approval','failed')",
+                    "AND t.status='awaiting_approval'",
                     (transaction_id, job_id),
                 ).fetchone()
                 if preview is None:
@@ -626,7 +723,7 @@ class MediaWorkerLifecycle:
                         lease_expires_at,
                         now,
                         transaction_id,
-                        preview["status"],
+                        "awaiting_approval",
                     ),
                 ).rowcount
                 if changed != 1:
@@ -651,6 +748,129 @@ class MediaWorkerLifecycle:
             ).fetchone()
             db.execute("COMMIT")
         return row, True
+
+    def _recover_consumed_prepare(
+        self,
+        job_id: str,
+        *,
+        principal: str,
+        service: str,
+        manifest: str,
+        transaction_id: str,
+        existing: sqlite3.Row | None,
+        running: bool,
+    ) -> MediaLifecycleReceipt:
+        """Observe an approved apply without ever replaying its mutation."""
+
+        consumed = self._transaction_for_approval(transaction_id, job_id=job_id)
+        _require_manifest_match(consumed, manifest)
+        if consumed["service"] != service:
+            raise MediaError(
+                "media_lifecycle_approval_mismatch",
+                "media worker approval targets another service",
+                status=409,
+            )
+        consumed_status = consumed["status"]
+        if consumed_status not in {"preparing", "failed"}:
+            raise MediaError(
+                "media_lifecycle_approval_consumed",
+                "media worker approval is missing, consumed, or replayed",
+                status=409,
+            )
+        if existing is not None and existing["id"] != transaction_id:
+            existing = self._recover_phase(
+                existing,
+                running=running,
+                for_teardown=False,
+            )
+            if existing["status"] == "releasing":
+                raise MediaError(
+                    "media_worker_transition",
+                    "media worker teardown is already in progress",
+                    status=409,
+                )
+            if existing["status"] == "active" and not running:
+                self._set_transaction_status(
+                    existing["id"],
+                    expected="active",
+                    status="failed",
+                    controller={
+                        "applied": False,
+                        "recovered": True,
+                        "observedRunning": False,
+                    },
+                )
+                raise MediaError(
+                    "media_lifecycle_approval_consumed",
+                    "media worker approval was consumed; a fresh preview is required",
+                    status=409,
+                )
+            if existing["status"] in {"preparing", "active"}:
+                self._link(existing["id"], job_id)
+                return _receipt_from_row(existing, action="prepare")
+        if not running:
+            if consumed_status == "preparing" and not _lease_expired(consumed):
+                return _receipt_from_row(consumed, action="prepare")
+            if consumed_status == "preparing":
+                self._set_transaction_status(
+                    transaction_id,
+                    expected="preparing",
+                    status="failed",
+                    controller={
+                        "applied": False,
+                        "recovered": True,
+                        "observedRunning": False,
+                        "previousPhase": "preparing",
+                    },
+                )
+            raise MediaError(
+                "media_lifecycle_approval_consumed",
+                "media worker approval was consumed; a fresh preview is required",
+                status=409,
+            )
+        recovered = self._set_transaction_status(
+            transaction_id,
+            expected=consumed_status,
+            status="active",
+            controller={
+                "applied": True,
+                "recovered": True,
+                "observedRunning": True,
+                "previousPhase": consumed_status,
+            },
+        )
+        receipt = _receipt_from_row(recovered, action="prepare")
+        current = self.store.get(job_id, principal=principal)
+        if current.state == JobState.AWAITING_APPROVAL:
+            self.store.transition(
+                job_id,
+                JobState.PREPARING,
+                principal=principal,
+                reason="media_worker_start_recovered",
+                approval=_approval_request(job_id, principal, receipt),
+            )
+        return receipt
+
+    def _transaction_for_approval(
+        self,
+        transaction_id: str,
+        *,
+        job_id: str,
+    ) -> sqlite3.Row:
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT t.* FROM media_lifecycle_transactions t "
+                "JOIN media_lifecycle_jobs j ON j.transaction_id=t.id "
+                "WHERE t.id=? AND j.job_id=?",
+                (transaction_id, job_id),
+            ).fetchone()
+        if row is None:
+            raise MediaError(
+                "media_lifecycle_approval_consumed",
+                "media worker approval is missing, consumed, or replayed",
+                status=409,
+            )
+        return row
 
     def _consume_preview(
         self,
@@ -906,7 +1126,7 @@ def _require_persisted_approval(
     principal: str,
     service: str,
     manifest: str,
-) -> None:
+) -> bool:
     expected_arguments = {
         "job_id": job.id,
         "principal": principal,
@@ -926,12 +1146,13 @@ def _require_persisted_approval(
         if isinstance(operator_action, Mapping)
         else None
     )
-    if job.state != JobState.AWAITING_APPROVAL:
+    if job.state not in {JobState.AWAITING_APPROVAL, JobState.PREPARING}:
         raise MediaError(
             "media_lifecycle_approval_consumed",
             "media worker approval is missing, consumed, or replayed",
             status=409,
         )
+    recovering = job.state == JobState.PREPARING
     if (
         not transaction_id
         or not isinstance(approval, Mapping)
@@ -940,7 +1161,7 @@ def _require_persisted_approval(
         or approval.get("service") != service
         or approval.get("action") != "prepare"
         or approval.get("humanRequired") is not True
-        or approval.get("approved") is not False
+        or approval.get("approved") is not recovering
         or not isinstance(operator_action, Mapping)
         or operator_action.get("tool") != "media_worker_prepare"
         or arguments != expected_arguments
@@ -950,6 +1171,7 @@ def _require_persisted_approval(
             "approved media worker action does not match the persisted preview",
             status=409,
         )
+    return recovering
 
 
 def _receipt_from_row(
