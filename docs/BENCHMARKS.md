@@ -38,10 +38,19 @@ decodable 512×288, 17-frame H.264 MP4 in 9.092 seconds at 18,263 MiB peak from
 a clean 943 MiB worker baseline. The managed worker was removed afterward and
 GPU use returned to 448 MiB.
 
-Both candidates remain `available=false` and `no-promotion`: perceptual quality
-has not been independently reviewed, and no router, Hermes, or remote-client
-path was part of this run. See the
-[dated qualification and sanitized metadata](findings/2026-08-28-comfyui-media-qualification.md).
+The subsequent isolated end-to-end validation passed authenticated MCP
+`2026-07-28`, A2A task replay, cold lifecycle approval and idempotency, Hermes
+image and video requests, cross-host artifact retrieval, and managed teardown.
+Independent bounded review passed both FLUX image samples, while the Wan video
+sample failed quality because of severe smearing, chromatic separation, repeated
+structures, and a red streak. Both candidates therefore remain
+`available=false` and `no-promotion`: the image descriptor remains
+`quality_unreviewed` because two bounded samples do not clear broader production
+quality, and the video descriptor now fails closed as `quality_failed`. The
+binary artifact contract passed an independent client; a legacy Windows
+PowerShell partial-range client hung and remains a client-compatibility caveat.
+See the [direct qualification](findings/2026-08-28-comfyui-media-qualification.md)
+and [live validation](findings/2026-08-28-media-gateway-live-validation.md).
 
 ## Qwen3.8 Flash Next vision promotion and context curve (2026-08-26)
 
