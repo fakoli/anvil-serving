@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.media-workflow/v1",
+  "id": "video.wan2.2-ti2v-5b-v1",
+  "version": "v1",
+  "kind": "video",
+  "service_target": "media-worker",
+  "graph": "video.wan2.2-ti2v-5b-v1.graph.json",
+  "graph_digest": "767e9436ade6b8566963703f76808ebcca5e2602aac2f1da1eacd294d5eec581",
+  "parameters": {
+    "prompt": {"kind": "string", "max_length": 4096},
+    "seed": {"kind": "integer", "minimum": 0, "maximum": 9223372036854775807},
+    "width": {"kind": "integer", "minimum": 256, "maximum": 832},
+    "height": {"kind": "integer", "minimum": 256, "maximum": 480},
+    "frames": {"kind": "integer", "minimum": 17, "maximum": 81},
+    "steps": {"kind": "integer", "minimum": 1, "maximum": 30}
+  },
+  "bindings": [
+    {"parameter": "prompt", "node": "4", "input": "text"},
+    {"parameter": "seed", "node": "6", "input": "seed"},
+    {"parameter": "width", "node": "5", "input": "width"},
+    {"parameter": "height", "node": "5", "input": "height"},
+    {"parameter": "frames", "node": "5", "input": "length"},
+    {"parameter": "steps", "node": "6", "input": "steps"}
+  ],
+  "output_nodes": ["8"],
+  "output_mime_types": ["video/mp4"],
+  "required_features": ["wan2.2"],
+  "required_nodes": ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "EmptyHunyuanLatentVideo", "KSampler", "VAEDecode", "VHS_VideoCombine"],
+  "required_models": ["wan2.2_ti2v_5B_fp16.safetensors", "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "wan2.2_vae.safetensors"],
+  "available": false,
+  "unavailable_reasons": ["model_identity_unverified", "capacity_unqualified", "quality_unreviewed"],
+  "limits": {"request_bytes": 65536, "artifact_bytes": 268435456, "timeout_seconds": 3600, "retention_seconds": 86400, "queue_depth": 2, "concurrency": 1}
+}

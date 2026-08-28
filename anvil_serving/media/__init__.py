@@ -14,6 +14,7 @@ from .contracts import (
     utc_now,
 )
 from .errors import MediaError
+from .workflows import WorkflowRegistry, canonical_digest
 
 __all__ = [
     "JobEvent",
@@ -27,5 +28,7 @@ __all__ = [
     "RenderedWorkflow",
     "TERMINAL_STATES",
     "WorkflowDescriptor",
+    "WorkflowRegistry",
+    "canonical_digest",
     "utc_now",
 ]
