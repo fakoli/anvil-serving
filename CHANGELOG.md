@@ -23,6 +23,9 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Router config installation now writes canonical UTF-8/LF bytes through a
+  binary Docker stdin pipe, preventing Windows text mode from changing the
+  deployed artifact after validation.
 - The production media deployment now has a least-authority, media-only
   lifecycle controller, host-local state shared with the router, and explicit
   environment-owned backend/controller origins; the general Dark controller
