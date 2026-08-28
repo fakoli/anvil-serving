@@ -105,7 +105,7 @@
     {
       "id": "video.wan2.2-ti2v-5b-v1",
       "version": "v1",
-      "graph_sha256": "767e9436ade6b8566963703f76808ebcca5e2602aac2f1da1eacd294d5eec581",
+      "graph_sha256": "bd12b2de2a33bbedc91d7ad6120714f3c3adbd174694ac74d6f0213ecef9572e",
       "models": [
         {
           "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
