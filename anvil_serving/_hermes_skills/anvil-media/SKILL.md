@@ -2,7 +2,7 @@
 name: anvil-media
 description: Generate, inspect, or cancel images and videos through Anvil's bounded named-workflow MCP tools.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   hermes:
     tags: [media, image-generation, video-generation, mcp]
     category: media
@@ -42,18 +42,27 @@ an earlier Anvil media job. A slash-command invocation is optional.
    and stop.
 6. Create one opaque idempotency key for the user's intent. Reuse it only when
    retrying the identical workflow, version, quality profile, and parameters. A
-   changed request gets a new key.
+   changed request gets a new key. Preserve a resume bundle containing the exact
+   workflow ID and version, quality profile, full parameters, and idempotency
+   key; never reconstruct those fields from conversation or session history.
 7. Call `mcp__anvil_media__media_workflow_run` with the exact
    `quality_profile`. Preserve the returned job ID and state. Do not resubmit
    merely because generation is long-running. If it returns
-   `awaiting_approval`, report the exact bounded operator action and transaction
-   and stop; Hermes has no worker-lifecycle authority.
+   `awaiting_approval`, report the exact bounded operator action and transaction,
+   plus the complete resume bundle and returned job ID.
+   Hermes has no worker-lifecycle authority; stop without changing the worker.
+   Do not omit the caller-generated idempotency key.
 8. Poll `mcp__anvil_media__media_job_status` at a bounded cadence until the job
    is terminal or the interaction's wait budget ends. Report
    `awaiting_approval`, `preparing`, `queued`, and `running` as real
    states; never invent completion. After an operator applies a reported cold
-   lifecycle approval, retry the identical workflow request with the same
-   idempotency key before polling so the reserved job resumes exactly once.
+   lifecycle approval, retry from the complete resume bundle so the reserved job
+   resumes exactly once. Require `created: false` and the same job ID returned by
+   the original submission; any mismatch is a hard stop. Never use
+   `session_search`, session history, or another job to reconstruct or resume a
+   request. After a successful reattachment, `preparing`, `queued`, and `running`
+   are tool-loop states: call job status again instead of ending the response
+   with narration such as "now polling."
 9. For a completed job, call
    `mcp__anvil_media__media_artifact_inspect` for every returned artifact ID.
    For an image, present the native image content returned by that tool to the
@@ -69,7 +78,9 @@ For a generation request, do not finish the turn after discovery, inspection,
 validation, submission, or a nonterminal status. Continue the procedure in the
 same turn until the job is terminal, a returned blocking state requires the
 user, or the interaction's wait budget ends. Intermediate narration such as
-"I will inspect it next" is not a completed response.
+"I will inspect it next" or "now polling" is not a completed response. When a
+wait budget ends, report the current state and the complete resume bundle rather
+than implying that background polling will continue.
 Reply in the user's language. Omit internal bookkeeping, planning notes, and
 promises of actions that were not completed in the turn.
 

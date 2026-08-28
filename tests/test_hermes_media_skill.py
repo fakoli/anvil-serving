@@ -73,7 +73,12 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
     assert "otherwise available workflow returns `backend_unavailable`" in text
     assert "continue to submission" in text
     assert "Hermes has no worker-lifecycle authority" in text
-    assert "same\n   idempotency key" in text
+    assert "complete resume bundle" in text
+    assert "caller-generated idempotency key" in text
+    assert "Require `created: false` and the same job ID" in text
+    assert "Never use\n   `session_search`" in text
+    assert 'narration such as "now polling."' in text
+    assert '"I will inspect it next" or "now polling"' in text
 
 
 def test_hermes_shaped_mcp_flow_reaches_worker_and_retrieves_owned_artifact(tmp_path):
