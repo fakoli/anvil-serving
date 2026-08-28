@@ -13,6 +13,11 @@ STATE_OPTIONS = REGISTRY_OPTION + (
 IDENTITY_OPTIONS = STATE_OPTIONS + (
     _option("--principal", summary="Authenticated media principal.", value_name="ID"),
 )
+BUNDLE_IDENTITY_OPTIONS = (
+    _option("--version", summary="Pinned workflow version.", value_name="VERSION"),
+    _option("--bundle-lock", summary="Pinned media bundle lock.", value_name="PATH"),
+    _option("--models-volume", summary="Protected ComfyUI model volume.", value_name="NAME"),
+)
 
 
 @command_family(category="Control plane & integrations")
@@ -28,6 +33,46 @@ def commands() -> CommandNode:
                 role="media-gateway",
                 options=STATE_OPTIONS,
                 argv_prefix=("capabilities",),
+            ),
+            _node(
+                "bundle",
+                "Inventory and stage exact pinned workflow assets.",
+                children=(
+                    _resource_node(
+                        "inventory", "Verify exact model assets for one workflow.",
+                        "anvil_serving.media.cli", role="media-worker",
+                        options=BUNDLE_IDENTITY_OPTIONS,
+                        argv_prefix=("bundle", "inventory"),
+                    ),
+                    _resource_node(
+                        "stage", "Add missing exact model assets without replacing existing files.",
+                        "anvil_serving.media.cli", role="media-worker", mutation="mutate",
+                        options=CONFIRM_OPTIONS + BUNDLE_IDENTITY_OPTIONS + (
+                            _option("--user-volume", summary="Protected ComfyUI user/output volume.", value_name="NAME"),
+                            _option("--runtime-uid", summary="Pinned worker numeric user.", value_name="UID"),
+                            _option("--runtime-gid", summary="Pinned worker numeric group.", value_name="GID"),
+                        ),
+                        argv_prefix=("bundle", "stage"),
+                    ),
+                ),
+            ),
+            _node(
+                "qualify",
+                "Qualify an unavailable pinned workflow without promoting it.",
+                children=(
+                    _resource_node(
+                        "run", "Run functional and capacity qualification on the selected worker.",
+                        "anvil_serving.media.cli", role="media-worker", mutation="mutate", gpu=True,
+                        options=CONFIRM_OPTIONS + IDENTITY_OPTIONS + BUNDLE_IDENTITY_OPTIONS + (
+                            _option("--parameters", summary="Bounded JSON parameter object.", value_name="JSON"),
+                            _option("--backend-url", summary="Declared adapter endpoint.", value_name="URL"),
+                            _option("--gpu-index", summary="Selected local GPU index.", value_name="INDEX"),
+                            _option("--poll-seconds", summary="Bounded qualification poll interval.", value_name="SECONDS"),
+                            _option("--ffprobe", summary="Video decoder probe executable.", value_name="PATH"),
+                        ),
+                        argv_prefix=("qualify", "run"),
+                    ),
+                ),
             ),
             _node(
                 "workflow",
