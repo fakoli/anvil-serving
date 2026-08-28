@@ -15,6 +15,7 @@ RUN apt-get update \
         libgl1 \
         libgles2 \
         libglib2.0-0 \
+        libc6-dev \
         libsm6 \
         libx11-6 \
         libxext6 \

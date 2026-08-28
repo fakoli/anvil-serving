@@ -15,11 +15,13 @@ the missing dependency rather than make the managed runtime reproducible.
 
 ## Resolution
 
-Install `gcc` in the pinned derived image alongside the existing runtime
-libraries. Keep the CUDA, PyTorch, ComfyUI, custom-node, graph, and model pins
-unchanged. Make the managed compose command include `--build` so a reviewed
-Dockerfile change is evaluated even when the old image tag already exists,
-then repeat the same managed qualification.
+Install `gcc` and `libc6-dev` explicitly in the pinned derived image alongside
+the existing runtime libraries. The base uses `--no-install-recommends`, so
+installing `gcc` alone does not bring in the C library headers. Keep the CUDA,
+PyTorch, ComfyUI, custom-node, graph, and model pins unchanged. Make the managed
+compose command include `--build` so a reviewed Dockerfile change is evaluated
+even when the old image tag already exists, then repeat the same managed
+qualification.
 
 ## Verification
 
