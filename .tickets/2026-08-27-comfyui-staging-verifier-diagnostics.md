@@ -10,12 +10,13 @@ placement. The staging error retained the target and exit code but omitted the
 verifier's actionable diagnostic. A bounded read-only inspection proved that
 the partial file had the exact expected byte count and SHA-256 digest.
 
-The cause was the use of GNU `sha256sum --strict` with the BusyBox-compatible
-digest-pinned staging image. BusyBox supports check mode but not `--strict`.
+The cause was the use of GNU long-form `sha256sum` flags with the BusyBox-based
+digest-pinned staging image. This BusyBox build supports check mode only as
+`-c`; it supports neither `--strict` nor `--check`.
 
 ## Resolution
 
-- Use portable `sha256sum --check` in the pinned staging container.
+- Use portable `sha256sum -c` in the pinned staging container.
 - Recognize an already complete, exact owned partial and place it without a
   second network transfer.
 - Make curl quiet except for failures and return a bounded URL-redacted

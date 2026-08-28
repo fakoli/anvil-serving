@@ -304,7 +304,7 @@ def _download_asset(
     )
     size_check = f"test \"$(stat -c '%s' {shlex.quote(partial)})\" = {model['size']}"
     digest_check = (
-        f"echo {shlex.quote(model['sha256'] + '  ' + partial)} | sha256sum --check"
+        f"echo {shlex.quote(model['sha256'] + '  ' + partial)} | sha256sum -c"
     )
     script = (
         f"set -eu; mkdir -p {shlex.quote(parent)}; "
