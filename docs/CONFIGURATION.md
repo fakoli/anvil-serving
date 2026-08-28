@@ -463,6 +463,7 @@ the media runtime only from environment variables:
 | `ANVIL_MEDIA_ARTIFACT_ROOT` | Private retained-artifact directory. |
 | `ANVIL_MEDIA_CONTROLLER_URL` | Optional controller MCP origin used to preview a cold worker start. |
 | `ANVIL_MEDIA_CONTROLLER_TOKEN` | Controller credential paired with the controller URL; the value is never stored or returned. |
+| `ANVIL_MEDIA_SERVE_MANIFEST` | Optional controller-local managed-serve manifest for media-worker tools; configure it on the resource owner, not on the gateway. Empty selects the normal default manifest. |
 
 The controller URL and token must be set together. If a selected worker is
 cold, the gateway atomically reserves the job, asks only for a dry-run

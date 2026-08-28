@@ -11,7 +11,7 @@ vram_mib = 32768
 reserve_mib = 4096
 
 [[serve]]
-name = "comfyui"
+name = "media-worker"
 stack = "comfyui"
 container = "anvil-comfyui"
 runtime = "docker"
