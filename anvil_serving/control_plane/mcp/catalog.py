@@ -173,11 +173,12 @@ def call_tool(
     fail: Callable[[str, str, Mapping[str, Any] | None], dict],
     redact_text: Callable[[str], str],
     caller: Mapping[str, Any] | None = None,
+    audience: str | None = None,
 ) -> dict:
     """Dispatch by one direct dictionary lookup."""
 
     spec = tools.get(name)
-    if spec is None:
+    if spec is None or (audience is not None and spec.get("audience") != audience):
         return fail("unknown_tool", "unknown tool %r" % name, None)
     if arguments is None:
         arguments = {}

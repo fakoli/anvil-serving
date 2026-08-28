@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import secrets
 import sqlite3
@@ -16,6 +17,7 @@ from .jobs import MediaJobStore
 
 ManageOperation = Callable[[Mapping[str, Any]], Mapping[str, Any]]
 StatusOperation = Callable[[Mapping[str, Any]], Mapping[str, Any]]
+PHASE_LEASE_SECONDS = 900
 
 
 @dataclass(frozen=True)
@@ -76,6 +78,8 @@ class MediaWorkerLifecycle:
                     owns_instance INTEGER NOT NULL CHECK(owns_instance IN (0,1)),
                     preexisting INTEGER NOT NULL CHECK(preexisting IN (0,1)),
                     receipt_json TEXT NOT NULL,
+                    lease_expires_at TEXT NOT NULL DEFAULT '',
+                    generation INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
@@ -91,6 +95,20 @@ class MediaWorkerLifecycle:
                     WHERE status IN ('preparing','active','releasing');
                 """
             )
+            columns = {
+                row["name"]
+                for row in db.execute(
+                    "PRAGMA table_info(media_lifecycle_transactions)"
+                ).fetchall()
+            }
+            if "lease_expires_at" not in columns:
+                db.execute(
+                    "ALTER TABLE media_lifecycle_transactions ADD COLUMN lease_expires_at TEXT NOT NULL DEFAULT ''"
+                )
+            if "generation" not in columns:
+                db.execute(
+                    "ALTER TABLE media_lifecycle_transactions ADD COLUMN generation INTEGER NOT NULL DEFAULT 1"
+                )
 
     def prepare(
         self,
@@ -113,6 +131,24 @@ class MediaWorkerLifecycle:
             status_row = _selected_status(status, service)
             existing = self._reserved_for_service(service)
             running = status_row.get("running") is True and status_row.get("health_status") is not None
+            approved = bool(confirm and human_approved)
+
+            if existing is not None:
+                existing = self._recover_phase(
+                    existing,
+                    running=running,
+                    for_teardown=False,
+                )
+                if existing["status"] in {"failed", "released"}:
+                    existing = None
+            if existing is not None and existing["status"] == "active" and not running:
+                existing = self._set_transaction_status(
+                    existing["id"],
+                    expected="active",
+                    status="failed",
+                    controller={"applied": False, "recovered": True, "observedRunning": False},
+                )
+                existing = None
 
             if existing is not None and existing["status"] == "releasing":
                 raise MediaError(
@@ -128,9 +164,19 @@ class MediaWorkerLifecycle:
                     receipt = self._record(
                         job_id, service, owns=False, preexisting=True, controller=status
                     )
+                if approved and job.state in {
+                    JobState.ACCEPTED,
+                    JobState.AWAITING_APPROVAL,
+                }:
+                    self.store.transition(
+                        job_id,
+                        JobState.PREPARING,
+                        principal=principal,
+                        reason="media_worker_start_observed",
+                        approval=_approval_request(job_id, principal, receipt),
+                    )
                 return receipt
 
-            approved = bool(confirm and human_approved)
             if not approved:
                 controller = self._manage_operation(
                     {
@@ -148,7 +194,7 @@ class MediaWorkerLifecycle:
                         JobState.AWAITING_APPROVAL,
                         principal=principal,
                         reason="media_worker_start_requires_approval",
-                        approval=receipt.as_dict(),
+                        approval=_approval_request(job_id, principal, receipt),
                     )
                 return receipt
 
@@ -167,7 +213,7 @@ class MediaWorkerLifecycle:
                         JobState.PREPARING,
                         principal=principal,
                         reason="media_worker_start_in_progress",
-                        approval=receipt.as_dict(),
+                        approval=_approval_request(job_id, principal, receipt),
                     )
                 return receipt
 
@@ -202,7 +248,7 @@ class MediaWorkerLifecycle:
                     JobState.PREPARING,
                     principal=principal,
                     reason="media_worker_start_approved",
-                    approval=receipt.as_dict(),
+                    approval=_approval_request(job_id, principal, receipt),
                 )
             return receipt
 
@@ -221,6 +267,19 @@ class MediaWorkerLifecycle:
             if row is None:
                 return self._ephemeral("", "teardown", {"reason": "not_owned"})
             service = row["service"]
+            status = self._status_operation({"manifest": manifest, "names": [service]})
+            status_row = _selected_status(status, service)
+            running = status_row.get("running") is True and status_row.get("health_status") is not None
+            row = self._recover_phase(row, running=running, for_teardown=True)
+            if row["status"] == "active" and not running:
+                row = self._set_transaction_status(
+                    row["id"],
+                    expected="active",
+                    status="released",
+                    controller={"applied": True, "recovered": True, "observedRunning": False},
+                )
+            if row["status"] == "released":
+                return _receipt_from_row(row, action="teardown", applied=True)
             if not bool(row["owns_instance"]) or bool(row["preexisting"]):
                 return _receipt_from_row(row, action="teardown", applied=False)
             if row["status"] == "releasing":
@@ -328,8 +387,8 @@ class MediaWorkerLifecycle:
                     db.execute("COMMIT")
                     return _receipt_from_row(existing, action="prepare")
             db.execute(
-                "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
-                (transaction_id, service, "active" if owns else "observed", int(owns), int(preexisting), _json(controller), now, now),
+                "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,lease_expires_at,generation,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (transaction_id, service, "active" if owns else "observed", int(owns), int(preexisting), _json(controller), "", 1, now, now),
             )
             db.execute(
                 "INSERT INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
@@ -366,6 +425,9 @@ class MediaWorkerLifecycle:
     def _claim_prepare(self, job_id: str, service: str) -> tuple[sqlite3.Row, bool]:
         transaction_id = secrets.token_urlsafe(18)
         now = utc_now().isoformat()
+        lease_expires_at = (
+            utc_now() + dt.timedelta(seconds=PHASE_LEASE_SECONDS)
+        ).isoformat()
         pending = {"applied": False, "phase": "preparing"}
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -381,8 +443,8 @@ class MediaWorkerLifecycle:
                 db.execute("COMMIT")
                 return existing, False
             db.execute(
-                "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
-                (transaction_id, service, "preparing", 1, 0, _json(pending), now, now),
+                "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,lease_expires_at,generation,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (transaction_id, service, "preparing", 1, 0, _json(pending), lease_expires_at, 1, now, now),
             )
             db.execute(
                 "INSERT INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
@@ -397,11 +459,14 @@ class MediaWorkerLifecycle:
 
     def _claim_release(self, transaction_id: str) -> bool:
         now = utc_now().isoformat()
+        lease_expires_at = (
+            utc_now() + dt.timedelta(seconds=PHASE_LEASE_SECONDS)
+        ).isoformat()
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             changed = db.execute(
-                "UPDATE media_lifecycle_transactions SET status='releasing',updated_at=? WHERE id=? AND status='active'",
-                (now, transaction_id),
+                "UPDATE media_lifecycle_transactions SET status='releasing',lease_expires_at=?,generation=generation+1,updated_at=? WHERE id=? AND status='active'",
+                (lease_expires_at, now, transaction_id),
             ).rowcount
             db.execute("COMMIT")
         return changed == 1
@@ -418,7 +483,7 @@ class MediaWorkerLifecycle:
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             changed = db.execute(
-                "UPDATE media_lifecycle_transactions SET status=?,receipt_json=?,updated_at=? WHERE id=? AND status=?",
+                "UPDATE media_lifecycle_transactions SET status=?,receipt_json=?,lease_expires_at='',updated_at=? WHERE id=? AND status=?",
                 (status, _json(controller), now, transaction_id, expected),
             ).rowcount
             row = db.execute(
@@ -433,6 +498,32 @@ class MediaWorkerLifecycle:
                 status=409,
             )
         return row
+
+    def _recover_phase(
+        self,
+        row: sqlite3.Row,
+        *,
+        running: bool,
+        for_teardown: bool,
+    ) -> sqlite3.Row:
+        status = row["status"]
+        if status not in {"preparing", "releasing"} or not _lease_expired(row):
+            return row
+        if status == "preparing":
+            recovered = "active" if running else ("released" if for_teardown else "failed")
+        else:
+            recovered = "active" if running else "released"
+        return self._set_transaction_status(
+            row["id"],
+            expected=status,
+            status=recovered,
+            controller={
+                "applied": recovered in {"active", "released"},
+                "recovered": True,
+                "observedRunning": running,
+                "previousPhase": status,
+            },
+        )
 
     def _transaction_for_job(self, job_id: str) -> sqlite3.Row | None:
         with self._connect() as db:
@@ -464,6 +555,55 @@ def _selected_status(result: Mapping[str, Any], service: str) -> Mapping[str, An
     if len(matches) != 1:
         raise MediaError("media_worker_status", "managed serve status did not identify one media worker", status=503)
     return matches[0]
+
+
+def _lease_expired(row: Mapping[str, Any]) -> bool:
+    raw = row["lease_expires_at"]
+    if not raw:
+        return False
+    try:
+        parsed = dt.datetime.fromisoformat(raw)
+    except (TypeError, ValueError) as exc:
+        raise MediaError(
+            "media_worker_state",
+            "media worker lifecycle lease is invalid",
+            status=500,
+        ) from exc
+    if parsed.tzinfo is None:
+        raise MediaError(
+            "media_worker_state",
+            "media worker lifecycle lease lacks a timezone",
+            status=500,
+        )
+    return parsed.astimezone(dt.timezone.utc) <= utc_now()
+
+
+def _approval_request(
+    job_id: str,
+    principal: str,
+    receipt: MediaLifecycleReceipt,
+) -> dict[str, Any]:
+    """Project an operator action without exposing controller-private state."""
+
+    return {
+        "schema": "anvil-serving.media-lifecycle-approval/v1",
+        "transactionId": receipt.transaction_id,
+        "service": receipt.service,
+        "action": receipt.action,
+        "humanRequired": True,
+        "approved": not receipt.human_required,
+        "operatorAction": {
+            "tool": "media_worker_prepare",
+            "arguments": {
+                "job_id": job_id,
+                "principal": principal,
+                "service": receipt.service,
+                "dry_run": False,
+                "confirm": True,
+                "human_approved": True,
+            },
+        },
+    }
 
 
 def _receipt_from_row(

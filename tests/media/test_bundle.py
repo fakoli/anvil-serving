@@ -92,6 +92,7 @@ def test_stage_adds_only_missing_verified_assets_and_reinventories(tmp_path):
             return _completed(argv, stdout=argv[3] + "\n")
         script = argv[-1]
         if "if test ! -f" in script:
+            assert "--pull=never" in argv
             probe_count += 1
             if not downloaded:
                 return _completed(argv, 44)
@@ -106,6 +107,7 @@ def test_stage_adds_only_missing_verified_assets_and_reinventories(tmp_path):
         if "curl --silent --show-error --fail" in script:
             assert "sha256sum -c" in script
             assert "--strict" not in script
+            assert ": >" in script
             downloaded = True
             return _completed(argv)
         if "mkdir -p /models" in script:
@@ -144,6 +146,24 @@ def test_stage_refuses_existing_mismatch_without_mutation(tmp_path):
         )
     assert raised.value.code == "media_bundle_conflict"
     assert all(argv[:3] != ["docker", "volume", "create"] for argv in calls)
+
+
+def test_inventory_existing_volume_is_cache_only(tmp_path):
+    calls = []
+
+    def runner(argv, **_kwargs):
+        calls.append(argv)
+        if argv[:3] == ["docker", "volume", "inspect"]:
+            return _completed(argv)
+        return _completed(argv, 44)
+
+    result = inventory(
+        "image.test", "v1", lock_path=_lock(tmp_path),
+        models_volume="media-models", runner=runner,
+    )
+    assert result["ready"] is False
+    docker_run = next(argv for argv in calls if argv[:2] == ["docker", "run"])
+    assert "--pull=never" in docker_run
 
 
 @pytest.mark.parametrize("volume", ["C:/models", "../models", "-models", "models/name"])

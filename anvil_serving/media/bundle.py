@@ -152,7 +152,7 @@ def _asset_probe(
     )
     completed = _run(
         [
-            "docker", "run", "--rm", "--entrypoint", "sh",
+            "docker", "run", "--rm", "--pull=never", "--entrypoint", "sh",
             "--mount", f"type=volume,source={volume},target=/models,readonly",
             image, "-c", script,
         ],
@@ -310,9 +310,14 @@ def _download_asset(
         f"set -eu; mkdir -p {shlex.quote(parent)}; "
         f"test ! -e {shlex.quote(final)}; "
         f"if test -f {shlex.quote(partial)} && {size_check} && {digest_check}; then :; "
-        f"else curl --silent --show-error --fail --location --retry 5 --retry-all-errors "
-        f"--continue-at - --output {shlex.quote(partial)} {shlex.quote(url)}; fi; "
-        f"{size_check}; {digest_check}; mv {shlex.quote(partial)} {shlex.quote(final)}"
+        f"else if test -f {shlex.quote(partial)} && "
+        f"test \"$(stat -c '%s' {shlex.quote(partial)})\" -ge {model['size']}; "
+        f"then : > {shlex.quote(partial)}; fi; "
+        f"curl --silent --show-error --fail --location --retry 5 --retry-all-errors "
+        f"--continue-at - --output {shlex.quote(partial)} {shlex.quote(url)}; "
+        f"if ! ( {size_check} && {digest_check} ); then "
+        f": > {shlex.quote(partial)}; exit 45; fi; fi; "
+        f"mv {shlex.quote(partial)} {shlex.quote(final)}"
     )
     completed = _run(
         [

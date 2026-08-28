@@ -11,11 +11,52 @@ from ..media.errors import MediaError
 from .tasks import A2AMediaTasks
 
 
-def jsonrpc_error(request_id: Any, code: int, message: str, *, detail: str = "") -> dict:
+def jsonrpc_error(
+    request_id: Any,
+    code: int,
+    message: str,
+    *,
+    data: list[dict[str, Any]] | None = None,
+) -> dict:
     error: dict[str, Any] = {"code": code, "message": message}
-    if detail:
-        error["data"] = {"detail": detail}
+    if data:
+        error["data"] = data
     return {"jsonrpc": "2.0", "id": request_id, "error": error}
+
+
+_A2A_ERRORS = {
+    "job_not_found": (-32001, "Task not found", "TASK_NOT_FOUND"),
+    "task_not_cancelable": (-32002, "Task is not cancelable", "TASK_NOT_CANCELABLE"),
+    "unsupported_operation": (-32004, "Operation is not supported", "UNSUPPORTED_OPERATION"),
+}
+
+
+def error_from_exception(request_id: Any, exc: MediaError | ToolError) -> dict:
+    code_name = getattr(exc, "code", "invalid_request")
+    mapped = _A2A_ERRORS.get(code_name)
+    if mapped is not None:
+        code, message, reason = mapped
+        return jsonrpc_error(
+            request_id,
+            code,
+            message,
+            data=[{
+                "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                "reason": reason,
+                "domain": "a2a-protocol.org",
+            }],
+        )
+    if code_name in {"authentication_required", "scope_denied"}:
+        return jsonrpc_error(request_id, -32000, code_name)
+    return jsonrpc_error(
+        request_id,
+        -32602,
+        code_name,
+        data=[{
+            "@type": "type.googleapis.com/google.rpc.BadRequest",
+            "fieldViolations": [{"description": "request parameters are invalid"}],
+        }],
+    )
 
 
 def handle_jsonrpc(
@@ -43,8 +84,7 @@ def handle_jsonrpc(
         else:
             return jsonrpc_error(request_id, -32601, "method not found")
     except (MediaError, ToolError) as exc:
-        code = -32001 if getattr(exc, "code", "") in {"authentication_required", "scope_denied"} else -32602
-        return jsonrpc_error(request_id, code, getattr(exc, "code", "invalid request"), detail=str(exc))
+        return error_from_exception(request_id, exc)
     return {"jsonrpc": "2.0", "id": request_id, "result": result}
 
 
@@ -63,4 +103,4 @@ def _task_id(params: Mapping[str, Any]) -> str:
     return task_id
 
 
-__all__ = ["handle_jsonrpc", "jsonrpc_error", "sse_frames"]
+__all__ = ["error_from_exception", "handle_jsonrpc", "jsonrpc_error", "sse_frames"]

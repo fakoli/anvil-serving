@@ -120,7 +120,9 @@ def commands() -> CommandNode:
                     ),
                     _resource_node(
                         "cancel", "Cancel one caller-owned media job.", "anvil_serving.media.cli",
-                        role="media-gateway", mutation="mutate", options=CONFIRM_OPTIONS + IDENTITY_OPTIONS,
+                        role="media-gateway", mutation="mutate", options=CONFIRM_OPTIONS + IDENTITY_OPTIONS + (
+                            _option("--backend-url", summary="Declared adapter endpoint.", value_name="URL"),
+                        ),
                         argv_prefix=("job", "cancel"),
                     ),
                 ),

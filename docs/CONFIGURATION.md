@@ -452,6 +452,29 @@ credential never inherits controller-wide authority. Artifact storage and job
 state paths belong in the private operator home and are not exposed by workflow
 discovery.
 
+When `[server].media_principal` enables the gateway surfaces, the process reads
+the media runtime only from environment variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `ANVIL_MEDIA_BACKEND_URL` | Required ComfyUI adapter endpoint selected by operator topology. |
+| `ANVIL_MEDIA_WORKFLOW_REGISTRY` | Optional path to the pinned public workflow registry. |
+| `ANVIL_MEDIA_STATE_DB` | Durable job and lifecycle database shared with the resource-owning controller. |
+| `ANVIL_MEDIA_ARTIFACT_ROOT` | Private retained-artifact directory. |
+| `ANVIL_MEDIA_CONTROLLER_URL` | Optional controller MCP origin used to preview a cold worker start. |
+| `ANVIL_MEDIA_CONTROLLER_TOKEN` | Controller credential paired with the controller URL; the value is never stored or returned. |
+
+The controller URL and token must be set together. If a selected worker is
+cold, the gateway atomically reserves the job, asks only for a dry-run
+`media_worker_prepare` receipt, and returns `awaiting_approval` with a bounded
+operator action. It cannot apply that action. An operator must invoke the typed
+controller tool with `dry_run=false`, `confirm=true`, and
+`human_approved=true`; the caller then retries the same workflow and
+idempotency key after the worker becomes ready. The gateway submits that one
+durable job once and its reconciliation loop captures completed output into the
+opaque artifact store. Missing controller configuration fails the reserved job
+closed without contacting the backend.
+
 ## Reference files
 
 - `configs/example.toml`: direct local Primary and
