@@ -3,7 +3,8 @@
   "observed_at": "2026-08-28",
   "source": {
     "base_revision": "be2c4e3e82c5c459d41a49c2b339de279309e2a4",
-    "executable_candidate_revision": "f83e050c3edf4e0755e97dbb8b6e8ea3a3169691",
+    "executable_candidate_revision": "de4064ff5e6adf2338cdd5645d73e352860cc4d1",
+    "release_packet_scope": "evidence-only commit follows executable candidate",
     "anvil_serving_version": "0.35.1",
     "mcp_bridge_version": "0.18.0"
   },
@@ -20,15 +21,15 @@
     }
   },
   "verification": {
-    "full_python": {"passed": 4291, "skipped": 9, "seconds": 168.41},
-    "media_protocol_matrix": {"passed": 569},
+    "full_python": {"passed": 4308, "skipped": 9, "seconds": 178.70},
+    "media_protocol_matrix": {"passed": 586},
     "node_bridge_tests": {"passed": 2},
     "node_audit_vulnerabilities": 0,
     "ruff": "pass",
     "mkdocs_strict": "pass",
-    "markdown_files_checked": 419,
+    "markdown_files_checked": 420,
     "cli_reference_files_checked": 806,
-    "semantic_secret_files_checked": 1989,
+    "semantic_secret_files_checked": 1991,
     "semantic_secret_findings": 0,
     "gitleaks": "pass",
     "distribution_build": "pass",
@@ -46,7 +47,7 @@
     "router_changed": false
   },
   "source_merge": {
-    "status": "candidate",
+    "status": "candidate_pending_rereview",
     "approval_gate": "independent_adversarial_review"
   },
   "live_enablement": {
