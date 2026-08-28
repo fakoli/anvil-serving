@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import threading
 
 from anvil_serving.media.contracts import JobState
 from anvil_serving.media.jobs import MediaJobStore
@@ -129,3 +130,135 @@ def test_controller_catalog_exposes_only_typed_media_worker_operations():
     prepare = next(tool for tool in mcp.list_tools() if tool["name"] == "media_worker_prepare")
     assert prepare["inputSchema"]["additionalProperties"] is False
     assert "docker" not in prepare["inputSchema"]["properties"]
+
+
+def test_parallel_prepare_across_lifecycle_instances_starts_worker_once(tmp_path):
+    state_path = tmp_path / "jobs.sqlite3"
+    first_store = MediaJobStore(state_path)
+    second_store = MediaJobStore(state_path)
+    first_job = _job(first_store)
+    second_job = _job(first_store, "request-two")
+    entered = threading.Event()
+    release = threading.Event()
+    calls = []
+
+    def manage(args):
+        calls.append(dict(args))
+        entered.set()
+        assert release.wait(5)
+        return {"applied": True, "plan": ["managed-serve-up"]}
+
+    def status(args):
+        return _status(running=entered.is_set())(args)
+
+    first = MediaWorkerLifecycle(
+        first_store, status_operation=status, manage_operation=manage
+    )
+    second = MediaWorkerLifecycle(
+        second_store, status_operation=status, manage_operation=manage
+    )
+    owner_result = []
+    owner_error = []
+
+    def prepare_owner():
+        try:
+            owner_result.append(
+                first.prepare(
+                    first_job.id,
+                    principal="hermes",
+                    service="media-worker",
+                    confirm=True,
+                    human_approved=True,
+                )
+            )
+        except Exception as exc:  # pragma: no cover - assertion aid
+            owner_error.append(exc)
+
+    thread = threading.Thread(target=prepare_owner)
+    thread.start()
+    assert entered.wait(5)
+    linked = second.prepare(
+        second_job.id,
+        principal="hermes",
+        service="media-worker",
+        confirm=True,
+        human_approved=True,
+    )
+    assert linked.applied is False
+    assert linked.controller_receipt["phase"] == "preparing"
+    release.set()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert not owner_error
+    assert len(calls) == 1
+    assert linked.transaction_id == owner_result[0].transaction_id
+    status = second.status(second_job.id, principal="hermes")
+    assert status["transaction"]["controllerReceipt"]["applied"] is True
+
+
+def test_parallel_teardown_claim_stops_worker_once(tmp_path):
+    state_path = tmp_path / "jobs.sqlite3"
+    first_store = MediaJobStore(state_path)
+    second_store = MediaJobStore(state_path)
+    first_job = _job(first_store)
+    second_job = _job(first_store, "request-two")
+    down_entered = threading.Event()
+    down_release = threading.Event()
+    calls = []
+
+    def manage(args):
+        calls.append(dict(args))
+        if args["action"] == "down":
+            down_entered.set()
+            assert down_release.wait(5)
+        return {"applied": True}
+
+    first = MediaWorkerLifecycle(
+        first_store, status_operation=_status(running=False), manage_operation=manage
+    )
+    second = MediaWorkerLifecycle(
+        second_store, status_operation=_status(running=False), manage_operation=manage
+    )
+    first.prepare(
+        first_job.id,
+        principal="hermes",
+        service="media-worker",
+        confirm=True,
+        human_approved=True,
+    )
+    second.prepare(
+        second_job.id,
+        principal="hermes",
+        service="media-worker",
+        confirm=True,
+        human_approved=True,
+    )
+    first_store.transition(first_job.id, JobState.CANCELED, principal="hermes")
+    first_store.transition(second_job.id, JobState.CANCELED, principal="hermes")
+    result = []
+
+    thread = threading.Thread(
+        target=lambda: result.append(
+            first.teardown(
+                first_job.id,
+                principal="hermes",
+                confirm=True,
+                human_approved=True,
+            )
+        )
+    )
+    thread.start()
+    assert down_entered.wait(5)
+    concurrent = second.teardown(
+        second_job.id,
+        principal="hermes",
+        confirm=True,
+        human_approved=True,
+    )
+    assert concurrent.applied is False
+    assert concurrent.controller_receipt == {"reason": "release_in_progress"}
+    down_release.set()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert result[0].applied is True
+    assert [call["action"] for call in calls].count("down") == 1
