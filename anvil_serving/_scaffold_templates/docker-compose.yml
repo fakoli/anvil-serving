@@ -454,6 +454,15 @@ services:
       - "${ROUTER_PUBLISH:-127.0.0.1}:8000:8000"
     environment:
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
+      # Media remains disabled unless [server].media_principal is configured.
+      # When enabled, the gateway and same-host lifecycle controller share the
+      # bind-mounted SQLite/artifact root below. Backend and controller origins
+      # remain environment-owned deployment state.
+      ANVIL_MEDIA_BACKEND_URL: ${ANVIL_MEDIA_BACKEND_URL:-}
+      ANVIL_MEDIA_STATE_DB: /var/lib/anvil-media/media-jobs.sqlite3
+      ANVIL_MEDIA_ARTIFACT_ROOT: /var/lib/anvil-media/artifacts
+      ANVIL_MEDIA_CONTROLLER_URL: ${ANVIL_MEDIA_CONTROLLER_URL:-}
+      ANVIL_MEDIA_CONTROLLER_TOKEN: ${ANVIL_MEDIA_CONTROLLER_TOKEN:-}
     volumes:
       # The direct-alias config lives in the anvil-router-cfg volume (/etc/anvil), read-only
       # inside the container. Provision it before starting the router.
@@ -465,6 +474,9 @@ services:
       # sinks configured through [server] in the router config. The mount is
       # harmless while those keys are unset.
       - "anvil-router-state:/var/lib/anvil-router"
+      # Host-local durable media state shared with the co-located lifecycle
+      # controller. Never place this SQLite database on network storage.
+      - "./media-state:/var/lib/anvil-media"
 
 volumes:
   # Model weights (HF cache). External so `down -v` can never delete the pulled weights.

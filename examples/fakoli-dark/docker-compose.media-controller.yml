@@ -1,0 +1,69 @@
+# Narrow same-host lifecycle controller for the router's media gateway.
+#
+# The router reaches this controller through host.docker.internal. It is never
+# published beyond Windows loopback and cannot manage Docker itself: the only
+# four admitted operations reconcile durable media intent and dispatch bounded
+# serve operations to the resource owner's separately authenticated controller.
+name: anvil-media-controller
+
+services:
+  media-controller:
+    image: ${ANVIL_MEDIA_CONTROLLER_IMAGE:-anvil-serving-controller:0.36.0}
+    container_name: anvil-media-controller
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: "999:999"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    ports:
+      - "${ANVIL_MEDIA_CONTROLLER_PUBLISH:-127.0.0.1:18765}:8765"
+    environment:
+      ANVIL_CONTROLLER_TOKEN: ${ANVIL_CONTROLLER_TOKEN:?set ANVIL_CONTROLLER_TOKEN}
+      ANVIL_MEDIA_STATE_DB: /var/lib/anvil-media/media-jobs.sqlite3
+      ANVIL_MEDIA_SERVE_MANIFEST: ${ANVIL_MEDIA_SERVE_MANIFEST:-serves.comfyui.toml}
+      ANVIL_MEDIA_RESOURCE_CONTROLLER_URL: ${ANVIL_MEDIA_RESOURCE_CONTROLLER_URL:?set ANVIL_MEDIA_RESOURCE_CONTROLLER_URL}
+      ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN: ${ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN:?set ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN}
+    volumes:
+      # Must be the same host directory mounted into the router container.
+      - ./media-state:/var/lib/anvil-media
+      - anvil-media-controller-state:/var/lib/anvil-serving
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8765"
+      - --allow-public-bind
+      - --state-db
+      - /var/lib/anvil-serving/controller-operations.sqlite3
+      - --audit-log
+      - /var/lib/anvil-serving/controller-audit.jsonl
+      - --node-id
+      - fakoli-dark-media
+      - --allow-operation
+      - media_worker_prepare
+      - --allow-operation
+      - media_worker_status
+      - --allow-operation
+      - media_worker_logs
+      - --allow-operation
+      - media_worker_teardown
+    healthcheck:
+      test:
+        - CMD
+        - anvil-serving
+        - controller
+        - status
+        - --url
+        - http://127.0.0.1:8765
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  anvil-media-controller-state:
