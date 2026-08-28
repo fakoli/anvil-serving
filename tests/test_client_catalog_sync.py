@@ -821,6 +821,92 @@ def test_hermes_media_sync_installs_scoped_mcp_and_packaged_skill_idempotently(
     assert second["hermesRestarted"] is False
 
 
+def test_hermes_media_sync_accepts_resolved_values_only_with_raw_env_references(
+    tmp_path,
+):
+    home, _ = _write_hermes_profiles(tmp_path)
+    config = home / "config.yaml"
+    config.write_text(
+        """profile: default
+mcp_servers:
+  anvil-media:
+    command: anvil-serving
+    args:
+      - mcp
+      - serve
+      - --controller-url
+      - ${ANVIL_MEDIA_MCP_URL}
+      - --auth-env
+      - ANVIL_ROUTER_TOKEN
+    env:
+      ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN}
+    tools:
+      include:
+        - media_capabilities
+        - media_workflow_list
+        - media_workflow_show
+        - media_workflow_validate
+        - media_workflow_run
+        - media_job_status
+        - media_job_cancel
+        - media_artifact_inspect
+      resources: false
+      prompts: false
+""",
+        encoding="utf-8",
+    )
+    runner = _HermesMediaRunner(("default",))
+    runner.servers["default"] = {
+        "command": "anvil-serving",
+        "args": [
+            "mcp",
+            "serve",
+            "--controller-url",
+            "https://router.example.ts.net/mcp",
+            "--auth-env",
+            "ANVIL_ROUTER_TOKEN",
+        ],
+        "env": {"ANVIL_ROUTER_TOKEN": "resolved-secret-never-returned"},
+        "tools": {
+            "include": [
+                "media_capabilities",
+                "media_workflow_list",
+                "media_workflow_show",
+                "media_workflow_validate",
+                "media_workflow_run",
+                "media_job_status",
+                "media_job_cancel",
+                "media_artifact_inspect",
+            ],
+            "resources": False,
+            "prompts": False,
+        },
+    }
+    kwargs = {
+        "hermes_bin": "hermes",
+        "hermes_home": str(home),
+        "hermes_profiles": "default",
+        "skill_path": str(home / "skills" / "anvil-media" / "SKILL.md"),
+        "backup_root": str(tmp_path / "backups-media"),
+        "token_env": "ANVIL_ROUTER_TOKEN",
+        "run": runner,
+    }
+
+    preview = sync_hermes_media(**kwargs)
+    assert preview["profiles"] == [{"profile": "default", "changed": False}]
+    assert "resolved-secret-never-returned" not in json.dumps(preview)
+
+    config.write_text(
+        config.read_text(encoding="utf-8").replace(
+            "ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN}",
+            "ANVIL_ROUTER_TOKEN: literal-is-not-accepted",
+        ),
+        encoding="utf-8",
+    )
+    drift = sync_hermes_media(**kwargs)
+    assert drift["profiles"] == [{"profile": "default", "changed": True}]
+
+
 def test_hermes_media_sync_restores_skill_and_profiles_after_partial_write(tmp_path):
     home, _ = _write_hermes_profiles(tmp_path)
     profiles = ("default", "anvil-primary")

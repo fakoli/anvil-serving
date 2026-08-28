@@ -23,6 +23,9 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Hermes media reconciliation now verifies raw environment references while
+  tolerating Hermes CLI's resolved `config get` output, avoiding perpetual
+  drift without ever persisting resolved credentials.
 - Router config installation now writes canonical UTF-8/LF bytes through a
   binary Docker stdin pipe, preventing Windows text mode from changing the
   deployed artifact after validation.
