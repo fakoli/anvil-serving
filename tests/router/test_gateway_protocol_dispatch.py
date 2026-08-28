@@ -118,6 +118,20 @@ def test_gateway_dispatches_scoped_mcp_a2a_and_agent_card(tmp_path):
         assert card["skills"][0]["id"] == "anvil.media.image.generate"
 
 
+def test_protocol_get_rejects_framed_body_without_resetting_error(tmp_path):
+    with gateway_server(tmp_path) as (address, _tasks):
+        for _ in range(10):
+            status, headers, raw = request(
+                address,
+                "GET",
+                AGENT_CARD_PATH,
+                body={"smuggled": True},
+            )
+            assert status == 400
+            assert headers["Connection"] == "close"
+            assert json.loads(raw)["error"]["type"] == "invalid_request"
+
+
 @pytest.mark.parametrize(
     ("version", "requested"),
     [
