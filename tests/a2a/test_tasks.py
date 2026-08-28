@@ -9,6 +9,7 @@ from anvil_serving.media.artifacts import ArtifactStore
 from anvil_serving.media.comfyui import ComfyUIClient, WorkflowCompatibility
 from anvil_serving.media.contracts import JobState, ParameterBinding, ParameterSpec, RenderedWorkflow, WorkflowDescriptor
 from anvil_serving.media.jobs import MediaJobStore
+from anvil_serving.media.errors import MediaError
 from anvil_serving.media.operations import MediaOperations
 from anvil_serving.media.workflows import canonical_digest
 
@@ -64,11 +65,31 @@ class Backend(ComfyUIClient):
         self.deleted.append(prompt_id)
 
 
+class ColdBackend(Backend):
+    def compatibility(self, workflow):
+        raise MediaError("backend_unavailable", "media worker is cold", status=503)
+
+
 def service(tmp_path):
     operations = MediaOperations(
         Registry(), MediaJobStore(tmp_path / "jobs.sqlite3"), ArtifactStore(tmp_path / "artifacts")
     )
     return A2AMediaTasks(operations, Backend())
+
+
+def cold_service(tmp_path):
+    operations = MediaOperations(
+        Registry(),
+        MediaJobStore(tmp_path / "jobs.sqlite3"),
+        ArtifactStore(tmp_path / "artifacts"),
+        lifecycle_preview=lambda _job, _principal, service: {
+            "transactionId": "preview-transaction",
+            "service": service,
+            "action": "prepare",
+            "humanRequired": True,
+        },
+    )
+    return A2AMediaTasks(operations, ColdBackend())
 
 
 def send_request(request_id=1):
@@ -212,10 +233,11 @@ def test_send_message_blocks_by_default_until_terminal(tmp_path):
     jobs = []
     while time.monotonic() < deadline:
         jobs = tasks.operations.jobs.nonterminal()
-        if jobs:
+        if jobs and jobs[0].state == JobState.QUEUED:
             break
         time.sleep(0.01)
     assert len(jobs) == 1
+    assert jobs[0].state == JobState.QUEUED
     tasks.operations.jobs.transition(
         jobs[0].id,
         JobState.RUNNING,
@@ -231,3 +253,17 @@ def test_send_message_blocks_by_default_until_terminal(tmp_path):
     assert responses[0]["result"]["task"]["status"]["state"] == (
         "TASK_STATE_COMPLETED"
     )
+
+
+def test_send_message_blocks_only_until_input_is_required(tmp_path):
+    tasks = cold_service(tmp_path)
+    request = send_request()
+    request["params"].pop("configuration")
+
+    response = handle_jsonrpc(request, tasks=tasks, caller=CALLER)
+
+    task = response["result"]["task"]
+    assert task["status"]["state"] == "TASK_STATE_INPUT_REQUIRED"
+    assert task["status"]["message"]["parts"] == [
+        {"text": "Media worker lifecycle approval is required."}
+    ]

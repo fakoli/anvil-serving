@@ -53,13 +53,19 @@ def _mutation_gate(args: dict) -> tuple[bool, bool]:
     return apply_requested, human_approved
 
 
+def _manifest_arg(args: dict) -> str:
+    """Resolve the resource-owner manifest without exposing it to the gateway."""
+    configured = (os.environ.get("ANVIL_MEDIA_SERVE_MANIFEST") or "").strip()
+    return _str_arg(args, "manifest", configured)
+
+
 def tool_media_worker_prepare(args: dict) -> dict:
     apply_requested, human_approved = _mutation_gate(args)
     receipt = _lifecycle().prepare(
         _str_arg(args, "job_id", required=True),
         principal=_str_arg(args, "principal", required=True),
         service=_str_arg(args, "service", required=True),
-        manifest=_str_arg(args, "manifest", ""),
+        manifest=_manifest_arg(args),
         confirm=apply_requested,
         human_approved=human_approved,
     )
@@ -68,7 +74,7 @@ def tool_media_worker_prepare(args: dict) -> dict:
 
 def tool_media_worker_status(args: dict) -> dict:
     service = _str_arg(args, "service", required=True)
-    manifest = _str_arg(args, "manifest", "")
+    manifest = _manifest_arg(args)
     result = tool_serves_status({"manifest": manifest, "names": [service]})
     job_id = _str_arg(args, "job_id", "")
     if job_id:
@@ -81,7 +87,7 @@ def tool_media_worker_status(args: dict) -> dict:
 def tool_media_worker_logs(args: dict) -> dict:
     return tool_serves_logs(
         {
-            "manifest": _str_arg(args, "manifest", ""),
+            "manifest": _manifest_arg(args),
             "names": [_str_arg(args, "service", required=True)],
             "tail": _bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000),
             "max_output_bytes": _bounded_int_arg(
@@ -101,7 +107,7 @@ def tool_media_worker_teardown(args: dict) -> dict:
     receipt = _lifecycle().teardown(
         _str_arg(args, "job_id", required=True),
         principal=_str_arg(args, "principal", required=True),
-        manifest=_str_arg(args, "manifest", ""),
+        manifest=_manifest_arg(args),
         confirm=apply_requested,
         human_approved=human_approved,
     )

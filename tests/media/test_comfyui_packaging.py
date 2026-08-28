@@ -97,6 +97,7 @@ def test_managed_serve_is_bounded_healthy_and_lint_clean():
     assert report["errors"] == 0
     assert len(manifest) == 1
     serve = manifest[0]
+    assert serve["name"] == "media-worker"
     assert serve["health"] == "/system_stats"
     assert serve["residency"] == "on-demand"
     assert serve["gpu_role"] == "media-compute"
