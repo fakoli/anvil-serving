@@ -5,7 +5,7 @@
   "kind": "video",
   "service_target": "media-worker",
   "graph": "video.wan2.2-ti2v-5b-v1.graph.json",
-  "graph_digest": "767e9436ade6b8566963703f76808ebcca5e2602aac2f1da1eacd294d5eec581",
+  "graph_digest": "bd12b2de2a33bbedc91d7ad6120714f3c3adbd174694ac74d6f0213ecef9572e",
   "parameters": {
     "prompt": {"kind": "string", "max_length": 4096},
     "seed": {"kind": "integer", "minimum": 0, "maximum": 9223372036854775807},
