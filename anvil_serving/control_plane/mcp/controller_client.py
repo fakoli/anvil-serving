@@ -17,6 +17,7 @@ from ..controller.operation_context import (
     current_controller_operation_context,
     is_confirmed_mutation,
 )
+from ..controller.tool_names import mcp_tool_name
 from .errors import ToolError
 from .security import ENV_NAME_RE, redact_secret, safe_controller_url
 from ...transports import _NoRedirectHandler, _urlopen_no_proxy_no_redirect
@@ -119,12 +120,13 @@ def _child_operation_key(
     """Derive one stable, bounded child key without exposing the parent key."""
 
     arguments = params.get("arguments")
+    operation = params.get("name")
     payload = {
         "arguments": dict(arguments) if isinstance(arguments, Mapping) else arguments,
         "controller_url": controller_url,
         "execution": dict(parent.execution),
         "method": method,
-        "operation": params.get("name"),
+        "operation": mcp_tool_name(operation) if isinstance(operation, str) else operation,
         "parent_idempotency_key": parent.idempotency_key,
     }
     try:

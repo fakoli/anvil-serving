@@ -115,7 +115,7 @@ def test_distinct_child_mutations_get_stable_derived_keys_and_replay(tmp_path):
             identical = mcp.remote_controller_request(
                 child_url,
                 _remote_request(
-                    "child_mutate",
+                    "child-mutate",
                     {"dry_run": False, "confirm": True, "step": 1},
                     request_id="child-retry",
                 ),
