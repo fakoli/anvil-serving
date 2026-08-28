@@ -178,7 +178,16 @@ def test_enabling_gateway_does_not_change_v1_models_wire(tmp_path):
         enabled_response = request(enabled, "GET", "/v1/models")
     with gateway_server(tmp_path / "disabled", enabled=False) as (disabled, _):
         disabled_response = request(disabled, "GET", "/v1/models")
-    assert enabled_response == disabled_response
+    enabled_status, enabled_headers, enabled_body = enabled_response
+    disabled_status, disabled_headers, disabled_body = disabled_response
+    # HTTP Date is generated at response time and can cross a second boundary.
+    enabled_headers.pop("Date", None)
+    disabled_headers.pop("Date", None)
+    assert (enabled_status, enabled_headers, enabled_body) == (
+        disabled_status,
+        disabled_headers,
+        disabled_body,
+    )
 
 
 def test_media_gateway_config_is_explicit_scoped_and_secret_referenced(tmp_path):
