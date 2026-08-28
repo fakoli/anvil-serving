@@ -163,14 +163,27 @@ def tool_operation_contracts(args: dict) -> dict:
     return _tool_operation_contracts(args, TOOLS)
 
 
-def handle_request(request: dict) -> Optional[dict]:
+def handle_request(
+    request: dict,
+    *,
+    caller: Mapping[str, Any] | None = None,
+    audience: str | None = None,
+) -> Optional[dict]:
+    """Handle one stateless MCP request with optional authenticated identity.
+
+    ``caller`` is supplied out-of-band by an authenticated transport.  It is
+    never accepted from JSON-RPC params.  ``audience`` narrows discovery while
+    keeping the existing stdio surface unchanged when omitted.
+    """
     return _handle_protocol_request(
         request,
         tools=TOOLS,
         protocol_version=PROTOCOL_VERSION,
         server_info=SERVER_INFO,
-        list_tools=list_tools,
-        call_tool=call_tool,
+        list_tools=lambda: list_tools(caller=caller, audience=audience),
+        call_tool=lambda name, arguments: call_tool(
+            name, arguments, caller=caller
+        ),
         target_context=_target_context,
     )
 

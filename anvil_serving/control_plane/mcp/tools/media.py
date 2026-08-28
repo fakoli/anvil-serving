@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import contextvars
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Mapping
 
@@ -21,7 +23,25 @@ from ..errors import ok as _ok
 from ..security import CallerContext, require_scope
 
 
+_SERVICE_OVERRIDE: contextvars.ContextVar[
+    tuple[MediaOperations, ComfyUIClient | None] | None
+] = contextvars.ContextVar("anvil_media_service_override", default=None)
+
+
+@contextmanager
+def service_context(operations: MediaOperations, backend: ComfyUIClient | None):
+    """Bind one request to the gateway's shared durable media service."""
+    token = _SERVICE_OVERRIDE.set((operations, backend))
+    try:
+        yield
+    finally:
+        _SERVICE_OVERRIDE.reset(token)
+
+
 def _services() -> tuple[MediaOperations, ComfyUIClient | None]:
+    override = _SERVICE_OVERRIDE.get()
+    if override is not None:
+        return override
     registry = os.environ.get("ANVIL_MEDIA_WORKFLOW_REGISTRY", str(DEFAULT_REGISTRY))
     state = os.environ.get(
         "ANVIL_MEDIA_STATE_DB",
@@ -216,4 +236,4 @@ FAMILY = ToolFamily(
 )
 
 
-__all__ = ["FAMILY"]
+__all__ = ["FAMILY", "service_context"]
