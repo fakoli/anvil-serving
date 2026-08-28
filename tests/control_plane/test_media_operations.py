@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import sqlite3
 import threading
 
 from anvil_serving.media.contracts import JobState
@@ -83,10 +84,22 @@ def test_teardown_waits_for_every_owned_job_and_is_confirmed(tmp_path):
     first = _job(store)
     second = _job(store, "request-two")
     calls = []
+    running = False
+
+    def status(_args):
+        return _status(running=running)({})
+
+    def manage(args):
+        nonlocal running
+        calls.append(dict(args))
+        if not args["dry_run"]:
+            running = args["action"] == "up"
+        return {"applied": not args["dry_run"]}
+
     lifecycle = MediaWorkerLifecycle(
         store,
-        status_operation=_status(running=False),
-        manage_operation=lambda args: calls.append(dict(args)) or {"applied": not args["dry_run"]},
+        status_operation=status,
+        manage_operation=manage,
     )
     owned = lifecycle.prepare(
         first.id, principal="hermes", service="media-worker", confirm=True, human_approved=True
@@ -205,19 +218,27 @@ def test_parallel_teardown_claim_stops_worker_once(tmp_path):
     down_entered = threading.Event()
     down_release = threading.Event()
     calls = []
+    running = False
 
     def manage(args):
+        nonlocal running
         calls.append(dict(args))
+        if args["action"] == "up":
+            running = True
         if args["action"] == "down":
             down_entered.set()
             assert down_release.wait(5)
+            running = False
         return {"applied": True}
 
+    def status(_args):
+        return _status(running=running)({})
+
     first = MediaWorkerLifecycle(
-        first_store, status_operation=_status(running=False), manage_operation=manage
+        first_store, status_operation=status, manage_operation=manage
     )
     second = MediaWorkerLifecycle(
-        second_store, status_operation=_status(running=False), manage_operation=manage
+        second_store, status_operation=status, manage_operation=manage
     )
     first.prepare(
         first_job.id,
@@ -262,3 +283,127 @@ def test_parallel_teardown_claim_stops_worker_once(tmp_path):
     assert not thread.is_alive()
     assert result[0].applied is True
     assert [call["action"] for call in calls].count("down") == 1
+
+
+def _expire_lifecycle_lease(state_path, transaction_id):
+    with sqlite3.connect(state_path) as db:
+        db.execute(
+            "UPDATE media_lifecycle_transactions SET lease_expires_at=? WHERE id=?",
+            ("2000-01-01T00:00:00+00:00", transaction_id),
+        )
+
+
+def test_expired_prepare_claim_recovers_after_controller_crash(tmp_path):
+    state_path = tmp_path / "jobs.sqlite3"
+    store = MediaJobStore(state_path)
+    job = _job(store)
+    calls = []
+    crashed = MediaWorkerLifecycle(
+        store,
+        status_operation=_status(running=False),
+        manage_operation=lambda args: calls.append(dict(args)) or {"applied": True},
+    )
+    claimed, owner = crashed._claim_prepare(job.id, "media-worker")
+    assert owner is True
+    _expire_lifecycle_lease(state_path, claimed["id"])
+
+    restarted = MediaWorkerLifecycle(
+        MediaJobStore(state_path),
+        status_operation=_status(running=False),
+        manage_operation=lambda args: calls.append(dict(args)) or {"applied": True},
+    )
+    recovered = restarted.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+        confirm=True,
+        human_approved=True,
+    )
+    assert recovered.applied is True
+    assert recovered.transaction_id != claimed["id"]
+    assert [call["action"] for call in calls] == ["up"]
+
+
+def test_expired_prepare_claim_observes_started_worker_and_advances_job(tmp_path):
+    state_path = tmp_path / "jobs.sqlite3"
+    store = MediaJobStore(state_path)
+    job = _job(store)
+    store.transition(
+        job.id,
+        JobState.AWAITING_APPROVAL,
+        principal="hermes",
+        approval={"humanRequired": True},
+    )
+    crashed = MediaWorkerLifecycle(
+        store,
+        status_operation=_status(running=False),
+        manage_operation=lambda _args: {"applied": True},
+    )
+    claimed, owner = crashed._claim_prepare(job.id, "media-worker")
+    assert owner is True
+    _expire_lifecycle_lease(state_path, claimed["id"])
+
+    restarted = MediaWorkerLifecycle(
+        MediaJobStore(state_path),
+        status_operation=_status(running=True),
+        manage_operation=lambda _args: (_ for _ in ()).throw(
+            AssertionError("an already-started worker must not be started twice")
+        ),
+    )
+    recovered = restarted.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+        confirm=True,
+        human_approved=True,
+    )
+    assert recovered.transaction_id == claimed["id"]
+    updated = restarted.store.get(job.id, principal="hermes")
+    assert updated.state == JobState.PREPARING
+    assert updated.approval["approved"] is True
+
+
+def test_expired_release_claim_recovers_when_worker_is_already_stopped(tmp_path):
+    state_path = tmp_path / "jobs.sqlite3"
+    store = MediaJobStore(state_path)
+    job = _job(store)
+    running = True
+
+    def status(_args):
+        return _status(running=running)({})
+
+    lifecycle = MediaWorkerLifecycle(
+        store,
+        status_operation=status,
+        manage_operation=lambda _args: {"applied": True},
+    )
+    receipt = lifecycle.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+    )
+    assert receipt.preexisting is True
+
+    # Record an owned worker transaction to model a process that crashed after
+    # the managed stop succeeded but before the release result was persisted.
+    with sqlite3.connect(state_path) as db:
+        db.execute(
+            "UPDATE media_lifecycle_transactions SET owns_instance=1,preexisting=0,status='active' WHERE id=?",
+            (receipt.transaction_id,),
+        )
+    store.transition(job.id, JobState.CANCELED, principal="hermes")
+    assert lifecycle._claim_release(receipt.transaction_id) is True
+    _expire_lifecycle_lease(state_path, receipt.transaction_id)
+    running = False
+
+    restarted = MediaWorkerLifecycle(
+        MediaJobStore(state_path),
+        status_operation=status,
+        manage_operation=lambda _args: (_ for _ in ()).throw(
+            AssertionError("an already-stopped worker must not be stopped twice")
+        ),
+    )
+    released = restarted.teardown(job.id, principal="hermes")
+    assert released.applied is True
+    assert released.controller_receipt["recovered"] is True
+    assert released.controller_receipt["previousPhase"] == "releasing"

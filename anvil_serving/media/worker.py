@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
+import io
+import threading
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
 from .backends import BackendOutput, BackendStatus
+from .artifacts import ArtifactStore
+from .comfyui import ComfyUIClient
 from .contracts import JobState, MediaArtifact, MediaJob, TERMINAL_STATES
 from .errors import MediaError
 from .jobs import MediaJobStore
+from .workflows import WorkflowRegistry
 
 
 @dataclass(frozen=True)
@@ -92,6 +98,13 @@ class MediaJobReconciler:
                 artifact = self.capture(current, output) if self.capture is not None else None
                 if artifact is not None:
                     current = self.store.add_artifact(artifact)
+            if not current.artifacts:
+                return self.store.transition(
+                    current.id,
+                    JobState.FAILED,
+                    principal=current.principal,
+                    reason="backend_output_missing",
+                )
             return self.store.transition(
                 current.id,
                 JobState.COMPLETED,
@@ -128,4 +141,119 @@ class MediaJobReconciler:
         return current
 
 
-__all__ = ["MediaJobReconciler", "ProgressUpdate", "normalize_progress_event"]
+class MediaArtifactCapture:
+    """Copy one allowlisted backend output into the durable artifact boundary."""
+
+    def __init__(
+        self,
+        registry: WorkflowRegistry,
+        artifacts: ArtifactStore,
+        backend: ComfyUIClient,
+    ) -> None:
+        self.registry = registry
+        self.artifacts = artifacts
+        self.backend = backend
+
+    def __call__(self, job: MediaJob, output: BackendOutput) -> MediaArtifact | None:
+        descriptor = self.registry.get(job.workflow_id, job.workflow_version)
+        if output.node not in descriptor.output_nodes:
+            return None
+        if len(descriptor.output_mime_types) != 1:
+            raise MediaError(
+                "artifact_output_ambiguous",
+                "workflow output MIME mapping is ambiguous",
+                status=500,
+            )
+        media_type = descriptor.output_mime_types[0]
+        payload = self.backend.fetch_output(
+            output,
+            max_bytes=descriptor.max_artifact_bytes,
+        )
+        digest = hashlib.sha256(payload).hexdigest()
+        for artifact in job.artifacts:
+            if (
+                artifact.media_type == media_type
+                and artifact.byte_length == len(payload)
+                and artifact.sha256 == digest
+            ):
+                return artifact
+        return self.artifacts.ingest(
+            job,
+            io.BytesIO(payload),
+            media_type=media_type,
+            max_bytes=descriptor.max_artifact_bytes,
+            retention_seconds=descriptor.retention_seconds,
+        )
+
+
+class MediaReconciliationLoop:
+    """Own one bounded daemon that advances restart-safe media jobs."""
+
+    def __init__(
+        self,
+        reconciler: MediaJobReconciler,
+        *,
+        poll_seconds: float = 0.25,
+        maintenance: Callable[[], Any] | None = None,
+        maintenance_cycles: int = 240,
+    ) -> None:
+        if poll_seconds <= 0 or poll_seconds > 5:
+            raise MediaError("invalid_worker_policy", "media reconciliation poll interval is invalid")
+        if maintenance_cycles < 1:
+            raise MediaError("invalid_worker_policy", "media maintenance interval is invalid")
+        self.reconciler = reconciler
+        self.poll_seconds = poll_seconds
+        self.maintenance = maintenance
+        self.maintenance_cycles = maintenance_cycles
+        self._stop = threading.Event()
+        self._lock = threading.Lock()
+        self._thread: threading.Thread | None = None
+
+    @property
+    def is_alive(self) -> bool:
+        thread = self._thread
+        return thread is not None and thread.is_alive()
+
+    def start(self) -> None:
+        with self._lock:
+            if self.is_alive:
+                return
+            self._stop.clear()
+            self._thread = threading.Thread(
+                target=self._run,
+                name="anvil-media-reconciler",
+                daemon=True,
+            )
+            self._thread.start()
+
+    def stop(self, *, timeout: float = 6.0) -> None:
+        self._stop.set()
+        thread = self._thread
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=max(0.0, timeout))
+
+    def reconcile_once(self) -> list[MediaJob]:
+        return self.reconciler.reconcile_all()
+
+    def _run(self) -> None:
+        cycle = 0
+        while not self._stop.is_set():
+            try:
+                self.reconcile_once()
+                if self.maintenance is not None and cycle % self.maintenance_cycles == 0:
+                    self.maintenance()
+            except Exception:
+                # Durable state remains authoritative; one unexpected cycle
+                # must not silently kill reconciliation for every later job.
+                pass
+            cycle += 1
+            self._stop.wait(self.poll_seconds)
+
+
+__all__ = [
+    "MediaArtifactCapture",
+    "MediaJobReconciler",
+    "MediaReconciliationLoop",
+    "ProgressUpdate",
+    "normalize_progress_event",
+]

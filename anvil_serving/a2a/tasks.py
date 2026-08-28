@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+import datetime as dt
 from collections.abc import Callable, Iterator, Mapping
 from typing import Any
 
@@ -17,6 +18,10 @@ from .protocol import MEDIA_TO_TASK_STATE
 
 def _context_id(job_id: str) -> str:
     return "ctx_" + job_id.removeprefix("job_")
+
+
+def _timestamp(value: dt.datetime) -> str:
+    return value.astimezone(dt.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def project_artifact(artifact: MediaArtifact) -> dict[str, Any]:
@@ -37,7 +42,7 @@ def project_artifact(artifact: MediaArtifact) -> dict[str, Any]:
                 "id": artifact.workflow_id,
                 "version": artifact.workflow_version,
             },
-            "expiresAt": artifact.expires_at.isoformat(),
+            "expiresAt": _timestamp(artifact.expires_at),
         },
     }
 
@@ -46,7 +51,7 @@ def _status(job: MediaJob, event: JobEvent | None = None) -> dict[str, Any]:
     selected = event or job.events[-1]
     status: dict[str, Any] = {
         "state": MEDIA_TO_TASK_STATE[selected.state.value],
-        "timestamp": selected.at.isoformat(),
+        "timestamp": _timestamp(selected.at),
     }
     if selected.state == JobState.AWAITING_APPROVAL:
         status["message"] = {
@@ -114,7 +119,13 @@ class A2AMediaTasks:
         self.operations = operations
         self.backend = backend
 
-    def send_message(self, params: Mapping[str, Any], *, caller: Mapping[str, Any]) -> dict[str, Any]:
+    def send_message(
+        self,
+        params: Mapping[str, Any],
+        *,
+        caller: Mapping[str, Any],
+        force_immediate: bool = False,
+    ) -> dict[str, Any]:
         with caller_context(caller):
             identity = require_scope("media:submit")
             request = _media_request(params)
@@ -127,6 +138,20 @@ class A2AMediaTasks:
                 backend=self.backend,
             )
             job = self.operations.jobs.get(result["job"]["id"], principal=identity.principal)
+            if not force_immediate and not request["returnImmediately"]:
+                descriptor = self.operations.registry.get(
+                    request["workflowId"], request["version"]
+                )
+                deadline = time.monotonic() + descriptor.timeout_seconds
+                while job.state not in TERMINAL_STATES:
+                    if time.monotonic() >= deadline:
+                        raise MediaError(
+                            "a2a_blocking_timeout",
+                            "blocking A2A media request exceeded workflow timeout",
+                            status=504,
+                        )
+                    time.sleep(0.05)
+                    job = self.operations.jobs.get(job.id, principal=identity.principal)
             return {"task": project_task(job)}
 
     def get_task(self, task_id: str, *, caller: Mapping[str, Any]) -> dict[str, Any]:
@@ -137,9 +162,22 @@ class A2AMediaTasks:
     def cancel_task(self, task_id: str, *, caller: Mapping[str, Any]) -> dict[str, Any]:
         with caller_context(caller):
             identity = require_scope("media:cancel")
+            existing = self.operations.jobs.get(task_id, principal=identity.principal)
+            if existing.state in TERMINAL_STATES:
+                raise MediaError(
+                    "task_not_cancelable",
+                    "terminal media task is not cancelable",
+                    status=409,
+                )
             result = self.operations.job_cancel(
                 task_id, principal=identity.principal, backend=self.backend
             )
+            if not result["canceled"]:
+                raise MediaError(
+                    "task_not_cancelable",
+                    "media task is not cancelable in its current state",
+                    status=409,
+                )
             job_id = result["job"]["id"]
             return project_task(self.operations.jobs.get(job_id, principal=identity.principal))
 
@@ -187,8 +225,9 @@ def _media_request(params: Mapping[str, Any]) -> dict[str, Any]:
     configuration = params.get("configuration", {})
     if not isinstance(configuration, Mapping) or set(configuration) - {"returnImmediately"}:
         raise MediaError("invalid_a2a_request", "A2A configuration is unsupported")
-    if "returnImmediately" in configuration and configuration["returnImmediately"] is not True:
-        raise MediaError("invalid_a2a_request", "media tasks require returnImmediately=true")
+    return_immediately = configuration.get("returnImmediately", False)
+    if not isinstance(return_immediately, bool):
+        raise MediaError("invalid_a2a_request", "A2A returnImmediately must be boolean")
     message = params.get("message")
     if (
         not isinstance(message, Mapping)
@@ -196,6 +235,9 @@ def _media_request(params: Mapping[str, Any]) -> dict[str, Any]:
         or message.get("role") != "ROLE_USER"
     ):
         raise MediaError("invalid_a2a_message", "A2A request requires a user message")
+    message_id = message.get("messageId")
+    if not isinstance(message_id, str) or not message_id or len(message_id) > 128:
+        raise MediaError("invalid_a2a_message", "A2A messageId is required")
     parts = message.get("parts")
     if not isinstance(parts, list) or len(parts) != 1 or not isinstance(parts[0], Mapping):
         raise MediaError("invalid_a2a_message", "A2A media message requires one structured part")
@@ -218,7 +260,11 @@ def _media_request(params: Mapping[str, Any]) -> dict[str, Any]:
     for field in ("workflowId", "version", "idempotencyKey"):
         if not isinstance(data[field], str) or not data[field] or len(data[field]) > 128:
             raise MediaError("invalid_a2a_message", f"A2A field {field} is invalid")
-    return {**dict(data), "parameters": dict(data["parameters"])}
+    return {
+        **dict(data),
+        "parameters": dict(data["parameters"]),
+        "returnImmediately": return_immediately,
+    }
 
 
 __all__ = ["A2AMediaTasks", "project_artifact", "project_task", "stream_events"]

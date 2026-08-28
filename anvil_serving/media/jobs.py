@@ -8,6 +8,7 @@ import os
 import secrets
 import sqlite3
 import threading
+import time
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -51,6 +52,16 @@ class MediaJobStore:
         return connection
 
     def _initialize(self) -> None:
+        for attempt in range(20):
+            try:
+                self._initialize_once()
+                return
+            except sqlite3.OperationalError as exc:
+                if "locked" not in str(exc).lower() or attempt == 19:
+                    raise
+                time.sleep(0.05)
+
+    def _initialize_once(self) -> None:
         with self._connect() as db:
             db.execute("PRAGMA journal_mode = WAL")
             db.executescript(
@@ -145,6 +156,94 @@ class MediaJobStore:
             )
             db.execute("COMMIT")
         return self.get(job_id, principal=principal), True
+
+    def create_admitted(
+        self,
+        *,
+        principal: str,
+        workflow_id: str,
+        workflow_version: str,
+        input_digest: str,
+        idempotency_key: str,
+        max_principal_active: int,
+        max_workflow_active: int,
+        max_workflow_running: int,
+        now: dt.datetime | None = None,
+    ) -> tuple[MediaJob | None, bool, str]:
+        """Atomically reserve queue capacity and create one idempotent job."""
+
+        if not isinstance(idempotency_key, str) or not idempotency_key or len(idempotency_key) > MAX_IDEMPOTENCY_KEY:
+            raise MediaError("invalid_idempotency_key", "idempotency key is outside policy")
+        if not isinstance(input_digest, str) or len(input_digest) != 64:
+            raise MediaError("invalid_input_digest", "input digest is invalid")
+        limits = (max_principal_active, max_workflow_active, max_workflow_running)
+        if any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in limits):
+            raise MediaError("invalid_admission_policy", "media admission limits are invalid", status=500)
+        created = now or utc_now()
+        job_id = "job_" + secrets.token_urlsafe(24)
+        terminal = (
+            JobState.COMPLETED.value,
+            JobState.FAILED.value,
+            JobState.CANCELED.value,
+        )
+        with self._lock, self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = db.execute(
+                "SELECT id,input_digest FROM media_jobs WHERE principal=? AND workflow_id=? AND workflow_version=? AND idempotency_key=?",
+                (principal, workflow_id, workflow_version, idempotency_key),
+            ).fetchone()
+            if existing is not None:
+                if existing["input_digest"] != input_digest:
+                    db.execute("ROLLBACK")
+                    raise MediaError(
+                        "idempotency_conflict",
+                        "idempotency key was already used with different inputs",
+                        status=409,
+                    )
+                db.execute("COMMIT")
+                return self.get(existing["id"], principal=principal), False, ""
+            owned = db.execute(
+                "SELECT COUNT(*) AS count FROM media_jobs WHERE workflow_id=? AND principal=? AND state NOT IN (?,?,?)",
+                (workflow_id, principal, *terminal),
+            ).fetchone()["count"]
+            total = db.execute(
+                "SELECT COUNT(*) AS count FROM media_jobs WHERE workflow_id=? AND state NOT IN (?,?,?)",
+                (workflow_id, *terminal),
+            ).fetchone()["count"]
+            running = db.execute(
+                "SELECT COUNT(*) AS count FROM media_jobs WHERE workflow_id=? AND state=?",
+                (workflow_id, JobState.RUNNING.value),
+            ).fetchone()["count"]
+            reason = ""
+            if owned >= max_principal_active:
+                reason = "principal_queue_depth"
+            elif total >= max_workflow_active:
+                reason = "workflow_queue_depth"
+            elif running >= max_workflow_running:
+                reason = "workflow_concurrency"
+            if reason:
+                db.execute("ROLLBACK")
+                return None, False, reason
+            db.execute(
+                "INSERT INTO media_jobs(id,principal,workflow_id,workflow_version,state,created_at,updated_at,input_digest,idempotency_key) VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    job_id,
+                    principal,
+                    workflow_id,
+                    workflow_version,
+                    JobState.ACCEPTED.value,
+                    _iso(created),
+                    _iso(created),
+                    input_digest,
+                    idempotency_key,
+                ),
+            )
+            db.execute(
+                "INSERT INTO media_job_events(job_id,sequence,state,at,reason) VALUES (?,?,?,?,?)",
+                (job_id, 1, JobState.ACCEPTED.value, _iso(created), ""),
+            )
+            db.execute("COMMIT")
+        return self.get(job_id, principal=principal), True, ""
 
     def lookup_idempotency(
         self,
