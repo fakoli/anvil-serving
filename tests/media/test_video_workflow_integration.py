@@ -33,7 +33,7 @@ def _registry(tmp_path):
         "required_nodes": ["Test"],
         "required_models": ["test.safetensors"],
         "available": False,
-        "unavailable_reasons": ["quality_unreviewed"],
+        "unavailable_reasons": ["quality_failed"],
         "limits": {
             "request_bytes": 1024,
             "artifact_bytes": 1024,
