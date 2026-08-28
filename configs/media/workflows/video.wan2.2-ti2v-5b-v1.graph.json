@@ -6,5 +6,5 @@
   "5": {"class_type": "EmptyHunyuanLatentVideo", "inputs": {"width": 832, "height": 480, "length": 81, "batch_size": 1}},
   "6": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 6.0, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0, "model": ["1", 0], "positive": ["4", 0], "negative": ["4", 0], "latent_image": ["5", 0]}},
   "7": {"class_type": "VAEDecode", "inputs": {"samples": ["6", 0], "vae": ["3", 0]}},
-  "8": {"class_type": "VHS_VideoCombine", "inputs": {"frame_rate": 16, "loop_count": 0, "filename_prefix": "anvil", "format": "video/h264-mp4", "pix_fmt": "yuv420p", "crf": 19, "save_metadata": true, "pingpong": false, "images": ["7", 0]}}
+  "8": {"class_type": "VHS_VideoCombine", "inputs": {"frame_rate": 16, "loop_count": 0, "filename_prefix": "anvil", "format": "video/h264-mp4", "pix_fmt": "yuv420p", "crf": 19, "save_metadata": true, "pingpong": false, "save_output": true, "images": ["7", 0]}}
 }
