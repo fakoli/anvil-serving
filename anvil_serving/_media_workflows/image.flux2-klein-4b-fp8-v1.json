@@ -28,6 +28,6 @@
   "required_nodes": ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "ConditioningZeroOut", "EmptyFlux2LatentImage", "RandomNoise", "CFGGuider", "KSamplerSelect", "Flux2Scheduler", "SamplerCustomAdvanced", "VAEDecode", "SaveImage"],
   "required_models": ["flux-2-klein-4b-fp8.safetensors", "qwen_3_4b.safetensors", "flux2-vae.safetensors"],
   "available": false,
-  "unavailable_reasons": ["capacity_unqualified", "quality_unreviewed"],
+  "unavailable_reasons": ["quality_unreviewed"],
   "limits": {"request_bytes": 65536, "artifact_bytes": 33554432, "timeout_seconds": 600, "retention_seconds": 86400, "queue_depth": 4, "concurrency": 1}
 }

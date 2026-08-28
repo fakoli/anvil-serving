@@ -8,6 +8,7 @@ from typing import Any
 
 from ..control_plane.mcp.errors import ToolError
 from ..media.errors import MediaError
+from .protocol import A2A_VERSION
 from .tasks import A2AMediaTasks
 
 
@@ -59,6 +60,23 @@ def error_from_exception(request_id: Any, exc: MediaError | ToolError) -> dict:
     )
 
 
+def version_not_supported(request_id: Any, requested_version: str) -> dict:
+    return jsonrpc_error(
+        request_id,
+        -32009,
+        "Protocol version is not supported",
+        data=[{
+            "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+            "reason": "VERSION_NOT_SUPPORTED",
+            "domain": "a2a-protocol.org",
+            "metadata": {
+                "requestedVersion": requested_version,
+                "supportedVersions": A2A_VERSION,
+            },
+        }],
+    )
+
+
 def handle_jsonrpc(
     request: Mapping[str, Any], *, tasks: A2AMediaTasks, caller: Mapping[str, Any]
 ) -> dict:
@@ -103,4 +121,10 @@ def _task_id(params: Mapping[str, Any]) -> str:
     return task_id
 
 
-__all__ = ["error_from_exception", "handle_jsonrpc", "jsonrpc_error", "sse_frames"]
+__all__ = [
+    "error_from_exception",
+    "handle_jsonrpc",
+    "jsonrpc_error",
+    "sse_frames",
+    "version_not_supported",
+]

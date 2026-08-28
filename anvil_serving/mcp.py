@@ -39,6 +39,8 @@ from .control_plane.mcp.evidence import (
     resolve_benchmark_artifact_path as _resolve_benchmark_artifact_path,
 )
 from .control_plane.mcp.protocol import (
+    PROTOCOL_VERSION,
+    SERVER_INFO,
     handle_proxy_request as _handle_proxy_protocol_request,
     handle_request as _handle_protocol_request,
 )
@@ -67,10 +69,6 @@ from .control_plane.mcp.tools.voice import (
 )
 from .control_plane.mcp.tools.workflow import validate_workflow_packet
 from .operator_output import CONTEXT_FIELDS, context_from_plan
-
-
-SERVER_INFO = {"name": "anvil-serving", "version": __version__}
-PROTOCOL_VERSION = "2026-07-28"
 
 
 def _fail(code: str, message: str, details: Optional[dict] = None) -> dict:

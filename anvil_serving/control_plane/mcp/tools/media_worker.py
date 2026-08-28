@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
+from typing import Any, Mapping
 
 from ....media.jobs import MediaJobStore
 from ....media.lifecycle import MediaWorkerLifecycle
@@ -13,14 +15,23 @@ from ..arguments import bounded_integer_schema as _bounded_integer_schema
 from ..arguments import schema as _schema
 from ..arguments import str_arg as _str_arg
 from ..catalog import ToolFamily
+from ..controller_client import remote_controller_request
 from ..errors import ToolError
 from ..errors import ok as _ok
+from ..protocol import (
+    CLIENT_CAPABILITIES_META_KEY,
+    CLIENT_INFO_META_KEY,
+    PROTOCOL_VERSION,
+    PROTOCOL_VERSION_META_KEY,
+    SERVER_INFO,
+)
 from .serves import tool_serves_logs, tool_serves_manage, tool_serves_status
 
 
 DEFAULT_MEDIA_STATE_DB = os.path.join(
     os.path.expanduser("~"), ".anvil-serving", "media-jobs.sqlite3"
 )
+_MANIFEST_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 
 
 def _lifecycle() -> MediaWorkerLifecycle:
@@ -33,9 +44,85 @@ def _lifecycle() -> MediaWorkerLifecycle:
         )
     return MediaWorkerLifecycle(
         MediaJobStore(state_path),
-        status_operation=tool_serves_status,
-        manage_operation=tool_serves_manage,
+        status_operation=_resource_status,
+        manage_operation=_resource_manage,
     )
+
+
+def _resource_controller_config() -> tuple[str, str] | None:
+    controller_url = (os.environ.get("ANVIL_MEDIA_RESOURCE_CONTROLLER_URL") or "").strip()
+    token = (os.environ.get("ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN") or "").strip()
+    if bool(controller_url) != bool(token):
+        raise ToolError(
+            "media_resource_controller_config",
+            "ANVIL_MEDIA_RESOURCE_CONTROLLER_URL and ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN must be configured together",
+        )
+    return (controller_url, token) if controller_url else None
+
+
+def _resource_tool(name: str, arguments: Mapping[str, Any]) -> dict:
+    configured = _resource_controller_config()
+    if configured is None:
+        local = {
+            "serves_status": tool_serves_status,
+            "serves_manage": tool_serves_manage,
+            "serves_logs": tool_serves_logs,
+        }[name]
+        return local(dict(arguments))
+    controller_url, token = configured
+    request = {
+        "jsonrpc": "2.0",
+        "id": "media-resource-controller",
+        "method": "tools/call",
+        "params": {
+            "name": name,
+            "arguments": dict(arguments),
+            "_meta": {
+                PROTOCOL_VERSION_META_KEY: PROTOCOL_VERSION,
+                CLIENT_CAPABILITIES_META_KEY: {},
+                CLIENT_INFO_META_KEY: {
+                    "name": "anvil-media-lifecycle-controller",
+                    "version": SERVER_INFO["version"],
+                },
+            },
+        },
+    }
+    response = remote_controller_request(controller_url, request, token)
+    rpc_error = response.get("error")
+    if isinstance(rpc_error, Mapping):
+        data = rpc_error.get("data")
+        code = data.get("code") if isinstance(data, Mapping) else None
+        raise ToolError(
+            code if isinstance(code, str) else "media_resource_controller_error",
+            "the resource controller rejected the managed serve operation",
+        )
+    result = response.get("result")
+    envelope = result.get("structuredContent") if isinstance(result, Mapping) else None
+    if isinstance(envelope, Mapping) and envelope.get("ok") is False:
+        error = envelope.get("error")
+        code = error.get("code") if isinstance(error, Mapping) else None
+        raise ToolError(
+            code if isinstance(code, str) else "media_resource_controller_error",
+            "the resource controller rejected the managed serve operation",
+        )
+    if not isinstance(envelope, Mapping) or envelope.get("ok") is not True:
+        raise ToolError(
+            "media_resource_controller_response",
+            "the resource controller returned an invalid managed serve response",
+        )
+    return dict(envelope)
+
+
+def _resource_status(args: Mapping[str, Any]) -> dict:
+    return _resource_tool("serves_status", args)
+
+
+def _resource_manage(args: Mapping[str, Any]) -> dict:
+    return _resource_tool("serves_manage", args)
+
+
+def _resource_logs(args: Mapping[str, Any]) -> dict:
+    return _resource_tool("serves_logs", args)
 
 
 def _mutation_gate(args: dict) -> tuple[bool, bool]:
@@ -56,7 +143,13 @@ def _mutation_gate(args: dict) -> tuple[bool, bool]:
 def _manifest_arg(args: dict) -> str:
     """Resolve the resource-owner manifest without exposing it to the gateway."""
     configured = (os.environ.get("ANVIL_MEDIA_SERVE_MANIFEST") or "").strip()
-    return _str_arg(args, "manifest", configured)
+    manifest = _str_arg(args, "manifest", configured)
+    if manifest and not _MANIFEST_NAME_RE.fullmatch(manifest):
+        raise ToolError(
+            "bad_argument",
+            "manifest must be an empty value or a controller-local manifest name",
+        )
+    return manifest
 
 
 def tool_media_worker_prepare(args: dict) -> dict:
@@ -75,17 +168,23 @@ def tool_media_worker_prepare(args: dict) -> dict:
 def tool_media_worker_status(args: dict) -> dict:
     service = _str_arg(args, "service", required=True)
     manifest = _manifest_arg(args)
-    result = tool_serves_status({"manifest": manifest, "names": [service]})
+    result = _resource_status({"manifest": manifest, "names": [service]})
     job_id = _str_arg(args, "job_id", "")
     if job_id:
-        result["result"]["lifecycle"] = _lifecycle().status(
+        payload = result.get("data", result.get("result"))
+        if not isinstance(payload, dict):
+            raise ToolError(
+                "media_resource_controller_response",
+                "the resource controller returned invalid managed serve status data",
+            )
+        payload["lifecycle"] = _lifecycle().status(
             job_id, principal=_str_arg(args, "principal", required=True)
         )
     return result
 
 
 def tool_media_worker_logs(args: dict) -> dict:
-    return tool_serves_logs(
+    return _resource_logs(
         {
             "manifest": _manifest_arg(args),
             "names": [_str_arg(args, "service", required=True)],
@@ -116,7 +215,7 @@ def tool_media_worker_teardown(args: dict) -> dict:
 
 _COMMON = {
     "service": {"type": "string", "minLength": 1, "maxLength": 128},
-    "manifest": {"type": "string", "maxLength": 4096},
+    "manifest": {"type": "string", "maxLength": 128},
 }
 _JOB = {
     **_COMMON,

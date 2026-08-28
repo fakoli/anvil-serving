@@ -4,6 +4,8 @@ from __future__ import annotations
 
 
 A2A_VERSION = "1.0"
+A2A_LEGACY_DEFAULT_VERSION = "0.3"
+A2A_VERSION_HEADER = "A2A-Version"
 A2A_PATH = "/a2a"
 AGENT_CARD_PATH = "/.well-known/agent-card.json"
 JSONRPC_METHODS = frozenset(
@@ -37,7 +39,9 @@ def bearer_security() -> tuple[dict, list[dict]]:
 
 __all__ = [
     "A2A_PATH",
+    "A2A_LEGACY_DEFAULT_VERSION",
     "A2A_VERSION",
+    "A2A_VERSION_HEADER",
     "AGENT_CARD_PATH",
     "IMAGE_OUTPUT_MODES",
     "INPUT_MODES",
