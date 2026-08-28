@@ -430,6 +430,28 @@ contract, request examples, and why this surface routes by model name.
 normalized `/v1/audio/transcriptions` or `/v1/audio/speech` gateway. Audio
 routes remain separate from chat and purpose-model routing.
 
+## Named media workflows
+
+Media generation is configured separately from chat, purpose-model, and audio
+routes. Each immutable workflow descriptor names one stable ID and version,
+one media kind, one bounded parameter schema, one graph digest, and exactly one
+logical media-service target. Operator topology resolves that target to one
+resource owner; the descriptor never contains a private endpoint or fallback
+list.
+
+The first-release limits and qualification blockers are frozen in
+[ADR-0041](adr/0041-initial-media-workflows-and-policy.md). Public workflow
+descriptors are candidates until compatibility, functional, capacity,
+artifact, rollback, license, and independent quality evidence make them
+available. Missing values remain blockers rather than runtime defaults.
+
+Gateway media credentials are environment-variable references and carry
+explicit scopes such as `media:read`, `media:submit`, and `media:cancel`.
+Lifecycle approval uses the existing operator confirmation contract; a media
+credential never inherits controller-wide authority. Artifact storage and job
+state paths belong in the private operator home and are not exposed by workflow
+discovery.
+
 ## Reference files
 
 - `configs/example.toml`: direct local Primary and

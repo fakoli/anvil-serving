@@ -60,3 +60,4 @@ people and the chat logs.
 | [0038](0038-inference-owned-model-metadata.md) | Inference-owned model metadata behind stable capability aliases | Accepted |
 | [0039](0039-capability-meta-router.md) | Capability meta-router as the product model | Accepted |
 | [0040](0040-media-gateway-and-controller-authority.md) | One media gateway origin with separated operation authority | Accepted |
+| [0041](0041-initial-media-workflows-and-policy.md) | Initial media workflows and bounded operating policy | Accepted for implementation |
