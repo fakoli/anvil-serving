@@ -3,14 +3,21 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
+from ..controller.operation_context import (
+    ControllerOperationContext,
+    current_controller_operation_context,
+    is_confirmed_mutation,
+)
+from ..controller.tool_names import mcp_tool_name
 from .errors import ToolError
 from .security import ENV_NAME_RE, redact_secret, safe_controller_url
 from ...transports import _NoRedirectHandler, _urlopen_no_proxy_no_redirect
@@ -104,6 +111,39 @@ def _mcp_header_value(value: str) -> str:
     return "=?base64?%s?=" % encoded
 
 
+def _child_operation_key(
+    parent: ControllerOperationContext,
+    controller_url: str,
+    method: str,
+    params: Mapping[str, Any],
+) -> str:
+    """Derive one stable, bounded child key without exposing the parent key."""
+
+    arguments = params.get("arguments")
+    operation = params.get("name")
+    payload = {
+        "arguments": dict(arguments) if isinstance(arguments, Mapping) else arguments,
+        "controller_url": controller_url,
+        "execution": dict(parent.execution),
+        "method": method,
+        "operation": mcp_tool_name(operation) if isinstance(operation, str) else operation,
+        "parent_idempotency_key": parent.idempotency_key,
+    }
+    try:
+        canonical = json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise ToolError(
+            "bad_mcp_request",
+            "nested controller mutation identity must be canonical JSON",
+        ) from exc
+    return "anvil-child:" + hashlib.sha256(canonical).hexdigest()
+
+
 def remote_controller_request(
     controller_url: str,
     request: dict,
@@ -131,7 +171,6 @@ def remote_controller_request(
     controller_url = _mcp_endpoint(safe_controller_url(controller_url))
     if opener is None:
         opener = urlopen_no_proxy_no_redirect
-    body = json.dumps(request, separators=(",", ":")).encode("utf-8")
     method = request.get("method")
     params = request.get("params")
     metadata = params.get("_meta") if isinstance(params, dict) else None
@@ -145,6 +184,28 @@ def remote_controller_request(
             "bad_mcp_request",
             "remote MCP requests require method and protocolVersion metadata",
         )
+    forwarded_operation = current_controller_operation_context()
+    arguments = params.get("arguments") if isinstance(params, Mapping) else None
+    confirmed_mutation = (
+        method == "tools/call"
+        and isinstance(arguments, Mapping)
+        and is_confirmed_mutation(arguments)
+    )
+    if confirmed_mutation and forwarded_operation is not None:
+        existing_context = params.get("context")
+        if (
+            existing_context is not None
+            and existing_context != forwarded_operation.execution
+        ):
+            raise ToolError(
+                "controller_operation_context_mismatch",
+                "nested controller request context does not match the active operation",
+            )
+        forwarded_params = dict(params)
+        forwarded_params["context"] = dict(forwarded_operation.execution)
+        request = {**request, "params": forwarded_params}
+        params = forwarded_params
+    body = json.dumps(request, separators=(",", ":")).encode("utf-8")
     headers = {
         "Accept": "application/json, text/event-stream",
         "Content-Type": "application/json",
@@ -152,6 +213,13 @@ def remote_controller_request(
         "Mcp-Method": method,
         **controller_auth_headers(token),
     }
+    if confirmed_mutation and forwarded_operation is not None:
+        headers["X-Anvil-Idempotency-Key"] = _child_operation_key(
+            forwarded_operation,
+            controller_url,
+            method,
+            params,
+        )
     if method == "tools/call" and isinstance(params, dict):
         name = params.get("name")
         if isinstance(name, str):
