@@ -20,6 +20,7 @@ _NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 _HEX40_RE = re.compile(r"^[0-9a-f]{40}$")
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 _TARGET_RE = re.compile(r"^[A-Za-z0-9._/-]{1,512}$")
+_URL_RE = re.compile(r"https?://\S+")
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -301,14 +302,17 @@ def _download_asset(
         + encoded_path
         + "?download=true"
     )
+    size_check = f"test \"$(stat -c '%s' {shlex.quote(partial)})\" = {model['size']}"
+    digest_check = (
+        f"echo {shlex.quote(model['sha256'] + '  ' + partial)} | sha256sum --check"
+    )
     script = (
         f"set -eu; mkdir -p {shlex.quote(parent)}; "
         f"test ! -e {shlex.quote(final)}; "
-        f"curl --fail --location --retry 5 --retry-all-errors --continue-at - "
-        f"--output {shlex.quote(partial)} {shlex.quote(url)}; "
-        f"test \"$(stat -c '%s' {shlex.quote(partial)})\" = {model['size']}; "
-        f"echo {shlex.quote(model['sha256'] + '  ' + partial)} | sha256sum --check --strict; "
-        f"mv {shlex.quote(partial)} {shlex.quote(final)}"
+        f"if test -f {shlex.quote(partial)} && {size_check} && {digest_check}; then :; "
+        f"else curl --silent --show-error --fail --location --retry 5 --retry-all-errors "
+        f"--continue-at - --output {shlex.quote(partial)} {shlex.quote(url)}; fi; "
+        f"{size_check}; {digest_check}; mv {shlex.quote(partial)} {shlex.quote(final)}"
     )
     completed = _run(
         [
@@ -320,11 +324,16 @@ def _download_asset(
         error_code="media_bundle_stage_failed",
     )
     if completed.returncode != 0:
+        diagnostic = _URL_RE.sub("<url>", completed.stderr.strip())[-512:]
         raise MediaError(
             "media_bundle_stage_failed",
             "pinned media model download or verification failed",
             status=503,
-            details={"target": target, "exitCode": completed.returncode},
+            details={
+                "target": target,
+                "exitCode": completed.returncode,
+                "diagnostic": diagnostic or "download_or_verification_command_failed",
+            },
         )
 
 
