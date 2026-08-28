@@ -137,6 +137,12 @@ The capability meta-router keeps these invariants:
 - Purpose-model and audio routes stay on their separate deterministic
   surfaces.
 
+Named media workflows are another deterministic capability family, not chat
+aliases. MCP and A2A callers choose an explicit workflow whose operator-owned
+mapping names exactly one media service and resource owner. Durable job
+handling is downstream of that choice and cannot infer or retry a different
+workflow, model, host, or provider.
+
 ## What meta-router does not mean
 
 Anvil Serving does not:
@@ -148,6 +154,10 @@ Anvil Serving does not:
 - verify a response and substitute a second answer;
 - start, stop, or promote a serve from the request path; or
 - let an inference service rewrite a public capability contract.
+
+It also does not accept arbitrary ComfyUI graphs or give MCP/A2A protocol
+handlers placement, lifecycle, or GPU-reservation authority. Those boundaries
+are defined in [ADR-0040](adr/0040-media-gateway-and-controller-authority.md).
 
 Those omissions are deliberate. They make request behavior inspectable and
 keep model promotion in a human-gated, evidence-backed operator transaction.
