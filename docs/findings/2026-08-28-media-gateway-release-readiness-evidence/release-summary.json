@@ -3,7 +3,8 @@
   "observed_at": "2026-08-28",
   "source": {
     "base_revision": "be2c4e3e82c5c459d41a49c2b339de279309e2a4",
-    "executable_candidate_revision": "de4064ff5e6adf2338cdd5645d73e352860cc4d1",
+    "executable_candidate_revision": "073a605b00218832427c5323a308ab39291a7e3e",
+    "private_operator_candidate_revision": "250a8e64e445cc1d464ed3db3bd1386cf476757b",
     "release_packet_scope": "evidence-only commit follows executable candidate",
     "anvil_serving_version": "0.35.1",
     "mcp_bridge_version": "0.18.0"
@@ -21,8 +22,8 @@
     }
   },
   "verification": {
-    "full_python": {"passed": 4308, "skipped": 9, "seconds": 178.70},
-    "media_protocol_matrix": {"passed": 586},
+    "full_python": {"passed": 4320, "skipped": 9, "seconds": 182.26},
+    "media_protocol_matrix": {"passed": 700, "seconds": 88.32},
     "node_bridge_tests": {"passed": 2},
     "node_audit_vulnerabilities": 0,
     "ruff": "pass",
