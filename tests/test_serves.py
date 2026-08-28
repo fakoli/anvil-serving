@@ -799,7 +799,7 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
     # tenant (docs/VOICE.md isolation rule: NOT in the shared serves.toml).
     serves_list = serves.load_manifest(COMFYUI_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
-    comfyui = by_name["comfyui"]
+    comfyui = by_name["media-worker"]
     assert comfyui["engine"] == "image"
     assert comfyui["gpu_role"] == "media-compute"
     assert comfyui["residency"] == "on-demand"
@@ -812,7 +812,7 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
     assert comfyui["model"] == "comfyui-v0.33.4"
     # Own compose project, own compose file — never the shared docker-compose.yml.
     assert "docker-compose.comfyui.yml" in " ".join(comfyui["up"])
-    assert set(by_name) == {"comfyui"}
+    assert set(by_name) == {"media-worker"}
 
 
 def test_shipped_comfyui_manifest_is_not_bound_to_dark_assignments():
