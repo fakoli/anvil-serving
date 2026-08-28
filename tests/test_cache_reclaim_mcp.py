@@ -1,12 +1,8 @@
 """MCP/controller lifecycle commands preserve the CLI cache-reclaim postcondition."""
 import sys
-import types
 
 from anvil_serving import mcp
-
-
-def _proc(rc=0, out="", err=""):
-    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
+from anvil_serving.control_plane.mcp.tools import serves as serves_tools
 
 
 def _manifest(tmp_path):
@@ -30,14 +26,18 @@ def test_serves_manage_captures_cli_cache_reclaim_postcondition(tmp_path, monkey
 
     def run(argv, **kwargs):
         seen.append((argv, kwargs))
-        return _proc(
-            0,
-            "compose up heavy\n"
-            "cache reclaim after serves up: reclaimed "
-            "(cache 24.0 GB -> 3.0 GB; distro docker-desktop)\n",
-        )
+        return {
+            "command": argv,
+            "returncode": 0,
+            "stdout": (
+                "compose up heavy\n"
+                "cache reclaim after serves up: reclaimed "
+                "(cache 24.0 GB -> 3.0 GB; distro docker-desktop)\n"
+            ),
+            "stderr": "",
+        }
 
-    monkeypatch.setattr(mcp.subprocess, "run", run)
+    monkeypatch.setattr(serves_tools, "_run_argv", run)
     result = mcp.call_tool("serves_manage", {
         "action": "up",
         "manifest": manifest,
@@ -87,14 +87,18 @@ def test_serves_promote_captures_same_postcondition_without_new_tool(
     manifest = _manifest(tmp_path)
 
     monkeypatch.setattr(
-        mcp.subprocess,
-        "run",
-        lambda *_args, **_kwargs: _proc(
-            0,
-            "promotion complete\n"
-            "cache reclaim after serves promote: no-operation-growth "
-            "(cache 5.0 GB -> 5.2 GB; distro docker-desktop)\n",
-        ),
+        serves_tools,
+        "_run_argv",
+        lambda argv, **_kwargs: {
+            "command": argv,
+            "returncode": 0,
+            "stdout": (
+                "promotion complete\n"
+                "cache reclaim after serves promote: no-operation-growth "
+                "(cache 5.0 GB -> 5.2 GB; distro docker-desktop)\n"
+            ),
+            "stderr": "",
+        },
     )
     result = mcp.call_tool("serves_promote", {
         "manifest": manifest,

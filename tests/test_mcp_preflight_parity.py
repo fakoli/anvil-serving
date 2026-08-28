@@ -1,6 +1,5 @@
-from types import SimpleNamespace
-
 from anvil_serving import mcp
+from anvil_serving.control_plane.mcp.tools import benchmarks as benchmark_tools
 
 
 def test_preflight_probe_explicit_dry_run_executes_the_safe_child_plan(monkeypatch):
@@ -8,9 +7,14 @@ def test_preflight_probe_explicit_dry_run_executes_the_safe_child_plan(monkeypat
 
     def run(argv, **kwargs):
         calls.append((argv, kwargs))
-        return SimpleNamespace(returncode=0, stdout='{"workload":"preflight"}\n', stderr="")
+        return {
+            "command": argv,
+            "returncode": 0,
+            "stdout": '{"workload":"preflight"}\n',
+            "stderr": "",
+        }
 
-    monkeypatch.setattr(mcp.subprocess, "run", run)
+    monkeypatch.setattr(benchmark_tools, "_run_argv", run)
     result = mcp.call_tool("preflight_probe", {
         "base_url": "http://127.0.0.1:30000/v1",
         "model": "local",
@@ -34,8 +38,8 @@ def test_preflight_probe_explicit_dry_run_executes_the_safe_child_plan(monkeypat
 
 def test_preflight_probe_preview_validates_model_family_controls_without_running(monkeypatch):
     monkeypatch.setattr(
-        mcp.subprocess,
-        "run",
+        benchmark_tools,
+        "_run_argv",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("ran child")),
     )
 
@@ -102,11 +106,11 @@ def test_preflight_probe_multimodal_arguments_reach_child(monkeypatch, tmp_path)
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
-        mcp.subprocess,
-        "run",
+        benchmark_tools,
+        "_run_argv",
         lambda argv, **kwargs: (
             calls.append((argv, kwargs))
-            or SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+            or {"command": argv, "returncode": 0, "stdout": "ok\n", "stderr": ""}
         ),
     )
 
@@ -134,11 +138,11 @@ def test_preflight_probe_video_arguments_reach_child(monkeypatch, tmp_path):
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
-        mcp.subprocess,
-        "run",
+        benchmark_tools,
+        "_run_argv",
         lambda argv, **kwargs: (
             calls.append((argv, kwargs))
-            or SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+            or {"command": argv, "returncode": 0, "stdout": "ok\n", "stderr": ""}
         ),
     )
 
