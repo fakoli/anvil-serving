@@ -2,7 +2,8 @@
 
 ## Current status and review date
 
-Functionally and capacity qualified text-to-video candidate;
+Functionally, capacity, and routed/client qualified text-to-video candidate
+with a bounded perceptual failure;
 `available=false`, `no-promotion`. Review date: 2026-08-28.
 
 ## Immutable identity
@@ -15,7 +16,9 @@ identities are recorded in the workflow bundle lock and dated evidence.
 ## Tested hardware and topology
 
 One RTX 5090, 32,607 MiB, in an isolated Windows 11 / Docker Desktop / WSL2
-media lane. The router and unrelated inference services were unchanged.
+media lane. Direct qualification and an exact-build cross-host candidate with
+Fakoli Dark gateway and real Hermes client were tested. Production router and
+unrelated inference services were unchanged.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
@@ -29,22 +32,28 @@ applicable to this diffusion workflow.
 
 `functional`, `capacity`: decodable 111,055-byte H.264 MP4 in 9.092 seconds,
 17 frames and 1.0625 seconds duration, peak 18,263 MiB from a 943 MiB worker
-baseline, max queue running one and pending zero. Perceptual `quality` was not
-evaluated.
+baseline, max queue running one and pending zero. A later real-Hermes request
+produced a second decodable 117,738-byte H.264 MP4 with the same dimensions,
+frame count, and duration. Independent contact-sheet review failed prompt
+adherence and spatial quality because severe artifacts dominated the frames.
 
 ## Decision and promotion state
 
-Retain as an unavailable candidate. Independent perceptual review, routed
-acceptance, Hermes acceptance, and a separate human live-enable gate remain
-open.
+Retain as an unavailable, `no-promotion` candidate. Routed/Hermes transport
+works, but this exact workflow version failed the bounded quality gate. A new
+immutable workflow version and multi-prompt temporal review are required before
+another enablement decision.
 
 ## Failures and gotchas
 
 The pinned VideoHelperSuite revision requires `save_output`; the immutable
 graph and digest were corrected before the passing run. One short c1 run does
 not qualify longer clips, concurrency, temporal quality, or throughput.
+The later contact sheet cannot assess temporal smoothness or camera motion, but
+its visible spatial and prompt-adherence failure is independently blocking.
 
 ## Dated run history
 
+- [2026-08-28 media gateway live validation](../../findings/2026-08-28-media-gateway-live-validation.md)
 - [2026-08-28 ComfyUI media qualification](../../findings/2026-08-28-comfyui-media-qualification.md)
 - [2026-08-27 feasibility screen](../../findings/2026-08-27-media-gateway-comfyui-evidence/feasibility-result.md)
