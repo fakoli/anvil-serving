@@ -6,6 +6,7 @@ import contextvars
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -38,8 +39,15 @@ def current_controller_operation_context() -> ControllerOperationContext | None:
     return _OPERATION_CONTEXT.get()
 
 
+def is_confirmed_mutation(arguments: Mapping[str, Any]) -> bool:
+    """Match the controller's confirmation gate for one mutating tool call."""
+
+    return arguments.get("confirm") is True and arguments.get("dry_run") is not True
+
+
 __all__ = [
     "ControllerOperationContext",
     "controller_operation_context",
     "current_controller_operation_context",
+    "is_confirmed_mutation",
 ]
