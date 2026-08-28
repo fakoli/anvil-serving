@@ -22,6 +22,7 @@ MAX_METADATA_ITEMS = 4096
 MAX_ERROR_BYTES = 4096
 MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 _PROMPT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+_BACKEND_UNAVAILABLE_HTTP_STATUSES = frozenset({502, 503, 504})
 
 
 def _base_url(value: str) -> str:
@@ -138,7 +139,19 @@ class ComfyUIClient:
         *,
         qualification: bool = False,
     ) -> WorkflowCompatibility:
-        stats = self.request_json("GET", "/system_stats")
+        try:
+            stats = self.request_json("GET", "/system_stats")
+        except MediaError as exc:
+            if (
+                exc.code == "backend_http_error"
+                and exc.details.get("status") in _BACKEND_UNAVAILABLE_HTTP_STATUSES
+            ):
+                raise MediaError(
+                    "backend_unavailable",
+                    "ComfyUI is unavailable",
+                    status=503,
+                ) from exc
+            raise
         ready = isinstance(stats, Mapping) and isinstance(stats.get("system"), Mapping)
         if not ready:
             return WorkflowCompatibility(workflow.id, workflow.version, False, False, reasons=("not_ready",))
