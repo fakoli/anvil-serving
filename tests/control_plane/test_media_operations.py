@@ -52,6 +52,7 @@ def test_prepare_requires_three_part_gate_and_attaches_receipt(tmp_path):
         job.id,
         principal="hermes",
         service="media-worker",
+        transaction_id=preview.transaction_id,
         confirm=True,
         human_approved=True,
     )
@@ -102,25 +103,11 @@ def test_prepare_binds_exact_manifest_across_preview_apply_and_teardown(tmp_path
         principal="hermes",
         service="media-worker",
         manifest="serves.comfyui.toml",
+        transaction_id=preview.transaction_id,
         confirm=True,
         human_approved=True,
     )
     assert applied.manifest == "serves.comfyui.toml"
-    with pytest.raises(MediaError, match="does not match") as mismatch:
-        lifecycle.prepare(
-            _job(store, "request-two").id,
-            principal="hermes",
-            service="media-worker",
-            manifest="another.toml",
-            confirm=True,
-            human_approved=True,
-        )
-    assert mismatch.value.code == "media_worker_manifest_mismatch"
-    assert not any(
-        operation == "status" and arguments["manifest"] == "another.toml"
-        for operation, arguments in calls
-    )
-
     store.transition(job.id, JobState.CANCELED, principal="hermes")
     with pytest.raises(MediaError) as teardown_mismatch:
         lifecycle.teardown(
@@ -131,6 +118,93 @@ def test_prepare_binds_exact_manifest_across_preview_apply_and_teardown(tmp_path
             human_approved=True,
         )
     assert teardown_mismatch.value.code == "media_worker_manifest_mismatch"
+
+
+def test_prepare_apply_consumes_only_the_exact_persisted_preview(tmp_path):
+    store = MediaJobStore(tmp_path / "jobs.sqlite3")
+    job = _job(store)
+    other_job = _job(store, "request-two")
+    calls = []
+    lifecycle = MediaWorkerLifecycle(
+        store,
+        status_operation=lambda args: calls.append(("status", dict(args)))
+        or _status(running=False)(args),
+        manage_operation=lambda args: calls.append(("manage", dict(args)))
+        or {"applied": not args["dry_run"]},
+    )
+    preview = lifecycle.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+        manifest="serves.comfyui.toml",
+    )
+    calls_after_preview = list(calls)
+
+    for changed in (
+        {"service": "unrelated-serve", "manifest": "serves.comfyui.toml"},
+        {"service": "media-worker", "manifest": "serves.other.toml"},
+    ):
+        with pytest.raises(MediaError) as mismatch:
+            lifecycle.prepare(
+                job.id,
+                principal="hermes",
+                transaction_id=preview.transaction_id,
+                confirm=True,
+                human_approved=True,
+                **changed,
+            )
+        assert mismatch.value.code == "media_lifecycle_approval_mismatch"
+        assert calls == calls_after_preview
+
+    with pytest.raises(MediaError) as wrong_job:
+        lifecycle.prepare(
+            other_job.id,
+            principal="hermes",
+            service="media-worker",
+            manifest="serves.comfyui.toml",
+            transaction_id=preview.transaction_id,
+            confirm=True,
+            human_approved=True,
+        )
+    assert wrong_job.value.code == "media_lifecycle_approval_consumed"
+    with pytest.raises(MediaError) as wrong_principal:
+        lifecycle.prepare(
+            job.id,
+            principal="another",
+            service="media-worker",
+            manifest="serves.comfyui.toml",
+            transaction_id=preview.transaction_id,
+            confirm=True,
+            human_approved=True,
+        )
+    assert wrong_principal.value.code == "job_not_found"
+
+    lifecycle.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+        manifest="serves.comfyui.toml",
+        transaction_id=preview.transaction_id,
+        confirm=True,
+        human_approved=True,
+    )
+    with pytest.raises(MediaError) as replay:
+        lifecycle.prepare(
+            job.id,
+            principal="hermes",
+            service="media-worker",
+            manifest="serves.comfyui.toml",
+            transaction_id=preview.transaction_id,
+            confirm=True,
+            human_approved=True,
+        )
+    assert replay.value.code == "media_lifecycle_approval_consumed"
+    applied_up = [
+        args
+        for operation, args in calls
+        if operation == "manage" and args["action"] == "up" and not args["dry_run"]
+    ]
+    assert len(applied_up) == 1
 
 
 def test_preexisting_worker_is_never_owned_or_stopped(tmp_path):
@@ -175,17 +249,26 @@ def test_teardown_waits_for_every_owned_job_and_is_confirmed(tmp_path):
         status_operation=status,
         manage_operation=manage,
     )
+    first_preview = lifecycle.prepare(
+        first.id, principal="hermes", service="media-worker"
+    )
     owned = lifecycle.prepare(
-        first.id, principal="hermes", service="media-worker", confirm=True, human_approved=True
+        first.id,
+        principal="hermes",
+        service="media-worker",
+        transaction_id=first_preview.transaction_id,
+        confirm=True,
+        human_approved=True,
     )
     linked = lifecycle.prepare(
-        second.id, principal="hermes", service="media-worker", confirm=True, human_approved=True
+        second.id, principal="hermes", service="media-worker"
     )
     assert linked.transaction_id == owned.transaction_id
+    calls.clear()
     store.transition(first.id, JobState.CANCELED, principal="hermes")
     waiting = lifecycle.teardown(first.id, principal="hermes", confirm=True, human_approved=True)
     assert waiting.controller_receipt == {"reason": "owned_jobs_nonterminal"}
-    assert [call["action"] for call in calls] == ["up"]
+    assert calls == []
     store.transition(second.id, JobState.CANCELED, principal="hermes")
     preview = lifecycle.teardown(first.id, principal="hermes")
     assert preview.human_required is True
@@ -193,7 +276,7 @@ def test_teardown_waits_for_every_owned_job_and_is_confirmed(tmp_path):
         first.id, principal="hermes", confirm=True, human_approved=True
     )
     assert released.applied is True
-    assert [call["action"] for call in calls] == ["up", "down", "down"]
+    assert [call["action"] for call in calls] == ["down", "down"]
 
 
 def test_receipt_repr_does_not_gain_mutable_job_state(tmp_path):
@@ -231,8 +314,9 @@ def test_parallel_prepare_across_lifecycle_instances_starts_worker_once(tmp_path
 
     def manage(args):
         calls.append(dict(args))
-        entered.set()
-        assert release.wait(5)
+        if not args["dry_run"]:
+            entered.set()
+            assert release.wait(5)
         return {"applied": True, "plan": ["managed-serve-up"]}
 
     def status(args):
@@ -244,6 +328,13 @@ def test_parallel_prepare_across_lifecycle_instances_starts_worker_once(tmp_path
     second = MediaWorkerLifecycle(
         second_store, status_operation=status, manage_operation=manage
     )
+    first_preview = first.prepare(
+        first_job.id, principal="hermes", service="media-worker"
+    )
+    second_preview = second.prepare(
+        second_job.id, principal="hermes", service="media-worker"
+    )
+    calls.clear()
     owner_result = []
     owner_error = []
 
@@ -254,6 +345,7 @@ def test_parallel_prepare_across_lifecycle_instances_starts_worker_once(tmp_path
                     first_job.id,
                     principal="hermes",
                     service="media-worker",
+                    transaction_id=first_preview.transaction_id,
                     confirm=True,
                     human_approved=True,
                 )
@@ -268,6 +360,7 @@ def test_parallel_prepare_across_lifecycle_instances_starts_worker_once(tmp_path
         second_job.id,
         principal="hermes",
         service="media-worker",
+        transaction_id=second_preview.transaction_id,
         confirm=True,
         human_approved=True,
     )
@@ -297,7 +390,7 @@ def test_parallel_teardown_claim_stops_worker_once(tmp_path):
     def manage(args):
         nonlocal running
         calls.append(dict(args))
-        if args["action"] == "up":
+        if args["action"] == "up" and not args["dry_run"]:
             running = True
         if args["action"] == "down":
             down_entered.set()
@@ -314,10 +407,16 @@ def test_parallel_teardown_claim_stops_worker_once(tmp_path):
     second = MediaWorkerLifecycle(
         second_store, status_operation=status, manage_operation=manage
     )
+    first_preview = first.prepare(
+        first_job.id,
+        principal="hermes",
+        service="media-worker",
+    )
     first.prepare(
         first_job.id,
         principal="hermes",
         service="media-worker",
+        transaction_id=first_preview.transaction_id,
         confirm=True,
         human_approved=True,
     )
@@ -325,9 +424,8 @@ def test_parallel_teardown_claim_stops_worker_once(tmp_path):
         second_job.id,
         principal="hermes",
         service="media-worker",
-        confirm=True,
-        human_approved=True,
     )
+    calls.clear()
     first_store.transition(first_job.id, JobState.CANCELED, principal="hermes")
     first_store.transition(second_job.id, JobState.CANCELED, principal="hermes")
     result = []
@@ -377,7 +475,13 @@ def test_expired_prepare_claim_recovers_after_controller_crash(tmp_path):
         status_operation=_status(running=False),
         manage_operation=lambda args: calls.append(dict(args)) or {"applied": True},
     )
-    claimed, owner = crashed._claim_prepare(job.id, "media-worker")
+    preview = crashed.prepare(job.id, principal="hermes", service="media-worker")
+    calls.clear()
+    claimed, owner = crashed._claim_prepare(
+        job.id,
+        "media-worker",
+        transaction_id=preview.transaction_id,
+    )
     assert owner is True
     _expire_lifecycle_lease(state_path, claimed["id"])
 
@@ -390,11 +494,12 @@ def test_expired_prepare_claim_recovers_after_controller_crash(tmp_path):
         job.id,
         principal="hermes",
         service="media-worker",
+        transaction_id=preview.transaction_id,
         confirm=True,
         human_approved=True,
     )
     assert recovered.applied is True
-    assert recovered.transaction_id != claimed["id"]
+    assert recovered.transaction_id == claimed["id"]
     assert [call["action"] for call in calls] == ["up"]
 
 
@@ -402,18 +507,17 @@ def test_expired_prepare_claim_observes_started_worker_and_advances_job(tmp_path
     state_path = tmp_path / "jobs.sqlite3"
     store = MediaJobStore(state_path)
     job = _job(store)
-    store.transition(
-        job.id,
-        JobState.AWAITING_APPROVAL,
-        principal="hermes",
-        approval={"humanRequired": True},
-    )
     crashed = MediaWorkerLifecycle(
         store,
         status_operation=_status(running=False),
         manage_operation=lambda _args: {"applied": True},
     )
-    claimed, owner = crashed._claim_prepare(job.id, "media-worker")
+    preview = crashed.prepare(job.id, principal="hermes", service="media-worker")
+    claimed, owner = crashed._claim_prepare(
+        job.id,
+        "media-worker",
+        transaction_id=preview.transaction_id,
+    )
     assert owner is True
     _expire_lifecycle_lease(state_path, claimed["id"])
 
@@ -428,6 +532,7 @@ def test_expired_prepare_claim_observes_started_worker_and_advances_job(tmp_path
         job.id,
         principal="hermes",
         service="media-worker",
+        transaction_id=preview.transaction_id,
         confirm=True,
         human_approved=True,
     )

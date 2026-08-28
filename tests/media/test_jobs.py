@@ -1,8 +1,10 @@
 import datetime as dt
+import sqlite3
 
 import pytest
 
 from anvil_serving.media import JobState, MediaError, MediaJobStore
+from anvil_serving.control_plane.mcp.security import normalize_caller_context
 
 
 NOW = dt.datetime(2026, 8, 27, tzinfo=dt.timezone.utc)
@@ -61,3 +63,34 @@ def test_jobs_persist_only_input_digest_not_prompt(tmp_path):
     raw = b"".join(path.read_bytes() for path in tmp_path.glob("media-jobs.sqlite3*"))
     assert b"a scenic private prompt" not in raw
     assert target.get(accepted.id, principal="hermes").input_digest == "a" * 64
+
+
+def test_external_principal_contract_is_validated_before_any_insert(tmp_path):
+    target = store(tmp_path)
+    caller = normalize_caller_context(
+        {"principal": "Alice@example.com", "scopes": ["media:submit"]}
+    )
+    accepted, created = target.create(
+        principal=caller.principal,
+        workflow_id="image.test-v1",
+        workflow_version="v1",
+        input_digest="a" * 64,
+        idempotency_key="external-principal",
+    )
+    assert created is True
+    assert accepted.principal == "Alice@example.com"
+
+    with pytest.raises(MediaError):
+        target.create(
+            principal="",
+            workflow_id="image.test-v1",
+            workflow_version="v1",
+            input_digest="b" * 64,
+            idempotency_key="invalid-principal",
+        )
+    with sqlite3.connect(target.path) as db:
+        poisoned = db.execute(
+            "SELECT COUNT(*) FROM media_jobs WHERE idempotency_key=?",
+            ("invalid-principal",),
+        ).fetchone()[0]
+    assert poisoned == 0

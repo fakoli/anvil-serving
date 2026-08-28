@@ -61,6 +61,9 @@ def _resource_controller_config() -> tuple[str, str] | None:
 
 
 def _resource_tool(name: str, arguments: Mapping[str, Any]) -> dict:
+    resource_arguments = dict(arguments)
+    if resource_arguments.get("manifest"):
+        resource_arguments["manifest_from_operator_home"] = True
     configured = _resource_controller_config()
     if configured is None:
         local = {
@@ -68,7 +71,7 @@ def _resource_tool(name: str, arguments: Mapping[str, Any]) -> dict:
             "serves_manage": tool_serves_manage,
             "serves_logs": tool_serves_logs,
         }[name]
-        return local(dict(arguments))
+        return local(resource_arguments)
     controller_url, token = configured
     request = {
         "jsonrpc": "2.0",
@@ -76,7 +79,7 @@ def _resource_tool(name: str, arguments: Mapping[str, Any]) -> dict:
         "method": "tools/call",
         "params": {
             "name": name,
-            "arguments": dict(arguments),
+            "arguments": resource_arguments,
             "_meta": {
                 PROTOCOL_VERSION_META_KEY: PROTOCOL_VERSION,
                 CLIENT_CAPABILITIES_META_KEY: {},
@@ -159,6 +162,7 @@ def tool_media_worker_prepare(args: dict) -> dict:
         principal=_str_arg(args, "principal", required=True),
         service=_str_arg(args, "service", required=True),
         manifest=_manifest_arg(args),
+        transaction_id=_str_arg(args, "transaction_id", ""),
         confirm=apply_requested,
         human_approved=human_approved,
     )
@@ -221,6 +225,7 @@ _JOB = {
     **_COMMON,
     "job_id": {"type": "string", "minLength": 16, "maxLength": 128},
     "principal": {"type": "string", "minLength": 1, "maxLength": 128},
+    "transaction_id": {"type": "string", "maxLength": 128},
 }
 _GATE = {
     "dry_run": {"type": "boolean"},

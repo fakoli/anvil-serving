@@ -126,6 +126,17 @@ class MediaJobStore:
             raise MediaError("invalid_input_digest", "input digest is invalid")
         created = now or utc_now()
         job_id = "job_" + secrets.token_urlsafe(24)
+        candidate = MediaJob(
+            id=job_id,
+            principal=principal,
+            workflow_id=workflow_id,
+            workflow_version=workflow_version,
+            state=JobState.ACCEPTED,
+            created_at=created,
+            updated_at=created,
+            events=(JobEvent(1, JobState.ACCEPTED, created),),
+            input_digest=input_digest,
+        )
         with self._lock, self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             existing = db.execute(
@@ -145,20 +156,20 @@ class MediaJobStore:
             db.execute(
                 "INSERT INTO media_jobs(id,principal,workflow_id,workflow_version,state,created_at,updated_at,input_digest,idempotency_key) VALUES (?,?,?,?,?,?,?,?,?)",
                 (
-                    job_id,
-                    principal,
-                    workflow_id,
-                    workflow_version,
-                    JobState.ACCEPTED.value,
-                    _iso(created),
-                    _iso(created),
-                    input_digest,
+                    candidate.id,
+                    candidate.principal,
+                    candidate.workflow_id,
+                    candidate.workflow_version,
+                    candidate.state.value,
+                    _iso(candidate.created_at),
+                    _iso(candidate.updated_at),
+                    candidate.input_digest,
                     idempotency_key,
                 ),
             )
             db.execute(
                 "INSERT INTO media_job_events(job_id,sequence,state,at,reason) VALUES (?,?,?,?,?)",
-                (job_id, 1, JobState.ACCEPTED.value, _iso(created), ""),
+                (candidate.id, 1, candidate.state.value, _iso(candidate.created_at), ""),
             )
             db.execute("COMMIT")
         return self.get(job_id, principal=principal), True
@@ -187,6 +198,17 @@ class MediaJobStore:
             raise MediaError("invalid_admission_policy", "media admission limits are invalid", status=500)
         created = now or utc_now()
         job_id = "job_" + secrets.token_urlsafe(24)
+        candidate = MediaJob(
+            id=job_id,
+            principal=principal,
+            workflow_id=workflow_id,
+            workflow_version=workflow_version,
+            state=JobState.ACCEPTED,
+            created_at=created,
+            updated_at=created,
+            events=(JobEvent(1, JobState.ACCEPTED, created),),
+            input_digest=input_digest,
+        )
         terminal = (
             JobState.COMPLETED.value,
             JobState.FAILED.value,
@@ -233,20 +255,20 @@ class MediaJobStore:
             db.execute(
                 "INSERT INTO media_jobs(id,principal,workflow_id,workflow_version,state,created_at,updated_at,input_digest,idempotency_key) VALUES (?,?,?,?,?,?,?,?,?)",
                 (
-                    job_id,
-                    principal,
-                    workflow_id,
-                    workflow_version,
-                    JobState.ACCEPTED.value,
-                    _iso(created),
-                    _iso(created),
-                    input_digest,
+                    candidate.id,
+                    candidate.principal,
+                    candidate.workflow_id,
+                    candidate.workflow_version,
+                    candidate.state.value,
+                    _iso(candidate.created_at),
+                    _iso(candidate.updated_at),
+                    candidate.input_digest,
                     idempotency_key,
                 ),
             )
             db.execute(
                 "INSERT INTO media_job_events(job_id,sequence,state,at,reason) VALUES (?,?,?,?,?)",
-                (job_id, 1, JobState.ACCEPTED.value, _iso(created), ""),
+                (candidate.id, 1, candidate.state.value, _iso(candidate.created_at), ""),
             )
             db.execute("COMMIT")
         return self.get(job_id, principal=principal), True, ""

@@ -46,6 +46,52 @@ def test_submit_uses_exact_rendered_graph_and_anvil_client_identity():
     assert seen["body"]["client_id"] == "anvil-job_0123456789abcdef"
 
 
+def test_find_prompt_recovers_deterministic_client_identity_from_queue():
+    job_id = "job_0123456789abcdef"
+    record = [
+        1,
+        "prompt_123",
+        {"1": {"class_type": "Test", "inputs": {}}},
+        {"client_id": "anvil-" + job_id},
+        ["1"],
+    ]
+    paths = []
+
+    def opener(request, timeout):
+        paths.append(request.full_url)
+        if request.full_url.endswith("/queue"):
+            return Response({"queue_running": [], "queue_pending": [record]})
+        if request.full_url.endswith("/history"):
+            return Response({})
+        raise AssertionError(request.full_url)
+
+    client = ComfyUIClient("http://127.0.0.1:8188", opener=opener)
+    assert client.find_prompt(job_id) == "prompt_123"
+    assert paths == ["http://127.0.0.1:8188/queue"]
+
+
+def test_delete_queued_prompt_rechecks_a_queued_to_running_race():
+    record = [1, "prompt_123", {}, {"client_id": "anvil-job_one"}, ["1"]]
+    queue_reads = 0
+    posted = []
+
+    def opener(request, timeout):
+        nonlocal queue_reads
+        if request.method == "GET" and request.full_url.endswith("/queue"):
+            queue_reads += 1
+            key = "queue_pending" if queue_reads == 1 else "queue_running"
+            other = "queue_running" if key == "queue_pending" else "queue_pending"
+            return Response({key: [record], other: []})
+        if request.method == "POST" and request.full_url.endswith("/queue"):
+            posted.append(json.loads(request.data))
+            return Response({})
+        raise AssertionError(request.full_url)
+
+    client = ComfyUIClient("http://127.0.0.1:8188", opener=opener)
+    assert client.delete_queued_prompt("prompt_123") is False
+    assert posted == [{"delete": ["prompt_123"]}]
+
+
 def test_history_normalizes_outputs_without_public_coordinates():
     private = {
         "prompt_123": {

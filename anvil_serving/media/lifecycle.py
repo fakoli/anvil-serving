@@ -124,6 +124,7 @@ class MediaWorkerLifecycle:
         principal: str,
         service: str,
         manifest: str = "",
+        transaction_id: str = "",
         confirm: bool = False,
         human_approved: bool = False,
     ) -> MediaLifecycleReceipt:
@@ -134,14 +135,21 @@ class MediaWorkerLifecycle:
             job = self.store.get(job_id, principal=principal)
             if job.state in TERMINAL_STATES:
                 raise MediaError("job_terminal", "terminal media jobs cannot prepare a worker", status=409)
+            approved = bool(confirm and human_approved)
+            if approved:
+                _require_persisted_approval(
+                    job,
+                    transaction_id=transaction_id,
+                    principal=principal,
+                    service=service,
+                    manifest=manifest,
+                )
             existing = self._reserved_for_service(service)
             if existing is not None:
                 _require_manifest_match(existing, manifest)
             status = self._status_operation({"manifest": manifest, "names": [service]})
             status_row = _selected_status(status, service)
             running = status_row.get("running") is True and status_row.get("health_status") is not None
-            approved = bool(confirm and human_approved)
-
             if existing is not None:
                 existing = self._recover_phase(
                     existing,
@@ -167,8 +175,25 @@ class MediaWorkerLifecycle:
                 )
             if running:
                 if existing is not None:
+                    if approved and existing["id"] != transaction_id:
+                        self._consume_preview(
+                            transaction_id,
+                            job_id=job_id,
+                            service=service,
+                            manifest=manifest,
+                            linked_transaction_id=existing["id"],
+                        )
                     self._link(existing["id"], job_id)
                     receipt = _receipt_from_row(existing, action="prepare")
+                elif approved:
+                    observed = self._observe_preview(
+                        transaction_id,
+                        job_id=job_id,
+                        service=service,
+                        manifest=manifest,
+                        controller=status,
+                    )
+                    receipt = _receipt_from_row(observed, action="prepare")
                 else:
                     receipt = self._record(
                         job_id,
@@ -201,12 +226,11 @@ class MediaWorkerLifecycle:
                         "confirm": False,
                     }
                 )
-                receipt = self._ephemeral(
+                receipt = self._record_preview(
+                    job_id,
                     service,
-                    "prepare",
-                    controller,
-                    human_required=True,
                     manifest=manifest,
+                    controller=controller,
                 )
                 if job.state == JobState.ACCEPTED:
                     self.store.transition(
@@ -218,7 +242,12 @@ class MediaWorkerLifecycle:
                     )
                 return receipt
 
-            claimed, owner = self._claim_prepare(job_id, service, manifest)
+            claimed, owner = self._claim_prepare(
+                job_id,
+                service,
+                manifest,
+                transaction_id=transaction_id,
+            )
             if not owner:
                 if claimed["status"] == "releasing":
                     raise MediaError(
@@ -440,6 +469,71 @@ class MediaWorkerLifecycle:
             preexisting, False, controller, manifest
         )
 
+    def _record_preview(
+        self,
+        job_id: str,
+        service: str,
+        *,
+        manifest: str,
+        controller: Mapping[str, Any],
+    ) -> MediaLifecycleReceipt:
+        transaction_id = secrets.token_urlsafe(18)
+        now = utc_now().isoformat()
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = db.execute(
+                "SELECT t.* FROM media_lifecycle_transactions t "
+                "JOIN media_lifecycle_jobs j ON j.transaction_id=t.id "
+                "WHERE j.job_id=? AND t.status='awaiting_approval' "
+                "ORDER BY t.created_at DESC LIMIT 1",
+                (job_id,),
+            ).fetchone()
+            if existing is not None:
+                _require_manifest_match(existing, manifest)
+                if existing["service"] != service:
+                    db.execute("ROLLBACK")
+                    raise MediaError(
+                        "media_lifecycle_approval_mismatch",
+                        "pending media worker approval targets another service",
+                        status=409,
+                    )
+                db.execute("COMMIT")
+                receipt = _receipt_from_row(existing, action="prepare")
+                return MediaLifecycleReceipt(
+                    receipt.transaction_id,
+                    receipt.service,
+                    receipt.action,
+                    False,
+                    False,
+                    False,
+                    True,
+                    receipt.controller_receipt,
+                    receipt.manifest,
+                )
+            db.execute(
+                "INSERT INTO media_lifecycle_transactions"
+                "(id,service,status,owns_instance,preexisting,receipt_json,manifest,"
+                "lease_expires_at,generation,created_at,updated_at) "
+                "VALUES (?,?, 'awaiting_approval',0,0,?,?, '',1,?,?)",
+                (transaction_id, service, _json(controller), manifest, now, now),
+            )
+            db.execute(
+                "INSERT INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
+                (transaction_id, job_id),
+            )
+            db.execute("COMMIT")
+        return MediaLifecycleReceipt(
+            transaction_id,
+            service,
+            "prepare",
+            False,
+            False,
+            False,
+            True,
+            controller,
+            manifest,
+        )
+
     def _ephemeral(
         self,
         service: str,
@@ -464,9 +558,14 @@ class MediaWorkerLifecycle:
             ).fetchone()
 
     def _claim_prepare(
-        self, job_id: str, service: str, manifest: str = ""
+        self,
+        job_id: str,
+        service: str,
+        manifest: str = "",
+        *,
+        transaction_id: str = "",
     ) -> tuple[sqlite3.Row, bool]:
-        transaction_id = secrets.token_urlsafe(18)
+        new_transaction_id = transaction_id or secrets.token_urlsafe(18)
         now = utc_now().isoformat()
         lease_expires_at = (
             utc_now() + dt.timedelta(seconds=PHASE_LEASE_SECONDS)
@@ -474,32 +573,180 @@ class MediaWorkerLifecycle:
         pending = {"applied": False, "phase": "preparing"}
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            preview = None
+            if transaction_id:
+                preview = db.execute(
+                    "SELECT t.* FROM media_lifecycle_transactions t "
+                    "JOIN media_lifecycle_jobs j ON j.transaction_id=t.id "
+                    "WHERE t.id=? AND j.job_id=? "
+                    "AND t.status IN ('awaiting_approval','failed')",
+                    (transaction_id, job_id),
+                ).fetchone()
+                if preview is None:
+                    db.execute("ROLLBACK")
+                    raise MediaError(
+                        "media_lifecycle_approval_consumed",
+                        "media worker approval is missing, consumed, or replayed",
+                        status=409,
+                    )
+                _require_manifest_match(preview, manifest)
+                if preview["service"] != service:
+                    db.execute("ROLLBACK")
+                    raise MediaError(
+                        "media_lifecycle_approval_mismatch",
+                        "media worker approval targets another service",
+                        status=409,
+                    )
             existing = db.execute(
                 "SELECT * FROM media_lifecycle_transactions WHERE service=? AND status IN ('preparing','active','releasing')",
                 (service,),
             ).fetchone()
             if existing is not None:
                 _require_manifest_match(existing, manifest)
+                if preview is not None:
+                    db.execute(
+                        "UPDATE media_lifecycle_transactions SET status='consumed',"
+                        "updated_at=? WHERE id=? AND status='awaiting_approval'",
+                        (now, transaction_id),
+                    )
                 db.execute(
                     "INSERT OR IGNORE INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
                     (existing["id"], job_id),
                 )
                 db.execute("COMMIT")
                 return existing, False
-            db.execute(
-                "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,manifest,lease_expires_at,generation,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (transaction_id, service, "preparing", 1, 0, _json(pending), manifest, lease_expires_at, 1, now, now),
-            )
-            db.execute(
-                "INSERT INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
-                (transaction_id, job_id),
-            )
+            if preview is not None:
+                changed = db.execute(
+                    "UPDATE media_lifecycle_transactions SET status='preparing',"
+                    "owns_instance=1,preexisting=0,receipt_json=?,lease_expires_at=?,"
+                    "generation=generation+1,updated_at=? "
+                    "WHERE id=? AND status=?",
+                    (
+                        _json(pending),
+                        lease_expires_at,
+                        now,
+                        transaction_id,
+                        preview["status"],
+                    ),
+                ).rowcount
+                if changed != 1:
+                    db.execute("ROLLBACK")
+                    raise MediaError(
+                        "media_lifecycle_approval_consumed",
+                        "media worker approval was consumed concurrently",
+                        status=409,
+                    )
+            else:
+                db.execute(
+                    "INSERT INTO media_lifecycle_transactions(id,service,status,owns_instance,preexisting,receipt_json,manifest,lease_expires_at,generation,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (new_transaction_id, service, "preparing", 1, 0, _json(pending), manifest, lease_expires_at, 1, now, now),
+                )
+                db.execute(
+                    "INSERT INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
+                    (new_transaction_id, job_id),
+                )
             row = db.execute(
+                "SELECT * FROM media_lifecycle_transactions WHERE id=?",
+                (new_transaction_id,),
+            ).fetchone()
+            db.execute("COMMIT")
+        return row, True
+
+    def _consume_preview(
+        self,
+        transaction_id: str,
+        *,
+        job_id: str,
+        service: str,
+        manifest: str,
+        linked_transaction_id: str,
+    ) -> None:
+        now = utc_now().isoformat()
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            preview = db.execute(
+                "SELECT t.* FROM media_lifecycle_transactions t "
+                "JOIN media_lifecycle_jobs j ON j.transaction_id=t.id "
+                "WHERE t.id=? AND j.job_id=? AND t.status='awaiting_approval'",
+                (transaction_id, job_id),
+            ).fetchone()
+            if preview is None:
+                db.execute("ROLLBACK")
+                raise MediaError(
+                    "media_lifecycle_approval_consumed",
+                    "media worker approval is missing, consumed, or replayed",
+                    status=409,
+                )
+            _require_manifest_match(preview, manifest)
+            if preview["service"] != service:
+                db.execute("ROLLBACK")
+                raise MediaError(
+                    "media_lifecycle_approval_mismatch",
+                    "media worker approval targets another service",
+                    status=409,
+                )
+            db.execute(
+                "UPDATE media_lifecycle_transactions SET status='consumed',updated_at=? "
+                "WHERE id=? AND status='awaiting_approval'",
+                (now, transaction_id),
+            )
+            db.execute(
+                "INSERT OR IGNORE INTO media_lifecycle_jobs(transaction_id,job_id) VALUES (?,?)",
+                (linked_transaction_id, job_id),
+            )
+            db.execute("COMMIT")
+
+    def _observe_preview(
+        self,
+        transaction_id: str,
+        *,
+        job_id: str,
+        service: str,
+        manifest: str,
+        controller: Mapping[str, Any],
+    ) -> sqlite3.Row:
+        now = utc_now().isoformat()
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT t.* FROM media_lifecycle_transactions t "
+                "JOIN media_lifecycle_jobs j ON j.transaction_id=t.id "
+                "WHERE t.id=? AND j.job_id=? AND t.status='awaiting_approval'",
+                (transaction_id, job_id),
+            ).fetchone()
+            if row is None:
+                db.execute("ROLLBACK")
+                raise MediaError(
+                    "media_lifecycle_approval_consumed",
+                    "media worker approval is missing, consumed, or replayed",
+                    status=409,
+                )
+            _require_manifest_match(row, manifest)
+            if row["service"] != service:
+                db.execute("ROLLBACK")
+                raise MediaError(
+                    "media_lifecycle_approval_mismatch",
+                    "media worker approval targets another service",
+                    status=409,
+                )
+            changed = db.execute(
+                "UPDATE media_lifecycle_transactions SET status='observed',"
+                "owns_instance=0,preexisting=1,receipt_json=?,updated_at=? "
+                "WHERE id=? AND status='awaiting_approval'",
+                (_json(controller), now, transaction_id),
+            ).rowcount
+            observed = db.execute(
                 "SELECT * FROM media_lifecycle_transactions WHERE id=?",
                 (transaction_id,),
             ).fetchone()
             db.execute("COMMIT")
-        return row, True
+        if changed != 1 or observed is None:
+            raise MediaError(
+                "media_lifecycle_approval_consumed",
+                "media worker approval was consumed concurrently",
+                status=409,
+            )
+        return observed
 
     def _claim_release(self, transaction_id: str) -> bool:
         now = utc_now().isoformat()
@@ -572,7 +819,7 @@ class MediaWorkerLifecycle:
     def _transaction_for_job(self, job_id: str) -> sqlite3.Row | None:
         with self._connect() as db:
             return db.execute(
-                "SELECT t.* FROM media_lifecycle_transactions t JOIN media_lifecycle_jobs j ON j.transaction_id=t.id WHERE j.job_id=? ORDER BY t.created_at DESC LIMIT 1",
+                "SELECT t.* FROM media_lifecycle_transactions t JOIN media_lifecycle_jobs j ON j.transaction_id=t.id WHERE j.job_id=? AND t.status!='consumed' ORDER BY t.created_at DESC LIMIT 1",
                 (job_id,),
             ).fetchone()
 
@@ -643,12 +890,66 @@ def _approval_request(
                 "principal": principal,
                 "service": receipt.service,
                 "manifest": receipt.manifest,
+                "transaction_id": receipt.transaction_id,
                 "dry_run": False,
                 "confirm": True,
                 "human_approved": True,
             },
         },
     }
+
+
+def _require_persisted_approval(
+    job,
+    *,
+    transaction_id: str,
+    principal: str,
+    service: str,
+    manifest: str,
+) -> None:
+    expected_arguments = {
+        "job_id": job.id,
+        "principal": principal,
+        "service": service,
+        "manifest": manifest,
+        "transaction_id": transaction_id,
+        "dry_run": False,
+        "confirm": True,
+        "human_approved": True,
+    }
+    approval = job.approval
+    operator_action = (
+        approval.get("operatorAction") if isinstance(approval, Mapping) else None
+    )
+    arguments = (
+        operator_action.get("arguments")
+        if isinstance(operator_action, Mapping)
+        else None
+    )
+    if job.state != JobState.AWAITING_APPROVAL:
+        raise MediaError(
+            "media_lifecycle_approval_consumed",
+            "media worker approval is missing, consumed, or replayed",
+            status=409,
+        )
+    if (
+        not transaction_id
+        or not isinstance(approval, Mapping)
+        or approval.get("schema") != "anvil-serving.media-lifecycle-approval/v1"
+        or approval.get("transactionId") != transaction_id
+        or approval.get("service") != service
+        or approval.get("action") != "prepare"
+        or approval.get("humanRequired") is not True
+        or approval.get("approved") is not False
+        or not isinstance(operator_action, Mapping)
+        or operator_action.get("tool") != "media_worker_prepare"
+        or arguments != expected_arguments
+    ):
+        raise MediaError(
+            "media_lifecycle_approval_mismatch",
+            "approved media worker action does not match the persisted preview",
+            status=409,
+        )
 
 
 def _receipt_from_row(

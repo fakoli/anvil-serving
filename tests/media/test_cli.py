@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import datetime as dt
 
 import pytest
 
@@ -63,6 +64,10 @@ class _Backend:
 
     def delete_queued_prompt(self, prompt_id):
         self.deleted.append(prompt_id)
+        return True
+
+    def find_prompt(self, job_id):
+        return None
 
     def interrupt_exclusive_prompt(self):
         raise AssertionError("aggregate CLI observation must never interrupt a running prompt")
@@ -81,6 +86,22 @@ class _ColdBackend(_Backend):
             self.ready,
             reasons=() if self.ready else ("not_ready",),
         )
+
+
+class _RecoveryBackend(_Backend):
+    def __init__(self, recovered_prompt):
+        super().__init__()
+        self.recovered_prompt = recovered_prompt
+        self.recovery_calls = []
+
+    def submit(self, workflow, *, job_id):
+        raise AssertionError("an ambiguous remote submission must never be repeated")
+
+    def find_prompt(self, job_id):
+        self.recovery_calls.append(job_id)
+        if isinstance(self.recovered_prompt, MediaError):
+            raise self.recovered_prompt
+        return self.recovered_prompt
 
 
 def test_operations_run_retry_status_and_cancel_share_domain_records(tmp_path):
@@ -199,6 +220,121 @@ def test_failed_cold_worker_preview_is_terminal_without_backend_submission(tmp_p
         idempotency_key="failed-preview",
     )
     assert job is not None and job.state == JobState.FAILED
+    assert backend.submissions == 0
+
+
+def test_retry_recovers_crash_before_cold_worker_preview(tmp_path):
+    backend = _ColdBackend()
+    preview_calls = []
+
+    def preview(job_id, principal, service):
+        preview_calls.append((job_id, principal, service))
+        return {
+            "transactionId": "recovered-preview",
+            "service": service,
+            "action": "prepare",
+            "humanRequired": True,
+            "manifest": "serves.comfyui.toml",
+        }
+
+    operations = MediaOperations(
+        _Registry(),
+        MediaJobStore(tmp_path / "jobs.sqlite3"),
+        ArtifactStore(tmp_path / "artifacts"),
+        lifecycle_preview=preview,
+    )
+    accepted, created = operations.jobs.create(
+        principal="hermes",
+        workflow_id="image.test",
+        workflow_version="v1",
+        input_digest=canonical_digest({"prompt": "mountain"}),
+        idempotency_key="pre-preview-crash",
+    )
+    assert created is True and accepted.state == JobState.ACCEPTED
+
+    recovered = operations.workflow_run(
+        "image.test",
+        "v1",
+        {"prompt": "mountain"},
+        principal="hermes",
+        idempotency_key="pre-preview-crash",
+        backend=backend,
+    )
+
+    assert recovered["created"] is False
+    assert recovered["job"]["state"] == JobState.AWAITING_APPROVAL.value
+    assert preview_calls == [(accepted.id, "hermes", "media-worker")]
+    assert backend.submissions == 0
+
+
+@pytest.mark.parametrize(
+    ("recovered_prompt", "expected_state", "expected_reason", "expected_prompt"),
+    [
+        (
+            "prompt-recovered",
+            JobState.QUEUED,
+            "backend_submission_recovered",
+            "prompt-recovered",
+        ),
+        (None, JobState.FAILED, "backend_submission_outcome_unknown", ""),
+        (
+            MediaError("backend_unavailable", "backend unavailable", status=503),
+            JobState.FAILED,
+            "backend_submission_recovery_failed",
+            "",
+        ),
+    ],
+)
+def test_retry_never_resubmits_ambiguous_remote_acceptance(
+    tmp_path,
+    recovered_prompt,
+    expected_state,
+    expected_reason,
+    expected_prompt,
+):
+    backend = _RecoveryBackend(recovered_prompt)
+    operations = MediaOperations(
+        _Registry(),
+        MediaJobStore(tmp_path / "jobs.sqlite3"),
+        ArtifactStore(tmp_path / "artifacts"),
+    )
+    old = dt.datetime(2026, 8, 27, tzinfo=dt.timezone.utc)
+    job, _ = operations.jobs.create(
+        principal="hermes",
+        workflow_id="image.test",
+        workflow_version="v1",
+        input_digest=canonical_digest({"prompt": "mountain"}),
+        idempotency_key="ambiguous-submit",
+        now=old,
+    )
+    operations.jobs.transition(
+        job.id,
+        JobState.PREPARING,
+        principal="hermes",
+        now=old,
+    )
+    operations.jobs.transition(
+        job.id,
+        JobState.SUBMITTING,
+        principal="hermes",
+        now=old,
+    )
+
+    recovered = operations.workflow_run(
+        "image.test",
+        "v1",
+        {"prompt": "mountain"},
+        principal="hermes",
+        idempotency_key="ambiguous-submit",
+        backend=backend,
+    )
+
+    assert recovered["created"] is False
+    assert recovered["job"]["state"] == expected_state.value
+    persisted = operations.jobs.get(job.id, principal="hermes")
+    assert persisted.events[-1].reason == expected_reason
+    assert persisted.backend_prompt_id == expected_prompt
+    assert backend.recovery_calls == [job.id]
     assert backend.submissions == 0
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from anvil_serving import mcp
+from anvil_serving import serves as serves_mod
 from anvil_serving.control_plane.mcp.tools import media
 from anvil_serving.control_plane.mcp.tools import media_worker
 from anvil_serving.media.comfyui import ComfyUIClient
@@ -142,6 +143,7 @@ def test_media_worker_manifest_defaults_at_the_resource_owner(monkeypatch):
     assert result["ok"] is True
     assert observed == {
         "manifest": "serves.comfyui.toml",
+        "manifest_from_operator_home": True,
         "names": ["media-worker"],
     }
 
@@ -219,6 +221,7 @@ def test_media_worker_orchestrator_shares_gateway_state_and_proxies_resource_own
     assert [call[1] for call in observed] == ["serves_status", "serves_manage"]
     assert all(call[0] == "http://127.0.0.1:8766" for call in observed)
     assert all(call[2]["manifest"] == "serves.comfyui.toml" for call in observed)
+    assert all(call[2]["manifest_from_operator_home"] is True for call in observed)
     assert all(call[3] == "resource-secret" for call in observed)
     assert all(
         call[4]["io.modelcontextprotocol/protocolVersion"] == mcp.PROTOCOL_VERSION
@@ -250,3 +253,55 @@ def test_media_worker_manifest_rejects_paths(monkeypatch):
         {"service": "media-worker"},
     )
     assert result["error"]["code"] == "bad_argument"
+
+
+def test_media_worker_manifest_resolves_under_operator_home_outside_cwd(
+    tmp_path, monkeypatch
+):
+    operator_home = tmp_path / "operator-home"
+    operator_home.mkdir()
+    elsewhere = tmp_path / "controller-cwd"
+    elsewhere.mkdir()
+    manifest = operator_home / "serves.comfyui.toml"
+    manifest.write_text(
+        """
+[[gpu_roles]]
+id = "media-compute"
+vram_mib = 32768
+reserve_mib = 4096
+
+[[serve]]
+name = "media-worker"
+stack = "comfyui"
+container = "anvil-comfyui"
+runtime = "docker"
+port = 8188
+model = "comfyui-v0.33.4"
+engine = "image"
+health = "/system_stats"
+gpu_role = "media-compute"
+vram_mib = 28672
+residency = "on-demand"
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(operator_home))
+    monkeypatch.setenv("ANVIL_MEDIA_SERVE_MANIFEST", manifest.name)
+    monkeypatch.delenv("ANVIL_MEDIA_RESOURCE_CONTROLLER_URL", raising=False)
+    monkeypatch.delenv("ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN", raising=False)
+    monkeypatch.chdir(elsewhere)
+    observed = {}
+
+    def status_summary(serves, names, *, _open):
+        observed["serves"] = serves
+        observed["names"] = names
+        return {"serves": []}
+
+    monkeypatch.setattr(serves_mod, "status_summary", status_summary)
+
+    result = media_worker.tool_media_worker_status({"service": "media-worker"})
+
+    assert result["ok"] is True
+    assert observed["names"] == ["media-worker"]
+    assert [item["name"] for item in observed["serves"]] == ["media-worker"]
+    assert not (elsewhere / manifest.name).exists()

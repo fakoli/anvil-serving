@@ -48,14 +48,15 @@ def test_restart_reconciles_existing_prompt_without_submission(tmp_path):
     changed = MediaJobReconciler(reopened, history).reconcile(reopened.get(job.id, principal="hermes"))
     assert changed.state == JobState.RUNNING
     assert calls == ["prompt_123"]
-    assert [event.state for event in changed.events][-3:] == [
+    assert [event.state for event in changed.events][-4:] == [
         JobState.PREPARING,
+        JobState.SUBMITTING,
         JobState.QUEUED,
         JobState.RUNNING,
     ]
 
 
-def test_missing_prompt_stays_accepted_and_is_not_retried(tmp_path):
+def test_stale_accepted_job_fails_instead_of_remaining_wedged(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
     job, _ = store.create(
         principal="hermes",
@@ -66,8 +67,43 @@ def test_missing_prompt_stays_accepted_and_is_not_retried(tmp_path):
         now=NOW,
     )
     calls = []
-    assert MediaJobReconciler(store, lambda prompt: calls.append(prompt)).reconcile(job) == job
+    changed = MediaJobReconciler(
+        store, lambda prompt: calls.append(prompt)
+    ).reconcile(job)
+    assert changed.state == JobState.FAILED
+    assert changed.events[-1].reason == "accepted_recovery_required"
     assert calls == []
+
+
+def test_reconciler_recovers_submitting_prompt_without_resubmission(tmp_path):
+    store = MediaJobStore(tmp_path / "jobs.sqlite3")
+    job = create(store)
+    # Rebuild the crash shape without a locally persisted prompt id.
+    second, _ = store.create(
+        principal="hermes",
+        workflow_id="image.test-v1",
+        workflow_version="v1",
+        input_digest="b" * 64,
+        idempotency_key="two",
+        now=NOW,
+    )
+    second = store.transition(
+        second.id, JobState.PREPARING, principal="hermes", now=NOW
+    )
+    second = store.transition(
+        second.id, JobState.SUBMITTING, principal="hermes", now=NOW
+    )
+    found = []
+    changed = MediaJobReconciler(
+        store,
+        lambda prompt: BackendStatus(prompt, "queued"),
+        find_prompt=lambda job_id: found.append(job_id) or "prompt_recovered",
+    ).reconcile(second)
+    assert changed.state == JobState.QUEUED
+    assert changed.backend_prompt_id == "prompt_recovered"
+    assert changed.events[-1].reason == ""
+    assert found == [second.id]
+    assert job.backend_prompt_id == "prompt_123"
 
 
 def test_history_failure_is_terminal_and_truthful(tmp_path):
