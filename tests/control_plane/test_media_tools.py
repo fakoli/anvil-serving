@@ -4,6 +4,8 @@ from anvil_serving import mcp
 from anvil_serving.control_plane.mcp.tools import media
 from anvil_serving.control_plane.mcp.tools import media_worker
 from anvil_serving.media.comfyui import ComfyUIClient
+from anvil_serving.media.contracts import JobState
+from anvil_serving.media.jobs import MediaJobStore
 
 
 READ = {"principal": "hermes", "scopes": ["media:read"]}
@@ -156,3 +158,95 @@ def test_explicit_media_worker_manifest_overrides_resource_owner_default(monkeyp
         {"service": "media-worker", "manifest": "explicit-media.toml"}
     )
     assert observed["manifest"] == "explicit-media.toml"
+
+
+def test_media_worker_orchestrator_shares_gateway_state_and_proxies_resource_owner(
+    tmp_path, monkeypatch
+):
+    state_path = tmp_path / "jobs.sqlite3"
+    store = MediaJobStore(state_path)
+    job = store.create(
+        principal="hermes",
+        workflow_id="image.test",
+        workflow_version="v1",
+        input_digest="a" * 64,
+        idempotency_key="cold-request",
+    )[0]
+    monkeypatch.setenv("ANVIL_MEDIA_STATE_DB", str(state_path))
+    monkeypatch.setenv("ANVIL_MEDIA_SERVE_MANIFEST", "serves.comfyui.toml")
+    monkeypatch.setenv(
+        "ANVIL_MEDIA_RESOURCE_CONTROLLER_URL", "http://127.0.0.1:8766"
+    )
+    monkeypatch.setenv("ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN", "resource-secret")
+    observed = []
+
+    def remote(controller_url, request, token):
+        name = request["params"]["name"]
+        arguments = request["params"]["arguments"]
+        observed.append((controller_url, name, arguments, token, request["params"]["_meta"]))
+        if name == "serves_status":
+            data = {
+                "serves": [
+                    {
+                        "name": "media-worker",
+                        "running": False,
+                        "health_status": None,
+                    }
+                ]
+            }
+        else:
+            assert name == "serves_manage"
+            data = {"applied": False, "plan": ["managed-serve-up"]}
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {"structuredContent": {"ok": True, "data": data}},
+        }
+
+    monkeypatch.setattr(media_worker, "remote_controller_request", remote)
+    result = media_worker.tool_media_worker_prepare(
+        {
+            "job_id": job.id,
+            "principal": "hermes",
+            "service": "media-worker",
+            "dry_run": True,
+            "confirm": False,
+            "human_approved": False,
+        }
+    )
+    assert result["ok"] is True
+    assert result["data"]["manifest"] == "serves.comfyui.toml"
+    assert [call[1] for call in observed] == ["serves_status", "serves_manage"]
+    assert all(call[0] == "http://127.0.0.1:8766" for call in observed)
+    assert all(call[2]["manifest"] == "serves.comfyui.toml" for call in observed)
+    assert all(call[3] == "resource-secret" for call in observed)
+    assert all(
+        call[4]["io.modelcontextprotocol/protocolVersion"] == mcp.PROTOCOL_VERSION
+        for call in observed
+    )
+    waiting = MediaJobStore(state_path).get(job.id, principal="hermes")
+    assert waiting.state == JobState.AWAITING_APPROVAL
+    assert waiting.approval["operatorAction"]["arguments"]["manifest"] == (
+        "serves.comfyui.toml"
+    )
+
+
+def test_media_resource_controller_configuration_is_atomic(monkeypatch):
+    monkeypatch.setenv(
+        "ANVIL_MEDIA_RESOURCE_CONTROLLER_URL", "http://127.0.0.1:8766"
+    )
+    monkeypatch.delenv("ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN", raising=False)
+    result = mcp.call_tool(
+        "media_worker_status",
+        {"service": "media-worker"},
+    )
+    assert result["error"]["code"] == "media_resource_controller_config"
+
+
+def test_media_worker_manifest_rejects_paths(monkeypatch):
+    monkeypatch.setenv("ANVIL_MEDIA_SERVE_MANIFEST", "private/serves.toml")
+    result = mcp.call_tool(
+        "media_worker_status",
+        {"service": "media-worker"},
+    )
+    assert result["error"]["code"] == "bad_argument"

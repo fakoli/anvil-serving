@@ -73,7 +73,14 @@ from .internal import (
 )
 from .purpose import PurposeError, PurposeRouter
 from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
-from ..a2a.protocol import A2A_PATH, AGENT_CARD_PATH
+from ..a2a.http import version_not_supported
+from ..a2a.protocol import (
+    A2A_LEGACY_DEFAULT_VERSION,
+    A2A_PATH,
+    A2A_VERSION,
+    A2A_VERSION_HEADER,
+    AGENT_CARD_PATH,
+)
 from ..media.errors import MediaError
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
@@ -386,6 +393,21 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self.end_headers()
                 else:
                     self._json(200, result, extra_headers={"Cache-Control": "no-store"})
+                return
+            requested_versions = self.headers.get_all(A2A_VERSION_HEADER) or []
+            if len(requested_versions) == 1:
+                requested_version = requested_versions[0].strip()
+            elif not requested_versions:
+                requested_version = ""
+            else:
+                requested_version = ",".join(requested_versions)
+            negotiated_version = requested_version or A2A_LEGACY_DEFAULT_VERSION
+            if negotiated_version != A2A_VERSION:
+                self._json(
+                    200,
+                    version_not_supported(body.get("id"), negotiated_version),
+                    extra_headers={"Cache-Control": "no-store"},
+                )
                 return
             if body.get("method") in {"SendStreamingMessage", "SubscribeToTask"}:
                 if "text/event-stream" not in self.headers.get("Accept", ""):

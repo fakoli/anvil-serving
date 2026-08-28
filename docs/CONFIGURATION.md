@@ -459,16 +459,30 @@ the media runtime only from environment variables:
 | --- | --- |
 | `ANVIL_MEDIA_BACKEND_URL` | Required ComfyUI adapter endpoint selected by operator topology. |
 | `ANVIL_MEDIA_WORKFLOW_REGISTRY` | Optional path to the pinned public workflow registry. |
-| `ANVIL_MEDIA_STATE_DB` | Durable job and lifecycle database shared with the resource-owning controller. |
+| `ANVIL_MEDIA_STATE_DB` | Durable job and lifecycle database. The gateway and its same-host lifecycle controller must resolve the exact same local path. Never place this SQLite database on a network filesystem. |
 | `ANVIL_MEDIA_ARTIFACT_ROOT` | Private retained-artifact directory. |
-| `ANVIL_MEDIA_CONTROLLER_URL` | Optional controller MCP origin used to preview a cold worker start. |
+| `ANVIL_MEDIA_CONTROLLER_URL` | Optional same-host orchestration-controller MCP origin used to preview and approve a cold worker start. |
 | `ANVIL_MEDIA_CONTROLLER_TOKEN` | Controller credential paired with the controller URL; the value is never stored or returned. |
-| `ANVIL_MEDIA_SERVE_MANIFEST` | Optional controller-local managed-serve manifest for media-worker tools; configure it on the resource owner, not on the gateway. Empty selects the normal default manifest. |
+| `ANVIL_MEDIA_SERVE_MANIFEST` | Optional orchestration-controller manifest name for media-worker tools. It must be empty or a basename such as `serves.comfyui.toml`; paths are rejected. Empty selects the normal default manifest. |
+| `ANVIL_MEDIA_RESOURCE_CONTROLLER_URL` | Optional resource-owner controller MCP origin used by the lifecycle controller for bounded `serves_*` operations. |
+| `ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN` | Resource-owner controller credential paired atomically with its URL; keep the value only in secret-backed environment state. |
 
-The controller URL and token must be set together. If a selected worker is
-cold, the gateway atomically reserves the job, asks only for a dry-run
-`media_worker_prepare` receipt, and returns `awaiting_approval` with a bounded
-operator action. It cannot apply that action. An operator must invoke the typed
+Each URL/token pair must be set together. If a selected worker is cold, the
+gateway atomically reserves the job and calls a co-located lifecycle controller
+that opens the same host-local `ANVIL_MEDIA_STATE_DB`. That controller returns
+only a dry-run `media_worker_prepare` receipt, and the gateway returns
+`awaiting_approval` with a bounded operator action. The exact safe manifest
+name is stored in both the lifecycle transaction and operator action; retries
+or teardown requests with a different manifest fail closed.
+
+For a worker on another host, the lifecycle controller then calls that host's
+resource-owner controller through `ANVIL_MEDIA_RESOURCE_CONTROLLER_URL`. The
+resource owner executes only declared `serves_status`, `serves_manage`, and
+`serves_logs` tools and never opens the gateway's SQLite database. This two-hop
+layout preserves single-writer, host-local SQLite state while keeping lifecycle
+mutation at the declared resource owner.
+
+The gateway cannot apply the action. An operator must invoke the typed
 controller tool with `dry_run=false`, `confirm=true`, and
 `human_approved=true`; the caller then retries the same workflow and
 idempotency key after the worker becomes ready. The gateway submits that one

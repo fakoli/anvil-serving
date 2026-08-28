@@ -4,7 +4,10 @@ import dataclasses
 import sqlite3
 import threading
 
+import pytest
+
 from anvil_serving.media.contracts import JobState
+from anvil_serving.media.errors import MediaError
 from anvil_serving.media.jobs import MediaJobStore
 from anvil_serving.media.lifecycle import MediaWorkerLifecycle
 from anvil_serving import mcp
@@ -57,6 +60,77 @@ def test_prepare_requires_three_part_gate_and_attaches_receipt(tmp_path):
     updated = store.get(job.id, principal="hermes")
     assert updated.state == JobState.PREPARING
     assert updated.approval["transactionId"] == applied.transaction_id
+    assert updated.approval["operatorAction"]["arguments"]["manifest"] == ""
+
+
+def test_prepare_binds_exact_manifest_across_preview_apply_and_teardown(tmp_path):
+    store = MediaJobStore(tmp_path / "jobs.sqlite3")
+    job = _job(store)
+    calls = []
+    running = False
+
+    def status(args):
+        calls.append(("status", dict(args)))
+        return _status(running=running)({})
+
+    def manage(args):
+        nonlocal running
+        calls.append(("manage", dict(args)))
+        if not args["dry_run"]:
+            running = args["action"] == "up"
+        return {"applied": not args["dry_run"]}
+
+    lifecycle = MediaWorkerLifecycle(
+        store,
+        status_operation=status,
+        manage_operation=manage,
+    )
+    preview = lifecycle.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+        manifest="serves.comfyui.toml",
+    )
+    assert preview.manifest == "serves.comfyui.toml"
+    approval = store.get(job.id, principal="hermes").approval
+    assert approval["operatorAction"]["arguments"]["manifest"] == (
+        "serves.comfyui.toml"
+    )
+
+    applied = lifecycle.prepare(
+        job.id,
+        principal="hermes",
+        service="media-worker",
+        manifest="serves.comfyui.toml",
+        confirm=True,
+        human_approved=True,
+    )
+    assert applied.manifest == "serves.comfyui.toml"
+    with pytest.raises(MediaError, match="does not match") as mismatch:
+        lifecycle.prepare(
+            _job(store, "request-two").id,
+            principal="hermes",
+            service="media-worker",
+            manifest="another.toml",
+            confirm=True,
+            human_approved=True,
+        )
+    assert mismatch.value.code == "media_worker_manifest_mismatch"
+    assert not any(
+        operation == "status" and arguments["manifest"] == "another.toml"
+        for operation, arguments in calls
+    )
+
+    store.transition(job.id, JobState.CANCELED, principal="hermes")
+    with pytest.raises(MediaError) as teardown_mismatch:
+        lifecycle.teardown(
+            job.id,
+            principal="hermes",
+            manifest="another.toml",
+            confirm=True,
+            human_approved=True,
+        )
+    assert teardown_mismatch.value.code == "media_worker_manifest_mismatch"
 
 
 def test_preexisting_worker_is_never_owned_or_stopped(tmp_path):

@@ -87,6 +87,7 @@ def cold_service(tmp_path):
             "service": service,
             "action": "prepare",
             "humanRequired": True,
+            "manifest": "serves.comfyui.toml",
         },
     )
     return A2AMediaTasks(operations, ColdBackend())

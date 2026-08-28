@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving import mcp
-from anvil_serving.a2a.protocol import A2A_PATH, AGENT_CARD_PATH
+from anvil_serving.a2a.protocol import A2A_PATH, A2A_VERSION, AGENT_CARD_PATH
 from anvil_serving.media.contracts import JobState
 from anvil_serving.media.backends import BackendOutput, BackendStatus
 from anvil_serving.media.comfyui import WorkflowCompatibility
@@ -56,10 +56,21 @@ def gateway_server(tmp_path, *, enabled=True, caller=CALLER):
         thread.join(timeout=5)
 
 
-def request(address, method, path, *, body=None, token="secret", headers=None):
+def request(
+    address,
+    method,
+    path,
+    *,
+    body=None,
+    token="secret",
+    headers=None,
+    a2a_version=A2A_VERSION,
+):
     connection = http.client.HTTPConnection(*address, timeout=5)
     encoded = None if body is None else json.dumps(body).encode("utf-8")
     request_headers = dict(headers or {})
+    if path == A2A_PATH and a2a_version is not None:
+        request_headers["A2A-Version"] = a2a_version
     if token is not None:
         request_headers["Authorization"] = f"Bearer {token}"
     if encoded is not None:
@@ -105,6 +116,41 @@ def test_gateway_dispatches_scoped_mcp_a2a_and_agent_card(tmp_path):
         card = json.loads(raw)
         assert card["supportedInterfaces"][0]["url"] == "http://127.0.0.1:8080/a2a"
         assert card["skills"][0]["id"] == "anvil.media.image.generate"
+
+
+@pytest.mark.parametrize(
+    ("version", "requested"),
+    [
+        (None, "0.3"),
+        ("", "0.3"),
+        ("0.3", "0.3"),
+        ("1.1", "1.1"),
+        ("1.0.0", "1.0.0"),
+    ],
+)
+def test_a2a_rejects_missing_legacy_and_unsupported_versions_without_dispatch(
+    tmp_path, version, requested
+):
+    with gateway_server(tmp_path) as (address, tasks):
+        status, headers, raw = request(
+            address,
+            "POST",
+            A2A_PATH,
+            body=send_request(),
+            a2a_version=version,
+        )
+        assert status == 200
+        assert headers["Content-Type"] == "application/json"
+        response = json.loads(raw)
+        assert response["id"] == 1
+        assert response["error"]["code"] == -32009
+        detail = response["error"]["data"][0]
+        assert detail["reason"] == "VERSION_NOT_SUPPORTED"
+        assert detail["metadata"] == {
+            "requestedVersion": requested,
+            "supportedVersions": A2A_VERSION,
+        }
+        assert tasks.operations.jobs.nonterminal() == []
 
 
 def test_artifact_delivery_is_opaque_scoped_and_range_bounded(tmp_path):
@@ -310,6 +356,7 @@ def test_media_lifecycle_preview_uses_bounded_controller_tool_call(monkeypatch):
                         "service": "media-worker",
                         "action": "prepare",
                         "humanRequired": True,
+                        "manifest": "serves.comfyui.toml",
                     },
                 }
             },
@@ -334,6 +381,7 @@ def test_media_lifecycle_preview_uses_bounded_controller_tool_call(monkeypatch):
         "confirm": False,
         "human_approved": False,
     }
+    assert receipt["manifest"] == "serves.comfyui.toml"
     assert request["params"]["_meta"][
         "io.modelcontextprotocol/protocolVersion"
     ] == mcp.PROTOCOL_VERSION

@@ -118,6 +118,7 @@ def test_cold_worker_requires_approval_then_exact_retry_submits_once(tmp_path):
             "service": service,
             "action": "prepare",
             "humanRequired": True,
+            "manifest": "serves.comfyui.toml",
             "controllerReceipt": {"privatePath": "must-not-escape"},
         }
 
@@ -142,6 +143,9 @@ def test_cold_worker_requires_approval_then_exact_retry_submits_once(tmp_path):
     ]
     approval = waiting["job"]["approval"]
     assert approval["operatorAction"]["tool"] == "media_worker_prepare"
+    assert approval["operatorAction"]["arguments"]["manifest"] == (
+        "serves.comfyui.toml"
+    )
     assert "controllerReceipt" not in approval
     assert "privatePath" not in json.dumps(approval)
 
