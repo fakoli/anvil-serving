@@ -14,11 +14,13 @@ from .contracts import (
     utc_now,
 )
 from .errors import MediaError
+from .comfyui import ComfyUIClient, WorkflowCompatibility
 from .workflows import WorkflowRegistry, canonical_digest
 
 __all__ = [
     "JobEvent",
     "JobState",
+    "ComfyUIClient",
     "MediaArtifact",
     "MediaBackend",
     "MediaError",
@@ -28,6 +30,7 @@ __all__ = [
     "RenderedWorkflow",
     "TERMINAL_STATES",
     "WorkflowDescriptor",
+    "WorkflowCompatibility",
     "WorkflowRegistry",
     "canonical_digest",
     "utc_now",
