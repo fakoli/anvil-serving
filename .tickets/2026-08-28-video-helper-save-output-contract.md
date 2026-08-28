@@ -17,5 +17,8 @@ caller parameter and does not expand the public request surface.
 
 ## Verification
 
-Pending graph/descriptor tests, repeated live validation and qualification,
-and the full repository gate.
+- Ten focused graph, descriptor, packaging, and video integration tests passed.
+- Repeated live validation reported no missing feature, node, or model.
+- The corrected workflow produced a decodable 17-frame H.264 MP4 from a clean
+  worker baseline.
+- The full repository gate remains part of the enclosing change.

@@ -30,6 +30,8 @@ background output reader to raise even though the worker became healthy.
 ## Verification
 
 - `python -m pytest tests/media/test_comfyui_packaging.py tests/test_serves.py -q`
-  — 192 passed.
-- Repeated managed bring-up and the full repository gate remain part of the
-  enclosing media-gateway qualification.
+  — 193 passed after the UTF-8 decoder regression was added.
+- Repeated managed bring-up built the corrected image and reached HTTP 200
+  readiness without a console decoder exception.
+- The full repository gate remains part of the enclosing media-gateway
+  qualification.

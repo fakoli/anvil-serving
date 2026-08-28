@@ -25,5 +25,7 @@ qualification.
 
 ## Verification
 
-Pending the packaging test, repeated managed image build, successful exact
-workflow run, and the full repository gate.
+- Focused ComfyUI packaging tests passed.
+- Managed `serves up` rebuilt the image and reached HTTP 200 readiness.
+- The unchanged FLUX.2 Klein qualification completed with a decodable PNG.
+- The full repository gate remains part of the enclosing change.

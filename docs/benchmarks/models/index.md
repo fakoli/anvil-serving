@@ -30,6 +30,8 @@ evidence class, decision boundary, failures, and dated history.
 
 | Dossier | Current decision | Capability |
 |---|---|---|
+| [FLUX.2 Klein 4B](flux2-klein.md) | unavailable candidate, `no-promotion` | Text-to-image generation; functional/capacity pass, quality review open |
+| [Wan2.2 TI2V 5B](wan22.md) | unavailable candidate, `no-promotion` | Text-to-video generation; functional/capacity pass, quality review open |
 | [Qwen3.8 27B](qwen38-27b.md) | preferred 5090 `challenger`, `no-promotion` | Computer-use perception, image, OCR, native video, 128K text/tools; eight images / two videos |
 | [Nemotron Nano/Omni 30B](nemotron-omni-30b.md) | `current` topology | Auxiliary text, vision, OCR |
 | [Qwen2.5-Omni 3B](qwen25-omni-3b.md) | `challenger`, `no-promotion` | Co-resident Omni |
