@@ -46,7 +46,10 @@ def test_runtime_and_custom_node_inputs_are_exactly_pinned():
     assert runtime["linux_amd64_manifest_digest"] in dockerfile
     assert runtime["comfyui_release_revision"] in dockerfile
     assert runtime["container_source_revision"] in dockerfile
-    assert "git -c safe.directory=/app -C /app rev-parse HEAD" in dockerfile
+    assert (
+        'git -c safe.directory=/app -C /app rev-parse HEAD)" = "$COMFYUI_RELEASE_REV"'
+        in dockerfile
+    )
     assert runtime["installer_sha256"] == hashlib.sha256(installer).hexdigest()
     for component in ("torch", "torchvision", "torchaudio"):
         assert runtime[component] in dockerfile
