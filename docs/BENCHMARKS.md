@@ -27,7 +27,21 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-26**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-28**.
+
+## ComfyUI image and video qualification on RTX 5090 (2026-08-28)
+
+The first exact media-generation candidates passed direct managed functional
+and capacity qualification. FLUX.2 Klein 4B FP8 produced a decodable 512×512
+PNG in 9.859 seconds at 12,919 MiB peak GPU memory. Wan2.2 TI2V 5B produced a
+decodable 512×288, 17-frame H.264 MP4 in 9.092 seconds at 18,263 MiB peak from
+a clean 943 MiB worker baseline. The managed worker was removed afterward and
+GPU use returned to 448 MiB.
+
+Both candidates remain `available=false` and `no-promotion`: perceptual quality
+has not been independently reviewed, and no router, Hermes, or remote-client
+path was part of this run. See the
+[dated qualification and sanitized metadata](findings/2026-08-28-comfyui-media-qualification.md).
 
 ## Qwen3.8 Flash Next vision promotion and context curve (2026-08-26)
 

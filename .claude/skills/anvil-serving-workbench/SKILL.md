@@ -49,6 +49,12 @@ narration.
   `router_transition`, and `decision_summary`.
 - Serves and residency: `serves_status`, `reservation_status`,
   `serves_manage`, `serves_mode`, `serves_logs`, and `serves_promote`.
+- Managed media worker: `media_worker_prepare`, `media_worker_status`,
+  `media_worker_logs`, and `media_worker_teardown`. Lifecycle mutations retain
+  the managed-serve dry-run, confirmation, and human-approval gates.
+- Caller media: `media_capabilities`, `media_workflow_list`,
+  `media_workflow_show`, `media_workflow_validate`, `media_workflow_run`,
+  `media_job_status`, `media_job_cancel`, and `media_artifact_inspect`.
 - Voice: `voice_manage` and `voice_proxy_manage`.
 - Host, models, and telemetry: `doctor_summary`, `host_summary`,
   `gpu_inventory`, `host_shared_memory`, `operator_config_inventory`,

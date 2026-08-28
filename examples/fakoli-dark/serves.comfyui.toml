@@ -1,121 +1,26 @@
-# ComfyUI on-demand tenant manifest (gpu-reservations:T012, F006).
+# Generic on-demand media-worker manifest.
 #
-# SEPARATE from serves.toml on purpose — the same isolation rule that keeps the voice
-# sidecars in serves.voice.toml (docs/VOICE.md "Keep audio serves out of the shared
-# model-serves manifest"): generic `serves down` / serves_manage hygiene over the shared
-# LLM manifest must never stop the ComfyUI tenant, and ComfyUI lifecycle commands must
-# never recreate the LLM tiers. Manage it with:
-#
-#   anvil-serving serves up comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
-#   anvil-serving serves status --manifest examples/fakoli-dark/serves.comfyui.toml
-#   anvil-serving serves down comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
-#
-# ALWAYS name `comfyui` on up/down. The other [[serve]] rows below are LEDGER MIRRORS,
-# not lifecycle targets (see below).
-#
-# ── ADR-0017 ledger: same dark-compute-b budget as serves.toml — KEEP IN SYNC ──
-# The reservation ledger is derived per manifest, so this manifest re-declares the
-# dark-compute-b capacity row AND mirrors the serves.toml reservations that live on the same
-# physical card. Without the mirrors this manifest's ledger would see an empty card and
-# admit ComfyUI while Compute B is actually full — the mirrors make `serves up comfyui`
-# admission HONEST: committed VRAM is derived from the mirrors' live docker container
-# state, exactly like in serves.toml. tests/test_serves.py asserts these rows stay in
-# sync with serves.toml (capacity, containers, vram_mib, residency).
-[[gpu_roles]]
-id = "dark-compute-b"
-vram_mib = 97887
-reserve_mib = 3072
+# Copy this template into the private operator home and add the real GPU role,
+# target host, co-resident reservations, and storage assignments there. The
+# public manifest intentionally names no operator machine or reachable address.
+# Keep vram_mib synchronized with COMFYUI_EXTRA_ARGS in docker-compose.comfyui.yml.
 
-# ── The tenant ──
-# ComfyUI v0.31.1 (digest-pinned CUDA 13 derived image — see the compose header
-# for the pin and curated add-on provenance). `on-demand` residency (ADR-0017 §1): started per image/video
-# task, released by `serves down comfyui` (stopping the container IS the release), and
-# the only residency class allowed to evict — `serves up comfyui --evict` drains and
-# stops the exclusive `omni` tier via the T005/ADR-0018 transition when the ledger is
-# short. vram_mib 12288 is the F006 design budget for the tenant;
-# docker-compose.comfyui.yml enforces it engine-side with a matching reserve;
-# change the declared and engine budgets together.
-#
-# engine "image" is the truthful non-chat-LLM label (the audio/embedding/reranker
-# precedent, ADR-0017 §7): ComfyUI serves an image/video-generation graph UI + API,
-# NOT OpenAI chat completions — LLM tooling (preflight, promotion gates, render) must
-# not target it. health "/system_stats" is ComfyUI's cheap readiness endpoint (the UI
-# root also answers 200, but /system_stats proves the API layer is up).
+[[gpu_roles]]
+id = "media-compute"
+vram_mib = 32768
+reserve_mib = 4096
+
 [[serve]]
-name = "comfyui"
+name = "media-worker"
 stack = "comfyui"
-container = "comfyui"
+container = "anvil-comfyui"
 runtime = "docker"
 port = 8188
-model = "comfyui-v0.31.1"      # UI/API tenant, not a served-model-name; label = pinned app version
+model = "comfyui-v0.33.4"
 engine = "image"
 health = "/system_stats"
-gpu_role = "dark-compute-b"
-vram_mib = 12288
+gpu_role = "media-compute"
+vram_mib = 28672
 residency = "on-demand"
-groups = ["comfy"]             # serve groups (serves up/down/status --group)
-up = "docker compose --project-name anvil-comfyui -f {dir}/docker-compose.comfyui.yml up -d comfyui"
-
-# ── Ledger mirrors of the serves.toml reservations on the same card ──
-# READ-ONLY rows: no `up` command (nothing here can start them), same name/container/
-# vram_mib/residency as serves.toml so the derived ledger matches the main manifest's.
-# Their committed state comes from live docker state; when a resident is down, its
-# VRAM is honestly free here too. DO NOT `serves down` a mirror from this manifest —
-# lifecycle for these serves belongs to serves.toml (that stop would be real: the
-# container names are the production ones).
-[[serve]]
-name = "omni"                       # mirror — lifecycle in serves.toml
-stack = "omni"
-container = "vllm-nemotron3-omni"
-runtime = "docker"
-port = 30003
-model = "nemotron3-omni-30b-a3b-nvfp4"
-engine = "vllm"
-health = "/health"
-gpu_role = "dark-compute-b"
-vram_mib = 27999
-residency = "evictable"
-router_tier = "omni-local"
-
-[[serve]]
-name = "omni-small"                 # mirror — lifecycle in serves.toml
-stack = "omni"
-container = "vllm-qwen25-omni-3b"
-runtime = "docker"
-port = 30013
-model = "qwen25-omni-3b"
-engine = "vllm"
-health = "/health"
-gpu_role = "dark-compute-b"
-vram_mib = 24576
-residency = "evictable"
-
-[[serve]]
-name = "embeddings"            # mirror — lifecycle in serves.toml
-stack = "auxiliary"
-container = "vllm-qwen3-embedding"
-runtime = "docker"
-port = 30005
-model = "qwen3-embedding-0.6b"
-engine = "embedding"
-health = "/health"
-gpu_role = "dark-compute-b"
-vram_mib = 3200
-residency = "resident"
-
-[[serve]]
-name = "reranker"              # mirror — lifecycle in serves.toml
-stack = "auxiliary"
-container = "vllm-qwen3-reranker"
-runtime = "docker"
-port = 30006
-model = "qwen3-reranker-0.6b"
-engine = "reranker"
-health = "/health"
-gpu_role = "dark-compute-b"
-vram_mib = 3456
-residency = "resident"
-
-# The Omni mirror carries its router tier so `serves up comfyui --evict`
-# quiesces and drains `omni-local` before stopping the container. Restore with
-# `serves up omni` and `router readmit --tier omni-local`.
+groups = ["media", "comfy"]
+up = "docker compose --project-name anvil-comfyui -f {dir}/docker-compose.comfyui.yml up -d --build comfyui"

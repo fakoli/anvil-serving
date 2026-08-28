@@ -81,6 +81,7 @@ _HANDLER_PROGS = {
     "anvil_serving.host": "anvil-serving host",
     "anvil_serving.init": "anvil-serving init",
     "anvil_serving.mcp": "anvil-serving mcp serve",
+    "anvil_serving.media.cli": "anvil-serving media",
     "anvil_serving.models": "anvil-serving models",
     "anvil_serving.multiplexer": "anvil-serving serves multiplex",
     "anvil_serving.preflight": "anvil-serving eval preflight",

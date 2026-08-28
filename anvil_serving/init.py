@@ -592,7 +592,7 @@ def render_starter_topology(port=30000):
         "allow_model_workloads = true\n\n"
         "[[hosts]]\n"
         'id = "local-host"\n'
-        'roles = ["operator", "router", "serve"]\n'
+        'roles = ["operator", "router", "serve", "media"]\n'
         'address = "127.0.0.1"\n'
         'capacity_policy = "local-model-capable"\n\n'
         "[[runtimes]]\n"
@@ -609,6 +609,22 @@ def render_starter_topology(port=30000):
         'host = "local-host"\n'
         'runtime = "local-native"\n'
         'workload = "service"\n\n'
+        "[[resources]]\n"
+        'id = "local-media-gateway"\n'
+        'role = "media-gateway"\n'
+        'host = "local-host"\n'
+        'runtime = "local-docker"\n'
+        'endpoint = "http://127.0.0.1:8000"\n'
+        'endpoint_kind = "host-relative-loopback"\n'
+        'workload = "service"\n\n'
+        "[[resources]]\n"
+        'id = "local-media-worker"\n'
+        'role = "media-worker"\n'
+        'host = "local-host"\n'
+        'runtime = "local-docker"\n'
+        'endpoint = "http://127.0.0.1:8188"\n'
+        'endpoint_kind = "host-relative-loopback"\n'
+        'workload = "media"\n\n'
         "[[resources]]\n"
         'id = "local-router"\n'
         'role = "router"\n'

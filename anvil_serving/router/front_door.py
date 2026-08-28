@@ -72,6 +72,16 @@ from .internal import (
     NoAvailableTierError,
 )
 from .purpose import PurposeError, PurposeRouter
+from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
+from ..a2a.http import version_not_supported
+from ..a2a.protocol import (
+    A2A_LEGACY_DEFAULT_VERSION,
+    A2A_PATH,
+    A2A_VERSION,
+    A2A_VERSION_HEADER,
+    AGENT_CARD_PATH,
+)
+from ..media.errors import MediaError
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
 _OPENAI_DIALECT = OpenAIDialect()
@@ -123,6 +133,12 @@ MAX_CONCURRENCY: int = int(os.environ.get("ANVIL_MAX_CONCURRENCY", "64"))
 _CONCURRENCY_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(
     MAX_CONCURRENCY
 )
+
+# Operation protocols have their own pool so long-lived A2A observation cannot
+# consume direct-inference relay slots.  Jobs themselves remain durable and do
+# not run in these request threads.
+_PROTOCOL_CONCURRENCY_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(16)
+_PROTOCOL_MAX_BODY_BYTES = 64 * 1024
 
 # Drain waits must not consume a data-plane request slot.  This small separate
 # pool bounds administrative waits for the single-operator deployment.
@@ -210,7 +226,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   model_routes: Iterable[str], exhaustion_status: int = 503,
                   auth_token: Optional[str] = None,
                   purpose: Optional[PurposeRouter] = None,
-                  audio: Optional[AudioGateway] = None):
+                  audio: Optional[AudioGateway] = None,
+                  gateway: Optional[ProtocolGateway] = None):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -271,6 +288,179 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             return hmac.compare_digest(
                 supplied.encode("utf-8"), auth_token.encode("utf-8")
             )
+
+        def _protocol_json_error(self, status: int, code: str, message: str) -> None:
+            self._json(status, {"error": {"type": code, "message": message}})
+
+        def _protocol_body(self) -> dict | None:
+            """Read one strictly framed, bounded protocol JSON body."""
+            te_all = self.headers.get_all("Transfer-Encoding") or []
+            cl_all = self.headers.get_all("Content-Length") or []
+            if te_all:
+                self.close_connection = True
+                self._protocol_json_error(411, "invalid_request", "send Content-Length")
+                return None
+            if len(cl_all) > 1:
+                self.close_connection = True
+                self._protocol_json_error(400, "invalid_request", "duplicate Content-Length")
+                return None
+            raw_length = cl_all[0] if cl_all else "0"
+            if not _DIGIT_RE.fullmatch(raw_length):
+                self.close_connection = True
+                self._protocol_json_error(400, "invalid_request", "invalid Content-Length")
+                return None
+            length = int(raw_length)
+            if length > _PROTOCOL_MAX_BODY_BYTES:
+                self.close_connection = True
+                self._protocol_json_error(413, "payload_too_large", "protocol request too large")
+                self._flush_closing_response()
+                return None
+            raw = self.rfile.read(length) if length else b""
+            try:
+                body = json.loads(raw or b"{}")
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                self._protocol_json_error(400, "invalid_request", "body must be valid JSON")
+                return None
+            if not isinstance(body, dict):
+                self._protocol_json_error(400, "invalid_request", "body must be a JSON object")
+                return None
+            return body
+
+        def _reject_protocol_auth(self) -> None:
+            """Return a uniform 401 while keeping a safe request stream aligned."""
+            te_all = self.headers.get_all("Transfer-Encoding") or []
+            cl_all = self.headers.get_all("Content-Length") or []
+            drainable = not te_all and len(cl_all) <= 1
+            length = 0
+            if drainable and cl_all:
+                if _DIGIT_RE.fullmatch(cl_all[0]):
+                    length = int(cl_all[0])
+                else:
+                    drainable = False
+            if drainable and 0 < length <= _PROTOCOL_MAX_BODY_BYTES:
+                try:
+                    self.rfile.read(length)
+                except Exception:
+                    self.close_connection = True
+            elif not drainable or length > _PROTOCOL_MAX_BODY_BYTES:
+                self.close_connection = True
+            self._protocol_json_error(
+                401, "authentication_error", "invalid or missing API key"
+            )
+            if self.close_connection:
+                self._flush_closing_response()
+
+        def _write_protocol_sse(self, frames: Iterable[bytes]) -> None:
+            chunked = self.request_version == "HTTP/1.1"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            if chunked:
+                self.send_header("Transfer-Encoding", "chunked")
+            else:
+                self.close_connection = True
+                self.send_header("Connection", "close")
+            self.end_headers()
+            try:
+                for frame in frames:
+                    if chunked:
+                        self.wfile.write(b"%x\r\n" % len(frame) + frame + b"\r\n")
+                    else:
+                        self.wfile.write(frame)
+                    self.wfile.flush()
+                if chunked:
+                    self.wfile.write(b"0\r\n\r\n")
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionError):
+                self.close_connection = True
+            finally:
+                close = getattr(frames, "close", None)
+                if callable(close):
+                    close()
+
+        def _handle_protocol_post(self, route: str) -> None:
+            if not self._authenticated():
+                self._reject_protocol_auth()
+                return
+            body = self._protocol_body()
+            if body is None:
+                return
+            if route == MCP_PATH:
+                result = gateway.mcp_request(body)
+                if result is None:
+                    self.send_response(202)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                else:
+                    self._json(200, result, extra_headers={"Cache-Control": "no-store"})
+                return
+            requested_versions = self.headers.get_all(A2A_VERSION_HEADER) or []
+            if len(requested_versions) == 1:
+                requested_version = requested_versions[0].strip()
+            elif not requested_versions:
+                requested_version = ""
+            else:
+                requested_version = ",".join(requested_versions)
+            negotiated_version = requested_version or A2A_LEGACY_DEFAULT_VERSION
+            if negotiated_version != A2A_VERSION:
+                self._json(
+                    200,
+                    version_not_supported(body.get("id"), negotiated_version),
+                    extra_headers={"Cache-Control": "no-store"},
+                )
+                return
+            if body.get("method") in {"SendStreamingMessage", "SubscribeToTask"}:
+                if "text/event-stream" not in self.headers.get("Accept", ""):
+                    self._json(200, gateway.a2a_request(body))
+                    return
+                stream = gateway.a2a_stream(body)
+                if isinstance(stream, dict):
+                    self._json(200, stream)
+                else:
+                    self._write_protocol_sse(stream)
+                return
+            self._json(200, gateway.a2a_request(body))
+
+        def _handle_protocol_get(self, route: str) -> None:
+            if self.headers.get_all("Transfer-Encoding") or self.headers.get_all("Content-Length"):
+                self.close_connection = True
+                self._protocol_json_error(400, "invalid_request", "protocol GET must not include a body")
+                return
+            if not self._authenticated():
+                self._protocol_json_error(401, "authentication_error", "invalid or missing API key")
+                return
+            if route == AGENT_CARD_PATH:
+                self._json(200, gateway.agent_card(), extra_headers={"Cache-Control": "no-store"})
+                return
+            if route in {MCP_PATH, A2A_PATH}:
+                self._json(
+                    405,
+                    {"error": {"type": "method_not_allowed", "message": "this route only accepts POST requests"}},
+                    extra_headers={"Allow": "POST"},
+                )
+                return
+            encoded_id = route[len(ARTIFACT_PREFIX):]
+            artifact_id = urllib.parse.unquote(encoded_id)
+            if not artifact_id or "/" in artifact_id or "?" in artifact_id:
+                self._protocol_json_error(404, "artifact_not_found", "artifact was not found")
+                return
+            range_header = self.headers.get("Range")
+            try:
+                start, end = _parse_artifact_range(range_header)
+                payload = gateway.artifact(artifact_id, start=start, end=end)
+            except MediaError as exc:
+                self._protocol_json_error(exc.status, exc.code, exc.message)
+                return
+            status = 206 if range_header is not None else 200
+            self.send_response(status)
+            self.send_header("Content-Type", payload.artifact.media_type)
+            self.send_header("Content-Length", str(len(payload.data)))
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Cache-Control", "private, no-store")
+            if status == 206:
+                self.send_header("Content-Range", f"bytes {payload.start}-{payload.end}/{payload.total}")
+            self.end_headers()
+            self.wfile.write(payload.data)
 
         def _no_tier_response(self, e: NoAvailableTierError,
                               dialect: Optional[Dialect] = None) -> None:
@@ -629,6 +819,19 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         # --- routes ----------------------------------------------------------
         def do_GET(self) -> None:
             route = self.path.split("?", 1)[0].rstrip("/")
+            if gateway is not None and (
+                route in {AGENT_CARD_PATH, MCP_PATH, A2A_PATH}
+                or route.startswith(ARTIFACT_PREFIX)
+            ):
+                if not _PROTOCOL_CONCURRENCY_LIMIT.acquire(blocking=False):
+                    self.close_connection = True
+                    self._protocol_json_error(503, "server_busy", "protocol gateway busy")
+                    return
+                try:
+                    self._handle_protocol_get(route)
+                finally:
+                    _PROTOCOL_CONCURRENCY_LIMIT.release()
+                return
             if route == TRANSITION_ENDPOINT:
                 if not _MANAGEMENT_LIMIT.acquire(blocking=False):
                     self._error(503, "server_busy", "management busy; try again later")
@@ -983,6 +1186,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         def do_POST(self) -> None:
             route = self.path.split("?", 1)[0].rstrip("/")
+            if gateway is not None and route in {MCP_PATH, A2A_PATH}:
+                if not _PROTOCOL_CONCURRENCY_LIMIT.acquire(blocking=False):
+                    self.close_connection = True
+                    self._protocol_json_error(503, "server_busy", "protocol gateway busy")
+                    return
+                try:
+                    self._handle_protocol_post(route)
+                finally:
+                    _PROTOCOL_CONCURRENCY_LIMIT.release()
+                return
             if route == TRANSITION_ENDPOINT:
                 if not _MANAGEMENT_LIMIT.acquire(blocking=False):
                     self._error(503, "server_busy", "management busy; try again later")
@@ -1287,6 +1500,7 @@ def make_server(host: str, port: int,
                 auth_token: Optional[str] = None,
                 purpose: Optional[PurposeRouter] = None,
                 audio: Optional[AudioGateway] = None,
+                gateway: Optional[ProtocolGateway] = None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -1318,12 +1532,27 @@ def make_server(host: str, port: int,
     """
     if audio is not None and auth_token is None:
         raise ValueError("an AudioGateway requires a resolved front-door auth token")
+    if gateway is not None and auth_token is None:
+        raise ValueError("a ProtocolGateway requires a resolved front-door auth token")
     httpd = ThreadingHTTPServer(
         (host, port),
         _make_handler(
             backend, timeout, model_routes, exhaustion_status, auth_token,
-            purpose, audio,
+            purpose, audio, gateway,
         ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd
+
+
+def _parse_artifact_range(value: str | None) -> tuple[int | None, int | None]:
+    if value is None:
+        return None, None
+    match = re.fullmatch(r"bytes=([0-9]+)-([0-9]*)", value)
+    if match is None:
+        raise MediaError("artifact_range_invalid", "artifact range is invalid", status=416)
+    start = int(match.group(1))
+    end = int(match.group(2)) if match.group(2) else None
+    if end is not None and end < start:
+        raise MediaError("artifact_range_invalid", "artifact range is invalid", status=416)
+    return start, end

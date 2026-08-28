@@ -430,6 +430,66 @@ contract, request examples, and why this surface routes by model name.
 normalized `/v1/audio/transcriptions` or `/v1/audio/speech` gateway. Audio
 routes remain separate from chat and purpose-model routing.
 
+## Named media workflows
+
+Media generation is configured separately from chat, purpose-model, and audio
+routes. Each immutable workflow descriptor names one stable ID and version,
+one media kind, one bounded parameter schema, one graph digest, and exactly one
+logical media-service target. Operator topology resolves that target to one
+resource owner; the descriptor never contains a private endpoint or fallback
+list.
+
+The first-release limits and qualification blockers are frozen in
+[ADR-0041](adr/0041-initial-media-workflows-and-policy.md). Public workflow
+descriptors are candidates until compatibility, functional, capacity,
+artifact, rollback, license, and independent quality evidence make them
+available. Missing values remain blockers rather than runtime defaults.
+
+Gateway media credentials are environment-variable references and carry
+explicit scopes such as `media:read`, `media:submit`, and `media:cancel`.
+Lifecycle approval uses the existing operator confirmation contract; a media
+credential never inherits controller-wide authority. Artifact storage and job
+state paths belong in the private operator home and are not exposed by workflow
+discovery.
+
+When `[server].media_principal` enables the gateway surfaces, the process reads
+the media runtime only from environment variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `ANVIL_MEDIA_BACKEND_URL` | Required ComfyUI adapter endpoint selected by operator topology. |
+| `ANVIL_MEDIA_WORKFLOW_REGISTRY` | Optional path to the pinned public workflow registry. |
+| `ANVIL_MEDIA_STATE_DB` | Durable job and lifecycle database. The gateway and its same-host lifecycle controller must resolve the exact same local path. Never place this SQLite database on a network filesystem. |
+| `ANVIL_MEDIA_ARTIFACT_ROOT` | Private retained-artifact directory. |
+| `ANVIL_MEDIA_CONTROLLER_URL` | Optional same-host orchestration-controller MCP origin used to preview and approve a cold worker start. |
+| `ANVIL_MEDIA_CONTROLLER_TOKEN` | Controller credential paired with the controller URL; the value is never stored or returned. |
+| `ANVIL_MEDIA_SERVE_MANIFEST` | Optional orchestration-controller manifest name for media-worker tools. It must be empty or a basename such as `serves.comfyui.toml`; paths are rejected. Empty selects the normal default manifest. |
+| `ANVIL_MEDIA_RESOURCE_CONTROLLER_URL` | Optional resource-owner controller MCP origin used by the lifecycle controller for bounded `serves_*` operations. |
+| `ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN` | Resource-owner controller credential paired atomically with its URL; keep the value only in secret-backed environment state. |
+
+Each URL/token pair must be set together. If a selected worker is cold, the
+gateway atomically reserves the job and calls a co-located lifecycle controller
+that opens the same host-local `ANVIL_MEDIA_STATE_DB`. That controller returns
+only a dry-run `media_worker_prepare` receipt, and the gateway returns
+`awaiting_approval` with a bounded operator action. The exact safe manifest
+name is stored in both the lifecycle transaction and operator action; retries
+or teardown requests with a different manifest fail closed.
+
+For a worker on another host, the lifecycle controller then calls that host's
+resource-owner controller through `ANVIL_MEDIA_RESOURCE_CONTROLLER_URL`. The
+resource owner executes only declared `serves_status`, `serves_manage`, and
+`serves_logs` tools and never opens the gateway's SQLite database. This two-hop
+layout preserves single-writer, host-local SQLite state while keeping lifecycle
+mutation at the declared resource owner.
+
+The gateway cannot apply the action. An operator must invoke the typed
+controller tool with `dry_run=false`, `confirm=true`, and
+`human_approved=true`; the caller then retries the same workflow and
+idempotency key after the worker becomes ready. The gateway submits that one
+durable job once and its reconciliation loop captures completed output into the
+opaque artifact store. Missing controller configuration fails the reserved job
+closed without contacting the backend.
+
 ## Reference files
 
 - `configs/example.toml`: direct local Primary and

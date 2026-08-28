@@ -38,7 +38,9 @@ import threading
 import time
 
 
-_MODEL_WORKLOADS = frozenset({"model", "llm", "stt", "tts", "experimental-model"})
+_MODEL_WORKLOADS = frozenset(
+    {"model", "llm", "stt", "tts", "media", "experimental-model"}
+)
 _CONFIRMATION_STATE = threading.local()
 
 

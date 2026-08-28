@@ -1,5 +1,19 @@
 # ComfyUI tenant — one-time volume migration runbook (gpu-reservations:T012)
 
+> **Historical migration record.** The host-specific measurements and manual
+> one-time copy below predate the media gateway. Current lifecycle operations
+> must use the managed `anvil-serving serves` or typed controller surfaces.
+> Agents use only named workflow/job APIs; they never receive this migration
+> procedure, raw ComfyUI routes, model paths, or Docker access.
+
+The current first-release workflow, cold-start, UI, retention, quota, timeout,
+artifact, and qualification policies are defined by
+[ADR-0041](adr/0041-initial-media-workflows-and-policy.md). In particular,
+ComfyUI being healthy or a model appearing in its inventory does not make a
+workflow available. Exact graph/model identities, bounded compatibility,
+functional generation, measured capacity, rollback, and independent
+perceptual quality all remain separate gates.
+
 ComfyUI runs on fakoli-dark as an **on-demand image/video-generation tenant** of
 the `dark-compute-b` RTX PRO 6000 role — its own compose project
 ([`examples/fakoli-dark/docker-compose.comfyui.yml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/docker-compose.comfyui.yml)),

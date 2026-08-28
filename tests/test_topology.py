@@ -10,6 +10,7 @@ from types import MappingProxyType
 import pytest
 
 import anvil_serving.topology as topology_module
+from anvil_serving.targets import resolve_resource_target
 from anvil_serving.topology import (
     Resource,
     SCHEMA_VERSION,
@@ -133,7 +134,7 @@ def test_fakoli_reference_topology_validates_offline_and_assigns_models_to_dark(
     assert topology.host("fakoli-mini").capacity_policy == "mini-model-free"
     assert topology.host("fakoli-mini").os == "macos"
     assert topology.host("fakoli-dark").os == "windows"
-    assert not any(resource.workload in {"model", "llm", "stt", "tts"} for resource in mini_resources)
+    assert not any(resource.workload in {"model", "llm", "stt", "tts", "media"} for resource in mini_resources)
     assert not [role for role in topology.gpu_roles if role.host == "fakoli-mini"]
     assert {resource.workload for resource in dark_resources} >= {"llm", "stt", "tts"}
     assert all(resource.host == "fakoli-dark" for resource in topology.resources if resource.workload in {"llm", "stt", "tts"})
@@ -157,6 +158,11 @@ def test_fakoli_reference_topology_validates_offline_and_assigns_models_to_dark(
     assert {
         resource.host for resource in topology.resources if resource.role == "host"
     } == {"fakoli-mini", "fakoli-dark"}
+    media = resolve_resource_target(topology, "media-worker")
+    assert media.resource.host == "media-node"
+    assert media.resource.workload == "media"
+    assert media.transport.id == "media-controller"
+    assert topology.resource_owner("media-gateway").host == "fakoli-dark"
 
 
 def test_valid_topology_parses_into_typed_models_and_preserves_stable_gpu_identity():
@@ -193,6 +199,37 @@ def test_partial_overlay_merges_records_by_id(tmp_path):
     assert topology.command_runtime == "dark-native"
     assert topology.host("fakoli-dark").address == "100.64.0.10"
     assert topology.host("fakoli-dark").os == "windows"
+
+
+def test_private_overlay_can_supply_media_gpu_and_concrete_transport(tmp_path):
+    source = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
+    overlay = tmp_path / "media-deployment.toml"
+    overlay.write_text(
+        '[[hosts]]\nid = "media-node"\naddress = "100.64.0.30"\n'
+        '[[gpu_roles]]\nid = "media-compute"\nhost = "media-node"\n'
+        'runtime = "media-docker"\nuuid = "GPU-11111111-2222-3333-4444-555555555555"\n'
+        'vram_mib = 32768\nreserve_mib = 2048\n'
+        '[[resources]]\nid = "anvil-media-worker"\ngpu_role = "media-compute"\n'
+        '[[transports]]\nid = "media-controller"\nendpoint = "http://100.64.0.30:8766"\n',
+        encoding="utf-8",
+    )
+    topology = topology_module.load_topology(str(source), str(overlay))
+    target = resolve_resource_target(topology, "media-worker")
+    assert target.resource.gpu_role == "media-compute"
+    assert target.transport.endpoint == "http://100.64.0.30:8766"
+
+
+def test_media_worker_target_refuses_ambiguous_controller_transport():
+    source = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
+    topology = topology_module.load_topology(str(source))
+    duplicate = copy.deepcopy(topology)
+    object.__setattr__(
+        duplicate,
+        "transports",
+        (*topology.transports, copy.deepcopy(topology.transport("media-controller"))),
+    )
+    with pytest.raises(TopologyResolutionError, match="exactly one"):
+        resolve_resource_target(duplicate, "media-worker")
 
 
 def test_overlay_depth_is_bounded_before_recursive_merge(tmp_path):
@@ -808,6 +845,23 @@ def test_model_serve_is_rejected_on_a_model_free_host_even_when_gpu_affinity_mat
     assert capacity_errors[0].code == "capacity_policy"
     assert "model-free" in capacity_errors[0].message
     assert "resources[1].gpu_role" not in _paths(validate_topology(data))
+
+
+def test_media_workload_is_model_capacity_and_cannot_run_on_model_free_host():
+    data = _topology()
+    data["resources"][1].update(
+        id="media-worker",
+        role="media-worker",
+        workload="media",
+        host="gateway-host",
+        runtime="gateway-native",
+    )
+    data["resources"][1].pop("gpu_role")
+    errors = validate_topology(data).errors
+    assert any(
+        error.path == "resources[1].host" and error.code == "capacity_policy"
+        for error in errors
+    )
 
 
 def test_unpolicied_hosts_reject_model_workloads_and_gpu_roles():

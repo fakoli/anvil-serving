@@ -36126,7 +36126,7 @@ async function buildBridge(options) {
     },
     {
       capabilities: { tools: {} },
-      instructions: "Operate Anvil Serving through explicit, bounded tools. Mutating tools retain their dry-run, confirmation, and human gates."
+      instructions: "Operate Anvil Serving through explicit, bounded tools. Media generation accepts named workflows only. Mutating tools retain their dry-run, confirmation, and human gates."
     }
   );
   for (const tool of listed.tools) {
