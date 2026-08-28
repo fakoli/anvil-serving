@@ -4,6 +4,7 @@ from anvil_serving import mcp
 from anvil_serving import serves as serves_mod
 from anvil_serving.control_plane.mcp.tools import media
 from anvil_serving.control_plane.mcp.tools import media_worker
+from anvil_serving.control_plane.mcp.tools import serves as serves_tools
 from anvil_serving.media.comfyui import ComfyUIClient
 from anvil_serving.media.contracts import JobState
 from anvil_serving.media.jobs import MediaJobStore
@@ -182,10 +183,19 @@ def test_media_worker_orchestrator_shares_gateway_state_and_proxies_resource_own
     monkeypatch.setenv("ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN", "resource-secret")
     observed = []
 
-    def remote(controller_url, request, token):
+    def remote(controller_url, request, token, *, timeout):
         name = request["params"]["name"]
         arguments = request["params"]["arguments"]
-        observed.append((controller_url, name, arguments, token, request["params"]["_meta"]))
+        observed.append(
+            (
+                controller_url,
+                name,
+                arguments,
+                token,
+                request["params"]["_meta"],
+                timeout,
+            )
+        )
         if name == "serves_status":
             data = {
                 "serves": [
@@ -227,11 +237,59 @@ def test_media_worker_orchestrator_shares_gateway_state_and_proxies_resource_own
         call[4]["io.modelcontextprotocol/protocolVersion"] == mcp.PROTOCOL_VERSION
         for call in observed
     )
+    assert [call[5] for call in observed] == [30, 30]
     waiting = MediaJobStore(state_path).get(job.id, principal="hermes")
     assert waiting.state == JobState.AWAITING_APPROVAL
     assert waiting.approval["operatorAction"]["arguments"]["manifest"] == (
         "serves.comfyui.toml"
     )
+
+
+def test_media_resource_controller_timeout_covers_bounded_child_operation(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "ANVIL_MEDIA_RESOURCE_CONTROLLER_URL", "http://127.0.0.1:8766"
+    )
+    monkeypatch.setenv("ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN", "resource-secret")
+    observed = []
+
+    def remote(controller_url, request, token, *, timeout):
+        observed.append((request["params"]["name"], timeout))
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {"structuredContent": {"ok": True, "data": {}}},
+        }
+
+    monkeypatch.setattr(media_worker, "remote_controller_request", remote)
+
+    media_worker._resource_tool(
+        "serves_manage",
+        {
+            "action": "up",
+            "confirm": True,
+            "dry_run": False,
+            "timeout_seconds": 7200,
+        },
+    )
+    media_worker._resource_tool(
+        "serves_logs",
+        {"timeout_seconds": 600},
+    )
+
+    assert observed == [("serves_manage", 7205), ("serves_logs", 605)]
+
+
+def test_resource_controller_serves_up_has_no_router_lifecycle_side_effect():
+    argv = serves_tools._serves_cli_argv(
+        "up",
+        "serves.comfyui.toml",
+        ["media-worker"],
+        dry_run=False,
+    )
+
+    assert "--no-router" in argv
 
 
 def test_media_resource_controller_configuration_is_atomic(monkeypatch):

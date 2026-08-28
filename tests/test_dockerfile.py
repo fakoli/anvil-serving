@@ -113,6 +113,7 @@ def test_dockerfile_has_separate_pinned_controller_target():
     )
     assert re.search(r"^FROM runtime AS controller$", text, re.MULTILINE)
     assert "/usr/local/bin/docker /usr/local/bin/docker" in text
+    assert "docker/cli-plugins/docker-buildx" in text
     assert "docker/cli-plugins/docker-compose" in text
     assert 'ENTRYPOINT ["anvil-serving", "controller", "serve"]' in text
     assert "ANVIL_SERVING_LOOPBACK_ALIAS=host.docker.internal" in text
