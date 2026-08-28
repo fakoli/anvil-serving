@@ -212,6 +212,35 @@ class ExecutionPreflight:
     capacity: CapacityDecision
 
 
+@dataclass(frozen=True)
+class ResourceTarget:
+    """One explicit resource owner and its one declared controller transport."""
+
+    resource: Resource
+    transport: Transport
+
+
+def resolve_resource_target(topology: Topology, role: str) -> ResourceTarget:
+    """Resolve an adapter service target without host or transport inference.
+
+    This is the protocol-neutral seam used by media workflow configuration: a
+    role must have exactly one resource owner and that host must have exactly
+    one declared controller transport.  Zero or multiple matches fail closed.
+    """
+    resource = topology.resource_owner(role)
+    transports = tuple(
+        transport
+        for transport in topology.transports
+        if transport.kind == "controller" and transport.host == resource.host
+    )
+    if len(transports) != 1:
+        raise TopologyResolutionError(
+            f"resource role {role!r} owner {resource.host!r} has "
+            f"{len(transports)} declared controller transports; declare exactly one"
+        )
+    return ResourceTarget(resource=resource, transport=transports[0])
+
+
 def resolve_execution_plan(
     topology: Topology,
     command: CommandSpec,

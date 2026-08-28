@@ -79,3 +79,12 @@ def test_mcp_proxy_cli_delegates_to_packaged_bridge(monkeypatch):
         "auth_env": "ANVIL_CONTROLLER_TOKEN",
         "version": mcp.__version__,
     }
+
+
+def test_packaged_bridge_is_catalog_driven_and_has_no_media_endpoint_or_token():
+    asset = Path(mcp.__file__).parent / "_node" / "mcp_proxy.mjs"
+    text = asset.read_text(encoding="utf-8")
+    assert "for (const tool of listed.tools)" in text
+    assert "Media generation accepts named workflows only." in text
+    assert "ANVIL_MEDIA_BACKEND_URL" not in text
+    assert "test-controller-token" not in text

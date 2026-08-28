@@ -1,4 +1,5 @@
 from pathlib import Path
+import tomllib
 
 import pytest
 
@@ -162,3 +163,14 @@ def test_init_personalizes_default_topology_for_detected_gpu_host(tmp_path):
     assert {role.uuid for role in topology.gpu_roles} == {primary, auxiliary}
     assert "192.0.2.20" not in topology_text
     assert "GPU-00000000-0000-0000-0000-00000000000" not in topology_text
+
+
+def test_starter_topology_declares_media_roles_without_inventing_gpu_identity():
+    topology = topology_module.parse_topology(
+        tomllib.loads(init.render_starter_topology())
+    )
+    assert topology.resource_owner("media-gateway").endpoint == "http://127.0.0.1:8000"
+    worker = topology.resource_owner("media-worker")
+    assert worker.endpoint == "http://127.0.0.1:8188"
+    assert worker.workload == "media"
+    assert worker.gpu_role is None

@@ -39,6 +39,8 @@ from .control_plane.mcp.evidence import (
     resolve_benchmark_artifact_path as _resolve_benchmark_artifact_path,
 )
 from .control_plane.mcp.protocol import (
+    PROTOCOL_VERSION,
+    SERVER_INFO,
     handle_proxy_request as _handle_proxy_protocol_request,
     handle_request as _handle_protocol_request,
 )
@@ -67,10 +69,6 @@ from .control_plane.mcp.tools.voice import (
 )
 from .control_plane.mcp.tools.workflow import validate_workflow_packet
 from .operator_output import CONTEXT_FIELDS, context_from_plan
-
-
-SERVER_INFO = {"name": "anvil-serving", "version": __version__}
-PROTOCOL_VERSION = "2026-07-28"
 
 
 def _fail(code: str, message: str, details: Optional[dict] = None) -> dict:
@@ -117,11 +115,30 @@ def _target_context(value: Any) -> dict[str, Any]:
     )
 
 
-def list_tools() -> list[dict]:
-    return _list_catalog_tools(TOOLS, TARGET_CONTEXT_SCHEMA)
+def list_tools(
+    *,
+    caller: Mapping[str, Any] | None = None,
+    audience: str | None = None,
+) -> list[dict]:
+    scopes = None
+    if caller is not None:
+        raw_scopes = caller.get("scopes", ())
+        scopes = frozenset(raw_scopes) if isinstance(raw_scopes, (list, tuple, set, frozenset)) else frozenset()
+    return _list_catalog_tools(
+        TOOLS,
+        TARGET_CONTEXT_SCHEMA,
+        granted_scopes=scopes,
+        audience=audience,
+    )
 
 
-def call_tool(name: str, arguments: Optional[dict] = None) -> dict:
+def call_tool(
+    name: str,
+    arguments: Optional[dict] = None,
+    *,
+    caller: Mapping[str, Any] | None = None,
+    audience: str | None = None,
+) -> dict:
     return _call_catalog_tool(
         TOOLS,
         name,
@@ -129,6 +146,8 @@ def call_tool(name: str, arguments: Optional[dict] = None) -> dict:
         validate_arguments=validate_tool_arguments,
         fail=_fail,
         redact_text=_redact_text,
+        caller=caller,
+        audience=audience,
     )
 
 
@@ -144,14 +163,36 @@ def tool_operation_contracts(args: dict) -> dict:
     return _tool_operation_contracts(args, TOOLS)
 
 
-def handle_request(request: dict) -> Optional[dict]:
+def handle_request(
+    request: dict,
+    *,
+    caller: Mapping[str, Any] | None = None,
+    audience: str | None = None,
+) -> Optional[dict]:
+    """Handle one stateless MCP request with optional authenticated identity.
+
+    ``caller`` is supplied out-of-band by an authenticated transport.  It is
+    never accepted from JSON-RPC params.  ``audience`` narrows discovery while
+    keeping the existing stdio surface unchanged when omitted.
+    """
+    protocol_tools = (
+        TOOLS
+        if audience is None
+        else {
+            name: spec
+            for name, spec in TOOLS.items()
+            if spec.get("audience") == audience
+        }
+    )
     return _handle_protocol_request(
         request,
-        tools=TOOLS,
+        tools=protocol_tools,
         protocol_version=PROTOCOL_VERSION,
         server_info=SERVER_INFO,
-        list_tools=list_tools,
-        call_tool=call_tool,
+        list_tools=lambda: list_tools(caller=caller, audience=audience),
+        call_tool=lambda name, arguments: call_tool(
+            name, arguments, caller=caller, audience=audience
+        ),
         target_context=_target_context,
     )
 

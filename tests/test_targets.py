@@ -617,3 +617,27 @@ def test_expected_node_flows_into_the_execution_plan():
     )
     assert plan.transport == "controller"
     assert plan.transport_expected_node == "dark"
+
+
+def test_media_worker_plan_resolves_one_declared_gpu_owner_and_controller():
+    data = _topology_data()
+    data["resources"].append(
+        {
+            "id": "media-worker",
+            "role": "media-worker",
+            "host": "dark",
+            "runtime": "dark-docker",
+            "gpu_role": "fast",
+            "workload": "model",
+        }
+    )
+    data["transports"][0]["allowed_operations"].append("media-worker-prepare")
+    plan = resolve_execution_plan(
+        parse_topology(data),
+        _spec("media-worker-prepare", "media-worker", transports=("controller",)),
+        target="host:dark",
+    )
+    assert plan.transport == "controller"
+    assert plan.resource.id == "media-worker"
+    assert plan.gpu_role.id == "fast"
+    assert plan.transport_allowed_operations[-1] == "media-worker-prepare"

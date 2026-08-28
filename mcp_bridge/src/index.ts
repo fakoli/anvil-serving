@@ -197,6 +197,7 @@ async function buildBridge(options: BridgeOptions): Promise<McpServer> {
       capabilities: { tools: {} },
       instructions:
         "Operate Anvil Serving through explicit, bounded tools. " +
+        "Media generation accepts named workflows only. " +
         "Mutating tools retain their dry-run, confirmation, and human gates.",
     },
   );

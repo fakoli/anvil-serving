@@ -8,6 +8,7 @@ import shlex
 import subprocess
 import textwrap
 import json
+from pathlib import Path
 
 import pytest
 
@@ -798,54 +799,31 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
     # tenant (docs/VOICE.md isolation rule: NOT in the shared serves.toml).
     serves_list = serves.load_manifest(COMFYUI_MANIFEST)
     by_name = {s["name"]: s for s in serves_list}
-    comfyui = by_name["comfyui"]
+    comfyui = by_name["media-worker"]
     assert comfyui["engine"] == "image"
-    assert comfyui["gpu_role"] == "dark-compute-b"
+    assert comfyui["gpu_role"] == "media-compute"
     assert comfyui["residency"] == "on-demand"
     assert comfyui["health"] == "/system_stats"
     assert comfyui["port"] == 8188
-    # The vision-sized slot the F006 design gives the tenant; the compose file
-    # enforces it engine-side with --reserve-vram (change them together).
-    assert comfyui["vram_mib"] == 12288
+    # The public 32 GiB reference envelope; private topology supplies the real
+    # target and mirrors any co-resident reservations.
+    assert comfyui["vram_mib"] == 28672
     # The app-version pin travels in the label so `serves status` shows what runs.
-    assert comfyui["model"] == "comfyui-v0.31.1"
+    assert comfyui["model"] == "comfyui-v0.33.4"
     # Own compose project, own compose file — never the shared docker-compose.yml.
     assert "docker-compose.comfyui.yml" in " ".join(comfyui["up"])
-    # The tenant is the ONLY lifecycle target: every other row is a ledger
-    # mirror and must NOT be startable from this manifest.
-    for name, s in by_name.items():
-        if name != "comfyui":
-            assert not s.get("up"), name
+    assert set(by_name) == {"media-worker"}
 
 
-def test_shipped_comfyui_manifest_mirrors_main_manifest():
-    # The comfyui manifest re-declares the dark-compute-b ledger (capacity row +
-    # reservation mirrors) because ADR-0017 ledgers are derived per manifest.
-    # This pin turns the KEEP IN SYNC comment into a checked invariant: a
-    # rebalance of serves.toml that forgets the mirrors fails here instead of
-    # silently letting `serves up comfyui` admit against stale budgets.
-    main_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
-    main = {s["name"]: s for s in main_list}
+def test_shipped_comfyui_manifest_is_not_bound_to_dark_assignments():
+    # Concrete co-resident reservations and target assignments are private
+    # operator state. The public recipe is a single generic lifecycle target.
     comfy_list = serves.load_manifest(COMFYUI_MANIFEST)
-    comfy = {s["name"]: s for s in comfy_list}
-    main_budget = reservations.budgets_of(main_list)["dark-compute-b"]
-    comfy_budget = reservations.budgets_of(comfy_list)["dark-compute-b"]
-    assert (comfy_budget.vram_mib, comfy_budget.reserve_mib) == (
-        main_budget.vram_mib, main_budget.reserve_mib)
-    mirrors = [n for n in comfy if n != "comfyui"]
-    # Every serves.toml dark-compute-b reservation must be mirrored — a missing
-    # mirror makes comfyui admission blind to that serve's committed VRAM.
-    main_reserved = {
-        n for n, s in main.items()
-        if s.get("gpu_role") == "dark-compute-b"
-        and isinstance(s.get("vram_mib"), int)
-    }
-    assert set(mirrors) == main_reserved, (sorted(mirrors), sorted(main_reserved))
-    for name in mirrors:
-        for field in ("container", "port", "gpu_role", "vram_mib", "residency"):
-            assert comfy[name].get(field) == main[name].get(field), (name, field)
-        # The eviction drain hook must travel with the vision mirror.
-        assert comfy[name].get("router_tier") == main[name].get("router_tier"), name
+    budget = reservations.budgets_of(comfy_list)["media-compute"]
+    assert (budget.vram_mib, budget.reserve_mib) == (32768, 4096)
+    manifest = Path(COMFYUI_MANIFEST).read_text(encoding="utf-8")
+    assert "dark-compute" not in manifest
+    assert "GPU-" not in manifest
 
 
 def test_shipped_fast_candidate_dry_run_uses_manifest_compose(capsys):
@@ -1732,6 +1710,46 @@ def test_cmd_up_recreate_rescues_dead_container():
     assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
     assert ["docker", "rm", "-f", "vllm-gptoss"] in run.calls
     assert ["bash", "serve-fast.sh"] in run.calls
+
+
+def test_command_failure_text_is_bounded_to_actionable_tail_and_redacted():
+    result = proc(
+        1,
+        "prefix:" + ("x" * 9000) + "\nAPI_KEY=visible-secret\nactionable build failure",
+    )
+    rendered = serves._command_failure_text(
+        result,
+        {"API_KEY": "visible-secret"},
+    )
+    assert rendered.startswith("...[truncated to final 8192 characters]...")
+    assert len(rendered) < 8300
+    assert "actionable build failure" in rendered
+    assert "visible-secret" not in rendered
+    assert "<redacted>" in rendered
+
+
+def test_cmd_up_captures_lifecycle_output_with_portable_utf8_decoder():
+    serve = [{
+        "name": "comfyui",
+        "container": "anvil-comfyui",
+        "port": 8188,
+        "health": "/system_stats",
+        "model": "comfyui-v0.33.4",
+        "up": ["docker", "compose", "up", "-d", "comfyui"],
+    }]
+    calls = []
+    inspect_run = _inspect_returning("absent")
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return inspect_run(argv, **kwargs)
+
+    assert serves.cmd_up(serve, ["comfyui"], _run=run) == 0
+    compose_kwargs = next(
+        kwargs for argv, kwargs in calls if argv[:2] == ["docker", "compose"]
+    )
+    assert compose_kwargs["encoding"] == "utf-8"
+    assert compose_kwargs["errors"] == "replace"
 
 
 # ---- post-start storage write guard -----------------------------------------

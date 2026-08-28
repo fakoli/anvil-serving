@@ -89,12 +89,34 @@ async function startController() {
               maxProperties: 1,
             },
           },
+          {
+            name: "media_workflow_run",
+            description: "Submit one named media workflow.",
+            inputSchema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                workflow_id: { type: "string", maxLength: 128 },
+                version: { type: "string", maxLength: 64 },
+                parameters: { type: "object", maxProperties: 32 },
+                idempotency_key: { type: "string", maxLength: 128 },
+              },
+              required: [
+                "workflow_id",
+                "version",
+                "parameters",
+                "idempotency_key",
+              ],
+              maxProperties: 4,
+            },
+            _meta: { "anvil/requiredScope": "media:submit" },
+          },
         ],
         ttlMs: 30_000,
         cacheScope: "private",
       });
     } else if (body.method === "tools/call") {
-      assert.equal(request.headers["mcp-name"], "echo");
+      assert.equal(request.headers["mcp-name"], body.params.name);
       toolCalls.push(body.params);
       if (body.params.arguments.value === "force-error") {
         payload = {
@@ -105,6 +127,22 @@ async function startController() {
             message: `upstream rejected bearer ${TOKEN}`,
           },
         };
+      } else if (body.params.name === "media_workflow_run") {
+        payload = controllerResult(body.id, {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                job: { id: "job_opaque_identifier", state: "queued" },
+              }),
+            },
+          ],
+          structuredContent: {
+            job: { id: "job_opaque_identifier", state: "queued" },
+            created: true,
+          },
+          isError: false,
+        });
       } else {
         payload = controllerResult(body.id, {
           content: [
@@ -173,7 +211,7 @@ test("legacy SDK 1.29 and modern SDK 2.0 use the same bridge", async () => {
     assert.equal(legacy.getServerVersion().name, "anvil-serving");
     assert.deepEqual(
       (await legacy.listTools()).tools.map((tool) => tool.name),
-      ["echo"],
+      ["echo", "media_workflow_run"],
     );
     const legacyResult = await legacy.callTool({
       name: "echo",
@@ -181,6 +219,23 @@ test("legacy SDK 1.29 and modern SDK 2.0 use the same bridge", async () => {
     });
     assert.equal(legacyResult.isError, false);
     assert.equal(legacyResult.structuredContent.value, "legacy");
+    const legacyMedia = await legacy.callTool({
+      name: "media_workflow_run",
+      arguments: {
+        workflow_id: "image.test",
+        version: "v1",
+        parameters: { prompt: "mountain" },
+        idempotency_key: "legacy-media",
+      },
+    });
+    assert.equal(legacyMedia.isError, false);
+    assert.equal(legacyMedia.structuredContent.job.state, "queued");
+    assert.equal(
+      (await legacy.listTools()).tools.find(
+        (tool) => tool.name === "media_workflow_run",
+      )._meta["anvil/requiredScope"],
+      "media:submit",
+    );
 
     const callsBeforeInvalid = controller.toolCalls.length;
     const invalidResult = await legacy.callTool({
@@ -217,7 +272,7 @@ test("legacy SDK 1.29 and modern SDK 2.0 use the same bridge", async () => {
     assert.equal(modern.getProtocolEra(), "modern");
     assert.deepEqual(
       (await modern.listTools()).tools.map((tool) => tool.name),
-      ["echo"],
+      ["echo", "media_workflow_run"],
     );
     const modernResult = await modern.callTool({
       name: "echo",
@@ -225,11 +280,22 @@ test("legacy SDK 1.29 and modern SDK 2.0 use the same bridge", async () => {
     });
     assert.equal(modernResult.isError, false);
     assert.equal(modernResult.structuredContent.value, "modern");
+    const modernMedia = await modern.callTool({
+      name: "media_workflow_run",
+      arguments: {
+        workflow_id: "video.test",
+        version: "v1",
+        parameters: { prompt: "ocean" },
+        idempotency_key: "modern-media",
+      },
+    });
+    assert.equal(modernMedia.isError, false);
+    assert.equal(modernMedia.structuredContent.job.id, "job_opaque_identifier");
     await modern.close();
 
     assert.deepEqual(
-      controller.toolCalls.map((call) => call.arguments.value),
-      ["legacy", "force-error", "modern"],
+      controller.toolCalls.map((call) => call.name),
+      ["echo", "media_workflow_run", "echo", "echo", "media_workflow_run"],
     );
     assert.ok(
       controller.requests.every(

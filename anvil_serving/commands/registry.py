@@ -11,6 +11,7 @@ from .fleet import commands as fleet_commands
 from .harness import commands as harness_commands
 from .host import commands as host_commands
 from .models import commands as model_commands
+from .media import commands as media_commands
 from .router import commands as router_commands
 from .serves import commands as serves_commands
 from .voice import commands as voice_commands
@@ -32,6 +33,7 @@ ROOT_ORDER = (
     "models",
     "eval",
     "voice",
+    "media",
     "harness",
     "mcp",
     "controller",
@@ -88,6 +90,7 @@ FAMILIES = (
     model_commands,
     eval_commands,
     voice_commands,
+    media_commands,
     harness_commands,
     control_plane_commands,
 )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 import urllib.request
 from typing import Optional
@@ -24,11 +25,33 @@ from ..runtime import (
 from ..security import safe_probe_url as _safe_probe_url
 
 
+_MANIFEST_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+
+
+def _manifest_path(args: dict) -> str:
+    from .... import serves as serves_mod
+    from ....paths import config_path
+
+    manifest_arg = _str_arg(args, "manifest", "")
+    from_operator_home = _arg_bool(
+        args.get("manifest_from_operator_home"),
+        False,
+        name="manifest_from_operator_home",
+    )
+    if not from_operator_home:
+        return serves_mod.resolve_manifest_path(manifest_arg or None)
+    if not manifest_arg or not _MANIFEST_NAME_RE.fullmatch(manifest_arg):
+        raise ToolError(
+            "bad_argument",
+            "operator-home manifest must be a safe manifest basename",
+        )
+    return config_path(manifest_arg)
+
+
 def tool_serves_status(args: dict) -> dict:
     from .... import serves as serves_mod
 
-    manifest_arg = _str_arg(args, "manifest", "")
-    manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
+    manifest = _manifest_path(args)
     names = args.get("names", [])
     if names is None:
         names = []
@@ -338,15 +361,12 @@ def _serves_manage_plan(
 
 
 def tool_serves_manage(args: dict) -> dict:
-    from .... import serves as serves_mod
-
     action = _str_arg(args, "action", required=True)
     if action not in {"up", "down", "rm", "adopt"}:
         raise ToolError(
             "bad_action", "action must be one of: up, down, rm, adopt", {"action": action}
         )
-    manifest_arg = _str_arg(args, "manifest", "")
-    manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
+    manifest = _manifest_path(args)
     names = _str_list_arg(args, "names")
     compose = _str_arg(args, "compose", "")
     recreate = _arg_bool(args.get("recreate"), False, name="recreate")
@@ -584,8 +604,7 @@ def tool_serves_mode(args: dict) -> dict:
 def tool_serves_logs(args: dict) -> dict:
     from .... import serves as serves_mod
 
-    manifest_arg = _str_arg(args, "manifest", "")
-    manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
+    manifest = _manifest_path(args)
     names = _str_list_arg(args, "names")
     if len(names) != 1:
         raise ToolError(
@@ -625,6 +644,7 @@ FAMILY = ToolFamily(
             "inputSchema": _schema(
                 {
                     "manifest": {"type": "string"},
+                    "manifest_from_operator_home": {"type": "boolean"},
                     "names": {"type": "array", "items": {"type": "string"}},
                 }
             ),
@@ -645,6 +665,7 @@ FAMILY = ToolFamily(
                 {
                     "action": {"type": "string"},
                     "manifest": {"type": "string"},
+                    "manifest_from_operator_home": {"type": "boolean"},
                     "names": {"type": "array", "items": {"type": "string"}},
                     "compose": {"type": "string"},
                     "recreate": {"type": "boolean"},
@@ -699,6 +720,7 @@ FAMILY = ToolFamily(
             "inputSchema": _schema(
                 {
                     "manifest": {"type": "string"},
+                    "manifest_from_operator_home": {"type": "boolean"},
                     "names": {"type": "array", "items": {"type": "string"}},
                     "tail": _bounded_integer_schema(1, 5000, 200),
                     "max_output_bytes": _bounded_integer_schema(1024, 1048576, 65536),
