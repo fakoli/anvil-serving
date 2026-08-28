@@ -53,6 +53,14 @@ reconciliation, and artifact metadata. MCP and A2A are projections of that
 same service; neither owns execution correctness or protocol-specific job
 state.
 
+The A2A interface advertises no `tenant` value and therefore has no tenant
+routing authority. Its 1.0 request validators recognize the standard optional
+`tenant` field on Send Message, Get Task, Cancel Task, and Subscribe to Task,
+but reject a supplied value with the canonical unsupported-operation error.
+Operation-specific shapes remain exact: request `metadata` is accepted only
+where A2A 1.0 defines it (Send Message and Cancel Task), while Get Task accepts
+`historyLength` and Subscribe to Task accepts only the task identity.
+
 The controller owns typed remote dispatch, durable operation receipts,
 confirmation enforcement, and operation allowlists. The selected
 resource-owning host owns managed ComfyUI lifecycle, the host-local GPU

@@ -8,7 +8,7 @@ from typing import Any
 
 from ..control_plane.mcp.errors import ToolError
 from ..media.errors import MediaError
-from .protocol import A2A_VERSION
+from .protocol import A2A_VERSION, reject_undeclared_tenant
 from .tasks import A2AMediaTasks
 
 
@@ -108,7 +108,9 @@ def handle_jsonrpc(
                 _task_id(params, history_length=True), caller=caller
             )
         elif method == "CancelTask":
-            result = tasks.cancel_task(_task_id(params), caller=caller)
+            result = tasks.cancel_task(
+                _task_id(params, metadata=True), caller=caller
+            )
         elif method in {"SendStreamingMessage", "SubscribeToTask"}:
             return error_from_exception(
                 request_id,
@@ -131,16 +133,20 @@ def sse_frames(request_id: Any, updates: Iterable[Mapping[str, Any]]) -> Iterabl
 
 
 def _task_id(
-    params: Mapping[str, Any], *, history_length: bool = False
+    params: Mapping[str, Any], *, history_length: bool = False, metadata: bool = False
 ) -> str:
-    allowed = {"id", "metadata"}
+    allowed = {"tenant", "id"}
     if history_length:
         allowed.add("historyLength")
+    if metadata:
+        allowed.add("metadata")
     if set(params) - allowed:
         raise MediaError("invalid_a2a_request", "A2A task request contains unknown fields")
-    metadata = params.get("metadata", {})
-    if not isinstance(metadata, Mapping) or len(metadata) > 32:
-        raise MediaError("invalid_a2a_request", "A2A task metadata is invalid")
+    reject_undeclared_tenant(params)
+    if metadata:
+        request_metadata = params.get("metadata", {})
+        if not isinstance(request_metadata, Mapping) or len(request_metadata) > 32:
+            raise MediaError("invalid_a2a_request", "A2A task metadata is invalid")
     if history_length:
         requested_history = params.get("historyLength", 0)
         if (

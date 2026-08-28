@@ -246,6 +246,34 @@ def test_a2a_sse_rejects_terminal_task_subscription_without_mutation(tmp_path):
         assert tasks.operations.jobs.get(task["id"], principal="hermes").state == JobState.CANCELED
 
 
+@pytest.mark.parametrize(
+    ("params", "code"),
+    [
+        ({"id": "job_missing-task-id", "metadata": {}}, -32602),
+        ({"tenant": "undeclared", "id": "job_missing-task-id"}, -32004),
+    ],
+)
+def test_a2a_subscription_uses_normative_1_0_parameter_shape(
+    tmp_path, params, code
+):
+    with gateway_server(tmp_path) as (address, _tasks):
+        status, headers, raw = request(
+            address,
+            "POST",
+            A2A_PATH,
+            body={
+                "jsonrpc": "2.0",
+                "id": "observe-shape",
+                "method": "SubscribeToTask",
+                "params": params,
+            },
+            headers={"Accept": "text/event-stream"},
+        )
+        assert status == 200
+        assert headers["Content-Type"] == "application/json"
+        assert json.loads(raw)["error"]["code"] == code
+
+
 def test_enabling_gateway_does_not_change_v1_models_wire(tmp_path):
     with gateway_server(tmp_path / "enabled") as (enabled, _):
         enabled_response = request(enabled, "GET", "/v1/models")

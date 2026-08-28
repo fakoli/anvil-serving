@@ -10,6 +10,7 @@ from typing import Any
 from .. import __version__, mcp
 from ..a2a.agent_card import build_agent_card
 from ..a2a.http import error_from_exception, handle_jsonrpc, jsonrpc_error, sse_frames
+from ..a2a.protocol import reject_undeclared_tenant
 from ..a2a.tasks import A2AMediaTasks
 from ..control_plane.mcp.tools.media import service_context
 from ..control_plane.mcp.errors import ToolError
@@ -120,14 +121,12 @@ class ProtocolGateway:
 
 
 def _stream_task_request(params: Mapping[str, Any]) -> str:
-    if set(params) - {"id", "metadata"}:
+    if set(params) - {"tenant", "id"}:
         raise MediaError("invalid_a2a_request", "A2A stream request contains unknown fields")
+    reject_undeclared_tenant(params)
     task_id = params.get("id")
     if not isinstance(task_id, str) or not task_id or len(task_id) > 128:
         raise MediaError("invalid_a2a_request", "A2A task id is invalid")
-    metadata = params.get("metadata", {})
-    if not isinstance(metadata, Mapping) or len(metadata) > 32:
-        raise MediaError("invalid_a2a_request", "A2A stream metadata is invalid")
     return task_id
 
 
