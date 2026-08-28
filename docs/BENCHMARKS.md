@@ -29,9 +29,30 @@ This page is the public, searchable summary of the model and end-to-end benchmar
 
 The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-28**.
 
+## Hermes image-quality production enablement on RTX 5090 (2026-08-28)
+
+The exact FLUX.2 Klein 4B FP8 workflow is now production-enabled through the
+authenticated media gateway at three server-owned profiles: `draft` 512×512,
+`standard` 768×768, and `high` 1024×1024, all four steps and c1. Real Hermes
+completed one warm request at each profile plus one cold approval/build/resume
+request. All four PNGs passed independent bounded visual review. Warm gateway
+E2E measured 1.352/1.242/1.650 seconds for draft/standard/high, while complete
+Hermes turns measured 38.354/24.420/41.962 seconds and include agent reasoning
+and tool overhead.
+
+The cold job completed in 2,045.626 seconds, but that interval includes every
+failed deployment attempt repaired during the fix-forward run; it is incident
+and lifecycle evidence, not a normal cold-start latency claim. The worker was
+removed afterward and its reservation reclaimed. Caller-supplied dimensions
+failed before execution, incorrect and retired credentials returned 401, and
+the unrelated Qwen service remained in place. The exact image workflow is
+`available=true`, `promoted=false`; Wan2.2 remains unavailable with
+`quality_failed` and no fallback. See the
+[production-enablement finding](findings/2026-08-28-hermes-image-quality-production.md).
+
 ## ComfyUI image and video qualification on RTX 5090 (2026-08-28)
 
-The first exact media-generation candidates passed direct managed functional
+Earlier the same day, the first exact media-generation candidates passed direct managed functional
 and capacity qualification. FLUX.2 Klein 4B FP8 produced a decodable 512×512
 PNG in 9.859 seconds at 12,919 MiB peak GPU memory. Wan2.2 TI2V 5B produced a
 decodable 512×288, 17-frame H.264 MP4 in 9.092 seconds at 18,263 MiB peak from
@@ -43,13 +64,14 @@ The subsequent isolated end-to-end validation passed authenticated MCP
 image and video requests, cross-host artifact retrieval, and managed teardown.
 Independent bounded review passed both FLUX image samples, while the Wan video
 sample failed quality because of severe smearing, chromatic separation, repeated
-structures, and a red streak. Both candidates therefore remain
-`available=false` and `no-promotion`: the image descriptor remains
-`quality_unreviewed` because two bounded samples do not clear broader production
-quality, and the video descriptor now fails closed as `quality_failed`. The
+structures, and a red streak. At that validation point, both candidates remained
+`available=false` and `no-promotion`: the image descriptor remained
+`quality_unreviewed` pending the later independent production-enable gate, and
+the video descriptor failed closed as `quality_failed`. The
 binary artifact contract passed an independent client; a legacy Windows
 PowerShell download client stalled after a partial transfer and remains a
-client-compatibility caveat.
+client-compatibility caveat. The image decision was superseded later the same
+day by the production-enablement result above; the video decision was not.
 See the [direct qualification](findings/2026-08-28-comfyui-media-qualification.md)
 and [live validation](findings/2026-08-28-media-gateway-live-validation.md).
 
