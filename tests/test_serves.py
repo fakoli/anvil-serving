@@ -1738,12 +1738,11 @@ def test_cmd_up_captures_lifecycle_output_with_portable_utf8_decoder():
         "up": ["docker", "compose", "up", "-d", "comfyui"],
     }]
     calls = []
+    inspect_run = _inspect_returning("absent")
 
     def run(argv, **kwargs):
         calls.append((argv, kwargs))
-        if argv[:3] == ["docker", "ps", "-a"]:
-            return proc(0)
-        return proc(0)
+        return inspect_run(argv, **kwargs)
 
     assert serves.cmd_up(serve, ["comfyui"], _run=run) == 0
     compose_kwargs = next(
