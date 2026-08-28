@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving.media-rollback-public/v1",
+  "observed_at": "2026-08-28",
+  "managed_serve": "comfyui",
+  "intermediate_restart": {
+    "before": {
+      "container_state": "absent",
+      "gpu_used_mib": 448,
+      "reservation_committed_mib": 0,
+      "reservation_free_mib": 28511
+    },
+    "after": {
+      "container_state": "running",
+      "health_status": 200,
+      "gpu_used_mib": 943,
+      "reservation_committed_mib": 28511,
+      "reservation_free_mib": 0
+    }
+  },
+  "final": {
+    "container_state": "absent",
+    "health_status": null,
+    "gpu_used_mib": 448,
+    "gpu_free_mib": 31740,
+    "reservation_committed_mib": 0,
+    "reservation_free_mib": 28511
+  },
+  "router_changed": false,
+  "workflow_promoted": false
+}
