@@ -57,8 +57,10 @@ _SECRET_KEY_PART_SEQUENCES = tuple(
 _RUNTIME_STATE_KEYS = {"container_id", "device_index", "health", "reachability", "status"}
 _TRANSPORT_KINDS = {"controller", "remote", "ssh"}
 _AUTH_REQUIRED_TRANSPORT_KINDS = frozenset({"controller", "remote"})
-_RESOURCE_WORKLOADS = frozenset({"service", "model", "llm", "stt", "tts", "experimental-model"})
-_MODEL_WORKLOADS = frozenset({"model", "llm", "stt", "tts"})
+_RESOURCE_WORKLOADS = frozenset(
+    {"service", "model", "llm", "stt", "tts", "media", "experimental-model"}
+)
+_MODEL_WORKLOADS = frozenset({"model", "llm", "stt", "tts", "media"})
 _HOSTNAME_RE = re.compile(
     r"(?=.{1,254}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
     r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.?$"
@@ -70,7 +72,12 @@ _ACRONYM_CASE_BOUNDARY_RE = re.compile(r"(?<=[A-Z])(?=[A-Z][a-z])")
 _MODEL_WORKLOAD_MARKERS = frozenset(
     {"asr", "embedding", "embeddings", "inference", "llm", "model", "models", "reranker", "stt", "tts"}
 )
-_MODEL_WORKLOAD_PHRASES = (("speech", "to", "text"), ("text", "to", "speech"), ("transcription",))
+_MODEL_WORKLOAD_PHRASES = (
+    ("speech", "to", "text"),
+    ("text", "to", "speech"),
+    ("transcription",),
+    ("media", "worker"),
+)
 _ADJACENT_MODEL_WORKLOAD_SUFFIXES = ("endpoint", "service", "server", "worker", "api")
 _MODEL_WORKLOAD_MARKERS_BY_LENGTH = tuple(sorted(_MODEL_WORKLOAD_MARKERS, key=len, reverse=True))
 _MODEL_WORKLOAD_VERSION_RE = re.compile(r"^v[0-9]+$")

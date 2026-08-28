@@ -9,6 +9,29 @@ command_runtime = "runtime:mini-native"
 # Replace only with private, operator-controlled addresses.
 # The base reference uses synthetic RFC 5737 documentation addresses.
 
+# Map the generic media node to the private media-worker host without changing
+# the public base topology. Keep the real address and GPU UUID in this overlay.
+# [[hosts]]
+# id = "media-node"
+# address = "100.64.0.30"
+#
+# [[gpu_roles]]
+# id = "media-compute"
+# host = "media-node"
+# runtime = "media-docker"
+# uuid = "GPU-REPLACE-WITH-MEDIA-WORKER-UUID"
+# vram_mib = 32768
+# reserve_mib = 2048
+#
+# [[resources]]
+# id = "anvil-media-worker"
+# gpu_role = "media-compute"
+#
+# [[transports]]
+# id = "media-controller"
+# endpoint = "http://100.64.0.30:8766"
+# auth_env = "ANVIL_CONTROLLER_TOKEN"
+
 # [[transports]]
 # id = "dark-controller"
 # kind = "controller"
