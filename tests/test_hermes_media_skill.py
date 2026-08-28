@@ -65,6 +65,8 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
     assert "docker" not in text.casefold()
     assert "http://" not in text and "https://" not in text
     assert "class_type" not in text and "output_nodes" not in text
+    assert "Intermediate narration" in text
+    assert "until the job is terminal" in text
 
 
 def test_hermes_shaped_mcp_flow_reaches_worker_and_retrieves_owned_artifact(tmp_path):

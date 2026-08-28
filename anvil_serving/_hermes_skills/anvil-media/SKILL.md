@@ -56,6 +56,14 @@ an earlier Anvil media job. A slash-command invocation is optional.
 10. Call `mcp__anvil_media__media_job_cancel` only when the user asks to cancel
     that job. Report the returned cancellation state exactly.
 
+## Completion invariant
+
+For a generation request, do not finish the turn after discovery, inspection,
+validation, submission, or a nonterminal status. Continue the procedure in the
+same turn until the job is terminal, a returned blocking state requires the
+user, or the interaction's wait budget ends. Intermediate narration such as
+"I will inspect it next" is not a completed response.
+
 ## Boundaries
 
 - Use only the eight tool names in the procedure above.
