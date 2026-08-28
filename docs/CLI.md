@@ -125,7 +125,7 @@ required operands, choices, and defaults.
 | `router install-config` | Validate and atomically install a router config, including tier-set migrations. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--router-url`<br>`--drain-timeout` |
 | `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
 | `router status` | Show router status. | `read` / `bounded` | - |
-| `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--timeout` |
+| `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--live`<br>`--container`<br>`--installed-config`<br>`--probe-perspective`<br>`--timeout` |
 | `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
 | `router quiesce` | Quiesce one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
 | `router drain` | Wait for a quiesced tier to drain. | `read` / `bounded` | `--tier`<br>`--router-url`<br>`--timeout` |

@@ -1769,8 +1769,44 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Router config TOML.",
+          "summary": "Inspect one router config file instead of the installed router.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--live"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Probe the installed config from the live router runtime (default).",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployed router container.",
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--installed-config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Config path inside the deployed router container.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--probe-perspective"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution perspective for explicit config inspection.",
+          "value_name": "PERSPECTIVE"
         },
         {
           "flags": [
@@ -1785,11 +1821,23 @@
       "output_policy": "bounded",
       "path": "router fleet-status",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "timeout"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_fleet_status"
+      },
       "resource_role": "router",
       "summary": "Report which configured capabilities have a reachable backing serve.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },

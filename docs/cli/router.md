@@ -143,17 +143,31 @@ stopping new admissions, waiting for active work, and returning a tier to servic
 
 ## Fleet status
 
-`router fleet-status` answers one question: **is every configured capability
-actually served, and where?**
+`router fleet-status` answers one question: **is every installed capability
+actually served from the router's own runtime perspective?**
 
 ```bash
 anvil-serving router fleet-status
 ```
 
-It reads the router configuration, probes every declared alias, purpose model,
-and audio route, and reports each as reachable or not. Read-only — no Docker,
-no mutation. `--json` emits the same report structurally; `--timeout` bounds
-each probe.
+By default it asks the deployed router container to read its installed config
+and probe every declared alias, purpose model, and audio route from inside that
+same runtime. The operation is read-only: Docker is used only as the bounded
+execution boundary, and no lifecycle or configuration state changes.
+`--json` emits the same report structurally; `--timeout` bounds each probe.
+
+To inspect a file that may not be installed, pass it explicitly:
+
+```bash
+anvil-serving router fleet-status --config candidate-router.toml
+```
+
+That result is labeled `configured-file` and `command-host`. A file inspection
+is configuration evidence, not proof of live installed health. The optional
+`--probe-perspective router-runtime` is intended for a caller already running
+inside the router runtime; the normal live command selects that perspective
+automatically. The controller exposes the same live-only behavior through the
+bounded `router_fleet_status` tool.
 
 It exits non-zero when a **declared alias** has no reachable backing serve,
 so it works as a pre-promotion or monitoring check. Purpose models and audio
@@ -164,12 +178,16 @@ Two behaviours worth knowing:
 - **An authenticated endpoint answering `401` counts as reachable.** Something
   is serving and asking for a token; treating that as down would report every
   authenticated tier as broken.
-- **`host.docker.internal` is translated to `127.0.0.1` when probing.** The
-  router runs in a container, so its config names the Docker host by that
-  alias, which does not resolve on the host itself — probing it verbatim would
-  report a healthy serve as unreachable. The translation is faithful (same
-  machine) and is always reported in the detail column, and the declared host
-  stays visible, so it is never silent. `localhost` is never substituted.
+- **Runtime-relative endpoints stay runtime-relative in live mode.** A
+  `host.docker.internal` endpoint is probed unchanged from the router runtime.
+  During explicit command-host file inspection it is translated to
+  `127.0.0.1`; if that probe fails, the result is typed
+  `probe_perspective_mismatch` instead of being presented as a definitive
+  fleet outage. `localhost` is never substituted.
+- **Reports do not contain endpoint URLs, IP addresses, or DNS names.** Rows
+  retain only the capability name, selected tier/model, a coarse endpoint kind,
+  probe perspective, HTTP/transport result, and typed failure class. A SHA-256
+  identifies an inspected config without publishing its path or contents.
 
 This exists because on 2026-08-08 the router advertised three routes whose
 backing serves had been off for hours with no signal anywhere. See

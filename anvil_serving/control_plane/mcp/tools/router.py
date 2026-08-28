@@ -83,6 +83,21 @@ def tool_router_status(args: dict) -> dict:
     )
 
 
+def tool_router_fleet_status(args: dict) -> dict:
+    """Probe the exact installed router config from the router runtime."""
+    from .... import router_manage
+
+    timeout = _bounded_int_arg(args, "timeout", 4, min_value=1, max_value=60)
+    try:
+        report = router_manage.installed_fleet_status(
+            container=router_manage.DEFAULT_CONTAINER,
+            timeout=float(timeout),
+        )
+    except ValueError as exc:
+        raise ToolError("router_fleet_status_failed", str(exc))
+    return _ok(report)
+
+
 def tool_router_logs(args: dict) -> dict:
     from .... import router_manage
 
@@ -347,6 +362,15 @@ FAMILY = ToolFamily(
             "description": "Inspect the deployed anvil router container and loopback health.",
             "inputSchema": _schema({"container": {"type": "string"}}),
             "handler": tool_router_status,
+        },
+        "router_fleet_status": {
+            "description": "Probe the installed router configuration from the live router runtime without returning private endpoint identities.",
+            "inputSchema": _schema(
+                {
+                    "timeout": _bounded_integer_schema(1, 60, 4),
+                }
+            ),
+            "handler": tool_router_fleet_status,
         },
         "router_logs": {
             "description": "Read bounded, redacted docker logs for the deployed router; follow mode is not allowed.",
