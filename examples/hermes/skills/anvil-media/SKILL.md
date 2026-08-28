@@ -63,6 +63,8 @@ validation, submission, or a nonterminal status. Continue the procedure in the
 same turn until the job is terminal, a returned blocking state requires the
 user, or the interaction's wait budget ends. Intermediate narration such as
 "I will inspect it next" is not a completed response.
+Reply in the user's language. Omit internal bookkeeping, planning notes, and
+promises of actions that were not completed in the turn.
 
 ## Boundaries
 
