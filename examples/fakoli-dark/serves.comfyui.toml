@@ -23,4 +23,4 @@ gpu_role = "media-compute"
 vram_mib = 28672
 residency = "on-demand"
 groups = ["media", "comfy"]
-up = "docker compose --project-name anvil-comfyui -f {dir}/docker-compose.comfyui.yml up -d comfyui"
+up = "docker compose --project-name anvil-comfyui -f {dir}/docker-compose.comfyui.yml up -d --build comfyui"

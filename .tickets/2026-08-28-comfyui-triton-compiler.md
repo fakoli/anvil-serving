@@ -17,7 +17,9 @@ the missing dependency rather than make the managed runtime reproducible.
 
 Install `gcc` in the pinned derived image alongside the existing runtime
 libraries. Keep the CUDA, PyTorch, ComfyUI, custom-node, graph, and model pins
-unchanged, then repeat the same managed qualification.
+unchanged. Make the managed compose command include `--build` so a reviewed
+Dockerfile change is evaluated even when the old image tag already exists,
+then repeat the same managed qualification.
 
 ## Verification
 
