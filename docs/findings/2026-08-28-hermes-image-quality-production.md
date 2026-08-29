@@ -23,7 +23,7 @@ video workflow remains unavailable with `quality_failed`; no fallback exists.
 |---|---|
 | Model | FLUX.2 Klein 4B FP8 `5b4408e5`; Qwen3 4B encoder and FLUX.2 VAE `5f526678`; immutable graph `991b63b8...2e4f` |
 | Hardware | one NVIDIA RTX 5090, 32,607 MiB, sm_120; Fakoli Dark gateway, Fakoli Mid Mod resource owner, Fakoli Mini Hermes client |
-| Runtime | Anvil Serving `0.36.0`, executable fix-forward line through `b46f6ce`; ComfyUI v0.33.4 at `7a131a3a`; CUDA 13.0; PyTorch 2.13.0+cu130 |
+| Runtime | Anvil Serving `0.36.0`, executable fix-forward line through `5ea1edc`; ComfyUI v0.33.4 at `7a131a3a`; CUDA 13.0; PyTorch 2.13.0+cu130 |
 | Managed recipe | `image.flux2-klein-4b-fp8-v1`; lifecycle-owned `serves.comfyui.toml`; worker absent when idle |
 | Measurement path | real Hermes natural-language turn → exact eight-tool skill → authenticated MCP gateway → bounded controller approval → managed ComfyUI → authenticated artifact origin |
 | Profiles | `draft` 512×512, `standard` 768×768, `high` 1024×1024; four steps each; prompt and optional seed are caller-controlled; c1 |
@@ -75,6 +75,15 @@ continues through nonterminal states, and selects reply language from the
 current request rather than tool output or session history. It does not
 diagnose infrastructure, submit a raw ComfyUI graph, choose a model filename,
 or silently substitute another workflow.
+
+The final deployed skill is `1.0.5`. It makes the mandatory fail-closed
+cancellation for a missing or inexact server resume bundle an explicit
+exception to the normal user-request-only cancellation rule. It also names the
+five legal replay inputs separately from the job and approval correlation
+fields, and preserves an explicit empty profile for workflows that declare no
+quality profiles. These client and generic gateway hardenings do not relabel
+the measured image requests below, which used skill `1.0.4` on the `b46f6ce`
+runtime.
 
 Image requests accept a prompt, an optional seed, and one of three profiles:
 
@@ -188,8 +197,9 @@ two of the requested three white birds were visible. This is retained negative
 quality evidence, not relabeled as a pass. Managed teardown again restored the
 worker-absent, zero-commit, 28,511-MiB-free baseline.
 
-The final `b46f6ce` regression hardened that boundary further. The router
-created the complete seven-field resume bundle from persisted request state;
+The final measured `b46f6ce` regression hardened that boundary further. The
+router assembled the complete seven-field resume bundle from validated current
+request fields plus durable job, selected-profile, and approval identity;
 skill `1.0.4` copied it literally instead of reconstructing it. After the
 approved 475.983-second managed prepare, a fresh Hermes one-shot reattached
 with `created=false`, polled queued to completed, inspected one native image,
@@ -203,11 +213,13 @@ sphere was centered on a matte white pedestal against the requested plain
 pale-gray studio background. Teardown took 12.563 seconds and restored the
 worker-absent, zero-commit, 28,511-MiB-free baseline.
 
-## Defects fixed forward during the cold run
+## Defects fixed forward during the production gate
 
-The live path exposed seventeen actionable defects. Each was repaired in the
-product surface with regression coverage before the same user request was
-allowed to complete:
+The full production gate exposed twenty-two actionable defects: seventeen on
+the live path, three in post-run gateway/skill review, and two in evidence
+review. Each was repaired in the product or evidence surface with regression
+coverage before the gate closed. Jobs whose replies could not preserve an
+exact bundle were canceled; later fresh requests proved the corrected path:
 
 1. The parent controller had a 30-second child timeout while the child allowed
    300 seconds. Child timeout plus a bounded margin is now propagated.
@@ -259,10 +271,30 @@ allowed to complete:
 16. Skill `1.0.3` emitted an incomplete mapping: it omitted the job identity
     and abbreviated the idempotency key. That job was also canceled rather
     than resumed from reconstructed state.
-17. Revision `b46f6ce` makes the gateway return the exact persisted
-    `resumeBundle`; skill `1.0.4` must copy that object literally and cancels
-    the job if it cannot. The fresh cold live regression passed the complete
-    same-job path.
+17. Revision `b46f6ce` makes the gateway assemble and return the exact
+    `resumeBundle` from validated request fields plus durable job/profile/
+    approval identity; skill `1.0.4` must copy that object literally and
+    cancels the job if it cannot. A fresh cold live regression passed the
+    complete same-job path.
+18. Adversarial review found that skill `1.0.4` also said cancellation was
+    allowed only on a user request, contradicting its mandatory fail-closed
+    cancellation for a missing or inexact resume bundle. Skill `1.0.5` makes
+    that safety action an explicit exception.
+19. A valid profileless workflow could reserve a cold job and then lose its
+    resume boundary because an empty profile was treated as invalid. Revision
+    `5ea1edc` preserves the validated empty profile, accepts it in the MCP
+    schema, and proves cold replay and cancellation through real operations.
+20. Skill `1.0.4` said to replay the complete seven-field bundle even though
+    `job_id` and `approval_transaction_id` are not submission inputs. Skill
+    `1.0.5` names the exact five submission fields and reserves the other two
+    for same-job and operator-approval correlation; the protocol regression
+    proves full-bundle rejection and five-field replay.
+21. The evidence incorrectly said every fix preceded completion of the same
+    request even though two malformed-bundle jobs were deliberately canceled.
+    It now distinguishes those canceled jobs from the fresh passing requests.
+22. The evidence called the complete resume payload persisted even though raw
+    request parameters are not stored. It now accurately separates validated
+    current request fields from durable job/profile/approval identity.
 
 The final behavior is a fix-forward result, not a waiver of those failures.
 
@@ -279,7 +311,8 @@ The final behavior is a fix-forward result, not a waiver of those failures.
 | Cold worker before approval | remained absent |
 | Approval replay | one durable job and one owner; no competing start |
 | Exact Hermes resume | server-issued complete bundle; `created=false`; same job; terminal polling in-turn |
-| Hermes reply language | English request produced English terminal response under skill `1.0.4` |
+| Hermes reply language | English request produced English terminal response under measured skill `1.0.4`; final skill `1.0.5` retains the rule |
+| Final router/skill smoke | `5ea1edc` router healthy; skill `1.0.5`; exact seven-field cold reply; explicit Hermes cancellation reached `canceled` |
 | Native artifact return | MCP image content, authenticated resource bytes, size, digest, and 512×512 PNG header matched exactly |
 | Router fleet probe | installed router perspective; 9/9 configured routes returned HTTP 200 |
 | Post-run teardown | worker absent; reservation reclaimed; no orphan descendants |
