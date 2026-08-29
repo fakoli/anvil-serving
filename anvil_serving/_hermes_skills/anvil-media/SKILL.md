@@ -2,7 +2,7 @@
 name: anvil-media
 description: Generate, inspect, or cancel images and videos through Anvil's bounded named-workflow MCP tools.
 metadata:
-  version: "1.0.4"
+  version: "1.0.5"
   hermes:
     tags: [media, image-generation, video-generation, mcp]
     category: media
@@ -26,6 +26,8 @@ an earlier Anvil media job. A slash-command invocation is optional.
 3. Choose only a quality profile declared by the workflow. Use `draft` for an
    explicitly quick or rough request, `high` for an explicitly high-detail or
    largest-output request, and the returned `defaultQualityProfile` otherwise.
+   If the workflow declares no quality profiles, use the empty string as its
+   exact `quality_profile` value and preserve it through any resume.
    These names select exact server-owned settings; they are not a promise of
    subjective visual quality. Never include fields named by
    `qualityProfileParameters` in `parameters`.
@@ -72,8 +74,13 @@ an earlier Anvil media job. A slash-command invocation is optional.
    `awaiting_approval`, `preparing`, `queued`, and `running` as real
    states; never invent completion. After an operator applies a reported cold
    lifecycle approval, retry from the complete resume bundle so the reserved job
-   resumes exactly once. Require `created: false` and the same job ID returned by
-   the original submission; any mismatch is a hard stop. Never use
+   resumes exactly once. Pass exactly its five submission fields to
+   `media_workflow_run`: `workflow_id`, `version`, `parameters`,
+   `quality_profile`, and `idempotency_key`. Do not pass `job_id` or
+   `approval_transaction_id` to that tool: use `job_id` only for the same-job
+   equality check, and use `approval_transaction_id` only to correlate the
+   reported operator approval. Require `created: false` and the same job ID
+   returned by the original submission; any mismatch is a hard stop. Never use
    `session_search`, session history, or another job to reconstruct or resume a
    request. After a successful reattachment, `preparing`, `queued`, and `running`
    are tool-loop states: call job status again instead of ending the response
@@ -84,8 +91,10 @@ an earlier Anvil media job. A slash-command invocation is optional.
    user; do not echo its encoded bytes as text. Also report the authenticated
    `resource`, media type, byte length, digest, expiry, selected quality
    profile, and the job's `latency` fields. Video remains resource-only.
-10. Call `mcp__anvil_media__media_job_cancel` only when the user asks to cancel
-    that job. Report the returned cancellation state exactly.
+10. Except for the mandatory fail-closed cancellation in step 7 when the
+    server-issued resume bundle is missing or cannot be copied exactly, call
+    `mcp__anvil_media__media_job_cancel` only when the user asks to cancel that
+    job. Report the returned cancellation state exactly.
 
 ## Completion invariant
 

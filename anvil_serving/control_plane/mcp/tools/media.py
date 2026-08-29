@@ -152,14 +152,21 @@ def tool_media_workflow_run(args: dict) -> dict:
                 approval.get("transactionId") if isinstance(approval, dict) else None
             )
             job_id = job.get("id")
-            quality_profile = job.get("qualityProfile")
+            if "qualityProfile" in job:
+                quality_profile = job.get("qualityProfile")
+            elif requested_profile == "":
+                # Profileless public jobs omit the qualityProfile field.
+                # Preserve the caller's validated empty selection
+                # so the exact resume bundle remains replayable over MCP.
+                quality_profile = ""
+            else:
+                quality_profile = None
             if (
                 not isinstance(transaction_id, str)
                 or not transaction_id
                 or not isinstance(job_id, str)
                 or not job_id
                 or not isinstance(quality_profile, str)
-                or not quality_profile
             ):
                 raise MediaError(
                     "media_resume_bundle_invalid",
@@ -266,7 +273,7 @@ FAMILY = ToolFamily(
                     "type": "object", "additionalProperties": True, "maxProperties": 32,
                 },
                 "quality_profile": {
-                    "type": "string", "minLength": 1, "maxLength": 128,
+                    "type": "string", "minLength": 0, "maxLength": 128,
                 },
                 "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
             },

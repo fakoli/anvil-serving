@@ -8,6 +8,8 @@ from anvil_serving.control_plane.mcp.tools import serves as serves_tools
 from anvil_serving.media.comfyui import ComfyUIClient
 from anvil_serving.media.contracts import JobState
 from anvil_serving.media.jobs import MediaJobStore
+from tests.a2a.test_tasks import CALLER as MEDIA_CALLER
+from tests.a2a.test_tasks import cold_service
 
 
 READ = {"principal": "hermes", "scopes": ["media:read"]}
@@ -148,6 +150,76 @@ def test_awaiting_approval_returns_server_produced_exact_resume_bundle(monkeypat
         "job_id": "job_opaque_resume_identifier",
         "approval_transaction_id": "approval-opaque-identifier",
     }
+
+
+def test_profileless_cold_resume_bundle_can_replay_and_cancel(tmp_path):
+    tasks = cold_service(tmp_path)
+    arguments = {
+        "workflow_id": "image.test",
+        "version": "v1",
+        "parameters": {"prompt": "profileless mountain"},
+        "idempotency_key": "profileless-cold-request",
+    }
+
+    with media.service_context(tasks.operations, tasks.backend):
+        submitted = mcp.call_tool(
+            "media_workflow_run",
+            arguments,
+            caller=MEDIA_CALLER,
+            audience="media",
+        )
+        assert submitted["ok"] is True
+        bundle = submitted["data"]["resumeBundle"]
+        assert bundle["quality_profile"] == ""
+        assert submitted["data"]["job"]["state"] == "awaiting_approval"
+
+        full_bundle_replay = mcp.call_tool(
+            "media_workflow_run",
+            bundle,
+            caller=MEDIA_CALLER,
+            audience="media",
+        )
+        assert full_bundle_replay["ok"] is False
+        assert full_bundle_replay["error"]["code"] == "bad_argument"
+        assert full_bundle_replay["error"]["details"]["fields"] == [
+            "approval_transaction_id",
+            "job_id",
+        ]
+
+        replay_arguments = {
+            name: bundle[name]
+            for name in (
+                "workflow_id",
+                "version",
+                "parameters",
+                "quality_profile",
+                "idempotency_key",
+            )
+        }
+        replayed = mcp.call_tool(
+            "media_workflow_run",
+            replay_arguments,
+            caller=MEDIA_CALLER,
+            audience="media",
+        )
+        assert replayed["ok"] is True
+        assert replayed["data"]["created"] is False
+        assert replayed["data"]["job"]["id"] == bundle["job_id"]
+        assert replayed["data"]["resumeBundle"] == bundle
+
+        canceled = mcp.call_tool(
+            "media_job_cancel",
+            {"job_id": bundle["job_id"]},
+            caller=MEDIA_CALLER,
+            audience="media",
+        )
+
+    assert canceled["ok"] is True
+    assert canceled["data"]["canceled"] is True
+    assert canceled["data"]["job"]["state"] == "canceled"
+    assert tasks.operations.jobs.get(
+        bundle["job_id"], principal="hermes"
+    ).state == JobState.CANCELED
 
 
 def test_cross_principal_scope_is_required_before_job_lookup(monkeypatch):
