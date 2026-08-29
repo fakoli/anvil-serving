@@ -215,8 +215,8 @@ worker-absent, zero-commit, 28,511-MiB-free baseline.
 
 ## Defects fixed forward during the production gate
 
-The full production gate exposed twenty-two actionable defects: seventeen on
-the live path, three in post-run gateway/skill review, and two in evidence
+The full production gate exposed twenty-three actionable defects: seventeen on
+the live path, four in post-run gateway/skill/release review, and two in evidence
 review. Each was repaired in the product or evidence surface with regression
 coverage before the gate closed. Jobs whose replies could not preserve an
 exact bundle were canceled; later fresh requests proved the corrected path:
@@ -295,6 +295,10 @@ exact bundle were canceled; later fresh requests proved the corrected path:
 22. The evidence called the complete resume payload persisted even though raw
     request parameters are not stored. It now accurately separates validated
     current request fields from durable job/profile/approval identity.
+23. The Windows CI checkout converted both Hermes skill copies to CRLF while
+    the fail-closed packaged-skill loader validated an LF frontmatter prefix.
+    The repository now pins both skill trees to LF in `.gitattributes`, and a
+    hermetic regression proves LF stability plus packaged/example byte identity.
 
 The final behavior is a fix-forward result, not a waiver of those failures.
 

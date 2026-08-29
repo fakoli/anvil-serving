@@ -20,6 +20,12 @@ GATE_CONFIG = ROOT / ".claude" / "gate-router.local.md"
 ATTRIBUTES = ROOT / ".gitattributes"
 CODEX_MCP_CONFIG = ROOT / ".codex" / "config.toml"
 CLAUDE_MCP_CONFIG = ROOT / ".mcp.json"
+PACKAGED_HERMES_MEDIA_SKILL = (
+    ROOT / "anvil_serving" / "_hermes_skills" / "anvil-media" / "SKILL.md"
+)
+EXAMPLE_HERMES_MEDIA_SKILL = (
+    ROOT / "examples" / "hermes" / "skills" / "anvil-media" / "SKILL.md"
+)
 
 
 def test_pre_submit_script_exists_and_is_well_formed():
@@ -81,6 +87,19 @@ def test_gate_router_config_is_parseable_on_windows_and_covers_agent_surfaces():
 
     attributes = ATTRIBUTES.read_text(encoding="utf-8")
     assert ".claude/gate-router.local.md text eol=lf" in attributes
+
+
+def test_hermes_media_skill_is_lf_stable_and_byte_synchronized():
+    packaged = PACKAGED_HERMES_MEDIA_SKILL.read_bytes()
+    example = EXAMPLE_HERMES_MEDIA_SKILL.read_bytes()
+
+    assert b"\r\n" not in packaged
+    assert packaged.startswith(b"---\nname: anvil-media\n")
+    assert example == packaged
+
+    attributes = ATTRIBUTES.read_text(encoding="utf-8")
+    assert "anvil_serving/_hermes_skills/** text eol=lf" in attributes
+    assert "examples/hermes/skills/** text eol=lf" in attributes
 
 
 def test_repo_harnesses_register_the_checkout_mcp_server():
