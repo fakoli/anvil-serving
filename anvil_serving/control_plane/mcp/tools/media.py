@@ -251,7 +251,7 @@ FAMILY = ToolFamily(
             tool_media_job_cancel, scope="media:cancel", required=("job_id",),
         ),
         "media_artifact_inspect": _tool(
-            "Inspect opaque authenticated artifact metadata without media bytes.",
+            "Inspect authenticated artifact metadata; eligible bounded images include native content, while video and oversized images remain resource-only.",
             {"artifact_id": {"type": "string", "minLength": 16, "maxLength": 128}, **_OWNER},
             tool_media_artifact_inspect, scope="media:read", required=("artifact_id",),
         ),

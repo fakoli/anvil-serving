@@ -284,7 +284,7 @@ kind = "controller"
 host = "media-node"
 runtime = "media-native"
 endpoint = "http://192.0.2.30:8766"
-auth_env = "ANVIL_CONTROLLER_TOKEN"
+auth_env = "ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN"
 expected_node = "media-node"
 allowed_operations = ["serves-up", "serves-down", "serves-status", "serves-logs"]
 

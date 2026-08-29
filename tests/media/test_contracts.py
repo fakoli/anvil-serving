@@ -154,6 +154,31 @@ def test_job_latency_is_derived_from_durable_events():
     }
 
 
+def test_job_latency_uses_latest_completed_approval_cycle():
+    first_waiting = job().transition(
+        JobState.AWAITING_APPROVAL,
+        at=NOW + dt.timedelta(seconds=2),
+    )
+    first_preparing = first_waiting.transition(
+        JobState.PREPARING,
+        at=NOW + dt.timedelta(seconds=12),
+    )
+    retry_waiting = first_preparing.transition(
+        JobState.AWAITING_APPROVAL,
+        at=NOW + dt.timedelta(seconds=20),
+    )
+    refreshed_waiting = retry_waiting.transition(
+        JobState.AWAITING_APPROVAL,
+        at=NOW + dt.timedelta(seconds=30),
+    )
+    final_preparing = refreshed_waiting.transition(
+        JobState.PREPARING,
+        at=NOW + dt.timedelta(seconds=80),
+    )
+
+    assert final_preparing.latency()["approvalWaitSeconds"] == 50.0
+
+
 def test_public_records_hide_private_fields_and_generated_bytes():
     artifact = MediaArtifact(
         id=ARTIFACT_ID,
