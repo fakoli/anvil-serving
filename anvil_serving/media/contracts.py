@@ -539,26 +539,22 @@ class MediaJob:
             value = seconds(start, end)
             if value is not None:
                 result[name] = value
-        if JobState.AWAITING_APPROVAL in first:
-            later_preparing = next(
-                (
-                    event.at
-                    for event in self.events
-                    if event.state == JobState.PREPARING
-                    and event.at >= first[JobState.AWAITING_APPROVAL]
-                ),
-                None,
-            )
-            if later_preparing is not None:
-                result["approvalWaitSeconds"] = round(
-                    max(
-                        0.0,
-                        (
-                            later_preparing - first[JobState.AWAITING_APPROVAL]
-                        ).total_seconds(),
-                    ),
-                    3,
+        approval_started_at: dt.datetime | None = None
+        latest_approval_wait: float | None = None
+        for event in self.events:
+            if event.state == JobState.AWAITING_APPROVAL:
+                # A repeated waiting event represents a freshly issued
+                # approval after a failed or expired attempt. Measure from the
+                # most recent approval boundary, never an obsolete cycle.
+                approval_started_at = event.at
+            elif event.state == JobState.PREPARING and approval_started_at is not None:
+                latest_approval_wait = max(
+                    0.0,
+                    (event.at - approval_started_at).total_seconds(),
                 )
+                approval_started_at = None
+        if latest_approval_wait is not None:
+            result["approvalWaitSeconds"] = round(latest_approval_wait, 3)
         if self.state in TERMINAL_STATES:
             terminal_at = self.events[-1].at
             result["endToEndSeconds"] = round(
