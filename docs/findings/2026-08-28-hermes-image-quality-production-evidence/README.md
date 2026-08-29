@@ -10,7 +10,7 @@ job identifier, artifact identifier, or generated binary.
 | [summary.json](summary.json) | machine-readable profiles, latency phases, artifact hashes, visual dispositions, cold lifecycle, negative controls, and fix-forward results | single c1 observation per profile; cold duration includes repair iterations |
 | [publication-summary.md](publication-summary.md) | canonical short-form facts, accessible alt text, and claim ledger | derivative communication only |
 
-The seven generated PNGs are retained in the private operator evidence packet
+The eight generated PNGs are retained in the private operator evidence packet
 because they are binary working evidence. Their exact byte lengths and SHA-256
 digests are recorded in `summary.json`; the public claims depend only on those
 bounded metadata and the independent review dispositions stated in the finding.

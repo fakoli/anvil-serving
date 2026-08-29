@@ -36,13 +36,13 @@ language-model context are not applicable to this diffusion workflow.
 12,919 MiB from a 943 MiB worker baseline, max queue running one and pending
 zero. An isolated exact-build pass added two prompt-adherent PNGs and complete
 artifact controls. The production pass then added one real-Hermes warm request
-per fixed profile and four cold `draft` regressions. Five of seven samples
+per fixed profile and five cold `draft` regressions. Six of eight samples
 passed strict independent review. Two technically valid draft results failed
 prompt adherence on origami/material fidelity and exact bird count. Warm
 gateway E2E measured 1.352/1.242/1.650 seconds for draft/standard/high. The
 2,045.626-second cold E2E includes multiple fix-forward deployment failures
-and is not steady-state latency; the final exact-resume regression measured
-652.607 seconds E2E and 0.110 seconds generation.
+and is not steady-state latency; the final server-issued exact-resume regression
+measured 908.936 seconds E2E and 0.087 seconds generation.
 
 ## Decision and promotion state
 
@@ -58,11 +58,12 @@ the derived runtime. The production cold path later exposed controller timeout,
 Buildx, read-only client state, no-router scoping, approval recovery, descendant
 cleanup, and nested receipt defects; each was fixed forward with regression
 coverage. Later fixes moved live fleet probes into the router runtime, changed
-Hermes MCP auth to the least-authority router token, and made skill `1.0.2`
-carry a complete same-job resume bundle, keep nonterminal states in-turn, and
-preserve the current request language. One cold c1 run is not a throughput
-distribution or latency target. Five strict passes and two retained draft
-failures do not establish broad text rendering, hands, counting, material
+Hermes MCP auth to the least-authority router token, split the router-to-lifecycle
+and lifecycle-to-resource credentials, and made skill `1.0.4` copy the
+server-issued exact same-job resume bundle unchanged, keep nonterminal states
+in-turn, and preserve the current request language. One cold c1 run is not a
+throughput distribution or latency target. Six strict passes and two retained
+draft failures do not establish broad text rendering, hands, counting, material
 fidelity, seed repeatability, or monotonic quality by tier.
 
 ## Dated run history
