@@ -52,8 +52,11 @@ used skill `1.0.4`, copied the server-issued exact resume bundle unchanged,
 reattached with
 `created=false` to the same job, polled to terminal in one English turn, and
 measured 908.936 seconds E2E with 0.087 seconds generation. Its native MCP
-image matched the authenticated artifact resource byte for byte. The exact
-image
+image matched the authenticated artifact resource byte for byte. Post-run
+revision `5ea1edc` and skill `1.0.5` closed the generic profileless
+resume and five-input/seven-field client boundaries; the deployed router and
+cold submit/cancel smoke passed without changing the measured `b46f6ce` image
+sample. The exact image
 workflow is `available=true`, `promoted=false`; Wan2.2 remains unavailable with
 `quality_failed` and no fallback. See the
 [production-enablement finding](findings/2026-08-28-hermes-image-quality-production.md).
