@@ -6,7 +6,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving.client_catalog_sync import ClientCatalogError, sync_clients
+from anvil_serving.client_catalog_sync import (
+    ClientCatalogError,
+    sync_clients,
+    sync_hermes_media,
+)
 
 
 CONFIG_SHA = "a" * 64
@@ -90,6 +94,51 @@ class _HermesRunner:
         if command == ["config", "check"]:
             return self._completed(stdout="valid")
         raise AssertionError("unexpected Hermes command: %r" % argv)
+
+
+class _HermesMediaRunner:
+    def __init__(self, profiles):
+        self.servers = {profile: None for profile in profiles}
+        self.sets = []
+
+    def __call__(self, argv, **_kwargs):
+        profile = argv[2]
+        command = argv[3:]
+        if command[:3] == ["config", "get", "mcp_servers.anvil-media"]:
+            value = self.servers[profile]
+            if value is None:
+                return SimpleNamespace(returncode=1, stdout="", stderr="missing")
+            return SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps(value),
+                stderr="",
+            )
+        if command[:3] == ["config", "set", "mcp_servers.anvil-media"]:
+            self.servers[profile] = json.loads(command[3])
+            self.sets.append(profile)
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        if command == ["config", "check"]:
+            return SimpleNamespace(returncode=0, stdout="valid", stderr="")
+        raise AssertionError("unexpected Hermes media command: %r" % argv)
+
+
+class _WritingHermesMediaRunner(_HermesMediaRunner):
+    def __init__(self, profiles, config_paths, *, fail_profile=None):
+        super().__init__(profiles)
+        self.config_paths = config_paths
+        self.fail_profile = fail_profile
+
+    def __call__(self, argv, **kwargs):
+        profile = argv[2]
+        command = argv[3:]
+        if command[:3] == ["config", "set", "mcp_servers.anvil-media"]:
+            if profile == self.fail_profile:
+                return SimpleNamespace(returncode=1, stdout="", stderr="failed")
+            self.config_paths[profile].write_text(
+                "profile: %s\nmedia: configured\n" % profile,
+                encoding="utf-8",
+            )
+        return super().__call__(argv, **kwargs)
 
 
 def _write_hermes_profiles(root: Path):
@@ -709,6 +758,277 @@ def test_hermes_profile_sync_rejects_unsafe_compaction_before_write(tmp_path):
         )
     assert runner.sets == []
     assert not (tmp_path / "state.json").exists()
+
+
+def test_hermes_media_sync_installs_scoped_mcp_and_packaged_skill_idempotently(
+    tmp_path,
+):
+    home, _ = _write_hermes_profiles(tmp_path)
+    profiles = ("default", "anvil-primary")
+    runner = _HermesMediaRunner(profiles)
+    skill_path = home / "skills" / "anvil-media" / "SKILL.md"
+    kwargs = {
+        "hermes_bin": "hermes",
+        "hermes_home": str(home),
+        "hermes_profiles": ",".join(profiles),
+        "skill_path": str(skill_path),
+        "backup_root": str(tmp_path / "backups-media"),
+        "run": runner,
+    }
+
+    preview = sync_hermes_media(**kwargs)
+    assert preview["changed"] == [
+        "skill",
+        "hermes:default",
+        "hermes:anvil-primary",
+    ]
+    assert preview["dryRun"] is True
+    assert preview["tokenEnv"] == "ANVIL_ROUTER_TOKEN"
+    assert not skill_path.exists()
+    assert runner.sets == []
+
+    restarts = []
+    applied = sync_hermes_media(
+        **kwargs,
+        dry_run=False,
+        confirm=True,
+        restart_hermes_on_change=True,
+        restart_hermes=lambda: restarts.append("restart") or 0,
+    )
+    assert applied["backupCreated"] is True
+    assert applied["hermesRestarted"] is True
+    assert restarts == ["restart"]
+    assert skill_path.read_bytes() == (
+        Path(__file__).parents[1]
+        / "examples"
+        / "hermes"
+        / "skills"
+        / "anvil-media"
+        / "SKILL.md"
+    ).read_bytes()
+    server = runner.servers["default"]
+    assert server == runner.servers["anvil-primary"]
+    assert server["args"][3] == "${ANVIL_MEDIA_MCP_URL}"
+    assert server["env"] == {
+        "ANVIL_ROUTER_TOKEN": "${ANVIL_ROUTER_TOKEN}"
+    }
+    assert server["tools"]["resources"] is False
+    assert server["tools"]["prompts"] is False
+    assert set(server["tools"]["include"]) == set(applied["tools"])
+
+    second = sync_hermes_media(**kwargs, dry_run=False, confirm=True)
+    assert second["changed"] == []
+    assert second["backupCreated"] is False
+    assert second["hermesRestarted"] is False
+
+
+def test_hermes_media_sync_accepts_resolved_values_only_with_raw_env_references(
+    tmp_path,
+):
+    home, _ = _write_hermes_profiles(tmp_path)
+    config = home / "config.yaml"
+    config.write_text(
+        """profile: default
+mcp_servers:
+  anvil-media:
+    command: anvil-serving
+    args:
+      - mcp
+      - serve
+      - --controller-url
+      - ${ANVIL_MEDIA_MCP_URL}
+      - --auth-env
+      - ANVIL_ROUTER_TOKEN
+    env:
+      ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN}
+    tools:
+      include:
+        - media_capabilities
+        - media_workflow_list
+        - media_workflow_show
+        - media_workflow_validate
+        - media_workflow_run
+        - media_job_status
+        - media_job_cancel
+        - media_artifact_inspect
+      resources: false
+      prompts: false
+""",
+        encoding="utf-8",
+    )
+    runner = _HermesMediaRunner(("default",))
+    runner.servers["default"] = {
+        "command": "anvil-serving",
+        "args": [
+            "mcp",
+            "serve",
+            "--controller-url",
+            "https://router.example.ts.net/mcp",
+            "--auth-env",
+            "ANVIL_ROUTER_TOKEN",
+        ],
+        "env": {"ANVIL_ROUTER_TOKEN": "resolved-secret-never-returned"},
+        "tools": {
+            "include": [
+                "media_capabilities",
+                "media_workflow_list",
+                "media_workflow_show",
+                "media_workflow_validate",
+                "media_workflow_run",
+                "media_job_status",
+                "media_job_cancel",
+                "media_artifact_inspect",
+            ],
+            "resources": False,
+            "prompts": False,
+        },
+    }
+    kwargs = {
+        "hermes_bin": "hermes",
+        "hermes_home": str(home),
+        "hermes_profiles": "default",
+        "skill_path": str(home / "skills" / "anvil-media" / "SKILL.md"),
+        "backup_root": str(tmp_path / "backups-media"),
+        "token_env": "ANVIL_ROUTER_TOKEN",
+        "run": runner,
+    }
+
+    preview = sync_hermes_media(**kwargs)
+    assert preview["profiles"] == [{"profile": "default", "changed": False}]
+    assert "resolved-secret-never-returned" not in json.dumps(preview)
+
+    config.write_text(
+        config.read_text(encoding="utf-8").replace(
+            "ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN}",
+            "ANVIL_ROUTER_TOKEN: literal-is-not-accepted",
+        ),
+        encoding="utf-8",
+    )
+    drift = sync_hermes_media(**kwargs)
+    assert drift["profiles"] == [{"profile": "default", "changed": True}]
+
+
+def test_hermes_media_sync_restores_skill_and_profiles_after_partial_write(tmp_path):
+    home, _ = _write_hermes_profiles(tmp_path)
+    profiles = ("default", "anvil-primary")
+    config_paths = {
+        "default": home / "config.yaml",
+        "anvil-primary": home / "profiles" / "anvil-primary" / "config.yaml",
+    }
+    originals = {profile: path.read_bytes() for profile, path in config_paths.items()}
+    skill_path = home / "skills" / "anvil-media" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_bytes(b"previous skill\n")
+    runner = _WritingHermesMediaRunner(
+        profiles,
+        config_paths,
+        fail_profile="anvil-primary",
+    )
+
+    with pytest.raises(ClientCatalogError, match="update failed for anvil-primary"):
+        sync_hermes_media(
+            hermes_bin="hermes",
+            hermes_home=str(home),
+            hermes_profiles=",".join(profiles),
+            skill_path=str(skill_path),
+            backup_root=str(tmp_path / "backups-media"),
+            dry_run=False,
+            confirm=True,
+            run=runner,
+        )
+
+    assert skill_path.read_bytes() == b"previous skill\n"
+    assert {
+        profile: path.read_bytes() for profile, path in config_paths.items()
+    } == originals
+
+
+def test_hermes_media_sync_restores_files_and_restarts_after_restart_failure(tmp_path):
+    home, _ = _write_hermes_profiles(tmp_path)
+    profiles = ("default", "anvil-primary")
+    config_paths = {
+        "default": home / "config.yaml",
+        "anvil-primary": home / "profiles" / "anvil-primary" / "config.yaml",
+    }
+    originals = {profile: path.read_bytes() for profile, path in config_paths.items()}
+    skill_path = home / "skills" / "anvil-media" / "SKILL.md"
+    runner = _WritingHermesMediaRunner(profiles, config_paths)
+    restart_results = iter((1, 0))
+    restart_calls = []
+
+    def restart():
+        restart_calls.append("restart")
+        return next(restart_results)
+
+    with pytest.raises(ClientCatalogError, match="restored after gateway restart failed"):
+        sync_hermes_media(
+            hermes_bin="hermes",
+            hermes_home=str(home),
+            hermes_profiles=",".join(profiles),
+            skill_path=str(skill_path),
+            backup_root=str(tmp_path / "backups-media"),
+            restart_hermes_on_change=True,
+            dry_run=False,
+            confirm=True,
+            run=runner,
+            restart_hermes=restart,
+        )
+
+    assert restart_calls == ["restart", "restart"]
+    assert not skill_path.exists()
+    assert {
+        profile: path.read_bytes() for profile, path in config_paths.items()
+    } == originals
+
+
+def test_hermes_media_sync_reports_failed_rollback_restart(tmp_path):
+    home, _ = _write_hermes_profiles(tmp_path)
+    profiles = ("default",)
+    config_paths = {"default": home / "config.yaml"}
+    original = config_paths["default"].read_bytes()
+    runner = _WritingHermesMediaRunner(profiles, config_paths)
+
+    with pytest.raises(ClientCatalogError, match="restored on disk but its restart failed"):
+        sync_hermes_media(
+            hermes_bin="hermes",
+            hermes_home=str(home),
+            hermes_profiles="default",
+            skill_path=str(home / "skills" / "anvil-media" / "SKILL.md"),
+            backup_root=str(tmp_path / "backups-media"),
+            restart_hermes_on_change=True,
+            dry_run=False,
+            confirm=True,
+            run=runner,
+            restart_hermes=lambda: 1,
+        )
+
+    assert config_paths["default"].read_bytes() == original
+
+
+def test_hermes_media_sync_rejects_paths_and_secret_reference_names_before_write(
+    tmp_path,
+):
+    home, _ = _write_hermes_profiles(tmp_path)
+    runner = _HermesMediaRunner(("default",))
+
+    with pytest.raises(ClientCatalogError, match="under the Hermes skills directory"):
+        sync_hermes_media(
+            hermes_bin="hermes",
+            hermes_home=str(home),
+            hermes_profiles="default",
+            skill_path=str(tmp_path / "outside" / "SKILL.md"),
+            run=runner,
+        )
+    with pytest.raises(ClientCatalogError, match="environment reference is invalid"):
+        sync_hermes_media(
+            hermes_bin="hermes",
+            hermes_home=str(home),
+            hermes_profiles="default",
+            skill_path=str(home / "skills" / "anvil-media" / "SKILL.md"),
+            token_env="TOKEN=value",
+            run=runner,
+        )
+    assert runner.sets == []
 
 
 def test_hermes_profile_sync_requires_anvil_custom_provider_before_write(tmp_path):

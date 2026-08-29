@@ -2,7 +2,10 @@
 
 anvil-serving exposes measured local capabilities through one authenticated,
 OpenAI- and Anthropic-compatible endpoint. It does not infer workload intent,
-rank candidate models, apply quality profiles, or retry another model.
+rank candidate models, apply routing quality profiles, or retry another model.
+The separate named-media surface may resolve an explicit caller-selected
+quality profile to locked parameters within one workflow; that is not route or
+model selection.
 
 At the product level this is a **capability meta-router**: it keeps a stable
 capability contract in front of a configured tier whose concrete serving
@@ -129,9 +132,10 @@ serving/controller operations; no read-only endpoint can mutate them.
 
 ## What is intentionally absent
 
-There are no intent presets, classifier, policy/profile selection, residency
-selection, cloud escalation, response verification, fallback chains, routing
-calibration, or `/v1/route` decision endpoint. Measure a concrete serve with
+There are no inference intent presets, classifier, routing policy/profile
+selection, residency selection, cloud escalation, response verification,
+fallback chains, routing calibration, or `/v1/route` decision endpoint.
+Explicit media workflow profiles do not alter that rule. Measure a concrete serve with
 `eval preflight` and benchmark commands before mapping a capability to it; a
 configuration edit is not a promotion claim.
 

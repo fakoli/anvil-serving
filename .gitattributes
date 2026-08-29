@@ -12,6 +12,10 @@ mcp_bridge/**/*.mjs text eol=lf
 # gate-router parses Markdown frontmatter with POSIX line matching; CRLF makes
 # its opening/closing fences invisible and silently empties the rule set.
 .claude/gate-router.local.md text eol=lf
+# The packaged Hermes media skill is validated and synchronized byte-for-byte.
+# Keep both copies LF-stable so Windows checkouts preserve the frontmatter contract.
+anvil_serving/_hermes_skills/** text eol=lf
+examples/hermes/skills/** text eol=lf
 docs/findings/*-evidence/** -text
 # Kernel tune artifacts are byte-bound by their manifests. Disable checkout
 # conversion so a fresh core.autocrlf=true Windows clone retains their SHA-256.

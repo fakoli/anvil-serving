@@ -208,10 +208,13 @@ returns the result in the caller's negotiated wire format.
 
 ## Deliberate non-components
 
-The gateway has no workload classifier, intent presets, quality profile,
-policy engine, residency selector, verification chain, circuit-breaker
-fallback, cloud route, or routing calibration loop. A selected tier that cannot
-serve returns an error rather than changing the request's capability. There is
+The direct inference relay has no workload classifier, intent presets,
+quality-profile router, policy engine, residency selector, verification chain,
+circuit-breaker fallback, cloud route, or routing calibration loop. A selected
+tier that cannot serve returns an error rather than changing the request's
+capability. Named media workflows may expose explicit caller-selected quality
+profiles, but each profile is only a locked parameter set inside the same
+workflow; it cannot select another route, model, host, or backend. There is
 likewise no fleet registry service and no background reconciler daemon: the
 topology file is the registry, and Docker restart policy is the supervisor.
 

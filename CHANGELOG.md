@@ -6,6 +6,55 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-08-28
+
+### Added
+
+- Named image workflows can publish explicit server-owned `draft`, `standard`,
+  and `high` quality profiles. Media jobs persist the selected profile and
+  expose durable phase and end-to-end latency through MCP and A2A.
+- `harness sync hermes-media` preview/applies the packaged Hermes image/video
+  skill and media-only MCP allowlist with backups, profile verification,
+  idempotent reconciliation, and environment-only credential references.
+- Authenticated image artifact inspection can return bounded native MCP image
+  content so Hermes receives the generated image; video remains resource-only.
+- Media workflow and qualification CLI calls accept exact quality profiles;
+  qualification verifies decoded dimensions against the resolved profile.
+
+### Fixed
+
+- Hermes media reconciliation now verifies raw environment references while
+  tolerating Hermes CLI's resolved `config get` output, avoiding perpetual
+  drift without ever persisting resolved credentials.
+- The packaged Hermes media skill now treats intermediate narration as
+  incomplete and continues generation until a terminal or genuinely blocking
+  state.
+- Cold-worker validation no longer strands Hermes before submission: the skill
+  proceeds on `backend_unavailable` so the gateway can return its bounded,
+  operator-approved lifecycle transaction.
+- Router config installation now writes canonical UTF-8/LF bytes through a
+  binary Docker stdin pipe, preventing Windows text mode from changing the
+  deployed artifact after validation.
+- The production media deployment now has a least-authority, media-only
+  lifecycle controller, host-local state shared with the router, and explicit
+  environment-owned backend/controller origins; the general Dark controller
+  remains outside the media authority boundary.
+- Native image MCP responses now share one six-MiB binary/ten-MiB framed
+  transport budget across artifact inspection, the remote controller client,
+  and the official SDK stdio bridge instead of failing above the former
+  one-MiB proxy response ceiling.
+- Framed management and protocol GET rejections now drain a bounded declared
+  body before closing, preventing Windows TCP resets from truncating the 400
+  response.
+
+### Changed
+
+- The FLUX.2 Klein image workflow is available after five independently
+  reviewed routed/qualification samples, including all three declared quality
+  profiles. The failed Wan2.2 workflow remains unavailable.
+- Package metadata, the Dockerfile label, and the byte-synchronized public
+  router and voice Compose defaults now identify `anvil-serving:0.36.0`.
+
 ## [0.35.1] - 2026-08-24
 
 ### Added

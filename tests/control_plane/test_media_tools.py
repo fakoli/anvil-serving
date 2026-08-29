@@ -4,9 +4,12 @@ from anvil_serving import mcp
 from anvil_serving import serves as serves_mod
 from anvil_serving.control_plane.mcp.tools import media
 from anvil_serving.control_plane.mcp.tools import media_worker
+from anvil_serving.control_plane.mcp.tools import serves as serves_tools
 from anvil_serving.media.comfyui import ComfyUIClient
 from anvil_serving.media.contracts import JobState
 from anvil_serving.media.jobs import MediaJobStore
+from tests.a2a.test_tasks import CALLER as MEDIA_CALLER
+from tests.a2a.test_tasks import cold_service
 
 
 READ = {"principal": "hermes", "scopes": ["media:read"]}
@@ -103,6 +106,120 @@ def test_submit_uses_authenticated_principal_and_normalized_result(monkeypatch):
     assert seen["principal"] == "hermes"
     assert seen["backend"] is backend
     assert "principal" not in result["data"]["job"]
+    assert "resumeBundle" not in result["data"]
+
+
+def test_awaiting_approval_returns_server_produced_exact_resume_bundle(monkeypatch):
+    parameters = {"prompt": "red cube", "seed": 20260828}
+
+    class Operations:
+        def workflow_run(self, workflow_id, version, supplied_parameters, **kwargs):
+            assert supplied_parameters == parameters
+            supplied_parameters["prompt"] = "mutated downstream"
+            return {
+                "job": {
+                    "id": "job_opaque_resume_identifier",
+                    "state": "awaiting_approval",
+                    "qualityProfile": "draft",
+                    "approval": {"transactionId": "approval-opaque-identifier"},
+                },
+                "created": True,
+            }
+
+    backend = ComfyUIClient("http://127.0.0.1:8188")
+    monkeypatch.setattr(media, "_services", lambda: (Operations(), backend))
+    result = mcp.call_tool(
+        "media_workflow_run",
+        {
+            "workflow_id": "image.test",
+            "version": "v1",
+            "parameters": parameters,
+            "quality_profile": "draft",
+            "idempotency_key": "hermes-media-0123456789abcdef0123456789abcdef",
+        },
+        caller=SUBMIT,
+    )
+
+    assert result["ok"] is True
+    assert result["data"]["resumeBundle"] == {
+        "workflow_id": "image.test",
+        "version": "v1",
+        "quality_profile": "draft",
+        "parameters": parameters,
+        "idempotency_key": "hermes-media-0123456789abcdef0123456789abcdef",
+        "job_id": "job_opaque_resume_identifier",
+        "approval_transaction_id": "approval-opaque-identifier",
+    }
+
+
+def test_profileless_cold_resume_bundle_can_replay_and_cancel(tmp_path):
+    tasks = cold_service(tmp_path)
+    arguments = {
+        "workflow_id": "image.test",
+        "version": "v1",
+        "parameters": {"prompt": "profileless mountain"},
+        "idempotency_key": "profileless-cold-request",
+    }
+
+    with media.service_context(tasks.operations, tasks.backend):
+        submitted = mcp.call_tool(
+            "media_workflow_run",
+            arguments,
+            caller=MEDIA_CALLER,
+            audience="media",
+        )
+        assert submitted["ok"] is True
+        bundle = submitted["data"]["resumeBundle"]
+        assert bundle["quality_profile"] == ""
+        assert submitted["data"]["job"]["state"] == "awaiting_approval"
+
+        full_bundle_replay = mcp.call_tool(
+            "media_workflow_run",
+            bundle,
+            caller=MEDIA_CALLER,
+            audience="media",
+        )
+        assert full_bundle_replay["ok"] is False
+        assert full_bundle_replay["error"]["code"] == "bad_argument"
+        assert full_bundle_replay["error"]["details"]["fields"] == [
+            "approval_transaction_id",
+            "job_id",
+        ]
+
+        replay_arguments = {
+            name: bundle[name]
+            for name in (
+                "workflow_id",
+                "version",
+                "parameters",
+                "quality_profile",
+                "idempotency_key",
+            )
+        }
+        replayed = mcp.call_tool(
+            "media_workflow_run",
+            replay_arguments,
+            caller=MEDIA_CALLER,
+            audience="media",
+        )
+        assert replayed["ok"] is True
+        assert replayed["data"]["created"] is False
+        assert replayed["data"]["job"]["id"] == bundle["job_id"]
+        assert replayed["data"]["resumeBundle"] == bundle
+
+        canceled = mcp.call_tool(
+            "media_job_cancel",
+            {"job_id": bundle["job_id"]},
+            caller=MEDIA_CALLER,
+            audience="media",
+        )
+
+    assert canceled["ok"] is True
+    assert canceled["data"]["canceled"] is True
+    assert canceled["data"]["job"]["state"] == "canceled"
+    assert tasks.operations.jobs.get(
+        bundle["job_id"], principal="hermes"
+    ).state == JobState.CANCELED
 
 
 def test_cross_principal_scope_is_required_before_job_lookup(monkeypatch):
@@ -182,10 +299,19 @@ def test_media_worker_orchestrator_shares_gateway_state_and_proxies_resource_own
     monkeypatch.setenv("ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN", "resource-secret")
     observed = []
 
-    def remote(controller_url, request, token):
+    def remote(controller_url, request, token, *, timeout):
         name = request["params"]["name"]
         arguments = request["params"]["arguments"]
-        observed.append((controller_url, name, arguments, token, request["params"]["_meta"]))
+        observed.append(
+            (
+                controller_url,
+                name,
+                arguments,
+                token,
+                request["params"]["_meta"],
+                timeout,
+            )
+        )
         if name == "serves_status":
             data = {
                 "serves": [
@@ -223,15 +349,71 @@ def test_media_worker_orchestrator_shares_gateway_state_and_proxies_resource_own
     assert all(call[2]["manifest"] == "serves.comfyui.toml" for call in observed)
     assert all(call[2]["manifest_from_operator_home"] is True for call in observed)
     assert all(call[3] == "resource-secret" for call in observed)
+    assert observed[1][2]["timeout_seconds"] == 1800
     assert all(
         call[4]["io.modelcontextprotocol/protocolVersion"] == mcp.PROTOCOL_VERSION
         for call in observed
     )
+    assert [call[5] for call in observed] == [30, 30]
     waiting = MediaJobStore(state_path).get(job.id, principal="hermes")
     assert waiting.state == JobState.AWAITING_APPROVAL
     assert waiting.approval["operatorAction"]["arguments"]["manifest"] == (
         "serves.comfyui.toml"
     )
+
+
+def test_media_resource_controller_timeout_covers_bounded_child_operation(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "ANVIL_MEDIA_RESOURCE_CONTROLLER_URL", "http://127.0.0.1:8766"
+    )
+    monkeypatch.setenv("ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN", "resource-secret")
+    observed = []
+
+    def remote(controller_url, request, token, *, timeout):
+        observed.append(
+            (
+                request["params"]["name"],
+                timeout,
+                request["params"]["arguments"].get("timeout_seconds"),
+            )
+        )
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {"structuredContent": {"ok": True, "data": {}}},
+        }
+
+    monkeypatch.setattr(media_worker, "remote_controller_request", remote)
+
+    media_worker._resource_manage(
+        {
+            "action": "up",
+            "confirm": True,
+            "dry_run": False,
+        },
+    )
+    media_worker._resource_tool(
+        "serves_logs",
+        {"timeout_seconds": 600},
+    )
+
+    assert observed == [
+        ("serves_manage", 1805, 1800),
+        ("serves_logs", 605, 600),
+    ]
+
+
+def test_resource_controller_serves_up_has_no_router_lifecycle_side_effect():
+    argv = serves_tools._serves_cli_argv(
+        "up",
+        "serves.comfyui.toml",
+        ["media-worker"],
+        dry_run=False,
+    )
+
+    assert "--no-router" in argv
 
 
 def test_media_resource_controller_configuration_is_atomic(monkeypatch):

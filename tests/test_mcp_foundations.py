@@ -17,17 +17,19 @@ from anvil_serving.control_plane.mcp import catalog
 from anvil_serving.control_plane.mcp.tools import TOOL_FAMILIES
 from anvil_serving.control_plane.mcp.tools import host as host_tools
 from anvil_serving.control_plane.mcp.tools import models as model_tools
+from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "d8cde346480ff523720745af42c9a90c737997a820fc8d088aa90e366c8ffe12"
+    "b581573e6d70089929d5937458d68039806d4dc2f19879ff12c22c3d1706517c"
 )
 HANDLER_MAP_SHA256 = (
-    "68980c61999d3ca0d0a5f597c4bbef781a4ee7616db01950781b8bdcd2b543a5"
+    "e7395d43bce83b73e56229ed19a4fb5c84997620ee08d3bd63ecd149d263d672"
 )
 TOOL_NAMES = [
     "operation_contracts",
     "router_status",
+    "router_fleet_status",
     "router_logs",
     "router_manage",
     "router_transition",
@@ -67,6 +69,7 @@ TOOL_NAMES = [
     "openclaw_gateway_restart",
     "openclaw_gateway_status",
     "client_catalog_sync",
+    "hermes_media_sync",
     "benchmark_harness_prepare",
     "benchmark_harness_status",
     "benchmark_harness_cleanup",
@@ -116,6 +119,24 @@ def _canonical_sha256(value) -> str:
 def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable():
     assert list(mcp.TOOLS) == TOOL_NAMES
     assert _canonical_sha256(mcp.list_tools()) == PUBLIC_CATALOG_SHA256
+
+
+def test_media_artifact_discovery_describes_bounded_native_image_content():
+    assert mcp.TOOLS["media_artifact_inspect"]["description"] == (
+        "Inspect authenticated artifact metadata; eligible bounded images include "
+        "native content, while video and oversized images remain resource-only."
+    )
+
+
+def test_media_run_catalog_accepts_explicit_profileless_resume_value():
+    quality_profile = mcp.TOOLS["media_workflow_run"]["inputSchema"][
+        "properties"
+    ]["quality_profile"]
+    assert quality_profile == {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 128,
+    }
 
 
 def test_direct_handler_map_is_stable_and_uses_dictionary_lookup():
@@ -184,6 +205,29 @@ def test_host_shared_memory_tools_preview_and_apply(monkeypatch):
     })
     assert applied["data"]["applied"] is True
     assert observed == [{"confirm": True}]
+
+
+def test_router_fleet_status_tool_uses_installed_runtime_probe(monkeypatch):
+    seen = {}
+    report = {
+        "rows": [],
+        "checked": 0,
+        "unreachable": 0,
+        "unreachable_aliases": [],
+        "probe_perspective": "router-runtime",
+        "evidence_source": "installed-router",
+    }
+    monkeypatch.setattr(
+        "anvil_serving.router_manage.installed_fleet_status",
+        lambda **kwargs: seen.update(kwargs) or report,
+    )
+
+    result = router_tools.tool_router_fleet_status(
+        {"timeout": 7}
+    )
+
+    assert result["data"] == report
+    assert seen == {"container": "anvil-router", "timeout": 7.0}
 
 
 def test_operation_contracts_resolve_against_the_composed_public_catalog():
@@ -565,3 +609,40 @@ def test_remote_controller_request_bounds_response_body():
         )
 
     assert exc_info.value.code == "controller_response_too_large"
+
+
+def test_remote_controller_request_admits_bounded_native_image_result():
+    request = _request("tools/call", request_id=11, name="media_artifact_inspect")
+    image_data = "A" * (2 * 1024 * 1024)
+    payload = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 11,
+            "result": {
+                "resultType": "complete",
+                "content": [
+                    {"type": "image", "data": image_data, "mimeType": "image/png"}
+                ],
+            },
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, size):
+            assert len(payload) < size
+            return payload
+
+    result = mcp.remote_controller_request(
+        "http://127.0.0.1:8765",
+        request,
+        "secret",
+        opener=lambda _request, timeout: Response(),
+    )
+    assert result["result"]["content"][0]["data"] == image_data

@@ -1,7 +1,10 @@
 """Bounded lifecycle and transition controls for the deployed router container."""
 import argparse
+import hashlib
+import ipaddress
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -23,6 +26,7 @@ DEFAULT_COMPOSE_PROJECT = "anvil-serving"
 DEFAULT_CONTAINER = "anvil-router"
 DEFAULT_SERVICE = "router"
 DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
+DEFAULT_INSTALLED_CONFIG = "/etc/anvil/config.toml"
 TRANSITION_PATH = "/v1/admin/transition"
 
 
@@ -459,7 +463,23 @@ def _build_parser():
             item.add_argument("--env-file")
             item.add_argument("--recreate", action="store_true")
     fleet = actions.add_parser("fleet-status")
-    fleet.add_argument("--config", help="router config TOML (default: config home).")
+    fleet_source = fleet.add_mutually_exclusive_group()
+    fleet_source.add_argument(
+        "--config",
+        help="inspect one router config file from the selected probe perspective.",
+    )
+    fleet_source.add_argument(
+        "--live",
+        action="store_true",
+        help="probe the installed config from inside the live router runtime (default).",
+    )
+    fleet.add_argument("--container", default=DEFAULT_CONTAINER)
+    fleet.add_argument("--installed-config", default=DEFAULT_INSTALLED_CONFIG)
+    fleet.add_argument(
+        "--probe-perspective",
+        choices=("command-host", "router-runtime"),
+        help="execution perspective for explicit --config inspection.",
+    )
     fleet.add_argument("--json", action="store_true", dest="json_out",
                        help="emit the report as JSON for tooling.")
     fleet.add_argument("--timeout", type=float, default=4.0,
@@ -535,8 +555,15 @@ def main(argv=None):
         return rc
     if args.action == "status": return cmd_status(args.container)
     if args.action == "fleet-status":
-        return cmd_fleet_status(args.config, as_json=args.json_out,
-                                timeout=args.timeout)
+        return cmd_fleet_status(
+            args.config,
+            as_json=args.json_out,
+            timeout=args.timeout,
+            live=args.live,
+            probe_perspective=args.probe_perspective,
+            container=args.container,
+            installed_config=args.installed_config,
+        )
     if args.action == "install-config":
         confirmed = guard.confirmation_authorized()
         try:
@@ -618,12 +645,28 @@ def _probe_endpoint(url, timeout=4.0, _open=urllib.request.urlopen):
 # CLAUDE.md: 127.0.0.1 is host-relative; never substitute `localhost`.
 _DOCKER_HOST_ALIAS = "host.docker.internal"
 _HOST_RELATIVE_LOOPBACK = "127.0.0.1"
+_CONTAINER_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 
 
-def _host_relative(url):
-    """Return (probe_url, translated) for a container-relative endpoint."""
+def _validated_probe_timeout(timeout):
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or not 0 < float(timeout) <= 60
+    ):
+        raise ValueError("probe timeout must be greater than 0 and at most 60 seconds")
+    return float(timeout)
+
+
+def _probe_url_for_perspective(url, perspective):
+    """Resolve one health URL for the declared probe execution perspective."""
+    if perspective not in {"command-host", "router-runtime"}:
+        raise ValueError("probe perspective must be command-host or router-runtime")
     parsed = urllib.parse.urlparse(url)
-    if (parsed.hostname or "").lower() != _DOCKER_HOST_ALIAS:
+    if (
+        perspective == "router-runtime"
+        or (parsed.hostname or "").lower() != _DOCKER_HOST_ALIAS
+    ):
         return url, False
     netloc = _HOST_RELATIVE_LOOPBACK
     if parsed.port:
@@ -631,19 +674,47 @@ def _host_relative(url):
     return urllib.parse.urlunparse(parsed._replace(netloc=netloc)), True
 
 
-def _endpoint_host(base_url):
+def _endpoint_kind(base_url):
+    """Classify an endpoint without returning its operator-private identity."""
     try:
-        return urllib.parse.urlparse(base_url).hostname or "?"
+        host = urllib.parse.urlparse(base_url).hostname or ""
     except ValueError:
-        return "?"
+        return "invalid"
+    if host.lower() == _DOCKER_HOST_ALIAS:
+        return "host-relative-loopback"
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return "dns"
+    if address.is_loopback:
+        return "loopback"
+    if address.is_private or address in ipaddress.ip_network("100.64.0.0/10"):
+        return "private-network"
+    return "public-network"
 
 
-def fleet_status(config, timeout=4.0, _probe=_probe_endpoint):
+def _failure_class(*, reachable, endpoint_kind, perspective):
+    if reachable:
+        return None
+    if endpoint_kind == "host-relative-loopback" and perspective == "command-host":
+        return "probe_perspective_mismatch"
+    return "transport_unreachable"
+
+
+def fleet_status(
+    config,
+    timeout=4.0,
+    _probe=_probe_endpoint,
+    *,
+    probe_perspective="command-host",
+    evidence_source="configured-file",
+):
     """Probe every configured capability and report which are actually served.
 
     Reports aliases (the declared chat vocabulary), purpose models, and audio
     routes. Read-only: no Docker, no mutation, no lifecycle.
     """
+    timeout = _validated_probe_timeout(timeout)
     rows = []
     seen = {}
 
@@ -652,54 +723,198 @@ def fleet_status(config, timeout=4.0, _probe=_probe_endpoint):
         if url.endswith("/v1"):
             url = url[: -len("/v1")]
         url += health_path if health_path.startswith("/") else "/" + health_path
-        probe_url, translated = _host_relative(url)
+        probe_url, translated = _probe_url_for_perspective(url, probe_perspective)
         if probe_url not in seen:
             seen[probe_url] = _probe(probe_url, timeout=timeout)
         ok, detail = seen[probe_url]
         if translated:
             detail += " via host-relative loopback"
-        return probe_url, ok, detail
+        endpoint_kind = _endpoint_kind(base_url)
+        return ok, detail, endpoint_kind
+
+    def _row(kind, name, target, base_url, health_path):
+        ok, detail, endpoint_kind = _check(base_url, health_path)
+        return {
+            "kind": kind,
+            "name": name,
+            "target": target,
+            "endpoint_kind": endpoint_kind,
+            "probe_perspective": probe_perspective,
+            "reachable": ok,
+            "detail": detail,
+            "failure_class": _failure_class(
+                reachable=ok,
+                endpoint_kind=endpoint_kind,
+                perspective=probe_perspective,
+            ),
+        }
 
     for alias, tier_id in sorted(dict(config.model_routes).items()):
         try:
             tier = config.tier(tier_id)
         except Exception:  # noqa: BLE001 - an unresolvable tier is the finding
             rows.append({"kind": "alias", "name": alias, "target": tier_id,
-                         "host": "?", "endpoint": "", "reachable": False,
-                         "detail": "alias maps to an undeclared tier"})
+                         "endpoint_kind": "undeclared",
+                         "probe_perspective": probe_perspective,
+                         "reachable": False,
+                         "detail": "alias maps to an undeclared tier",
+                         "failure_class": "undeclared_tier"})
             continue
-        url, ok, detail = _check(tier.base_url, getattr(tier, "health_path", "/health") or "/health")
-        rows.append({"kind": "alias", "name": alias, "target": tier_id,
-                     "host": _endpoint_host(tier.base_url), "endpoint": url,
-                     "reachable": ok, "detail": detail})
+        rows.append(
+            _row(
+                "alias",
+                alias,
+                tier_id,
+                tier.base_url,
+                getattr(tier, "health_path", "/health") or "/health",
+            )
+        )
 
     for purpose in getattr(config, "purpose_models", ()) or ():
-        url, ok, detail = _check(purpose.base_url, "/health")
-        rows.append({"kind": "purpose", "name": purpose.id, "target": purpose.model,
-                     "host": _endpoint_host(purpose.base_url), "endpoint": url,
-                     "reachable": ok, "detail": detail})
+        rows.append(_row("purpose", purpose.id, purpose.model, purpose.base_url, "/health"))
 
     for route in getattr(config, "audio_routes", ()) or ():
-        url, ok, detail = _check(route.base_url, "/health")
-        rows.append({"kind": "audio", "name": route.id, "target": route.purpose,
-                     "host": _endpoint_host(route.base_url), "endpoint": url,
-                     "reachable": ok, "detail": detail})
+        rows.append(_row("audio", route.id, route.purpose, route.base_url, "/health"))
 
     unreachable = [r for r in rows if not r["reachable"]]
     return {
         "rows": rows,
         "checked": len(rows),
         "unreachable": len(unreachable),
+        "perspective_mismatches": sum(
+            row["failure_class"] == "probe_perspective_mismatch" for row in rows
+        ),
         "unreachable_aliases": sorted(
             r["name"] for r in unreachable if r["kind"] == "alias"),
+        "probe_perspective": probe_perspective,
+        "evidence_source": evidence_source,
     }
 
 
-def cmd_fleet_status(config_path_arg=None, as_json=False, timeout=4.0,
-                     _probe=_probe_endpoint):
+def _config_sha256(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _decode_fleet_report(stdout):
+    try:
+        payload = json.loads(stdout)
+    except (TypeError, ValueError):
+        raise ValueError("router-runtime fleet probe returned malformed JSON") from None
+    if isinstance(payload, dict) and "data" in payload:
+        payload = payload["data"]
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except ValueError:
+                raise ValueError("router-runtime fleet probe returned malformed data") from None
+    if not isinstance(payload, dict) or not isinstance(payload.get("rows"), list):
+        raise ValueError("router-runtime fleet probe returned malformed report")
+    for row in payload["rows"]:
+        if not isinstance(row, dict):
+            raise ValueError("router-runtime fleet probe returned malformed rows")
+        # Fail closed if an older or altered runtime returned endpoint identities.
+        row.pop("endpoint", None)
+        row.pop("host", None)
+    return payload
+
+
+def installed_fleet_status(
+    *,
+    container=DEFAULT_CONTAINER,
+    installed_config=DEFAULT_INSTALLED_CONFIG,
+    timeout=4.0,
+    _run=subprocess.run,
+):
+    """Probe the installed config from inside the live router runtime."""
+    timeout = _validated_probe_timeout(timeout)
+    if not isinstance(container, str) or not _CONTAINER_NAME_RE.fullmatch(container):
+        raise ValueError("router container name is invalid")
+    argv = [
+        "docker",
+        "exec",
+        container,
+        "python",
+        "-c",
+        (
+            "import sys; from anvil_serving import router_manage; "
+            "raise SystemExit(router_manage.main(sys.argv[1:]))"
+        ),
+        "fleet-status",
+        "--config",
+        installed_config,
+        "--probe-perspective",
+        "router-runtime",
+        "--timeout",
+        str(timeout),
+        "--json",
+    ]
+    try:
+        result = _run(
+            argv,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=min(600.0, max(30.0, timeout * 64 + 10.0)),
+        )
+    except FileNotFoundError:
+        raise ValueError("router-runtime fleet probe requires Docker") from None
+    except subprocess.TimeoutExpired:
+        raise ValueError("router-runtime fleet probe exceeded its total timeout") from None
+    if result.returncode not in {0, 1}:
+        raise ValueError("router-runtime fleet probe failed before producing a report")
+    report = _decode_fleet_report(result.stdout)
+    report["evidence_source"] = "installed-router"
+    report["probe_perspective"] = "router-runtime"
+    return report
+
+
+def cmd_fleet_status(
+    config_path_arg=None,
+    as_json=False,
+    timeout=4.0,
+    *,
+    live=False,
+    probe_perspective=None,
+    container=DEFAULT_CONTAINER,
+    installed_config=DEFAULT_INSTALLED_CONFIG,
+    _probe=_probe_endpoint,
+    _installed=installed_fleet_status,
+):
     """Report which configured capabilities have a reachable backing serve."""
     from .doctor import resolve_default_config_path
     from .router import config as router_config
+
+    try:
+        timeout = _validated_probe_timeout(timeout)
+    except ValueError as exc:
+        print("router fleet status failed: %s" % exc, file=sys.stderr)
+        return 2
+    use_live = bool(live or (config_path_arg is None and probe_perspective is None))
+    if use_live and config_path_arg:
+        print("--live and --config are mutually exclusive", file=sys.stderr)
+        return 2
+    if use_live and probe_perspective is not None:
+        print("--live selects the router-runtime perspective automatically", file=sys.stderr)
+        return 2
+    if use_live:
+        try:
+            report = _installed(
+                container=container,
+                installed_config=installed_config,
+                timeout=timeout,
+            )
+        except ValueError as exc:
+            print("live router fleet status failed: %s" % exc, file=sys.stderr)
+            return 2
+        if as_json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+            return 1 if report.get("unreachable_aliases") else 0
+        return _print_fleet_status(report)
 
     path = config_path_arg or resolve_default_config_path()
     if not path:
@@ -711,20 +926,49 @@ def cmd_fleet_status(config_path_arg=None, as_json=False, timeout=4.0,
         print("could not load router config %s: %s" % (path, exc), file=sys.stderr)
         return 2
 
-    report = fleet_status(config, timeout=timeout, _probe=_probe)
-    report["config"] = str(path)
+    perspective = probe_perspective or "command-host"
+    report = fleet_status(
+        config,
+        timeout=timeout,
+        _probe=_probe,
+        probe_perspective=perspective,
+        evidence_source="configured-file",
+    )
+    report["config_sha256"] = _config_sha256(path)
     if as_json:
         print(json.dumps(report, indent=2, sort_keys=True))
         return 1 if report["unreachable_aliases"] else 0
 
-    print("%-9s %-16s %-22s %-16s %s" % ("KIND", "NAME", "TARGET", "HOST", "STATE"))
+    return _print_fleet_status(report)
+
+
+def _print_fleet_status(report):
+    print(
+        "source=%s perspective=%s"
+        % (report["evidence_source"], report["probe_perspective"])
+    )
+
+    print(
+        "%-9s %-16s %-22s %-24s %s"
+        % ("KIND", "NAME", "TARGET", "ENDPOINT KIND", "STATE")
+    )
     for row in report["rows"]:
-        print("%-9s %-16s %-22s %-16s %s" % (
-            row["kind"], row["name"], row["target"], row["host"],
-            "ok (%s)" % row["detail"] if row["reachable"]
-            else "UNREACHABLE (%s)" % row["detail"]))
+        state = (
+            "ok (%s)" % row["detail"]
+            if row["reachable"]
+            else "%s (%s)" % (row["failure_class"].upper(), row["detail"])
+        )
+        print(
+            "%-9s %-16s %-22s %-24s %s"
+            % (row["kind"], row["name"], row["target"], row["endpoint_kind"], state)
+        )
     print("\nfleet status: %d configured, %d unreachable" % (
         report["checked"], report["unreachable"]))
+    if report.get("perspective_mismatches"):
+        print(
+            "probe perspective mismatches: %d; use the installed-router live probe"
+            % report["perspective_mismatches"]
+        )
     if report["unreachable_aliases"]:
         print("aliases with no reachable backing serve: %s"
               % ", ".join(report["unreachable_aliases"]))

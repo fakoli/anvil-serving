@@ -76,8 +76,27 @@ class MediaOperations:
         idempotency_key: str,
         backend: ComfyUIClient,
         qualification: bool = False,
+        quality_profile: str | None = None,
     ) -> dict[str, Any]:
-        rendered = self.registry.render(workflow_id, version, parameters)
+        if quality_profile is None:
+            rendered = self.registry.render(workflow_id, version, parameters)
+        else:
+            selected_profile = quality_profile
+            if not selected_profile:
+                selected_profile = self.registry.get(
+                    workflow_id,
+                    version,
+                ).default_quality_profile
+            if selected_profile:
+                rendered = self.registry.render(
+                    workflow_id,
+                    version,
+                    parameters,
+                    quality_profile=selected_profile,
+                )
+            else:
+                rendered = self.registry.render(workflow_id, version, parameters)
+        resolved_parameters = rendered.resolved_parameters or parameters
         if qualification:
             candidate = replace(rendered.descriptor, available=True, unavailable_reasons=())
             rendered = replace(rendered, descriptor=candidate)
@@ -107,24 +126,25 @@ class MediaOperations:
                 raise
             return self._request_lifecycle_approval(
                 rendered,
-                parameters,
+                resolved_parameters,
                 principal=principal,
                 idempotency_key=idempotency_key,
             )
         if not compatibility.ready and not qualification:
             return self._request_lifecycle_approval(
                 rendered,
-                parameters,
+                resolved_parameters,
                 principal=principal,
                 idempotency_key=idempotency_key,
             )
         decision, job, created = MediaAdmissionService(self.jobs).admit(
             rendered.descriptor,
-            parameters,
+            resolved_parameters,
             principal=principal,
             backend_ready=compatibility.available,
             input_digest=rendered.parameters_digest,
             idempotency_key=idempotency_key,
+            quality_profile=rendered.quality_profile,
         )
         if not decision.allowed:
             raise MediaError(
@@ -163,6 +183,7 @@ class MediaOperations:
             backend_ready=True,
             input_digest=rendered.parameters_digest,
             idempotency_key=idempotency_key,
+            quality_profile=rendered.quality_profile,
         )
         if not decision.allowed:
             raise MediaError(
@@ -188,11 +209,11 @@ class MediaOperations:
         principal: str,
         created: bool,
     ) -> dict[str, Any]:
-        """Persist or recover the exact lifecycle preview for an accepted job."""
+        """Persist or recover the exact lifecycle preview for a reserved job."""
 
         with self._submit_lock:
             current = self.jobs.get(job_id, principal=principal)
-            if current.state != JobState.ACCEPTED:
+            if current.state not in {JobState.ACCEPTED, JobState.PREPARING}:
                 return {"job": current.as_public_dict(), "created": False}
             try:
                 if self._lifecycle_preview is None:
@@ -206,19 +227,31 @@ class MediaOperations:
                     principal,
                     rendered.descriptor.service_target,
                 )
+                current = self.jobs.get(job_id, principal=principal)
+                if (
+                    current.state == JobState.PREPARING
+                    and receipt.get("humanRequired") is not True
+                ):
+                    # The prior approved apply still owns its bounded lease.
+                    # Report the durable state without minting a second
+                    # approval or replaying its mutation.
+                    return {"job": current.as_public_dict(), "created": False}
                 approval = _approval_request(
                     job_id,
                     principal,
                     rendered.descriptor.service_target,
                     receipt,
                 )
-                current = self.jobs.get(job_id, principal=principal)
-                if current.state == JobState.ACCEPTED:
+                if current.state in {JobState.ACCEPTED, JobState.PREPARING}:
                     current = self.jobs.transition(
                         job_id,
                         JobState.AWAITING_APPROVAL,
                         principal=principal,
-                        reason="media_worker_start_requires_approval",
+                        reason=(
+                            "media_worker_start_retry_requires_approval"
+                            if current.state == JobState.PREPARING
+                            else "media_worker_start_requires_approval"
+                        ),
                         approval=approval,
                     )
                 elif current.state != JobState.AWAITING_APPROVAL:
@@ -349,11 +382,28 @@ class MediaOperations:
             current = self.jobs.get(job_id, principal=principal)
             if current.state != JobState.PREPARING:
                 return {"job": current.as_public_dict(), "created": False}
-            compatibility = (
-                backend.compatibility(rendered.descriptor, qualification=True)
-                if qualification
-                else backend.compatibility(rendered.descriptor)
-            )
+            try:
+                compatibility = (
+                    backend.compatibility(rendered.descriptor, qualification=True)
+                    if qualification
+                    else backend.compatibility(rendered.descriptor)
+                )
+            except MediaError as exc:
+                if exc.code != "backend_unavailable" or qualification:
+                    raise
+                return self._preview_lifecycle(
+                    job_id,
+                    rendered,
+                    principal=principal,
+                    created=False,
+                )
+            if not compatibility.ready and not qualification:
+                return self._preview_lifecycle(
+                    job_id,
+                    rendered,
+                    principal=principal,
+                    created=False,
+                )
             if not compatibility.ready or not compatibility.available:
                 raise MediaError(
                     "media_service_unavailable",
@@ -511,9 +561,18 @@ def parameters_from_json(raw: str, *, max_bytes: int = 65536) -> dict[str, Any]:
     return value
 
 
-def stable_request_key(workflow_id: str, version: str, parameters: Mapping[str, Any]) -> str:
+def stable_request_key(
+    workflow_id: str,
+    version: str,
+    parameters: Mapping[str, Any],
+    *,
+    quality_profile: str = "",
+) -> str:
+    request = {"workflow": workflow_id, "version": version, "parameters": parameters}
+    if quality_profile:
+        request["qualityProfile"] = quality_profile
     payload = json.dumps(
-        {"workflow": workflow_id, "version": version, "parameters": parameters},
+        request,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,

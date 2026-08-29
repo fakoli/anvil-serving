@@ -34,6 +34,7 @@ required = (
     package / "_media_workflows" / "image.flux2-klein-4b-fp8-v1.graph.json",
     package / "_media_workflows" / "video.wan2.2-ti2v-5b-v1.json",
     package / "_media_workflows" / "video.wan2.2-ti2v-5b-v1.graph.json",
+    package / "_hermes_skills" / "anvil-media" / "SKILL.md",
 )
 missing = [str(path) for path in required if not path.is_file()]
 if missing:
@@ -200,6 +201,7 @@ def run_smoke(
                 "anvil_serving/_media_workflows/image.flux2-klein-4b-fp8-v1.graph.json",
                 "anvil_serving/_media_workflows/video.wan2.2-ti2v-5b-v1.json",
                 "anvil_serving/_media_workflows/video.wan2.2-ti2v-5b-v1.graph.json",
+                "anvil_serving/_hermes_skills/anvil-media/SKILL.md",
             ],
         }
 
