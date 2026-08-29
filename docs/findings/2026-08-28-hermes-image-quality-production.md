@@ -256,9 +256,10 @@ Its semantic scan still reports the real topology identities and operator paths
 that the private repository exists to retain; those expected private-policy
 matches did not cross into the public candidate.
 
-A separate verified scan of all 896 public commits is deliberately reported as
-`findings remain`, not clean. It found 21 historical signatures: 14 synthetic
-fixture or non-secret environment/provenance matches, six derivative copies in
+A separate verified scan of all public commits reachable at the release gate is
+deliberately reported as `findings remain`, not clean. It found 21 historical
+signatures: 14 synthetic fixture or non-secret environment/provenance matches,
+six derivative copies in
 historical generated search indexes, and one credential-shaped `deviceToken`
 field in a historical temporary-loopback OpenClaw smoke artifact. That field is
 redacted in the current artifact, its historical value is absent from both
