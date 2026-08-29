@@ -1,0 +1,114 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "brandonmusic/GLM-5.3-Flash-tr3-4bpw"
+status = "verified"
+source = "Locally qualified vision/OCR fixed-MTP5 profile using the Cardillo media-template repair without mutating the immutable Hugging Face snapshot"
+family = "glm-5.3-flash-multimodal-moe"
+
+[recipe.download]
+repo = "brandonmusic/GLM-5.3-Flash-tr3-4bpw"
+revision = "5ab363a8dcf6405955fd5f99671e01a1c9fb124b"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2/Docker Desktop; exclusive TP=2 qualification lane."
+
+[recipe.serve]
+engine = "vllm-glm53-exl3-b12x-mtp5-vision"
+allow_cuda_visible_devices_index = true
+image = "ghcr.io/tpurtell/glm-5.3-flash-exl3-4bpw-2x-rtx@sha256:da5cec95778bf6996660b52e28a6e51737fec69cfc3d508bf298c8a89f273ac5"
+model_path = "/root/.cache/huggingface/hub/models--brandonmusic--GLM-5.3-Flash-tr3-4bpw/snapshots/5ab363a8dcf6405955fd5f99671e01a1c9fb124b"
+entrypoint = ["/bin/sh", "-c", '''set -eu; src="$1/chat_template.jinja"; dst=/root/.cache/glm53-vision-chat-template.jinja; python3 -c 'import base64,hashlib,os,pathlib,sys; src=pathlib.Path(sys.argv[1]); dst=pathlib.Path(sys.argv[2]); raw=src.read_bytes(); assert hashlib.sha256(raw).hexdigest()=="41cff9af7b3a86c96751b107a8444f245fbda0bd5320b636a5bb1f7f4ba1a5c3"; text=raw.decode(); marker="{%- endmacro -%}"; start=text.index("{%- macro visible_text(content) -%}"); end=text.index(marker,start)+len(marker); replacement=base64.b64decode(os.environ["GLM53_VISION_MACRO_B64"]).decode(); out=(text[:start]+replacement+text[end:]).encode(); assert hashlib.sha256(out).hexdigest()=="15e397141077cea6619b82d0cf4b0f9419668580bebf9a82a9d1b3ad2fea3df5"; dst.write_bytes(out)' "$src" "$dst"; exec vllm serve "$@" --chat-template "$dst"''', "glm53-vision-shim"]
+named_volumes = [
+  "glm53-cardillo-vllm-cache:/root/.cache",
+]
+quantization = "ShapleyMCG TR3/EXL3 4 bpw weights with NVFP4 MLA KV cache"
+context_tokens = 262144
+port = 8001
+startup_timeout_seconds = 3600
+served_model_name = "glm53-flash-tr3-4bpw-tp2-262k-fixed-mtp5-vision"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "HF_HUB_OFFLINE=1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_DEBUG=WARN",
+  "VLLM_USE_V2_MODEL_RUNNER=1",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "VLLM_ENGINE_READY_TIMEOUT_S=3600",
+  "VLLM_ENABLE_PCIE_ALLREDUCE=0",
+  "VLLM_PCIE_ALLREDUCE_BACKEND=b12x",
+  "VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE=384KB",
+  "VLLM_B12X_PCIE_EAGER=0",
+  "VLLM_B12X_DCP_A2A=0",
+  "VLLM_USE_B12X_SPARSE_INDEXER=1",
+  "VLLM_USE_B12X_KPOOL_INDEXER=1",
+  "VLLM_DCP_GLOBAL_TOPK=1",
+  "VLLM_DCP_QUERY_SPLIT=0",
+  "VLLM_DCP_TOPK_OWNER_MERGE=1",
+  "VLLM_B12X_DCP_TOPK_OWNER_EXCHANGE=0",
+  "VLLM_B12X_DCP_TOPK_MIN_ROWS=128",
+  "VLLM_B12X_DCP_TOPK_MAX_ROWS=2048",
+  "KV_FP8_ROPE=1",
+  "VLLM_NVFP4_MLA_DYNAMIC_SCALE=1",
+  "VLLM_EXL3_TRELLIS_MIN_M=1",
+  "VLLM_EXL3_TRELLIS_MAX_M=32",
+  "VLLM_EXL3_TRELLIS_BLOCK_M=8",
+  "VLLM_EXL3_PREFILL_TRELLIS=1",
+  "VLLM_EXL3_PREFILL_BLOCK_M=64",
+  "VLLM_EXL3_PREFILL_CAPACITY=1024",
+  "B12X_EXL3_BF16_EPILOGUE=1",
+  "B12X_EXL3_BF16_GEMV=1",
+  "VLLM_B12X_GLM_H64_QUERY_PROJ=auto",
+  "VLLM_USE_B12X_MHC=auto",
+  "GLM53_VISION_MACRO_B64=eyUtIG1hY3JvIGVtaXRfaW1hZ2UoKSAtJX08fGJlZ2luX29mX2ltYWdlfD48fGltYWdlfD48fGVuZF9vZl9pbWFnZXw+eyUtIGVuZG1hY3JvIC0lfQp7JS0gbWFjcm8gZW1pdF92aWRlbygpIC0lfTx8YmVnaW5fb2ZfdmlkZW98Pjx8dmlkZW98Pjx8ZW5kX29mX3ZpZGVvfD57JS0gZW5kbWFjcm8gLSV9CnslLSBtYWNybyBlbWl0X2F1ZGlvKCkgLSV9PHxiZWdpbl9vZl9hdWRpb3w+PHxlbmRfb2ZfYXVkaW98PnslLSBlbmRtYWNybyAtJX0KeyUtIG1hY3JvIHZpc2libGVfdGV4dChjb250ZW50KSAtJX0KICAgIHslLSBpZiBjb250ZW50IGlzIHN0cmluZyAtJX0KICAgICAgICB7ey0gY29udGVudCB9fQogICAgeyUtIGVsaWYgY29udGVudCBpcyBpdGVyYWJsZSBhbmQgY29udGVudCBpcyBub3QgbWFwcGluZyAtJX0KICAgICAgICB7JS0gZm9yIGl0ZW0gaW4gY29udGVudCAtJX0KICAgICAgICAgICAgeyUtIGlmIGl0ZW0gaXMgbWFwcGluZyBhbmQgaXRlbS50eXBlID09ICd0ZXh0JyAtJX0KICAgICAgICAgICAgICAgIHt7LSBpdGVtLnRleHQgfX0KICAgICAgICAgICAgeyUtIGVsaWYgaXRlbSBpcyBzdHJpbmcgLSV9CiAgICAgICAgICAgICAgICB7ey0gaXRlbSB9fQogICAgICAgICAgICB7JS0gZWxpZiBpdGVtIGlzIG1hcHBpbmcgYW5kIGl0ZW0udHlwZSBpbiBbJ2ltYWdlJywgJ2ltYWdlX3VybCddIC0lfQogICAgICAgICAgICAgICAge3stIGVtaXRfaW1hZ2UoKSAtfX0KICAgICAgICAgICAgeyUtIGVsaWYgaXRlbSBpcyBtYXBwaW5nIGFuZCBpdGVtLnR5cGUgaW4gWyd2aWRlbycsICd2aWRlb191cmwnXSAtJX0KICAgICAgICAgICAgICAgIHt7LSBlbWl0X3ZpZGVvKCkgLX19CiAgICAgICAgICAgIHslLSBlbGlmIGl0ZW0gaXMgbWFwcGluZyBhbmQgaXRlbS50eXBlIGluIFsnYXVkaW8nLCAnYXVkaW9fdXJsJywgJ2lucHV0X2F1ZGlvJ10gLSV9CiAgICAgICAgICAgICAgICB7ey0gZW1pdF9hdWRpbygpIC19fQogICAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgeyUtIGVuZGZvciAtJX0KICAgIHslLSBlbHNlIC0lfQogICAgICAgIHt7LSBjb250ZW50IH19CiAgICB7JS0gZW5kaWYgLSV9CnslLSBlbmRtYWNybyAtJX0=",
+]
+flags = [
+  "--served-model-name glm53-flash-tr3-4bpw-tp2-262k-fixed-mtp5-vision",
+  "--host 0.0.0.0",
+  "--port 8001",
+  "--tensor-parallel-size 2",
+  "--decode-context-parallel-size 2",
+  "--dcp-comm-backend ag_rs",
+  "--disable-custom-all-reduce",
+  "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":5}'",
+  "--limit-mm-per-prompt '{\"image\":4,\"video\":0}'",
+  "--enable-prefix-caching",
+  "--mamba-cache-mode align",
+  "--attention-backend B12X_MLA_SPARSE",
+  "--max-model-len 262144",
+  "--max-num-batched-tokens 2048",
+  "--max-num-seqs 16",
+  "--max-cudagraph-capture-size 64",
+  "--gpu-memory-utilization 0.950",
+  "--kv-cache-dtype nvfp4_ds_mla",
+  "--no-enable-flashinfer-autotune",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser glm47",
+  "--reasoning-parser glm45",
+]
+note = "Verified direct candidate that holds the fixed-K5 262K text recipe constant while enabling up to four configured images and disabling video. One-image semantic understanding and verbatim OCR passed locally; four-image behavior is configured but not qualified. Text/JSON/tools 20/20, streaming tools, tool-result continuation, Responses, a 250K-target retrieval with 206,296 actual prompt tokens, and bounded high-reasoning coding 15/15 passed. Warm c1 decode measured 72.8 tok/s at 4K and 55.7 tok/s at 128K; c16 short completed 16/16 at 28.3 aggregate output tok/s. The runtime reported 560,866 KV tokens, or 2.14 complete configured windows. A hash-gated entrypoint derives the exact Cardillo vision template into the model-specific runtime-cache volume and supplies it through --chat-template; the immutable Hugging Face snapshot and shared blob cache are never modified. This remains an unpromoted direct hands-on candidate pending routed identity, admission, rollback, and real-client acceptance."
+
+[recipe.fit]
+suited = ["qualification", "compatibility", "coding-agent", "tool-use", "long-context", "speculative-decoding", "text", "image", "ocr"]
+rationale = "Directly tests whether the exact locally qualified 4 bpw GLM checkpoint can retain its reliable fixed-K5 text/tool profile while exposing the visual tensors already present in the snapshot."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/brandonmusic/GLM-5.3-Flash-tr3-4bpw/tree/5ab363a8dcf6405955fd5f99671e01a1c9fb124b",
+]
+community = [
+  "https://github.com/samuelcardillo/glm-5.3-flash-2x-rtx-pro-6000-blackwell/tree/5b5623ea07f48683f37f3774d8d5b8bf5b04fdf0",
+  "https://github.com/tpurtell/glm-5.3-flash-ext3-4-bit-2x-rtx/tree/3bff1d5fdbafcc3d9865abebddbfe1eef435adef",
+]
+local = [
+  "configs/glm53-flash-cardillo-tpurtell-fixed-mtp5-sm120-tp2-262k-wsl2-v2-no-owner-exchange-recipe.toml",
+  "docs/findings/2026-08-29-glm53-cardillo-purtell-qualification.md",
+]

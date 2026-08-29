@@ -20,6 +20,11 @@ retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
 split remain qualified rollback- or promotion-era evidence. The earlier r16
 650K profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical
 recipes but are not the immediate restoration contract for this profile.
+GLM-5.3-Flash TR3/EXL3 4 bpw is a newly qualified
+text/tools/image/OCR challenger: vision fixed K5 at 262K is the preferred
+interactive GLM recipe, no-speculation at 524K is the preferred
+maximum-context/headroom recipe, and adaptive MTP is rejected for tool
+corruption. It is not promoted.
 Gemma 4 and ThinkingCap remain historical controls. Fakoli
 Dark has two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
 now-removed RTX 5090 while the PRO 6000 was protected. Older sections below
@@ -27,7 +32,48 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-28**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-29**.
+
+## GLM-5.3-Flash dual-PRO qualification (2026-08-29)
+
+The exact `brandonmusic/GLM-5.3-Flash-tr3-4bpw@5ab363a8` checkpoint and
+digest-pinned Purtell EXL3/B12x runtime were translated from Cardillo's
+native-Linux dual-PRO recipe to WSL2. The final TP=2/DCP=2 path keeps NVFP4
+DS-MLA KV, 2,048-token batch chunks, maxseq16, prefix caching, and the GLM
+tool/reasoning parsers while disabling only the WSL2-incompatible cuMem,
+allocator, custom-all-reduce, DCP A2A, and lazy top-K owner-exchange paths.
+A hash-gated, derived chat template enables the checkpoint's visual tower
+without modifying the immutable model snapshot.
+
+The matched 262K comparison rejected adaptive K1-K5 plus ReplaySSM: it reached
+71.1 tok/s at 4K but completed only 12/20 repeated tools and produced
+degenerate repeated output. Fixed K5 passed tools 20/20 and measured
+69.8 tok/s at 4K and 61.9 at 128K, versus 42.7 and 43.5 for the matched
+no-speculation control. The 524K fixed-K5 companion passed a bounded
+high-reasoning coding suite 15/15. Both 524K profiles recovered the exact
+needle at 495,045 actual prompt tokens and emitted a valid structured tool
+call at 497,976. No-speculation retained 1,603,111 reported KV tokens, or
+3.06 configured windows; fixed K5 retained 565,898, or 1.08.
+
+The preferred vision fixed-K5 profile passed semantic image understanding,
+verbatim OCR, tools 20/20, streaming and tool-result recovery, Responses,
+bounded high-reasoning coding 15/15, and exact retrieval at a 250K target /
+206,296 actual prompt tokens.
+It measured 72.8 tok/s at 4K and 55.7 at 128K, reported 560,866 KV tokens
+(2.14 configured windows), and completed c16 short 16/16 at 28.3 aggregate
+output tok/s. Video is disabled and multiple-image behavior is not qualified.
+
+The current Qwen3.8 Flash Next Primary remains more than twice as fast in the
+directional same-host 4K/128K reference and keeps qualified image/OCR/video
+plus real-client acceptance. GLM therefore remains a text/tools/image/OCR
+`challenger`, `no-promotion`. Vision fixed K5 at 262K is the hands-on profile;
+no-speculation at 524K is the maximum-context profile; fixed K5 at 524K is a
+deliberate single-user experiment. The final direct vision candidate was left
+running for hands-on; the production router and client state remain unchanged.
+The 0xSero 3.0-bpw selective TP=4 quant was not downloaded because its own
+release ledger lacks a complete server and records a failed held-out quality
+gate. See the
+[full qualification and raw artifacts](findings/2026-08-29-glm53-cardillo-purtell-qualification.md).
 
 ## Hermes image-quality production enablement on RTX 5090 (2026-08-28)
 
