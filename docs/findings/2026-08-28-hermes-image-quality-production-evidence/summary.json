@@ -142,7 +142,7 @@
     "public_untracked": "clean",
     "private_current_gitleaks": "clean",
     "public_history": "findings_remain",
-    "public_history_commits_scanned": 896,
+    "public_history_scope": "all_reachable_commits_at_release_gate",
     "public_history_signature_count": 21,
     "public_history_classification": {
       "synthetic_or_non_secret_direct": 14,
