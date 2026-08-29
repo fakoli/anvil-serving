@@ -2,7 +2,7 @@
 name: anvil-media
 description: Generate, inspect, or cancel images and videos through Anvil's bounded named-workflow MCP tools.
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   hermes:
     tags: [media, image-generation, video-generation, mcp]
     category: media
@@ -50,6 +50,13 @@ an earlier Anvil media job. A slash-command invocation is optional.
    merely because generation is long-running. If it returns
    `awaiting_approval`, report the exact bounded operator action and transaction,
    plus the complete resume bundle and returned job ID.
+   The approval reply must contain a literal, copyable `Resume bundle` mapping
+   with the actual `workflow_id`, `version`, `quality_profile`, complete
+   `parameters`, caller-generated `idempotency_key`, returned `job_id`, and
+   `approval_transaction_id`. Do not abbreviate, omit, or replace any value
+   with prose or an ellipsis. Never say that the bundle is stored, remembered,
+   or preserved unless every field is also present in the current reply. Treat
+   this emitted bundle as a user-facing result, not internal bookkeeping.
    Hermes has no worker-lifecycle authority; stop without changing the worker.
    Do not omit the caller-generated idempotency key.
 8. Poll `mcp__anvil_media__media_job_status` at a bounded cadence until the job
