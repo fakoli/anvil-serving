@@ -14,6 +14,7 @@ in-process data-plane operation.
 | Check deployment ownership | `topology validate` | Use `topology show` for the declaration or `topology resolve` for one command. |
 | Update OpenClaw integration | `harness sync openclaw --dry-run` | Apply with `--confirm`, then check `harness status openclaw`. |
 | Refresh Mini model limits | `harness sync clients --dry-run` | Review the exact router hash and per-alias limits, then apply with `--confirm`. |
+| Give Hermes bounded media generation | `harness sync hermes-media --dry-run` | Review the profiles, skill digest, and eight-tool allowlist; apply with `--confirm`, then require an empty second preview. |
 | Connect an MCP client locally | `mcp tools` | Configure the client to run `mcp serve` over stdio. |
 | Operate a split host | `controller serve` | Probe it with `controller status`, then point `mcp serve` at it. |
 | Add optional telemetry | `collectors configure` | Validate offline, then use `collectors inspect` for one bounded read. |
@@ -35,6 +36,7 @@ in-process data-plane operation.
 | --- | --- |
 | `harness sync openclaw` | Render, merge, or apply the OpenClaw provider integration. |
 | `harness sync clients` | Reconcile local OpenClaw, isolated Hermes profiles, and Pi limits from authenticated router metadata. |
+| `harness sync hermes-media` | Reconcile the packaged Anvil media skill and media-only MCP server for selected Hermes profiles. |
 | `harness restart openclaw` | Restart one local or remote OpenClaw gateway. |
 | `harness status openclaw` | Read bounded OpenClaw gateway status. |
 
@@ -168,6 +170,31 @@ are no-ops while local drift is repaired. `--restart-openclaw-on-change`
 restarts the gateway at most once per router config hash and retries a failed
 restart on the next run. `--restart-hermes-on-change` restarts only the default
 Hermes gateway and only when that active profile changed.
+
+Install the separate bounded media capability without changing Hermes model
+selection:
+
+```bash
+anvil-serving harness sync hermes-media \
+  --hermes-profiles default,anvil-primary \
+  --dry-run
+anvil-serving harness sync hermes-media \
+  --hermes-profiles default,anvil-primary \
+  --confirm
+anvil-serving harness sync hermes-media \
+  --hermes-profiles default,anvil-primary \
+  --dry-run
+```
+
+This operation installs the packaged `anvil-media` skill and one MCP server
+whose catalog is restricted to the eight ordinary media tools. It stores only
+the environment references named by `--mcp-url-env` and `--token-env`, backs
+up every changed profile, validates through the Hermes CLI, and verifies the
+installed skill digest. It never grants worker lifecycle or operator tools.
+The default token reference is `ANVIL_ROUTER_TOKEN` because the media MCP URL
+is the router gateway; the separate controller credential is not valid for
+this caller-facing connection.
+The last preview must report no changes.
 
 Hermes profiles have independent environment files. The catalog reconciler
 never copies credential values between them. Before acceptance, authenticate a

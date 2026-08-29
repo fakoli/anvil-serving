@@ -1769,8 +1769,44 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Router config TOML.",
+          "summary": "Inspect one router config file instead of the installed router.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--live"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Probe the installed config from the live router runtime (default).",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployed router container.",
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--installed-config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Config path inside the deployed router container.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--probe-perspective"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution perspective for explicit config inspection.",
+          "value_name": "PERSPECTIVE"
         },
         {
           "flags": [
@@ -1785,11 +1821,23 @@
       "output_policy": "bounded",
       "path": "router fleet-status",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "timeout"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_fleet_status"
+      },
       "resource_role": "router",
       "summary": "Report which configured capabilities have a reachable backing serve.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
@@ -24232,6 +24280,15 @@
         },
         {
           "flags": [
+            "--quality-profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Exact declared quality profile.",
+          "value_name": "PROFILE"
+        },
+        {
+          "flags": [
             "--backend-url"
           ],
           "output_policy": null,
@@ -25110,6 +25167,15 @@
           "requires_confirmation": false,
           "summary": "Bounded JSON parameter object.",
           "value_name": "JSON"
+        },
+        {
+          "flags": [
+            "--quality-profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Exact declared quality profile.",
+          "value_name": "PROFILE"
         },
         {
           "flags": [
@@ -26544,6 +26610,182 @@
       },
       "resource_role": "gateway",
       "summary": "Reconcile OpenClaw, Hermes profiles, and Pi from authenticated router metadata.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/control-plane.md#harness",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.harness:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "harness sync hermes-media",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "hermes_bin",
+          "hermes_home",
+          "hermes_profiles",
+          "skill_path",
+          "backup_root",
+          "anvil_command",
+          "mcp_url_env",
+          "token_env",
+          "restart_hermes_on_change",
+          "timeout_seconds",
+          "dry_run"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {},
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "hermes_media_sync"
+      },
+      "resource_role": "gateway",
+      "summary": "Install the narrow Anvil media MCP and packaged Hermes skill.",
       "transports": [
         "local",
         "controller"

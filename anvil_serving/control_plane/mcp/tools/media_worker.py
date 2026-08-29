@@ -32,6 +32,11 @@ DEFAULT_MEDIA_STATE_DB = os.path.join(
     os.path.expanduser("~"), ".anvil-serving", "media-jobs.sqlite3"
 )
 _MANIFEST_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+_REMOTE_CONTROLLER_DEFAULT_TIMEOUT_SECONDS = 30
+_REMOTE_CONTROLLER_COMPLETION_MARGIN_SECONDS = 5
+_SERVES_MANAGE_DEFAULT_TIMEOUT_SECONDS = 300
+_SERVES_LOGS_DEFAULT_TIMEOUT_SECONDS = 60
+_MEDIA_WORKER_START_TIMEOUT_SECONDS = 1800
 
 
 def _lifecycle() -> MediaWorkerLifecycle:
@@ -90,7 +95,32 @@ def _resource_tool(name: str, arguments: Mapping[str, Any]) -> dict:
             },
         },
     }
-    response = remote_controller_request(controller_url, request, token)
+    remote_timeout = _REMOTE_CONTROLLER_DEFAULT_TIMEOUT_SECONDS
+    if name == "serves_manage" and (
+        resource_arguments.get("confirm") is True
+        and resource_arguments.get("dry_run") is not True
+    ):
+        operation_timeout = resource_arguments.get(
+            "timeout_seconds", _SERVES_MANAGE_DEFAULT_TIMEOUT_SECONDS
+        )
+        if isinstance(operation_timeout, int) and not isinstance(operation_timeout, bool):
+            remote_timeout = (
+                operation_timeout + _REMOTE_CONTROLLER_COMPLETION_MARGIN_SECONDS
+            )
+    elif name == "serves_logs":
+        operation_timeout = resource_arguments.get(
+            "timeout_seconds", _SERVES_LOGS_DEFAULT_TIMEOUT_SECONDS
+        )
+        if isinstance(operation_timeout, int) and not isinstance(operation_timeout, bool):
+            remote_timeout = (
+                operation_timeout + _REMOTE_CONTROLLER_COMPLETION_MARGIN_SECONDS
+            )
+    response = remote_controller_request(
+        controller_url,
+        request,
+        token,
+        timeout=remote_timeout,
+    )
     rpc_error = response.get("error")
     if isinstance(rpc_error, Mapping):
         data = rpc_error.get("data")
@@ -121,7 +151,13 @@ def _resource_status(args: Mapping[str, Any]) -> dict:
 
 
 def _resource_manage(args: Mapping[str, Any]) -> dict:
-    return _resource_tool("serves_manage", args)
+    bounded_args = dict(args)
+    if bounded_args.get("action") == "up":
+        bounded_args.setdefault(
+            "timeout_seconds",
+            _MEDIA_WORKER_START_TIMEOUT_SECONDS,
+        )
+    return _resource_tool("serves_manage", bounded_args)
 
 
 def _resource_logs(args: Mapping[str, Any]) -> dict:

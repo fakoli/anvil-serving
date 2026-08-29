@@ -163,6 +163,34 @@ class ParameterBinding:
 
 
 @dataclass(frozen=True)
+class QualityProfile:
+    """One server-owned set of bounded workflow parameters."""
+
+    description: str
+    parameters: Mapping[str, Any]
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.description, str)
+            or not self.description
+            or len(self.description) > 256
+        ):
+            raise MediaError("invalid_contract", "quality profile description is invalid")
+        if not isinstance(self.parameters, Mapping) or not self.parameters:
+            raise MediaError("invalid_contract", "quality profile parameters are invalid")
+        if len(self.parameters) > 32:
+            raise MediaError("invalid_contract", "quality profile parameters are unbounded")
+        object.__setattr__(self, "parameters", MappingProxyType(dict(self.parameters)))
+
+    def as_public_dict(self, profile_id: str) -> dict[str, Any]:
+        return {
+            "id": profile_id,
+            "description": self.description,
+            "parameters": dict(self.parameters),
+        }
+
+
+@dataclass(frozen=True)
 class WorkflowDescriptor:
     """A versioned allowlisted workflow with one logical target."""
 
@@ -178,6 +206,8 @@ class WorkflowDescriptor:
     required_features: tuple[str, ...] = ()
     required_nodes: tuple[str, ...] = ()
     required_models: tuple[str, ...] = ()
+    quality_profiles: Mapping[str, QualityProfile] = field(default_factory=dict)
+    default_quality_profile: str = ""
     available: bool = False
     unavailable_reasons: tuple[str, ...] = ("qualification_required",)
     max_request_bytes: int = 65536
@@ -201,6 +231,41 @@ class WorkflowDescriptor:
             _identifier(name, "parameter name")
             if not isinstance(spec, ParameterSpec):
                 raise MediaError("invalid_contract", "workflow parameter specification is invalid")
+        if not isinstance(self.quality_profiles, Mapping) or len(self.quality_profiles) > 16:
+            raise MediaError("invalid_contract", "workflow quality profiles are invalid")
+        locked_parameters: frozenset[str] | None = None
+        for name, profile in self.quality_profiles.items():
+            _identifier(name, "quality profile id")
+            if not isinstance(profile, QualityProfile):
+                raise MediaError("invalid_contract", "workflow quality profile is invalid")
+            unknown = set(profile.parameters) - set(self.parameters)
+            if unknown:
+                raise MediaError(
+                    "invalid_contract",
+                    "quality profile names an unknown workflow parameter",
+                )
+            for parameter, value in profile.parameters.items():
+                self.parameters[parameter].validate(parameter, value)
+            current_locked = frozenset(profile.parameters)
+            if locked_parameters is None:
+                locked_parameters = current_locked
+            elif current_locked != locked_parameters:
+                raise MediaError(
+                    "invalid_contract",
+                    "workflow quality profiles must own the same parameters",
+                )
+        if self.quality_profiles:
+            _identifier(self.default_quality_profile, "default quality profile")
+            if self.default_quality_profile not in self.quality_profiles:
+                raise MediaError(
+                    "invalid_contract",
+                    "default quality profile is not declared",
+                )
+        elif self.default_quality_profile:
+            raise MediaError(
+                "invalid_contract",
+                "default quality profile requires declared profiles",
+            )
         if {binding.parameter for binding in self.bindings} - set(self.parameters):
             raise MediaError("invalid_contract", "workflow binding names an unknown parameter")
         if not self.output_nodes or any(not item.isdigit() for item in self.output_nodes):
@@ -218,6 +283,11 @@ class WorkflowDescriptor:
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise MediaError("invalid_contract", "workflow limit is invalid")
         object.__setattr__(self, "parameters", MappingProxyType(dict(self.parameters)))
+        object.__setattr__(
+            self,
+            "quality_profiles",
+            MappingProxyType(dict(self.quality_profiles)),
+        )
 
     @property
     def key(self) -> str:
@@ -234,19 +304,54 @@ class WorkflowDescriptor:
             raise MediaError("missing_parameter", "workflow parameters are incomplete", details={"fields": missing})
         return {name: self.parameters[name].validate(name, value) for name, value in values.items()}
 
+    def resolve_parameters(
+        self,
+        values: Mapping[str, Any],
+        *,
+        quality_profile: str | None = None,
+    ) -> tuple[dict[str, Any], str]:
+        """Resolve one explicit profile without allowing caller overrides."""
+
+        if quality_profile is None:
+            return self.validate_parameters(values), ""
+        if not isinstance(quality_profile, str) or quality_profile not in self.quality_profiles:
+            raise MediaError(
+                "quality_profile_not_found",
+                "quality profile is not configured for this workflow",
+                status=404,
+                details={"qualityProfile": quality_profile},
+            )
+        profile = self.quality_profiles[quality_profile]
+        overridden = sorted(set(values) & set(profile.parameters))
+        if overridden:
+            raise MediaError(
+                "quality_profile_parameter_override",
+                "profile-owned workflow parameters cannot be overridden",
+                details={"fields": overridden, "qualityProfile": quality_profile},
+            )
+        merged = {**profile.parameters, **dict(values)}
+        return self.validate_parameters(merged), quality_profile
+
     def as_public_dict(self) -> dict[str, Any]:
-        required = [name for name, spec in self.parameters.items() if spec.required]
-        return {
+        def parameter_schema(names: tuple[str, ...]) -> dict[str, Any]:
+            return {
+                "type": "object",
+                "properties": {
+                    name: self.parameters[name].as_schema() for name in names
+                },
+                "required": [
+                    name for name in names if self.parameters[name].required
+                ],
+                "additionalProperties": False,
+                "maxProperties": len(names),
+            }
+
+        parameter_names = tuple(self.parameters)
+        result = {
             "id": self.id,
             "version": self.version,
             "kind": self.kind,
-            "schema": {
-                "type": "object",
-                "properties": {name: spec.as_schema() for name, spec in self.parameters.items()},
-                "required": required,
-                "additionalProperties": False,
-                "maxProperties": len(self.parameters),
-            },
+            "schema": parameter_schema(parameter_names),
             "outputMimeTypes": list(self.output_mime_types),
             "digest": self.graph_digest,
             "available": self.available,
@@ -260,6 +365,21 @@ class WorkflowDescriptor:
                 "concurrency": self.max_concurrency,
             },
         }
+        if self.quality_profiles:
+            profile_parameters = frozenset(
+                next(iter(self.quality_profiles.values())).parameters
+            )
+            caller_parameters = tuple(
+                name for name in parameter_names if name not in profile_parameters
+            )
+            result["defaultQualityProfile"] = self.default_quality_profile
+            result["qualityProfiles"] = [
+                self.quality_profiles[name].as_public_dict(name)
+                for name in sorted(self.quality_profiles)
+            ]
+            result["qualityProfileParameters"] = sorted(profile_parameters)
+            result["profiledParameterSchema"] = parameter_schema(caller_parameters)
+        return result
 
 
 @dataclass(frozen=True)
@@ -267,6 +387,8 @@ class RenderedWorkflow:
     descriptor: WorkflowDescriptor
     graph: Mapping[str, Any]
     parameters_digest: str
+    quality_profile: str = ""
+    resolved_parameters: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -334,6 +456,7 @@ class MediaJob:
     created_at: dt.datetime
     updated_at: dt.datetime
     events: tuple[JobEvent, ...]
+    quality_profile: str = ""
     artifacts: tuple[MediaArtifact, ...] = ()
     approval: Mapping[str, Any] | None = None
     backend_prompt_id: str = field(default="", repr=False, compare=False)
@@ -353,6 +476,8 @@ class MediaJob:
             raise MediaError("invalid_contract", "job event sequence is not contiguous")
         if self.input_digest and not _HEX64_RE.fullmatch(self.input_digest):
             raise MediaError("invalid_contract", "job input digest is invalid")
+        if self.quality_profile:
+            _identifier(self.quality_profile, "job quality profile")
 
     def transition(self, state: JobState, *, reason: str = "", at: dt.datetime | None = None) -> "MediaJob":
         if not isinstance(state, JobState):
@@ -378,11 +503,68 @@ class MediaJob:
             "createdAt": self.created_at.isoformat(),
             "updatedAt": self.updated_at.isoformat(),
             "artifacts": [artifact.as_public_dict() for artifact in self.artifacts],
+            "latency": self.latency(),
         }
+        if self.quality_profile:
+            result["qualityProfile"] = self.quality_profile
         if self.approval is not None:
             result["approval"] = dict(self.approval)
         if self.state in TERMINAL_STATES and self.events[-1].reason:
             result["terminalReason"] = self.events[-1].reason
+        return result
+
+    def latency(self) -> dict[str, float]:
+        """Derive gateway-observed phase latency from durable state events."""
+
+        first: dict[JobState, dt.datetime] = {}
+        for event in self.events:
+            first.setdefault(event.state, event.at)
+
+        def seconds(start: JobState, end: JobState) -> float | None:
+            if start not in first or end not in first:
+                return None
+            return round(max(0.0, (first[end] - first[start]).total_seconds()), 3)
+
+        result = {
+            "recordedSeconds": round(
+                max(0.0, (self.updated_at - self.created_at).total_seconds()), 3
+            )
+        }
+        phases = (
+            ("acceptedToQueuedSeconds", JobState.ACCEPTED, JobState.QUEUED),
+            ("submissionSeconds", JobState.SUBMITTING, JobState.QUEUED),
+            ("queueSeconds", JobState.QUEUED, JobState.RUNNING),
+        )
+        for name, start, end in phases:
+            value = seconds(start, end)
+            if value is not None:
+                result[name] = value
+        approval_started_at: dt.datetime | None = None
+        latest_approval_wait: float | None = None
+        for event in self.events:
+            if event.state == JobState.AWAITING_APPROVAL:
+                # A repeated waiting event represents a freshly issued
+                # approval after a failed or expired attempt. Measure from the
+                # most recent approval boundary, never an obsolete cycle.
+                approval_started_at = event.at
+            elif event.state == JobState.PREPARING and approval_started_at is not None:
+                latest_approval_wait = max(
+                    0.0,
+                    (event.at - approval_started_at).total_seconds(),
+                )
+                approval_started_at = None
+        if latest_approval_wait is not None:
+            result["approvalWaitSeconds"] = round(latest_approval_wait, 3)
+        if self.state in TERMINAL_STATES:
+            terminal_at = self.events[-1].at
+            result["endToEndSeconds"] = round(
+                max(0.0, (terminal_at - self.created_at).total_seconds()), 3
+            )
+            if JobState.RUNNING in first:
+                result["generationSeconds"] = round(
+                    max(0.0, (terminal_at - first[JobState.RUNNING]).total_seconds()),
+                    3,
+                )
         return result
 
 
@@ -402,6 +584,7 @@ __all__ = [
     "MediaJob",
     "ParameterBinding",
     "ParameterSpec",
+    "QualityProfile",
     "RenderedWorkflow",
     "SUBMISSION_RECOVERY_GRACE_SECONDS",
     "TERMINAL_STATES",

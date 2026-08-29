@@ -139,8 +139,30 @@ def commands() -> CommandNode:
                 "anvil_serving.router_manage",
                 role="router",
                 options=(
-                    _option("--config", summary="Router config TOML.", value_name="PATH"),
+                    _option(
+                        "--config",
+                        summary="Inspect one router config file instead of the installed router.",
+                        value_name="PATH",
+                    ),
+                    _option(
+                        "--live",
+                        summary="Probe the installed config from the live router runtime (default).",
+                    ),
+                    _option("--container", summary="Deployed router container.", value_name="NAME"),
+                    _option(
+                        "--installed-config",
+                        summary="Config path inside the deployed router container.",
+                        value_name="PATH",
+                    ),
+                    _option(
+                        "--probe-perspective",
+                        summary="Execution perspective for explicit config inspection.",
+                        value_name="PERSPECTIVE",
+                    ),
                     _option("--timeout", summary="Per-endpoint probe timeout (s).", value_name="SECONDS"),
+                ),
+                remote_operation=_remote(
+                    "router_fleet_status", allowed=("timeout",)
                 ),
                 docs_anchor="docs/cli/router.md#fleet-status",
             ),

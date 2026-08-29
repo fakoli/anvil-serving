@@ -25,6 +25,7 @@ const TOKEN = "test-controller-token";
 const VERSION = "0.17.0";
 const SERVER_INFO_KEY = "io.modelcontextprotocol/serverInfo";
 const PROTOCOL_KEY = "io.modelcontextprotocol/protocolVersion";
+const MAX_NATIVE_IMAGE_BASE64_BYTES = 8 * 1024 * 1024;
 
 function controllerResult(id, result) {
   return {
@@ -127,6 +128,20 @@ async function startController() {
             message: `upstream rejected bearer ${TOKEN}`,
           },
         };
+      } else if (body.params.arguments.value === "large-image") {
+        payload = controllerResult(body.id, {
+          content: [
+            {
+              type: "image",
+              data: "A".repeat(MAX_NATIVE_IMAGE_BASE64_BYTES),
+              mimeType: "image/png",
+            },
+          ],
+          structuredContent: {
+            byteLength: (MAX_NATIVE_IMAGE_BASE64_BYTES / 4) * 3,
+          },
+          isError: false,
+        });
       } else if (body.params.name === "media_workflow_run") {
         payload = controllerResult(body.id, {
           content: [
@@ -291,11 +306,32 @@ test("legacy SDK 1.29 and modern SDK 2.0 use the same bridge", async () => {
     });
     assert.equal(modernMedia.isError, false);
     assert.equal(modernMedia.structuredContent.job.id, "job_opaque_identifier");
+    const modernImage = await modern.callTool({
+      name: "echo",
+      arguments: { value: "large-image" },
+    });
+    assert.equal(modernImage.isError, false);
+    assert.equal(modernImage.content[0].type, "image");
+    assert.equal(
+      modernImage.content[0].data.length,
+      MAX_NATIVE_IMAGE_BASE64_BYTES,
+    );
+    assert.equal(
+      modernImage.structuredContent.byteLength,
+      6 * 1024 * 1024,
+    );
     await modern.close();
 
     assert.deepEqual(
       controller.toolCalls.map((call) => call.name),
-      ["echo", "media_workflow_run", "echo", "echo", "media_workflow_run"],
+      [
+        "echo",
+        "media_workflow_run",
+        "echo",
+        "echo",
+        "media_workflow_run",
+        "echo",
+      ],
     );
     assert.ok(
       controller.requests.every(

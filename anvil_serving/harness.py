@@ -458,6 +458,51 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
     return 0
 
 
+def cmd_sync_hermes_media(
+    *,
+    hermes_bin="~/.local/bin/hermes",
+    hermes_home="~/.hermes",
+    hermes_profiles="default",
+    skill_path="~/.hermes/skills/anvil-media/SKILL.md",
+    backup_root="~/.anvil-serving/backups/hermes-media",
+    anvil_command="anvil-serving",
+    mcp_url_env="ANVIL_MEDIA_MCP_URL",
+    token_env="ANVIL_ROUTER_TOKEN",
+    restart_hermes_on_change=False,
+    dry_run=True,
+    confirm=False,
+    timeout_seconds=15,
+    _run=subprocess.run,
+    _restart_hermes=None,
+):
+    """Reconcile the narrow Anvil media MCP and packaged Hermes skill."""
+
+    from .client_catalog_sync import ClientCatalogError, sync_hermes_media
+
+    try:
+        result = sync_hermes_media(
+            hermes_bin=hermes_bin,
+            hermes_home=hermes_home,
+            hermes_profiles=hermes_profiles,
+            skill_path=skill_path,
+            backup_root=backup_root,
+            anvil_command=anvil_command,
+            mcp_url_env=mcp_url_env,
+            token_env=token_env,
+            restart_hermes_on_change=restart_hermes_on_change,
+            dry_run=dry_run,
+            confirm=confirm,
+            timeout_seconds=timeout_seconds,
+            run=_run,
+            restart_hermes=_restart_hermes,
+        )
+    except (OSError, ClientCatalogError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 def _build_parser():
     parser = argparse.ArgumentParser(prog="anvil-serving harness")
     actions = parser.add_subparsers(dest="action", required=True)
@@ -496,6 +541,22 @@ def _build_parser():
     clients.add_argument("--restart-hermes-on-change", action="store_true")
     clients.add_argument("--dry-run", action="store_true")
     clients.add_argument("--timeout-seconds", type=int, default=15)
+    hermes_media = sync_targets.add_parser("hermes-media")
+    hermes_media.add_argument("--hermes-bin", default="~/.local/bin/hermes")
+    hermes_media.add_argument("--hermes-home", default="~/.hermes")
+    hermes_media.add_argument("--hermes-profiles", default="default")
+    hermes_media.add_argument(
+        "--skill-path", default="~/.hermes/skills/anvil-media/SKILL.md"
+    )
+    hermes_media.add_argument(
+        "--backup-root", default="~/.anvil-serving/backups/hermes-media"
+    )
+    hermes_media.add_argument("--anvil-command", default="anvil-serving")
+    hermes_media.add_argument("--mcp-url-env", default="ANVIL_MEDIA_MCP_URL")
+    hermes_media.add_argument("--token-env", default="ANVIL_ROUTER_TOKEN")
+    hermes_media.add_argument("--restart-hermes-on-change", action="store_true")
+    hermes_media.add_argument("--dry-run", action="store_true")
+    hermes_media.add_argument("--timeout-seconds", type=int, default=15)
     restart = actions.add_parser("restart").add_subparsers(dest="target", required=True).add_parser("openclaw")
     restart.add_argument("--gateway-host")
     restart.add_argument("--gateway-user")
@@ -508,6 +569,27 @@ def _build_parser():
 def main(argv=None):
     args = _build_parser().parse_args(argv)
     if args.action == "sync":
+        if args.target == "hermes-media":
+            from . import guard
+
+            return cmd_sync_hermes_media(
+                hermes_bin=args.hermes_bin,
+                hermes_home=args.hermes_home,
+                hermes_profiles=args.hermes_profiles,
+                skill_path=args.skill_path,
+                backup_root=args.backup_root,
+                anvil_command=args.anvil_command,
+                mcp_url_env=args.mcp_url_env,
+                token_env=args.token_env,
+                restart_hermes_on_change=args.restart_hermes_on_change,
+                dry_run=args.dry_run,
+                confirm=guard.confirmation_authorized(),
+                timeout_seconds=args.timeout_seconds,
+                _restart_hermes=lambda: _restart_hermes_default(
+                    hermes_bin=args.hermes_bin,
+                    timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                ),
+            )
         if args.target == "clients":
             from . import guard
 

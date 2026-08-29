@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import contextlib
+import os
+import signal
 import subprocess
 import tempfile
 from collections.abc import Callable
@@ -11,6 +13,39 @@ from .errors import ToolError
 
 
 MAX_CAPTURE_CHARS = 1024 * 1024
+
+
+def _process_group_options() -> dict:
+    if os.name == "nt":
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
+
+
+def _terminate_process_tree(process: subprocess.Popen) -> None:
+    """Terminate the bounded command and every descendant it launched."""
+
+    if os.name == "nt":
+        with contextlib.suppress(OSError, subprocess.SubprocessError):
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+                check=False,
+            )
+    else:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGTERM)
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            process.wait(timeout=2)
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+    if process.poll() is None:
+        with contextlib.suppress(OSError):
+            process.kill()
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        process.wait(timeout=2)
 
 
 def capture(fn: Callable[[], int]) -> tuple[int, str, str]:
@@ -50,15 +85,19 @@ def run_argv(
     if not confirm:
         return command_preview(argv)
     try:
-        process = subprocess.run(
+        process = subprocess.Popen(
             argv,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
+            **_process_group_options(),
         )
+        stdout, stderr = process.communicate(timeout=timeout)
     except FileNotFoundError as exc:
         raise ToolError("command_not_found", str(exc), {"command": argv})
     except subprocess.TimeoutExpired as exc:
+        _terminate_process_tree(process)
+        process.communicate()
         raise ToolError(
             "timeout",
             "command timed out",
@@ -67,8 +106,8 @@ def run_argv(
     result = {
         "command": argv,
         "returncode": process.returncode,
-        "stdout": process.stdout or "",
-        "stderr": process.stderr or "",
+        "stdout": stdout or "",
+        "stderr": stderr or "",
     }
     if process.returncode != 0:
         raise ToolError(
@@ -107,15 +146,18 @@ def run_argv_spooled(
         tempfile.TemporaryFile() as stderr_file,
     ):
         try:
-            process = subprocess.run(
+            process = subprocess.Popen(
                 argv,
                 stdout=stdout_file,
                 stderr=stderr_file,
-                timeout=timeout,
+                **_process_group_options(),
             )
+            process.communicate(timeout=timeout)
         except FileNotFoundError as exc:
             raise ToolError("command_not_found", str(exc), {"command": argv})
         except subprocess.TimeoutExpired as exc:
+            _terminate_process_tree(process)
+            process.communicate()
             raise ToolError(
                 "timeout",
                 "command timed out",

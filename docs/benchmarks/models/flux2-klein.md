@@ -2,9 +2,9 @@
 
 ## Current status and review date
 
-Functionally, capacity, routed/client, and bounded-quality qualified
-image-generation candidate;
-`available=false`, `no-promotion`. Review date: 2026-08-28.
+Production-enabled image-generation workflow with functional, capacity,
+routed/client, lifecycle, and bounded-quality evidence;
+`available=true`, `promoted=false`. Review date: 2026-08-28.
 
 ## Immutable identity
 
@@ -16,43 +16,63 @@ identities are recorded in the workflow bundle lock and dated evidence.
 
 ## Tested hardware and topology
 
-One RTX 5090, 32,607 MiB, in an isolated Windows 11 / Docker Desktop / WSL2
-media lane. Direct qualification and an exact-build cross-host candidate with
-Fakoli Dark gateway and real Hermes client were tested. Production router and
-unrelated inference services were unchanged.
+One RTX 5090, 32,607 MiB, in a Windows 11 / Docker Desktop / WSL2 media lane.
+Direct qualification, isolated exact-build acceptance, and the production
+cross-host path with Fakoli Dark gateway, Fakoli Mid Mod resource ownership,
+and real Hermes on Fakoli Mini were tested. The production router and bounded
+controllers changed; the unrelated Qwen service remained in place.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
 ComfyUI v0.33.4 at `7a131a3a`, CUDA 13.0, PyTorch 2.13.0+cu130, digest-pinned
 base, curated node pins, workflow `image.flux2-klein-4b-fp8-v1` at graph digest
-`991b63b8...2e4f`, c1. The measured request was 512×512 and four steps. KV
-cache and language-model context are not applicable to this diffusion workflow.
+`991b63b8...2e4f`, c1. The server-owned profiles are `draft` 512×512,
+`standard` 768×768, and `high` 1024×1024, all four steps. KV cache and
+language-model context are not applicable to this diffusion workflow.
 
 ## Evidence by measurement class
 
 `functional`, `capacity`: decodable 258,472-byte PNG in 9.859 seconds, peak
 12,919 MiB from a 943 MiB worker baseline, max queue running one and pending
-zero. A later exact-build live pass produced two additional PNGs through the
-cold approval and real-Hermes paths. Both passed independent prompt-adherence
-review; artifact delivery, ranges, missing-object behavior, signatures, sizes,
-and hashes passed.
+zero. An isolated exact-build pass added two prompt-adherent PNGs and complete
+artifact controls. The production pass then added one real-Hermes warm request
+per fixed profile and five cold `draft` regressions. Six of eight samples
+passed strict independent review. Two technically valid draft results failed
+prompt adherence on origami/material fidelity and exact bird count. Warm
+gateway E2E measured 1.352/1.242/1.650 seconds for draft/standard/high. The
+2,045.626-second cold E2E includes multiple fix-forward deployment failures
+and is not steady-state latency; the final server-issued exact-resume regression
+measured 908.936 seconds E2E and 0.087 seconds generation.
 
 ## Decision and promotion state
 
-Retain as an unavailable candidate. The bounded routed/Hermes and two-sample
-quality gates passed, but a broader image-quality corpus, production cutover,
-and separate live-enable gate remain open.
+Enable the exact workflow at the three fixed c1 profiles. This is workflow
+availability, not a model-family promotion or a claim of broad image quality.
+Caller-supplied graphs, models, node paths, dimensions, and alternate
+generators remain unavailable.
 
 ## Failures and gotchas
 
-The first attempts exposed missing native build dependencies in the derived
-runtime. The durable image now contains the compiler and C library headers.
-One cold c1 run is not a throughput distribution or quality ranking.
-Two visually successful routed samples do not establish broad text rendering,
-hands, counting, seed-repeatability, or production deployment quality.
+The first qualification attempts exposed missing native build dependencies in
+the derived runtime. The production cold path later exposed controller timeout,
+Buildx, read-only client state, no-router scoping, approval recovery, descendant
+cleanup, and nested receipt defects; each was fixed forward with regression
+coverage. Later fixes moved live fleet probes into the router runtime, changed
+Hermes MCP auth to the least-authority router token, split the router-to-lifecycle
+and lifecycle-to-resource credentials, and made skill `1.0.4` copy the
+server-issued exact same-job resume bundle unchanged, keep nonterminal states
+in-turn, and preserve the current request language. Post-run revision
+`5ea1edc` and skill `1.0.5` then closed the profileless empty-profile boundary,
+the five-input/seven-field replay distinction, and the malformed-bundle
+cancellation exception without changing the measured image runtime. One cold
+c1 run is not a
+throughput distribution or latency target. Six strict passes and two retained
+draft failures do not establish broad text rendering, hands, counting, material
+fidelity, seed repeatability, or monotonic quality by tier.
 
 ## Dated run history
 
+- [2026-08-28 Hermes image-quality production enablement](../../findings/2026-08-28-hermes-image-quality-production.md)
 - [2026-08-28 media gateway live validation](../../findings/2026-08-28-media-gateway-live-validation.md)
 - [2026-08-28 ComfyUI media qualification](../../findings/2026-08-28-comfyui-media-qualification.md)
 - [2026-08-27 feasibility screen](../../findings/2026-08-27-media-gateway-comfyui-evidence/feasibility-result.md)

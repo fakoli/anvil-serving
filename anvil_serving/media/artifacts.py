@@ -20,6 +20,9 @@ from .errors import MediaError
 CHUNK_BYTES = 1024 * 1024
 MAX_RANGE_BYTES = 16 * 1024 * 1024
 MAX_INLINE_PREVIEW_BYTES = 128 * 1024
+# Six binary MiB expands to eight MiB of base64, leaving bounded framing
+# headroom below the official MCP SDK's ten-MiB stdio message limit.
+MAX_MCP_IMAGE_BYTES = 6 * 1024 * 1024
 _PNG = b"\x89PNG\r\n\x1a\n"
 
 
@@ -153,6 +156,29 @@ class ArtifactStore:
         payload = self.read(artifact_id, principal=principal, max_bytes=max_bytes)
         return f"data:{artifact.media_type};base64,{base64.b64encode(payload.data).decode('ascii')}"
 
+    def mcp_image_content(
+        self,
+        artifact_id: str,
+        *,
+        principal: str,
+        max_bytes: int = MAX_MCP_IMAGE_BYTES,
+    ) -> dict[str, str] | None:
+        """Return bounded MCP image content; videos remain resource-only."""
+
+        artifact = self.metadata(artifact_id, principal=principal)
+        if not artifact.media_type.startswith("image/") or artifact.byte_length > max_bytes:
+            return None
+        payload = self.read(
+            artifact_id,
+            principal=principal,
+            max_bytes=max_bytes,
+        )
+        return {
+            "type": "image",
+            "data": base64.b64encode(payload.data).decode("ascii"),
+            "mimeType": artifact.media_type,
+        }
+
     def prune(self, *, now: dt.datetime | None = None) -> int:
         current = now or utc_now()
         removed = 0
@@ -223,4 +249,8 @@ def _signature_matches(media_type: str, header: bytes) -> bool:
     return False
 
 
-__all__ = ["ArtifactPayload", "ArtifactStore"]
+__all__ = [
+    "ArtifactPayload",
+    "ArtifactStore",
+    "MAX_MCP_IMAGE_BYTES",
+]

@@ -195,6 +195,7 @@ def qualify(
     artifacts: ArtifactStore,
     backend: ComfyUIClient,
     principal: str,
+    quality_profile: str | None = None,
     lock_path: str | Path = DEFAULT_LOCK,
     models_volume: str,
     gpu_index: int = 0,
@@ -215,6 +216,13 @@ def qualify(
     ):
         raise MediaError("media_qualification_invalid", "qualification sampler settings are invalid")
     descriptor = registry.get(workflow_id, version)
+    selected_profile = quality_profile
+    if selected_profile == "":
+        selected_profile = descriptor.default_quality_profile or None
+    resolved_parameters, selected_profile = descriptor.resolve_parameters(
+        parameters,
+        quality_profile=selected_profile,
+    )
     exact_assets = bundle_inventory(
         workflow_id,
         version,
@@ -248,6 +256,7 @@ def qualify(
         idempotency_key="qualify-" + secrets.token_urlsafe(24),
         backend=backend,
         qualification=True,
+        quality_profile=selected_profile,
     )
     submitted_at = monotonic()
     job = jobs.get(submitted["job"]["id"], principal=principal)
@@ -314,6 +323,39 @@ def qualify(
             else _video_metadata(path, ffprobe=ffprobe, runner=ffprobe_runner)
         )
         decoded.append({"artifactId": artifact.id, **metadata})
+    expected_width = resolved_parameters.get("width")
+    expected_height = resolved_parameters.get("height")
+    for metadata in decoded:
+        if (
+            expected_width is not None
+            and metadata.get("width") != expected_width
+        ) or (
+            expected_height is not None
+            and metadata.get("height") != expected_height
+        ):
+            raise MediaError(
+                "media_qualification_output_dimensions",
+                "retained media dimensions do not match the resolved workflow parameters",
+                status=422,
+                details={
+                    "expected": {
+                        **(
+                            {"width": expected_width}
+                            if expected_width is not None
+                            else {}
+                        ),
+                        **(
+                            {"height": expected_height}
+                            if expected_height is not None
+                            else {}
+                        ),
+                    },
+                    "observed": {
+                        "width": metadata.get("width"),
+                        "height": metadata.get("height"),
+                    },
+                },
+            )
     runtime, models = _model_provenance(lock_path, workflow_id, version)
     latency = max(0.0, finished - started)
     return {
@@ -325,6 +367,20 @@ def qualify(
             "version": descriptor.version,
             "kind": descriptor.kind,
             "graphSha256": descriptor.graph_digest,
+            **(
+                {"qualityProfile": job.quality_profile}
+                if job.quality_profile
+                else {}
+            ),
+            **(
+                {
+                    "qualityProfileSettings": dict(
+                        descriptor.quality_profiles[job.quality_profile].parameters
+                    )
+                }
+                if job.quality_profile
+                else {}
+            ),
         },
         "runtime": runtime,
         "models": models,

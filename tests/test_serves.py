@@ -2073,7 +2073,37 @@ def test_install_router_config_validates_writes_atomically_and_restarts(tmp_path
         and "config.toml.new" in call[0][-1]
         for call in calls
     )
+    write_inputs = [
+        payload
+        for argv, payload in calls
+        if argv[:3] == ["docker", "run", "--rm"]
+        and "config.toml.new" in argv[-1]
+    ]
+    assert write_inputs == [b"[router]\n"]
     assert calls[-1][0] == ["docker", "restart", "anvil-router"]
+
+
+def test_install_router_config_writes_canonical_lf_bytes(tmp_path):
+    config = tmp_path / "router.toml"
+    config.write_bytes(b"[router]\r\nrelay_timeout = 30\rlegacy = true\n")
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        if argv[:4] == ["docker", "inspect", "-f", "{{.Config.Image}}"]:
+            return proc(0, "anvil-serving:test\n")
+        return proc()
+
+    assert serves._install_router_config(str(config), _run=run) == 0
+    write = next(
+        kwargs
+        for argv, kwargs in calls
+        if argv[:3] == ["docker", "run", "--rm"]
+        and "config.toml.new" in argv[-1]
+    )
+    assert write["input"] == b"[router]\nrelay_timeout = 30\nlegacy = true\n"
+    assert "text" not in write
+    assert "encoding" not in write
 
 
 def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):

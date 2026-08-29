@@ -16,7 +16,7 @@ from .contracts import JobEvent, JobState, MediaArtifact, MediaJob, utc_now
 from .errors import MediaError
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MAX_IDEMPOTENCY_KEY = 128
 
 
@@ -32,6 +32,21 @@ def _time(value: str) -> dt.datetime:
     if parsed.tzinfo is None:
         raise MediaError("job_store_corrupt", "stored job timestamp lacks a timezone", status=500)
     return parsed.astimezone(dt.timezone.utc)
+
+
+def _quality_profile(value: str) -> str:
+    if not isinstance(value, str) or len(value) > 128:
+        raise MediaError("invalid_quality_profile", "quality profile identity is invalid")
+    if value and (
+        not value[0].isalpha()
+        or not value[0].islower()
+        or any(
+            character not in "abcdefghijklmnopqrstuvwxyz0123456789._-"
+            for character in value
+        )
+    ):
+        raise MediaError("invalid_quality_profile", "quality profile identity is invalid")
+    return value
 
 
 class MediaJobStore:
@@ -79,6 +94,7 @@ class MediaJobStore:
                     updated_at TEXT NOT NULL,
                     input_digest TEXT NOT NULL,
                     idempotency_key TEXT NOT NULL,
+                    quality_profile TEXT NOT NULL DEFAULT '',
                     backend_prompt_id TEXT NOT NULL DEFAULT '',
                     approval_json TEXT,
                     UNIQUE(principal, workflow_id, workflow_version, idempotency_key)
@@ -106,6 +122,15 @@ class MediaJobStore:
             rows = db.execute("SELECT version FROM media_schema").fetchall()
             if not rows:
                 db.execute("INSERT INTO media_schema(version) VALUES (?)", (SCHEMA_VERSION,))
+            elif len(rows) == 1 and rows[0]["version"] == 1:
+                columns = {
+                    row["name"] for row in db.execute("PRAGMA table_info(media_jobs)")
+                }
+                if "quality_profile" not in columns:
+                    db.execute(
+                        "ALTER TABLE media_jobs ADD COLUMN quality_profile TEXT NOT NULL DEFAULT ''"
+                    )
+                db.execute("UPDATE media_schema SET version=?", (SCHEMA_VERSION,))
             elif len(rows) != 1 or rows[0]["version"] != SCHEMA_VERSION:
                 raise MediaError("job_store_schema", "media job-state schema version is unsupported", status=500)
             db.execute("COMMIT")
@@ -118,12 +143,14 @@ class MediaJobStore:
         workflow_version: str,
         input_digest: str,
         idempotency_key: str,
+        quality_profile: str = "",
         now: dt.datetime | None = None,
     ) -> tuple[MediaJob, bool]:
         if not isinstance(idempotency_key, str) or not idempotency_key or len(idempotency_key) > MAX_IDEMPOTENCY_KEY:
             raise MediaError("invalid_idempotency_key", "idempotency key is outside policy")
         if not isinstance(input_digest, str) or len(input_digest) != 64:
             raise MediaError("invalid_input_digest", "input digest is invalid")
+        quality_profile = _quality_profile(quality_profile)
         created = now or utc_now()
         job_id = "job_" + secrets.token_urlsafe(24)
         candidate = MediaJob(
@@ -136,6 +163,7 @@ class MediaJobStore:
             updated_at=created,
             events=(JobEvent(1, JobState.ACCEPTED, created),),
             input_digest=input_digest,
+            quality_profile=quality_profile,
         )
         with self._lock, self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -154,7 +182,7 @@ class MediaJobStore:
                 db.execute("COMMIT")
                 return self.get(existing["id"], principal=principal), False
             db.execute(
-                "INSERT INTO media_jobs(id,principal,workflow_id,workflow_version,state,created_at,updated_at,input_digest,idempotency_key) VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO media_jobs(id,principal,workflow_id,workflow_version,state,created_at,updated_at,input_digest,idempotency_key,quality_profile) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (
                     candidate.id,
                     candidate.principal,
@@ -165,6 +193,7 @@ class MediaJobStore:
                     _iso(candidate.updated_at),
                     candidate.input_digest,
                     idempotency_key,
+                    candidate.quality_profile,
                 ),
             )
             db.execute(
@@ -182,6 +211,7 @@ class MediaJobStore:
         workflow_version: str,
         input_digest: str,
         idempotency_key: str,
+        quality_profile: str = "",
         max_principal_active: int,
         max_workflow_active: int,
         max_workflow_running: int,
@@ -193,6 +223,7 @@ class MediaJobStore:
             raise MediaError("invalid_idempotency_key", "idempotency key is outside policy")
         if not isinstance(input_digest, str) or len(input_digest) != 64:
             raise MediaError("invalid_input_digest", "input digest is invalid")
+        quality_profile = _quality_profile(quality_profile)
         limits = (max_principal_active, max_workflow_active, max_workflow_running)
         if any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in limits):
             raise MediaError("invalid_admission_policy", "media admission limits are invalid", status=500)
@@ -208,6 +239,7 @@ class MediaJobStore:
             updated_at=created,
             events=(JobEvent(1, JobState.ACCEPTED, created),),
             input_digest=input_digest,
+            quality_profile=quality_profile,
         )
         terminal = (
             JobState.COMPLETED.value,
@@ -253,7 +285,7 @@ class MediaJobStore:
                 db.execute("ROLLBACK")
                 return None, False, reason
             db.execute(
-                "INSERT INTO media_jobs(id,principal,workflow_id,workflow_version,state,created_at,updated_at,input_digest,idempotency_key) VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO media_jobs(id,principal,workflow_id,workflow_version,state,created_at,updated_at,input_digest,idempotency_key,quality_profile) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (
                     candidate.id,
                     candidate.principal,
@@ -264,6 +296,7 @@ class MediaJobStore:
                     _iso(candidate.updated_at),
                     candidate.input_digest,
                     idempotency_key,
+                    candidate.quality_profile,
                 ),
             )
             db.execute(
@@ -328,6 +361,7 @@ class MediaJobStore:
             created_at=_time(row["created_at"]),
             updated_at=_time(row["updated_at"]),
             events=tuple(JobEvent(item["sequence"], JobState(item["state"]), _time(item["at"]), item["reason"]) for item in events),
+            quality_profile=row["quality_profile"],
             artifacts=artifacts,
             approval=approval,
             backend_prompt_id=row["backend_prompt_id"],

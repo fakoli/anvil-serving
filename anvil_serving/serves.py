@@ -1259,12 +1259,17 @@ def _install_router_config(
     write = _run(
         ["docker", "run", "--rm", "-i", "--user", "0", "-v", mount,
          "--entrypoint", "sh", image, "-c", write_script],
-        input=config_text, capture_output=True, text=True, encoding="utf-8",
+        # Bytes are deliberate.  On Windows, subprocess text mode rewrites
+        # every canonical LF to CRLF before Docker receives stdin, defeating
+        # the normalization above and making the installed artifact differ by
+        # host OS.  A binary pipe preserves the exact validated UTF-8 bytes.
+        input=config_text.encode("utf-8"), capture_output=True,
     )
     if write.returncode != 0:
-        print("  router config write failed: %s" % (
-            write.stderr or write.stdout or "unknown error"
-        ).strip())
+        detail = write.stderr or write.stdout or b"unknown error"
+        if isinstance(detail, bytes):
+            detail = detail.decode("utf-8", "replace")
+        print("  router config write failed: %s" % detail.strip())
         return 1
 
     restart = _run(

@@ -562,7 +562,11 @@ class MediaWorkerLifecycle:
             )
             db.execute("COMMIT")
         return MediaLifecycleReceipt(
-            transaction_id, service, "prepare", bool(controller.get("applied", owns)), owns,
+            transaction_id,
+            service,
+            "prepare",
+            _controller_applied(controller, default=owns),
+            owns,
             preexisting, False, controller, manifest
         )
 
@@ -1180,10 +1184,24 @@ def _receipt_from_row(
     controller = json.loads(row["receipt_json"])
     return MediaLifecycleReceipt(
         row["id"], row["service"], action,
-        bool(controller.get("applied")) if applied is None else applied,
+        _controller_applied(controller) if applied is None else applied,
         bool(row["owns_instance"]), bool(row["preexisting"]), False, controller,
         row["manifest"],
     )
+
+
+def _controller_applied(
+    controller: Mapping[str, Any],
+    *,
+    default: bool = False,
+) -> bool:
+    applied = controller.get("applied")
+    if isinstance(applied, bool):
+        return applied
+    data = controller.get("data")
+    if isinstance(data, Mapping) and isinstance(data.get("applied"), bool):
+        return data["applied"]
+    return default
 
 
 def _require_manifest_match(row: Mapping[str, Any], manifest: str) -> None:
