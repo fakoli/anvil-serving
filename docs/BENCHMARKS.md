@@ -35,18 +35,23 @@ The exact FLUX.2 Klein 4B FP8 workflow is now production-enabled through the
 authenticated media gateway at three server-owned profiles: `draft` 512×512,
 `standard` 768×768, and `high` 1024×1024, all four steps and c1. Real Hermes
 completed one warm request at each profile plus one cold approval/build/resume
-request. All four PNGs passed independent bounded visual review. Warm gateway
-E2E measured 1.352/1.242/1.650 seconds for draft/standard/high, while complete
-Hermes turns measured 38.354/24.420/41.962 seconds and include agent reasoning
-and tool overhead.
+request, followed by three exact-revision cold regressions. Five of seven PNGs
+passed strict independent review. Two retained draft failures exposed
+origami/material-fidelity and exact-count limits; both artifacts and technical
+flows remained valid. Warm gateway E2E measured 1.352/1.242/1.650 seconds for
+draft/standard/high, while complete Hermes turns measured
+38.354/24.420/41.962 seconds and include agent reasoning and tool overhead.
 
 The cold job completed in 2,045.626 seconds, but that interval includes every
 failed deployment attempt repaired during the fix-forward run; it is incident
 and lifecycle evidence, not a normal cold-start latency claim. The worker was
 removed afterward and its reservation reclaimed. Caller-supplied dimensions
 failed before execution, incorrect and retired credentials returned 401, and
-the unrelated Qwen service remained in place. The exact image workflow is
-`available=true`, `promoted=false`; Wan2.2 remains unavailable with
+the unrelated Qwen service remained in place. A final `bb798b0` cold regression
+used skill `1.0.2`, returned a complete resume bundle, reattached with
+`created=false` to the same job, polled to terminal in one English turn, and
+measured 652.607 seconds E2E with 0.110 seconds generation. The exact image
+workflow is `available=true`, `promoted=false`; Wan2.2 remains unavailable with
 `quality_failed` and no fallback. See the
 [production-enablement finding](findings/2026-08-28-hermes-image-quality-production.md).
 

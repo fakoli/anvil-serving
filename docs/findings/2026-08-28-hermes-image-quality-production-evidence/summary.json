@@ -2,7 +2,7 @@
   "schema": "anvil-serving/hermes-image-quality-production/v1",
   "date": "2026-08-28",
   "package_version": "0.36.0",
-  "executable_fix_forward_revision": "57910c7",
+  "executable_fix_forward_revision": "bb798b0",
   "topology": {
     "gateway": "Fakoli Dark",
     "resource_owner": "Fakoli Mid Mod",
@@ -78,16 +78,79 @@
     "final_committed_mib": 0,
     "final_free_media_envelope_mib": 28511
   },
+  "final_exact_regressions": [
+    {
+      "profile": "draft",
+      "width": 512,
+      "height": 512,
+      "artifact_bytes": 305978,
+      "artifact_sha256": "1593a3072cb89297d84c600d29ccbd723d13cb813549d058995a093432cc66d1",
+      "approval_wait_seconds": 222.1,
+      "queue_seconds": 11.4,
+      "generation_seconds": 0.09,
+      "e2e_seconds": 719.3,
+      "independent_visual_review": "pass"
+    },
+    {
+      "profile": "draft",
+      "width": 512,
+      "height": 512,
+      "artifact_bytes": 373257,
+      "artifact_sha256": "b4709de7db5ff12f321618ffd79f9095f17e325d61675741c8fb8859268699f7",
+      "approval_wait_seconds": 93.631,
+      "accepted_to_queued_seconds": 684.225,
+      "queue_seconds": 11.012,
+      "generation_seconds": 0.108,
+      "e2e_seconds": 695.344,
+      "independent_visual_review": "fail",
+      "review_caveat": "subject reads as metallic fish or conventional whale rather than folded origami"
+    },
+    {
+      "profile": "draft",
+      "width": 512,
+      "height": 512,
+      "artifact_bytes": 337286,
+      "artifact_sha256": "4eb0d995dd071b4bc3ed601ee057a04bf1fc6b4afe8acbc2879006378d18207c",
+      "submission_seconds": 0.065,
+      "approval_wait_seconds": 169.714,
+      "accepted_to_queued_seconds": 642.609,
+      "queue_seconds": 9.888,
+      "generation_seconds": 0.11,
+      "e2e_seconds": 652.607,
+      "independent_visual_review": "fail",
+      "review_caveat": "opaque lighthouse and two visible white birds rather than exactly three"
+    }
+  ],
   "controls": {
     "current_token": "pass",
     "retired_token": "401",
     "incorrect_token": "401",
     "hermes_media_tool_count": 8,
+    "hermes_skill_version": "1.0.2",
+    "hermes_exact_resume": "created_false_same_job_terminal_in_turn",
+    "hermes_reply_language": "english_request_english_response",
+    "router_runtime_fleet_routes": "9/9_http_200",
     "caller_dimension_override": "quality_profile_parameter_override",
     "video": "quality_failed",
     "fallback": false,
     "unrelated_qwen_service_preserved": true,
     "orphan_descendants_after_teardown": 0
+  },
+  "security_boundary": {
+    "public_current_semantic": "clean",
+    "public_current_gitleaks": "clean",
+    "public_untracked": "clean",
+    "private_current_gitleaks": "clean",
+    "public_history": "findings_remain",
+    "public_history_commits_scanned": 896,
+    "public_history_signature_count": 21,
+    "public_history_classification": {
+      "synthetic_or_non_secret_direct": 14,
+      "generated_search_index_copies": 6,
+      "historical_temporary_gateway_credential_shaped_field": 1
+    },
+    "historical_temporary_gateway_value_in_current_repositories": false,
+    "history_rewrite_performed": false
   },
   "evidence_labels": [
     "functional",
@@ -96,5 +159,5 @@
     "routed-client-acceptance",
     "production-cutover"
   ],
-  "boundary": "One c1 image per warm profile plus one cold draft over two prompts. No broad quality, tier ranking, arbitrary-size, video-quality, or steady-state cold-start claim."
+  "boundary": "Seven c1 images across five prompts: five strict visual passes and two retained draft prompt-adherence failures. No broad quality, exact-count/material guarantee, tier ranking, arbitrary-size, video-quality, or steady-state cold-start claim."
 }

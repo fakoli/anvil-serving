@@ -13,16 +13,17 @@ video workflow remains unavailable with `quality_failed`; no fallback exists.
 <!-- benchmark-result-card/v1 -->
 ## Result card
 
-> Real Hermes produced four independently reviewed FLUX.2 images through the
-> authenticated MCP gateway, including all three fixed quality profiles and a
-> fully cold approval/build/resume path. Every image passed its bounded visual
-> gate; video remains fail-closed.
+> Real Hermes produced seven independently reviewed FLUX.2 images through the
+> authenticated MCP gateway, including all three fixed quality profiles and
+> four cold approval/resume paths. Five passed strict bounded prompt-adherence
+> review; two additional draft samples completed technically but exposed
+> material-style and exact-count limitations. Video remains fail-closed.
 
 | Setup | Qualified value |
 |---|---|
 | Model | FLUX.2 Klein 4B FP8 `5b4408e5`; Qwen3 4B encoder and FLUX.2 VAE `5f526678`; immutable graph `991b63b8...2e4f` |
 | Hardware | one NVIDIA RTX 5090, 32,607 MiB, sm_120; Fakoli Dark gateway, Fakoli Mid Mod resource owner, Fakoli Mini Hermes client |
-| Runtime | Anvil Serving `0.36.0`, executable fix-forward line through `57910c7`; ComfyUI v0.33.4 at `7a131a3a`; CUDA 13.0; PyTorch 2.13.0+cu130 |
+| Runtime | Anvil Serving `0.36.0`, executable fix-forward line through `bb798b0`; ComfyUI v0.33.4 at `7a131a3a`; CUDA 13.0; PyTorch 2.13.0+cu130 |
 | Managed recipe | `image.flux2-klein-4b-fp8-v1`; lifecycle-owned `serves.comfyui.toml`; worker absent when idle |
 | Measurement path | real Hermes natural-language turn → exact eight-tool skill → authenticated MCP gateway → bounded controller approval → managed ComfyUI → authenticated artifact origin |
 | Profiles | `draft` 512×512, `standard` 768×768, `high` 1024×1024; four steps each; prompt and optional seed are caller-controlled; c1 |
@@ -31,12 +32,13 @@ video workflow remains unavailable with `quality_failed`; no fallback exists.
 
 | Headline measurement | Local result | Conditions |
 |---|---:|---|
-| Independent image review | 4/4 pass | one warm image per profile plus one cold `draft`; two prompts; single sample per cell |
+| Independent image review | 5/7 strict pass | one warm image per profile plus four cold `draft` samples; five prompts; every artifact technically valid |
 | Warm gateway E2E | 1.352 / 1.242 / 1.650 s | `draft` / `standard` / `high`; one natural Hermes request per profile |
 | Warm generation phase | 0.101 / 0.128 / 0.189 s | gateway phase telemetry for the same three requests; not caller wall time |
 | Warm Hermes caller wall | 38.354 / 24.420 / 41.962 s | complete agent turns, including model reasoning and tool use; one request per profile |
 | Cold lifecycle E2E | 2,045.626 s | one `draft`; includes repeated fix-forward failures, approval/build/resume, queue, and generation; not steady-state latency |
 | Cold retry caller wall | 47.788 s | identical Hermes request after approval/start completed; 363,074-byte PNG |
+| Final exact cold E2E | 652.607 s | `bb798b0` English-language exact-resume regression; 169.714 s approval wait, 642.609 s accepted-to-queued, 9.888 s queue, 0.110 s generation |
 
 **Why it matters:** Hermes can now satisfy an ordinary image request without
 learning ComfyUI graphs or infrastructure details. The user selects a small
@@ -44,9 +46,12 @@ quality vocabulary, while the gateway retains workflow identity, lifecycle
 authority, authentication, idempotency, artifact ownership, and latency
 telemetry.
 
-**Important caveat:** Four images over two prompts establish only a bounded
-production smoke. They do not establish broad image quality, text rendering,
-hands, counting, or monotonic visual improvement between tiers. The cold E2E
+**Important caveat:** Seven images over five prompts establish only a bounded
+production smoke. Two strict draft reviews failed: an intended origami whale
+read as a metallic fish/whale, and an intended glass lighthouse rendered as an
+opaque tower with two rather than exactly three birds. The result does not
+establish broad image quality, text rendering, hands, counting, material
+fidelity, or monotonic visual improvement between tiers. The first cold E2E
 number intentionally includes multiple defects found and repaired during the
 same run and must not be presented as normal generation latency.
 
@@ -59,11 +64,15 @@ Publication summary:
 
 The production gateway exposes the same eight bounded media tools through MCP
 and A2A. Hermes receives only those tools and an environment-reference-only
-configuration. Its media skill completes the generation turn, reports an
-approval requirement when the worker is cold, and retries the identical
-idempotency key after approval. It does not diagnose infrastructure, submit a
-raw ComfyUI graph, choose a model filename, or silently substitute another
-workflow.
+configuration authenticated with the router credential, never the controller
+credential. Its media skill completes the generation turn, reports an approval
+requirement with a complete resume bundle when the worker is cold, and retries
+the exact workflow, version, quality profile, parameters, and idempotency key
+after approval. It requires `created=false` and the original job identity,
+continues through nonterminal states, and selects reply language from the
+current request rather than tool output or session history. It does not
+diagnose infrastructure, submit a raw ComfyUI graph, choose a model filename,
+or silently substitute another workflow.
 
 Image requests accept a prompt, an optional seed, and one of three profiles:
 
@@ -103,6 +112,10 @@ gate.
    controller has no orphan descendants.
 7. Exercise negative controls for authentication, arbitrary dimensions, video
    quality state, duplicate approval, and idempotent replay.
+8. Deploy the final executable revision, reconcile the Hermes skill, and run a
+   second cold natural-language request through awaiting approval, exact
+   same-job reattachment, terminal polling, native image return, teardown, and
+   independent strict prompt-adherence review.
 
 ## Warm profile results
 
@@ -150,9 +163,32 @@ Managed teardown then removed the worker. The final resource view showed the
 worker absent, zero media memory committed, 28,511 MiB free inside the media
 envelope, no lifecycle owner, and no orphan build/start process.
 
+## Final exact-revision regressions
+
+Three later cold `draft` requests closed the immutable deployment and client
+behavior gates. A 305,978-byte sample completed in 719.3 seconds E2E and passed
+independent review. A 373,257-byte silver-whale sample completed in 695.344
+seconds E2E but failed strict review because the subject read as a metallic
+fish/whale rather than folded origami, despite the salt flat, sunrise, and tiny
+blue balloon adhering. Its phase telemetry was 93.631 seconds approval wait,
+684.225 seconds accepted-to-queued, 11.012 seconds queue, and 0.108 seconds
+generation.
+
+The final `bb798b0` regression used a complete resume bundle for a red glass
+lighthouse request. Hermes returned `created=false` for the original job,
+continued from queued to terminal in the same turn, inspected the native PNG,
+replied in English, and reported every latency field. The 337,286-byte PNG had
+SHA-256 `4eb0d995...207c`; recorded phases were 0.065 seconds submission,
+169.714 seconds approval wait, 642.609 seconds accepted-to-queued, 9.888 seconds
+queue, 0.110 seconds generation, and 652.607 seconds E2E. Strict visual review
+failed because the tower was predominantly opaque rather than glass and only
+two of the requested three white birds were visible. This is retained negative
+quality evidence, not relabeled as a pass. Managed teardown again restored the
+worker-absent, zero-commit, 28,511-MiB-free baseline.
+
 ## Defects fixed forward during the cold run
 
-The live path exposed seven actionable defects. Each was repaired in the
+The live path exposed eleven actionable defects. Each was repaired in the
 product surface with regression coverage before the same user request was
 allowed to complete:
 
@@ -174,6 +210,22 @@ allowed to complete:
 7. A successful remote apply nested `applied=true`, but the lifecycle receipt
    reported false. Apply status is now normalized from the controller
    envelope.
+8. Fleet status probed runtime-relative upstreams from the command host and
+   falsely reported an outage. Live probes now execute from the installed
+   router runtime, report a safe perspective/kind, and retain a typed mismatch
+   diagnostic for configured-file evidence.
+9. The managed Hermes bridge defaulted to the controller credential even
+   though its endpoint is the router MCP gateway. The bridge now defaults to
+   the least-authority router credential; real discovery returned exactly eight
+   tools and a second reconcile had no drift.
+10. The cold approval reply omitted a durable resume bundle, while a resumed
+    one-shot could select stale session evidence or stop after saying it would
+    poll. Skill `1.0.1` now requires the complete bundle, rejects any job or
+    `created` mismatch, forbids session reconstruction, and keeps nonterminal
+    states inside the tool loop.
+11. The first `1.0.1` approval-boundary reply switched an English request to
+    Chinese. Skill `1.0.2` now derives language only from the current request;
+    the exact same-job completion reply was English.
 
 The final behavior is a fix-forward result, not a waiver of those failures.
 
@@ -188,8 +240,31 @@ The final behavior is a fix-forward result, not a waiver of those failures.
 | Video request | `quality_failed`; no fallback or execution |
 | Cold worker before approval | remained absent |
 | Approval replay | one durable job and one owner; no competing start |
+| Exact Hermes resume | complete bundle; `created=false`; same job; terminal polling in-turn |
+| Hermes reply language | English request produced English terminal response under skill `1.0.2` |
+| Router fleet probe | installed router perspective; 9/9 configured routes returned HTTP 200 |
 | Post-run teardown | worker absent; reservation reclaimed; no orphan descendants |
 | Existing Qwen service | retained throughout the router/controller cutover |
+
+## Release security boundary
+
+The final public candidate passed the semantic scanner over 2,006 tracked
+files with zero findings, its non-ignored untracked surface had zero findings,
+and the repository-pinned Gitleaks image reported zero current-candidate
+signatures. The private operator candidate also had zero Gitleaks signatures.
+Its semantic scan still reports the real topology identities and operator paths
+that the private repository exists to retain; those expected private-policy
+matches did not cross into the public candidate.
+
+A separate verified scan of all 896 public commits is deliberately reported as
+`findings remain`, not clean. It found 21 historical signatures: 14 synthetic
+fixture or non-secret environment/provenance matches, six derivative copies in
+historical generated search indexes, and one credential-shaped `deviceToken`
+field in a historical temporary-loopback OpenClaw smoke artifact. That field is
+redacted in the current artifact, its historical value is absent from both
+current repositories, and it is unrelated to the production router credential
+rotated for this deployment. No Git-history rewrite or force-push was performed;
+that destructive operation requires separate authorization and coordination.
 
 ## Evidence boundary
 
@@ -200,7 +275,9 @@ profile dimensions, telemetry fields, fail-closed overrides, idempotent cold
 resume, and teardown on one RTX 5090.
 
 It does not establish concurrency above one, broad or comparative image
-quality, monotonic improvement by profile, arbitrary aspect ratios, a cold
-start latency objective, or a usable video generator. The Wan2.2 workflow
-remains `quality_failed` and unavailable until a new immutable workflow version
-passes a separate temporal and perceptual corpus.
+quality, exact counting or material fidelity, monotonic improvement by profile,
+arbitrary aspect ratios, a cold-start latency objective, or a usable video
+generator. The two retained strict draft failures make those limitations
+explicit. The Wan2.2 workflow remains `quality_failed` and unavailable until a
+new immutable workflow version passes a separate temporal and perceptual
+corpus.

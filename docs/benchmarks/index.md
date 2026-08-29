@@ -69,8 +69,9 @@ commands; it does not claim a live model result by itself.
 7. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
    direct 128K text/tools/image/OCR/video evidence, no route or promotion.
 8. **FLUX.2 Klein 4B FP8** — production-enabled RTX 5090 ComfyUI image
-   workflow through Hermes/MCP at fixed 512/768/1024-pixel profiles; four
-   bounded visual samples passed. **Wan2.2 TI2V 5B** remains unavailable after
+   workflow through Hermes/MCP at fixed 512/768/1024-pixel profiles; five of
+   seven bounded visual samples passed strict review, with two retained draft
+   fidelity/count failures. **Wan2.2 TI2V 5B** remains unavailable after
    its decodable sample failed prompt adherence and spatial quality.
 
 On 2026-08-28, exact digest- and revision-pinned ComfyUI v0.33.4 workflows
@@ -88,10 +89,12 @@ promoted. See the
 
 A subsequent production gate enabled only the exact FLUX.2 image workflow.
 Real Hermes completed `draft` 512×512, `standard` 768×768, and `high`
-1024×1024 warm requests plus one fully cold approval/build/resume request; all
-four images passed independent bounded review. The gateway exposes latency
-phases, rejects arbitrary dimension overrides, and leaves the worker absent
-after managed teardown. The image workflow is `available=true` and
+1024×1024 warm requests plus four cold approval/resume requests. Five of seven
+images passed strict independent review; two retained draft failures expose
+origami/material and exact-count limits. The gateway exposes latency phases,
+requires exact same-job resume, rejects arbitrary dimension overrides, and
+leaves the worker absent after managed teardown. The image workflow is
+`available=true` and
 `promoted=false`. Wan2.2 remains `quality_failed`, unavailable, and has no
 fallback. See the
 [production-enablement finding](../findings/2026-08-28-hermes-image-quality-production.md).
