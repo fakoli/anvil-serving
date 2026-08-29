@@ -287,7 +287,7 @@ The final behavior is a fix-forward result, not a waiver of those failures.
 
 ## Release security boundary
 
-The final public candidate passed the semantic scanner over 2,006 tracked
+The final public candidate passed the semantic scanner over 2,007 tracked
 files with zero findings, its non-ignored untracked surface had zero findings,
 and the repository-pinned Gitleaks image reported zero current-candidate
 signatures. The private operator candidate also had zero Gitleaks signatures.
