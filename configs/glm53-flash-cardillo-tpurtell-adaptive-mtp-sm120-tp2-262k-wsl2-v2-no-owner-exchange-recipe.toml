@@ -1,0 +1,117 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "brandonmusic/GLM-5.3-Flash-tr3-4bpw"
+status = "rejected"
+source = "Attempt 10: preserve the healthy V2/NVFP4 adaptive-MTP path and disable only B12x's lazy CUDA-IPC DCP top-K owner exchange for WSL2"
+family = "glm-5.3-flash-multimodal-moe"
+
+[recipe.download]
+repo = "brandonmusic/GLM-5.3-Flash-tr3-4bpw"
+revision = "5ab363a8dcf6405955fd5f99671e01a1c9fb124b"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2/Docker Desktop; exclusive TP=2 qualification lane."
+
+[recipe.serve]
+engine = "vllm-glm53-exl3-b12x-replayssm"
+allow_cuda_visible_devices_index = true
+image = "ghcr.io/tpurtell/glm-5.3-flash-exl3-4bpw-2x-rtx@sha256:da5cec95778bf6996660b52e28a6e51737fec69cfc3d508bf298c8a89f273ac5"
+model_path = "/root/.cache/huggingface/hub/models--brandonmusic--GLM-5.3-Flash-tr3-4bpw/snapshots/5ab363a8dcf6405955fd5f99671e01a1c9fb124b"
+named_volumes = [
+  "glm53-cardillo-vllm-cache:/root/.cache",
+]
+quantization = "ShapleyMCG TR3/EXL3 4 bpw weights with NVFP4 MLA KV cache"
+context_tokens = 262144
+port = 8001
+startup_timeout_seconds = 3600
+served_model_name = "glm53-flash-tr3-4bpw-tp2-262k-adaptive-mtp5"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "HF_HUB_OFFLINE=1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_DEBUG=WARN",
+  "VLLM_USE_V2_MODEL_RUNNER=1",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "VLLM_ENGINE_READY_TIMEOUT_S=3600",
+  "VLLM_ADAPTIVE_MTP=1",
+  "VLLM_ADAPTIVE_MTP_HISTORY=16",
+  "VLLM_ADAPTIVE_MTP_MIN_DEPTH=1",
+  "VLLM_ADAPTIVE_MTP_DECISION_WINDOW=8",
+  "VLLM_ADAPTIVE_MTP_PROBE_INTERVAL=32",
+  "VLLM_ADAPTIVE_MTP_PROBE_INTERVAL_MAX=256",
+  "VLLM_ADAPTIVE_MTP_LOAD_THRESHOLDS=0.28,0.45,0.55,0.75,0.90",
+  "VLLM_ENABLE_PCIE_ALLREDUCE=0",
+  "VLLM_PCIE_ALLREDUCE_BACKEND=b12x",
+  "VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE=384KB",
+  "VLLM_B12X_PCIE_EAGER=0",
+  "VLLM_B12X_DCP_A2A=0",
+  "VLLM_USE_B12X_SPARSE_INDEXER=1",
+  "VLLM_USE_B12X_KPOOL_INDEXER=1",
+  "VLLM_DCP_GLOBAL_TOPK=1",
+  "VLLM_DCP_QUERY_SPLIT=0",
+  "VLLM_DCP_TOPK_OWNER_MERGE=1",
+  "VLLM_B12X_DCP_TOPK_OWNER_EXCHANGE=0",
+  "VLLM_B12X_DCP_TOPK_MIN_ROWS=128",
+  "VLLM_B12X_DCP_TOPK_MAX_ROWS=2048",
+  "KV_FP8_ROPE=1",
+  "VLLM_NVFP4_MLA_DYNAMIC_SCALE=1",
+  "VLLM_EXL3_TRELLIS_MIN_M=1",
+  "VLLM_EXL3_TRELLIS_MAX_M=32",
+  "VLLM_EXL3_TRELLIS_BLOCK_M=8",
+  "VLLM_EXL3_PREFILL_TRELLIS=1",
+  "VLLM_EXL3_PREFILL_BLOCK_M=64",
+  "VLLM_EXL3_PREFILL_CAPACITY=1024",
+  "B12X_EXL3_BF16_EPILOGUE=1",
+  "B12X_EXL3_BF16_GEMV=1",
+  "VLLM_B12X_GLM_H64_QUERY_PROJ=auto",
+  "VLLM_USE_B12X_MHC=auto",
+]
+flags = [
+  "--served-model-name glm53-flash-tr3-4bpw-tp2-262k-adaptive-mtp5",
+  "--host 0.0.0.0",
+  "--port 8001",
+  "--tensor-parallel-size 2",
+  "--decode-context-parallel-size 2",
+  "--dcp-comm-backend ag_rs",
+  "--disable-custom-all-reduce",
+  "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":5,\"num_speculative_tokens_per_batch_size\":[[1,1,5],[2,2,4],[3,3,3],[4,4,2],[5,8,1],[9,16,0]]}'",
+  "--use-replayssm",
+  "--replayssm-buffer-len 10",
+  "--language-model-only",
+  "--enable-prefix-caching",
+  "--mamba-cache-mode align",
+  "--attention-backend B12X_MLA_SPARSE",
+  "--max-model-len 262144",
+  "--max-num-batched-tokens 2048",
+  "--max-num-seqs 16",
+  "--max-cudagraph-capture-size 64",
+  "--gpu-memory-utilization 0.950",
+  "--kv-cache-dtype nvfp4_ds_mla",
+  "--no-enable-flashinfer-autotune",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser glm47",
+  "--reasoning-parser glm45",
+]
+note = "Attempt 09 proved startup, V2 UVA, NVFP4 KV, target plus MTP weight loading, adaptive scheduler enablement, a 901775-token GPU KV pool, short coding, and structured JSON. Its first 128K prefill failed only when B12x's lazy DCP top-K owner exchange tried CUDA IPC peer import. This attempt disabled that single transport path and passed 128K retrieval, but is rejected for agent serving: repeated c20 tool gates passed only 12/20 under both default and low reasoning, and the matched low-reasoning coding suite passed 13/15 versus 15/15 for the prior no-spec control. Retained as performance evidence only: local c1 low-reasoning decode measured 71.1 tok/s at 4K and 59.5 tok/s at 128K."
+
+[recipe.fit]
+suited = ["qualification", "compatibility", "coding-agent", "tool-use", "long-context", "adaptive-mtp", "text"]
+rationale = "Retains the highest-capacity NVFP4/adaptive-MTP V2 path while routing the last lazy WSL2-incompatible peer-memory exchange away from CUDA IPC."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/brandonmusic/GLM-5.3-Flash-tr3-4bpw/tree/5ab363a8dcf6405955fd5f99671e01a1c9fb124b",
+]
+community = [
+  "https://github.com/samuelcardillo/glm-5.3-flash-2x-rtx-pro-6000-blackwell/tree/5b5623ea07f48683f37f3774d8d5b8bf5b04fdf0",
+  "https://github.com/tpurtell/glm-5.3-flash-ext3-4-bit-2x-rtx/tree/3bff1d5fdbafcc3d9865abebddbfe1eef435adef",
+]

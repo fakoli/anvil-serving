@@ -1,0 +1,242 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "glm53-cardillo-adaptive-mtp-dual-sm120-wsl2",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 250000,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "campaign long-context requirement",
+        "observed_at": "2026-08-29",
+        "notes": "Usable prompt budget; protocol, system, tool, and media tokens must fit inside this total."
+      },
+      "output_reserve": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "campaign reasoning and answer reserve",
+        "observed_at": "2026-08-29"
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "sequences",
+      "status": "assumed",
+      "source": "single-agent qualification lane",
+      "observed_at": "2026-08-29"
+    },
+    "physical_vram_bytes": {
+      "value": 205283917824,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "local nvidia-smi: two 97887 MiB RTX PRO 6000 Blackwell Max-Q GPUs",
+      "observed_at": "2026-08-29"
+    },
+    "vram_reserves": {
+      "idle_gpu_allocations": {
+        "kind": "physical",
+        "variable": {
+          "value": 39845888,
+          "unit": "bytes",
+          "status": "measured",
+          "source": "local pre-mutation nvidia-smi: 19 MiB used on each GPU",
+          "observed_at": "2026-08-29"
+        }
+      },
+      "driver_and_desktop_headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 6442450944,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "campaign safe-operating policy: 3 GiB per GPU",
+          "observed_at": "2026-08-29"
+        }
+      },
+      "allocator_and_wsl2_uncertainty": {
+        "kind": "policy",
+        "variable": {
+          "value": 3781899059,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "remainder of the upstream 0.950 GPU-memory ceiling after idle allocation and 3 GiB per-card headroom",
+          "observed_at": "2026-08-29",
+          "notes": "The three reserves total five percent of physical VRAM. The runtime must not be raised above its externally qualified 0.950 ceiling."
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "qualification hard gate for identity, exact retrieval, tools, JSON, and stability",
+        "observed_at": "2026-08-29"
+      },
+      "max_relative_quality_loss": {
+        "value": 0.03,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "campaign intelligence-loss budget versus the retained Qwen3.8 Flash-Next baseline",
+        "observed_at": "2026-08-29"
+      },
+      "min_warm_e2e_gain": {
+        "value": 0.15,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "minimum adaptive-MTP gain over an otherwise matched MTP-off control",
+        "observed_at": "2026-08-29"
+      },
+      "min_tasks_per_hour_ratio": {
+        "value": 0.65,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "minimum useful coding-agent speed ratio versus the retained Qwen3.8 Flash-Next baseline",
+        "observed_at": "2026-08-29",
+        "notes": "The external adaptive decode claim is about 0.69 of the local Qwen short-context decode baseline; local tasks per hour remain unknown."
+      }
+    }
+  },
+  "tracked_variables": {
+    "checkpoint_weight_bytes": {
+      "value": 175642157752,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "Hugging Face LFS metadata for 120 safetensors at revision 5ab363a8dcf6405955fd5f99671e01a1c9fb124b",
+      "observed_at": "2026-08-29",
+      "notes": "Artifact bytes are not treated as resident GPU allocation."
+    },
+    "wsl2_runtime_compatibility": {
+      "status": "unknown",
+      "unit": "boolean",
+      "notes": "The pinned runtime is externally qualified on native Linux, not this WSL2/Docker Desktop stack."
+    },
+    "system_ram_peak_bytes": {
+      "status": "unknown",
+      "unit": "bytes",
+      "notes": "Measure during load, graph capture, 250K prefill, and unload. No CPU KV offload is planned."
+    }
+  },
+  "candidates": [
+    {
+      "id": "cardillo-exact-vision-adaptive-mtp5-replayssm10-262k",
+      "runtime_context_limit_tokens": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "samuelcardillo integration commit 5b5623ea07f48683f37f3774d8d5b8bf5b04fdf0",
+        "observed_at": "2026-08-29"
+      },
+      "resident_components": {
+        "native_linux_non_kv_allocation_proxy": {
+          "min": 188505512660,
+          "max": 191762889926,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "derived from the external 545259-token vision KV pool at the 0.950 ceiling and the bounded KV-density proxy",
+          "observed_at": "2026-08-29",
+          "notes": "Aggregates weights, vision tensors, graphs, ReplaySSM state, and runtime workspace because the external logs do not decompose them. Replace with local startup evidence."
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "nvfp4_mla_and_mtp_kv_proxy": {
+          "min": 5973,
+          "max": 11947,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "bounded from the reported approximately 1.05 GiB vision allocation and 188744-token difference between external text and vision KV pools",
+          "observed_at": "2026-08-29",
+          "notes": "The lower bound treats 1.05 GiB as aggregate; the upper bound treats it as per-GPU replicated allocation."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "concurrency-one independent sequence",
+        "observed_at": "2026-08-29"
+      },
+      "metrics": {
+        "deterministic_pass_rate": {
+          "status": "unknown",
+          "unit": "ratio",
+          "notes": "External tests are priors; run local independent gates."
+        },
+        "quality_score": {
+          "status": "unknown",
+          "unit": "score",
+          "notes": "Run the retained local coding-agent suite."
+        },
+        "reference_quality_score": {
+          "status": "unknown",
+          "unit": "score",
+          "notes": "Populate from the matched retained Qwen baseline metric."
+        },
+        "warm_e2e_seconds": {
+          "status": "unknown",
+          "unit": "seconds",
+          "notes": "Measure locally after warmup."
+        },
+        "no_spec_warm_e2e_seconds": {
+          "status": "unknown",
+          "unit": "seconds",
+          "notes": "Requires an otherwise matched MTP-off control."
+        },
+        "successful_tasks_per_hour": {
+          "status": "unknown",
+          "unit": "tasks/hour",
+          "notes": "Compute from successful end-to-end local tasks."
+        },
+        "reference_tasks_per_hour": {
+          "status": "unknown",
+          "unit": "tasks/hour",
+          "notes": "Populate from the retained Qwen baseline."
+        }
+      },
+      "hard_failures": []
+    },
+    {
+      "id": "tpurtell-text-only-adaptive-mtp5-replayssm10-262k",
+      "runtime_context_limit_tokens": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "pinned tpurtell runtime and Cardillo language-model-only comparison profile",
+        "observed_at": "2026-08-29"
+      },
+      "resident_components": {
+        "native_linux_non_kv_allocation_proxy": {
+          "min": 186250588092,
+          "max": 190635522014,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "derived from the external 734003-token text-only KV pool at the 0.950 ceiling and the bounded KV-density proxy",
+          "observed_at": "2026-08-29",
+          "notes": "Aggregates weights, graphs, ReplaySSM state, and runtime workspace; replace with local startup evidence."
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "nvfp4_mla_and_mtp_kv_proxy": {
+          "min": 5973,
+          "max": 11947,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "bounded from the external text-versus-vision KV-pool delta",
+          "observed_at": "2026-08-29"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "concurrency-one independent sequence",
+        "observed_at": "2026-08-29"
+      },
+      "metrics": {},
+      "hard_failures": []
+    }
+  ]
+}

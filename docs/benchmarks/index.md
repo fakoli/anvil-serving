@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-28.**
+**Last evidence review: 2026-08-29.**
 
 ## Start with the numbers
 
@@ -54,25 +54,42 @@ commands; it does not claim a live model result by itself.
    with router concurrency one, four-image/one-video admission, a
    253,952-plus-8,192 client envelope, and the qualified hash-gated SM120
    QSA-fast MTP3 profile.
-2. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
+2. **GLM-5.3-Flash TR3/EXL3 4 bpw** — unpromoted dual-PRO
+   text/tools/image/OCR challenger. Vision fixed K5 at 262K is the interactive
+   GLM profile; no-speculation at 524K is the maximum-context/headroom profile.
+   Adaptive MTP is rejected.
+3. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
    Primary profiles with retained TP=2 long-context, performance, quality, and
    real-client evidence.
-3. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
+4. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
    former text/image/OCR/video deployments with retained managed recipes.
-4. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
+5. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
    **Laguna S 2.1**, and **GPT-OSS Puzzle 88B** — retained qualified or
    promotion-era recipes, not the immediate selected deployment.
-5. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
+6. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
    controls.
-6. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
+7. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
-7. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
+8. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
    direct 128K text/tools/image/OCR/video evidence, no route or promotion.
-8. **FLUX.2 Klein 4B FP8** — production-enabled RTX 5090 ComfyUI image
+9. **FLUX.2 Klein 4B FP8** — production-enabled RTX 5090 ComfyUI image
    workflow through Hermes/MCP at fixed 512/768/1024-pixel profiles; six of
    eight bounded visual samples passed strict review, with two retained draft
    fidelity/count failures. **Wan2.2 TI2V 5B** remains unavailable after
    its decodable sample failed prompt adherence and spatial quality.
+
+On 2026-08-29, the exact Cardillo/Purtell GLM-5.3-Flash TR3/EXL3 4 bpw path
+was translated to WSL2 and tested on both RTX PRO 6000 cards. Vision fixed K5
+passed image understanding, verbatim OCR, tools 20/20, bounded high-reasoning
+coding 15/15, and exact retrieval at a 250K target / 206,296 actual prompt
+tokens. It measured 72.8/55.7
+tok/s decode at 4K/128K and reported 2.14 complete 262K KV windows. Both 524K
+text profiles passed exact retrieval at 495,045 actual prompt tokens and valid
+tool use at 497,976; no-speculation retained 1,603,111 reported KV tokens.
+Adaptive MTP is rejected, and the unserved 0xSero 3.0-bpw release remains
+watch-only. The model remains `no-promotion`, the current Qwen Primary is
+unchanged, and the direct vision candidate is running for hands-on. See the
+[GLM qualification](../findings/2026-08-29-glm53-cardillo-purtell-qualification.md).
 
 On 2026-08-28, exact digest- and revision-pinned ComfyUI v0.33.4 workflows
 qualified a 512×512 FLUX.2 Klein PNG and a 17-frame, 512×288 Wan2.2 H.264 MP4
