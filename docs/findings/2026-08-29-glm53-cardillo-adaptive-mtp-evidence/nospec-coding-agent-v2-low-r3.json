@@ -1,0 +1,777 @@
+{
+  "context": {
+    "cap_tokens": 258304,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 2048,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 768
+  },
+  "failures": [
+    {
+      "error": "absolute-verification",
+      "eval_id": "windows-safe-recursive-move-plan",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.6666666666666666,
+      "suite": "deepseek-v4-flash-0731-local-coding-agent-v2"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:8001/v1",
+    "candidate_id": "brandonmusic-glm53-flash-tr3-4bpw-5ab363a8",
+    "config_id": "cardillo-nospec-v2-wsl2",
+    "engine": "vllm-glm53-exl3-b12x-nospec",
+    "gpu": "dual-rtx-pro-6000-tp2",
+    "model": "glm53-flash-tr3-4bpw-tp2-262k-nospec",
+    "started_at": "2026-08-29T19:02:08Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260829T190208Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "default",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "configs\\glm53-flash-cardillo-tpurtell-nospec-sm120-tp2-262k-wsl2-v2-no-owner-exchange-recipe.toml",
+    "serve_command": null
+  },
+  "suites": {
+    "deepseek-v4-flash-0731-local-coding-agent-v2": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return request(timeout=timeout)\n```",
+              "content_chars": 215,
+              "content_excerpt": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return request(timeo",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1737.273800001276,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "unified-diff",
+                  "passed": true
+                },
+                {
+                  "name": "guard",
+                  "passed": true
+                },
+                {
+                  "name": "valid-path",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 58,
+                "prompt_tokens": 58,
+                "prompt_tokens_details": null,
+                "total_tokens": 116
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return request(timeout=timeout)\n```",
+              "content_chars": 215,
+              "content_excerpt": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return request(timeo",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1463.0007000014302,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "unified-diff",
+                  "passed": true
+                },
+                {
+                  "name": "guard",
+                  "passed": true
+                },
+                {
+                  "name": "valid-path",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 58,
+                "prompt_tokens": 58,
+                "prompt_tokens_details": null,
+                "total_tokens": 116
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return request(timeout=timeout)\n```",
+              "content_chars": 215,
+              "content_excerpt": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return request(timeo",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1470.689500001754,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "unified-diff",
+                  "passed": true
+                },
+                {
+                  "name": "guard",
+                  "passed": true
+                },
+                {
+                  "name": "valid-path",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 58,
+                "prompt_tokens": 58,
+                "prompt_tokens_details": null,
+                "total_tokens": 116
+              }
+            }
+          ],
+          "id": "python-timeout-guard-diff",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "```json\n{\n  \"root_cause\": \"The parameter `queue` uses a mutable default value (a list). Python evaluates default arguments once at function definition time, so all calls share the same list object; appended jobs leak state across calls instead of starting fresh.\",\n  \"fix\": \"Use a safe signature with None as the default and initialize inside the function: `def add_job(job, queue=None): if queue is None: queue = []; queue.append(job); return queue`. This creates a new queue per call instead of reusing the mutable default.\"\n}\n```",
+              "content_chars": 532,
+              "content_excerpt": "```json\n{\n  \"root_cause\": \"The parameter `queue` uses a mutable default value (a list). Python evaluates default arguments once at function definition time, so all calls share the same list object; ap",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3065.2633999998216,
+              "reasoning_chars": 12,
+              "reasoning_excerpt": "Return JSON.",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "root-cause",
+                  "passed": true
+                },
+                {
+                  "name": "safe-fix",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 121,
+                "prompt_tokens": 84,
+                "prompt_tokens_details": null,
+                "total_tokens": 205
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "```json\n{\n  \"root_cause\": \"The parameter `queue` uses a mutable default value (a list). Python evaluates default arguments once at function definition time, so all calls share the same list object; appended jobs leak state across calls instead of starting fresh.\",\n  \"fix\": \"Use a safe signature `def add_job(job, queue=None):` and initialize inside the body with `if queue is None: queue = []` before appending, so each call gets a new queue.\"\n}\n```",
+              "content_chars": 450,
+              "content_excerpt": "```json\n{\n  \"root_cause\": \"The parameter `queue` uses a mutable default value (a list). Python evaluates default arguments once at function definition time, so all calls share the same list object; ap",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2784.9863000010373,
+              "reasoning_chars": 12,
+              "reasoning_excerpt": "Return JSON.",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "root-cause",
+                  "passed": true
+                },
+                {
+                  "name": "safe-fix",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 108,
+                "prompt_tokens": 84,
+                "prompt_tokens_details": null,
+                "total_tokens": 192
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "```json\n{\n  \"root_cause\": \"The parameter `queue` uses a mutable default value (a list). Python evaluates default arguments once at function definition time, so all calls share the same list object; appending a job mutates that shared state, causing jobs to leak across calls.\",\n  \"fix\": \"Use None as the default and create a new list inside the function: `def add_job(job, queue=None): if queue is None: queue = []; queue.append(job); return queue`. This ensures each call gets a fresh queue instead of reusing the shared mutable default.\"\n}\n```",
+              "content_chars": 545,
+              "content_excerpt": "```json\n{\n  \"root_cause\": \"The parameter `queue` uses a mutable default value (a list). Python evaluates default arguments once at function definition time, so all calls share the same list object; ap",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3172.3294999974314,
+              "reasoning_chars": 12,
+              "reasoning_excerpt": "Return JSON.",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "root-cause",
+                  "passed": true
+                },
+                {
+                  "name": "safe-fix",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 127,
+                "prompt_tokens": 84,
+                "prompt_tokens_details": null,
+                "total_tokens": 211
+              }
+            }
+          ],
+          "id": "mutable-default-root-cause",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "# Fail-Closed PowerShell Plan: Move a Named Directory Within a Workspace\n\n**Step 1 \u2014 Define and resolve the workspace, source, and destination paths.**\nUse `Resolve-Path` on the workspace root and the source directory, and construct the destination path explicitly. Fail immediately (throw) if the workspace or source does not resolve:\n\n```powershell\n$ErrorActionPreference = 'Stop'\n$workspace = (Resolve-Path -LiteralPath 'C:\\Work\\MyWorkspace').Path\n$src       = (Resolve-Path -LiteralPath (Join-Path $workspace 'OldDir')).Path\n$dst       = Join-Path $workspace 'Sub\\NewDir'\n```\n\n**Step 2 \u2014 Verify the source is a directory and is strictly inside the workspace.**\nFail closed if the resolved source is not a container or escapes the workspace boundary:\n\n```powershell\nif (-not (Test-Path -LiteralPath $src -PathType Container)) { throw \"Source is not a directory: $src\" }\nif (-not $src.StartsWith($workspace + [IO.Path]::DirectorySeparatorChar, 'OrdinalIgnoreCase')) {\n    throw \"Source is outside the workspace: $src\"\n}\n```\n\n**Step 3 \u2014 Verify the destination parent exists, is inside the workspace, and the destination does not already exist.**\nResolve the destination's parent with `Resolve-Path` and re-check containment; abort if the target name is already taken (no silent overwrite):\n\n```powershell\n$dstParent = (Resolve-Path -LiteralPath (Split-Path $dst -Parent)).Path\nif (-not $dstParent.StartsWith($workspace + [IO.Path]::DirectorySeparatorChar, 'OrdinalIgnoreCase')) {\n    throw \"Destination parent is outside the workspace: $dstParent\"\n}\nif (Test-Path -LiteralPath $dst) { throw \"Destination already exists: $dst\" }\n```\n\n**Step 4 \u2014 Confirm the move will not disturb unrelated content.**\nBecause the destination was verified nonexistent and both paths are confined to the workspace, the operation can only affect `$src` and `$dst`. Optionally log the planned operation and require explicit confirmation (`-WhatIf` support or a prompt) before mutating anything:\n\n```powershell\nWrite-Host \"Plan: move '$src' -> '$dst'\"\nif (-not $PSCmdlet.ShouldProcess($src, \"Move to $dst\")) { return }\n```\n\n**Step 5 \u2014 Execute the move with `-LiteralPath` and verify the result.**\nPerform the move, then confirm the source is gone and the destination exists; report failure without partial assumptions:\n\n```powershell\nMove-Item -LiteralPath $src -Destination $dst\nif ((Test-Path -LiteralPath $src) -or -not (Test-Path -LiteralPath $dst)) {\n    throw \"Move verification failed: src=$src dst=$dst\"\n}\nWrite-Host \"Move completed successfully.\"\n```\n\nEvery step aborts on any failed precondition (`$ErrorActionPreference = 'Stop'`), `Resolve-Path` guarantees absolute, existing paths, containment checks keep all operations inside the workspace, and `-LiteralPath` prevents wildcard/bracket characters in names from being misinterpreted \u2014 so unrelated files are never touched.",
+              "content_chars": 2863,
+              "content_excerpt": "# Fail-Closed PowerShell Plan: Move a Named Directory Within a Workspace\n\n**Step 1 \u2014 Define and resolve the workspace, source, and destination paths.**\nUse `Resolve-Path` on the workspace root and the",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 15975.58040000149,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "absolute-verification",
+                  "passed": true
+                },
+                {
+                  "name": "literal-native-move",
+                  "passed": true
+                },
+                {
+                  "name": "scope-preservation",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 672,
+                "prompt_tokens": 72,
+                "prompt_tokens_details": null,
+                "total_tokens": 744
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "# Fail-Closed PowerShell Plan: Move a Named Directory Within a Workspace\n\n**Step 1 \u2014 Define and resolve the workspace, source, and destination paths.**\nUse `Resolve-Path` on the workspace root and the source directory, and construct the destination path explicitly. Fail immediately (throw) if the source does not exist or any path fails to resolve:\n\n```powershell\n$ErrorActionPreference = 'Stop'\n$workspace = (Resolve-Path -LiteralPath 'C:\\Work\\MyWorkspace').Path\n$src       = (Resolve-Path -LiteralPath (Join-Path $workspace 'OldLocation\\MyDir')).Path\n$dest      = Join-Path $workspace 'NewLocation\\MyDir'\n```\n\n**Step 2 \u2014 Verify both paths are strictly inside the workspace (fail-closed containment check).**\nNormalize the destination's parent and confirm both source and destination begin with the workspace root plus a separator. If either check fails, abort without touching anything:\n\n```powershell\n$destParent = Split-Path -Parent $dest\nif (-not ($src.StartsWith($workspace + '\\') -and $destParent.StartsWith($workspace + '\\'))) {\n    throw \"Path containment check failed; refusing to move.\"\n}\nif (Test-Path -LiteralPath $dest) { throw \"Destination already exists; aborting.\" }\n```\n\n**Step 3 \u2014 Ensure the destination parent exists, creating it only inside the workspace.**\nCreate the destination parent directory if missing (it is already verified to be within the workspace), and confirm it is a directory, not a file:\n\n```powershell\nif (-not (Test-Path -LiteralPath $destParent)) {\n    New-Item -Path $destParent -ItemType Directory | Out-Null\n}\nif (-not (Test-Path -LiteralPath $destParent -PathType Container)) {\n    throw \"Destination parent is not a directory; aborting.\"\n}\n```\n\n**Step 4 \u2014 Perform the move using `-LiteralPath` so special characters are treated literally.**\nMove the single explicitly named directory only; `-LiteralPath` prevents wildcard interpretation of names containing `[`, `]`, or `*`:\n\n```powershell\nMove-Item -LiteralPath $src -Destination $dest -ErrorAction Stop\n```\n\n**Step 5 \u2014 Verify the result and fail closed on any discrepancy.**\nConfirm the source no longer exists and the destination exists as a container. If verification fails, report the error loudly (optionally restore from backup taken before Step 4) so the operation never silently leaves a partial state:\n\n```powershell\nif ((Test-Path -LiteralPath $src) -or -not (Test-Path -LiteralPath $dest -PathType Container)) {\n    throw \"Move verification failed; investigate before proceeding.\"\n}\nWrite-Host \"Moved '$src' -> '$dest' successfully.\"\n```\n\nBecause every step throws on failure and no wildcard expansion or path guessing occurs, unrelated files are never matched or moved, and the operation either completes correctly or stops without side effects.",
+              "content_chars": 2756,
+              "content_excerpt": "# Fail-Closed PowerShell Plan: Move a Named Directory Within a Workspace\n\n**Step 1 \u2014 Define and resolve the workspace, source, and destination paths.**\nUse `Resolve-Path` on the workspace root and the",
+              "error": "absolute-verification",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 14990.565600000991,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "absolute-verification",
+                  "passed": false
+                },
+                {
+                  "name": "literal-native-move",
+                  "passed": true
+                },
+                {
+                  "name": "scope-preservation",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 627,
+                "prompt_tokens": 72,
+                "prompt_tokens_details": null,
+                "total_tokens": 699
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "# Fail-Closed PowerShell Plan: Move a Named Directory Within a Workspace\n\n**Step 1 \u2014 Define and resolve the workspace, source, and destination paths.**\nUse `Resolve-Path` on the workspace root and the source directory, and construct the destination path explicitly. Fail immediately (throw) if the source does not resolve:\n\n```powershell\n$ErrorActionPreference = 'Stop'\n$workspace = (Resolve-Path -LiteralPath 'C:\\Work\\MyWorkspace').Path\n$src       = (Resolve-Path -LiteralPath (Join-Path $workspace 'OldFolder')).Path\n$dest      = Join-Path $workspace 'NewParent\\OldFolder'\n```\n\n**Step 2 \u2014 Verify the source is a directory strictly inside the workspace.**\nFail closed if the resolved source is not a container or is not beneath the workspace root (prevents traversal or symlink escape):\n\n```powershell\nif (-not (Test-Path -LiteralPath $src -PathType Container)) { throw \"Source is not a directory: $src\" }\nif (-not $src.StartsWith($workspace + [IO.Path]::DirectorySeparatorChar, 'OrdinalIgnoreCase')) {\n    throw \"Source escapes workspace: $src\"\n}\n```\n\n**Step 3 \u2014 Verify the destination parent exists, is inside the workspace, and does not already contain the target.**\nFail closed on any collision or escape:\n\n```powershell\n$destParent = Split-Path -Parent $dest\nif (-not (Test-Path -LiteralPath $destParent -PathType Container)) { throw \"Destination parent missing: $destParent\" }\nif (-not $destParent.StartsWith($workspace + [IO.Path]::DirectorySeparatorChar, 'OrdinalIgnoreCase')) {\n    throw \"Destination escapes workspace: $destParent\"\n}\nif (Test-Path -LiteralPath $dest) { throw \"Destination already exists: $dest\" }\n```\n\n**Step 4 \u2014 Confirm the move will not touch unrelated files.**\nBecause the source is a single explicitly named directory and the destination is verified empty/nonexistent, only that subtree moves. Optionally enumerate what will move for an audit trail:\n\n```powershell\nGet-ChildItem -LiteralPath $src -Recurse | Select-Object FullName | Out-Host\n```\n\n**Step 5 \u2014 Execute the move with `-LiteralPath` and verify the result.**\n`-LiteralPath` prevents wildcard interpretation of the directory name; re-verify the source is gone and destination present afterward:\n\n```powershell\nMove-Item -LiteralPath $src -Destination $dest\nif ((Test-Path -LiteralPath $src) -or -not (Test-Path -LiteralPath $dest -PathType Container)) {\n    throw \"Move verification failed\"\n}\nWrite-Host \"Moved '$src' -> '$dest'\"\n```\n\nEvery check throws on failure (fail-closed), so the `Move-Item` only runs when both paths are confirmed absolute, inside the workspace, collision-free, and addressed literally.",
+              "content_chars": 2603,
+              "content_excerpt": "# Fail-Closed PowerShell Plan: Move a Named Directory Within a Workspace\n\n**Step 1 \u2014 Define and resolve the workspace, source, and destination paths.**\nUse `Resolve-Path` on the workspace root and the",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 14732.058800000232,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "absolute-verification",
+                  "passed": true
+                },
+                {
+                  "name": "literal-native-move",
+                  "passed": true
+                },
+                {
+                  "name": "scope-preservation",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 620,
+                "prompt_tokens": 72,
+                "prompt_tokens_details": null,
+                "total_tokens": 692
+              }
+            }
+          ],
+          "error": "absolute-verification",
+          "id": "windows-safe-recursive-move-plan",
+          "pass_count": 2,
+          "pass_rate": 0.6666666666666666,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "content_chars": 162,
+              "content_excerpt": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1472.3610999972152,
+              "reasoning_chars": 12,
+              "reasoning_excerpt": "Return JSON.",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "mode",
+                  "passed": true
+                },
+                {
+                  "name": "gpu-count",
+                  "passed": true
+                },
+                {
+                  "name": "offline",
+                  "passed": true
+                },
+                {
+                  "name": "not-unified",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 54,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 141
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "content_chars": 162,
+              "content_excerpt": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1440.02349999937,
+              "reasoning_chars": 12,
+              "reasoning_excerpt": "Return JSON.",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "mode",
+                  "passed": true
+                },
+                {
+                  "name": "gpu-count",
+                  "passed": true
+                },
+                {
+                  "name": "offline",
+                  "passed": true
+                },
+                {
+                  "name": "not-unified",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 54,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 141
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "content_chars": 162,
+              "content_excerpt": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1437.0536000024003,
+              "reasoning_chars": 12,
+              "reasoning_excerpt": "Return JSON.",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "mode",
+                  "passed": true
+                },
+                {
+                  "name": "gpu-count",
+                  "passed": true
+                },
+                {
+                  "name": "offline",
+                  "passed": true
+                },
+                {
+                  "name": "not-unified",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 54,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 141
+              }
+            }
+          ],
+          "id": "exclusive-tp2-invariant",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 5651.56879999995,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "severity": "production-gap",
+                  "title": "Managed recipe logs unavailable"
+                },
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 22,
+                "prompt_tokens": 217,
+                "prompt_tokens_details": null,
+                "total_tokens": 239
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 683.3315000003495,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "severity": "production-gap",
+                  "title": "Managed recipe logs unavailable"
+                },
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 22,
+                "prompt_tokens": 217,
+                "prompt_tokens_details": null,
+                "total_tokens": 239
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2816,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 768
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 678.01309999777,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "severity": "production-gap",
+                  "title": "Managed recipe logs unavailable"
+                },
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 22,
+                "prompt_tokens": 217,
+                "prompt_tokens_details": null,
+                "total_tokens": 239
+              }
+            }
+          ],
+          "id": "ticket-before-workaround",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "tool_call"
+        }
+      ],
+      "date": "2026-08-01",
+      "evidence_use": "diagnostic",
+      "source": "docs\\findings\\2026-08-01-deepseek-v4-flash-0731-nvfp4-evidence\\coding-agent-suite-v2.json",
+      "source_sha256": "2e8c4e7f9a20b37ef722d922c8729f4c1387e0d507fd176e9801829b5b8e510c",
+      "status": "failed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "coding-agent"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "reasoning_effort",
+    "control_requested": "low",
+    "control_status": "requested_unverified",
+    "mode": "default",
+    "reasoning_effort": "low",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "content_chunks": 0,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p95": null,
+      "e2e_p50_ms": null,
+      "e2e_p95_ms": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p95": null,
+      "generation_p50_ms": null,
+      "generation_p95_ms": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p95": null,
+      "reasoning_chunks": 0,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_samples": 0
+    },
+    "wall_ms": 70787.1879000013
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
