@@ -73,9 +73,11 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
     assert "Omit internal bookkeeping" in text
     assert "otherwise available workflow returns `backend_unavailable`" in text
     assert "continue to submission" in text
+    assert "If the workflow declares no quality profiles" in text
+    assert "empty string as its\n   exact `quality_profile` value" in text
     assert "Hermes has no worker-lifecycle authority" in text
     assert "complete resume bundle" in text
-    assert 'version: "1.0.4"' in text
+    assert 'version: "1.0.5"' in text
     assert "server-returned `resumeBundle` object exactly" in text
     assert "full `idempotency_key`" in text
     assert "compare all seven fields to the returned object" in text
@@ -87,6 +89,33 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
     assert "Never use\n   `session_search`" in text
     assert 'narration such as "now polling."' in text
     assert '"I will inspect it next" or "now polling"' in text
+
+
+def test_hermes_skill_makes_fail_closed_resume_cancellation_unambiguous():
+    text = SKILL.read_text(encoding="utf-8")
+    assert "server omits `resumeBundle` or you cannot reproduce it exactly" in text
+    assert "cancel that\n   job with `mcp__anvil_media__media_job_cancel`" in text
+    assert "Except for the mandatory fail-closed cancellation in step 7" in text
+    assert (
+        "`mcp__anvil_media__media_job_cancel` only when the user asks to cancel that\n"
+        "    job"
+    ) in text
+
+
+def test_hermes_skill_documents_exact_resume_submission_shape():
+    text = SKILL.read_text(encoding="utf-8")
+    assert "Pass exactly its five submission fields" in text
+    for field in (
+        "`workflow_id`",
+        "`version`",
+        "`parameters`",
+        "`quality_profile`",
+        "`idempotency_key`",
+    ):
+        assert field in text
+    assert "Do not pass `job_id` or\n   `approval_transaction_id` to that tool" in text
+    assert "use `job_id` only for the same-job\n   equality check" in text
+    assert "use `approval_transaction_id` only to correlate the\n   reported operator approval" in text
 
 
 def test_hermes_shaped_mcp_flow_reaches_worker_and_retrieves_owned_artifact(tmp_path):
