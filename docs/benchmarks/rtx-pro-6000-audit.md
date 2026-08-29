@@ -1,7 +1,7 @@
 # RTX PRO 6000 mention audit
 
 This audit classifies every tracked Markdown file containing an RTX PRO 6000
-name at the 2026-08-26 review. Evidence-directory Markdown is classified with
+name at the 2026-08-29 review. Evidence-directory Markdown is classified with
 its own file, not inherited implicitly from the parent finding. This is a
 coverage control; benchmark results remain in the [run catalog](runs.md).
 
@@ -16,6 +16,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/benchmarks/models/gemma-4.md`;
 `docs/benchmarks/models/gpt-oss-120b.md`;
 `docs/benchmarks/models/gpt-oss-puzzle-88b.md`;
+`docs/benchmarks/models/glm53-flash.md`;
 `docs/benchmarks/models/inkling-small.md`;
 `docs/benchmarks/models/index.md`;
 `docs/benchmarks/models/laguna-s-2.1.md`;
@@ -87,6 +88,8 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md`;
 `docs/findings/2026-08-26-qwen38-flash-next-vision-promotion.md`;
 `docs/findings/2026-08-26-qwen38-flash-next-vision-promotion-evidence/publication-summary.md`;
+`docs/findings/2026-08-29-glm53-cardillo-purtell-qualification.md`;
+`docs/findings/2026-08-29-glm53-cardillo-adaptive-mtp-evidence/publication-summary.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/closed/2026-07-27-release-sweep-fixes.md`;
 `.tickets/closed/2026-07-28-agents-a1-multimodal-qualification.md`;
