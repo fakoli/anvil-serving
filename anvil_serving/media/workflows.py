@@ -9,7 +9,13 @@ import os
 from pathlib import Path
 from typing import Any, Mapping
 
-from .contracts import ParameterBinding, ParameterSpec, RenderedWorkflow, WorkflowDescriptor
+from .contracts import (
+    ParameterBinding,
+    ParameterSpec,
+    QualityProfile,
+    RenderedWorkflow,
+    WorkflowDescriptor,
+)
 from .errors import MediaError
 
 
@@ -111,6 +117,25 @@ def _descriptor(raw: Mapping[str, Any], graph: Mapping[str, Any]) -> WorkflowDes
     available = raw.get("available", False)
     if not isinstance(available, bool) or (available and reasons):
         raise MediaError("workflow_descriptor_invalid", "workflow availability is inconsistent")
+    profiles_raw = raw.get("quality_profiles", {})
+    if not isinstance(profiles_raw, Mapping) or len(profiles_raw) > 16:
+        raise MediaError("workflow_descriptor_invalid", "workflow quality profiles are invalid")
+    profiles: dict[str, QualityProfile] = {}
+    for name, profile in profiles_raw.items():
+        if (
+            not isinstance(name, str)
+            or not isinstance(profile, Mapping)
+            or set(profile) != {"description", "parameters"}
+            or not isinstance(profile.get("parameters"), Mapping)
+        ):
+            raise MediaError(
+                "workflow_descriptor_invalid",
+                "workflow quality profile is invalid",
+            )
+        profiles[name] = QualityProfile(
+            description=profile.get("description"),
+            parameters=dict(profile["parameters"]),
+        )
     return WorkflowDescriptor(
         id=raw.get("id"),
         version=raw.get("version"),
@@ -124,6 +149,8 @@ def _descriptor(raw: Mapping[str, Any], graph: Mapping[str, Any]) -> WorkflowDes
         required_features=_string_tuple(raw.get("required_features"), "required features"),
         required_nodes=_string_tuple(raw.get("required_nodes"), "required nodes"),
         required_models=_string_tuple(raw.get("required_models"), "required models"),
+        quality_profiles=profiles,
+        default_quality_profile=raw.get("default_quality_profile", ""),
         available=available,
         unavailable_reasons=reasons,
         max_request_bytes=limits.get("request_bytes"),
@@ -179,9 +206,19 @@ class WorkflowRegistry:
             raise MediaError("workflow_not_found", "named workflow version is not configured", status=404)
         return descriptor
 
-    def render(self, workflow_id: str, version: str, values: Mapping[str, Any]) -> RenderedWorkflow:
+    def render(
+        self,
+        workflow_id: str,
+        version: str,
+        values: Mapping[str, Any],
+        *,
+        quality_profile: str | None = None,
+    ) -> RenderedWorkflow:
         descriptor = self.get(workflow_id, version)
-        validated = descriptor.validate_parameters(values)
+        validated, selected_profile = descriptor.resolve_parameters(
+            values,
+            quality_profile=quality_profile,
+        )
         graph = copy.deepcopy(self._graphs[descriptor.key])
         if canonical_digest(graph) != descriptor.graph_digest:
             raise MediaError("workflow_digest_mismatch", "workflow graph changed after registry load", status=409)
@@ -193,10 +230,22 @@ class WorkflowRegistry:
             if not isinstance(inputs, dict) or binding.input not in inputs:
                 raise MediaError("workflow_binding_invalid", "declared workflow binding is absent from the graph")
             inputs[binding.input] = validated[binding.parameter]
+        parameters_digest = (
+            canonical_digest(validated)
+            if not selected_profile
+            else canonical_digest(
+                {
+                    "parameters": validated,
+                    "qualityProfile": selected_profile,
+                }
+            )
+        )
         return RenderedWorkflow(
             descriptor=descriptor,
             graph=graph,
-            parameters_digest=canonical_digest(validated),
+            parameters_digest=parameters_digest,
+            quality_profile=selected_profile,
+            resolved_parameters=validated,
         )
 
 

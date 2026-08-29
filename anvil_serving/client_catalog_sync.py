@@ -21,6 +21,8 @@ DEFAULT_OPENCLAW_CONFIG = "~/.openclaw/openclaw.json"
 DEFAULT_HERMES_CONFIG = "~/.hermes/config.yaml"
 DEFAULT_HERMES_BIN = "~/.local/bin/hermes"
 DEFAULT_HERMES_HOME = "~/.hermes"
+DEFAULT_HERMES_MEDIA_SKILL = "~/.hermes/skills/anvil-media/SKILL.md"
+DEFAULT_HERMES_MEDIA_BACKUP_ROOT = "~/.anvil-serving/backups/hermes-media"
 DEFAULT_PI_MODELS = "~/.pi/agent/models.json"
 DEFAULT_PI_SETTINGS = "~/.pi/agent/settings.json"
 DEFAULT_STATE = "~/.anvil-serving/state/client-catalog.json"
@@ -39,6 +41,16 @@ HERMES_PROFILE_KEYS = (
     "custom_providers",
 )
 HERMES_LEGACY_TEXT_ALIASES = ("llm.primary", "llm.secondary")
+HERMES_MEDIA_TOOLS = (
+    "media_capabilities",
+    "media_workflow_list",
+    "media_workflow_show",
+    "media_workflow_validate",
+    "media_workflow_run",
+    "media_job_status",
+    "media_job_cancel",
+    "media_artifact_inspect",
+)
 PI_ANVIL_COMPAT = {
     "maxTokensField": "max_tokens",
     "supportsDeveloperRole": False,
@@ -1202,6 +1214,342 @@ def _summary(
     }
 
 
+def _environment_reference(name: str) -> str:
+    if (
+        not isinstance(name, str)
+        or not name
+        or name[0] not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+        or any(character not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_" for character in name)
+    ):
+        raise ClientCatalogError("Hermes media environment reference is invalid")
+    return name
+
+
+def _hermes_media_skill_bytes() -> bytes:
+    path = Path(__file__).resolve().parent / "_hermes_skills" / "anvil-media" / "SKILL.md"
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 65536:
+        raise ClientCatalogError("packaged Hermes media skill is unavailable")
+    payload = path.read_bytes()
+    if not payload.startswith(b"---\nname: anvil-media\n"):
+        raise ClientCatalogError("packaged Hermes media skill is invalid")
+    return payload
+
+
+def _hermes_media_skill_path(hermes_home: str, skill_path: str) -> Path:
+    home = Path(os.path.expanduser(hermes_home)).resolve(strict=False)
+    root = (home / "skills").resolve(strict=False)
+    target = Path(os.path.expanduser(skill_path)).resolve(strict=False)
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise ClientCatalogError(
+            "Hermes media skill path must remain under the Hermes skills directory"
+        ) from exc
+    if target.exists() and (target.is_symlink() or not target.is_file()):
+        raise ClientCatalogError("Hermes media skill target is not a regular file")
+    return target
+
+
+def _hermes_media_server(
+    *,
+    anvil_command: str,
+    mcp_url_env: str,
+    token_env: str,
+) -> dict:
+    if (
+        not isinstance(anvil_command, str)
+        or not anvil_command
+        or len(anvil_command) > 512
+        or "\x00" in anvil_command
+    ):
+        raise ClientCatalogError("Anvil command for Hermes media is invalid")
+    mcp_url_env = _environment_reference(mcp_url_env)
+    token_env = _environment_reference(token_env)
+    return {
+        "command": anvil_command,
+        "args": [
+            "mcp",
+            "serve",
+            "--controller-url",
+            "${%s}" % mcp_url_env,
+            "--auth-env",
+            token_env,
+        ],
+        "env": {token_env: "${%s}" % token_env},
+        "tools": {
+            "include": list(HERMES_MEDIA_TOOLS),
+            "resources": False,
+            "prompts": False,
+        },
+    }
+
+
+def _hermes_media_raw_block(config: Path) -> str | None:
+    """Return Hermes' raw ``mcp_servers.anvil-media`` YAML block.
+
+    ``hermes config get`` intentionally returns a resolved value, including
+    values loaded from the profile's ``.env`` file.  The reconciler must verify
+    that the file still contains environment references without retaining or
+    comparing the resolved credential.  Hermes itself owns this compact YAML
+    shape; this scanner only locates the one mapping written by ``config set``
+    and fails closed for duplicate or unexpected structure.
+    """
+
+    try:
+        if config.stat().st_size > DEFAULT_MAX_RESPONSE_BYTES:
+            return None
+        lines = config.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    parents = [index for index, line in enumerate(lines) if line == "mcp_servers:"]
+    if len(parents) != 1:
+        return None
+    parent = parents[0]
+    parent_end = next(
+        (
+            index
+            for index in range(parent + 1, len(lines))
+            if lines[index] and not lines[index][0].isspace()
+        ),
+        len(lines),
+    )
+    children = [
+        index
+        for index in range(parent + 1, parent_end)
+        if lines[index] == "  anvil-media:"
+    ]
+    if len(children) != 1:
+        return None
+    child = children[0]
+    child_end = next(
+        (
+            index
+            for index in range(child + 1, parent_end)
+            if lines[index]
+            and len(lines[index]) - len(lines[index].lstrip()) <= 2
+        ),
+        parent_end,
+    )
+    return "\n".join(lines[child:child_end])
+
+
+def _hermes_media_server_matches(
+    observed: object,
+    expected: Mapping,
+    *,
+    config: Path,
+    mcp_url_env: str,
+    token_env: str,
+) -> bool:
+    """Compare a resolved Hermes value while proving raw env references."""
+
+    if observed == expected:
+        return True
+    if not isinstance(observed, Mapping):
+        return False
+    block = _hermes_media_raw_block(config)
+    if block is None:
+        return False
+    url_reference = "${%s}" % mcp_url_env
+    token_reference = "${%s}" % token_env
+    stripped = [line.strip() for line in block.splitlines()]
+    if stripped.count("- " + url_reference) != 1:
+        return False
+    if stripped.count("%s: %s" % (token_env, token_reference)) != 1:
+        return False
+    try:
+        normalized = json.loads(json.dumps(observed))
+        expected_args = expected["args"]
+        observed_args = normalized["args"]
+        url_index = expected_args.index(url_reference)
+        if not isinstance(observed_args[url_index], str) or not observed_args[url_index]:
+            return False
+        observed_args[url_index] = url_reference
+        observed_token = normalized["env"][token_env]
+        if not isinstance(observed_token, str) or not observed_token:
+            return False
+        normalized["env"][token_env] = token_reference
+    except (KeyError, TypeError, ValueError, IndexError):
+        return False
+    return normalized == expected
+
+
+def sync_hermes_media(
+    *,
+    hermes_bin: str = DEFAULT_HERMES_BIN,
+    hermes_home: str = DEFAULT_HERMES_HOME,
+    hermes_profiles: str = "default",
+    skill_path: str = DEFAULT_HERMES_MEDIA_SKILL,
+    backup_root: str = DEFAULT_HERMES_MEDIA_BACKUP_ROOT,
+    anvil_command: str = "anvil-serving",
+    mcp_url_env: str = "ANVIL_MEDIA_MCP_URL",
+    token_env: str = "ANVIL_ROUTER_TOKEN",
+    restart_hermes_on_change: bool = False,
+    dry_run: bool = True,
+    confirm: bool = False,
+    timeout_seconds: int = 15,
+    run=subprocess.run,
+    restart_hermes: Callable[[], int] | None = None,
+) -> dict:
+    """Reconcile the narrow Anvil media MCP server and packaged Hermes skill."""
+
+    if (
+        not isinstance(timeout_seconds, int)
+        or isinstance(timeout_seconds, bool)
+        or timeout_seconds < 1
+        or timeout_seconds > 120
+    ):
+        raise ClientCatalogError("timeout_seconds must be between 1 and 120")
+    configs = _discover_hermes_profile_configs(hermes_home, hermes_profiles)
+    target = _hermes_media_skill_path(hermes_home, skill_path)
+    skill = _hermes_media_skill_bytes()
+    server = _hermes_media_server(
+        anvil_command=anvil_command,
+        mcp_url_env=mcp_url_env,
+        token_env=token_env,
+    )
+    rows = []
+    for profile in configs:
+        current = _read_hermes_profile_key(
+            hermes_bin,
+            profile,
+            "mcp_servers.anvil-media",
+            timeout_seconds=timeout_seconds,
+            run=run,
+            required=False,
+        )
+        rows.append(
+            {
+                "profile": profile,
+                "changed": not _hermes_media_server_matches(
+                    current,
+                    server,
+                    config=configs[profile],
+                    mcp_url_env=mcp_url_env,
+                    token_env=token_env,
+                ),
+                "config": configs[profile],
+            }
+        )
+    skill_sha256 = _sha256_bytes(skill)
+    changed = []
+    if _file_sha256(target) != skill_sha256:
+        changed.append("skill")
+    changed.extend(
+        "hermes:" + row["profile"] for row in rows if row["changed"]
+    )
+    summary = {
+        "schema": "anvil-serving.hermes-media-sync/v1",
+        "profiles": [
+            {"profile": row["profile"], "changed": row["changed"]}
+            for row in rows
+        ],
+        "changed": changed,
+        "skillSha256": skill_sha256,
+        "tools": list(HERMES_MEDIA_TOOLS),
+        "mcpUrlEnv": mcp_url_env,
+        "tokenEnv": token_env,
+        "backupCreated": False,
+        "hermesRestarted": False,
+        "dryRun": True,
+    }
+    if dry_run or not confirm:
+        return summary
+    desired_sha256 = _sha256_bytes(
+        skill + _json_bytes({"mcp_server": server})
+    )
+    backup = None
+    if changed:
+        backup_paths = []
+        if "skill" in changed:
+            backup_paths.append(target)
+        backup_paths.extend(row["config"] for row in rows if row["changed"])
+        backup = _backup(
+            backup_paths,
+            Path(os.path.expanduser(backup_root)),
+            desired_sha256,
+        )
+        try:
+            if "skill" in changed:
+                _atomic_write(target, skill, mode=0o644)
+            for row in rows:
+                if not row["changed"]:
+                    continue
+                completed = _run_hermes(
+                    hermes_bin,
+                    row["profile"],
+                    [
+                        "config",
+                        "set",
+                        "mcp_servers.anvil-media",
+                        _hermes_config_value(server),
+                    ],
+                    timeout_seconds=timeout_seconds,
+                    run=run,
+                )
+                if completed.returncode:
+                    raise ClientCatalogError(
+                        "Hermes media MCP update failed for %s" % row["profile"]
+                    )
+                checked = _run_hermes(
+                    hermes_bin,
+                    row["profile"],
+                    ["config", "check"],
+                    timeout_seconds=timeout_seconds,
+                    run=run,
+                )
+                if checked.returncode:
+                    raise ClientCatalogError(
+                        "Hermes profile %s failed config validation" % row["profile"]
+                    )
+            for row in rows:
+                observed = _read_hermes_profile_key(
+                    hermes_bin,
+                    row["profile"],
+                    "mcp_servers.anvil-media",
+                    timeout_seconds=timeout_seconds,
+                    run=run,
+                    required=True,
+                )
+                if not _hermes_media_server_matches(
+                    observed,
+                    server,
+                    config=row["config"],
+                    mcp_url_env=mcp_url_env,
+                    token_env=token_env,
+                ):
+                    raise ClientCatalogError(
+                        "Hermes media MCP verification still reports configuration drift"
+                    )
+            if _file_sha256(target) != skill_sha256:
+                raise ClientCatalogError(
+                    "Hermes media skill verification still reports file drift"
+                )
+        except Exception:
+            _restore_backup(backup)
+            raise
+    restarted = False
+    if changed and restart_hermes_on_change:
+        restart_hermes = restart_hermes or (lambda: 1)
+        if restart_hermes() != 0:
+            if backup is not None:
+                _restore_backup(backup)
+                if restart_hermes() != 0:
+                    raise ClientCatalogError(
+                        "Hermes media rollback was restored on disk but its restart failed"
+                    )
+            raise ClientCatalogError(
+                "Hermes media configuration was restored after gateway restart failed"
+            )
+        restarted = True
+    return {
+        **summary,
+        "backupCreated": backup is not None,
+        "hermesRestarted": restarted,
+        "dryRun": False,
+    }
+
+
 def sync_clients(
     *,
     base_url: str,
@@ -1409,5 +1757,6 @@ __all__ = [
     "render_client_documents",
     "render_hermes_profile_plan",
     "plan_hermes_profiles",
+    "sync_hermes_media",
     "sync_clients",
 ]

@@ -435,9 +435,30 @@ routes remain separate from chat and purpose-model routing.
 Media generation is configured separately from chat, purpose-model, and audio
 routes. Each immutable workflow descriptor names one stable ID and version,
 one media kind, one bounded parameter schema, one graph digest, and exactly one
-logical media-service target. Operator topology resolves that target to one
-resource owner; the descriptor never contains a private endpoint or fallback
-list.
+logical media-service target. A descriptor may also define a bounded set of
+quality profiles. Every profile owns the same declared parameter names and
+maps them to exact validated values; callers select a returned profile name and
+cannot override those values. Operator topology resolves that target to one
+resource owner; neither a profile nor the descriptor contains a private
+endpoint or fallback list.
+
+Discovery retains the complete legacy `schema` and additionally publishes a
+`profiledParameterSchema` with profile-owned fields removed. Profile-aware
+callers use that second schema and pass `quality_profile`; the CLI exposes the
+same contract through `media workflow run --quality-profile` and
+`media qualify run --quality-profile`.
+
+The initial image workflow exposes `draft` (512 by 512), `standard` (768 by
+768), and `high` (1024 by 1024), all at four distilled steps. `standard` is the
+explicit default. These labels describe execution settings, not a subjective
+quality guarantee, and they never select a different workflow, model, host, or
+provider. The selected profile is persisted with the durable job. Job status
+reports gateway-observed accepted-to-queued, submission, queue, generation,
+approval-wait when applicable, and end-to-end latency from its durable events.
+Those phase values are poll-observed bounds, not backend kernel timings; media
+qualification separately records caller wall-clock latency. Qualification also
+fails when decoded output dimensions differ from the selected profile's exact
+width or height.
 
 The first-release limits and qualification blockers are frozen in
 [ADR-0041](adr/0041-initial-media-workflows-and-policy.md). Public workflow
@@ -451,6 +472,15 @@ Lifecycle approval uses the existing operator confirmation contract; a media
 credential never inherits controller-wide authority. Artifact storage and job
 state paths belong in the private operator home and are not exposed by workflow
 discovery.
+
+Install or reconcile the packaged Hermes skill and its media-only MCP catalog
+with `anvil-serving harness sync hermes-media --dry-run`, then apply the exact
+preview with `--confirm`. The operation backs up every changed profile, writes
+only environment-variable references, validates each Hermes profile, and must
+produce an empty second preview. Image artifact inspection may include native
+MCP image content up to six binary MiB. Base64 expansion remains below the
+ten-MiB controller/SDK framing bound; larger images and all video remain
+authenticated resource-only.
 
 When `[server].media_principal` enables the gateway surfaces, the process reads
 the media runtime only from environment variables:

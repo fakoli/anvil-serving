@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import contextvars
+import copy
+import os
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Mapping
@@ -70,7 +71,12 @@ def _backend(backend: ComfyUIClient | None) -> ComfyUIClient:
 
 def _translate(call):
     try:
-        return _ok(call())
+        data = call()
+        content = data.pop("_mcpContent", None)
+        result = _ok(data)
+        if content:
+            result["_mcpContent"] = content
+        return result
     except MediaError as exc:
         raise ToolError(exc.code, exc.message, exc.details) from exc
 
@@ -123,16 +129,62 @@ def tool_media_workflow_run(args: dict) -> dict:
     parameters = args.get("parameters")
     if not isinstance(parameters, Mapping):
         raise ToolError("bad_argument", "'parameters' must be an object")
-    return _translate(
-        lambda: operations.workflow_run(
-            _str_arg(args, "workflow_id", required=True),
-            _str_arg(args, "version", required=True),
-            dict(parameters),
+    workflow_id = _str_arg(args, "workflow_id", required=True)
+    version = _str_arg(args, "version", required=True)
+    requested_profile = _str_arg(args, "quality_profile", "")
+    idempotency_key = _str_arg(args, "idempotency_key", required=True)
+    request_parameters = copy.deepcopy(dict(parameters))
+
+    def submit() -> dict:
+        result = operations.workflow_run(
+            workflow_id,
+            version,
+            copy.deepcopy(request_parameters),
             principal=caller.principal,
-            idempotency_key=_str_arg(args, "idempotency_key", required=True),
+            idempotency_key=idempotency_key,
             backend=_backend(backend),
+            quality_profile=requested_profile,
         )
-    )
+        job = result.get("job")
+        if isinstance(job, dict) and job.get("state") == "awaiting_approval":
+            approval = job.get("approval")
+            transaction_id = (
+                approval.get("transactionId") if isinstance(approval, dict) else None
+            )
+            job_id = job.get("id")
+            if "qualityProfile" in job:
+                quality_profile = job.get("qualityProfile")
+            elif requested_profile == "":
+                # Profileless public jobs omit the qualityProfile field.
+                # Preserve the caller's validated empty selection
+                # so the exact resume bundle remains replayable over MCP.
+                quality_profile = ""
+            else:
+                quality_profile = None
+            if (
+                not isinstance(transaction_id, str)
+                or not transaction_id
+                or not isinstance(job_id, str)
+                or not job_id
+                or not isinstance(quality_profile, str)
+            ):
+                raise MediaError(
+                    "media_resume_bundle_invalid",
+                    "the awaiting-approval job lacks an exact resume boundary",
+                    status=502,
+                )
+            result["resumeBundle"] = {
+                "workflow_id": workflow_id,
+                "version": version,
+                "quality_profile": quality_profile,
+                "parameters": copy.deepcopy(request_parameters),
+                "idempotency_key": idempotency_key,
+                "job_id": job_id,
+                "approval_transaction_id": transaction_id,
+            }
+        return result
+
+    return _translate(submit)
 
 
 def tool_media_job_status(args: dict) -> dict:
@@ -161,11 +213,20 @@ def tool_media_job_cancel(args: dict) -> dict:
 def tool_media_artifact_inspect(args: dict) -> dict:
     caller = require_scope("media:read")
     owner = _owner(args, caller)
-    return _translate(
-        lambda: _services()[0].artifact_inspect(
-            _str_arg(args, "artifact_id", required=True), principal=owner
+    operations, _ = _services()
+    artifact_id = _str_arg(args, "artifact_id", required=True)
+
+    def inspect() -> dict:
+        result = operations.artifact_inspect(artifact_id, principal=owner)
+        image_content = operations.artifacts.mcp_image_content(
+            artifact_id,
+            principal=owner,
         )
-    )
+        if image_content is not None:
+            result["_mcpContent"] = [image_content]
+        return result
+
+    return _translate(inspect)
 
 
 _WORKFLOW = {
@@ -211,6 +272,9 @@ FAMILY = ToolFamily(
                 "parameters": {
                     "type": "object", "additionalProperties": True, "maxProperties": 32,
                 },
+                "quality_profile": {
+                    "type": "string", "minLength": 0, "maxLength": 128,
+                },
                 "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
             },
             tool_media_workflow_run,
@@ -228,7 +292,7 @@ FAMILY = ToolFamily(
             tool_media_job_cancel, scope="media:cancel", required=("job_id",),
         ),
         "media_artifact_inspect": _tool(
-            "Inspect opaque authenticated artifact metadata without media bytes.",
+            "Inspect authenticated artifact metadata; eligible bounded images include native content, while video and oversized images remain resource-only.",
             {"artifact_id": {"type": "string", "minLength": 16, "maxLength": 128}, **_OWNER},
             tool_media_artifact_inspect, scope="media:read", required=("artifact_id",),
         ),

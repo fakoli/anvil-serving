@@ -78,6 +78,7 @@ class MediaAdmissionService:
         backend_ready: bool,
         input_digest: str,
         idempotency_key: str,
+        quality_profile: str = "",
     ) -> tuple[MediaAdmissionDecision, MediaJob | None, bool]:
         """Validate policy, then reserve capacity and create in one transaction."""
 
@@ -96,6 +97,7 @@ class MediaAdmissionService:
             workflow_version=workflow.version,
             input_digest=input_digest,
             idempotency_key=idempotency_key,
+            quality_profile=quality_profile,
             max_principal_active=2,
             max_workflow_active=workflow.max_queue_depth,
             max_workflow_running=workflow.max_concurrency,

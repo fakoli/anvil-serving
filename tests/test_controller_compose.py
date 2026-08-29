@@ -85,3 +85,9 @@ def test_controller_compose_excludes_native_host_and_gateway_tools():
         "openclaw_gateway_status",
     ):
         assert f"- {excluded}\n" not in text
+
+
+def test_controller_compose_pins_current_release():
+    text = _text()
+
+    assert "anvil-serving-controller:0.36.0" in text

@@ -86,6 +86,20 @@ def test_client_catalog_sync_schema_is_secret_reference_only_and_guarded():
         mcp.tool_client_catalog_sync({"api_key": "never"})
 
 
+def test_hermes_media_sync_schema_accepts_only_secret_references():
+    properties = mcp.TOOLS["hermes_media_sync"]["inputSchema"]["properties"]
+    assert "mcp_url" not in properties
+    assert "token" not in properties
+    assert {
+        "mcp_url_env",
+        "token_env",
+        "hermes_profiles",
+        "restart_hermes_on_change",
+        "dry_run",
+        "confirm",
+    } <= set(properties)
+
+
 def test_voice_manage_schema_exposes_topology_dispatch_context():
     properties = mcp.TOOLS["voice_manage"]["inputSchema"]["properties"]
     assert {

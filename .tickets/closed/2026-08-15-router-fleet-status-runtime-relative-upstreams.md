@@ -1,6 +1,6 @@
 # Router fleet status misprobes runtime-relative upstreams from the command host
 
-**Status:** Open
+**Status:** Resolved 2026-08-28
 
 ## Problem
 
@@ -39,3 +39,19 @@ verified restoration.
 - Human and JSON output preserve alias, tier, readiness reason, probe
   perspective, and typed failure class without publishing capability-bearing
   URLs.
+
+## Resolution
+
+Live `router fleet-status` now probes the installed configuration by executing
+from the canonical router container while the explicit configured-file mode
+remains command-host evidence. Reports identify `router-runtime` versus
+`command-host`, classify endpoint kinds without printing their addresses, and
+return `probe_perspective_mismatch` when a configured-file probe fails only
+because its host perspective cannot reach a runtime-relative endpoint.
+
+Hermetic coverage includes host loopback, router-container-to-host, unavailable
+upstreams, missing Docker/container cases, bounded execution timeout, output
+size limits, and controller/MCP dispatch. Final live evidence on executable
+revision `bb798b0` reported the installed router perspective and HTTP 200 for
+all nine configured chat, vision, and audio routes. The same deployment passed
+smoke, structured JSON, a 131K-context needle, and a 20/20 tool batch.

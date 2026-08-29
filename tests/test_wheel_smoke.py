@@ -80,6 +80,9 @@ def test_run_smoke_is_checkout_independent_bounded_and_always_cleans_up(
             wheel, runner=runner, create_venv=create_venv, os_name="posix", timeout=17
         )
         assert result["canonical_command"] == "anvil-serving router run --help"
+        assert "anvil_serving/_hermes_skills/anvil-media/SKILL.md" in result[
+            "package_data"
+        ]
     else:
         with pytest.raises(smoke.WheelSmokeError, match="command failed"):
             smoke.run_smoke(

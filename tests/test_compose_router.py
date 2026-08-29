@@ -168,6 +168,20 @@ def test_router_service_passes_token_from_environment():
     )
 
 
+def test_router_service_mounts_host_local_media_state_and_uses_environment_origins():
+    router = _service_blocks(_compose_text())["router"]
+
+    assert "./media-state:/var/lib/anvil-media" in router
+    assert "ANVIL_MEDIA_STATE_DB: /var/lib/anvil-media/media-jobs.sqlite3" in router
+    assert "ANVIL_MEDIA_ARTIFACT_ROOT: /var/lib/anvil-media/artifacts" in router
+    for name in (
+        "ANVIL_MEDIA_BACKEND_URL",
+        "ANVIL_MEDIA_CONTROLLER_URL",
+        "ANVIL_MEDIA_CONTROLLER_TOKEN",
+    ):
+        assert f"{name}: ${{{name}:-}}" in router
+
+
 def test_router_service_mounts_the_config_volume():
     # The router reads its direct-alias config from the anvil-router-cfg volume
     # at /etc/anvil (mounted read-only).

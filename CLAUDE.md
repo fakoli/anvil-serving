@@ -32,7 +32,9 @@ upstream SSE relay, readiness, admission control, and metadata-only
 `DecisionLog` records. It also hosts deterministic purpose-model and audio
 routes. It has no classifier, presets, policy/profile routing, residency
 selection, fallback chain, cloud tier, response verifier, commit window, or
-routing calibration loop.
+routing calibration loop. Named media workflows may separately expose explicit
+caller-selected quality profiles whose exact parameters remain locked by that
+one workflow; those profiles never choose a route or substitute a model.
 
 ## Reference topology
 

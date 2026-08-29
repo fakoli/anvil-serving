@@ -79,6 +79,12 @@ def project_task(job: MediaJob, *, event: JobEvent | None = None) -> dict[str, A
         "metadata": {
             "sequence": selected.sequence,
             "workflow": {"id": job.workflow_id, "version": job.workflow_version},
+            "latency": job.latency(),
+            **(
+                {"qualityProfile": job.quality_profile}
+                if job.quality_profile
+                else {}
+            ),
         },
     }
 
@@ -155,6 +161,11 @@ class A2AMediaTasks:
                 principal=identity.principal,
                 idempotency_key=request["idempotencyKey"],
                 backend=self.backend,
+                quality_profile=(
+                    request["qualityProfile"]
+                    or descriptor.default_quality_profile
+                    or None
+                ),
             )
             job = self.operations.jobs.get(result["job"]["id"], principal=identity.principal)
             if not force_immediate and not request["returnImmediately"]:
@@ -310,17 +321,22 @@ def _media_request(params: Mapping[str, Any]) -> dict[str, Any]:
             data = json.loads(text)
         except json.JSONDecodeError as exc:
             raise MediaError("invalid_a2a_message", "A2A text part is not structured JSON") from exc
-    expected = {"workflowId", "version", "parameters", "idempotencyKey"}
-    if not isinstance(data, Mapping) or set(data) != expected:
+    required = {"workflowId", "version", "parameters", "idempotencyKey"}
+    allowed = required | {"qualityProfile"}
+    if not isinstance(data, Mapping) or not required <= set(data) or set(data) - allowed:
         raise MediaError("invalid_a2a_message", "A2A media data fields are incomplete or unknown")
     if not isinstance(data["parameters"], Mapping):
         raise MediaError("invalid_a2a_message", "A2A workflow parameters must be an object")
     for field in ("workflowId", "version", "idempotencyKey"):
         if not isinstance(data[field], str) or not data[field] or len(data[field]) > 128:
             raise MediaError("invalid_a2a_message", f"A2A field {field} is invalid")
+    quality_profile = data.get("qualityProfile", "")
+    if not isinstance(quality_profile, str) or len(quality_profile) > 128:
+        raise MediaError("invalid_a2a_message", "A2A qualityProfile is invalid")
     return {
         **dict(data),
         "parameters": dict(data["parameters"]),
+        "qualityProfile": quality_profile,
         "returnImmediately": return_immediately,
         "acceptedOutputModes": tuple(accepted_output_modes),
         "historyLength": history_length,

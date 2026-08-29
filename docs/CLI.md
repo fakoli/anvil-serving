@@ -125,7 +125,7 @@ required operands, choices, and defaults.
 | `router install-config` | Validate and atomically install a router config, including tier-set migrations. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--router-url`<br>`--drain-timeout` |
 | `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
 | `router status` | Show router status. | `read` / `bounded` | - |
-| `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--timeout` |
+| `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--live`<br>`--container`<br>`--installed-config`<br>`--probe-perspective`<br>`--timeout` |
 | `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
 | `router quiesce` | Quiesce one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
 | `router drain` | Wait for a quiesced tier to drain. | `read` / `bounded` | `--tier`<br>`--router-url`<br>`--timeout` |
@@ -266,12 +266,12 @@ required operands, choices, and defaults.
 | `media bundle inventory` | Verify exact model assets for one workflow. | `read` / `bounded` | `--version`<br>`--bundle-lock`<br>`--models-volume` |
 | `media bundle stage` | Add missing exact model assets without replacing existing files. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--user-volume`<br>`--runtime-uid`<br>`--runtime-gid` |
 | `media qualify` | Qualify an unavailable pinned workflow without promoting it. | `read` / `bounded` | - |
-| `media qualify run` | Run functional and capacity qualification on the selected worker. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--parameters`<br>`--backend-url`<br>`--gpu-index`<br>`--poll-seconds`<br>`--ffprobe` |
+| `media qualify run` | Run functional and capacity qualification on the selected worker. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--parameters`<br>`--quality-profile`<br>`--backend-url`<br>`--gpu-index`<br>`--poll-seconds`<br>`--ffprobe` |
 | `media workflow` | Inspect, validate, and run named workflows. | `read` / `bounded` | - |
 | `media workflow list` | List named workflows. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root` |
 | `media workflow show` | Show one named workflow. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--version` |
 | `media workflow validate` | Validate one workflow against its selected worker. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--version`<br>`--backend-url` |
-| `media workflow run` | Submit one bounded named media workflow. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--idempotency-key`<br>`--backend-url` |
+| `media workflow run` | Submit one bounded named media workflow. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--quality-profile`<br>`--idempotency-key`<br>`--backend-url` |
 | `media job` | Inspect and cancel durable media jobs. | `read` / `bounded` | - |
 | `media job status` | Inspect one durable media job. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal` |
 | `media job cancel` | Cancel one caller-owned media job. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--backend-url` |
@@ -281,6 +281,7 @@ required operands, choices, and defaults.
 | `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
 | `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness sync clients` | Reconcile OpenClaw, Hermes profiles, and Pi from authenticated router metadata. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `harness sync hermes-media` | Install the narrow Anvil media MCP and packaged Hermes skill. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness restart` | Restart the harness | `read` / `bounded` | - |
 | `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness status` | Show harness status | `read` / `bounded` | - |

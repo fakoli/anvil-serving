@@ -72,18 +72,17 @@ def test_workflow_bundle_and_required_model_identities_are_pinned():
 
     lock = _json(SOURCE_BUNDLE / "bundle.lock.json")
     locked = {(item["id"], item["version"]): item for item in lock["workflows"]}
-    expected_unavailable_reasons = {
-        "image.flux2-klein-4b-fp8-v1": ["quality_unreviewed"],
-        "video.wan2.2-ti2v-5b-v1": ["quality_failed"],
+    expected_availability = {
+        "image.flux2-klein-4b-fp8-v1": (True, []),
+        "video.wan2.2-ti2v-5b-v1": (False, ["quality_failed"]),
     }
     for descriptor_path in sorted(SOURCE_BUNDLE.glob("*.json")):
         descriptor = _json(descriptor_path)
         if descriptor.get("schema") != "anvil-serving.media-workflow/v1":
             continue
-        assert descriptor["available"] is False
-        assert descriptor["unavailable_reasons"] == expected_unavailable_reasons[
-            descriptor["id"]
-        ]
+        available, reasons = expected_availability[descriptor["id"]]
+        assert descriptor["available"] is available
+        assert descriptor["unavailable_reasons"] == reasons
         graph = _json(SOURCE_BUNDLE / descriptor["graph"])
         entry = locked[(descriptor["id"], descriptor["version"])]
         assert entry["graph_sha256"] == canonical_digest(graph) == descriptor["graph_digest"]
