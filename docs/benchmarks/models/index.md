@@ -30,7 +30,7 @@ evidence class, decision boundary, failures, and dated history.
 
 | Dossier | Current decision | Capability |
 |---|---|---|
-| [FLUX.2 Klein 4B](flux2-klein.md) | production-enabled workflow; `available=true`, `promoted=false` | Text-to-image generation through real Hermes/MCP; fixed 512/768/1024-pixel profiles; 5/7 strict bounded reviews pass with two retained draft failures; exact cold lifecycle pass |
+| [FLUX.2 Klein 4B](flux2-klein.md) | production-enabled workflow; `available=true`, `promoted=false` | Text-to-image generation through real Hermes/MCP; fixed 512/768/1024-pixel profiles; 6/8 strict bounded reviews pass with two retained draft failures; exact cold lifecycle pass |
 | [Wan2.2 TI2V 5B](wan22.md) | unavailable candidate, `no-promotion` | Text-to-video generation; functional/decode plus real-Hermes acceptance; one bounded sample failed prompt adherence and spatial quality |
 | [Qwen3.8 27B](qwen38-27b.md) | preferred 5090 `challenger`, `no-promotion` | Computer-use perception, image, OCR, native video, 128K text/tools; eight images / two videos |
 | [Nemotron Nano/Omni 30B](nemotron-omni-30b.md) | `current` topology | Auxiliary text, vision, OCR |

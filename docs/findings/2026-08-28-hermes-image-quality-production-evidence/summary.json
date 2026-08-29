@@ -2,7 +2,7 @@
   "schema": "anvil-serving/hermes-image-quality-production/v1",
   "date": "2026-08-28",
   "package_version": "0.36.0",
-  "executable_fix_forward_revision": "bb798b0",
+  "executable_fix_forward_revision": "b46f6ce",
   "topology": {
     "gateway": "Fakoli Dark",
     "resource_owner": "Fakoli Mid Mod",
@@ -119,6 +119,27 @@
       "e2e_seconds": 652.607,
       "independent_visual_review": "fail",
       "review_caveat": "opaque lighthouse and two visible white birds rather than exactly three"
+    },
+    {
+      "profile": "draft",
+      "width": 512,
+      "height": 512,
+      "artifact_bytes": 250151,
+      "artifact_sha256": "78c147bb1b13d75a212d1643303f00b852ac78568429d4cc87cbaf9f83570076",
+      "submission_seconds": 0.062,
+      "approval_wait_seconds": 335.751,
+      "accepted_to_queued_seconds": 898.152,
+      "queue_seconds": 10.696,
+      "generation_seconds": 0.087,
+      "e2e_seconds": 908.936,
+      "managed_prepare_seconds": 475.983,
+      "post_approval_hermes_wall_seconds": 43.091,
+      "exact_resume_created_false_same_job": true,
+      "server_issued_resume_bundle": true,
+      "terminal_polling_same_turn": true,
+      "native_image_matches_authenticated_resource": true,
+      "english_request_english_response": true,
+      "independent_visual_review": "pass"
     }
   ],
   "controls": {
@@ -126,9 +147,14 @@
     "retired_token": "401",
     "incorrect_token": "401",
     "hermes_media_tool_count": 8,
-    "hermes_skill_version": "1.0.2",
+    "hermes_skill_version": "1.0.4",
     "hermes_exact_resume": "created_false_same_job_terminal_in_turn",
+    "hermes_resume_bundle": "server_issued_exact_seven_fields",
     "hermes_reply_language": "english_request_english_response",
+    "router_to_lifecycle_credential": "dedicated_cross_use_401",
+    "lifecycle_to_resource_credential": "dedicated_cross_use_401",
+    "artifact_catalog_native_image_description": "accurate",
+    "native_image_matches_authenticated_resource": true,
     "router_runtime_fleet_routes": "9/9_http_200",
     "caller_dimension_override": "quality_profile_parameter_override",
     "video": "quality_failed",
@@ -159,5 +185,5 @@
     "routed-client-acceptance",
     "production-cutover"
   ],
-  "boundary": "Seven c1 images across five prompts: five strict visual passes and two retained draft prompt-adherence failures. No broad quality, exact-count/material guarantee, tier ranking, arbitrary-size, video-quality, or steady-state cold-start claim."
+  "boundary": "Eight c1 images across six prompts: six strict visual passes and two retained draft prompt-adherence failures. No broad quality, exact-count/material guarantee, tier ranking, arbitrary-size, video-quality, or steady-state cold-start claim."
 }
