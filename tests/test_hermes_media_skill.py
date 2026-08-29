@@ -75,6 +75,12 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
     assert "continue to submission" in text
     assert "Hermes has no worker-lifecycle authority" in text
     assert "complete resume bundle" in text
+    assert 'version: "1.0.3"' in text
+    assert "literal, copyable `Resume bundle` mapping" in text
+    assert "actual `workflow_id`, `version`, `quality_profile`, complete" in text
+    assert "`parameters`, caller-generated `idempotency_key`, returned `job_id`, and" in text
+    assert "`approval_transaction_id`" in text
+    assert "unless every field is also present in the current reply" in text
     assert "caller-generated idempotency key" in text
     assert "Require `created: false` and the same job ID" in text
     assert "Never use\n   `session_search`" in text
