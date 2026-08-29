@@ -5,6 +5,10 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 COMPOSE = REPO / "examples" / "fakoli-dark" / "docker-compose.media-controller.yml"
+TOPOLOGY = REPO / "examples" / "fakoli-dark" / "operator-topology.toml"
+SCAFFOLD_TOPOLOGY = (
+    REPO / "anvil_serving" / "_scaffold_templates" / "operator-topology.toml"
+)
 
 
 def _text() -> str:
@@ -22,6 +26,28 @@ def test_media_controller_is_loopback_only_and_shares_host_local_state():
     assert "ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN" in text
     assert "read_only: true" in text
     assert "no-new-privileges:true" in text
+
+
+def test_media_controller_uses_distinct_edge_credentials():
+    text = _text()
+    assert (
+        "ANVIL_MEDIA_CONTROLLER_TOKEN: "
+        "${ANVIL_MEDIA_CONTROLLER_TOKEN:?set ANVIL_MEDIA_CONTROLLER_TOKEN}"
+    ) in text
+    assert "ANVIL_CONTROLLER_TOKEN:" not in text
+    assert text.count("- ANVIL_MEDIA_CONTROLLER_TOKEN") == 2
+    assert (
+        "ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN: "
+        "${ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN:"
+        "?set ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN}"
+    ) in text
+
+    topology = TOPOLOGY.read_text(encoding="utf-8")
+    media_transport = topology.split('id = "media-controller"', 1)[1].split(
+        "[[transports]]", 1
+    )[0]
+    assert 'auth_env = "ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN"' in media_transport
+    assert TOPOLOGY.read_bytes() == SCAFFOLD_TOPOLOGY.read_bytes()
 
 
 def test_media_controller_has_exactly_the_four_lifecycle_operations():
