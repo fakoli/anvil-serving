@@ -1,0 +1,61 @@
+{
+  "base_url": "http://127.0.0.1:8001/v1",
+  "budget": {
+    "max_completion_tokens": 2304,
+    "reasoning_headroom_tokens": 2048,
+    "visible_answer_tokens": 256
+  },
+  "checks": [
+    "needle"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-flash-tr3-4bpw-tp2-524k-nospec",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 18,
+      "reasoning_excerpt": "ZEBRA-42917-QUARTZ",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 144.289,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 24,
+        "prompt_tokens": 495045,
+        "prompt_tokens_details": null,
+        "total_tokens": 495069
+      },
+      "validation_detail": "needle present"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "144.3s ctx~600000 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=18 reasoning_tokens=None",
+      "name": "needle @ ~600000 ctx",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "low"
+  },
+  "video_expect": [],
+  "video_input": null
+}
