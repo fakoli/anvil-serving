@@ -2,7 +2,7 @@
 name: anvil-media
 description: Generate, inspect, or cancel images and videos through Anvil's bounded named-workflow MCP tools.
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   hermes:
     tags: [media, image-generation, video-generation, mcp]
     category: media
@@ -40,7 +40,9 @@ an earlier Anvil media job. A slash-command invocation is optional.
    create the bounded lifecycle approval. Do not diagnose, name, or offer to
    inspect infrastructure. For any other validation failure, report the result
    and stop.
-6. Create one opaque idempotency key for the user's intent. Reuse it only when
+6. Create one opaque idempotency key for the user's intent using
+   `hermes-media-` followed by exactly 32 lowercase hexadecimal characters.
+   Never put an ellipsis in this key. Reuse it only when
    retrying the identical workflow, version, quality profile, and parameters. A
    changed request gets a new key. Preserve a resume bundle containing the exact
    workflow ID and version, quality profile, full parameters, and idempotency
@@ -50,13 +52,19 @@ an earlier Anvil media job. A slash-command invocation is optional.
    merely because generation is long-running. If it returns
    `awaiting_approval`, report the exact bounded operator action and transaction,
    plus the complete resume bundle and returned job ID.
-   The approval reply must contain a literal, copyable `Resume bundle` mapping
-   with the actual `workflow_id`, `version`, `quality_profile`, complete
-   `parameters`, caller-generated `idempotency_key`, returned `job_id`, and
-   `approval_transaction_id`. Do not abbreviate, omit, or replace any value
-   with prose or an ellipsis. Never say that the bundle is stored, remembered,
-   or preserved unless every field is also present in the current reply. Treat
-   this emitted bundle as a user-facing result, not internal bookkeeping.
+   Copy the server-returned `resumeBundle` object exactly into a literal,
+   copyable `Resume bundle` mapping. It must contain `workflow_id`, `version`,
+   `quality_profile`, complete `parameters`, the full `idempotency_key`,
+   `job_id`, and `approval_transaction_id`. Do not hand-build, abbreviate,
+   omit, reorder, or replace any value with prose or an ellipsis. The job ID
+   must appear inside the mapping even when it also appears elsewhere. Before
+   sending, compare all seven fields to the returned object and rewrite the
+   reply if any field differs. Never say that the bundle is stored, remembered,
+   or preserved unless every field is also present in the current reply. If the
+   server omits `resumeBundle` or you cannot reproduce it exactly, cancel that
+   job with `mcp__anvil_media__media_job_cancel`, report
+   `resume_bundle_incomplete`, and do not request approval. Treat the emitted
+   bundle as a user-facing result, not internal bookkeeping.
    Hermes has no worker-lifecycle authority; stop without changing the worker.
    Do not omit the caller-generated idempotency key.
 8. Poll `mcp__anvil_media__media_job_status` at a bounded cadence until the job

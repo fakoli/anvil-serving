@@ -85,6 +85,11 @@ the same opaque job and artifact identities:
 6. Negative controls keep unavailable and approval-required work unsubmitted
    and provide no alternate execution path.
 
+At a cold approval boundary, `media_workflow_run` returns a server-produced
+`resumeBundle`. Hermes must reproduce all seven fields exactly; an incomplete
+or abbreviated bundle is canceled instead of being approved or reconstructed
+from session history.
+
 The source tree tests exercise this contract with both the legacy SDK shape and
 the modern MCP client. A final live smoke still requires a deployed release,
 scoped credential, qualified workflow, and the separate live-enablement gate.
