@@ -61,7 +61,11 @@ coverage. Later fixes moved live fleet probes into the router runtime, changed
 Hermes MCP auth to the least-authority router token, split the router-to-lifecycle
 and lifecycle-to-resource credentials, and made skill `1.0.4` copy the
 server-issued exact same-job resume bundle unchanged, keep nonterminal states
-in-turn, and preserve the current request language. One cold c1 run is not a
+in-turn, and preserve the current request language. Post-run revision
+`5ea1edc` and skill `1.0.5` then closed the profileless empty-profile boundary,
+the five-input/seven-field replay distinction, and the malformed-bundle
+cancellation exception without changing the measured image runtime. One cold
+c1 run is not a
 throughput distribution or latency target. Six strict passes and two retained
 draft failures do not establish broad text rendering, hands, counting, material
 fidelity, seed repeatability, or monotonic quality by tier.

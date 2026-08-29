@@ -21,7 +21,7 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "c766dbae5722a92be3783f7e9c04d0cd64f7aa1c020dedcc4ab25fcd40c89bac"
+    "b581573e6d70089929d5937458d68039806d4dc2f19879ff12c22c3d1706517c"
 )
 HANDLER_MAP_SHA256 = (
     "e7395d43bce83b73e56229ed19a4fb5c84997620ee08d3bd63ecd149d263d672"
@@ -126,6 +126,17 @@ def test_media_artifact_discovery_describes_bounded_native_image_content():
         "Inspect authenticated artifact metadata; eligible bounded images include "
         "native content, while video and oversized images remain resource-only."
     )
+
+
+def test_media_run_catalog_accepts_explicit_profileless_resume_value():
+    quality_profile = mcp.TOOLS["media_workflow_run"]["inputSchema"][
+        "properties"
+    ]["quality_profile"]
+    assert quality_profile == {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 128,
+    }
 
 
 def test_direct_handler_map_is_stable_and_uses_dictionary_lookup():

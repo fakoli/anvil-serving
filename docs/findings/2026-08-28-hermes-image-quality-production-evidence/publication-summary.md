@@ -24,6 +24,12 @@
   reattached with `created=false` to the same job, polled to terminal in one
   English turn, returned a native PNG that matched the authenticated resource
   byte for byte, and measured 908.936 seconds E2E with 0.087 seconds generation.
+- **Final client/gateway contract:** revision `5ea1edc` and skill `1.0.5`
+  preserve an explicit empty profile for profileless workflows, distinguish the
+  five legal replay inputs from two correlation fields, and make malformed-
+  bundle cancellation an explicit fail-closed exception. The deployed router
+  and eight-tool Hermes smoke passed, including exact cold bundle return and
+  explicit cancellation; this does not relabel the `1.0.4` image measurement.
 - **Safety:** incorrect, retired, and cross-boundary credentials returned 401;
   the router-to-lifecycle and lifecycle-to-resource boundaries use distinct
   credentials; arbitrary
@@ -86,5 +92,6 @@ took 908.936 seconds E2E. Video remains blocked on quality.
 | Warm gateway E2E was 1.242–1.650 seconds | one request per profile; phase telemetry, not caller wall | [Result card](../2026-08-28-hermes-image-quality-production.md#result-card); [summary](summary.json) |
 | Cold approval/build/resume/teardown passed | one cold draft; duration includes fix-forward iterations | [Cold lifecycle](../2026-08-28-hermes-image-quality-production.md#cold-approval-build-resume-and-teardown); [summary](summary.json) |
 | Final skill reattached exactly and completed in one English turn | one cold draft; server-issued exact bundle copied unchanged by skill `1.0.4`; `created=false`; same job; 908.936-second E2E | [Final regressions](../2026-08-28-hermes-image-quality-production.md#final-exact-revision-regressions); [summary](summary.json) |
+| Final generic resume contract is replayable and fail-closed | profileless real-operations cold replay/cancel regression; deployed `5ea1edc` router; skill `1.0.5`; five submission fields plus two correlation fields | [Defects fixed forward](../2026-08-28-hermes-image-quality-production.md#defects-fixed-forward-during-the-production-gate); [summary](summary.json) |
 | Arbitrary dimensions and video fail closed | one width-override control and one video request; no execution/fallback | [Safety controls](../2026-08-28-hermes-image-quality-production.md#safety-and-negative-controls); [summary](summary.json) |
 | Exact image workflow is available; video is not | three fixed c1 image profiles; Wan2.2 exact workflow remains quality-failed | [Product contract](../2026-08-28-hermes-image-quality-production.md#product-contract); [evidence boundary](../2026-08-28-hermes-image-quality-production.md#evidence-boundary) |
