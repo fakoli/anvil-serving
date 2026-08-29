@@ -104,6 +104,50 @@ def test_submit_uses_authenticated_principal_and_normalized_result(monkeypatch):
     assert seen["principal"] == "hermes"
     assert seen["backend"] is backend
     assert "principal" not in result["data"]["job"]
+    assert "resumeBundle" not in result["data"]
+
+
+def test_awaiting_approval_returns_server_produced_exact_resume_bundle(monkeypatch):
+    parameters = {"prompt": "red cube", "seed": 20260828}
+
+    class Operations:
+        def workflow_run(self, workflow_id, version, supplied_parameters, **kwargs):
+            assert supplied_parameters == parameters
+            supplied_parameters["prompt"] = "mutated downstream"
+            return {
+                "job": {
+                    "id": "job_opaque_resume_identifier",
+                    "state": "awaiting_approval",
+                    "qualityProfile": "draft",
+                    "approval": {"transactionId": "approval-opaque-identifier"},
+                },
+                "created": True,
+            }
+
+    backend = ComfyUIClient("http://127.0.0.1:8188")
+    monkeypatch.setattr(media, "_services", lambda: (Operations(), backend))
+    result = mcp.call_tool(
+        "media_workflow_run",
+        {
+            "workflow_id": "image.test",
+            "version": "v1",
+            "parameters": parameters,
+            "quality_profile": "draft",
+            "idempotency_key": "hermes-media-0123456789abcdef0123456789abcdef",
+        },
+        caller=SUBMIT,
+    )
+
+    assert result["ok"] is True
+    assert result["data"]["resumeBundle"] == {
+        "workflow_id": "image.test",
+        "version": "v1",
+        "quality_profile": "draft",
+        "parameters": parameters,
+        "idempotency_key": "hermes-media-0123456789abcdef0123456789abcdef",
+        "job_id": "job_opaque_resume_identifier",
+        "approval_transaction_id": "approval-opaque-identifier",
+    }
 
 
 def test_cross_principal_scope_is_required_before_job_lookup(monkeypatch):

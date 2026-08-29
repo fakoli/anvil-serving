@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import contextvars
+import copy
+import os
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Mapping
@@ -131,17 +132,50 @@ def tool_media_workflow_run(args: dict) -> dict:
     workflow_id = _str_arg(args, "workflow_id", required=True)
     version = _str_arg(args, "version", required=True)
     requested_profile = _str_arg(args, "quality_profile", "")
+    idempotency_key = _str_arg(args, "idempotency_key", required=True)
+    request_parameters = copy.deepcopy(dict(parameters))
 
     def submit() -> dict:
-        return operations.workflow_run(
+        result = operations.workflow_run(
             workflow_id,
             version,
-            dict(parameters),
+            copy.deepcopy(request_parameters),
             principal=caller.principal,
-            idempotency_key=_str_arg(args, "idempotency_key", required=True),
+            idempotency_key=idempotency_key,
             backend=_backend(backend),
             quality_profile=requested_profile,
         )
+        job = result.get("job")
+        if isinstance(job, dict) and job.get("state") == "awaiting_approval":
+            approval = job.get("approval")
+            transaction_id = (
+                approval.get("transactionId") if isinstance(approval, dict) else None
+            )
+            job_id = job.get("id")
+            quality_profile = job.get("qualityProfile")
+            if (
+                not isinstance(transaction_id, str)
+                or not transaction_id
+                or not isinstance(job_id, str)
+                or not job_id
+                or not isinstance(quality_profile, str)
+                or not quality_profile
+            ):
+                raise MediaError(
+                    "media_resume_bundle_invalid",
+                    "the awaiting-approval job lacks an exact resume boundary",
+                    status=502,
+                )
+            result["resumeBundle"] = {
+                "workflow_id": workflow_id,
+                "version": version,
+                "quality_profile": quality_profile,
+                "parameters": copy.deepcopy(request_parameters),
+                "idempotency_key": idempotency_key,
+                "job_id": job_id,
+                "approval_transaction_id": transaction_id,
+            }
+        return result
 
     return _translate(submit)
 
