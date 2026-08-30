@@ -12,7 +12,7 @@ separate states; never infer one from another.
 ## Start state
 
 1. Read `README.md`, `CLAUDE.md`, the selected recipe, and
-   `skills/anvil-serving-llm-qualification/SKILL.md` before mutation.
+   `.agents/skills/anvil-serving-llm-qualification/SKILL.md` before mutation.
 2. Record repository revision and dirty state, command host/runtime, topology
    target, router and serve state, reservations, loaded recipe containers, GPU
    inventory, candidate recipe revision, and exact state to restore.
@@ -47,7 +47,7 @@ anvil-serving models recipes show MODEL
 anvil-serving models recipes load MODEL --container NAME --gpu-device GPU --dry-run
 anvil-serving models recipes load MODEL --container NAME --gpu-device GPU --confirm
 anvil-serving models recipes status MODEL --container NAME
-anvil-serving models recipes logs MODEL --container NAME --tail 200
+anvil-serving models recipes logs MODEL --container NAME --tail 500 --contains ERROR --contains "KV cache"
 anvil-serving models recipes unload MODEL --container NAME --dry-run
 anvil-serving models recipes unload MODEL --container NAME --confirm
 ```
@@ -62,7 +62,11 @@ router policy, and an isolated test does not require an alias change.
 1. Run recipe `status`, then bounded recipe `logs`. Capture the earliest
    actionable startup error and classify authentication, authorization/license,
    missing dependency, incompatible engine/model, resource exhaustion, or
-   failed health contract.
+   failed health contract. Start with repeatable `--contains` literals for the
+   expected failure signatures so progress bars and routine startup output do
+   not flood agent context. Widen the filter or remove it only when the cause
+   remains unclear; retain an unfiltered artifact outside model context when a
+   complete raw log is required for evidence.
 2. Do not "fix unhealthy" by immediately recreating the container. First prove
    the owning cause and whether the recipe, image, environment handoff, health
    check, or product status surface is defective.
