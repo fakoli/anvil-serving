@@ -1,0 +1,58 @@
+{
+  "schema": "anvil-serving.telemetry-observation/v1",
+  "observed_date": "2026-08-30",
+  "evidence_type": "sanitized-read-only-local-observation",
+  "workload": {
+    "target": "wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1@319d66a8b53092b491f698440ecea781e4ddd4e4",
+    "draft": "incoai/GLM-5.3-Flash-DFlash2@dc77ff1c99eeb2df044ee3d4f0094eb033fee410",
+    "runtime_image": "ghcr.io/tpurtell/glm-5.3-flash-exl3-4bpw-2x-rtx@sha256:001a45bd71bcf908a8c07459570bdb8c5e0a205d085f29ac7f3201529fa3eb75",
+    "anvil_serving_revision": "c592e0b7f32acd2e99919a8fa72fc7e860e23ceb"
+  },
+  "model_repository_code": {
+    "tracked_python_or_native_executable_observed": false,
+    "remote_code_hook_observed": false,
+    "trust_remote_code_enabled": false
+  },
+  "runtime_usage_reporter": {
+    "enabled": true,
+    "destination": "stats.vllm.ai",
+    "transport": "tls",
+    "documented_heartbeat_seconds": 600,
+    "retained_records_inspected": 93,
+    "payload_field_classes": [
+      "anonymous-runtime-instance-id",
+      "cpu-and-memory-metadata",
+      "gpu-metadata",
+      "platform-and-runtime-versions",
+      "model-architecture",
+      "engine-launch-configuration",
+      "heartbeat-timestamp-and-runtime-counters"
+    ],
+    "prompt_text_field_observed": false,
+    "completion_text_field_observed": false,
+    "request_or_response_body_field_observed": false
+  },
+  "runtime_connection_observation": {
+    "destination_observed": "stats.vllm.ai",
+    "aligned_with_next_documented_heartbeat": true
+  },
+  "mutations": {
+    "model_requests_sent": 0,
+    "containers_restarted": 0,
+    "routes_changed": 0,
+    "models_loaded_or_unloaded": 0
+  },
+  "redactions": [
+    "runtime-instance-uuid",
+    "connection-timestamps",
+    "host-network-identities",
+    "container-identity",
+    "gpu-identifiers",
+    "machine-local-paths"
+  ],
+  "conclusion": {
+    "runtime_telemetry_observed": true,
+    "model_weight_exfiltration_proven": false,
+    "prompt_or_completion_exfiltration_observed": false
+  }
+}

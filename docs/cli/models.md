@@ -229,11 +229,21 @@ anvil-serving models recipes load MODEL --container my-candidate --registry ./se
 anvil-serving models recipes load MODEL --container my-candidate --registry ./serve-recipes.local.toml --confirm
 ```
 
-`load` starts a new, explicitly named Docker container bound to loopback. It does not
-change router policy or promote the candidate. Validate it with
+`load` starts a new, explicitly named Docker container bound to loopback. Network
+egress is denied by default: before `docker run`, Anvil Serving creates or freshly
+verifies its owned `anvil-serving-model-egress-denied` internal bridge and attaches
+the candidate to it. A same-named network with the wrong driver, internal flag, or
+ownership label fails closed. It does not change router policy or promote the candidate. Validate it with
 [`eval preflight`](eval.md#preflight), then use [`serves switch`](serves.md#switch-primary-by-recipe)
 only after human review. The preview's cleanup command is conditional: use it only for a
 container successfully created by that load, never for a name that existed beforehand.
+
+Recipe absence means `network_egress = "deny"`, and model recipes cannot declare
+`network_egress = "allow"`. There is no command-line bypass. Downloads use the
+recipe's separate bounded download phase; stage a complete cache before serving
+rather than granting a running inference container temporary egress. Capability,
+media, and voice gateways are non-model infrastructure managed through their own
+reviewed Compose or manifest surfaces.
 
 When machine-level cache reclaim is enabled, the preview also declares that `load`
 will wait up to 600 seconds for the recipe's HTTP health after the container starts.

@@ -60,6 +60,10 @@ services:
         --gpu-memory-utilization ${GPU_MEM_UTIL:-0.90} --kv-cache-dtype fp8
         --host 0.0.0.0 --port ${PORT:-30004}
 
+networks:
+  default:
+    internal: true
+
 volumes:
   vllm-hfcache:
     external: true

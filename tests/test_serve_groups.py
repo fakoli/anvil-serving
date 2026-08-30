@@ -265,6 +265,14 @@ def test_main_unknown_group_refuses(tmp_path, capsys):
 
 def _absent_run():
     def run(argv, **k):
+        if isinstance(argv, list) and "config" in argv and "--format" in argv:
+            return proc(0, json.dumps({
+                "services": {
+                    name: {"networks": {"default": None}}
+                    for name in ("fast", "emb", "rer", "heavy", "stt", "tts")
+                },
+                "networks": {"default": {"internal": True}},
+            }))
         if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
             return proc(1, "", "Error: No such object")
         return proc(0, "", "")
@@ -300,14 +308,24 @@ def test_group_up_dry_run_starts_nothing(tmp_path):
 
     def run(argv, **k):
         calls.append(argv)
+        if isinstance(argv, list) and "config" in argv and "--format" in argv:
+            return proc(0, json.dumps({
+                "services": {
+                    name: {"networks": {"default": None}}
+                    for name in ("fast", "emb", "rer", "heavy", "stt", "tts")
+                },
+                "networks": {"default": {"internal": True}},
+            }))
         if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
             return proc(1, "", "Error: No such object")
         return proc(0, "", "")
 
     serves.cmd_up(s, targets, dry_run=True, _run=run)
-    # Only inventory/inspect probes ran; no compose/start/stop mutation.
+    # Only inventory/inspect and read-only Compose config probes ran.
     assert all(
-        c[:2] == ["docker", "inspect"] or c[:3] == ["docker", "ps", "-a"]
+        c[:2] == ["docker", "inspect"]
+        or c[:3] == ["docker", "ps", "-a"]
+        or (c[:2] == ["docker", "compose"] and "config" in c)
         for c in calls if isinstance(c, list)
     )
 

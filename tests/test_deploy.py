@@ -223,6 +223,7 @@ def test_deploy_cli_emits_manifest_and_tier_stub(tmp_path, monkeypatch, capsys):
         "port": 30000,
             "model": "qwen35-awq-local", "served_name": "qwen35-awq-local",
             "engine": "sglang", "stack": "serving", "health": "/health",
+        "network_egress": "deny",
         "_manifest_dir": str(tmp_path),
         "up": ["docker", "compose", "-f", str(out_path).replace("\\", "/"), "up", "-d", "sglang"],
     }

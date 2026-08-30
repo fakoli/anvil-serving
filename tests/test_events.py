@@ -439,7 +439,16 @@ def test_non_promotion_lifecycle_reports_journal_failure_without_traceback(
     if operation == "up":
         monkeypatch.setattr(serves, "docker_states", lambda *_a, **_k: {"example-container": "absent"})
         monkeypatch.setattr(serves, "docker_state", lambda *_a, **_k: "absent")
-        rc = serves.cmd_up(managed, ["example"], _run=lambda *_a, **_k: proc())
+
+        def run(argv, **_kwargs):
+            if "config" in argv and "--format" in argv:
+                return proc(0, json.dumps({
+                    "services": {"example": {"networks": {"default": None}}},
+                    "networks": {"default": {"internal": True}},
+                }))
+            return proc()
+
+        rc = serves.cmd_up(managed, ["example"], _run=run)
     elif operation == "down":
         monkeypatch.setattr(serves, "docker_state", lambda *_a, **_k: "running")
         monkeypatch.setattr(
@@ -535,6 +544,11 @@ def test_successful_serves_up_emits_changed_targets_only(monkeypatch):
 
     def run(argv, **_kwargs):
         run_calls.append(argv)
+        if "config" in argv and "--format" in argv:
+            return proc(0, json.dumps({
+                "services": {"example": {"networks": {"default": None}}},
+                "networks": {"default": {"internal": True}},
+            }))
         return proc()
 
     assert serves.cmd_up(managed, ["example"], _run=run) == 0
@@ -730,6 +744,10 @@ def test_lifecycle_noops_dry_runs_and_failures_emit_nothing(monkeypatch):
         "model": "example-local",
         "engine": "vllm",
         "health": "/health",
+        "gpu_inference": False,
+        "network_egress": "allow",
+        "network_egress_role": "capability-gateway",
+        "network_egress_reason": "no-op lifecycle event fixture",
     }]
     monkeypatch.setattr(serves, "docker_states", lambda *_args, **_kwargs: {"example-container": "running"})
     monkeypatch.setattr(serves, "docker_state", lambda *_args, **_kwargs: "running")

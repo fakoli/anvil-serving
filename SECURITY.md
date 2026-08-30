@@ -2,14 +2,14 @@
 
 ## Supported versions
 
-anvil-serving is pre-1.0. Security fixes target the **latest minor release line** (currently
-`0.21.x`, matching the source tree version in [CHANGELOG.md](CHANGELOG.md)); older minor lines
-are not supported.
+Security fixes target the **latest major release line** (currently `1.x`, matching
+the source tree version in [CHANGELOG.md](CHANGELOG.md)); older major and pre-1.0
+minor lines are not supported.
 
 | Version              | Supported          |
 | -------------------- | ------------------ |
-| Latest 0.x minor     | :white_check_mark: |
-| Older 0.x minors     | :x:                |
+| Latest 1.x release   | :white_check_mark: |
+| Pre-1.0 releases     | :x:                |
 
 ## Reporting a vulnerability
 
@@ -54,6 +54,15 @@ to configured local model endpoints. Keep this in mind:
   the router is the **only** service published beyond loopback; the local model serves
   (SGLang/vLLM) stay on the internal Docker network / loopback, reachable **only** by the
   router (by service name) — never publish a raw serve directly.
+- **Model workloads deny network egress by default.** Effective Compose services
+  must attach only to `internal: true` networks; recipe loads use an Anvil-owned
+  internal bridge. Model recipes cannot opt out. Only explicitly non-inference
+  capability, media, or voice gateways may declare egress, with an audited role
+  and durable reason.
+  This blocks ordinary outbound connections without trusting engine-specific
+  telemetry opt-outs, but it is not a malware sandbox and does not retrofit
+  already-running containers. See
+  [ADR-0043](docs/adr/0043-model-workloads-deny-network-egress-by-default.md).
 - Upstream credentials are referenced by **env-var name**. Do not paste raw keys into
   config files, logs, or decision records.
 - The test suite is hermetic and never makes real network or LLM calls.

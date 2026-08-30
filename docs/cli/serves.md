@@ -92,6 +92,30 @@ Use `--keep-container` when retaining the stopped container and its logs is inte
 ready. A failed or timed-out readiness check fails the command instead of
 reporting a successful start.
 
+Model-serving network egress is denied when a manifest omits
+`network_egress`. Before any Compose lifecycle mutation, `serves up` resolves
+the effective configuration and proves every network attached to the selected
+service has `internal: true`; `network_mode: none` is also accepted. An
+unproved, ordinary bridge, or host network is refused. Managed recipe-loader
+commands enforce the equivalent Anvil-owned internal bridge.
+
+Opaque model launch scripts cannot prove default-deny before execution. Migrate
+them to Compose or `models recipes load`. An exception is limited to explicitly
+non-inference capability, media, or voice gateway infrastructure and must be
+durable and reviewable:
+
+```toml
+gpu_inference = false
+network_egress = "allow"
+network_egress_role = "voice-gateway"
+network_egress_reason = "connects to explicitly declared upstream services"
+```
+
+There is no command-line escape hatch. A stopped recipe container or paused
+Compose container under default-deny is not blindly resumed; use
+`serves up NAME --recreate` so the current definition applies the policy. This
+is intentionally a live replacement and remains separately confirmed.
+
 ## Start by alias
 
 Answering "how do I start what `llm.primary` needs" means reading the router
@@ -340,6 +364,21 @@ declared HTTP health, then evaluates one best-effort page-cache reclaim. Ad-hoc
 `serves up --compose` is excluded. The dry run discloses the resolved policy, and a
 readiness timeout or reclaim failure warns without stopping the container or changing
 the successful lifecycle exit code.
+
+For ad-hoc `serves up --compose`, no manifest exists. Each service that requires
+egress must carry both Compose labels:
+
+```yaml
+labels:
+  io.anvil-serving.network.egress: "allow"
+  io.anvil-serving.network.egress-role: "media-gateway"
+  io.anvil-serving.network.egress-reason: "trusted proxy reaches declared upstreams"
+```
+
+The role must be `capability-gateway`, `media-gateway`, or `voice-gateway`.
+Without all three labels, selected services default to deny and every attached
+effective network must be `internal: true`. Media and voice gateway roles are
+possible exceptions only when their declared upstream topology needs egress.
 
 ## Render and adopt
 

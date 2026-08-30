@@ -29,6 +29,8 @@ import subprocess
 import tempfile
 import tomllib
 
+from . import network_policy
+
 # Env-var prefixes that are part of a reproducible serve (not incidental docker noise).
 _SERVE_ENV_PREFIXES = ("VLLM_", "FLASHINFER_", "CUDA_")
 
@@ -44,6 +46,22 @@ _BARE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 class RecipeError(ValueError):
     """A recipe or recipe registry is invalid for a requested operation."""
+
+
+def _model_network_policy(serve):
+    """Normalize a recipe policy while keeping every model workload offline."""
+    try:
+        policy, reason = network_policy.normalize_policy(
+            serve, context="recipe.serve"
+        )
+    except network_policy.NetworkPolicyError as exc:
+        raise RecipeError(str(exc)) from None
+    if policy != "deny":
+        raise RecipeError(
+            "model recipes cannot declare network_egress='allow'; outbound access "
+            "belongs only to capability, media, or voice gateway infrastructure"
+        )
+    return policy, reason
 
 
 def _parse_named_volume(spec: str) -> tuple[str, str, bool]:
@@ -332,6 +350,7 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         raise RecipeError(
             "recipe.serve.args is unsupported; use recipe.serve.flags as an array of strings"
         )
+    _model_network_policy(serve)
     activation = recipe.get("activation") or {}
     for role, config in activation.items():
         if not isinstance(role, str) or not role.strip():
@@ -626,6 +645,12 @@ def docker_run_argv(
         "--label",
         "io.anvil-serving.recipe.model=%s" % recipe["model"],
     ]
+    egress_policy, _egress_reason = _model_network_policy(serve)
+    argv += [
+        "--label",
+        "%s=%s" % (network_policy.EGRESS_LABEL, egress_policy),
+    ]
+    argv += ["--network", network_policy.MODEL_EGRESS_DENY_NETWORK]
     revision = (recipe.get("download") or {}).get("revision")
     if revision:
         argv += [
@@ -801,6 +826,11 @@ def load_recipe(
 ) -> tuple[list[str], int]:
     """Start a named recipe container once and return its exact argv and exit code."""
     argv = docker_run_argv(recipe, container=container, gpu_device=gpu_device)
+    _model_network_policy(recipe.get("serve") or {})
+    try:
+        network_policy.ensure_model_egress_network(_run=_run)
+    except network_policy.NetworkPolicyError as exc:
+        raise RecipeError(str(exc)) from None
     try:
         completed = _run(argv, check=False)
     except OSError:
@@ -930,6 +960,10 @@ def capture_from_container(name, *, _run=subprocess.run) -> dict:
         serve["env"] = serve_env
     if flags:
         serve["flags"] = flags
+    # Capture describes the next managed launch, not permission to preserve a
+    # legacy container's network. Every reconstructed model recipe is tightened
+    # to the platform's egress-denied network.
+    serve["network_egress"] = "deny"
 
     hardware: dict = {}
     gpu_uuid = _gpu_uuid_from_inspect(inspect, env_map)

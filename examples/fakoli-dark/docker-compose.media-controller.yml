@@ -10,6 +10,10 @@ services:
   media-controller:
     image: ${ANVIL_MEDIA_CONTROLLER_IMAGE:-anvil-serving-controller:1.0.0}
     container_name: anvil-media-controller
+    labels:
+      io.anvil-serving.network.egress: "allow"
+      io.anvil-serving.network.egress-role: "media-gateway"
+      io.anvil-serving.network.egress-reason: "media gateway controller reaches its explicitly configured resource controller"
     restart: unless-stopped
     stop_grace_period: 30s
     user: "999:999"

@@ -25,12 +25,24 @@ def _manifest(tmp_path, body):
     return str(p)
 
 
+def _internal_compose_config(*service_names):
+    names = service_names or ("model",)
+    return json.dumps({
+        "services": {
+            name: {"networks": {"default": None}} for name in names
+        },
+        "networks": {"default": {"internal": True}},
+    })
+
+
 def _inspect_returning(state, op_rc=0, op_err=""):
     """A fake _run: `docker inspect` -> `state`; any other command -> proc(op_rc)."""
     calls = []
 
     def run(argv, **k):
         calls.append(argv)
+        if isinstance(argv, list) and "config" in argv and "--format" in argv:
+            return proc(0, _internal_compose_config("heavy", "stt", "tts", "tp2"))
         if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
             if state == "absent":
                 return proc(1, "", "Error: No such object")
@@ -136,6 +148,10 @@ def _mode_run(states, fail_service=None, restart_on_stop=None):
 
     def run(argv, **kwargs):
         calls.append(argv)
+        if "config" in argv and "--format" in argv:
+            return proc(0, _internal_compose_config(
+                "split-a", "split-b", "tp2", "legacy-experiment", "realtime-proxy"
+            ))
         if argv[:3] == ["docker", "ps", "-a"]:
             if any(state == "error" for state in states.values()):
                 return proc(1, err="Cannot connect to the Docker daemon")
@@ -280,7 +296,9 @@ def test_cmd_adopt_dry_run_touches_nothing(capsys):
     run = _inspect_returning("running")
     assert serves.cmd_adopt(serv, ["heavy"], dry_run=True, assume_yes=True, _run=run) == 0
     assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)
-    assert not any(c[:2] == ["docker", "compose"] for c in run.calls)
+    assert not any(
+        "up" in c for c in run.calls if c[:2] == ["docker", "compose"]
+    )
     assert "adopting heavy" in capsys.readouterr().out
 
 
@@ -314,11 +332,15 @@ def test_cmd_up_compose_runs_compose_up_argv():
 
     def run(argv, **k):
         calls.append(argv)
+        if "config" in argv:
+            return proc(0, _internal_compose_config("svc-a", "svc-b"))
         return proc(0)
 
     assert serves.cmd_up_compose("/x/experiment.yml", ["svc-a", "svc-b"], _run=run) == 0
-    assert calls == [["docker", "compose", "-f", "/x/experiment.yml",
-                      "up", "-d", "svc-a", "svc-b"]]
+    assert calls == [
+        ["docker", "compose", "-f", "/x/experiment.yml", "config", "--format", "json"],
+        ["docker", "compose", "-f", "/x/experiment.yml", "up", "-d", "svc-a", "svc-b"],
+    ]
 
 
 def test_cmd_up_compose_no_services_brings_up_whole_file():
@@ -326,10 +348,15 @@ def test_cmd_up_compose_no_services_brings_up_whole_file():
 
     def run(argv, **k):
         calls.append(argv)
+        if "config" in argv:
+            return proc(0, _internal_compose_config())
         return proc(0)
 
     assert serves.cmd_up_compose("/x/experiment.yml", [], _run=run) == 0
-    assert calls == [["docker", "compose", "-f", "/x/experiment.yml", "up", "-d"]]
+    assert calls == [
+        ["docker", "compose", "-f", "/x/experiment.yml", "config", "--format", "json"],
+        ["docker", "compose", "-f", "/x/experiment.yml", "up", "-d"],
+    ]
 
 
 def test_cmd_up_compose_reports_failure():
@@ -338,15 +365,17 @@ def test_cmd_up_compose_reports_failure():
     assert serves.cmd_up_compose("/x/experiment.yml", [], _run=run) == 1
 
 
-def test_cmd_up_compose_dry_run_runs_nothing(capsys):
+def test_cmd_up_compose_dry_run_only_resolves_read_only_policy(capsys):
     calls = []
 
     def run(argv, **k):
         calls.append(argv)
-        return proc(0)
+        return proc(0, _internal_compose_config("svc"))
 
     assert serves.cmd_up_compose("/x/experiment.yml", ["svc"], dry_run=True, _run=run) == 0
-    assert calls == []  # nothing executed
+    assert calls == [[
+        "docker", "compose", "-f", "/x/experiment.yml", "config", "--format", "json",
+    ]]
     assert "/x/experiment.yml" in capsys.readouterr().out  # printed the plan
 
 
@@ -378,7 +407,10 @@ def test_ordinary_up_cannot_start_exclusive_target(tmp_path, capsys):
     run = _mode_run({"split-a": "absent", "split-b": "absent", "tp2": "absent"})
     assert serves.cmd_up(loaded, ["tp2"], ledger_serves=loaded, _run=run) == 1
     assert "must be started with `serves mode enter" in capsys.readouterr().out
-    assert not any(call[:2] == ["docker", "compose"] for call in run.calls)
+    assert not any(
+        call[:2] == ["docker", "compose"] and "config" not in call
+        for call in run.calls
+    )
 
 
 def test_active_exclusive_owner_blocks_split_start_before_container_command(
@@ -390,7 +422,10 @@ def test_active_exclusive_owner_blocks_split_start_before_container_command(
     out = capsys.readouterr().out
     assert "tp2 owns both GPU roles; blocked: split-a" in out
     assert "no container command was run" in out
-    assert not any(call[:2] == ["docker", "compose"] for call in run.calls)
+    assert not any(
+        call[:2] == ["docker", "compose"] and "config" not in call
+        for call in run.calls
+    )
 
 
 def test_exclusive_mode_covers_legacy_unreserved_experiment_but_not_cpu_sidecar(
@@ -440,7 +475,10 @@ def test_exclusive_mode_covers_legacy_unreserved_experiment_but_not_cpu_sidecar(
         loaded, ["legacy-experiment"], ledger_serves=loaded, _run=run
     ) == 1
     assert "blocked: legacy-experiment" in capsys.readouterr().out
-    assert not any(call[:2] == ["docker", "compose"] for call in run.calls)
+    assert not any(
+        call[:2] == ["docker", "compose"] and "config" not in call
+        for call in run.calls
+    )
 
 
 @pytest.mark.parametrize("owner_state", ["running", "error", "unknown"])
