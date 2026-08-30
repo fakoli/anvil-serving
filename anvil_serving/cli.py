@@ -1339,8 +1339,8 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     command = " ".join(argv)
     context = execution_meta.get("plan")
     warnings = list(execution_meta.get("warnings", ()))
-    warnings.extend(line for line in stderr.getvalue().splitlines() if line)
     if rc == 0:
+        warnings.extend(line for line in stderr.getvalue().splitlines() if line)
         data = execution_meta.get("data", stdout.getvalue())
         envelope = success_envelope(command, context, data, warnings=warnings)
     else:
