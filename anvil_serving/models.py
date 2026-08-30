@@ -1442,6 +1442,7 @@ def _recipe_container_logs(
     *,
     tail=200,
     since=None,
+    contains=None,
     _run=subprocess.run,
 ):
     """Read bounded logs only after exact recipe-container ownership checks."""
@@ -1457,6 +1458,18 @@ def _recipe_container_logs(
         raise serve_recipes.RecipeError(
             "since must be one non-option timestamp or relative duration"
         )
+    needles = []
+    for value in contains or ():
+        if (
+            not isinstance(value, str)
+            or not value
+            or len(value) > 256
+            or any(character in value for character in "\x00\r\n")
+        ):
+            raise serve_recipes.RecipeError(
+                "contains values must be non-empty single-line literals up to 256 characters"
+            )
+        needles.append(value.casefold())
     argv = ["docker", "logs", "--tail", str(tail)]
     if since:
         argv += ["--since", since]
@@ -1473,10 +1486,21 @@ def _recipe_container_logs(
         raise serve_recipes.RecipeError(
             "cannot read recipe container logs: %s" % exc
         ) from None
-    if completed.stdout:
-        _write_console_text(sys.stdout, completed.stdout)
-    if completed.stderr:
-        _write_console_text(sys.stderr, completed.stderr)
+    def selected(value):
+        if not needles:
+            return value
+        return "".join(
+            line
+            for line in value.splitlines(keepends=True)
+            if any(needle in line.casefold() for needle in needles)
+        )
+
+    stdout = selected(completed.stdout or "")
+    stderr = selected(completed.stderr or "")
+    if stdout:
+        _write_console_text(sys.stdout, stdout)
+    if stderr:
+        _write_console_text(sys.stderr, stderr)
     return completed.returncode
 
 
@@ -1719,6 +1743,11 @@ def _build_recipe_parser():
                                 help="bounded trailing lines, 1 through 5000")
             parser.add_argument("--since",
                                 help="only logs since one timestamp or relative duration")
+            parser.add_argument(
+                "--contains",
+                action="append",
+                help="emit lines containing this literal, case-insensitive; repeat for OR matching",
+            )
         if action == "unload":
             parser.add_argument("--dry-run", action="store_true",
                                 help="verify identity and preview removal")
@@ -1778,6 +1807,7 @@ def _recipe_main(argv):
                     a.container,
                     tail=a.tail,
                     since=a.since,
+                    contains=a.contains,
                 )
             return _recipe_container_unload(
                 recipe,

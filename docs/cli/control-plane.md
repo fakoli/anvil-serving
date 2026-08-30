@@ -125,9 +125,13 @@ anvil-serving harness status openclaw
 anvil-serving harness status openclaw --topology operator-topology.toml --target host:mini --json
 ```
 
-Restart issues one bounded command. Status is read-only, defaults to a
-120-second process deadline, caps stdout and stderr at 64 KiB each, and marks
-truncation explicitly.
+Restart resolves the OpenClaw executable before invoking it. On macOS, when
+the CLI is absent from the caller's non-interactive PATH, it verifies the exact
+`ai.openclaw.gateway` LaunchAgent definition, fingerprints its program
+arguments, restarts that label through `launchctl`, and requires loopback HTTP
+health to return before success. A missing or mismatched definition fails
+closed. Status is read-only, defaults to a 120-second process deadline, caps
+stdout and stderr at 64 KiB each, and marks truncation explicitly.
 
 For a model-swapping Mini, use the catalog reconciler on Mini itself:
 

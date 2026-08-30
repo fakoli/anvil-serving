@@ -172,7 +172,7 @@ required operands, choices, and defaults.
 | `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes status` | Inspect one recipe-loaded candidate container. | `read` / `bounded` | - |
-| `models recipes logs` | Read bounded logs from one recipe-loaded candidate container. | `read` / `bounded` | - |
+| `models recipes logs` | Read bounded logs from one recipe-loaded candidate container. | `read` / `bounded` | `--tail`<br>`--since`<br>`--contains` |
 | `models recipes unload` | Remove one exact recipe-loaded candidate container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
 | `models cache inventory` | Inspect Docker model-cache storage. | `read` / `bounded` | - |
