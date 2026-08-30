@@ -117,8 +117,14 @@ policy authorizes the existing transaction.
 
 ```bash
 anvil-serving media job status <JOB_ID> --principal caller-1
-anvil-serving media job cancel <JOB_ID> --principal caller-1 --dry-run
-anvil-serving media job cancel <JOB_ID> --principal caller-1 --confirm
+anvil-serving media job cancel <JOB_ID> \
+  --principal caller-1 \
+  --backend-url http://127.0.0.1:8188 \
+  --dry-run
+anvil-serving media job cancel <JOB_ID> \
+  --principal caller-1 \
+  --backend-url http://127.0.0.1:8188 \
+  --confirm
 ```
 
 Status derives phase and end-to-end latency from ordered durable events.
