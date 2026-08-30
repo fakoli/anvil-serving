@@ -25,6 +25,9 @@ def manifest_with_proxy(tmp_path):
     p.write_text(
         '[[serve]]\nname = "realtime-proxy"\ncontainer = "anvil-voice-proxy"\nruntime = "docker"\n'
         'port = 8765\nmodel = "anvil-realtime-proxy"\nengine = "audio"\nhealth = "/usage"\n'
+        'gpu_inference = false\nnetwork_egress = "allow"\n'
+        'network_egress_role = "voice-gateway"\n'
+        'network_egress_reason = "proxy lifecycle fixture"\n'
         'up = "echo bring-up-proxy"\n',
         encoding="utf-8",
     )

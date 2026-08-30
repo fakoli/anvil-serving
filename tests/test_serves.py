@@ -29,6 +29,16 @@ def _manifest(tmp_path, body):
     return str(p)
 
 
+def _internal_compose_proc(*service_names):
+    names = service_names or ("model",)
+    return proc(0, json.dumps({
+        "services": {
+            name: {"networks": {"default": None}} for name in names
+        },
+        "networks": {"default": {"internal": True}},
+    }))
+
+
 class _JsonResponse:
     def __init__(self, value):
         self.payload = json.dumps(value).encode("utf-8")
@@ -59,6 +69,18 @@ def _inspect_returning(
 
     def run(argv, **k):
         calls.append(argv)
+        if isinstance(argv, list) and "config" in argv and "--format" in argv:
+            names = {"model", "heavy", "old-heavy", "candidate", "t"}
+            for entry in serves.load_manifest(serves.EXAMPLE_MANIFEST):
+                invocation = serves._compose_invocation_of(entry)
+                if invocation is not None:
+                    names.update(invocation[2])
+            return proc(0, json.dumps({
+                "services": {
+                    name: {"networks": {"default": None}} for name in names
+                },
+                "networks": {"default": {"internal": True}},
+            }))
         if isinstance(argv, list) and argv[:3] == ["docker", "ps", "-a"]:
             st = state_after_stop if stopped else state
             if st == "error":
@@ -573,11 +595,12 @@ def test_load_manifest_without_reservation_fields_gets_default_stack(tmp_path):
         "model": "auxiliary-local",
             "served_name": "auxiliary-local",
             "engine": "vllm",
+            "network_egress": "deny",
             "stack": "serving",
             "_manifest_dir": mdir,
         "health": "/health",
         "up": ["bash", mdir + "/serve.sh"],
-        }  # stack is normalized; reservation keys still are not invented
+            }  # secure network + stack defaults; reservation keys are not invented
 
 
 # ---- serve groups: field parse/validation --------------------------------
@@ -833,7 +856,9 @@ def test_shipped_fast_candidate_dry_run_uses_manifest_compose(capsys):
         serves_list, ["fast-devstral-small2-llamacpp"], dry_run=True, _run=run
     )
     assert rc == 0
-    assert not any(c[:2] == ["docker", "compose"] for c in run.calls)
+    assert not any(
+        "up" in c for c in run.calls if c[:2] == ["docker", "compose"]
+    )
     out = capsys.readouterr().out
     assert "docker compose" in out
     assert "fast-devstral-small2-llamacpp" in out
@@ -859,6 +884,9 @@ def test_cmd_up_loads_manifest_adjacent_dotenv_without_overriding_shell(tmp_path
     captured_env = {}
 
     def run(argv, **kwargs):
+        if "config" in argv and "--format" in argv:
+            captured_env.update(kwargs.get("env") or {})
+            return _internal_compose_proc("tts-gepard-fast")
         if argv[:2] == ["docker", "inspect"]:
             return proc(1, "", "Error: No such object")
         captured_env.update(kwargs.get("env") or {})
@@ -949,6 +977,9 @@ def test_cmd_up_loads_home_dotenv_as_fallback(tmp_path, monkeypatch):
     captured_env = {}
 
     def run(argv, **kwargs):
+        if "config" in argv and "--format" in argv:
+            captured_env.update(kwargs.get("env") or {})
+            return _internal_compose_proc("tts-gepard-fast")
         if argv[:2] == ["docker", "inspect"]:
             return proc(1, "", "Error: No such object")
         captured_env.update(kwargs.get("env") or {})
@@ -985,6 +1016,9 @@ def test_cmd_up_prefers_config_home_dotenv_over_home_fallback(tmp_path, monkeypa
     captured_env = {}
 
     def run(argv, **kwargs):
+        if "config" in argv and "--format" in argv:
+            captured_env.update(kwargs.get("env") or {})
+            return _internal_compose_proc("tts-gepard-fast")
         if argv[:2] == ["docker", "inspect"]:
             return proc(1, "", "Error: No such object")
         captured_env.update(kwargs.get("env") or {})
@@ -1357,7 +1391,11 @@ def test_cmd_down_reports_remove_failure_after_stop():
 # ---- up ---------------------------------------------------------------------
 
 def test_cmd_up_restarts_exited_with_docker_start():
-    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health", "up": ["bash", "x.sh"]}]
+    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health",
+             "gpu_inference": False, "network_egress": "allow",
+             "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy fixture",
+             "up": ["bash", "x.sh"]}]
     run = _inspect_returning("exited")
     assert serves.cmd_up(serv, [], _run=run) == 0
     assert ["docker", "start", "vllm"] in run.calls
@@ -1366,7 +1404,11 @@ def test_cmd_up_restarts_exited_with_docker_start():
 
 
 def test_cmd_up_unpauses_paused():
-    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health", "up": ["bash", "x.sh"]}]
+    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health",
+             "gpu_inference": False, "network_egress": "allow",
+             "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy fixture",
+             "up": ["bash", "x.sh"]}]
     run = _inspect_returning("paused")
     assert serves.cmd_up(serv, [], _run=run) == 0
     assert ["docker", "unpause", "vllm"] in run.calls
@@ -1374,7 +1416,11 @@ def test_cmd_up_unpauses_paused():
 
 def test_cmd_up_dead_is_not_auto_created():
     # a dead/exotic state must not silently trigger fresh-create (collision/destroy).
-    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health", "up": ["bash", "x.sh"]}]
+    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health",
+             "gpu_inference": False, "network_egress": "allow",
+             "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy fixture",
+             "up": ["bash", "x.sh"]}]
     run = _inspect_returning("dead")
     assert serves.cmd_up(serv, [], _run=run) == 1
     assert all(c[:2] == ["docker", "inspect"] or c[:3] == ["docker", "ps", "-a"]
@@ -1382,7 +1428,11 @@ def test_cmd_up_dead_is_not_auto_created():
 
 
 def test_cmd_up_error_state_does_not_create():
-    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health", "up": ["bash", "x.sh"]}]
+    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health",
+             "gpu_inference": False, "network_egress": "allow",
+             "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy fixture",
+             "up": ["bash", "x.sh"]}]
     run = _inspect_returning("error")
     assert serves.cmd_up(serv, [], _run=run) == 1
     assert all(c[:2] == ["docker", "inspect"] or c[:3] == ["docker", "ps", "-a"]
@@ -1390,7 +1440,11 @@ def test_cmd_up_error_state_does_not_create():
 
 
 def test_cmd_up_absent_runs_up_argv_list_no_shell():
-    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health", "up": ["bash", "x.sh"]}]
+    serv = [{"name": "f", "container": "vllm", "port": 1, "health": "/health",
+             "gpu_inference": False, "network_egress": "allow",
+             "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy fixture",
+             "up": ["bash", "x.sh"]}]
     ran = {}
 
     def run(argv, shell=False, **k):
@@ -1467,6 +1521,16 @@ def test_is_compose_up_detects_compose_vs_script():
     assert not serves._is_compose_up(None)
 
 
+def test_is_managed_recipe_load_detects_supported_launchers():
+    assert serves._is_managed_recipe_load(
+        ["python", "-m", "anvil_serving.cli", "models", "recipes", "load", "org/model"]
+    )
+    assert serves._is_managed_recipe_load(
+        ["anvil-serving", "models", "recipes", "load", "org/model"]
+    )
+    assert not serves._is_managed_recipe_load(["bash", "serve.sh"])
+
+
 def test_compose_up_gets_stable_product_project():
     original = ["docker", "compose", "-f", "x.yml", "up", "-d", "heavy"]
     assert serves._compose_up_with_project(original) == [
@@ -1494,6 +1558,11 @@ def test_cmd_up_refuses_foreign_compose_owner_without_explicit_recreate(capsys):
 
     def run(argv, **_kwargs):
         calls.append(argv)
+        if "config" in argv and "--format" in argv:
+            return proc(0, json.dumps({
+                "services": {"heavy": {"networks": {"default": None}}},
+                "networks": {"default": {"internal": True}},
+            }))
         if ".State.Status" in " ".join(argv):
             return proc(0, "exited\n")
         if "com.docker.compose.project" in " ".join(argv):
@@ -1501,7 +1570,7 @@ def test_cmd_up_refuses_foreign_compose_owner_without_explicit_recreate(capsys):
         return proc(0)
 
     assert serves.cmd_up(serve, ["heavy"], _run=run) == 1
-    assert not any(argv[:2] == ["docker", "compose"] for argv in calls)
+    assert not any("up" in argv for argv in calls if argv[:2] == ["docker", "compose"])
     assert "--recreate" in capsys.readouterr().out
 
 
@@ -1511,6 +1580,10 @@ def test_cmd_up_waits_for_declared_health_and_fails_closed(capsys):
         "container": "embed",
         "port": 30003,
         "health": "/health",
+        "gpu_inference": False,
+        "network_egress": "allow",
+        "network_egress_role": "capability-gateway",
+        "network_egress_reason": "legacy-script readiness fixture",
         "up": ["bash", "start.sh"],
     }]
     run = _inspect_returning("exited")
@@ -1614,12 +1687,16 @@ def test_cmd_up_running_explicit_recreate_records_serve_up(monkeypatch):
     assert [kind for kind, _ in recorded] == ["serve.up"]
 
 
-def test_cmd_up_paused_compose_serve_is_unpaused_not_composed():
+def test_cmd_up_paused_allow_compose_serve_is_unpaused_not_composed():
     # N1: a PAUSED compose serve must be `docker unpause`d (handled before the compose
     # branch), not routed through `docker compose up -d` — which would not unpause it and
     # would leave the serve stuck paused.
     serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
              "model": "qwen35-awq-local",
+             "gpu_inference": False,
+             "network_egress": "allow",
+             "network_egress_role": "capability-gateway",
+             "network_egress_reason": "test fixture exercises legacy resume behavior",
              "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
     run = _inspect_returning("paused")
     assert serves.cmd_up(serv, [], _run=run) == 0
@@ -1627,11 +1704,24 @@ def test_cmd_up_paused_compose_serve_is_unpaused_not_composed():
     assert serv[0]["up"] not in run.calls  # did NOT take the compose path
 
 
+def test_cmd_up_paused_deny_compose_requires_recreate(capsys):
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local",
+             "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
+    run = _inspect_returning("paused")
+    assert serves.cmd_up(serv, [], _run=run) == 1
+    assert ["docker", "unpause", "sglang"] not in run.calls
+    assert "--recreate" in capsys.readouterr().out
+
+
 def test_cmd_up_script_serve_warns_on_model_drift(capsys):
     # a `docker run` script serve can't self-heal via compose -> `docker start` + a
     # loud warning naming the STALE served model vs the declared one.
     serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
-             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+             "model": "gpt-oss-20b", "gpu_inference": False,
+             "network_egress": "allow", "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy-script regression fixture",
+             "up": ["bash", "serve-fast.sh"]}]
     run = _up_run("exited", created_argv=["--served-model-name", "qwen3-coder-30b-awq"])
     assert serves.cmd_up(serv, [], _run=run) == 0
     out = capsys.readouterr().out
@@ -1642,7 +1732,10 @@ def test_cmd_up_script_serve_warns_on_model_drift(capsys):
 
 def test_cmd_up_script_serve_no_drift_starts_quietly(capsys):
     serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
-             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+             "model": "gpt-oss-20b", "gpu_inference": False,
+             "network_egress": "allow", "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy-script regression fixture",
+             "up": ["bash", "serve-fast.sh"]}]
     run = _up_run("exited", created_argv=["--served-model-name", "gpt-oss-20b"])
     assert serves.cmd_up(serv, [], _run=run) == 0
     assert ["docker", "start", "vllm-gptoss"] in run.calls
@@ -1652,7 +1745,10 @@ def test_cmd_up_script_serve_no_drift_starts_quietly(capsys):
 def test_cmd_up_script_serve_drift_ignored_when_model_undeterminable(capsys):
     # inspect can't reveal the served model (no model flag) -> no false-positive warning.
     serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
-             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+             "model": "gpt-oss-20b", "gpu_inference": False,
+             "network_egress": "allow", "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy-script regression fixture",
+             "up": ["bash", "serve-fast.sh"]}]
     run = _up_run("exited", created_argv=["python", "-m", "vllm"])  # no model flag
     assert serves.cmd_up(serv, [], _run=run) == 0
     assert ["docker", "start", "vllm-gptoss"] in run.calls
@@ -1673,7 +1769,10 @@ def test_cmd_up_recreate_flag_force_removes_then_reups_compose():
 
 def test_cmd_up_recreate_flag_works_for_script_serve():
     serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
-             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+             "model": "gpt-oss-20b", "gpu_inference": False,
+             "network_egress": "allow", "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy-script recreate fixture",
+             "up": ["bash", "serve-fast.sh"]}]
     run = _inspect_returning("exited")
     assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
     assert ["docker", "rm", "-f", "vllm-gptoss"] in run.calls
@@ -1705,7 +1804,10 @@ def test_cmd_up_recreate_rescues_dead_container():
     # a `dead` container is terminal (not running), so an explicit --recreate may
     # rm -f + re-up it — unlike the hands-off default (test_cmd_up_dead_is_not_auto_created).
     serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
-             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+             "model": "gpt-oss-20b", "gpu_inference": False,
+             "network_egress": "allow", "network_egress_role": "capability-gateway",
+             "network_egress_reason": "legacy-script recreate fixture",
+             "up": ["bash", "serve-fast.sh"]}]
     run = _inspect_returning("dead")
     assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
     assert ["docker", "rm", "-f", "vllm-gptoss"] in run.calls
@@ -1769,6 +1871,8 @@ def _storage_run(uid="1000", gid="1000", mounts=None, denied=(),
 
     def run(argv, **k):
         calls.append(argv)
+        if "config" in argv and "--format" in argv:
+            return _internal_compose_proc("t")
         if argv[:3] == ["docker", "ps", "-a"]:
             if any(str(a).startswith("volume=") for a in argv):
                 return proc(0, "\n".join(volume_users) + "\n")

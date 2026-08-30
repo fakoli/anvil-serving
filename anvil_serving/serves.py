@@ -30,12 +30,15 @@ and an optional `up` command. Bringing a serve up is drift-safe: when `up` is a
 when the container is already running — because compose recreates the container when its
 config changed and fast-(re)starts it (a cheap no-op) when not, so editing the compose
 file and re-running `serves up` recreates the container to match and a stale model is
-never resurrected by a blind `docker start`. A one-shot `docker run` *script* serve can't
-be re-run over an existing container, so it is `docker start`ed — with a loud warning if
-it drifted from the declared `model` (fix: `--recreate`, or, better, convert it to a
-compose file). A paused serve (either kind) is `docker unpause`d. `--recreate` forces a
-clean `docker rm -f` + `up` for any serve. stdlib-only: `subprocess` to docker, `urllib`
-for the health probe, `tomllib` to read the manifest.
+never resurrected by a blind `docker start`. Model workloads deny network egress by
+default. That policy is preflighted from effective Compose configuration or enforced by
+the managed recipe loader; model recipes cannot opt out. Opaque one-shot launch scripts
+may declare egress only when explicitly classified as non-inference capability, media,
+or voice gateway infrastructure. Existing non-Compose containers and paused Compose
+containers governed by deny-by-default must be explicitly recreated, so a pre-policy
+container is never resumed on an unproved network. `--recreate` forces a clean
+`docker rm -f` + `up` for any serve. stdlib-only: `subprocess` to docker, `urllib` for
+the health probe, `tomllib` to read the manifest.
 
 GPU residency reservations (ADR-0017): a `[[serve]]` entry may declare
 `gpu_role`/`vram_mib`/`residency`, and the manifest may declare `[[gpu_roles]]`
@@ -75,6 +78,7 @@ from . import envfile
 from .events import LifecycleEventError, emit_lifecycle_event
 from . import guard
 from . import host as host_ops
+from . import network_policy
 from . import reservations
 from . import serve_recipes
 import sys
@@ -537,6 +541,16 @@ def _normalize_engine(s, up):
     return engine
 
 
+def _is_managed_recipe_load(up):
+    """Whether an argv delegates container creation to the guarded recipe loader."""
+    if not isinstance(up, list):
+        return False
+    return any(
+        up[index:index + 3] == ["models", "recipes", "load"]
+        for index in range(max(0, len(up) - 2))
+    )
+
+
 def _normalize_reservation(s, raw):
     """Validate/normalize ADR-0017 reservation fields on one serve entry.
 
@@ -632,6 +646,25 @@ def _normalize_reservation(s, raw):
                 f"{list(_RESIDENCIES)} (got {residency!r}): {raw!r}"
             )
         s["residency"] = normalized
+
+
+def _normalize_network_egress(s, raw):
+    """Make every declared serve fail closed unless it authors an exception."""
+    try:
+        policy, reason = network_policy.normalize_policy(
+            s, context="serve entry"
+        )
+    except network_policy.NetworkPolicyError as exc:
+        raise ValueError("%s: %r" % (exc, raw)) from None
+    if policy == "allow" and s.get("gpu_inference") is not False:
+        raise ValueError(
+            "serve entry network_egress='allow' is limited to explicitly "
+            "non-inference gateway infrastructure (gpu_inference=false): %r" % raw
+        )
+    s["network_egress"] = policy
+    if reason is not None:
+        s["network_egress_role"] = str(s["network_egress_role"]).strip().lower()
+        s["network_egress_reason"] = reason
 
 
 _SERVE_RUNTIMES = ("docker", "native")
@@ -824,6 +857,7 @@ def load_manifest(path):
                 f"{', '.join(missing)}: {raw!r}"
             )
         _normalize_serve_runtime(s, raw)
+        _normalize_network_egress(s, raw)
         if not isinstance(s.get("port"), int):
             raise ValueError(f"serve entry port must be an integer: {raw!r}")
         s["model"] = s.get("model") or s.get("served_name")
@@ -4075,6 +4109,63 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
     ):
         print("--drain-timeout must be a finite positive number of seconds")
         return 2
+    # Prove the network boundary before reservation eviction can stop another
+    # workload. Even a denied target must leave the pre-existing topology intact.
+    for s in targets:
+        up = s.get("up")
+        try:
+            policy, _reason = network_policy.normalize_policy(
+                s, context="serve entry %r" % s["name"]
+            )
+            if policy == "allow" and s.get("gpu_inference") is not False:
+                raise network_policy.NetworkPolicyError(
+                    "network_egress='allow' is limited to explicitly non-inference "
+                    "gateway infrastructure (gpu_inference=false)"
+                )
+        except network_policy.NetworkPolicyError as exc:
+            print(
+                "  %s: network egress policy refused start before mutation: %s"
+                % (s["name"], exc)
+            )
+            return 1
+        if not _is_compose_up(up):
+            if (
+                policy == "deny"
+                and not _is_managed_recipe_load(up)
+            ):
+                print(
+                    "  %s: network egress policy refused start before mutation: "
+                    "default-deny workloads must use docker compose or `models "
+                    "recipes load`; migrate the opaque launch command or declare "
+                    "network_egress='allow' with a durable reason"
+                    % s["name"]
+                )
+                return 1
+            continue
+        invocation = _compose_invocation_of(s)
+        service_names = invocation[2] if invocation is not None else ()
+        try:
+            document, config_argv = network_policy.compose_config(
+                up, env=_serve_env(s), _run=_run
+            )
+            network_policy.validate_compose_document(
+                document,
+                service_names,
+                policy=policy,
+                reason=s.get("network_egress_reason"),
+                role=s.get("network_egress_role"),
+            )
+        except network_policy.NetworkPolicyError as exc:
+            print(
+                "  %s: network egress policy refused start before mutation: %s"
+                % (s["name"], exc)
+            )
+            return 1
+        if dry_run:
+            print(
+                "  network policy: %s (verified by %s)"
+                % (policy, " ".join(config_argv))
+            )
     reservation_scope = ledger_serves if ledger_serves is not None else serves
     state_cache = docker_states(
         [serve["container"] for serve in reservation_scope],
@@ -4190,6 +4281,26 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                     rc = 1
                     continue
 
+        policy = s.get("network_egress", "deny")
+        if policy == "deny" and not recreate:
+            if not compose and st != "absent":
+                print(
+                    "  %s: existing non-Compose container has no pre-start network "
+                    "proof; rerun `serves up %s --recreate` so the managed recipe "
+                    "loader applies default-deny"
+                    % (s["container"], s["name"])
+                )
+                rc = 1
+                continue
+            if compose and st == "paused":
+                print(
+                    "  %s: paused Compose container will not be unpaused before its "
+                    "network is reconciled; rerun `serves up %s --recreate`"
+                    % (s["container"], s["name"])
+                )
+                rc = 1
+                continue
+
         if recreate:
             # Explicit clean recreate from `up` (compose OR script): force-remove the
             # existing container, then run the fresh-create `up`.
@@ -4215,10 +4326,9 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                 continue
             steps, desc = [up], "up %s: %s" % (s["name"], " ".join(up))
         elif st == "paused":
-            # A paused container (compose OR script) still pins 100% of its VRAM; resume
-            # it with `docker unpause`. Handled BEFORE the compose branch so a paused
-            # compose serve isn't routed through `docker compose up -d` (which would not
-            # unpause it) and left stuck paused.
+            # An explicit egress-allow exception may resume a paused container. Denied
+            # workloads were refused above unless --recreate was requested: unpausing a
+            # pre-policy container before reconciliation could briefly restore egress.
             steps, desc = [["docker", "unpause", s["container"]]], "unpause %s" % s["container"]
         elif compose:
             # `docker compose up -d` natively recreates the container when its compose
@@ -5032,6 +5142,16 @@ def cmd_up_compose(compose_file, services, dry_run=False, _run=subprocess.run):
     file's services need not be declared there. argv list (no shell) for path/quoting safety.
     """
     argv = ["docker", "compose", "-f", compose_file, "up", "-d", *services]
+    try:
+        document, config_argv = network_policy.compose_config(argv, _run=_run)
+        network_policy.validate_compose_document(
+            document, services, policy=None
+        )
+    except network_policy.NetworkPolicyError as exc:
+        print("  network egress policy refused ad-hoc Compose start: %s" % exc)
+        return 1
+    if dry_run:
+        print("  network policy: verified by %s" % " ".join(config_argv))
     print("  compose up: %s" % " ".join(argv))
     if dry_run:
         return 0

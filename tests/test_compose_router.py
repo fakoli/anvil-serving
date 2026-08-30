@@ -124,6 +124,22 @@ def test_router_service_present():
     assert "router" in services, f"expected a `router` service, got: {sorted(services)}"
 
 
+def test_model_network_is_internal_and_only_router_joins_egress_network():
+    text = _compose_text()
+    assert re.search(
+        r"(?ms)^networks:\s*$.*?^  default:\s*$\n\s+internal:\s*true\s*$",
+        text,
+    ), "the implicit model network must be externally isolated"
+    services = _service_blocks(text)
+    router = services["router"]
+    assert re.search(r"(?m)^\s+- default\s*$", router)
+    assert re.search(r"(?m)^\s+- router-egress\s*$", router)
+    assert 'io.anvil-serving.network.egress-role: "capability-gateway"' in router
+    for name, block in services.items():
+        if name != "router":
+            assert "router-egress" not in block, name
+
+
 def test_router_service_restart_unless_stopped():
     services = _service_blocks(_compose_text())
     router = services["router"]

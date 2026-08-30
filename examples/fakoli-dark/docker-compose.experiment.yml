@@ -1409,6 +1409,12 @@ services:
       --host 0.0.0.0 --port 39039
       ${CAND_GPTOSS_PUZZLE_EXTRA_ARGS:-}
 
+# Model workloads are externally isolated by default. Downloads happen through
+# `anvil-serving models pull` before these long-running services start.
+networks:
+  default:
+    internal: true
+
 # The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
 # Create it once if it does not exist:  docker volume create vllm-hfcache
 volumes:

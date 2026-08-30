@@ -167,20 +167,74 @@ def test_docker_run_argv_uses_named_container_and_loopback_port():
     assert argv[:5] == ["docker", "run", "-d", "--name", "heavy-candidate"]
     assert "io.anvil-serving.managed-by=models-recipes" in argv
     assert "io.anvil-serving.recipe.model=openai/gpt-oss-120b" in argv
+    assert "io.anvil-serving.network.egress=deny" in argv
+    assert argv[argv.index("--network") + 1] == "anvil-serving-model-egress-denied"
     assert ["-p", "127.0.0.1:30002:30002"] == argv[argv.index("-p"):argv.index("-p") + 2]
     assert argv[argv.index("vllm/vllm-openai:nightly") + 1] == "openai/gpt-oss-120b"
 
 
-def test_load_recipe_runs_once_with_argv_seam():
+def test_load_recipe_verifies_egress_network_before_running_container():
     calls = []
 
     def fake_run(argv, **kwargs):
         calls.append((argv, kwargs))
+        if argv[:3] == ["docker", "network", "inspect"]:
+            return SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps([{
+                    "Name": "anvil-serving-model-egress-denied",
+                    "Driver": "bridge",
+                    "Internal": True,
+                    "Labels": {
+                        "io.anvil-serving.managed-by": "model-egress-policy",
+                    },
+                }]),
+            )
         return SimpleNamespace(returncode=0)
 
     argv, rc = sr.load_recipe(_RECIPE, "heavy-candidate", _run=fake_run)
     assert rc == 0
-    assert calls == [(argv, {"check": False})]
+    assert calls == [
+        (
+            ["docker", "network", "inspect", "anvil-serving-model-egress-denied"],
+            {
+                "capture_output": True,
+                "text": True,
+                "encoding": "utf-8",
+                "errors": "replace",
+            },
+        ),
+        (argv, {"check": False}),
+    ]
+
+
+def test_model_recipe_cannot_request_egress_even_with_gateway_metadata():
+    recipe = {
+        **_RECIPE,
+        "serve": {
+            **_RECIPE["serve"],
+            "network_egress": "allow",
+            "network_egress_role": "capability-gateway",
+            "network_egress_reason": "temporary vendor license check",
+        },
+    }
+
+    with pytest.raises(sr.RecipeError, match="model recipes cannot declare"):
+        sr.docker_run_argv(recipe, container="licensed-candidate")
+
+
+def test_recipe_egress_allow_without_reason_is_rejected():
+    recipe = {
+        **_RECIPE,
+        "serve": {
+            **_RECIPE["serve"],
+            "network_egress": "allow",
+            "network_egress_role": "capability-gateway",
+        },
+    }
+
+    with pytest.raises(sr.RecipeError, match="requires a non-empty"):
+        sr.docker_run_argv(recipe)
 
 
 def test_native_kv_offload_recipe_detection_accepts_env_and_flag_forms():
@@ -522,6 +576,7 @@ def test_capture_from_container_parses_inspect_json():
     assert calls == [["docker", "inspect", "heavy-serve"]]
 
     serve = cap["serve"]
+    assert serve["network_egress"] == "deny"
     assert serve["engine"] == "vllm"
     assert serve["image"] == "vllm/vllm-openai:nightly"
     assert serve["port"] == 30002

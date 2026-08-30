@@ -43,6 +43,49 @@ overrides. Recipe locks and numbered backups are runtime state and remain
 ignored. Active route assignments stay in the private manifests; a recipe's
 presence or historical qualification text is not a promotion claim.
 
+## Model-serving network boundary
+
+Long-running model workloads deny outbound network access by default under
+[ADR-0043](adr/0043-model-workloads-deny-network-egress-by-default.md). Managed
+recipes attach to an Anvil-owned internal Docker bridge. Manifest-owned Compose
+serves are admitted only when every effective network for the selected model
+service has `internal: true` (or networking is disabled entirely).
+
+This makes model downloads an explicit earlier phase. Use `models pull`,
+`models sync`, or a recipe's declared download contract to populate managed
+storage before starting inference. Docker-daemon image pulls happen outside the
+model container; a serve is not temporarily granted egress to repair a missing
+snapshot.
+
+Model recipes have no egress exception. A non-inference gateway exception is
+reviewed configuration, not an invocation flag:
+
+```toml
+gpu_inference = false
+network_egress = "allow"
+network_egress_role = "capability-gateway"
+network_egress_reason = "gateway reaches explicitly configured upstream services"
+```
+
+Ad-hoc Compose services express the same decision with the
+`io.anvil-serving.network.egress=allow` and
+`io.anvil-serving.network.egress-role=capability-gateway` and
+`io.anvil-serving.network.egress-reason=...` labels. Use this only for trusted
+capability, media, or voice gateway infrastructure whose declared function
+requires upstream access. Media and voice are possible gateway roles, not
+automatic exceptions. Do not attach model services to an egress network.
+
+After adopting this policy, recreate stopped non-Compose or paused Compose model
+containers instead of resuming them:
+
+```bash
+anvil-serving serves up SERVE_NAME --recreate --confirm
+```
+
+The recreate is a separate live change: preview it, verify the selected operator
+home and rollback, then confirm during an approved deployment window. Merging or
+installing the source policy does not alter an already-running container.
+
 On PowerShell, select one private host root for the current process:
 
 ```powershell

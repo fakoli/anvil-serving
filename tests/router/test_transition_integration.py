@@ -235,6 +235,18 @@ def _docker_run(states, journal):
     """Fake docker seam: inspect answers from `states`; a stop is journaled
     (ordering evidence) and flips the container to exited."""
     def run(argv, **kwargs):
+        if isinstance(argv, list) and "config" in argv and "--format" in argv:
+            return types.SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps({
+                    "services": {
+                        "fast": {"networks": {"default": None}},
+                        "exp": {"networks": {"default": None}},
+                    },
+                    "networks": {"default": {"internal": True}},
+                }),
+                stderr="",
+            )
         if isinstance(argv, list) and argv[:3] == ["docker", "ps", "-a"]:
             rows = [
                 json.dumps({"Names": name, "State": state})

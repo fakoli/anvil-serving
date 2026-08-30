@@ -49,6 +49,10 @@ services:
       - "${Q36_TEMP:-0}"
       - --no-state-cache
 
+networks:
+  default:
+    internal: true
+
 volumes:
   vllm-hfcache:
     external: true

@@ -51,3 +51,4 @@ services:
 networks:
   voice:
     name: anvil-voice
+    internal: true

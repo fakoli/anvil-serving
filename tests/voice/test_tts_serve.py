@@ -87,7 +87,7 @@ def manifest_with_tts(tmp_path):
     p.write_text(
         '[[serve]]\nname = "tts"\ncontainer = "anvil-tts"\nruntime = "docker"\nport = 8091\n'
         'model = "kokoro-82m"\nengine = "vllm"\n'
-        'up = "echo bring-up-tts"\n',
+        'up = "anvil-serving models recipes load kokoro-82m"\n',
         encoding="utf-8",
     )
     return str(p)
@@ -130,7 +130,7 @@ def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
 def test_bring_up_starts_via_up_command_when_absent(manifest_with_tts):
     fake_run = FakeRun([
         (["docker", "inspect"], 1, "", "Error: No such container: anvil-tts"),
-        (["echo", "bring-up-tts"], 0, "bring-up-tts\n", ""),
+        (["anvil-serving", "models", "recipes", "load"], 0, "loaded\n", ""),
     ])
     serve = TTSServe(
         TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
@@ -139,8 +139,8 @@ def test_bring_up_starts_via_up_command_when_absent(manifest_with_tts):
     )
     rc = serve.bring_up()
     assert rc == 0
-    assert ["echo", "bring-up-tts"] in fake_run.calls
-    assert all(c[0] == "docker" or c == ["echo", "bring-up-tts"] for c in fake_run.calls)
+    assert ["anvil-serving", "models", "recipes", "load", "kokoro-82m"] in fake_run.calls
+    assert all(c[0] in {"docker", "anvil-serving"} for c in fake_run.calls)
 
 
 def test_tear_down_stops_a_running_container(manifest_with_tts):

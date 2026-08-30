@@ -26,8 +26,14 @@ MUTATING = (["docker", "start"], ["docker", "rm"], ["docker", "unpause"],
 
 
 def _mutating_calls(run):
-    return [c for c in run.calls
-            if isinstance(c, list) and any(c[:len(p)] == p for p in MUTATING)]
+    return [
+        c for c in run.calls
+        if (
+            isinstance(c, list)
+            and any(c[:len(p)] == p for p in MUTATING)
+            and not (c[:2] == ["docker", "compose"] and "config" in c)
+        )
+    ]
 
 
 def _states_run(states, op_rc=0):
@@ -40,6 +46,14 @@ def _states_run(states, op_rc=0):
 
     def run(argv, **k):
         calls.append(argv)
+        if isinstance(argv, list) and "config" in argv and "--format" in argv:
+            return proc(0, json.dumps({
+                "services": {
+                    name: {"networks": {"default": None}}
+                    for name in ("fast", "stt", "embed", "plain", "exp")
+                },
+                "networks": {"default": {"internal": True}},
+            }))
         if isinstance(argv, list) and argv[:3] == ["docker", "ps", "-a"]:
             if any(state == "error" for state in states.values()):
                 return proc(1, "", "Cannot connect to the Docker daemon")
@@ -530,6 +544,35 @@ def test_evict_quiesces_and_drains_the_victims_tier_before_stop(tmp_path, capsys
     out = capsys.readouterr().out
     assert "evict exp" in out
     assert "stays quiesced" in out                  # readmission is guarded
+
+
+def test_network_policy_refusal_precedes_eviction_mutation(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, EVICTION_MANIFEST))
+    states = {"vllm-exp": "running", "anvil-voice-stt": "running"}
+    journal = []
+    inner = _journal_run(states, journal)
+
+    def run(argv, **kwargs):
+        if isinstance(argv, list) and "config" in argv and "--format" in argv:
+            inner.calls.append(argv)
+            return proc(0, json.dumps({
+                "services": {"fast": {"networks": {"default": None}}},
+                "networks": {"default": {"internal": False}},
+            }))
+        return inner(argv, **kwargs)
+
+    run.calls = inner.calls
+    assert serves.cmd_up(
+        loaded,
+        ["fast"],
+        evict=True,
+        _transition=_recording_transition(journal),
+        _run=run,
+    ) == 1
+    assert journal == []
+    assert _mutating_calls(run) == []
+    assert states["vllm-exp"] == "running"
+    assert "network egress policy refused" in capsys.readouterr().out
 
 
 def test_evicting_resident_serves_fails_loudly_with_the_ledger(tmp_path, capsys):
