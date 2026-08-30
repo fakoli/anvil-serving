@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- The packaged Hermes media skill (`1.0.6`) documents the observed live
+  response contract: structured media envelopes nest under `data.job` /
+  `{"job": ...}` rather than flat `job_id` keys, image artifact inspection
+  returns native image content as a second MCP content block that text-only
+  clients drop, `resources/read` is not implemented, and these shapes hold
+  for any client of the eight media tools.
+
 ## [0.36.0] - 2026-08-28
 
 ### Added
