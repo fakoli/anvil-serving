@@ -2,7 +2,7 @@
 name: anvil-media
 description: Generate, inspect, or cancel images and videos through Anvil's bounded named-workflow MCP tools.
 metadata:
-  version: "1.0.5"
+  version: "1.0.6"
   hermes:
     tags: [media, image-generation, video-generation, mcp]
     category: media
@@ -95,6 +95,33 @@ an earlier Anvil media job. A slash-command invocation is optional.
     server-issued resume bundle is missing or cannot be copied exactly, call
     `mcp__anvil_media__media_job_cancel` only when the user asks to cancel that
     job. Report the returned cancellation state exactly.
+
+## Envelope and content parsing (observed live 2026-08-30)
+
+11. Read the full MCP result. Structured envelopes nest one level deeper than
+    the procedure text: `media_workflow_run` returns the job object at
+    `data.job` (job id is `data.job.id`, state is `data.job.state`, and the
+    `created` flag sits beside it under `data`), not `data.job_id`.
+    `media_job_status` returns `{"job": {...}}` with artifacts under
+    `job.artifacts[]`, each carrying `id`, `mediaType`, `byteLength`,
+    `sha256`, `expiresAt`, and `resource`. Parse these shapes defensively
+    instead of assuming flat `job_id`/`artifacts` keys.
+12. Every tool result carries both a `text` content block containing the JSON
+    envelope and, for image artifacts, a second `image` content block with the
+    bounded native image content. A client that reads only text blocks loses
+    the image: enumerate the whole `content[]` array and render every image
+    block. `media_artifact_inspect` returns metadata plus native image
+    content for eligible bounded images; video and oversized images remain
+    resource-only.
+13. MCP `resources/read` is not implemented by this server even though
+    artifact metadata advertises a `resource` path (it answers `Method not
+    found`). Retrieve artifact bytes through the authenticated artifact
+    origin instead of assuming resource support, and verify the downloaded
+    bytes against the artifact's `sha256` before presenting them.
+14. The results are transport-shaped, not client-specific: the same envelope
+    nesting and the two-block content array appear whether the call arrives
+    through Hermes' MCP client or a direct stdio JSON-RPC client, so this
+    section applies to any client of the eight media tools.
 
 ## Completion invariant
 
