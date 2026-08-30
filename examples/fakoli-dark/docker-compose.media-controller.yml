@@ -8,7 +8,7 @@ name: anvil-media-controller
 
 services:
   media-controller:
-    image: ${ANVIL_MEDIA_CONTROLLER_IMAGE:-anvil-serving-controller:0.36.0}
+    image: ${ANVIL_MEDIA_CONTROLLER_IMAGE:-anvil-serving-controller:1.0.0}
     container_name: anvil-media-controller
     restart: unless-stopped
     stop_grace_period: 30s

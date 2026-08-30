@@ -2,11 +2,17 @@
 
 ## Product
 
-anvil-serving is a local-model serving and benchmark substrate with an
-explicit capability meta-router, implemented as a thin authenticated gateway.
-Its current product center is repeatable local serving, preflight, benchmark
-evidence, and stable capability contracts over mutable local inference
-services. It is not an intent-driven model router.
+Anvil Serving is one umbrella product with six explicit families: Model
+Serving, Capability Gateway, Evaluation & Evidence, Anvil Voice, Anvil Media,
+and Control Plane & Fleet. The families share one package, CLI, topology,
+safety/evidence contract, and release line. Anvil Voice and Anvil Media are
+first-class branded domains inside the umbrella, not separate products.
+
+The Capability Gateway family is an explicit capability meta-router,
+implemented as a thin authenticated gateway. Repeatable local serving,
+preflight and benchmark evidence, voice/media operations, and fleet control
+remain separate authority domains. The gateway is not an intent-driven model
+router.
 
 Every routing surface is serving-engine agnostic. Chat, purpose-model, and
 audio routes select declared aliases or model names, endpoints, dialects,
@@ -57,6 +63,8 @@ or tests. Use private/tailnet addresses for cross-host traffic.
 ```text
 anvil_serving/
   cli.py                  CLI dispatch
+  product_families.py     canonical product boundary and ordered journeys
+  product.py              read-only product discovery CLI projection
   commands/               modular command families and deterministic registry
     registry.py           explicit decorated family assembly
     spec.py               command, option, policy, and manifest contracts
@@ -82,6 +90,7 @@ anvil_serving/
     discovery.py          configured alias advertisement
     dialects/             Anthropic/OpenAI translation
   voice/                  owned STT/TTS, bridge, Realtime operations
+  media/                  named workflows, durable jobs, qualification, artifacts
 ```
 
 The three compatibility facades remain supported import and entrypoint
@@ -172,6 +181,7 @@ Use model depth at decision boundaries, then reduce it for bounded execution:
 ## Documentation
 
 - `README.md` — product framing and quick start
+- `docs/PRODUCT-FAMILIES.md` — umbrella boundary and all six user journeys
 - `docs/META-ROUTER.md` — product category, authority model, and invariants
 - `docs/ARCHITECTURE.md` — current request path and topology
 - `docs/CONFIGURATION.md` — capability and metadata-authority configuration
@@ -180,3 +190,4 @@ Use model depth at decision boundaries, then reduce it for bounded execution:
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — harness ownership and direct aliases
 - `docs/adr/0028-serving-benchmarks-and-thin-capability-gateway.md` — rationale
 - `docs/adr/0039-capability-meta-router.md` — meta-router product decision
+- `docs/adr/0042-anvil-serving-product-family-boundary.md` — umbrella/family decision

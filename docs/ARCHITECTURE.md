@@ -1,10 +1,26 @@
 # Architecture
 
-anvil-serving is a serving and benchmark substrate with an explicit
-capability meta-router, implemented as a thin gateway. It owns repeatable
-lifecycle and evidence around local model serves, plus a stable capability
-contract over their mutable configurations. It does not perform semantic model
-selection.
+Anvil Serving is one umbrella product with six explicit authority domains:
+Model Serving, Capability Gateway, Evaluation & Evidence, Anvil Voice, Anvil
+Media, and Control Plane & Fleet. The gateway is an explicit capability
+meta-router implemented as a thin request path; it is not the whole product
+and does not perform semantic model selection.
+
+## Product-family architecture
+
+| Family | Runtime authority | Handoff |
+| --- | --- | --- |
+| Model Serving | Artifacts, recipes, manifests, lifecycle, and reservations | Presents a concrete endpoint for qualification. |
+| Capability Gateway | Auth, exact route selection, protocol translation, readiness, admission, and relay | Exposes only a configured, reviewed capability. |
+| Evaluation & Evidence | Functional gates, benchmarks, and durable evidence | Supports human review; never mutates serving state. |
+| Anvil Voice | STT/TTS and realtime proxy lifecycle plus voice qualification | Uses declared owners and explicit audio routes. |
+| Anvil Media | Named workflows, durable jobs, cancellation, qualification, and artifacts | Uses one declared worker and typed controller operations. |
+| Control Plane & Fleet | Topology resolution, controller/MCP dispatch, host utilities, integrations, and fleet state | Preserves the selected resource owner's authority. |
+
+The code-owned catalog and ordered journeys are documented in
+[Product families](PRODUCT-FAMILIES.md). Each operational root command belongs
+to one family, while a reviewed user journey can cross family boundaries
+without transferring authority.
 
 ```mermaid
 flowchart LR
@@ -149,15 +165,16 @@ imported only when dispatch or explicit validation resolves them.
 flowchart LR
     F["command family modules"] --> R["deterministic registry"]
     R --> C["CLI resolution and safety policy"]
-    R --> M["v4 command manifest"]
+    R --> M["v6 command + product manifest"]
     R --> T["topology and controller contracts"]
     C --> H["lazy command handler"]
 ```
 
-The registry contains only machine-relevant command facts. Leaf `argparse`
-parsers own detailed argument help, while the family documentation owns
+The registry joins machine-relevant command facts to the code-owned product
+catalog. Leaf `argparse` parsers own detailed argument help, while the family documentation owns
 workflows, examples, configuration precedence, and behavioral guidance. The
-v4 manifest intentionally omits prose copies of that documentation.
+v6 manifest intentionally omits prose copies of that documentation while
+carrying stable family ids, promises, boundaries, commands, and docs anchors.
 
 ## Evaluation and control-plane composition
 

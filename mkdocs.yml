@@ -1,6 +1,6 @@
 site_name: anvil-serving
 site_description: >-
-  Benchmark and serve local models through an explicit capability meta-router.
+  Operate, qualify, and expose local AI capabilities through explicit contracts.
 site_url: https://fakoli.github.io/anvil-serving/
 repo_url: https://github.com/fakoli/anvil-serving
 repo_name: fakoli/anvil-serving
@@ -43,45 +43,49 @@ plugins:
 
 nav:
   - Home: index.md
+  - Product:
+      - Product families: PRODUCT-FAMILIES.md
+      - Product discovery commands: cli/product.md
   - Get started: GETTING-STARTED.md
-  - Serve models:
+  - Model Serving:
       - Catalog, artifacts & recipes: MODEL-LIFECYCLE.md
       - Promote and roll back: MODEL-PROMOTION.md
       - Serve lifecycle commands: cli/serves.md
       - Models & recipes commands: cli/models.md
       - Model settings example: MODEL-SETTINGS-EXAMPLE.md
-  - Route through the meta-router:
+  - Capability Gateway:
       - Capability meta-router: META-ROUTER.md
       - Architecture: ARCHITECTURE.md
-      - Fleet state & replication: FLEET-STATE.md
-      - 'Strategy: make divergence loud': STRATEGY-MAKE-DIVERGENCE-LOUD.md
-      - 'Product discovery: personas': PRODUCT-DISCOVERY-PERSONAS.md
       - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
       - Meta-router request path: THIN-CAPABILITY-GATEWAY.md
       - Configuration reference: CONFIGURATION.md
       - Embeddings & reranking: PURPOSE-MODELS.md
       - Router commands: cli/router.md
       - Terminology: TERMINOLOGY.md
-  - Voice & audio:
+  - Anvil Voice:
       - Voice pipeline: VOICE.md
       - Voice commands: cli/voice.md
-  - Operate the host:
+  - Anvil Media:
+      - Media commands: cli/media.md
+      - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
+  - Control Plane & Fleet:
+      - Product discovery personas: PRODUCT-DISCOVERY-PERSONAS.md
+      - Fleet state & replication: FLEET-STATE.md
+      - 'Strategy: make divergence loud': STRATEGY-MAKE-DIVERGENCE-LOUD.md
       - Operator playbooks: OPERATOR-PLAYBOOKS.md
       - Public product and private operator state: OPERATOR-PRIVACY.md
       - Repository history reset runbook: HISTORY-RESET-RUNBOOK.md
       - Troubleshooting: TROUBLESHOOTING.md
       - Host & setup commands: cli/host.md
       - Fleet commands: cli/fleet.md
-      - Control plane & integrations commands: cli/control-plane.md
+      - Control Plane & Fleet commands: cli/control-plane.md
       - Device topologies: DEVICE-TOPOLOGIES.md
       - Tailnet endpoint runbook: TAILNET-ENDPOINT-RUNBOOK.md
-      - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
-  - Integrate a harness:
       - Agent workbench: WORKBENCH.md
       - OpenClaw integration spec: OPENCLAW-INTEGRATION-SPEC.md
       - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
   - Command index: CLI.md
-  - Benchmarks:
+  - Evaluation & Evidence:
       - Overview: benchmarks/index.md
       - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
       - Model comparison table: benchmarks/comparison.md
@@ -165,6 +169,9 @@ nav:
       - 'ADR-0037: Caller-side prompt-lane classification': adr/0037-caller-side-prompt-lane-classification.md
       - 'ADR-0038: Inference-owned model metadata': adr/0038-inference-owned-model-metadata.md
       - 'ADR-0039: Capability meta-router': adr/0039-capability-meta-router.md
+      - 'ADR-0040: Media gateway and controller authority': adr/0040-media-gateway-and-controller-authority.md
+      - 'ADR-0041: Initial media workflows and policy': adr/0041-initial-media-workflows-and-policy.md
+      - 'ADR-0042: Anvil Serving product-family boundary': adr/0042-anvil-serving-product-family-boundary.md
   - Changelog: changelog.md
 
 markdown_extensions:
