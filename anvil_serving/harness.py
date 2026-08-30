@@ -3,13 +3,19 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Mapping
+import hashlib
 import ipaddress
 import json
 import os
+import plistlib
 import re
+import shutil
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.parse
+import urllib.request
 
 
 _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
@@ -17,7 +23,12 @@ _HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 DEFAULT_TRANSPORT_TIMEOUT_SECONDS = 120
 DEFAULT_STATUS_MAX_OUTPUT_BYTES = 64 * 1024
 DEFAULT_ANVIL_VOICE_REALTIME_URL = "ws://127.0.0.1:8765/v1/realtime"
+DEFAULT_OPENCLAW_HEALTH_URL = "http://127.0.0.1:18789/health"
+OPENCLAW_LAUNCHD_LABEL = "ai.openclaw.gateway"
 _DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
+_DEFAULT_OPENCLAW_LAUNCHD_PATH = (
+    "~/Library/LaunchAgents/%s.plist" % OPENCLAW_LAUNCHD_LABEL
+)
 _THINKING_LEVELS = frozenset({"off", "minimal", "low", "medium", "high", "xhigh", "adaptive", "max"})
 _BOOTSTRAP_CONTEXT_MODES = frozenset({"full", "lightweight"})
 
@@ -339,14 +350,156 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, voice=Fal
     return 0
 
 
+def _openclaw_launchd_definition(path=None):
+    """Return one verified OpenClaw launchd definition or ``None`` when absent."""
+    expanded = os.path.expanduser(path or _DEFAULT_OPENCLAW_LAUNCHD_PATH)
+    try:
+        with open(expanded, "rb") as handle:
+            raw = handle.read(1024 * 1024 + 1)
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise ValueError("cannot read OpenClaw launchd definition: %s" % exc) from exc
+    if len(raw) > 1024 * 1024:
+        raise ValueError("OpenClaw launchd definition exceeds 1 MiB")
+    try:
+        data = plistlib.loads(raw)
+    except (plistlib.InvalidFileException, ValueError) as exc:
+        raise ValueError("OpenClaw launchd definition is not a valid plist") from exc
+    if not isinstance(data, dict) or data.get("Label") != OPENCLAW_LAUNCHD_LABEL:
+        raise ValueError(
+            "OpenClaw launchd definition does not declare %s"
+            % OPENCLAW_LAUNCHD_LABEL
+        )
+    arguments = data.get("ProgramArguments")
+    if (
+        not isinstance(arguments, list)
+        or not arguments
+        or any(not isinstance(item, str) or not item for item in arguments)
+    ):
+        raise ValueError("OpenClaw launchd definition has invalid ProgramArguments")
+    if not any("openclaw" in item.casefold() for item in arguments):
+        raise ValueError(
+            "OpenClaw launchd definition does not identify an OpenClaw program"
+        )
+    return {
+        "label": OPENCLAW_LAUNCHD_LABEL,
+        "definition_sha256": hashlib.sha256(raw).hexdigest(),
+        "program_argument_basenames": [os.path.basename(item) for item in arguments],
+    }
+
+
+def _openclaw_http_health(
+    *,
+    timeout_seconds,
+    url=DEFAULT_OPENCLAW_HEALTH_URL,
+    _open=urllib.request.urlopen,
+):
+    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    try:
+        with _open(request, timeout=timeout_seconds) as response:
+            return getattr(response, "status", None) or response.getcode()
+    except (OSError, urllib.error.URLError, ValueError):
+        return None
+
+
+def _restart_openclaw_launchd(
+    definition,
+    *,
+    timeout_seconds,
+    _run=subprocess.run,
+    _health=_openclaw_http_health,
+    _sleep=time.sleep,
+    _monotonic=time.monotonic,
+    _uid=None,
+):
+    if _uid is None:
+        _uid = os.getuid
+    target = "gui/%d/%s" % (_uid(), definition["label"])
+    argv = ["launchctl", "kickstart", "-k", target]
+    try:
+        completed = _run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise ValueError("OpenClaw launchd restart failed: %s" % exc) from exc
+    if completed.returncode:
+        raise ValueError(
+            (completed.stderr or completed.stdout or "OpenClaw launchd restart failed").strip()
+        )
+
+    deadline = _monotonic() + timeout_seconds
+    health = None
+    while _monotonic() < deadline:
+        health = _health(timeout_seconds=min(5, timeout_seconds))
+        if health == 200:
+            break
+        _sleep(0.25)
+    if health != 200:
+        raise ValueError("OpenClaw launchd restart did not restore HTTP health")
+    return {
+        "schema": "openclaw-gateway-restart/v1",
+        "ok": True,
+        "method": "launchd",
+        "service_label": definition["label"],
+        "definition_sha256": definition["definition_sha256"],
+        "program_argument_basenames": definition["program_argument_basenames"],
+        "health_http_status": health,
+    }
+
+
 def cmd_restart_openclaw(gateway_host=None, gateway_user=None, *, timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
-                         dry_run=False, _run=subprocess.run):
+                         dry_run=False, _run=subprocess.run, _which=shutil.which,
+                         _platform=None, _launchd_path=None, _launchd_health=_openclaw_http_health,
+                         _sleep=time.sleep, _monotonic=time.monotonic, _uid=None):
+    platform = _platform or sys.platform
     if gateway_host:
         host = _validate_gateway_host(gateway_host)
         target = (gateway_user + "@" if gateway_user else "") + host
         argv = ["ssh", target, "openclaw", "gateway", "restart"]
     else:
-        argv = ["openclaw", "gateway", "restart"]
+        executable = _which("openclaw")
+        if executable:
+            argv = [executable, "gateway", "restart"]
+        elif platform == "darwin":
+            try:
+                definition = _openclaw_launchd_definition(_launchd_path)
+            except ValueError as exc:
+                print("OpenClaw restart failed: %s" % exc, file=sys.stderr)
+                return 1
+            if definition is None:
+                print(
+                    "OpenClaw restart failed: openclaw is not on PATH and the launchd definition is absent",
+                    file=sys.stderr,
+                )
+                return 1
+            if dry_run:
+                uid = (_uid or os.getuid)()
+                print(
+                    "launchctl kickstart -k gui/%d/%s"
+                    % (uid, definition["label"])
+                )
+                return 0
+            try:
+                result = _restart_openclaw_launchd(
+                    definition,
+                    timeout_seconds=timeout_seconds,
+                    _run=_run,
+                    _health=_launchd_health,
+                    _sleep=_sleep,
+                    _monotonic=_monotonic,
+                    _uid=_uid,
+                )
+            except ValueError as exc:
+                print("OpenClaw restart failed: %s" % exc, file=sys.stderr)
+                return 1
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
+        else:
+            argv = ["openclaw", "gateway", "restart"]
     if dry_run:
         print(" ".join(argv))
         return 0

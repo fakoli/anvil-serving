@@ -110,6 +110,23 @@ def commands() -> CommandNode:
                         "Read bounded logs from one recipe-loaded candidate container.",
                         "anvil_serving.models",
                         role="model-serve",
+                        options=(
+                            _option(
+                                "--tail",
+                                summary="Read this many trailing lines, from 1 through 5000.",
+                                value_name="LINES",
+                            ),
+                            _option(
+                                "--since",
+                                summary="Read logs since one timestamp or relative duration.",
+                                value_name="WHEN",
+                            ),
+                            _option(
+                                "--contains",
+                                summary="Emit lines containing a case-insensitive literal; repeat for OR matching.",
+                                value_name="TEXT",
+                            ),
+                        ),
                         argv_prefix=("recipe", "logs"),
                         docs_anchor="docs/cli/models.md#operate-a-loaded-recipe",
                     ),
