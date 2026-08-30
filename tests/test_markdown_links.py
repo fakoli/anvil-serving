@@ -223,3 +223,15 @@ def test_git_index_lookup_has_timeout(monkeypatch, tmp_path: Path):
 
     with pytest.raises(subprocess.TimeoutExpired):
         links.tracked_paths(tmp_path, _run=timeout)
+
+
+def test_every_top_level_finding_is_present_in_the_chronological_index():
+    findings = ROOT / "docs" / "findings"
+    index = (findings / "README.md").read_text(encoding="utf-8")
+    missing = sorted(
+        path.name
+        for path in findings.glob("*.md")
+        if path.name != "README.md" and path.name not in index
+    )
+
+    assert not missing, f"top-level findings missing from the index: {missing}"
