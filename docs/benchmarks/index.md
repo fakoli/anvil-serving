@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-29.**
+**Last evidence review: 2026-08-30.**
 
 ## Start with the numbers
 
@@ -49,15 +49,15 @@ commands; it does not claim a live model result by itself.
 
 ## Production aliases and recent controls
 
-1. **RadixArk Qwen3.8 Flash Next NVFP4** — `current` text/image/OCR/video
-   Primary at 262,144 tokens in exclusive TP=2 across both RTX PRO 6000 cards,
-   with router concurrency one, four-image/one-video admission, a
-   253,952-plus-8,192 client envelope, and the qualified hash-gated SM120
-   QSA-fast MTP3 profile.
-2. **GLM-5.3-Flash TR3/EXL3 4 bpw** — unpromoted dual-PRO
-   text/tools/image/OCR challenger. Vision fixed K5 at 262K is the interactive
-   GLM profile; no-speculation at 524K is the maximum-context/headroom profile.
-   Adaptive MTP is rejected.
+1. **GLM-5.3-Flash EXL3 K3 plus DFlash2 K5** — human-authorized `current`
+   one-week text/tools/image/OCR Primary at 1,048,576 tokens in exclusive TP=2
+   across both RTX PRO 6000 cards, with router c16, 8,192 maximum output, and
+   up to 16 images. Video is unsupported and the DFlash2 draft is
+   noncommercial without separate permission.
+2. **RadixArk Qwen3.8 Flash Next NVFP4** — immediate retained
+   text/image/OCR/video rollback at 262,144 tokens, exclusive TP=2, router c1,
+   four-image/one-video admission, and the qualified hash-gated SM120 QSA-fast
+   MTP3 profile.
 3. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
    Primary profiles with retained TP=2 long-context, performance, quality, and
    real-client evidence.
@@ -78,18 +78,19 @@ commands; it does not claim a live model result by itself.
    fidelity/count failures. **Wan2.2 TI2V 5B** remains unavailable after
    its decodable sample failed prompt adherence and spatial quality.
 
-On 2026-08-29, the exact Cardillo/Purtell GLM-5.3-Flash TR3/EXL3 4 bpw path
-was translated to WSL2 and tested on both RTX PRO 6000 cards. Vision fixed K5
-passed image understanding, verbatim OCR, tools 20/20, bounded high-reasoning
-coding 15/15, and exact retrieval at a 250K target / 206,296 actual prompt
-tokens. It measured 72.8/55.7
-tok/s decode at 4K/128K and reported 2.14 complete 262K KV windows. Both 524K
-text profiles passed exact retrieval at 495,045 actual prompt tokens and valid
-tool use at 497,976; no-speculation retained 1,603,111 reported KV tokens.
-Adaptive MTP is rejected, and the unserved 0xSero 3.0-bpw release remains
-watch-only. The model remains `no-promotion`, the current Qwen Primary is
-unchanged, and the direct vision candidate is running for hands-on. See the
-[GLM qualification](../findings/2026-08-29-glm53-cardillo-purtell-qualification.md).
+On 2026-08-30, the exact GLM-5.3-Flash EXL3 K3 target plus DFlash2 K5 draft
+became the one-week default after a matched optimization and promotion gate.
+At 1M/maxseq16/batch2,048 it measured 82.1/67.4/67.9 tok/s decode at
+4K/131K/240K, recovered the exact needle at a 950K target, passed tools 20/20,
+image/OCR 12/12, bounded quality 12/12, authenticated routing, and fresh
+Hermes/Pi/OpenClaw acceptance. The engine reported 2,917,371 KV tokens. K3 is
+a verified C16 alternate; batch4,096 is rejected. Video remains disabled and
+the DFlash2 license limits the recipe to evaluation/noncommercial use without
+separate permission. See the [GLM optimization and promotion](../findings/2026-08-30-glm53-k3-dflash2-1m-optimization.md).
+
+The 2026-08-29 Cardillo/Purtell TR3/EXL3 262K/524K qualification remains the
+historical starting point and GLM-specific rollback evidence. Adaptive MTP
+remains rejected and the unserved 0xSero 3.0-bpw release remains watch-only.
 
 On 2026-08-28, exact digest- and revision-pinned ComfyUI v0.33.4 workflows
 qualified a 512×512 FLUX.2 Klein PNG and a 17-frame, 512×288 Wan2.2 H.264 MP4

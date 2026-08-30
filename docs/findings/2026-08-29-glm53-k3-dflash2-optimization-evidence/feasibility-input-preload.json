@@ -1,0 +1,220 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "glm53-k3-dflash2-dual-pro6000-wsl2-default",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 250000,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "one-week default long-context requirement",
+        "observed_at": "2026-08-29"
+      },
+      "output_reserve": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "router-visible reasoning and answer reserve",
+        "observed_at": "2026-08-29"
+      }
+    },
+    "concurrency": {
+      "value": 2,
+      "unit": "sequences",
+      "status": "assumed",
+      "source": "minimum useful Hermes default concurrency",
+      "observed_at": "2026-08-29"
+    },
+    "physical_vram_bytes": {
+      "value": 205283917824,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "local two-card inventory: 97887 MiB per RTX PRO 6000 Blackwell Max-Q",
+      "observed_at": "2026-08-29"
+    },
+    "vram_reserves": {
+      "idle_gpu_allocations": {
+        "kind": "physical",
+        "variable": {
+          "value": 39845888,
+          "unit": "bytes",
+          "status": "measured",
+          "source": "local pre-load idle allocation: 19 MiB per card",
+          "observed_at": "2026-08-29"
+        }
+      },
+      "five_percent_runtime_headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 10224350003,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "remainder of the pinned 0.950 GPU-memory ceiling after idle allocation",
+          "observed_at": "2026-08-29"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "identity, retrieval, tools, image/OCR, and stability hard gate",
+        "observed_at": "2026-08-29"
+      },
+      "max_relative_quality_loss": {
+        "value": 0.03,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "maximum acceptable loss against the current locally qualified 4 bpw GLM control",
+        "observed_at": "2026-08-29"
+      },
+      "min_warm_e2e_gain": {
+        "value": 0.25,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "minimum worthwhile speed gain for changing the default quant/runtime",
+        "observed_at": "2026-08-29"
+      },
+      "min_tasks_per_hour_ratio": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "new default may not reduce successful agent work per hour",
+        "observed_at": "2026-08-29"
+      }
+    }
+  },
+  "tracked_variables": {
+    "k3_checkpoint_payload_bytes": {
+      "value": 137123823211,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "Hugging Face blob metadata at target revision 319d66a8b53092b491f698440ecea781e4ddd4e4",
+      "observed_at": "2026-08-29",
+      "notes": "Storage payload is not treated as resident VRAM."
+    },
+    "dflash2_checkpoint_payload_bytes": {
+      "value": 2342169800,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "Hugging Face blob metadata at draft revision dc77ff1c99eeb2df044ee3d4f0094eb033fee410",
+      "observed_at": "2026-08-29"
+    },
+    "wsl2_collective_compatibility": {
+      "status": "unknown",
+      "unit": "boolean",
+      "notes": "Upstream qualification is native Linux; the managed local load must prove the PCIe collective paths under WSL2."
+    }
+  },
+  "candidates": [
+    {
+      "id": "purtell-k3-dflash2-k5-fp8-1m-vision",
+      "runtime_context_limit_tokens": {
+        "value": 1048576,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "Purtell release d46fdeddf8c6fec2d4595b65535a32d80a5af787",
+        "observed_at": "2026-08-29"
+      },
+      "measured_max_stable_context_tokens": {
+        "value": 1000000,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "external cold six-needle result on two RTX PRO 6000 workstation GPUs",
+        "observed_at": "2026-08-29",
+        "notes": "External hardware-matched prior; local qualification remains required."
+      },
+      "resident_components": {
+        "target_draft_runtime_and_graph_proxy": {
+          "min": 158000000000,
+          "max": 165000000000,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "derived from the external 15.88 GiB per-card cache remainder at the 0.950 ceiling, widened for Max-Q and WSL2 runtime variance",
+          "observed_at": "2026-08-29"
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "heterogeneous_target_draft_request_cache_proxy": {
+          "min": 12000,
+          "max": 13000,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "external 31.76 GiB aggregate cache divided by 2786881 full-request-equivalent tokens, widened for local variance",
+          "observed_at": "2026-08-29"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 2,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "two independent maximum-requirement sequences",
+        "observed_at": "2026-08-29"
+      },
+      "metrics": {
+        "deterministic_pass_rate": {"status": "unknown", "unit": "ratio", "notes": "Run the local full gate."},
+        "quality_score": {"status": "unknown", "unit": "score", "notes": "Run the matched local high-reasoning suite."},
+        "reference_quality_score": {"status": "unknown", "unit": "score", "notes": "Populate from the current 4 bpw control."},
+        "warm_e2e_seconds": {"status": "unknown", "unit": "seconds", "notes": "Measure locally."},
+        "no_spec_warm_e2e_seconds": {"status": "unknown", "unit": "seconds", "notes": "Use the current fixed-K5 control for the selection comparison."},
+        "successful_tasks_per_hour": {"status": "unknown", "unit": "tasks/hour", "notes": "Measure local successful work."},
+        "reference_tasks_per_hour": {"status": "unknown", "unit": "tasks/hour", "notes": "Populate from the current control."}
+      },
+      "hard_failures": []
+    },
+    {
+      "id": "brandon-v84-k4-dflash2-vision-98k",
+      "runtime_context_limit_tokens": {
+        "value": 98304,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "Brandon runtime release 24784d718cb7bbb99feaee2050eaddcfbc913386",
+        "observed_at": "2026-08-29"
+      },
+      "resident_components": {},
+      "per_sequence_components": {},
+      "per_token_components": {
+        "unmodeled_kv": {"status": "unknown", "unit": "bytes/token", "notes": "Context-limit rejection does not require a KV estimate."}
+      },
+      "kv_token_multiplier": {"value": 2, "unit": "copies", "status": "assumed", "source": "two independent sequences", "observed_at": "2026-08-29"},
+      "metrics": {},
+      "hard_failures": []
+    },
+    {
+      "id": "cardillo-k4-adaptive-mtp-replayssm-262k",
+      "runtime_context_limit_tokens": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "Cardillo release 5b5623ea07f48683f37f3774d8d5b8bf5b04fdf0",
+        "observed_at": "2026-08-29"
+      },
+      "resident_components": {},
+      "per_sequence_components": {},
+      "per_token_components": {
+        "unmodeled_kv": {"status": "unknown", "unit": "bytes/token", "notes": "The measured behavioral failure prunes this profile before memory modeling."}
+      },
+      "kv_token_multiplier": {"value": 2, "unit": "copies", "status": "assumed", "source": "two independent sequences", "observed_at": "2026-08-29"},
+      "metrics": {},
+      "hard_failures": ["Local repeated structured-tool gate passed only 12/20 and produced degenerate repeated output."]
+    },
+    {
+      "id": "0xsero-glm53-flash-exl3-3bpw",
+      "runtime_context_limit_tokens": {
+        "status": "unknown",
+        "unit": "tokens",
+        "notes": "The publisher did not provide a complete supported TP=2 serve path."
+      },
+      "resident_components": {},
+      "per_sequence_components": {},
+      "per_token_components": {
+        "unmodeled_kv": {"status": "unknown", "unit": "bytes/token", "notes": "The measured quality/runtime-path failures prune this quant before memory modeling."}
+      },
+      "kv_token_multiplier": {"value": 2, "unit": "copies", "status": "assumed", "source": "two independent sequences", "observed_at": "2026-08-29"},
+      "metrics": {},
+      "hard_failures": ["Publisher-held-out quality evaluation rejected the 3.0 bpw quant; no complete supported dual-GPU server path was published."]
+    }
+  ]
+}
