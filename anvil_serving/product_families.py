@@ -13,6 +13,21 @@ from dataclasses import dataclass
 CATALOG_SCHEMA_VERSION = "anvil-serving.product-families/v1"
 
 
+def _umbrella_data() -> dict[str, str]:
+    """Return the stable umbrella object shared by every catalog response."""
+    return {
+        "name": "Anvil Serving",
+        "promise": (
+            "Operate, qualify, and expose local AI capabilities through explicit, "
+            "reviewable contracts."
+        ),
+        "boundary": (
+            "Anvil Serving never infers a caller's intent, silently substitutes a model, "
+            "auto-promotes evidence, or moves an operation outside declared ownership."
+        ),
+    }
+
+
 @dataclass(frozen=True)
 class JourneyStep:
     """One ordered, user-visible step through a product family."""
@@ -379,17 +394,7 @@ def catalog_data(*, include_journeys: bool = False) -> dict[str, object]:
     """Return the bounded, deterministic umbrella product catalog."""
     return {
         "schema_version": CATALOG_SCHEMA_VERSION,
-        "umbrella": {
-            "name": "Anvil Serving",
-            "promise": (
-                "Operate, qualify, and expose local AI capabilities through explicit, "
-                "reviewable contracts."
-            ),
-            "boundary": (
-                "Anvil Serving never infers a caller's intent, silently substitutes a model, "
-                "auto-promotes evidence, or moves an operation outside declared ownership."
-            ),
-        },
+        "umbrella": _umbrella_data(),
         "families": [
             family.as_dict(include_journey=include_journeys) for family in PRODUCT_FAMILIES
         ],
@@ -401,6 +406,6 @@ def journey_data(family_id: str) -> dict[str, object]:
     family = family_for_id(family_id)
     return {
         "schema_version": CATALOG_SCHEMA_VERSION,
-        "umbrella": "Anvil Serving",
+        "umbrella": _umbrella_data(),
         "family": family.as_dict(include_journey=True),
     }
