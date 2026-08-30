@@ -167,6 +167,11 @@ def test_single_candidate_dry_run_confirm_reaches_cmd_up_dry_run(tmp_path, capsy
         tmp_path, _entry("primary", "primary-c", router_tier="primary-local"))
 
     def run(argv, **_kwargs):
+        if "config" in argv and "--format" in argv:
+            return proc(0, json.dumps({
+                "services": {"primary": {"networks": {"default": None}}},
+                "networks": {"default": {"internal": True}},
+            }))
         if argv[:3] == ["docker", "ps", "-a"]:
             return proc(0, "")
         if argv[:2] == ["docker", "inspect"]:
@@ -179,8 +184,8 @@ def test_single_candidate_dry_run_confirm_reaches_cmd_up_dry_run(tmp_path, capsy
 
     assert rc == 0
     out = capsys.readouterr().out
-    # cmd_up's dry-run path prints the docker compose invocation without
-    # running it -- no docker/network access required to prove this.
+    # cmd_up's dry-run path resolves the effective Compose policy, then prints
+    # the up invocation without starting a container.
     assert "primary" in out
     assert "docker compose" in out
 

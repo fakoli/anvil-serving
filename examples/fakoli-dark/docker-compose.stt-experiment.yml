@@ -86,6 +86,10 @@ services:
         --max-model-len 16384
         --max-num-seqs 4
 
+networks:
+  default:
+    internal: true
+
 volumes:
   nemotron35-hfcache:
   nemotron35-model:

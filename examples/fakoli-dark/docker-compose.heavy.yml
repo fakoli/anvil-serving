@@ -48,6 +48,10 @@ services:
       --served-model-name qwen35-awq-local
       --host 0.0.0.0 --port 30000
 
+networks:
+  default:
+    internal: true
+
 volumes:
   fakoli-models:
     external: true

@@ -62,3 +62,4 @@ people and the chat logs.
 | [0040](0040-media-gateway-and-controller-authority.md) | One media gateway origin with separated operation authority | Accepted |
 | [0041](0041-initial-media-workflows-and-policy.md) | Initial media workflows and bounded operating policy | Accepted for implementation |
 | [0042](0042-anvil-serving-product-family-boundary.md) | Anvil Serving is one umbrella with six explicit product families | Accepted |
+| [0043](0043-model-workloads-deny-network-egress-by-default.md) | Model workloads deny network egress by default | Accepted |

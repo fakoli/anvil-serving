@@ -446,12 +446,19 @@ services:
   router:
     image: ${ROUTER_IMAGE:-anvil-serving:1.0.0}
     container_name: anvil-router
+    labels:
+      io.anvil-serving.network.egress: "allow"
+      io.anvil-serving.network.egress-role: "capability-gateway"
+      io.anvil-serving.network.egress-reason: "capability gateway reaches explicitly configured upstream services"
     restart: unless-stopped
     # ADR-0033: above the router's 20s SIGTERM drain budget, so in-flight
     # streams finish (or are cleanly cut) before Docker escalates to SIGKILL.
     stop_grace_period: 30s
     ports:
       - "${ROUTER_PUBLISH:-127.0.0.1}:8000:8000"
+    networks:
+      - default
+      - router-egress
     environment:
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
       # Media remains disabled unless [server].media_principal is configured.
@@ -477,6 +484,16 @@ services:
       # Host-local durable media state shared with the co-located lifecycle
       # controller. Never place this SQLite database on network storage.
       - "./media-state:/var/lib/anvil-media"
+
+networks:
+  # Inference services use this implicit default network. `internal` removes
+  # Docker's external gateway while preserving loopback-published ingress.
+  default:
+    internal: true
+  # The capability router is trusted infrastructure. It joins both networks:
+  # model services remain reachable by service name, while only the router has
+  # a network with ordinary upstream connectivity.
+  router-egress:
 
 volumes:
   # Model weights (HF cache). External so `down -v` can never delete the pulled weights.

@@ -62,6 +62,10 @@ services:
               device_ids: ["${MEDIA_WORKER_GPU_UUID:-GPU-REPLACE-WITH-MEDIA-WORKER-UUID}"]
               capabilities: [gpu]
 
+networks:
+  default:
+    internal: true
+
 volumes:
   anvil-comfyui-models:
     external: true

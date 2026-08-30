@@ -24,6 +24,9 @@ def test_media_controller_is_loopback_only_and_shares_host_local_state():
     assert "ANVIL_MEDIA_STATE_DB: /var/lib/anvil-media/media-jobs.sqlite3" in text
     assert "ANVIL_MEDIA_RESOURCE_CONTROLLER_URL" in text
     assert "ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN" in text
+    assert 'io.anvil-serving.network.egress: "allow"' in text
+    assert 'io.anvil-serving.network.egress-role: "media-gateway"' in text
+    assert "io.anvil-serving.network.egress-reason:" in text
     assert "read_only: true" in text
     assert "no-new-privileges:true" in text
 

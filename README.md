@@ -204,6 +204,12 @@ controller, and ordinary CLI remain stdlib-only.
 - Use `127.0.0.1`, never `localhost`, for same-host URLs.
 - Keep router authentication enabled before exposing it beyond loopback.
 - Store credentials only through environment-variable references.
+- Model workloads deny network egress by default. Compose serves must use only
+  `internal: true` networks; managed recipes use an Anvil-owned internal bridge.
+  Stage model assets before serving. Model recipes cannot opt out. Egress is
+  limited to explicitly non-inference capability, media, or voice gateways with
+  an audited role and durable reason. See
+  [ADR-0043](docs/adr/0043-model-workloads-deny-network-egress-by-default.md).
 - Treat readiness and preflight as different checks: readiness says a serve can
   receive traffic; preflight and benchmark evidence establish whether it should.
 - Fakoli Mini is model-free in the reference topology. Its local audio proxy

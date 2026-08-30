@@ -64,7 +64,7 @@ def manifest_with_stt(tmp_path):
     p.write_text(
         '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nruntime = "docker"\nport = 8090\n'
         'model = "parakeet"\nengine = "vllm"\n'
-        'up = "echo bring-up-stt"\n',
+        'up = "anvil-serving models recipes load parakeet"\n',
         encoding="utf-8",
     )
     return str(p)
@@ -107,7 +107,7 @@ def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
 def test_bring_up_never_shells_out_to_docker_directly_when_absent_starts_via_up(manifest_with_stt):
     fake_run = FakeRun([
         (["docker", "inspect"], 1, "", "Error: No such container: anvil-stt"),
-        (["echo", "bring-up-stt"], 0, "bring-up-stt\n", ""),
+        (["anvil-serving", "models", "recipes", "load"], 0, "loaded\n", ""),
     ])
     serve = STTServe(
         STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet",
@@ -116,9 +116,9 @@ def test_bring_up_never_shells_out_to_docker_directly_when_absent_starts_via_up(
     )
     rc = serve.bring_up()
     assert rc == 0
-    assert ["echo", "bring-up-stt"] in fake_run.calls
+    assert ["anvil-serving", "models", "recipes", "load", "parakeet"] in fake_run.calls
     # every call went through the fake, not a real subprocess -- no bare "docker run".
-    assert all(c[0] == "docker" or c == ["echo", "bring-up-stt"] for c in fake_run.calls)
+    assert all(c[0] in {"docker", "anvil-serving"} for c in fake_run.calls)
 
 
 def test_tear_down_stops_a_running_container(manifest_with_stt):

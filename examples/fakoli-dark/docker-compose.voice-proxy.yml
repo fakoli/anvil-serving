@@ -21,6 +21,10 @@ services:
   realtime-proxy:
     image: ${VOICE_IMAGE:-anvil-serving:1.0.0}
     container_name: anvil-voice-proxy
+    labels:
+      io.anvil-serving.network.egress: "allow"
+      io.anvil-serving.network.egress-role: "voice-gateway"
+      io.anvil-serving.network.egress-reason: "connects to declared router, STT, and TTS endpoints"
     restart: unless-stopped
     command:
       - anvil-serving
@@ -39,6 +43,7 @@ services:
       - "${VOICE_PROXY_PUBLISH:-127.0.0.1}:8765:8765"
     networks:
       - voice
+      - egress
     environment:
       # Optional bearer tokens for the DIRECT downstream endpoints, resolved by
       # env-var NAME in the voice manifest (never a literal in a file).
@@ -54,3 +59,4 @@ networks:
   voice:
     name: anvil-voice
     external: true
+  egress:

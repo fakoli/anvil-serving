@@ -43,6 +43,9 @@ up = "docker compose --project-name anvil-voice-audio -f {dir}/docker-compose.vo
 [[serve]]
 name = "realtime-proxy"
 gpu_inference = false
+network_egress = "allow"
+network_egress_role = "voice-gateway"
+network_egress_reason = "Realtime proxy connects to the explicitly declared router, STT, and TTS endpoints."
 stack = "voice-proxy"
 container = "anvil-voice-proxy"
 runtime = "docker"
