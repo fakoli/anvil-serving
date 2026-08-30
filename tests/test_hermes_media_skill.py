@@ -77,7 +77,7 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
     assert "empty string as its\n   exact `quality_profile` value" in text
     assert "Hermes has no worker-lifecycle authority" in text
     assert "complete resume bundle" in text
-    assert 'version: "1.0.5"' in text
+    assert 'version: "1.0.6"' in text
     assert "server-returned `resumeBundle` object exactly" in text
     assert "full `idempotency_key`" in text
     assert "compare all seven fields to the returned object" in text
