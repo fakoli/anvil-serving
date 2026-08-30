@@ -90,4 +90,4 @@ def test_controller_compose_excludes_native_host_and_gateway_tools():
 def test_controller_compose_pins_current_release():
     text = _text()
 
-    assert "anvil-serving-controller:0.36.0" in text
+    assert "anvil-serving-controller:1.0.0" in text

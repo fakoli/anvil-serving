@@ -15,6 +15,7 @@ def commands() -> CommandNode:
                 "Report anvil-serving version skew across declared fleet hosts.",
                 "anvil_serving.fleet",
                 role="operator",
+                handler_attribute="dispatch",
                 options=(
                     _option(
                         "--host",

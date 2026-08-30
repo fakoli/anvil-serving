@@ -6,8 +6,10 @@
 
 ## What you're working in
 
-A local-model serving and benchmark substrate plus an explicit capability
-meta-router implemented as a thin gateway (`anvil_serving/router/`).
+Anvil Serving is one umbrella product for Model Serving, Capability Gateway,
+Evaluation & Evidence, Anvil Voice, Anvil Media, and Control Plane & Fleet.
+The capability meta-router is the thin gateway in `anvil_serving/router/`; it
+is one product family, not the whole product.
 (`eval usage`, `models sync`, `serves render`, `eval preflight`, `eval benchmark run`,
 `serves multiplex`, plus `init`, `doctor`, and `host gpus`). The router is shipped: token-authed
 containerized service, cross-dialect tool translation, true upstream SSE streaming,

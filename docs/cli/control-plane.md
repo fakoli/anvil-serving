@@ -1,17 +1,21 @@
-# Control plane & integrations
+# Control Plane & Fleet
 
-[CLI overview](../CLI.md) · [Host & setup](host.md) · [Router](router.md)
+[Product families](../PRODUCT-FAMILIES.md#control-plane-fleet) ·
+[CLI overview](../CLI.md) · [Fleet](fleet.md) · [Host & setup](host.md)
 
-Use these families to declare where operations belong, connect an operator
-harness, expose the bounded management protocol, and publish reviewed tailnet
-routes. None of them sits in the router request path: routing remains an
-in-process data-plane operation.
+This family declares where operations belong, exposes bounded typed dispatch,
+connects operator harnesses, inspects hosts and fleet state, and publishes
+reviewed tailnet routes. None of it sits in the gateway request path: routing
+remains a Capability Gateway operation, and resource owners retain lifecycle
+authority.
 
 ## Choose a workflow
 
 | Goal | Start here | Then |
 | --- | --- | --- |
 | Check deployment ownership | `topology validate` | Use `topology show` for the declaration or `topology resolve` for one command. |
+| Check package parity | `fleet version` | Resolve skew or missing installations before a coordinated release. |
+| Check operator-state drift | `fleet drift --repo PATH` | Review exact per-host file differences; do not copy one host's home onto another. |
 | Update OpenClaw integration | `harness sync openclaw --dry-run` | Apply with `--confirm`, then check `harness status openclaw`. |
 | Refresh Mini model limits | `harness sync clients --dry-run` | Review the exact router hash and per-alias limits, then apply with `--confirm`. |
 | Give Hermes bounded media generation | `harness sync hermes-media --dry-run` | Review the profiles, skill digest, and eight-tool allowlist; apply with `--confirm`, then require an empty second preview. |
