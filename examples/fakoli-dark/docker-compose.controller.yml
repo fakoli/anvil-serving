@@ -10,7 +10,7 @@ services:
     build:
       context: ../..
       target: controller
-    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:0.36.0}
+    image: ${ANVIL_CONTROLLER_IMAGE:-anvil-serving-controller:1.0.0}
     container_name: anvil-serving-controller
     restart: unless-stopped
     # ADR-0033: above the controller's 20s SIGTERM drain budget, so in-flight

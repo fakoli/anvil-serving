@@ -18,7 +18,7 @@ def _text() -> str:
 def test_media_controller_is_loopback_only_and_shares_host_local_state():
     text = _text()
 
-    assert "anvil-serving-controller:0.36.0" in text
+    assert "anvil-serving-controller:1.0.0" in text
     assert "${ANVIL_MEDIA_CONTROLLER_PUBLISH:-127.0.0.1:18765}:8765" in text
     assert "./media-state:/var/lib/anvil-media" in text
     assert "ANVIL_MEDIA_STATE_DB: /var/lib/anvil-media/media-jobs.sqlite3" in text

@@ -18,6 +18,7 @@ from . import __version__
 from . import guard
 from .commands import COMMAND_TREE, CommandNode, CommandOption
 from .operator_output import (
+    CommandResult,
     EXIT_CODES,
     OutputOptions,
     OperatorError,
@@ -50,11 +51,13 @@ from .transports import (
 MIN_PYTHON = (3, 11)
 _DOCS_URL = "https://fakoli.github.io/anvil-serving/CLI/"
 _GROUP_ORDER = (
-    "Data plane",
-    "Local serving tools",
-    "Quality loop",
-    "Control plane & integrations",
-    "Voice",
+    "Start here",
+    "Model Serving",
+    "Capability Gateway",
+    "Evaluation & Evidence",
+    "Anvil Voice",
+    "Anvil Media",
+    "Control Plane & Fleet",
 )
 _RESOLUTION_VALUE_OPTIONS = {
     "--topology": "topology",
@@ -85,6 +88,7 @@ _HANDLER_PROGS = {
     "anvil_serving.models": "anvil-serving models",
     "anvil_serving.multiplexer": "anvil-serving serves multiplex",
     "anvil_serving.preflight": "anvil-serving eval preflight",
+    "anvil_serving.product": "anvil-serving product",
     "anvil_serving.profile": "anvil-serving eval usage",
     "anvil_serving.router.serve": "anvil-serving router run",
     "anvil_serving.router_endpoint": "anvil-serving router endpoint",
@@ -220,7 +224,7 @@ def _resolve(argv: Sequence[str]):
 def _print_help() -> None:
     print(
         textwrap.fill(
-            "anvil-serving - local-model serving, benchmarking, and capability gateway",
+            "anvil-serving - operate, qualify, and expose explicit local AI capabilities",
             width=_help_width(),
             break_long_words=False,
             break_on_hyphens=False,
@@ -258,11 +262,13 @@ def _print_help() -> None:
         )
     print()
     print("Examples:")
+    print("  anvil-serving product families")
+    print("  anvil-serving product journey anvil-media")
     print("  anvil-serving router run --config configs/example.toml")
     print("  anvil-serving serves status")
     print("  anvil-serving eval preflight --tier heavy --dry-run")
     print("  anvil-serving eval benchmark external list")
-    print("  anvil-serving mcp tools")
+    print("  anvil-serving media capabilities")
     print()
     print("Docs: %s" % _DOCS_URL)
 
@@ -1233,6 +1239,35 @@ def _dispatch(
             result = handler([*prefix, *rest])
     except SystemExit as exc:
         return int(exc.code or 0)
+    if isinstance(result, CommandResult):
+        if execution_meta is not None:
+            execution_meta["data"] = result.data
+            if result.error is not None:
+                execution_meta["error"] = result.error
+            existing_warnings = tuple(execution_meta.get("warnings", ()))
+            execution_meta["warnings"] = (*existing_warnings, *result.warnings)
+        if not output_options.json_mode:
+            if result.human_stdout:
+                sys.stdout.write(result.human_stdout)
+            elif result.error is None:
+                rendered = render_human(
+                    success_envelope(_command_name(path), plan, result.data),
+                    options=output_options,
+                )
+                if rendered.stdout:
+                    sys.stdout.write(rendered.stdout)
+            if result.human_stderr:
+                sys.stderr.write(result.human_stderr)
+            elif result.error is not None and not result.human_stdout:
+                rendered = render_human(
+                    error_envelope(_command_name(path), plan, result.error, data=result.data),
+                    options=output_options,
+                )
+                if rendered.stderr:
+                    sys.stderr.write(rendered.stderr)
+            for warning in result.warnings:
+                print(warning, file=sys.stderr)
+        return result.exit_code
     return 0 if result is None else int(result)
 
 
@@ -1316,7 +1351,8 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
             command,
             context,
             error,
-            warnings=execution_meta.get("warnings", ()),
+            data=execution_meta.get("data"),
+            warnings=warnings,
         )
     print(render_json(envelope))
     return rc
