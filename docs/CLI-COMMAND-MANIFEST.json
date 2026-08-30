@@ -9009,6 +9009,33 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Read this many trailing lines, from 1 through 5000.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--since"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Read logs since one timestamp or relative duration.",
+          "value_name": "WHEN"
+        },
+        {
+          "flags": [
+            "--contains"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit lines containing a case-insensitive literal; repeat for OR matching.",
+          "value_name": "TEXT"
         }
       ],
       "output_policy": "bounded",

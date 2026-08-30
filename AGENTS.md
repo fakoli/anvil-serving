@@ -146,9 +146,13 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest tests/ -x -q          # full suite
+python scripts/run_tests.py tests/ -x -q  # full suite with an isolated pytest temp root
 anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model <name> --confirm  # live gate
 ```
+
+The wrapper prevents concurrent Windows worktrees from sharing pytest's
+`pytest-current` cleanup link. CI may continue to invoke pytest directly in an
+isolated runner.
 
 For router changes, the unit tests in `tests/router/` are the primary gate. Integration
 tests against a live local tier require `preflight`.
