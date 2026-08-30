@@ -2,14 +2,15 @@
 
 ## Current status and review date
 
-The 2026-08-26 record qualifies and promotes the RadixArk ModelOpt NVFP4
-checkpoint as the human-authorized `llm.primary`, `vision.general`,
-`vision.ocr`, and `vision.video` reference on two RTX PRO 6000 Blackwell Max-Q
-cards at exclusive TP=2. The served window is 262,144 tokens with a client
-contract of 253,952 prompt tokens plus 8,192 output tokens and concurrency
-one. Authenticated routing and real OpenClaw, Hermes, and Pi acceptance passed.
-Media admission is fail-closed at four images or one video. Review date:
-2026-08-26.
+The 2026-08-26 record qualifies the RadixArk ModelOpt NVFP4 checkpoint as the
+immediate retained text/image/OCR/video rollback on two RTX PRO 6000 Blackwell
+Max-Q cards at exclusive TP=2. It was the human-authorized `llm.primary`,
+`vision.general`, `vision.ocr`, and `vision.video` reference until the
+2026-08-30 GLM one-week evaluation began. The served window is 262,144 tokens
+with a client contract of 253,952 prompt tokens plus 8,192 output tokens and
+concurrency one. Authenticated routing and real OpenClaw, Hermes, and Pi
+acceptance passed. Media admission is fail-closed at four images or one video.
+Review date: 2026-08-30.
 
 ## Immutable identity
 
@@ -34,7 +35,7 @@ matched no-speculation arm reported 415,744 tokens.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
-The [current MTP3 recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-flash-next-radixark-nvfp4-sglang-sm120-qsa-fast-tp2-262k-mtp3-recipe.toml)
+The [retained MTP3 recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-flash-next-radixark-nvfp4-sglang-sm120-qsa-fast-tp2-262k-mtp3-recipe.toml)
 and [matched no-speculation control](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-flash-next-radixark-nvfp4-sglang-sm120-qsa-fast-tp2-262k-nospec-recipe.toml)
 pin the exact weights, image, SM120 QSA patch, TP=2, 262,144 context, BF16 KV,
 one running request, 0.80 static memory, backends, graph cap, parsers, transport,
@@ -83,15 +84,17 @@ plus their sanitized evidence bundles.
 
 ## Decision and promotion state
 
-This is the current text/image/OCR/video Primary reference for the exact
-promoted operator profile. The 253,952-plus-8,192 client envelope,
-concurrency-one admission, four-image limit, one-video limit, and
-thinking-disabled default are part of the contract. The c2 queue diagnostic is
-not a c2 qualification. A different media limit, KV dtype, worker/cache policy,
-or concurrent-media shape requires a fresh gate.
+This is the immediate retained video-capable rollback during the one-week GLM
+evaluation. Its historical promoted contract remains 253,952-plus-8,192,
+concurrency-one admission, four images, one video, and thinking disabled. The
+c2 queue diagnostic is not a c2 qualification. Restoring route metadata alone
+does not make the service live; a rollback requires the managed serve
+lifecycle plus fresh direct identity, route, sync, and real-client checks. A
+different media limit, KV dtype, worker/cache policy, or concurrent-media shape
+requires a fresh gate.
 
 The portable QSA decoder remains a correctness-qualified historical control.
-The current SM120 fast path and MTP3 result cannot transfer to another runtime,
+The retained SM120 fast path and MTP3 result cannot transfer to another runtime,
 patch, KV dtype, offload policy, context, or speculation preset without matched
 functional, quality, capacity, and client gates.
 
