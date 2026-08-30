@@ -83,17 +83,22 @@ The closed public tickets record the defects and their acceptance evidence:
 - `.tickets/closed/2026-08-30-media-cancel-examples-missing-backend-url.md`;
 - `.tickets/closed/2026-08-30-media-envelope-finding-not-indexed.md`;
 - `.tickets/closed/2026-08-30-existing-finding-missing-from-index.md`;
-- `.tickets/closed/2026-08-30-product-journey-json-schema-inconsistent.md`; and
-- `.tickets/closed/2026-08-30-finding-index-test-includes-untracked-drafts.md`.
+- `.tickets/closed/2026-08-30-product-journey-json-schema-inconsistent.md`;
+- `.tickets/closed/2026-08-30-finding-index-test-includes-untracked-drafts.md`;
+- `.tickets/closed/2026-08-30-json-errors-duplicated-as-warnings.md`; and
+- `.tickets/closed/2026-08-30-cli-audit-inventory-stale-after-review-test.md`.
 
 Candidate review found and corrected one additional documentation defect: the
 Media bundle inventory/staging journey and examples initially omitted their
 required workflow id. The commands now include `<WORKFLOW>`, and a regression
 requires every catalog journey step to begin with a visible command-tree path.
-Two independent review rounds then found incomplete Media cancellation
+Three independent review rounds then found incomplete Media cancellation
 examples, two missing finding-index entries, an inconsistent shared journey
-JSON field type, and an index regression that included untracked drafts. Each
-issue is corrected and covered before the final exact-head review.
+JSON field type, an index regression that included untracked drafts, and a JSON
+error duplicated as a warning. Exact-head CI separately rejected a generated
+CLI-reference inventory that had been checked before its new regression file
+entered the Git index. Each issue is corrected and covered before the final
+exact-head review.
 
 ## Version and artifact closure
 
@@ -112,23 +117,23 @@ and ordinary bounded host resources; no parallel model workload was started.
 | Surface | Command or method | Result |
 | --- | --- | --- |
 | Candidate version | source-module version probe | `anvil-serving 1.0.0`; a separate stale PATH shim still reported the previously installed `0.36.0` and was excluded from candidate evidence |
-| Focused product/Fleet regression | command-tree, CLI, Fleet, output, and Compose tests | 531 passed before the final journey correction; the post-correction focused set passed 348 tests; the first adversarial-review correction set passed 146 and skipped 6; the second correction set passed 355 |
-| Full Python regression | `python scripts/run_tests.py tests/ -x -q` | second review-corrected code: 4,455 passed and 9 skipped in 186.09 seconds |
-| CLI documentation audit | full-scope check/update | 834 files scanned; zero violations; generated manifest/reference inventory current |
-| Semantic secret hygiene | scanner self-test and current/tracked/untracked scopes | self-test passed; second review-corrected candidate scan covered 2,125 tracked or non-ignored untracked text files with zero findings |
+| Focused product/Fleet regression | command-tree, CLI, Fleet, output, and Compose tests | 531 passed before the final journey correction; the post-correction focused set passed 348 tests; the first adversarial-review correction set passed 146 and skipped 6; the second correction set passed 355; the third correction set passed 339 |
+| Full Python regression | `python scripts/run_tests.py tests/ -x -q` | third review-corrected code: 4,456 passed and 9 skipped in 186.73 seconds |
+| CLI documentation audit | full-scope check/update | final correction inventory covers 836 files with zero violations; generated manifest/reference inventory current |
+| Semantic secret hygiene | scanner self-test and current/tracked/untracked scopes | self-test passed; third review-corrected candidate scan covered 2,128 tracked or non-ignored untracked text files with zero findings |
 | Pinned signature scan | exact staged-tree archive with pinned Gitleaks digest | final pre-review staged snapshot scanned with zero findings; current-head CI must repeat the gate |
 | Full Git history | pinned Gitleaks history scan, reported separately | 21 historical signatures remain: 17 generic-key, 3 private-key, and 1 curl-auth-header; none is present in the current candidate; history rewrite or credential rotation was not authorized |
 | Python lint | repository-wide Ruff check | passed |
 | Documentation render | strict MkDocs build | passed |
-| Markdown links | tracked Markdown link checker | 449 tracked Markdown files passed |
-| CLI documentation audit | final full-scope check | 834 files scanned with zero violations; manifest, generated reference, inventory, and navigation current |
+| Markdown links | tracked Markdown link checker | 453 tracked Markdown files passed |
+| CLI documentation audit | final full-scope check | 836 files scanned with zero violations; manifest, generated reference, inventory, and navigation current |
 | Scaffold synchronization | packaged-scaffold sync check | public examples and packaged copies are byte-identical |
 | Patch hygiene | staged diff check | passed |
 | Distribution build | isolated `python -m build` | built `anvil_serving-1.0.0-py3-none-any.whl` and `anvil_serving-1.0.0.tar.gz` |
 | Distribution metadata | Twine check | wheel and source distribution passed |
 | Isolated wheel install | clean wheel smoke outside the checkout | installed package data and `anvil-serving router run --help` passed; wheel SHA-256 `591991ea48b8c20d4ec72ff27c8692330078e2ba9d31993294435dd46ecc5eb9` |
-| Independent adversarial review | GPT-5.5/xhigh reviews of pushed commits `7fea8c8bccce04ebb8702302e5c2f806e78d79c9` and `481057c04d0d80a5eac2752e10078c4e54e866cb` | first review found two P2 documentation defects; second review found one P2 shared-schema inconsistency and one P3 test-scope defect; all findings were ticketed and corrected, and exact-head re-review remains the merge gate |
-| Current-head CI | exact pushed commit after all review corrections | pending; merge is prohibited until it passes |
+| Independent adversarial review | GPT-5.5/xhigh reviews of pushed commits `7fea8c8bccce04ebb8702302e5c2f806e78d79c9`, `481057c04d0d80a5eac2752e10078c4e54e866cb`, and `ae39f0f0e52aa92a7b6e327f3e1ebaf1d4ebf151` | first review found two P2 documentation defects; second found one P2 shared-schema inconsistency and one P3 test-scope defect; third found one P2 JSON error/warning regression; all findings were ticketed and corrected, and exact-head re-review remains the merge gate |
+| Current-head CI | exact pushed commit after all review corrections | `ae39f0f0e52aa92a7b6e327f3e1ebaf1d4ebf151` passed every test, lint, docs, wheel, and secret job but failed the CLI audit because its new test was absent from the generated inventory; corrected exact-head CI remains required |
 
 The host PATH observation is not package evidence: a pre-existing console shim
 resolved to an older installation even while the source module resolved this
