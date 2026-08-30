@@ -1,2 +1,2 @@
-"""Local-model serving and benchmarks behind an explicit capability meta-router."""
-__version__ = "0.36.0"
+"""Explicit local AI serving, gateway, evidence, voice, media, and fleet capabilities."""
+__version__ = "1.0.0"

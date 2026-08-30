@@ -1,37 +1,38 @@
-![anvil-serving - local model serving and a capability meta-router](assets/banner.png)
+![Anvil Serving - explicit local AI capabilities](assets/banner.png)
 
 # anvil-serving
 
-> **Run local models, prove they work, and expose them through a capability meta-router.**
+> **Operate, qualify, and expose local AI capabilities through explicit contracts.**
 
-anvil-serving manages local model serves, qualifies them with preflight checks, records
-benchmark evidence, and exposes stable capability aliases over OpenAI- and
-Anthropic-compatible endpoints. Each configured alias maps to exactly one local tier. The
-selected inference service may own its mutable served-model metadata, while the router owns
-the alias, tier mapping, policy, and protocol boundary. That makes Anvil Serving a capability
-meta-router — not an intent classifier and not an automatic model selector.
+Anvil Serving is one product for Model Serving, the Capability Gateway,
+Evaluation & Evidence, Anvil Voice, Anvil Media, and Control Plane & Fleet
+operations. Each family has an explicit authority boundary and ordered CLI
+journey. They share one package and release line.
+
+Within that umbrella, the gateway is a capability meta-router: each configured
+alias maps to exactly one local tier. The selected inference service may own
+its mutable served-model metadata, while the router owns the alias, tier
+mapping, policy, and protocol boundary. It is not an intent classifier or an
+automatic model selector.
 
 Models are interchangeable subjects of evaluation here. The docs below describe capabilities;
 the [evidence layer](benchmarks/index.md) records which models currently occupy which tier and
 what was measured to put them there.
 
-## What you can do today
+## Product families
 
-| Capability | Start here | Commands |
+| Family | Start here | Commands |
 | --- | --- | --- |
-| **Serve models** — catalog, artifacts, recipes, and the serve lifecycle | [Catalog, artifacts & recipes](MODEL-LIFECYCLE.md) | `models`, `serves` |
-| **Promote and roll back** — the guarded transaction that changes what callers get | [Promote and roll back](MODEL-PROMOTION.md) | `serves promote`, `router quiesce/drain/readmit` |
-| **Qualify & benchmark** — prove an endpoint is a capability, not just reachable | [Evaluation & benchmarks](cli/eval.md) | `eval` |
-| **Route through the meta-router** — capabilities, auth, streaming, admission | [Capability meta-router](META-ROUTER.md) | `router` |
-| **Embeddings & reranking** — dedicated purpose models routed by exact model name | [Embeddings & reranking](PURPOSE-MODELS.md) | `router` |
-| **Voice & audio** — STT/TTS serves, realtime bridge, audio routes | [Voice pipeline](VOICE.md) | `voice` |
-| **Generate images & video** — bounded named workflows and durable artifacts | [Media commands](CLI.md#media) | `media` |
-| **Operate the host** — GPU budget, WSL/Docker repair, tailnet edge, observability | [Operator playbooks](OPERATOR-PLAYBOOKS.md) | `host`, `edge`, `collectors`, `dashboard`, `topology` |
-| **Integrate a harness** — MCP/controller tools and provider config for agents | [Agent workbench](WORKBENCH.md) | `workbench`, `harness`, `mcp`, `controller` |
+| **Model Serving** — artifacts, recipes, lifecycle, reservations, and guarded promotion | [Model lifecycle](MODEL-LIFECYCLE.md) | `init`, `models`, `serves` |
+| **Capability Gateway** — exact aliases, auth, translation, readiness, admission, and streaming | [Capability meta-router](META-ROUTER.md) | `router` |
+| **Evaluation & Evidence** — preflight, routed acceptance, and comparison-safe benchmarks | [Evaluation commands](cli/eval.md) | `eval` |
+| **Anvil Voice** — STT/TTS, realtime proxy, profiles, and voice qualification | [Voice pipeline](VOICE.md) | `voice` |
+| **Anvil Media** — bounded named workflows, durable jobs, qualification, and artifacts | [Media commands](cli/media.md) | `media` |
+| **Control Plane & Fleet** — topology, typed dispatch, host utilities, integrations, and fleet state | [Control Plane & Fleet](cli/control-plane.md) | `topology`, `controller`, `mcp`, `fleet`, `host` |
 
-New to the project? Start with [Getting started](GETTING-STARTED.md) to bring up the protocol
-front door, then [Configuration reference](CONFIGURATION.md) to declare local tiers and
-`[router.model_routes]`.
+Run `anvil-serving product families` for the installed catalog or start with
+[Product families and user journeys](PRODUCT-FAMILIES.md). Then use
+[Getting started](GETTING-STARTED.md) for the first serving-and-gateway path.
 
 ## Operating defaults
 
@@ -64,6 +65,7 @@ reference pages stay true as models change.
 | Read this | When you need |
 | --- | --- |
 | [Architecture](ARCHITECTURE.md) | System components and deployment shapes. |
+| [Product families](PRODUCT-FAMILIES.md) | Umbrella story, boundaries, and ordered user journeys. |
 | [Capability meta-router](META-ROUTER.md) | Product category, authority split, and non-goals. |
 | [Configuration reference](CONFIGURATION.md) | Router, serve, and voice configuration. |
 | [Command index](CLI.md) | Every command family and flag. |

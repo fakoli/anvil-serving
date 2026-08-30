@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 
@@ -35,6 +36,7 @@ DOC_PATHS = (
     Path("docs/MODEL-PROMOTION.md"),
     Path("docs/MODEL-LIFECYCLE.md"),
     Path("docs/PURPOSE-MODELS.md"),
+    Path("docs/cli/media.md"),
 )
 
 # Dispatcher-level options consumed before argparse; they take a value.
@@ -59,19 +61,35 @@ def _command_paths() -> set[str]:
 
 
 def _documented_invocations() -> list[tuple[str, str]]:
-    """(source doc, invocation) for every fenced ``anvil-serving`` line."""
+    """Return each complete fenced ``anvil-serving`` shell invocation."""
     found: list[tuple[str, str]] = []
     for doc in DOC_PATHS:
         in_fence = False
+        pending = ""
         for line in (ROOT / doc).read_text(encoding="utf-8").splitlines():
             if line.lstrip().startswith("```"):
+                assert not pending, f"{doc.as_posix()}: incomplete continued invocation"
                 in_fence = not in_fence
                 continue
             if not in_fence:
                 continue
-            match = _INVOCATION_RE.match(line.strip())
+            stripped = line.strip()
+            if pending:
+                continued = stripped.endswith("\\")
+                part = stripped[:-1].rstrip() if continued else stripped
+                pending = f"{pending} {part}"
+                if not continued:
+                    found.append((doc.as_posix(), pending))
+                    pending = ""
+                continue
+            match = _INVOCATION_RE.match(stripped)
             if match:
-                found.append((doc.as_posix(), match.group(1)))
+                invocation = match.group(1)
+                if invocation.endswith("\\"):
+                    pending = invocation[:-1].rstrip()
+                else:
+                    found.append((doc.as_posix(), invocation))
+        assert not pending, f"{doc.as_posix()}: incomplete continued invocation"
     return found
 
 
@@ -104,14 +122,14 @@ def test_documented_invocations_are_discoverable():
 
 @pytest.mark.parametrize("doc, invocation", _documented_invocations())
 def test_documented_command_path_exists(doc: str, invocation: str):
-    tokens = [token for token in invocation.split() if not token.startswith("-")]
+    tokens = [token for token in shlex.split(invocation) if not token.startswith("-")]
     resolved = _resolve(tokens, _command_paths())
     assert resolved, f"{doc}: '{invocation}' resolves to no command in the manifest"
 
 
 @pytest.mark.parametrize("doc, invocation", _documented_invocations())
 def test_documented_invocation_supplies_required_arguments(doc: str, invocation: str):
-    tokens = invocation.split()
+    tokens = shlex.split(invocation)
     bare = [token for token in tokens if not token.startswith("-")]
     command = _resolve(bare, _command_paths())
     assert command, f"{doc}: '{invocation}' resolves to no command"
