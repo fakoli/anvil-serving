@@ -1,9 +1,9 @@
 # CLI Reference
 
-`anvil-serving` is the operator interface for the router, local model serves,
-quality gates, host operations, and integrations. This landing page is the map;
-each command family has a focused reference with its commands, workflows, and
-safety rules.
+`anvil-serving` is the operator interface for all six product families. This
+landing page maps user goals to focused references; the executable source of
+truth is `anvil-serving product`, and the exhaustive command surface comes
+from the validated manifest.
 
 The cross-family grammar, safety, output, and portability rules are recorded in
 [ADR-0021](adr/0021-cli-interaction-contract.md). The modular registry and its
@@ -12,15 +12,18 @@ compact manifest contract are recorded in
 
 ## Command families
 
-| Work area | Top-level verbs | Reference |
+| Product family | Top-level verbs | Reference |
 | --- | --- | --- |
-| Router data plane | `router` | [Router](cli/router.md) |
-| Model serve lifecycle | `serves` | [Model serves](cli/serves.md) |
-| Catalog, artifacts, and recipes | `models` | [Models & recipes](cli/models.md) |
-| Quality gates and benchmarks | `eval` | [Evaluation & benchmarks](cli/eval.md) |
-| Setup and host operations | `init`, `doctor`, `upgrade`, `host`, `dashboard` | [Host & setup](cli/host.md) |
-| Topology and integrations | `topology`, `harness`, `mcp`, `controller`, `collectors`, `edge`, `media` | [Control plane & integrations](cli/control-plane.md) |
-| Audio and realtime speech | `voice` | [Voice](cli/voice.md) |
+| Product discovery | `product` | [Product discovery](cli/product.md) |
+| Model Serving | `init`, `models`, `serves` | [Models & recipes](cli/models.md) · [Model serves](cli/serves.md) |
+| Capability Gateway | `router` | [Router](cli/router.md) |
+| Evaluation & Evidence | `eval` | [Evaluation & benchmarks](cli/eval.md) |
+| Anvil Voice | `voice` | [Voice](cli/voice.md) |
+| Anvil Media | `media` | [Media](cli/media.md) |
+| Control Plane & Fleet | `fleet`, `harness`, `mcp`, `controller`, `host`, `doctor`, `upgrade`, `topology`, `collectors`, `dashboard`, `edge`, `workbench` | [Control Plane & Fleet](cli/control-plane.md) · [Fleet](cli/fleet.md) · [Host & setup](cli/host.md) |
+
+The canonical promises, boundaries, and cross-family handoffs are in
+[Product families and user journeys](PRODUCT-FAMILIES.md).
 
 If you are looking for serve recipes, start with
 [Models & recipes: Recipes](cli/models.md#recipes). It covers listing, inspecting,
@@ -32,6 +35,7 @@ Run the installed entry point or the equivalent module form:
 
 ```bash
 anvil-serving --help
+anvil-serving product families
 python -m anvil_serving.cli --help
 ```
 
@@ -84,12 +88,13 @@ separator.
   dispatcher uses the operator config-home topology.
 - Examples use `127.0.0.1`, because loopback is host-relative.
 
-## Media
+## Anvil Media
 
-`anvil-serving media` is the bounded operator-visible path for the same named
-workflow, durable job, cancellation, and opaque artifact records exposed by the
-gateway protocols. Callers select an exact workflow ID and version; the CLI
-never accepts raw ComfyUI graphs or private backend output paths.
+`anvil-serving media` is the first-class bounded path for the same named
+workflow, durable job, cancellation, qualification, and opaque artifact
+records exposed by gateway protocols. Callers select an exact workflow ID and
+version; the CLI never accepts raw ComfyUI graphs or private backend output
+paths.
 
 ```bash
 anvil-serving media capabilities --json
@@ -104,6 +109,10 @@ Workflow runs and cancellation are guarded mutations. Target selection resolves
 one declared `media-worker` or `media-gateway` resource owner; lifecycle changes
 remain behind the managed serve preview and confirmation contract.
 
+Continue with the dedicated [Anvil Media command reference](cli/media.md) for
+bundle preparation, qualification, job reconciliation, artifact delivery, and
+the caller/operator authority boundary.
+
 ## Complete command index
 
 This generated index is the exhaustive public surface. The family
@@ -115,26 +124,28 @@ required operands, choices, and defaults.
 <!-- BEGIN GENERATED CLI MANIFEST INDEX -->
 | Command path | Purpose | Class / output | Declared command options |
 |---|---|---|---|
+| `product` | Discover product families, boundaries, and ordered user journeys. | `read` / `bounded` | - |
+| `product families` | List the six product families and their boundaries. | `read` / `bounded` | - |
+| `product journey` | Show the ordered journey for one product family. | `read` / `bounded` | - |
 | `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | - |
-| `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
-| `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
-| `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate` |
-| `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service` |
-| `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
-| `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
-| `router install-config` | Validate and atomically install a router config, including tier-set migrations. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--router-url`<br>`--drain-timeout` |
-| `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
-| `router status` | Show router status. | `read` / `bounded` | - |
-| `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--live`<br>`--container`<br>`--installed-config`<br>`--probe-perspective`<br>`--timeout` |
-| `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
-| `router quiesce` | Quiesce one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
-| `router drain` | Wait for a quiesced tier to drain. | `read` / `bounded` | `--tier`<br>`--router-url`<br>`--timeout` |
-| `router readmit` | Safely readmit one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
-| `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
-| `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
-| `fleet` | Cross-host visibility across the declared operator topology. | `read` / `bounded` | - |
-| `fleet version` | Report anvil-serving version skew across declared fleet hosts. | `read` / `bounded` | `--host`<br>`--timeout` |
-| `fleet drift` | Compare each host's live operator home against its repository snapshot. | `read` / `bounded` | `--repo`<br>`--host`<br>`--home`<br>`--timeout` |
+| `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
+| `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
+| `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
+| `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |
+| `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | - |
+| `models recipes create` | Create one recipe in an operator registry. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models recipes update` | Update one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models recipes status` | Inspect one recipe-loaded candidate container. | `read` / `bounded` | - |
+| `models recipes logs` | Read bounded logs from one recipe-loaded candidate container. | `read` / `bounded` | `--tail`<br>`--since`<br>`--contains` |
+| `models recipes unload` | Remove one exact recipe-loaded candidate container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models cache` | Manage model cache storage. | `read` / `bounded` | - |
+| `models cache inventory` | Inspect Docker model-cache storage. | `read` / `bounded` | - |
+| `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
+| `models cache remove` | Remove one exact cached repository revision. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
 | `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -160,24 +171,22 @@ required operands, choices, and defaults.
 | `serves rollback-check` | Prove every declared rollback is actually usable. | `read` / `bounded` | - |
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
-| `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
-| `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
-| `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
-| `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |
-| `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | - |
-| `models recipes create` | Create one recipe in an operator registry. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models recipes update` | Update one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models recipes status` | Inspect one recipe-loaded candidate container. | `read` / `bounded` | - |
-| `models recipes logs` | Read bounded logs from one recipe-loaded candidate container. | `read` / `bounded` | `--tail`<br>`--since`<br>`--contains` |
-| `models recipes unload` | Remove one exact recipe-loaded candidate container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models cache` | Manage model cache storage. | `read` / `bounded` | - |
-| `models cache inventory` | Inspect Docker model-cache storage. | `read` / `bounded` | - |
-| `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
-| `models cache remove` | Remove one exact cached repository revision. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
+| `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
+| `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate` |
+| `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service` |
+| `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
+| `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
+| `router install-config` | Validate and atomically install a router config, including tier-set migrations. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--router-url`<br>`--drain-timeout` |
+| `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
+| `router status` | Show router status. | `read` / `bounded` | - |
+| `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--live`<br>`--container`<br>`--installed-config`<br>`--probe-perspective`<br>`--timeout` |
+| `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
+| `router quiesce` | Quiesce one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
+| `router drain` | Wait for a quiesced tier to drain. | `read` / `bounded` | `--tier`<br>`--router-url`<br>`--timeout` |
+| `router readmit` | Safely readmit one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
+| `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
+| `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
 | `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -277,6 +286,9 @@ required operands, choices, and defaults.
 | `media job cancel` | Cancel one caller-owned media job. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--backend-url` |
 | `media artifact` | Inspect authenticated media artifacts. | `read` / `bounded` | - |
 | `media artifact inspect` | Inspect opaque artifact metadata. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal` |
+| `fleet` | Cross-host visibility across the declared operator topology. | `read` / `bounded` | - |
+| `fleet version` | Report anvil-serving version skew across declared fleet hosts. | `read` / `bounded` | `--host`<br>`--timeout` |
+| `fleet drift` | Compare each host's live operator home against its repository snapshot. | `read` / `bounded` | `--repo`<br>`--host`<br>`--home`<br>`--timeout` |
 | `harness` | Manage harness integration. | `read` / `bounded` | - |
 | `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
 | `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

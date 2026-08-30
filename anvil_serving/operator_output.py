@@ -162,6 +162,26 @@ class HumanOutput:
     stderr: str
 
 
+@dataclass(frozen=True)
+class CommandResult:
+    """Typed result returned by local handlers that participate in CLI envelopes."""
+
+    data: Any = None
+    error: OperatorError | None = None
+    warnings: tuple[str, ...] = ()
+    human_stdout: str = ""
+    human_stderr: str = ""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "warnings", tuple(self.warnings))
+        if self.error is not None and not isinstance(self.error, OperatorError):
+            raise TypeError("CommandResult.error must be an OperatorError")
+
+    @property
+    def exit_code(self) -> int:
+        return self.error.exit_code if self.error is not None else EXIT_CODES["success"]
+
+
 def context_from_plan(plan: ExecutionPlan | Mapping[str, Any]) -> dict[str, Any]:
     """Return the fixed, redacted execution context shape for CLI envelopes."""
     raw = plan.as_dict() if isinstance(plan, ExecutionPlan) else dict(plan)

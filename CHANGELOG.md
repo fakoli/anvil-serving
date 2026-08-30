@@ -6,14 +6,51 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-30
+
+### Added
+
+- A code-owned six-family product catalog now defines Model Serving,
+  Capability Gateway, Evaluation & Evidence, Anvil Voice, Anvil Media, and
+  Control Plane & Fleet under the Anvil Serving umbrella.
+- `anvil-serving product families` and `product journey FAMILY` provide
+  bounded human and typed JSON discovery of promises, boundaries, commands,
+  documentation, and ordered operator journeys.
+- Anvil Media now has a dedicated command reference covering capability and
+  workflow discovery, exact bundle preparation, qualification, durable jobs,
+  cancellation, and opaque artifacts.
+
 ### Changed
 
+- Root help, README, docs navigation, architecture, terminology, package
+  metadata, CLI references, and operator context now use the same umbrella and
+  family story. Anvil Voice and Anvil Media are first-class domains in the same
+  package and release line, not separate products.
+- The command manifest advances from schema 5 to 6, carries the canonical
+  umbrella/family catalog, and assigns every visible operational command one
+  `product_family` id. Command-tree construction fails on missing, duplicate,
+  or unexpected family coverage.
+- Package, Dockerfile label, and synchronized public router, controller, media
+  controller, and voice Compose defaults now identify `anvil-serving:1.0.0`.
 - The packaged Hermes media skill (`1.0.6`) documents the observed live
   response contract: structured media envelopes nest under `data.job` /
   `{"job": ...}` rather than flat `job_id` keys, image artifact inspection
   returns native image content as a second MCP content block that text-only
   clients drop, `resources/read` is not implemented, and these shapes hold
   for any client of the eight media tools.
+
+### Fixed
+
+- Global `--json fleet version` keeps the complete typed per-host report when
+  skew or a missing installation correctly fails the gate, using
+  `fleet_version_gate_failed` instead of discarding the diagnostics behind a
+  generic execution error. Human output and nonzero gate semantics remain.
+
+### Compatibility
+
+- Consumers of `--command-manifest` must accept schema 6 and the new
+  `umbrella`, `product_families`, and per-command `product_family` fields.
+  Existing command paths and direct router semantics remain unchanged.
 
 ## [0.36.0] - 2026-08-28
 
@@ -2353,7 +2390,9 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.35.1...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/fakoli/anvil-serving/compare/v0.36.0...v1.0.0
+[0.36.0]: https://github.com/fakoli/anvil-serving/compare/v0.35.1...v0.36.0
 [0.35.1]: https://github.com/fakoli/anvil-serving/compare/v0.35.0...v0.35.1
 [0.35.0]: https://github.com/fakoli/anvil-serving/compare/v0.34.3...v0.35.0
 [0.21.0]: https://github.com/fakoli/anvil-serving/compare/v0.20.0...v0.21.0

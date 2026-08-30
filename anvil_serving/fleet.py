@@ -12,6 +12,7 @@ Observed live on the same day -- a live home six commits behind its repo
 while serving production, and a second host whose live home was a wholesale
 byte-copy of the wrong host's home.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,6 +25,7 @@ import subprocess
 import sys
 
 from .cli import _installed_version
+from .operator_output import CommandResult, OperatorError, UsageError
 from .paths import config_home
 
 DEFAULT_TIMEOUT_SECONDS = 10.0
@@ -50,8 +52,9 @@ def _parse_version(stdout: str) -> str | None:
     return parts[-1].strip("\r")
 
 
-def probe_host(host_id: str, *, timeout: float = DEFAULT_TIMEOUT_SECONDS,
-               _run=subprocess.run) -> dict:
+def probe_host(
+    host_id: str, *, timeout: float = DEFAULT_TIMEOUT_SECONDS, _run=subprocess.run
+) -> dict:
     """Probe one declared host's installed ``anvil-serving`` version over SSH.
 
     Never raises: every failure mode (unreachable, not installed, timed out,
@@ -61,29 +64,50 @@ def probe_host(host_id: str, *, timeout: float = DEFAULT_TIMEOUT_SECONDS,
     try:
         result = _run(argv, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
-        return {"host": host_id, "state": "timeout", "version": None,
-                "detail": "ssh timed out after %ss" % timeout}
+        return {
+            "host": host_id,
+            "state": "timeout",
+            "version": None,
+            "detail": "ssh timed out after %ss" % timeout,
+        }
     except FileNotFoundError:
-        return {"host": host_id, "state": "unreachable", "version": None,
-                "detail": "ssh is not available locally"}
+        return {
+            "host": host_id,
+            "state": "unreachable",
+            "version": None,
+            "detail": "ssh is not available locally",
+        }
 
     stderr_first = next(iter((result.stderr or "").strip().splitlines()), "")
     if result.returncode != 0:
         if "not found" in (result.stderr or "").lower():
-            return {"host": host_id, "state": "not-installed", "version": None,
-                     "detail": stderr_first or "anvil-serving not found"}
-        return {"host": host_id, "state": "unreachable", "version": None,
-                 "detail": stderr_first or "ssh exited %s" % result.returncode}
+            return {
+                "host": host_id,
+                "state": "not-installed",
+                "version": None,
+                "detail": stderr_first or "anvil-serving not found",
+            }
+        return {
+            "host": host_id,
+            "state": "unreachable",
+            "version": None,
+            "detail": stderr_first or "ssh exited %s" % result.returncode,
+        }
 
     version = _parse_version(result.stdout)
     if version is None:
-        return {"host": host_id, "state": "unreachable", "version": None,
-                 "detail": "anvil-serving --version produced no parsable output"}
+        return {
+            "host": host_id,
+            "state": "unreachable",
+            "version": None,
+            "detail": "anvil-serving --version produced no parsable output",
+        }
     return {"host": host_id, "state": "ok", "version": version, "detail": None}
 
 
-def collect_fleet_versions(hosts, local, *, timeout: float = DEFAULT_TIMEOUT_SECONDS,
-                            _run=subprocess.run) -> dict:
+def collect_fleet_versions(
+    hosts, local, *, timeout: float = DEFAULT_TIMEOUT_SECONDS, _run=subprocess.run
+) -> dict:
     """Pure collection: probe every host and summarize skew. No printing."""
     rows = []
     for host_id in hosts:
@@ -129,7 +153,9 @@ def declared_remote_hosts(topology, *, hostname: str | None = None):
     reported, never silently assumed.
     """
     local_hostname = hostname if hostname is not None else socket.gethostname()
-    matched = {host.id for host in topology.hosts if _local_hostname_matches(local_hostname, host.id)}
+    matched = {
+        host.id for host in topology.hosts if _local_hostname_matches(local_hostname, host.id)
+    }
     if not matched:
         return [host.id for host in topology.hosts], (
             "could not match local hostname %r to a declared host id; "
@@ -154,42 +180,101 @@ def _topology_remote_hosts():
     return declared_remote_hosts(topology)
 
 
-def cmd_version(hosts, *, timeout: float = DEFAULT_TIMEOUT_SECONDS, as_json: bool = False,
-                 local=None, _run=subprocess.run) -> int:
+def cmd_version(
+    hosts,
+    *,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    as_json: bool = False,
+    local=None,
+    _run=subprocess.run,
+) -> int:
     """Report per-host version and skew. Print human or JSON; return exit code."""
-    local = local_version() if local is None else local
-
-    if not hosts:
-        if as_json:
-            print(json.dumps({
-                "local_version": local, "hosts": [], "host_count": 0, "skewed": 0,
-                "unreachable": 0, "not_installed": 0, "timeout": 0,
-                "note": "no remote hosts declared",
-            }, sort_keys=True))
-        else:
-            print("local anvil-serving version: %s" % local)
-            print("no remote hosts declared")
-        return 0
-
-    report = collect_fleet_versions(hosts, local, timeout=timeout, _run=_run)
+    result = fleet_version_result(
+        hosts,
+        timeout=timeout,
+        local=local,
+        _run=_run,
+    )
     if as_json:
-        print(json.dumps(report, sort_keys=True))
+        print(json.dumps(result.data, sort_keys=True))
     else:
-        print("%-24s %-13s %-14s %s" % ("HOST", "STATE", "VERSION", "SKEW"))
-        for row in report["hosts"]:
-            print("%-24s %-13s %-14s %s" % (
-                row["host"], row["state"], row["version"] or "-",
-                "yes" if row["skew"] else "no"))
-        print()
-        print("fleet version: local %s, %d host(s), %d skewed, %d unreachable" % (
-            local, report["host_count"], report["skewed"], report["unreachable"]))
+        sys.stdout.write(result.human_stdout)
+    return result.exit_code
 
-    # ponytail: an unreachable host is not skew -- a sleeping laptop is an
-    # availability gap, not evidence of divergent code (STRATEGY-MAKE-
-    # DIVERGENCE-LOUD's availability-class reasoning). Only a *reachable* host
-    # running a different version, or a host missing the CLI outright, fails
-    # the gate.
-    return 1 if (report["skewed"] or report["not_installed"]) else 0
+
+def _fleet_version_human(report: dict) -> str:
+    """Render the stable human view of one typed Fleet version report."""
+    local = report["local_version"]
+    if not report["hosts"]:
+        return "local anvil-serving version: %s\nno remote hosts declared\n" % local
+    lines = ["%-24s %-13s %-14s %s" % ("HOST", "STATE", "VERSION", "SKEW")]
+    for row in report["hosts"]:
+        lines.append(
+            "%-24s %-13s %-14s %s"
+            % (
+                row["host"],
+                row["state"],
+                row["version"] or "-",
+                "yes" if row["skew"] else "no",
+            )
+        )
+    lines.extend(
+        (
+            "",
+            (
+                "fleet version: local %s, %d host(s), %d skewed, %d not installed, "
+                "%d unreachable, %d timed out"
+            )
+            % (
+                local,
+                report["host_count"],
+                report["skewed"],
+                report["not_installed"],
+                report["unreachable"],
+                report["timeout"],
+            ),
+        )
+    )
+    return "\n".join(lines) + "\n"
+
+
+def fleet_version_result(
+    hosts,
+    *,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    local=None,
+    _run=subprocess.run,
+    warnings=(),
+) -> CommandResult:
+    """Return the typed report and release-gate disposition without printing."""
+    local = local_version() if local is None else local
+    report = collect_fleet_versions(hosts, local, timeout=timeout, _run=_run)
+    if not hosts:
+        report["note"] = "no remote hosts declared"
+
+    error = None
+    # An unavailable host is not proof of divergent code. A reachable host
+    # running another version, or one missing the CLI, fails the release gate.
+    if report["skewed"] or report["not_installed"]:
+        reasons = []
+        if report["skewed"]:
+            reasons.append("%d version-skewed" % report["skewed"])
+        if report["not_installed"]:
+            reasons.append("%d missing installation" % report["not_installed"])
+        error = OperatorError(
+            "Fleet version gate failed: " + ", ".join(reasons),
+            code="fleet_version_gate_failed",
+            details={
+                "skewed": report["skewed"],
+                "not_installed": report["not_installed"],
+            },
+        )
+    return CommandResult(
+        data=report,
+        error=error,
+        warnings=tuple(warnings),
+        human_stdout=_fleet_version_human(report),
+    )
 
 
 def _sha256_normalized(data: bytes) -> str:
@@ -209,7 +294,8 @@ def discover_repo_hosts(repo: str) -> list[str]:
     if not os.path.isdir(hosts_root):
         return []
     return sorted(
-        name for name in os.listdir(hosts_root)
+        name
+        for name in os.listdir(hosts_root)
         if os.path.isdir(os.path.join(hosts_root, name, "operator-home"))
     )
 
@@ -293,8 +379,14 @@ def _remote_hash_script(names: list[str]) -> str:
     ) % (list(names),)
 
 
-def probe_drift_host(host_id: str, repo_hashes: dict, names: list[str], *,
-                      timeout: float = DEFAULT_TIMEOUT_SECONDS, _run=subprocess.run) -> dict:
+def probe_drift_host(
+    host_id: str,
+    repo_hashes: dict,
+    names: list[str],
+    *,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    _run=subprocess.run,
+) -> dict:
     """Fetch one remote host's live file hashes over SSH and diff them.
 
     Never raises: every failure mode is reported back as a row, not an
@@ -309,9 +401,7 @@ def probe_drift_host(host_id: str, repo_hashes: dict, names: list[str], *,
     # Base64 makes the payload a single argument with no shell-active
     # characters on any remote shell; the wrapper is plain ASCII either side.
     encoded = base64.b64encode(script.encode("utf-8")).decode("ascii")
-    wrapper = (
-        "import base64;exec(base64.b64decode('%s').decode('utf-8'))" % encoded
-    )
+    wrapper = "import base64;exec(base64.b64decode('%s').decode('utf-8'))" % encoded
     result = None
     stderr_first = ""
     for launcher in ("python3", "python"):
@@ -319,18 +409,26 @@ def probe_drift_host(host_id: str, repo_hashes: dict, names: list[str], *,
         # argv with spaces for the REMOTE shell to re-split -- on Windows,
         # cmd.exe hands python only the first token (observed live). Quote it
         # client-side; harmless on POSIX remotes.
-        argv = ["ssh", "-n", "-o", "BatchMode=yes", host_id, launcher, "-c",
-                '"%s"' % wrapper]
+        argv = ["ssh", "-n", "-o", "BatchMode=yes", host_id, launcher, "-c", '"%s"' % wrapper]
         try:
             result = _run(argv, capture_output=True, text=True, timeout=timeout)
         except subprocess.TimeoutExpired:
-            return {"host": host_id, "state": "timeout",
-                    "detail": "ssh timed out after %ss" % timeout, "files": []}
+            return {
+                "host": host_id,
+                "state": "timeout",
+                "detail": "ssh timed out after %ss" % timeout,
+                "files": [],
+            }
         except FileNotFoundError:
-            return {"host": host_id, "state": "unreachable",
-                    "detail": "ssh is not available locally", "files": []}
+            return {
+                "host": host_id,
+                "state": "unreachable",
+                "detail": "ssh is not available locally",
+                "files": [],
+            }
         stderr_lines = [
-            line for line in (result.stderr or "").strip().splitlines()
+            line
+            for line in (result.stderr or "").strip().splitlines()
             if not line.startswith("** ")  # client-side ssh advisory banners
         ]
         stderr_first = next(iter(stderr_lines), "")
@@ -340,22 +438,40 @@ def probe_drift_host(host_id: str, repo_hashes: dict, names: list[str], *,
         if "not recognized" not in lowered and "not found" not in lowered:
             break  # a real failure, not a launcher miss -- do not retry
     if result.returncode != 0:
-        return {"host": host_id, "state": "unreachable",
-                "detail": stderr_first or "ssh exited %s" % result.returncode, "files": []}
+        return {
+            "host": host_id,
+            "state": "unreachable",
+            "detail": stderr_first or "ssh exited %s" % result.returncode,
+            "files": [],
+        }
 
     try:
         live_hashes = json.loads(result.stdout)
     except (json.JSONDecodeError, TypeError):
-        return {"host": host_id, "state": "unreachable",
-                "detail": "drift probe produced no parsable output", "files": []}
+        return {
+            "host": host_id,
+            "state": "unreachable",
+            "detail": "drift probe produced no parsable output",
+            "files": [],
+        }
 
-    return {"host": host_id, "state": "ok", "detail": None,
-            "files": _diff_from_hashes(repo_hashes, live_hashes, names)}
+    return {
+        "host": host_id,
+        "state": "ok",
+        "detail": None,
+        "files": _diff_from_hashes(repo_hashes, live_hashes, names),
+    }
 
 
-def collect_host_drift(host_id: str, repo_home: str, *, home: str | None = None,
-                        hostname: str | None = None, timeout: float = DEFAULT_TIMEOUT_SECONDS,
-                        _run=subprocess.run) -> dict:
+def collect_host_drift(
+    host_id: str,
+    repo_home: str,
+    *,
+    home: str | None = None,
+    hostname: str | None = None,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    _run=subprocess.run,
+) -> dict:
     """Diff one host's repo snapshot against its live operator home.
 
     LOCAL is decided by the same hostname-prefix match ``fleet version``
@@ -367,8 +483,12 @@ def collect_host_drift(host_id: str, repo_home: str, *, home: str | None = None,
     if _local_hostname_matches(local_hostname, host_id):
         live_home = home if home is not None else config_home()
         live_hashes = _local_live_hashes(live_home, names)
-        row = {"host": host_id, "state": "ok", "detail": None,
-               "files": _diff_from_hashes(repo_hashes, live_hashes, names)}
+        row = {
+            "host": host_id,
+            "state": "ok",
+            "detail": None,
+            "files": _diff_from_hashes(repo_hashes, live_hashes, names),
+        }
     else:
         row = probe_drift_host(host_id, repo_hashes, names, timeout=timeout, _run=_run)
     row["compared"] = len(names)
@@ -377,19 +497,36 @@ def collect_host_drift(host_id: str, repo_home: str, *, home: str | None = None,
     return row
 
 
-def cmd_drift(repo: str, hosts, *, home: str | None = None, timeout: float = DEFAULT_TIMEOUT_SECONDS,
-              as_json: bool = False, hostname: str | None = None, _run=subprocess.run) -> int:
+def cmd_drift(
+    repo: str,
+    hosts,
+    *,
+    home: str | None = None,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    as_json: bool = False,
+    hostname: str | None = None,
+    _run=subprocess.run,
+) -> int:
     """Report per-host, per-file drift between repo snapshot and live home."""
     rows = [
-        collect_host_drift(host_id, repo_operator_home(repo, host_id), home=home,
-                            hostname=hostname, timeout=timeout, _run=_run)
+        collect_host_drift(
+            host_id,
+            repo_operator_home(repo, host_id),
+            home=home,
+            hostname=hostname,
+            timeout=timeout,
+            _run=_run,
+        )
         for host_id in hosts
     ]
     drifted = sum(1 for r in rows if r["state"] == "ok" and (r["differs"] or r["missing"]))
     unreachable = sum(1 for r in rows if r["state"] != "ok")
     report = {
-        "repo": repo, "hosts": rows, "host_count": len(rows),
-        "drifted": drifted, "unreachable": unreachable,
+        "repo": repo,
+        "hosts": rows,
+        "host_count": len(rows),
+        "drifted": drifted,
+        "unreachable": unreachable,
     }
 
     if as_json:
@@ -397,15 +534,19 @@ def cmd_drift(repo: str, hosts, *, home: str | None = None, timeout: float = DEF
     else:
         print("%-24s %-13s %-9s %-8s %s" % ("HOST", "STATE", "COMPARED", "DIFFERS", "MISSING"))
         for row in rows:
-            print("%-24s %-13s %-9s %-8s %s" % (
-                row["host"], row["state"], row["compared"], row["differs"], row["missing"]))
+            print(
+                "%-24s %-13s %-9s %-8s %s"
+                % (row["host"], row["state"], row["compared"], row["differs"], row["missing"])
+            )
         for row in rows:
             for entry in row["files"]:
                 if entry["status"] in ("differs", "missing-live"):
                     print("  %s: %s %s" % (row["host"], entry["status"], entry["path"]))
         print()
-        print("fleet drift: %d host(s), %d drifted, %d unreachable" % (
-            len(rows), drifted, unreachable))
+        print(
+            "fleet drift: %d host(s), %d drifted, %d unreachable"
+            % (len(rows), drifted, unreachable)
+        )
 
     return 1 if drifted else 0
 
@@ -415,7 +556,9 @@ def _build_parser() -> argparse.ArgumentParser:
     actions = parser.add_subparsers(dest="action", required=True)
     version = actions.add_parser("version")
     version.add_argument(
-        "--host", action="append", default=None,
+        "--host",
+        action="append",
+        default=None,
         help="Repeatable declared host id; overrides topology-derived hosts.",
     )
     version.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS)
@@ -424,13 +567,39 @@ def _build_parser() -> argparse.ArgumentParser:
     drift = actions.add_parser("drift")
     drift.add_argument("--repo", required=True, help="Private operator repository root.")
     drift.add_argument(
-        "--host", action="append", default=None,
+        "--host",
+        action="append",
+        default=None,
         help="Repeatable host id; overrides repo-discovered hosts.",
     )
     drift.add_argument("--home", default=None, help="Override the local live operator home.")
     drift.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     drift.add_argument("--json", action="store_true", dest="json_out")
     return parser
+
+
+def _fleet_version_result_from_args(args) -> CommandResult:
+    if args.host:
+        hosts = list(args.host)
+        note = None
+    else:
+        hosts, note = _topology_remote_hosts()
+        if hosts is None:
+            message = (
+                "no operator topology found and no --host given; pass --host NAME at least once"
+            )
+            error = UsageError(message, code="fleet_hosts_unavailable")
+            return CommandResult(error=error, human_stderr=message + "\n")
+    warnings = (note,) if note else ()
+    return fleet_version_result(hosts, timeout=args.timeout, warnings=warnings)
+
+
+def dispatch(argv=None):
+    """Return typed results to the root dispatcher for supported Fleet paths."""
+    args = _build_parser().parse_args(argv)
+    if args.action == "version":
+        return _fleet_version_result_from_args(args)
+    return main(argv)
 
 
 def main(argv=None) -> int:
@@ -454,8 +623,9 @@ def main(argv=None) -> int:
         else:
             hosts = discover_repo_hosts(repo)
             if not hosts:
-                print("no host operator-home snapshots found under %s/hosts" % repo,
-                      file=sys.stderr)
+                print(
+                    "no host operator-home snapshots found under %s/hosts" % repo, file=sys.stderr
+                )
                 return 2
         return cmd_drift(repo, hosts, home=args.home, timeout=args.timeout, as_json=args.json_out)
 
@@ -468,8 +638,7 @@ def main(argv=None) -> int:
         hosts, note = _topology_remote_hosts()
         if hosts is None:
             print(
-                "no operator topology found and no --host given; "
-                "pass --host NAME at least once",
+                "no operator topology found and no --host given; pass --host NAME at least once",
                 file=sys.stderr,
             )
             return 2
