@@ -13,7 +13,7 @@ CommandFactory = Callable[[], CommandNode | tuple[CommandNode, ...]]
 
 @dataclass(frozen=True)
 class CommandFamily:
-    """A lazily built command family and its root-help category."""
+    """A lazily built implementation family and fallback help category."""
 
     category: str
     factory: CommandFactory

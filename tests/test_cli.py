@@ -81,11 +81,13 @@ def test_top_level_help_groups_commands_and_shows_examples(capsys):
     assert rc == 0
     out = capsys.readouterr().out
     for token in (
-        "Data plane:",
-        "Local serving tools:",
-        "Quality loop:",
-        "Control plane & integrations:",
-        "Voice:",
+        "Start here:",
+        "Model Serving:",
+        "Capability Gateway:",
+        "Evaluation & Evidence:",
+        "Anvil Voice:",
+        "Anvil Media:",
+        "Control Plane & Fleet:",
         "Global options:",
         "--command-manifest",
         "anvil-serving --version",
@@ -148,15 +150,16 @@ def test_package_version_matches_pyproject():
     with open(_REPO_ROOT / "pyproject.toml", "rb") as fh:
         pyproject = tomllib.load(fh)
     assert cli.__version__ == pyproject["project"]["version"], (
-        "anvil_serving/__init__.py __version__ and pyproject.toml version "
-        "must be bumped together"
+        "anvil_serving/__init__.py __version__ and pyproject.toml version must be bumped together"
     )
 
 
 def test_command_manifest_is_terminal_and_machine_readable(capsys):
     assert cli.main(["--command-manifest"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["schema_version"] == 5
+    assert payload["schema_version"] == 6
+    assert len(payload["product_families"]) == 6
+    assert payload["umbrella"]["name"] == "Anvil Serving"
     assert any(record["path"] == "topology resolve" for record in payload["commands"])
 
     assert cli.main(["--command-manifest", "router", "status"]) == 2
@@ -224,12 +227,31 @@ def test_global_json_wraps_root_and_nested_dispatch(capsys):
     assert cli.main(["--json", "--help"]) == 0
     root = json.loads(capsys.readouterr().out)
     assert root["ok"] is True
-    assert "anvil-serving - local-model serving" in root["data"]
+    assert "anvil-serving - operate, qualify" in root["data"]
 
     assert cli.main(["mcp", "tools", "--json"]) == 0
     nested = json.loads(capsys.readouterr().out)
     assert nested["ok"] is True
     assert "router_status" in nested["data"]
+
+
+def test_product_discovery_is_human_and_typed_json(capsys):
+    assert cli.main(["product", "families"]) == 0
+    human = capsys.readouterr().out
+    assert "Anvil Serving" in human
+    assert "Anvil Media (anvil-media)" in human
+    assert "Control Plane & Fleet" in human
+
+    assert cli.main(["product", "journey", "media", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["data"]["family"]["id"] == "anvil-media"
+    assert payload["data"]["family"]["journey"][0]["cli"] == ("anvil-serving media capabilities")
+
+
+def test_unknown_product_family_is_a_typed_usage_error(capsys):
+    assert cli.main(["product", "journey", "not-a-family", "--json"]) == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "unknown_product_family"
 
 
 def test_incompatible_global_verbosity_exits_usage_without_dispatch(monkeypatch, capsys):
@@ -270,13 +292,33 @@ def test_serves_mode_confirm_is_forwarded_to_the_local_legacy_handler(monkeypatc
     )
 
     for action in ("enter", "leave"):
-        assert cli.main([
-            "serves", "mode", action, "tp2",
-            "--restore-group", "split-stack", "--confirm",
-        ]) == 0
-    assert cli.main([
-        "serves", "mode", "preview", "tp2", "--restore-group", "split-stack",
-    ]) == 0
+        assert (
+            cli.main(
+                [
+                    "serves",
+                    "mode",
+                    action,
+                    "tp2",
+                    "--restore-group",
+                    "split-stack",
+                    "--confirm",
+                ]
+            )
+            == 0
+        )
+    assert (
+        cli.main(
+            [
+                "serves",
+                "mode",
+                "preview",
+                "tp2",
+                "--restore-group",
+                "split-stack",
+            ]
+        )
+        == 0
+    )
     assert cli.main(["serves", "mode", "status"]) == 0
 
     enter, leave, preview, status = calls
@@ -291,9 +333,20 @@ def test_serves_mode_confirm_is_forwarded_to_the_local_legacy_handler(monkeypatc
 def test_serves_mode_enter_json_never_prompts_and_requires_confirmation(monkeypatch, capsys):
     monkeypatch.setattr("builtins.input", lambda _prompt: pytest.fail("prompted in JSON mode"))
     monkeypatch.setattr(HandlerRef, "resolve", lambda self: pytest.fail("handler resolved"))
-    assert cli.main([
-        "serves", "mode", "enter", "tp2", "--restore-group", "split-stack", "--json",
-    ]) == 3
+    assert (
+        cli.main(
+            [
+                "serves",
+                "mode",
+                "enter",
+                "tp2",
+                "--restore-group",
+                "split-stack",
+                "--json",
+            ]
+        )
+        == 3
+    )
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
     assert captured.err == ""
@@ -616,9 +669,7 @@ def test_cli_remote_config_export_maps_path_and_allows_bounded_large_response(
     )
 
     assert seen["operation"].tool_name == "operator_config_export"
-    assert dict(seen["operation"].arguments) == {
-        "paths": ["serve-recipes.toml", "host.toml"]
-    }
+    assert dict(seen["operation"].arguments) == {"paths": ["serve-recipes.toml", "host.toml"]}
     assert seen["controller"] == (
         "http://100.64.0.10:8765",
         {
@@ -1142,9 +1193,18 @@ def test_voice_benchmark_is_endpoint_client_not_proxy_owner(monkeypatch, capsys)
     topology = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
     monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: 0)
 
-    assert cli.main([
-        "voice", "benchmark", "--topology", str(topology), "--json",
-    ]) == 2
+    assert (
+        cli.main(
+            [
+                "voice",
+                "benchmark",
+                "--topology",
+                str(topology),
+                "--json",
+            ]
+        )
+        == 2
+    )
     rejected = json.loads(capsys.readouterr().out)
     assert rejected["error"]["code"] == "usage_error"
     assert "does not support target-resolution options" in rejected["error"]["message"]
@@ -1452,7 +1512,7 @@ def test_cli_reference_indexes_the_live_canonical_surface():
 
 def test_cli_reference_routes_recipes_and_eval_by_workflow():
     landing = (_REPO_ROOT / "docs" / "CLI.md").read_text(encoding="utf-8")
-    assert "| Catalog, artifacts, and recipes | `models` |" in landing
+    assert "| Model Serving | `init`, `models`, `serves` |" in landing
     assert "[Models & recipes: Recipes](cli/models.md#recipes)" in landing
 
     eval_reference = (_REPO_ROOT / "docs" / "cli" / "eval.md").read_text(encoding="utf-8")

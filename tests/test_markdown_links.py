@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import subprocess
 import sys
 
@@ -223,3 +223,37 @@ def test_git_index_lookup_has_timeout(monkeypatch, tmp_path: Path):
 
     with pytest.raises(subprocess.TimeoutExpired):
         links.tracked_paths(tmp_path, _run=timeout)
+
+
+def _unindexed_top_level_findings(root: Path) -> list[str]:
+    prefix = "docs/findings/"
+    index = (root / prefix / "README.md").read_text(encoding="utf-8")
+    tracked = links.tracked_paths(root)
+    return sorted(
+        PurePosixPath(relative).name
+        for relative in tracked
+        if relative.startswith(prefix)
+        and "/" not in relative.removeprefix(prefix)
+        and relative.endswith(".md")
+        and relative != f"{prefix}README.md"
+        and PurePosixPath(relative).name not in index
+    )
+
+
+def test_every_top_level_finding_is_present_in_the_chronological_index():
+    missing = _unindexed_top_level_findings(ROOT)
+
+    assert not missing, f"top-level findings missing from the index: {missing}"
+
+
+def test_untracked_finding_draft_does_not_change_index_scope(tmp_path: Path):
+    root = _repo(
+        tmp_path,
+        {
+            "docs/findings/README.md": "- [Tracked](tracked.md)\n",
+            "docs/findings/tracked.md": "# Tracked\n",
+        },
+    )
+    (root / "docs/findings/draft.md").write_text("# Draft\n", encoding="utf-8")
+
+    assert _unindexed_top_level_findings(root) == []

@@ -43,7 +43,22 @@ Confirm the CLI is available:
 
 ```bash
 anvil-serving --help
+anvil-serving product families
 ```
+
+If your first goal is Voice, Media, evaluation, or fleet operations rather
+than the serving-and-gateway path below, ask the installed catalog for the
+ordered journey:
+
+```bash
+anvil-serving product journey anvil-voice
+anvil-serving product journey anvil-media
+anvil-serving product journey evaluation-evidence
+anvil-serving product journey control-plane-fleet
+```
+
+The six-family boundary and cross-family handoffs are documented in
+[Product families and user journeys](PRODUCT-FAMILIES.md).
 
 ## Start Real Local Tiers
 
@@ -170,6 +185,8 @@ to need on a first run:
 
 ## Next Steps
 
+- Read [Product families and user journeys](PRODUCT-FAMILIES.md) to choose the
+  correct authority boundary before operating a different domain.
 - Read [Capability meta-router](META-ROUTER.md) for the product and authority
   model, [Architecture](ARCHITECTURE.md) for the system overview, then the
   [meta-router request path](THIN-CAPABILITY-GATEWAY.md) for runtime details.
@@ -181,4 +198,6 @@ to need on a first run:
 - Read [Model settings](MODEL-SETTINGS-EXAMPLE.md) before serving thinking-by-default models.
 - Read [Operator playbooks](OPERATOR-PLAYBOOKS.md) to manage Docker Compose model serves.
 - Read [Voice pipeline](VOICE.md) to run STT/TTS lifecycle, the Realtime voice server, and model-free Mini gateway validation.
+- Read [Anvil Media commands](cli/media.md) to discover, qualify, run, and
+  inspect bounded image/video workflows.
 - Read [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) for the reference gateway setup.

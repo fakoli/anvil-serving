@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anvil-serving"
-version = "0.36.0"
-description = "A local-model serving and benchmark toolkit with an explicit capability meta-router."
+version = "1.0.0"
+description = "Operate, qualify, and expose local AI capabilities across serving, gateway, evidence, voice, media, and fleet workflows."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -13,11 +13,11 @@ requires-python = ">=3.11"   # the router's config loader uses stdlib tomllib (3
 authors = [{ name = "Sekou Doumbouya" }]
 keywords = [
     "llm", "router", "local-llm", "claude-code", "openai", "anthropic",
-    "benchmark", "inference", "coding-agent", "meta-router",
-    "sglang", "vllm",
+    "benchmark", "inference", "coding-agent", "meta-router", "voice", "media",
+    "mcp", "fleet", "sglang", "vllm",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",

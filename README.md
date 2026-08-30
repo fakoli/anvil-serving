@@ -1,25 +1,29 @@
 <div align="center">
 
-![anvil-serving - local model serving and a capability meta-router](docs/assets/banner.png)
+![Anvil Serving - explicit local AI capabilities](docs/assets/banner.png)
 
 # anvil-serving
 
-> **Benchmark and serve local models through one explicit capability meta-router.**
+> **Operate, qualify, and expose local AI capabilities through explicit contracts.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.36.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-1.0.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 </div>
 
-anvil-serving runs and benchmarks local model serves, then exposes their named
-capabilities through one authenticated endpoint. Its product category is an
-explicit **capability meta-router**: callers use a stable capability alias,
-operators map that alias to exactly one tier, and the selected inference
-service may report mutable facts about the model and context it currently
-serves. The implementation remains a deliberately thin gateway. There is no
-request classifier, quality-profile router, semantic fallback, cloud
-escalation, or hidden substitute model.
+Anvil Serving is one umbrella product for local Model Serving, the Capability
+Gateway, Evaluation & Evidence, Anvil Voice, Anvil Media, and Control Plane &
+Fleet operations. Those families share one package, CLI, topology, safety
+contract, evidence policy, and release line. Anvil Voice and Anvil Media are
+first-class branded domains inside the umbrella, not separate products.
+
+The gateway family is an explicit **capability meta-router**: callers use a
+stable capability alias, operators map that alias to exactly one tier, and the
+selected inference service may report mutable facts about the model and
+context it currently serves. Its request implementation remains deliberately
+thin. There is no request classifier, quality-profile router, semantic
+fallback, cloud escalation, or hidden substitute model.
 
 The reference topology has two equivalent RTX PRO 6000 Blackwell Max-Q GPUs.
 In split mode, compatible LLM, Omni, voice, purpose-model, and ComfyUI workloads
@@ -28,7 +32,27 @@ one explicitly declared TP=2 serve owns both cards and every other GPU
 inference workload is offline. Capability aliases remain independent of that
 placement. The gateway keeps authentication, dialect translation, streaming,
 readiness, admission, and decision evidence consistent across those
-capabilities.
+capabilities. See [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
+for the authority boundary and the ordered path through each family.
+
+## Product families
+
+| Family | User outcome | Primary commands |
+| --- | --- | --- |
+| **Model Serving** | Pin and operate reproducible model serves. | `init`, `models`, `serves` |
+| **Capability Gateway** | Expose exact authenticated capability aliases. | `router` |
+| **Evaluation & Evidence** | Prove compatibility and retain benchmark evidence. | `eval` |
+| **Anvil Voice** | Operate qualified STT, TTS, and realtime voice paths. | `voice` |
+| **Anvil Media** | Run bounded named image/video workflows with durable artifacts. | `media` |
+| **Control Plane & Fleet** | Resolve ownership and operate declared hosts and integrations. | `topology`, `controller`, `mcp`, `fleet`, `host` |
+
+The installed product map is read-only and machine-readable:
+
+```bash
+anvil-serving product families
+anvil-serving product journey anvil-media
+anvil-serving product journey control-plane-fleet --json
+```
 
 ## Capability meta-router contract
 
@@ -89,6 +113,7 @@ only for real local model serves.
 
 ```bash
 pip install -e .
+anvil-serving product families
 anvil-serving init
 anvil-serving serves groups
 anvil-serving serves up SERVE_NAME --dry-run
@@ -127,13 +152,16 @@ mapping is an exposure decision, not a model promotion claim.
 
 | Surface | Purpose |
 |---|---|
+| `anvil-serving product` | Read-only family, boundary, and ordered-journey discovery. |
 | `anvil-serving router run` | Authenticated Anthropic/OpenAI-compatible capability meta-router. |
 | `anvil-serving serves` | Compose-backed lifecycle, GPU reservations, and split/exclusive TP=2 mode transactions. |
 | `anvil-serving eval preflight` | Functional qualification of a concrete endpoint. |
 | `anvil-serving eval benchmark` | Capacity and quality evidence collection. |
 | `anvil-serving models` | Model cache, source, and serve-recipe management. |
 | `anvil-serving voice` | Operator-owned STT/TTS, bridge, Realtime, and voice benchmark lifecycle. |
+| `anvil-serving media` | Named image/video workflows, qualification, durable jobs, cancellation, and opaque artifacts. |
 | `anvil-serving mcp serve` / `controller` | Structured same-host or private control-plane access. |
+| `anvil-serving topology` / `fleet` / `host` | Ownership resolution, fleet parity/drift, and supported host utilities. |
 
 The reference split-host control plane runs the controller in the dedicated
 Linux `controller` image on Fakoli Dark and exposes it through host-owned
@@ -149,6 +177,7 @@ controller, and ordinary CLI remain stdlib-only.
 
 - [Start here for the next internet model recipe](START_HERE.md)
 - [Getting started](docs/GETTING-STARTED.md)
+- [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
 - [Capability meta-router](docs/META-ROUTER.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Configuration](docs/CONFIGURATION.md)
@@ -158,6 +187,7 @@ controller, and ordinary CLI remain stdlib-only.
 - [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md)
 - [Fakoli Mini to Dark remote control](examples/fakoli-dark/REMOTE-CONTROL.md)
 - [Voice pipeline](docs/VOICE.md)
+- [Anvil Media commands](docs/cli/media.md)
 - [Benchmarks](docs/benchmarks/index.md)
   - [Context, agentic, and SWE benchmark jobs](docs/benchmarks/context-agentic-swe.md)
   - [RTX PRO 6000](docs/benchmarks/hardware/rtx-pro-6000.md)

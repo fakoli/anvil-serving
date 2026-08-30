@@ -12,6 +12,7 @@ from .harness import commands as harness_commands
 from .host import commands as host_commands
 from .models import commands as model_commands
 from .media import commands as media_commands
+from .product import commands as product_commands
 from .router import commands as router_commands
 from .serves import commands as serves_commands
 from .voice import commands as voice_commands
@@ -23,17 +24,22 @@ from .spec import (
     _inherit_docs_anchor,
     validate_command_tree,
 )
+from ..product_families import (
+    family_name_for_command,
+    validate_command_coverage,
+)
 
 
 ROOT_ORDER = (
+    "product",
     "init",
-    "router",
-    "fleet",
-    "serves",
     "models",
+    "serves",
+    "router",
     "eval",
     "voice",
     "media",
+    "fleet",
     "harness",
     "mcp",
     "controller",
@@ -57,9 +63,10 @@ def build_command_tree(
     roots: dict[str, CommandNode] = {}
     for family in selected:
         for declaration in family.build():
+            product_name = family_name_for_command(declaration.name)
             node = replace(
                 _inherit_docs_anchor(declaration),
-                group=family.category,
+                group=product_name or family.category,
             )
             if node.name in roots:
                 raise ValueError(f"duplicate command family root {node.name!r}")
@@ -72,6 +79,7 @@ def build_command_tree(
             "command family roots do not match the public surface: "
             f"missing={sorted(missing)} unexpected={sorted(unexpected)}"
         )
+    validate_command_coverage(ROOT_ORDER, excluded=("product",))
     tree = CommandTree(
         nodes=tuple(roots[name] for name in ROOT_ORDER),
         global_options=GLOBAL_OPTIONS,
@@ -83,6 +91,7 @@ def build_command_tree(
 # This explicit list is the registration boundary. There is no filesystem
 # discovery, and decorator evaluation imports no command handlers.
 FAMILIES = (
+    product_commands,
     host_commands,
     router_commands,
     fleet_commands,

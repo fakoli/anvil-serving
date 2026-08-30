@@ -1,4 +1,5 @@
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,7 @@ from anvil_serving.commands import (
     render_manifest,
     validate_command_tree,
 )
+from anvil_serving.product_families import PRODUCT_FAMILIES, validate_command_coverage
 
 
 def test_manifest_is_checked_in_and_matches_deterministic_regeneration():
@@ -31,7 +33,7 @@ def test_manifest_is_checked_in_and_matches_deterministic_regeneration():
 
 def test_manifest_is_byte_stable():
     assert render_manifest() == render_manifest()
-    assert manifest_data()["schema_version"] == 5
+    assert manifest_data()["schema_version"] == 6
 
 
 def test_visible_commands_link_to_existing_reference_pages_and_headings():
@@ -62,6 +64,14 @@ def test_visible_commands_link_to_existing_reference_pages_and_headings():
 
 def test_manifest_records_recursive_paths_and_metadata():
     records = {record["path"]: record for record in manifest_data()["commands"]}
+
+    assert records["product"]["product_family"] is None
+    assert records["serves up"]["product_family"] == "model-serving"
+    assert records["router status"]["product_family"] == "capability-gateway"
+    assert records["eval preflight"]["product_family"] == "evaluation-evidence"
+    assert records["voice audio status"]["product_family"] == "anvil-voice"
+    assert records["media capabilities"]["product_family"] == "anvil-media"
+    assert records["fleet version"]["product_family"] == "control-plane-fleet"
 
     assert "eval benchmark external compare" in records
     assert records["voice up"]["resource_role"] == "stt-serve"
@@ -111,9 +121,7 @@ def test_manifest_records_recursive_paths_and_metadata():
     assert records["eval benchmark external export"]["mutation_class"] == "mutate"
     assert records["harness sync openclaw"]["remote_operation"]["tool"] == "openclaw_sync"
     assert records["harness sync clients"]["remote_operation"]["tool"] == "client_catalog_sync"
-    assert records["harness sync hermes-media"]["remote_operation"]["tool"] == (
-        "hermes_media_sync"
-    )
+    assert records["harness sync hermes-media"]["remote_operation"]["tool"] == ("hermes_media_sync")
     assert records["harness restart openclaw"]["recovery_capable"] is True
     assert records["host wsl-config"]["execution_host_os"] == ["windows"]
     assert records["host restart-docker"]["execution_host_os"] == ["windows", "macos"]
@@ -161,17 +169,19 @@ def test_manifest_records_recursive_paths_and_metadata():
 
 
 def test_voice_aggregate_refuses_split_topology(capsys):
-    rc = cli.main([
-        "voice",
-        "up",
-        "--dry-run",
-        "--topology",
-        "examples/fakoli-dark/operator-topology.toml",
-        "--command-host",
-        "host:fakoli-dark",
-        "--command-runtime",
-        "runtime:dark-docker",
-    ])
+    rc = cli.main(
+        [
+            "voice",
+            "up",
+            "--dry-run",
+            "--topology",
+            "examples/fakoli-dark/operator-topology.toml",
+            "--command-host",
+            "host:fakoli-dark",
+            "--command-runtime",
+            "runtime:dark-docker",
+        ]
+    )
 
     assert rc == 3
     assert "does not support execution runtime role 'native'" in capsys.readouterr().err
@@ -382,7 +392,44 @@ def test_explicit_family_list_rebuilds_the_same_tree():
     rebuilt = build_command_tree(FAMILIES)
 
     assert rebuilt == COMMAND_TREE
-    assert len(FAMILIES) == 10
+    assert len(FAMILIES) == 11
+
+
+def test_product_families_partition_the_operational_root_surface_once():
+    roots = tuple(node.name for node in COMMAND_TREE.nodes)
+
+    validate_command_coverage(roots, excluded=("product",))
+    assigned = [command for family in PRODUCT_FAMILIES for command in family.commands]
+    assert len(assigned) == len(set(assigned)) == len(roots) - 1
+    assert {node.group for node in COMMAND_TREE.nodes} == {
+        "Start here",
+        *(family.name for family in PRODUCT_FAMILIES),
+    }
+
+
+def test_product_journey_steps_reference_visible_command_paths():
+    visible_paths = {record["path"] for record in manifest_data()["commands"] if record["visible"]}
+
+    for family in PRODUCT_FAMILIES:
+        for step in family.journey:
+            tokens = shlex.split(step.cli)
+            assert tokens[0] == "anvil-serving"
+            command_tokens = []
+            for token in tokens[1:]:
+                if token.startswith("-") or "<" in token:
+                    break
+                command_tokens.append(token)
+            path = " ".join(command_tokens)
+            assert path in visible_paths, f"{family.id}/{step.stage} references {path!r}"
+
+    media_inventory = next(
+        step
+        for family in PRODUCT_FAMILIES
+        if family.id == "anvil-media"
+        for step in family.journey
+        if step.stage == "inventory"
+    )
+    assert "media bundle inventory <WORKFLOW>" in media_inventory.cli
 
 
 def test_registry_import_does_not_import_operational_handlers():
