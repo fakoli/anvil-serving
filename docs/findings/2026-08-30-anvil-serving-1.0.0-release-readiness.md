@@ -103,8 +103,8 @@ and ordinary bounded host resources; no parallel model workload was started.
 | Surface | Command or method | Result |
 | --- | --- | --- |
 | Candidate version | source-module version probe | `anvil-serving 1.0.0`; a separate stale PATH shim still reported the previously installed `0.36.0` and was excluded from candidate evidence |
-| Focused product/Fleet regression | command-tree, CLI, Fleet, output, and Compose tests | 531 passed before the final journey correction; the post-correction focused set passed 348 tests |
-| Full Python regression | `python scripts/run_tests.py tests/ -x -q` | final staged code: 4,426 passed and 9 skipped in 184.11 seconds |
+| Focused product/Fleet regression | command-tree, CLI, Fleet, output, and Compose tests | 531 passed before the final journey correction; the post-correction focused set passed 348 tests; the adversarial-review correction set passed 146 and skipped 6 |
+| Full Python regression | `python scripts/run_tests.py tests/ -x -q` | final review-corrected code: 4,453 passed and 9 skipped in 187.84 seconds |
 | CLI documentation audit | full-scope check/update | 834 files scanned; zero violations; generated manifest/reference inventory current |
 | Semantic secret hygiene | scanner self-test and current/tracked/untracked scopes | self-test passed; final candidate scan covered 2,119 tracked text files and zero non-ignored untracked text files with zero findings |
 | Pinned signature scan | exact staged-tree archive with pinned Gitleaks digest | final pre-review staged snapshot scanned with zero findings; current-head CI must repeat the gate |
@@ -118,7 +118,8 @@ and ordinary bounded host resources; no parallel model workload was started.
 | Distribution build | isolated `python -m build` | built `anvil_serving-1.0.0-py3-none-any.whl` and `anvil_serving-1.0.0.tar.gz` |
 | Distribution metadata | Twine check | wheel and source distribution passed |
 | Isolated wheel install | clean wheel smoke outside the checkout | installed package data and `anvil-serving router run --help` passed; wheel SHA-256 `591991ea48b8c20d4ec72ff27c8692330078e2ba9d31993294435dd46ecc5eb9` |
-| Independent adversarial review and current-head CI | exact pushed commit | pending; merge is prohibited until both pass |
+| Independent adversarial review | GPT-5.5/xhigh review of pushed commit `7fea8c8bccce04ebb8702302e5c2f806e78d79c9` | found two P2 documentation defects: incomplete Media cancellation examples and an unindexed Media finding; both were ticketed and corrected, a broader completeness check repaired one pre-existing unindexed intake finding, and exact-head re-review remains the merge gate |
+| Current-head CI | exact pushed commit after review corrections | pending; merge is prohibited until it passes |
 
 The host PATH observation is not package evidence: a pre-existing console shim
 resolved to an older installation even while the source module resolved this
