@@ -1,6 +1,6 @@
 # OpenClaw harness restart does not resolve the service executable path
 
-**Status:** Open
+**Status:** Source fix implemented; live deployment validation pending
 
 ## Problem
 
@@ -37,3 +37,14 @@ not make the managed command functional.
 - Add a negative test for an unresolved or mismatched service executable.
 - Pass the existing harness restart, CLI reference, Ruff, and full test gates.
 - Run one bounded live regression through the managed command on Mini.
+
+## Source implementation
+
+The source fix resolves an on-PATH executable to its exact path first. When it
+is absent on macOS, the command loads the fixed
+`ai.openclaw.gateway` LaunchAgent plist, rejects a mismatched label or program,
+records a SHA-256 definition fingerprint plus program basenames, restarts only
+that loaded label, and waits for `http://127.0.0.1:18789/health` to return 200.
+Hermetic positive, mismatch, and dry-run tests cover the fallback. Keep this
+ticket open until the merged package is installed on Mini and the managed live
+regression passes; source merge alone is not deployment proof.

@@ -251,9 +251,16 @@ container name cannot silently target an unrelated workload.
 ```bash
 anvil-serving models recipes status MODEL --container my-candidate --registry ./serve-recipes.local.toml
 anvil-serving models recipes logs MODEL --container my-candidate --registry ./serve-recipes.local.toml --tail 200
+anvil-serving models recipes logs MODEL --container my-candidate --tail 500 --contains ERROR --contains "KV cache"
 anvil-serving models recipes unload MODEL --container my-candidate --registry ./serve-recipes.local.toml --dry-run
 anvil-serving models recipes unload MODEL --container my-candidate --registry ./serve-recipes.local.toml --confirm
 ```
+
+`--contains` is a case-insensitive literal filter and may be repeated; a line
+is emitted when it contains any selected literal. Filtering happens after the
+exact recipe/container ownership check and preserves stdout/stderr separation.
+Use it to inspect actionable startup signatures without returning every model
+load progress line. Remove the filter when the complete bounded tail is needed.
 
 Use these commands for isolated benchmark candidates. Use `serves status`,
 `serves logs`, and `serves down` for manifest-owned deployments. Do not use raw
