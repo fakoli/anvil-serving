@@ -1,0 +1,52 @@
+{
+  "schema": "anvil-serving.external-priors/v1",
+  "observed_at": "2026-08-29",
+  "candidate": {
+    "model": "wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1",
+    "revision": "319d66a8b53092b491f698440ecea781e4ddd4e4",
+    "model_url": "https://huggingface.co/wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1/tree/319d66a8b53092b491f698440ecea781e4ddd4e4",
+    "source_model": "zai-org/GLM-5.3-Flash",
+    "source_revision": "f12e0fe0d085f38ac964cf1a5ff1caa79a4d0928",
+    "quantization": "EXL3/MCG K3 routed experts with non-routed tensors kept at their published native precision",
+    "logical_payload_bytes": 137123823211
+  },
+  "draft": {
+    "model": "incoai/GLM-5.3-Flash-DFlash2",
+    "revision": "dc77ff1c99eeb2df044ee3d4f0094eb033fee410",
+    "model_url": "https://huggingface.co/incoai/GLM-5.3-Flash-DFlash2/tree/dc77ff1c99eeb2df044ee3d4f0094eb033fee410",
+    "logical_payload_bytes": 2342169800,
+    "license": "cc-by-nc-nd-4.0",
+    "license_note": "Published for non-commercial research and evaluation; commercial deployment requires separate permission."
+  },
+  "runtime": {
+    "source_url": "https://github.com/tpurtell/glm-5.3-flash-ext3-4-bit-2x-rtx/tree/d46fdeddf8c6fec2d4595b65535a32d80a5af787",
+    "source_revision": "d46fdeddf8c6fec2d4595b65535a32d80a5af787",
+    "image": "ghcr.io/tpurtell/glm-5.3-flash-exl3-4bpw-2x-rtx@sha256:001a45bd71bcf908a8c07459570bdb8c5e0a205d085f29ac7f3201529fa3eb75",
+    "linux_amd64_manifest": "sha256:ea2ba10c826ec1efaf97776a157195f5b7ec41dec18fe7592c5a3edaf9980a2c"
+  },
+  "published_recipe": {
+    "hardware": "2x RTX PRO 6000 Blackwell Workstation Edition on native Linux",
+    "hardware_relevance": "Close GPU family and PCIe TP=2 topology, but not the local Max-Q products or WSL2/Docker Desktop stack.",
+    "context_tokens": 1048576,
+    "max_sequences": 16,
+    "image_limit": 16,
+    "video_limit": 0,
+    "target_kv_dtype": "fp8_ds_mla",
+    "draft_kv_dtype": "bfloat16",
+    "default_dflash_depth": 5,
+    "reported_results": {
+      "single_request_code_agent_output_tokens_per_second": 199.1,
+      "c16_aggregate_output_tokens_per_second": 800.9,
+      "prefill_128k_tokens_per_second": 4382,
+      "one_million_context_needles_passed": 6,
+      "one_million_context_needles_total": 6,
+      "six_needle_elapsed_seconds": 266.8,
+      "image_ordering_passed_images": 16,
+      "image_17_admission_status": 400,
+      "semantic_contracts_passed": 21,
+      "semantic_contracts_total": 21
+    }
+  },
+  "evidence_class": "external-prior",
+  "decision_use": "Select the sole new candidate for local qualification and choose matched K5 and K3 speculative-depth experiments; none of these values are local measurements or promotion proof."
+}

@@ -1,0 +1,114 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1"
+status = "verified"
+source = "Purtell DFlash2 FP8 release translated to a guarded WSL2/Docker Desktop TP=2 candidate"
+family = "glm-5.3-flash-multimodal-moe"
+
+[recipe.download]
+repo = "wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1"
+revision = "319d66a8b53092b491f698440ecea781e4ddd4e4"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2/Docker Desktop; exclusive TP=2/DCP=2 qualification lane. The upstream prior used two non-Max-Q workstation cards on native Linux, so its throughput is not treated as local evidence."
+
+[recipe.serve]
+engine = "vllm-glm53-exl3-k3-b12x-dflash2"
+allow_cuda_visible_devices_index = true
+image = "ghcr.io/tpurtell/glm-5.3-flash-exl3-4bpw-2x-rtx@sha256:001a45bd71bcf908a8c07459570bdb8c5e0a205d085f29ac7f3201529fa3eb75"
+model_path = "/root/.cache/huggingface/hub/models--wrldsuksgo2mars--GLM-5.3-Flash-EXL3-K3-v1/snapshots/319d66a8b53092b491f698440ecea781e4ddd4e4"
+named_volumes = [
+  "glm53-purtell-k3-dflash2-vllm-cache:/root/.cache",
+]
+quantization = "EXL3/MCG K3 routed experts with native-precision attention, dense/shared tensors, vision, and MTP; FP8 DS-MLA target KV; BF16 DFlash2 draft KV"
+context_tokens = 1048576
+port = 8001
+startup_timeout_seconds = 3600
+served_model_name = "glm53-flash-exl3-k3-dflash2-k5-fp8-tp2-1m-vision"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "HF_HUB_OFFLINE=1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=WARN",
+  "VLLM_USE_V2_MODEL_RUNNER=1",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "VLLM_ENGINE_READY_TIMEOUT_S=3600",
+  "VLLM_ADAPTIVE_MTP=0",
+  "VLLM_ENABLE_PCIE_ALLREDUCE=0",
+  "VLLM_PCIE_ALLREDUCE_BACKEND=b12x",
+  "VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE=384KB",
+  "VLLM_B12X_PCIE_EAGER=0",
+  "VLLM_B12X_DCP_A2A=0",
+  "VLLM_USE_B12X_SPARSE_INDEXER=1",
+  "VLLM_USE_B12X_KPOOL_INDEXER=1",
+  "VLLM_DCP_GLOBAL_TOPK=1",
+  "VLLM_DCP_QUERY_SPLIT=0",
+  "VLLM_DCP_TOPK_OWNER_MERGE=1",
+  "VLLM_B12X_DCP_TOPK_OWNER_EXCHANGE=0",
+  "VLLM_B12X_DCP_TOPK_MIN_ROWS=128",
+  "VLLM_B12X_DCP_TOPK_MAX_ROWS=2048",
+  "KV_FP8_ROPE=0",
+  "VLLM_NVFP4_MLA_DYNAMIC_SCALE=0",
+  "VLLM_EXL3_TRELLIS_MIN_M=1",
+  "VLLM_EXL3_TRELLIS_MAX_M=32",
+  "VLLM_EXL3_TRELLIS_BLOCK_M=8",
+  "VLLM_EXL3_PREFILL_TRELLIS=1",
+  "VLLM_EXL3_PREFILL_BLOCK_M=64",
+  "VLLM_EXL3_PREFILL_CAPACITY=1024",
+  "B12X_EXL3_BF16_EPILOGUE=1",
+  "B12X_EXL3_BF16_GEMV=1",
+  "VLLM_B12X_GLM_H64_QUERY_PROJ=auto",
+  "VLLM_USE_B12X_MHC=auto",
+]
+flags = [
+  "--served-model-name glm53-flash-exl3-k3-dflash2-k5-fp8-tp2-1m-vision",
+  "--host 0.0.0.0",
+  "--port 8001",
+  "--tensor-parallel-size 2",
+  "--decode-context-parallel-size 2",
+  "--dcp-comm-backend ag_rs",
+  "--disable-custom-all-reduce",
+  "--speculative-config '{\"method\":\"dflash\",\"model\":\"/root/.cache/huggingface/hub/models--incoai--GLM-5.3-Flash-DFlash2/snapshots/dc77ff1c99eeb2df044ee3d4f0094eb033fee410\",\"num_speculative_tokens\":5,\"kv_cache_dtype\":\"bfloat16\"}'",
+  "--limit-mm-per-prompt '{\"image\":16,\"video\":0}'",
+  "--enable-prefix-caching",
+  "--mamba-cache-mode align",
+  "--attention-backend B12X_MLA_SPARSE",
+  "--max-model-len 1048576",
+  "--max-num-batched-tokens 2048",
+  "--max-num-seqs 16",
+  "--max-cudagraph-capture-size 96",
+  "--gpu-memory-utilization 0.950",
+  "--kv-cache-dtype fp8_ds_mla",
+  "--no-enable-flashinfer-autotune",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser glm47",
+  "--reasoning-parser glm45",
+]
+note = "Qualified one-week GLM default candidate. The independent DFlash2 draft dependency must be present at incoai/GLM-5.3-Flash-DFlash2@dc77ff1c99eeb2df044ee3d4f0094eb033fee410 in vllm-hfcache. Custom PCIe all-reduce, B12X DCP A2A, and top-k owner exchange are disabled because CUDA peer IPC is unavailable through WSL2; the resulting PyNCCL fallback is locally proven. A matched 4096-token scheduler-chunk trial was rejected because it reduced C1 decode from 82.1 to 62.5 tok/s and did not improve C16 aggregate throughput."
+
+[recipe.fit]
+suited = ["qualification", "coding-agent", "tool-use", "maximum-context", "speculative-decoding", "high-concurrency", "text", "image", "ocr"]
+rationale = "The only current dual-PRO GLM-5.3 Flash recipe claiming a simultaneous 1M context ceiling, image support, C16 scheduling, and materially faster DFlash2 decode. It therefore receives local qualification ahead of lower-context v84 alternatives."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1/tree/319d66a8b53092b491f698440ecea781e4ddd4e4",
+  "https://huggingface.co/incoai/GLM-5.3-Flash-DFlash2/tree/dc77ff1c99eeb2df044ee3d4f0094eb033fee410",
+]
+community = [
+  "https://github.com/tpurtell/glm-5.3-flash-ext3-4-bit-2x-rtx/tree/d46fdeddf8c6fec2d4595b65535a32d80a5af787",
+]
+local = [
+  "configs/glm53-flash-cardillo-tpurtell-fixed-mtp5-vision-sm120-tp2-262k-wsl2-v2-no-owner-exchange-recipe.toml",
+  "docs/findings/2026-08-29-glm53-cardillo-purtell-qualification.md",
+]

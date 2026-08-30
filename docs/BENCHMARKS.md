@@ -8,23 +8,21 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained text/image/OCR/video deployment is RadixArk Qwen3.8 Flash Next NVFP4 at
-exclusive TP=2/262,144 across both equal cards, router concurrency one, and a
-client contract of 253,952 prompt tokens plus an 8,192-token output reserve.
-The current runtime profile is the hash-gated SGLang PR #36556 SM120 QSA fast
-path with matched NEXTN/MTP3 `3/1/4`; media admission is fail-closed at four
-images or one video.
+The maintained one-week default is GLM-5.3-Flash EXL3 K3 plus DFlash2 K5 at
+exclusive TP=2/1,048,576 across both equal cards, router concurrency 16, an
+8,192-token output cap, and fail-closed admission of up to 16 images. Video is
+unsupported. The DFlash2 draft is noncommercial without separate permission.
+RadixArk Qwen3.8 Flash Next NVFP4 remains the immediate retained video-capable
+rollback at TP=2/262,144/c1.
 The former DeepSeek V4 Flash 0731 Infernal Invocation r18 1M and r15 393K deployments and
 official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
 retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
 split remain qualified rollback- or promotion-era evidence. The earlier r16
 650K profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical
 recipes but are not the immediate restoration contract for this profile.
-GLM-5.3-Flash TR3/EXL3 4 bpw is a newly qualified
-text/tools/image/OCR challenger: vision fixed K5 at 262K is the preferred
-interactive GLM recipe, no-speculation at 524K is the preferred
-maximum-context/headroom recipe, and adaptive MTP is rejected for tool
-corruption. It is not promoted.
+The prior GLM-5.3-Flash TR3/EXL3 4 bpw 262K/524K qualification remains
+historical and the earlier image/profile is retained as the GLM-specific
+rollback. Adaptive MTP remains rejected for tool corruption.
 Gemma 4 and ThinkingCap remain historical controls. Fakoli
 Dark has two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
 now-removed RTX 5090 while the PRO 6000 was protected. Older sections below
@@ -32,7 +30,38 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-29**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-30**.
+
+## GLM-5.3-Flash K3/DFlash2 1M optimization and promotion (2026-08-30)
+
+The exact `wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1@319d66a8` target,
+`incoai/GLM-5.3-Flash-DFlash2@dc77ff1c` draft, and digest-pinned Purtell
+runtime were qualified on both RTX PRO 6000 Max-Q cards under WSL2 at
+TP=2/DCP=2. The selected profile keeps EXL3 K3 compute, FP8 DS-MLA target KV,
+BF16 DFlash2 K5 draft KV, maxseq16, 2,048-token batching, and image/OCR while
+using PyNCCL in place of WSL2-incompatible peer-IPC collectives.
+
+K5 measured 82.1 tok/s at 4K, 67.4 at 131K, and 67.9 at 240K. Median TTFT was
+1.00, 19.17, and 38.15 seconds respectively. Exact retrieval passed at a 950K
+target in 242.0 seconds; C2 at a 500K target completed 2/2; the engine reported
+2,917,371 KV tokens, or 2.78 complete configured windows. Tools passed 20/20,
+the image/OCR corpus 12/12, and bounded quality 12/12.
+
+The complete direct and authenticated routed gates passed, followed by real
+text and image turns in all four Hermes profiles, Pi's normal extension-loaded
+PTY path, and OpenClaw's running gateway. The final router decision buffer was
+60/60 served without fallback. K3 is retained as a verified alternate after
+two C16 completions at 36 and 42 aggregate output tok/s. K5 remains the default
+because its 4K c1 decode was 82.1 tok/s versus 66.8. Raising scheduler batching
+to 4,096 reduced 4K decode to 62.5 tok/s and produced no C16 benefit, so that
+arm is rejected.
+
+This is the human-authorized one-week text/tools/image/OCR default at
+1,048,576 context, 8,192 output, router c16, and up to 16 images. C16 is a
+short-request scheduling ceiling, not proof of sixteen simultaneous 1M
+prompts. Video is unsupported. The DFlash2 draft's CC-BY-NC-ND-4.0 license
+makes this an evaluation/noncommercial recipe absent separate permission. See
+the [full optimization, promotion, and raw artifacts](findings/2026-08-30-glm53-k3-dflash2-1m-optimization.md).
 
 ## GLM-5.3-Flash dual-PRO qualification (2026-08-29)
 
@@ -63,13 +92,13 @@ It measured 72.8 tok/s at 4K and 55.7 at 128K, reported 560,866 KV tokens
 (2.14 configured windows), and completed c16 short 16/16 at 28.3 aggregate
 output tok/s. Video is disabled and multiple-image behavior is not qualified.
 
-The current Qwen3.8 Flash Next Primary remains more than twice as fast in the
-directional same-host 4K/128K reference and keeps qualified image/OCR/video
-plus real-client acceptance. GLM therefore remains a text/tools/image/OCR
-`challenger`, `no-promotion`. Vision fixed K5 at 262K is the hands-on profile;
-no-speculation at 524K is the maximum-context profile; fixed K5 at 524K is a
-deliberate single-user experiment. The final direct vision candidate was left
-running for hands-on; the production router and client state remain unchanged.
+At that date, Qwen3.8 Flash Next remained more than twice as fast in the
+directional same-host 4K/128K reference and kept qualified image/OCR/video
+plus real-client acceptance. The TR3 GLM profiles therefore remained
+`challenger`/`no-promotion`: vision fixed K5 at 262K for hands-on,
+no-speculation at 524K for maximum context, and fixed K5 at 524K for deliberate
+single-user use. That decision was superseded by the separate 2026-08-30 K3
+target optimization and promotion above.
 The 0xSero 3.0-bpw selective TP=4 quant was not downloaded because its own
 release ledger lacks a complete server and records a failed held-out quality
 gate. See the
