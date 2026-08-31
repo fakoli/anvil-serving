@@ -37,6 +37,7 @@ from . import guard
 from . import host as host_ops
 from . import paths
 from . import serve_recipes
+from .operator_output import CommandResult, OperatorError
 HERE = os.path.dirname(__file__)
 
 # `pull` defaults. The vLLM nightly image ships the `hf` CLI (huggingface_hub), so
@@ -55,9 +56,9 @@ DEFAULT_PULL_HEADROOM_BYTES = 5 * 1024**3
 _REPO_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 _REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
 _RECIPE_CONTAINER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
-_RECIPE_MANAGED_LABEL = "io.anvil-serving.managed-by"
-_RECIPE_MODEL_LABEL = "io.anvil-serving.recipe.model"
-_RECIPE_REVISION_LABEL = "io.anvil-serving.recipe.revision"
+_RECIPE_MANAGED_LABEL = serve_recipes.RECIPE_MANAGED_LABEL
+_RECIPE_MODEL_LABEL = serve_recipes.RECIPE_MODEL_LABEL
+_RECIPE_REVISION_LABEL = serve_recipes.RECIPE_REVISION_LABEL
 
 # Shared by both embedded helper scripts below (spliced in, not run directly —
 # they're `python -c` payloads, not importable modules).
@@ -1504,6 +1505,95 @@ def _recipe_container_logs(
     return completed.returncode
 
 
+def _recheck_discovered_recipe_container(identity, *, _run=subprocess.run):
+    inventory = serve_recipes.discover_recipe_containers(_run=_run)
+    current = serve_recipes.select_recipe_container(
+        inventory,
+        model=identity["model"],
+        container=identity["container"],
+    )
+    fingerprint_fields = (
+        "container",
+        "model",
+        "revision",
+        "recipe_digest",
+        "registry_digest",
+        "image_digest",
+    )
+    if any(current.get(field) != identity.get(field) for field in fingerprint_fields):
+        raise serve_recipes.RecipeError(
+            "recipe container identity changed after selection; rediscover and retry"
+        )
+    return current
+
+
+def _discovered_recipe_container_logs(
+    identity,
+    *,
+    tail=200,
+    since=None,
+    contains=None,
+    _run=subprocess.run,
+):
+    _recheck_discovered_recipe_container(identity, _run=_run)
+    if isinstance(tail, bool) or not isinstance(tail, int) or not 1 <= tail <= 5000:
+        raise serve_recipes.RecipeError("tail must be from 1 through 5000")
+    if since is not None and (
+        not isinstance(since, str)
+        or not since
+        or since.startswith("-")
+        or any(character in since for character in "\x00\r\n")
+    ):
+        raise serve_recipes.RecipeError(
+            "since must be one non-option timestamp or relative duration"
+        )
+    needles = []
+    for value in contains or ():
+        if (
+            not isinstance(value, str)
+            or not value
+            or len(value) > 256
+            or any(character in value for character in "\x00\r\n")
+        ):
+            raise serve_recipes.RecipeError(
+                "contains values must be non-empty single-line literals up to 256 characters"
+            )
+        needles.append(value.casefold())
+    argv = ["docker", "logs", "--tail", str(tail)]
+    if since:
+        argv += ["--since", since]
+    argv.append(identity["container"])
+    try:
+        completed = _run(
+            argv,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError as exc:
+        raise serve_recipes.RecipeError(
+            "cannot read recipe container logs: %s" % exc
+        ) from None
+
+    def selected(value):
+        if not needles:
+            return value
+        return "".join(
+            line
+            for line in value.splitlines(keepends=True)
+            if any(needle in line.casefold() for needle in needles)
+        )
+
+    stdout = selected(completed.stdout or "")
+    stderr = selected(completed.stderr or "")
+    if stdout:
+        _write_console_text(sys.stdout, stdout)
+    if stderr:
+        _write_console_text(sys.stderr, stderr)
+    return completed.returncode
+
+
 def _write_console_text(stream, value):
     """Write child output without crashing on a narrow Windows console codec."""
     try:
@@ -1574,6 +1664,127 @@ def _recipe_container_unload(
     return 0
 
 
+def _discovered_recipe_container_unload(
+    identity,
+    *,
+    recipe=None,
+    dry_run=False,
+    confirm=False,
+    _run=subprocess.run,
+):
+    """Remove one selected Anvil recipe container without registry dependence."""
+    cleanup_required = identity.get("native_kv_offload") is not False
+    if recipe is not None and serve_recipes.uses_native_kv_offload(recipe):
+        cleanup_required = True
+    if dry_run:
+        print("RECIPE UNLOAD PLAN")
+        print("container: %s" % identity["container"])
+        print("model: %s" % identity["model"])
+        print("revision: %s" % (identity.get("revision") or "unrecorded"))
+        print("state: %s" % identity["state"])
+        print("ordered actions: rediscover exact recipe identity; remove exact container")
+        if cleanup_required:
+            print(
+                "postcondition: inspect and reclaim only twice-verified orphan "
+                "vLLM offload mmap files"
+            )
+        print("deferred until apply: confirmation and identity recheck")
+        return 0
+    if not _confirm_recipe_mutation(
+        "unload container %s" % identity["container"],
+        identity["model"],
+        confirm=confirm,
+        dry_run=False,
+    ):
+        return 3
+    current = _recheck_discovered_recipe_container(identity, _run=_run)
+    completed = _run(
+        ["docker", "rm", "-f", current["container"]],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if completed.returncode:
+        print("recipe unload failed", file=sys.stderr)
+        return completed.returncode
+    print("unloaded recipe container %r" % current["container"])
+    if cleanup_required:
+        cleanup = host_ops.prepare_native_kv_offload_shared_memory()
+        host_ops.render_vllm_offload_shared_memory(cleanup)
+        if cleanup.get("outcome") not in {"clean", "reclaimed"}:
+            print(
+                "recipe container was removed, but native KV-offload shared-memory "
+                "cleanup did not meet its postcondition",
+                file=sys.stderr,
+            )
+            return 1
+    return 0
+
+
+def _format_running_recipe_containers(inventory):
+    headers = ("CONTAINER", "MODEL", "REVISION", "SERVED", "PORT", "GPUS", "STATE", "HEALTH")
+    rows = []
+    for item in inventory.get("containers") or []:
+        rows.append((
+            item["container"],
+            item["model"],
+            item.get("revision") or "-",
+            item.get("served_identity") or "-",
+            str(item.get("bound_port") or "-"),
+            ",".join(item.get("gpu_selection") or []) or "-",
+            item.get("state") or "unknown",
+            item.get("health") or "-",
+        ))
+    widths = [len(header) for header in headers]
+    for row in rows:
+        for index, value in enumerate(row):
+            widths[index] = max(widths[index], len(str(value)))
+    lines = [
+        "  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)),
+        "  ".join("-" * width for width in widths),
+    ]
+    for row in rows:
+        lines.append(
+            "  ".join(str(value).ljust(widths[index]) for index, value in enumerate(row))
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _running_recipe_inventory(model=None, container=None):
+    inventory = serve_recipes.discover_recipe_containers()
+    if model or container:
+        selected = serve_recipes.select_recipe_container(
+            inventory, model=model, container=container
+        )
+        inventory = {
+            "schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA,
+            "containers": [selected],
+        }
+    return inventory
+
+
+def recipe_containers_result(argv):
+    """Typed canonical-CLI result for ``models recipes running``."""
+    parser = argparse.ArgumentParser(prog="anvil-serving models recipes running")
+    parser.add_argument("model", nargs="?", metavar="MODEL")
+    parser.add_argument("--container", metavar="NAME")
+    args = parser.parse_args(argv)
+    try:
+        inventory = _running_recipe_inventory(args.model, args.container)
+    except serve_recipes.RecipeError as exc:
+        return CommandResult(
+            error=OperatorError(
+                str(exc), code="recipe_container_discovery_failed"
+            ),
+            human_stderr=str(exc) + "\n",
+        )
+    return CommandResult(
+        data=inventory,
+        human_stdout=_format_running_recipe_containers(inventory),
+    )
+
+
 def _print_recipe_mutation_plan(
     action,
     registry_path,
@@ -1638,6 +1849,22 @@ def _build_recipe_parser():
                         help="model id (exact or basename, e.g. gpt-oss-120b)")
     p_show.add_argument("--registry", default=None,
                         help="registry TOML (default precedence: config home, configs/, packaged)")
+    p_running = sub.add_parser(
+        "running",
+        help="discover Anvil recipe-loaded containers",
+        description=_help_description(
+            "Discover bounded, label-owned recipe containers without reading environment values.",
+            "anvil-serving models recipes running",
+            "anvil-serving models recipes running --json",
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_running.add_argument("model", nargs="?", metavar="MODEL",
+                           help="optional exact model id or unambiguous basename")
+    p_running.add_argument("--container", metavar="NAME",
+                           help="optional exact container name")
+    p_running.add_argument("--json", action="store_true",
+                           help="emit the stable JSON inventory")
     for action, summary in (
         ("create", "add exactly one recipe from a TOML file"),
         ("update", "replace a selected recipe from a TOML file"),
@@ -1732,10 +1959,10 @@ def _build_recipe_parser():
             ),
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument("model", metavar="MODEL",
-                            help="model id or unambiguous basename")
-        parser.add_argument("--container", required=True, metavar="NAME",
-                            help="container created by models recipes load")
+        parser.add_argument("model", nargs="?", metavar="MODEL",
+                            help="optional model id or unambiguous basename")
+        parser.add_argument("--container", metavar="NAME",
+                            help="optional exact Anvil recipe container name")
         parser.add_argument("--registry", default=None,
                             help="registry TOML (default precedence: config home, configs/, packaged)")
         if action == "logs":
@@ -1758,6 +1985,18 @@ def _build_recipe_parser():
 def _recipe_main(argv):
     a = _build_recipe_parser().parse_args(argv)
 
+    if a.recipe_action == "running":
+        try:
+            inventory = _running_recipe_inventory(a.model, a.container)
+        except serve_recipes.RecipeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        if a.json:
+            print(json.dumps(inventory, indent=2, sort_keys=True))
+        else:
+            print(_format_running_recipe_containers(inventory), end="")
+        return 0
+
     cache_policy = None
     if a.recipe_action == "load":
         try:
@@ -1778,8 +2017,14 @@ def _recipe_main(argv):
             else None
         )
     except serve_recipes.RecipeError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
+        if a.recipe_action not in {"status", "logs", "unload"}:
+            print(str(exc), file=sys.stderr)
+            return 1
+        # Runtime identity labels are the lifecycle source of truth after a
+        # load. Keep status/logs/unload operable when the originating registry
+        # moved, disappeared, or became unreadable.
+        registry = {"recipe": []}
+        registry_digest = None
 
     if a.recipe_action == "list":
         _print_recipe_table(registry)
@@ -1792,26 +2037,50 @@ def _recipe_main(argv):
         _print_recipe_show(recipe)
         return 0
     if a.recipe_action in {"status", "logs", "unload"}:
-        recipe = serve_recipes.find_recipe(registry, a.model)
-        if recipe is None:
-            print("no serve recipe for %r in %s" % (a.model, registry_path), file=sys.stderr)
-            return 1
+        recipe = serve_recipes.find_recipe(registry, a.model) if a.model else None
+        if recipe is not None and a.container:
+            try:
+                if a.recipe_action == "status":
+                    identity = _recipe_container_identity(recipe, a.container)
+                    print(json.dumps(identity, indent=2, sort_keys=True))
+                    return 0
+                if a.recipe_action == "logs":
+                    return _recipe_container_logs(
+                        recipe,
+                        a.container,
+                        tail=a.tail,
+                        since=a.since,
+                        contains=a.contains,
+                    )
+                return _recipe_container_unload(
+                    recipe,
+                    a.container,
+                    dry_run=a.dry_run,
+                    confirm=a.confirm,
+                )
+            except serve_recipes.RecipeError as exc:
+                print(str(exc), file=sys.stderr)
+                return 1
         try:
+            inventory = serve_recipes.discover_recipe_containers()
+            identity = serve_recipes.select_recipe_container(
+                inventory,
+                model=a.model,
+                container=a.container,
+            )
             if a.recipe_action == "status":
-                identity = _recipe_container_identity(recipe, a.container)
                 print(json.dumps(identity, indent=2, sort_keys=True))
                 return 0
             if a.recipe_action == "logs":
-                return _recipe_container_logs(
-                    recipe,
-                    a.container,
+                return _discovered_recipe_container_logs(
+                    identity,
                     tail=a.tail,
                     since=a.since,
                     contains=a.contains,
                 )
-            return _recipe_container_unload(
-                recipe,
-                a.container,
+            return _discovered_recipe_container_unload(
+                identity,
+                recipe=recipe,
                 dry_run=a.dry_run,
                 confirm=a.confirm,
             )
@@ -1887,8 +2156,12 @@ def _recipe_main(argv):
             recipe = serve_recipes.find_recipe(registry, a.model)
             if recipe is None:
                 raise serve_recipes.RecipeError("no serve recipe for %r in %s" % (a.model, registry_path))
+            selected_registry_digest = serve_recipes.registry_digest(registry_path)
             command = serve_recipes.docker_run_argv(
-                recipe, container=a.container, gpu_device=a.gpu_device
+                recipe,
+                container=a.container,
+                gpu_device=a.gpu_device,
+                registry_digest_value=selected_registry_digest,
             )
         except serve_recipes.RecipeError as exc:
             print(str(exc), file=sys.stderr)
@@ -1995,10 +2268,17 @@ def _recipe_main(argv):
         print("$ " + printable)
         if a.gpu_device:
             _command, rc = serve_recipes.load_recipe(
-                recipe, a.container, gpu_device=a.gpu_device
+                recipe,
+                a.container,
+                gpu_device=a.gpu_device,
+                registry_digest_value=selected_registry_digest,
             )
         else:
-            _command, rc = serve_recipes.load_recipe(recipe, a.container)
+            _command, rc = serve_recipes.load_recipe(
+                recipe,
+                a.container,
+                registry_digest_value=selected_registry_digest,
+            )
         if rc:
             print("recipe load failed with docker exit code %s" % rc, file=sys.stderr)
             if serve_recipes.uses_native_kv_offload(recipe):
