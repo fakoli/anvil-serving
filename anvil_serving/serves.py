@@ -2508,6 +2508,14 @@ def _docker_port_occupants(ports, _run=subprocess.run):
     return found
 
 
+def _declared_port_containers(serves):
+    """Return manifest-declared container names grouped by host port."""
+    declared = {}
+    for serve in serves:
+        declared.setdefault(int(serve["port"]), set()).add(serve["container"])
+    return declared
+
+
 def _health(port, path, _open=urllib.request.urlopen):
     url = runtime_url("http://127.0.0.1:%s%s" % (port, path))
     try:
@@ -2722,6 +2730,7 @@ def status_summary(
         return states[container]
 
     occupants = _docker_port_occupants((s["port"] for s in selected), _run=_run)
+    declared = _declared_port_containers(serves)
     for s in selected:
         st = state_of(s["container"])
         health = _health(s["port"], s.get("health", "/health"), _open=_open) if st == "running" else None
@@ -2734,7 +2743,7 @@ def status_summary(
         )
         conflicts = [
             item for item in occupants.get(int(s["port"]), [])
-            if item.get("container") != s["container"]
+            if item.get("container") not in declared.get(int(s["port"]), set())
         ]
         rows.append({
             "name": s["name"],
@@ -2797,6 +2806,7 @@ def cmd_status(
     selected_containers = {s["container"] for s in selected}
     states = {}
     occupants = _docker_port_occupants((s["port"] for s in selected), _run=_run)
+    declared = _declared_port_containers(serves)
 
     def state_of(container):
         if container not in states:
@@ -2828,7 +2838,7 @@ def cmd_status(
                 )
         conflicts = [
             item for item in occupants.get(int(s["port"]), [])
-            if item.get("container") != s["container"]
+            if item.get("container") not in declared.get(int(s["port"]), set())
         ]
         for conflict in conflicts:
             print(
