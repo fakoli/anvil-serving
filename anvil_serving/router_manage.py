@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from . import guard
+from . import envfile, guard
 from .paths import config_path, runtime_url
 from .serves import docker_state
 from .transports import _is_safe_controller_ip
@@ -29,6 +29,11 @@ DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
 DEFAULT_INSTALLED_CONFIG = "/etc/anvil/config.toml"
 TRANSITION_PATH = "/v1/admin/transition"
 MAX_ROUTER_CONFIG_BYTES = 1024 * 1024
+MAX_COMPOSE_FILE_BYTES = 2 * 1024 * 1024
+_COMPOSE_ENV_REFERENCE_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)")
+_CREDENTIAL_ENV_NAME_RE = re.compile(
+    r"(?:^|_)(?:API_KEY|AUTHORIZATION|CREDENTIAL|PASSWORD|PRIVATE_KEY|SECRET|TOKEN)(?:$|_)"
+)
 
 
 _RUNTIME_INSTALLED_PROBE_CODE = """
@@ -178,11 +183,14 @@ def resolve_compose_path(path=None):
     )
 
 
-def _run_argv(argv, _run, *, dry_run=False):
+def _run_argv(argv, _run, *, dry_run=False, env=None):
     if dry_run:
         return 0
     try:
-        result = _run(argv, capture_output=True, text=True)
+        kwargs = {"capture_output": True, "text": True}
+        if env is not None:
+            kwargs["env"] = env
+        result = _run(argv, **kwargs)
     except FileNotFoundError:
         print("docker not available", file=sys.stderr)
         return 1
@@ -219,6 +227,30 @@ def _compose_up_argv(compose, service, env_file=None, recreate=False):
     return argv + [service]
 
 
+def _compose_execution_env(compose, env_file, *, environ=None):
+    """Make file-backed Compose credentials authoritative without exposing them."""
+    if not env_file:
+        return None
+    try:
+        with open(compose, "rb") as handle:
+            raw = handle.read(MAX_COMPOSE_FILE_BYTES + 1)
+    except OSError as exc:
+        raise ValueError("could not inspect router Compose file") from exc
+    if len(raw) > MAX_COMPOSE_FILE_BYTES:
+        raise ValueError("router Compose file exceeds the 2 MiB limit")
+    try:
+        referenced = set(_COMPOSE_ENV_REFERENCE_RE.findall(raw.decode("utf-8")))
+        file_values = envfile.read_dotenv(env_file)
+    except (OSError, UnicodeError) as exc:
+        raise ValueError("could not inspect router Compose environment") from exc
+
+    execution_env = dict(os.environ if environ is None else environ)
+    for name in sorted(referenced & set(file_values)):
+        if _CREDENTIAL_ENV_NAME_RE.search(name.upper()):
+            execution_env[name] = file_values[name]
+    return execution_env
+
+
 def _container_compose_project(container, _run=subprocess.run):
     state = docker_state(container, _run=_run)
     if state in {"absent", "error"}:
@@ -249,7 +281,17 @@ def cmd_up(
     _run=subprocess.run,
     recreate=False,
     container=DEFAULT_CONTAINER,
+    environ=None,
 ):
+    try:
+        execution_env = _compose_execution_env(
+            compose,
+            env_file,
+            environ=environ,
+        )
+    except ValueError as exc:
+        print("cannot prepare router Compose environment: %s" % exc, file=sys.stderr)
+        return 1
     state, observed_project = _container_compose_project(container, _run=_run)
     if state == "error":
         print("cannot determine router Compose ownership", file=sys.stderr)
@@ -275,6 +317,7 @@ def cmd_up(
         _compose_up_argv(compose, service, env_file=env_file, recreate=recreate),
         _run,
         dry_run=dry_run,
+        env=execution_env,
     )
 
 

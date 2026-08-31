@@ -41,6 +41,55 @@ def test_up_without_recreate_omits_force_recreate():
     assert "--force-recreate" not in router_manage._compose_up_argv("compose.yml", "router")
 
 
+def test_up_env_file_credentials_override_ambient_without_leaking(tmp_path, capsys):
+    compose = tmp_path / "docker-compose.yml"
+    compose.write_text(
+        """
+services:
+  router:
+    image: ${ROUTER_IMAGE:-anvil-serving:test}
+    environment:
+      ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
+      ANVIL_MEDIA_CONTROLLER_TOKEN: ${ANVIL_MEDIA_CONTROLLER_TOKEN:?required}
+""",
+        encoding="utf-8",
+    )
+    env_path = tmp_path / "router.env"
+    env_path.write_text(
+        "ANVIL_ROUTER_TOKEN=FILE_VALUE\n"
+        "ANVIL_MEDIA_CONTROLLER_TOKEN=FILE_MEDIA_VALUE\n"
+        "UNRELATED_TOKEN=FILE_UNRELATED_VALUE\n",
+        encoding="utf-8",
+    )
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return _run(argv, **kwargs)
+
+    assert router_manage.cmd_up(
+        str(compose),
+        "router",
+        env_file=str(env_path),
+        environ={
+            "ANVIL_ROUTER_TOKEN": "AMBIENT_VALUE",
+            "ANVIL_MEDIA_CONTROLLER_TOKEN": "AMBIENT_MEDIA_VALUE",
+            "UNRELATED_TOKEN": "AMBIENT_UNRELATED_VALUE",
+            "ROUTER_IMAGE": "anvil-serving:candidate",
+        },
+        _run=run,
+    ) == 0
+
+    execution_env = calls[-1][1]["env"]
+    assert execution_env["ANVIL_ROUTER_TOKEN"] == "FILE_VALUE"
+    assert execution_env["ANVIL_MEDIA_CONTROLLER_TOKEN"] == "FILE_MEDIA_VALUE"
+    assert execution_env["UNRELATED_TOKEN"] == "AMBIENT_UNRELATED_VALUE"
+    assert execution_env["ROUTER_IMAGE"] == "anvil-serving:candidate"
+    output = capsys.readouterr()
+    assert "FILE_VALUE" not in output.out + output.err
+    assert "AMBIENT_VALUE" not in output.out + output.err
+
+
 def test_down_uses_stable_anvil_serving_compose_project():
     calls = []
 
