@@ -910,7 +910,14 @@ def _recipe_container_record(row: dict) -> dict | None:
         return None
     model = _bounded_container_value(labels.get(RECIPE_MODEL_LABEL), maximum=512)
     name = _bounded_container_value(str(row.get("Name") or "").lstrip("/"), maximum=128)
-    if not model or not name or not _CONTAINER_NAME_RE.fullmatch(name):
+    container_id = row.get("Id")
+    if (
+        not model
+        or not name
+        or not _CONTAINER_NAME_RE.fullmatch(name)
+        or not isinstance(container_id, str)
+        or not _HEX_DIGEST_RE.fullmatch(container_id)
+    ):
         return None
     revision = labels.get(RECIPE_REVISION_LABEL)
     if revision is not None:
@@ -937,6 +944,7 @@ def _recipe_container_record(row: dict) -> dict | None:
     ports = _recipe_bound_ports(row)
     return {
         "container": name,
+        "container_id": container_id,
         "model": model,
         "revision": revision,
         "recipe_digest": recipe_hash,
