@@ -602,6 +602,8 @@ def _restart_hermes_default(*, hermes_bin, timeout_seconds, _run=subprocess.run)
             )
             if refreshed.returncode:
                 return refreshed.returncode
+        elif status.returncode:
+            return status.returncode
         return _run(
             prefix + ["restart"],
             capture_output=True,
