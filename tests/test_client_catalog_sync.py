@@ -398,7 +398,12 @@ def test_apply_preserves_credentials_and_compaction_and_is_idempotent(tmp_path):
         confirm=True,
         dry_run=False,
     )
-    assert result["changed"] == ["openclaw", "pi_models", "pi_settings"]
+    assert result["changed"] == [
+        "openclaw",
+        "openclaw_env",
+        "pi_models",
+        "pi_settings",
+    ]
     assert result["backup_created"] is True
     openclaw = json.loads(openclaw_path.read_text())
     provider = openclaw["models"]["providers"]["anvil"]
@@ -413,6 +418,9 @@ def test_apply_preserves_credentials_and_compaction_and_is_idempotent(tmp_path):
         "model": "anvil/llm.primary"
     }
     assert openclaw["models"]["providers"]["other"]["models"] == [{"id": "other"}]
+    assert (tmp_path / ".env").read_text(encoding="utf-8") == (
+        'ROUTER_TOKEN="secret-never-returned"\n'
+    )
     pi_models = json.loads(pi_models_path.read_text())
     pi_provider = pi_models["providers"]["anvil"]
     assert pi_provider["apiKey"] == "ROUTER_TOKEN"
@@ -480,6 +488,89 @@ def test_config_hash_restart_is_retried_once_and_drift_is_repaired(tmp_path):
     assert restarts == ["restart"]
 
 
+def test_openclaw_state_env_rotation_is_durable_and_preserves_unrelated_entries(
+    tmp_path,
+):
+    _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        clients="openclaw",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+    state_env = tmp_path / ".env"
+    state_env.write_bytes(
+        b'UNRELATED="preserve"\r\nexport ROUTER_TOKEN="stale"\r\n'
+    )
+    (tmp_path / "state.json").write_text(
+        json.dumps(
+            {
+                "config_sha256": CONFIG_SHA,
+                "file_sha256": {},
+                "openclaw_restarted_sha256": CONFIG_SHA,
+            }
+        ),
+        encoding="utf-8",
+    )
+    restarts = []
+
+    applied = _run(
+        tmp_path,
+        clients="openclaw",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+        restart=lambda: restarts.append("restart") or 0,
+        restart_on_change=True,
+    )
+
+    assert applied["changed"] == ["openclaw_env"]
+    assert applied["openclaw_restarted"] is True
+    assert restarts == ["restart"]
+    assert state_env.read_bytes() == (
+        b'UNRELATED="preserve"\r\nROUTER_TOKEN="secret-never-returned"\r\n'
+    )
+    second = _run(
+        tmp_path,
+        clients="openclaw",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+        restart=lambda: pytest.fail("idempotent state env sync restarted OpenClaw"),
+        restart_on_change=True,
+    )
+    assert second["changed"] == []
+    assert second["openclaw_restarted"] is False
+
+
+def test_openclaw_state_env_rejects_duplicate_assignments_before_write(tmp_path):
+    paths = _write_inputs(tmp_path)
+    state_env = tmp_path / ".env"
+    state_env.write_text(
+        "ROUTER_TOKEN=first\nexport ROUTER_TOKEN=second\n",
+        encoding="utf-8",
+    )
+    before = [path.read_bytes() for path in (*paths, state_env)]
+
+    with pytest.raises(ClientCatalogError, match="duplicate router credential"):
+        _run(tmp_path, clients="openclaw", opener=_Opener(*_catalog()))
+
+    assert before == [path.read_bytes() for path in (*paths, state_env)]
+
+
+def test_openclaw_state_env_requires_an_environment_secret_ref(tmp_path):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+    payload = json.loads(openclaw_path.read_text(encoding="utf-8"))
+    payload["models"]["providers"]["anvil"]["apiKey"] = "literal-not-managed"
+    openclaw_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ClientCatalogError, match="environment SecretRef"):
+        _run(tmp_path, clients="openclaw", opener=_Opener(*_catalog()))
+
+    assert not (tmp_path / ".env").exists()
+
+
 def test_openclaw_only_accepts_current_safeguard_schema_without_pi(tmp_path):
     openclaw_path, pi_models_path, pi_settings_path = _write_inputs(tmp_path)
     payload = json.loads(openclaw_path.read_text())
@@ -506,7 +597,7 @@ def test_openclaw_only_accepts_current_safeguard_schema_without_pi(tmp_path):
     )
 
     assert result["clients"] == ["openclaw"]
-    assert result["changed"] == ["openclaw"]
+    assert result["changed"] == ["openclaw", "openclaw_env"]
     rendered = json.loads(openclaw_path.read_text())
     primary = next(
         row

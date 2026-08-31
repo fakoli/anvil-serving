@@ -516,6 +516,81 @@ def _read_text_file(path: Path) -> str:
         raise ClientCatalogError("client config is not valid UTF-8 text: %s" % path) from exc
 
 
+def _openclaw_secret_env_name(openclaw: Mapping) -> str:
+    provider = (
+        openclaw.get("models", {})
+        .get("providers", {})
+        .get("anvil")
+    )
+    api_key = provider.get("apiKey") if isinstance(provider, Mapping) else None
+    if isinstance(api_key, Mapping) and api_key.get("source") == "env":
+        return _environment_reference(api_key.get("id"))
+    if isinstance(api_key, str):
+        reference = api_key.strip()
+        if reference.startswith("${") and reference.endswith("}"):
+            return _environment_reference(reference[2:-1])
+        if reference.startswith("$"):
+            return _environment_reference(reference[1:])
+    raise ClientCatalogError(
+        "OpenClaw Anvil apiKey must remain an environment SecretRef"
+    )
+
+
+def _read_optional_text_file(path: Path) -> str:
+    if path.is_symlink():
+        raise ClientCatalogError("refusing symbolic-link client config: %s" % path)
+    if not path.exists():
+        return ""
+    if not path.is_file():
+        raise ClientCatalogError("client config is not a regular file: %s" % path)
+    if path.stat().st_size > DEFAULT_MAX_RESPONSE_BYTES:
+        raise ClientCatalogError("client config exceeds the size limit: %s" % path)
+    try:
+        return path.read_bytes().decode("utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ClientCatalogError(
+            "client config is not valid UTF-8 text: %s" % path
+        ) from exc
+
+
+def _dotenv_double_quote(value: str) -> str:
+    if not isinstance(value, str) or not value or any(
+        character in value for character in ("\x00", "\r", "\n")
+    ):
+        raise ClientCatalogError("router credential cannot be persisted safely")
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _render_openclaw_state_env(source: str, *, name: str, value: str) -> bytes:
+    """Replace one dotenv assignment while preserving unrelated OpenClaw state."""
+    name = _environment_reference(name)
+    newline = "\r\n" if "\r\n" in source else "\n"
+    trailing_newline = source.endswith(("\n", "\r"))
+    lines = source.splitlines()
+    matches = []
+    for index, line in enumerate(lines):
+        stripped = line.lstrip()
+        if stripped.startswith("export "):
+            stripped = stripped[7:].lstrip()
+        candidate, separator, _remainder = stripped.partition("=")
+        if separator and candidate.strip() == name:
+            matches.append(index)
+    if len(matches) > 1:
+        raise ClientCatalogError(
+            "OpenClaw state env contains duplicate router credential assignments"
+        )
+    rendered = "%s=%s" % (name, _dotenv_double_quote(value))
+    if matches:
+        lines[matches[0]] = rendered
+    else:
+        lines.append(rendered)
+        trailing_newline = True
+    result = newline.join(lines)
+    if trailing_newline:
+        result += newline
+    return result.encode("utf-8")
+
+
 def _yaml_block(
     lines: list[str],
     *,
@@ -1577,6 +1652,7 @@ def sync_clients(
 ) -> dict:
     """Reconcile selected Mini clients from one authenticated router snapshot."""
     selected_clients = _normalize_clients(clients)
+    environ = os.environ if environ is None else environ
     catalog = fetch_client_catalog(
         base_url=base_url,
         api_key_env=api_key_env,
@@ -1595,8 +1671,15 @@ def sync_clients(
     hermes_rows: list[dict] = []
     hermes_configs: dict[str, Path] = {}
     if "openclaw" in selected_clients:
+        current_openclaw = _read_json_file(paths["openclaw"])
         desired["openclaw"] = _json_bytes(
-            _render_openclaw_document(catalog, _read_json_file(paths["openclaw"]))
+            _render_openclaw_document(catalog, current_openclaw)
+        )
+        paths["openclaw_env"] = paths["openclaw"].parent / ".env"
+        desired["openclaw_env"] = _render_openclaw_state_env(
+            _read_optional_text_file(paths["openclaw_env"]),
+            name=_openclaw_secret_env_name(current_openclaw),
+            value=environ[api_key_env],
         )
     if "hermes" in selected_clients:
         if hermes_profiles:
@@ -1626,6 +1709,12 @@ def sync_clients(
         name
         for name in desired
         if _file_sha256(paths[name]) != _sha256_bytes(desired[name])
+        or (
+            name == "openclaw_env"
+            and os.name != "nt"
+            and paths[name].exists()
+            and stat.S_IMODE(paths[name].stat().st_mode) != 0o600
+        )
     ]
     changed.extend(
         "hermes:" + row["profile"]
@@ -1636,7 +1725,10 @@ def sync_clients(
     openclaw_restart_pending = (
         "openclaw" in selected_clients
         and restart_openclaw_on_change
-        and prior_state.get("openclaw_restarted_sha256") != catalog["config_sha256"]
+        and (
+            prior_state.get("openclaw_restarted_sha256") != catalog["config_sha256"]
+            or "openclaw_env" in changed
+        )
     )
     hermes_restart_pending = (
         restart_hermes_on_change
@@ -1676,7 +1768,13 @@ def sync_clients(
             for name in desired:
                 if name not in changed:
                     continue
-                mode = stat.S_IMODE(paths[name].stat().st_mode) if paths[name].exists() else 0o600
+                mode = (
+                    0o600
+                    if name == "openclaw_env"
+                    else stat.S_IMODE(paths[name].stat().st_mode)
+                    if paths[name].exists()
+                    else 0o600
+                )
                 _atomic_write(paths[name], desired[name], mode=mode)
             if hermes_rows:
                 _apply_hermes_profile_plans(
@@ -1715,7 +1813,13 @@ def sync_clients(
 
     prior_hashes = prior_state.get("file_sha256")
     file_hashes = dict(prior_hashes) if isinstance(prior_hashes, Mapping) else {}
-    file_hashes.update({name: _file_sha256(paths[name]) for name in desired})
+    file_hashes.update(
+        {
+            name: _file_sha256(paths[name])
+            for name in desired
+            if name != "openclaw_env"
+        }
+    )
     file_hashes.update(
         {
             "hermes:" + profile: _file_sha256(path)
