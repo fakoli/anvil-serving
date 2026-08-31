@@ -1,0 +1,115 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1"
+status = "qualification-candidate"
+source = "Matched 524K no-spec control on the hash-gated Anvil xgrammar-corrected Purtell runtime"
+family = "glm-5.3-flash-multimodal-moe"
+
+[recipe.download]
+repo = "wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1"
+revision = "319d66a8b53092b491f698440ecea781e4ddd4e4"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2/Docker Desktop; exclusive TP=2/DCP=2 qualification lane."
+
+[recipe.serve]
+engine = "vllm-glm53-exl3-k3-b12x-xgrammar-fixed"
+allow_cuda_visible_devices_index = true
+image = "anvil-glm53-xgrammar@sha256:4909e318ba1348a179824e210f90c268d6fc68e8b4e514af4782e26e6a1e5939"
+model_path = "/root/.cache/huggingface/hub/models--wrldsuksgo2mars--GLM-5.3-Flash-EXL3-K3-v1/snapshots/319d66a8b53092b491f698440ecea781e4ddd4e4"
+named_volumes = [
+  "glm53-purtell-k3-dflash2-vllm-cache:/root/.cache",
+]
+quantization = "EXL3/MCG K3 routed experts with native-precision attention, dense/shared tensors, vision, and MTP; FP8 DS-MLA target KV; no speculative draft"
+context_tokens = 524288
+port = 8001
+startup_timeout_seconds = 3600
+served_model_name = "glm53-flash-exl3-k3-nospec-fp8-tp2-524k-vision-xgfix"
+ipc = "host"
+shm_size = "32gb"
+env = [
+  "HF_HUB_OFFLINE=1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_CUMEM_HOST_ENABLE=0",
+  "NCCL_DEBUG=WARN",
+  "VLLM_USE_V2_MODEL_RUNNER=1",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "VLLM_ENGINE_READY_TIMEOUT_S=3600",
+  "VLLM_ADAPTIVE_MTP=0",
+  "VLLM_ENABLE_PCIE_ALLREDUCE=0",
+  "VLLM_PCIE_ALLREDUCE_BACKEND=b12x",
+  "VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE=384KB",
+  "VLLM_B12X_PCIE_EAGER=0",
+  "VLLM_B12X_DCP_A2A=0",
+  "VLLM_USE_B12X_SPARSE_INDEXER=1",
+  "VLLM_USE_B12X_KPOOL_INDEXER=1",
+  "VLLM_DCP_GLOBAL_TOPK=1",
+  "VLLM_DCP_QUERY_SPLIT=0",
+  "VLLM_DCP_TOPK_OWNER_MERGE=1",
+  "VLLM_B12X_DCP_TOPK_OWNER_EXCHANGE=0",
+  "VLLM_B12X_DCP_TOPK_MIN_ROWS=128",
+  "VLLM_B12X_DCP_TOPK_MAX_ROWS=2048",
+  "KV_FP8_ROPE=0",
+  "VLLM_NVFP4_MLA_DYNAMIC_SCALE=0",
+  "VLLM_EXL3_TRELLIS_MIN_M=1",
+  "VLLM_EXL3_TRELLIS_MAX_M=32",
+  "VLLM_EXL3_TRELLIS_BLOCK_M=8",
+  "VLLM_EXL3_PREFILL_TRELLIS=1",
+  "VLLM_EXL3_PREFILL_BLOCK_M=64",
+  "VLLM_EXL3_PREFILL_CAPACITY=1024",
+  "B12X_EXL3_BF16_EPILOGUE=1",
+  "B12X_EXL3_BF16_GEMV=1",
+  "VLLM_B12X_GLM_H64_QUERY_PROJ=auto",
+  "VLLM_USE_B12X_MHC=auto",
+]
+flags = [
+  "--served-model-name glm53-flash-exl3-k3-nospec-fp8-tp2-524k-vision-xgfix",
+  "--host 0.0.0.0",
+  "--port 8001",
+  "--tensor-parallel-size 2",
+  "--decode-context-parallel-size 2",
+  "--dcp-comm-backend ag_rs",
+  "--disable-custom-all-reduce",
+  "--limit-mm-per-prompt '{\"image\":16,\"video\":0}'",
+  "--enable-prefix-caching",
+  "--mamba-cache-mode align",
+  "--attention-backend B12X_MLA_SPARSE",
+  "--max-model-len 524288",
+  "--max-num-batched-tokens 2048",
+  "--max-num-seqs 16",
+  "--max-cudagraph-capture-size 96",
+  "--gpu-memory-utilization 0.950",
+  "--kv-cache-dtype fp8_ds_mla",
+  "--no-enable-flashinfer-autotune",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser glm47",
+  "--reasoning-parser glm45",
+]
+note = "Matched no-spec control for the corrected-runtime qualification. It keeps the exact K3 target, image, context, TP/DCP, KV dtype, scheduler, vision, tool, parser, WSL2, and memory settings used by the DFlash2 arm; only served identity and the absence of speculative-config differ. Qualification must prove a 250K-class prompt plus output reserve at C2 and establish the matched throughput control."
+
+[recipe.fit]
+suited = ["qualification", "coding-agent", "tool-use", "long-context", "high-concurrency", "text", "image", "ocr"]
+rationale = "Provides the otherwise-matched 524K control required to attribute any measured gain to DFlash2 rather than context, batching, runtime, or parser drift."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1/tree/319d66a8b53092b491f698440ecea781e4ddd4e4",
+  "https://github.com/vllm-project/vllm/commit/12f64b39d29282437e35be9aa5db432fb2a1a6e6",
+  "https://github.com/vllm-project/vllm/commit/c6e19b3be24338759a443e03c8325d76da9ee202",
+]
+community = [
+  "https://github.com/tpurtell/glm-5.3-flash-ext3-4-bit-2x-rtx/tree/d46fdeddf8c6fec2d4595b65535a32d80a5af787",
+]
+local = [
+  "configs/runtime-patches/vllm/487ecf187-xgrammar-spec-reasoning-end/Dockerfile",
+  "configs/runtime-patches/vllm/487ecf187-xgrammar-spec-reasoning-end/xgrammar-spec-reasoning-end.patch",
+  "docs/findings/2026-08-31-glm53-xgrammar-524k-qualification-evidence/feasibility-result.md",
+]
