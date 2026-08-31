@@ -514,6 +514,45 @@ def cmd_restart_openclaw(gateway_host=None, gateway_user=None, *, timeout_second
     return 0
 
 
+def cmd_refresh_openclaw_service_environment(
+    *,
+    timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+    dry_run=False,
+    _run=subprocess.run,
+    _which=shutil.which,
+):
+    """Re-render OpenClaw's generated service env from its canonical state env."""
+    executable = _which("openclaw")
+    if not executable:
+        print(
+            "OpenClaw service refresh failed: openclaw is not on PATH",
+            file=sys.stderr,
+        )
+        return 1
+    argv = [executable, "gateway", "install", "--force", "--json"]
+    if dry_run:
+        print(" ".join(argv))
+        return 0
+    try:
+        completed = _run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        print("OpenClaw service refresh failed", file=sys.stderr)
+        return 1
+    if completed.returncode:
+        print(
+            "OpenClaw service refresh failed with status %s"
+            % completed.returncode,
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
 def openclaw_gateway_status(*, timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
                             max_output_bytes=DEFAULT_STATUS_MAX_OUTPUT_BYTES, _run=subprocess.run):
     try:
@@ -574,7 +613,8 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
                      restart_openclaw_on_change=False,
                      restart_hermes_on_change=False,
                      dry_run=True, confirm=False, timeout_seconds=15,
-                     _opener=None, _restart=None, _restart_hermes=None,
+                     _opener=None, _restart=None,
+                     _refresh_openclaw_service=None, _restart_hermes=None,
                      _hermes_run=subprocess.run, _environ=None):
     """Reconcile Mini clients from authenticated router model metadata."""
     from .client_catalog_sync import ClientCatalogError, sync_clients
@@ -600,6 +640,7 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
             timeout_seconds=timeout_seconds,
             opener=_opener,
             restart=_restart,
+            refresh_openclaw_service=_refresh_openclaw_service,
             restart_hermes=_restart_hermes,
             hermes_run=_hermes_run,
             environ=_environ,
@@ -766,6 +807,11 @@ def main(argv=None):
                 timeout_seconds=args.timeout_seconds,
                 _restart=lambda: cmd_restart_openclaw(
                     timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+                ),
+                _refresh_openclaw_service=(
+                    lambda: cmd_refresh_openclaw_service_environment(
+                        timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+                    )
                 ),
                 _restart_hermes=lambda: _restart_hermes_default(
                     hermes_bin=args.hermes_bin,

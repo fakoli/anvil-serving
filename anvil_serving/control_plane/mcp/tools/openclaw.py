@@ -279,6 +279,11 @@ def tool_client_catalog_sync(args: dict) -> dict:
             restart=lambda: harness.cmd_restart_openclaw(
                 timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
             ),
+            refresh_openclaw_service=(
+                lambda: harness.cmd_refresh_openclaw_service_environment(
+                    timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+                )
+            ),
             restart_hermes=lambda: harness._restart_hermes_default(
                 hermes_bin=hermes_bin,
                 timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS,

@@ -100,6 +100,7 @@ def _passing_syncer(**kwargs):
     assert kwargs["dry_run"] is False
     assert kwargs["restart_openclaw_on_change"] is True
     assert kwargs["environ"]["ANVIL_ROUTER_TOKEN"] == "secret-not-retained"
+    assert kwargs["refresh_openclaw_service"]() == 0
     return {
         "config_sha256": ROUTER_SHA,
         "package_version": "0.34.3",
@@ -173,6 +174,7 @@ def _arguments(tmp_path, **overrides):
         "runner": _passing_runner,
         "syncer": _passing_syncer,
         "restart_openclaw": lambda: 0,
+        "refresh_openclaw_service": lambda: 0,
     }
     values.update(overrides)
     return values

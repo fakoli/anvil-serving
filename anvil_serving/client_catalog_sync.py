@@ -1647,6 +1647,7 @@ def sync_clients(
     environ: Mapping[str, str] | None = None,
     opener=None,
     restart: Callable[[], int] | None = None,
+    refresh_openclaw_service: Callable[[], int] | None = None,
     restart_hermes: Callable[[], int] | None = None,
     hermes_run=subprocess.run,
 ) -> dict:
@@ -1811,6 +1812,27 @@ def sync_clients(
             )
         hermes_restarted = True
 
+    restart = restart or (lambda: 1)
+    refresh_openclaw_service = refresh_openclaw_service or (lambda: 1)
+    openclaw_service_refreshed = False
+    if openclaw_restart_pending and "openclaw_env" in changed:
+        if refresh_openclaw_service() != 0:
+            rollback_ok = backup is not None
+            if backup is not None:
+                _restore_backup(backup)
+                rollback_ok = refresh_openclaw_service() == 0
+                rollback_ok = restart() == 0 and rollback_ok
+                if hermes_restarted:
+                    rollback_ok = restart_hermes() == 0 and rollback_ok
+            if not rollback_ok:
+                raise ClientCatalogError(
+                    "OpenClaw service refresh failed and rollback did not restore the clients"
+                )
+            raise ClientCatalogError(
+                "OpenClaw configuration was restored after service refresh failed"
+            )
+        openclaw_service_refreshed = True
+
     prior_hashes = prior_state.get("file_sha256")
     file_hashes = dict(prior_hashes) if isinstance(prior_hashes, Mapping) else {}
     file_hashes.update(
@@ -1831,18 +1853,32 @@ def sync_clients(
         "file_sha256": file_hashes,
         "openclaw_restarted_sha256": prior_state.get("openclaw_restarted_sha256"),
     }
-    _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
 
     restarted = False
     if openclaw_restart_pending:
-        restart = restart or (lambda: 1)
         if restart() != 0:
+            rollback_ok = backup is not None
+            if backup is not None:
+                _restore_backup(backup)
+                if openclaw_service_refreshed:
+                    rollback_ok = refresh_openclaw_service() == 0
+                rollback_ok = restart() == 0 and rollback_ok
+                if hermes_restarted:
+                    rollback_ok = restart_hermes() == 0 and rollback_ok
+            if not rollback_ok and backup is not None:
+                raise ClientCatalogError(
+                    "OpenClaw gateway restart failed and rollback did not restore the clients"
+                )
+            if backup is not None:
+                raise ClientCatalogError(
+                    "OpenClaw configuration was restored after gateway restart failed"
+                )
             raise ClientCatalogError(
                 "OpenClaw config was reconciled but gateway restart failed; the next run will retry"
             )
         restarted = True
         state["openclaw_restarted_sha256"] = catalog["config_sha256"]
-        _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
+    _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
     return _summary(
         catalog,
         clients=selected_clients,
