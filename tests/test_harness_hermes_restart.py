@@ -62,6 +62,21 @@ def test_restart_hermes_default_stops_when_stale_definition_refresh_fails():
     assert [argv[-1] for argv in calls] == ["status", "start"]
 
 
+def test_restart_hermes_default_fails_closed_on_unclassified_status_failure():
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return _completed(argv, returncode=2, stderr="daemon unavailable")
+
+    assert harness._restart_hermes_default(
+        hermes_bin="hermes",
+        timeout_seconds=30,
+        _run=run,
+    ) == 2
+    assert [argv[-1] for argv in calls] == ["status"]
+
+
 def test_restart_hermes_default_fails_closed_on_status_timeout():
     def run(argv, **kwargs):
         raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
