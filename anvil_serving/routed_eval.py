@@ -45,7 +45,7 @@ def _resolve_client_executable(name: str) -> str:
     if os.name == "nt" and os.environ.get("APPDATA"):
         candidates += (Path(os.environ["APPDATA"]) / "npm" / f"{name}.cmd",)
     for candidate in candidates:
-        if candidate.is_file():
+        if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate)
     return name
 
@@ -296,6 +296,12 @@ def _run_client(
             "launch_error": "executable_not_found", "output_truncated": False,
             "latency_ms": round((time.monotonic() - started) * 1000),
         }
+    except OSError as exc:
+        return {
+            "returncode": None, "stdout": "", "stderr": str(exc), "timed_out": False,
+            "launch_error": "executable_not_runnable", "output_truncated": False,
+            "latency_ms": round((time.monotonic() - started) * 1000),
+        }
     except subprocess.TimeoutExpired as exc:
         stdout, stdout_truncated = _bounded_process_text(exc.stdout)
         stderr, stderr_truncated = _bounded_process_text(exc.stderr)
@@ -327,6 +333,8 @@ def _client_failure(
         return "client process timed out"
     if process.get("launch_error") == "executable_not_found":
         return "client executable was not found on PATH or in standard install locations"
+    if process.get("launch_error") == "executable_not_runnable":
+        return "client executable could not be launched"
     if process["returncode"] != 0:
         return f"client process exited with status {process['returncode']}"
     if process["output_truncated"]:
