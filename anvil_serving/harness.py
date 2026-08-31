@@ -582,17 +582,32 @@ def cmd_status_openclaw(**kwargs):
     return 0 if result["ok"] else 1
 
 
-def _restart_hermes_default(*, hermes_bin, timeout_seconds):
+def _restart_hermes_default(*, hermes_bin, timeout_seconds, _run=subprocess.run):
+    executable = os.path.expanduser(hermes_bin)
+    prefix = [executable, "-p", "default", "gateway"]
     try:
-        return subprocess.run(
-            [
-                os.path.expanduser(hermes_bin),
-                "-p",
-                "default",
-                "gateway",
-                "restart",
-            ],
+        status = _run(
+            prefix + ["status"],
             capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+        status_output = "%s\n%s" % (status.stdout or "", status.stderr or "")
+        if "service definition is stale" in status_output.casefold():
+            refreshed = _run(
+                prefix + ["start"],
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+            )
+            if refreshed.returncode:
+                return refreshed.returncode
+        elif status.returncode:
+            return status.returncode
+        return _run(
+            prefix + ["restart"],
+            capture_output=True,
+            text=True,
             timeout=timeout_seconds,
         ).returncode
     except (FileNotFoundError, subprocess.TimeoutExpired):

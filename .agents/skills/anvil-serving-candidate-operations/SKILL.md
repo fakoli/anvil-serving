@@ -94,6 +94,27 @@ router policy, and an isolated test does not require an alias change.
    runbook, use `workflow-intake:external-procedure-intake` when installed to
    retain its exact revision and the local adaptation matrix.
 
+## Close client context propagation
+
+An isolated recipe load does not require client changes. A managed serve
+switch, router-profile change, promotion, rollback, or fix-forward recovery
+does whenever it changes a client-facing alias's backing identity,
+`context_limit_tokens`, `max_output_tokens`, reasoning, or modality contract.
+
+For such changes on Fakoli Mini, use `converge-mini-vision-clients` when
+installed; otherwise enforce the same closure directly before reporting the
+operation restored or complete. Reconcile Hermes, Pi, and OpenClaw from the
+same authenticated router snapshot; enumerate every retained Anvil-backed
+Hermes profile; preserve provider/auth, unrelated settings, and compaction;
+and require real-client acceptance plus an idempotent second dry-run. Also
+verify the durable scheduled reconciliation job covers
+`openclaw,hermes,pi`, uses `--hermes-profiles all`, and last exited zero.
+
+If the operation lacks authority to update/restart live clients, do not stage
+config in live paths. Record exact candidate bindings and return
+`client_convergence=pending`; a healthy model or router is not deployment
+closure.
+
 ## Restore and report
 
 Stop the candidate through its owning recipe/serve lifecycle, restore the exact
@@ -103,4 +124,5 @@ baseline. Do not remove model caches or Docker volumes as cleanup.
 Return the start-state fingerprint, credential presence boundary, GPU lane
 classification, recipe/profile identity, preview and confirmation gates,
 health and log cause, preflight/benchmark artifacts, restoration checks,
-product gaps, and `promoted=false`. Promotion remains a separate human gate.
+whether client-facing metadata changed, client convergence state, product
+gaps, and `promoted=false`. Promotion remains a separate human gate.

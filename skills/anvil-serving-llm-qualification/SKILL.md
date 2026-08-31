@@ -53,7 +53,23 @@ Read `references/evidence-contract.md` before starting.
 14. A profile passes only with exact identity, all deterministic assertions,
     visible answers, allowed finish reasons, matching media hashes, valid
     tools, and no OOM/parser corruption.
-15. Restore the exact starting serve/router state. Re-run focused and full
+15. Explicitly classify the result as either isolated-only or client-facing.
+    If no public alias, router metadata, or selected backing identity changed,
+    prove that fact and do not rewrite client catalogs. If an authorized
+    promotion, rollback, or route switch changes any client-facing alias's
+    backing identity, `context_limit_tokens`, `max_output_tokens`, reasoning,
+    or modality contract, client propagation is a required qualification
+    closure gate even when the request did not mention clients.
+16. For client-facing changes on Fakoli Mini, use
+    `converge-mini-vision-clients` when installed; otherwise enforce the same
+    closure directly. Reconcile Hermes, Pi, and OpenClaw from one authenticated
+    router snapshot. Enumerate
+    every retained Anvil-backed Hermes profile, preserve provider/auth and
+    compaction settings, validate real client behavior, and require an
+    idempotent final dry-run. If live client mutation/restart authority is not
+    present, report the qualification as client-convergence-pending rather than
+    complete or deployed.
+17. Restore the exact starting serve/router state. Re-run focused and full
     repository gates, then delegate publication to
     `skills/anvil-serving-benchmark-docs/SKILL.md` for the raw artifacts, dated
     finding, precision/modality decision table, and required publication-ready
