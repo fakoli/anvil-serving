@@ -234,7 +234,8 @@ def test_installed_fleet_status_executes_inside_router_and_sanitizes_rows():
     report = router_manage.installed_fleet_status(_run=_run)
 
     assert seen[0][0][:3] == ["docker", "exec", "anvil-router"]
-    assert "--probe-perspective" in seen[0][0]
+    assert "runtime_fleet_status" in seen[0][0][5]
+    assert "router_manage.main" not in seen[0][0][5]
     assert report["evidence_source"] == "installed-router"
     assert report["probe_perspective"] == "router-runtime"
     assert "host" not in report["rows"][0]
@@ -274,6 +275,8 @@ def test_configured_fleet_status_executes_inside_router_with_stdin(tmp_path):
 
     argv, kwargs = seen[0]
     assert argv[:4] == ["docker", "exec", "-i", "anvil-router"]
+    assert "runtime_fleet_status" in argv[6]
+    assert "router_manage.main" not in argv[6]
     assert str(path) not in argv
     assert kwargs["input"].replace("\r\n", "\n") == textwrap.dedent(_TWO_TIERS)
     assert report["evidence_source"] == "configured-file"
@@ -281,6 +284,27 @@ def test_configured_fleet_status_executes_inside_router_with_stdin(tmp_path):
     assert len(report["config_sha256"]) == 64
     assert "host" not in report["rows"][0]
     assert "endpoint" not in report["rows"][0]
+
+
+def test_runtime_fleet_status_probes_directly_without_recursive_dispatch(tmp_path):
+    path = tmp_path / "router.toml"
+    path.write_text(textwrap.dedent(_TWO_TIERS), encoding="utf-8")
+    probed = []
+
+    report = router_manage.runtime_fleet_status(
+        str(path),
+        _probe=lambda url, timeout=4.0: (
+            probed.append((url, timeout)),
+            (True, "HTTP 200"),
+        )[1],
+    )
+
+    assert len(probed) == 2
+    assert report["unreachable"] == 0
+    assert report["probe_perspective"] == "router-runtime"
+    assert all(
+        row["probe_perspective"] == "router-runtime" for row in report["rows"]
+    )
 
 
 def test_cmd_explicit_router_runtime_uses_container_probe(tmp_path, capsys):
