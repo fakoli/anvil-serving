@@ -152,6 +152,15 @@ Each correction has focused regression coverage. The final router image and
 Mini package were rebuilt from the corrected source before the forward client
 gate.
 
+Delivery review then found two additional operator-surface defects. A failed
+bounded legacy command could lose its actionable stdout inside the canonical
+JSON error envelope, and recipe recovery revalidated a reusable container name
+without preserving Docker's immutable container ID. The public package now
+retains bounded failure data and pins recipe discovery, log reads, revalidation,
+and unload removal to the full container ID. Synthetic same-name replacement
+tests and a live read-only GLM unload preview proved the correction without
+restarting or removing the qualified serve.
+
 ## Current external priors
 
 External sources were treated as recipe leads, not local proof:
