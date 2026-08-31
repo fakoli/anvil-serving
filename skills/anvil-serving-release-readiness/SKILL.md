@@ -94,11 +94,22 @@ installed CLI only as a verified fallback.
    authenticated router snapshot. Verify each selected alias advertises the
    exact router `context_limit_tokens` and `max_output_tokens`, preserves its
    provider/auth references and compaction policy, and has no silent fallback.
+   Use `converge-mini-vision-clients` for this gate when installed; otherwise
+   enforce the same closure directly. Enumerate every retained Anvil-backed
+   Hermes profile rather than assuming the default profile; verify
+   its main model, auxiliary compression, Anvil provider, provider-model
+   catalog, and custom-provider context/output fields. Verify every current
+   Anvil alias in the Pi and OpenClaw catalogs. Preserve all unrelated client
+   settings.
    Use dry-run, confirmed apply, and an idempotent second dry-run where the
-   managed surface supports them. Then run the real Hermes, Pi, and OpenClaw
-   request shapes, including tools and tool-result continuation when affected.
-   A long-context needle or protocol preflight does not replace these
-   client-shaped smokes.
+   managed surface supports them. The final dry-run must report no changes.
+   Verify both the tracked and installed scheduled reconciliation job cover
+   `openclaw,hermes,pi`, include `--hermes-profiles all` and the required
+   change-triggered restarts, and have a successful latest run. Then run the
+   real Hermes, Pi, and OpenClaw request shapes, including tools and tool-result
+   continuation when affected. A long-context needle or protocol preflight
+   does not replace these client-shaped smokes. Any catalog/profile drift or
+   missing scheduled coverage blocks deployment closure.
 4. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is
