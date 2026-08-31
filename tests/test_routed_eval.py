@@ -362,7 +362,10 @@ def test_routed_eval_integrates_real_client_catalog_reconciler(tmp_path):
     pi_settings = tmp_path / "pi-settings.json"
     state = tmp_path / "state.json"
     openclaw.write_text(json.dumps({
-        "models": {"providers": {"anvil": {"models": []}}},
+        "models": {"providers": {"anvil": {
+            "apiKey": {"source": "env", "id": "ANVIL_ROUTER_TOKEN"},
+            "models": [],
+        }}},
         "agents": {"defaults": {
             "models": {},
             "compaction": {
