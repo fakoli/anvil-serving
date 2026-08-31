@@ -59,7 +59,8 @@ narration.
 - Host, models, and telemetry: `doctor_summary`, `host_summary`,
   `gpu_inventory`, `host_shared_memory`, `operator_config_inventory`,
   `operator_config_export`, `observability_collect`, `host_manage`,
-  `models_inventory`, `model_cache_inventory`, and `cache_prune_plan`.
+  `models_inventory`, `recipe_containers`, `model_cache_inventory`, and
+  `cache_prune_plan`.
 - Harness: `openclaw_sync`, `client_catalog_sync`, `hermes_media_sync`,
   `openclaw_gateway_status`, and `openclaw_gateway_restart`.
 - Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
@@ -103,7 +104,9 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   `external_bench_list`, `external_bench_report`, or `external_bench_compare`
   for benchmark priors. Apply the model benchmark source-freshness rules below.
   Keep those priors advisory-only. Use `models recipes list/show` to inspect
-  recorded configurations. Create or revise candidates through
+  recorded configurations and `recipe_containers` or
+  `models recipes running` to discover label-owned loaded containers without
+  registry dependence. Create or revise candidates through
   `models recipes create/update`, review the rendered recipe, and use
   `models recipes load`
   only with an exact container plus its documented confirmation gate. Use
