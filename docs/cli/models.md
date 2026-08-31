@@ -250,8 +250,9 @@ change the successful load's exit code. Configure the default-off policy in
 recipe digest, source-registry digest, and native-offload classification.
 Legacy containers that predate the digest labels remain discoverable from the
 required Anvil ownership and model labels. Status, logs, and unload recheck the
-immutable discovered identity before acting, so a mistyped or reused container
-name cannot silently target an unrelated workload.
+full immutable Docker container ID before acting; logs and removal use that ID,
+not the reusable name. A mistyped name, reused name, or same-name replacement
+therefore fails closed instead of silently targeting another container.
 
 ```bash
 anvil-serving models recipes running
@@ -266,11 +267,11 @@ anvil-serving models recipes unload MODEL --container my-candidate --registry ./
 
 `running` asks Docker only for containers carrying the exact
 `io.anvil-serving.managed-by=models-recipes` label, then emits a bounded typed
-inventory: container, model/revision, available recipe and registry digests,
-image digest, served identity, bound port, GPU selection, state, and health. It
-does not return environment values, raw launch commands, credentials, or
-endpoint addresses. Exited retained candidates are included. Missing or
-malformed identity labels and non-Anvil containers are excluded.
+inventory: container name and immutable ID, model/revision, available recipe
+and registry digests, image digest, served identity, bound port, GPU selection,
+state, and health. It does not return environment values, raw launch commands,
+credentials, or endpoint addresses. Exited retained candidates are included.
+Missing or malformed identities and non-Anvil containers are excluded.
 
 When one discovered container matches, `status`, `logs`, and `unload` no longer
 require its name to be recovered out of band or its recipe to remain in the
