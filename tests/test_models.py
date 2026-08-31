@@ -1665,7 +1665,7 @@ def test_recipe_container_operations_refuse_unlabeled_container():
 def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys):
     seen = {}
 
-    def fake_load(recipe, container):
+    def fake_load(recipe, container, **_kwargs):
         seen["model"] = recipe["model"]
         seen["container"] = container
         return ["docker", "run"], 0
@@ -1975,7 +1975,9 @@ def test_recipe_load_readiness_timeout_fails_closed(request, monkeypatch):
         models.host_ops, "capture_cache_before", lambda _policy: {"cached_gb": 10.0}
     )
     monkeypatch.setattr(
-        models.serve_recipes, "load_recipe", lambda *_args: (["docker", "run"], 0)
+        models.serve_recipes,
+        "load_recipe",
+        lambda *_args, **_kwargs: (["docker", "run"], 0),
     )
     monkeypatch.setattr(
         models,
@@ -2006,7 +2008,9 @@ def test_recipe_load_waits_for_health_when_cache_reclaim_is_disabled(
     monkeypatch.setattr(models.host_ops, "load_cache_reclaim_policy", lambda: policy)
     monkeypatch.setattr(models.host_ops, "capture_cache_before", lambda _policy: None)
     monkeypatch.setattr(
-        models.serve_recipes, "load_recipe", lambda *_args: (["docker", "run"], 0)
+        models.serve_recipes,
+        "load_recipe",
+        lambda *_args, **_kwargs: (["docker", "run"], 0),
     )
     monkeypatch.setattr(
         models, "_await_recipe_container_healthy",

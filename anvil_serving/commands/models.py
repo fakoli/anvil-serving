@@ -57,6 +57,15 @@ def commands() -> CommandNode:
                         docs_anchor="docs/cli/models.md#discover-recipes",
                     ),
                     _resource_node(
+                        "running",
+                        "Discover Anvil recipe-loaded containers.",
+                        "anvil_serving.models",
+                        role="model-serve",
+                        handler_attribute="recipe_containers_result",
+                        argv_prefix=(),
+                        docs_anchor="docs/cli/models.md#operate-a-loaded-recipe",
+                    ),
+                    _resource_node(
                         "create",
                         "Create one recipe in an operator registry.",
                         "anvil_serving.models",
