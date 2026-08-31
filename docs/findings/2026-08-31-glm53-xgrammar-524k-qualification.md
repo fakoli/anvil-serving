@@ -13,6 +13,41 @@ retain the former 1,048,576-token image and configuration as the first rollback
 **License boundary:** the independent DFlash2 draft is CC-BY-NC-ND-4.0, so
 this combined recipe remains evaluation/noncommercial without separate permission
 
+<!-- benchmark-result-card/v1 -->
+## Result card
+
+> On two RTX PRO 6000 Blackwell Max-Q GPUs under WSL2, the corrected
+> GLM-5.3-Flash EXL3 K3/DFlash2 K5 profile qualified at 524,288 configured
+> tokens with C2 long-context completion and a matched speculative-decoding win.
+
+| Setup | Qualified value |
+|---|---|
+| Model | `wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1@319d66a8b53092b491f698440ecea781e4ddd4e4`; served as `glm53-flash-exl3-k3-dflash2-k5-fp8-tp2-524k-vision-xgfix` |
+| Hardware | 2x RTX PRO 6000 Blackwell Max-Q, 96 GB each; TP=2/DCP=2 over PCIe without NVLink |
+| Runtime | pinned vLLM `487ecf187` derived image; EXL3 K3 target, FP8 DS-MLA KV, DFlash2 BF16 K5, xgrammar fix |
+| Recipe | [managed DFlash2 recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-dflash2-k5-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) and [matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-nospec-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) |
+| Measurement path | warm direct online endpoint; authenticated routed OpenClaw, Hermes, and Pi acceptance |
+| Contract | 524,288 context; 8,192 output allowance; C2 nominal 250K capacity gate; text, image/OCR, and tools |
+| Evidence | local measured functional, capacity, performance, quality, vision, rollback, and real-client evidence complete |
+| Decision | qualified and forward-restored; promotion remains human-gated; 1M profile retained for rollback |
+
+| Headline measurement | Local result | Conditions |
+|---|---:|---|
+| 4K decode | **83.08 tok/s** | DFlash2 K5, c1, five requests, p50; 42.61 tok/s matched no-spec control |
+| 240K decode | **69.99 tok/s** | DFlash2 K5, c1, ten requests pooled across two runs; 43.63 tok/s matched no-spec control |
+| Concurrent long context | **2/2 completed** | two nominal 250K requests, 206,630 actual prompt tokens each, 8,192-token completion allowance |
+| KV capacity | **2,493,817 tokens** | engine-reported aggregate capacity, 4.76 configured 524,288-token windows |
+
+**Why it matters:** the 524K profile preserves the requested long-context and
+C2 envelope while improving matched decode throughput at both measured depths.
+
+**Important caveat:** the DFlash2 draft is noncommercial without separate
+permission; C2 used 206,630 actual prompt tokens per request, and configured
+concurrency 16 is not evidence for sixteen full-window requests.
+
+Evidence manifest: [artifact index](2026-08-31-glm53-xgrammar-524k-qualification-evidence/README.md)
+· Publication summary: [claim ledger and posting copy](2026-08-31-glm53-xgrammar-524k-qualification-evidence/publication-summary.md)
+
 ## Outcome
 
 The corrected profile satisfies the requested replacement envelope:
@@ -115,9 +150,11 @@ instead of selecting only the faster run.
   8,192 maximum output, and the recorded public configuration fingerprint.
   All six LLM/vision aliases plus the two audio capabilities were reachable.
 - Real OpenClaw and Hermes shell-tool continuations passed with the exact
-  routed identity and no fallback. Pi 0.84.2 passed its normal extension-loaded
-  PTY path with exactly one `read` tool call, exact recovery of an unseen
-  marker, and zero error events.
+  routed identity and no fallback. The initial Pi 0.84.2 gate passed its normal
+  extension-loaded PTY path with exactly one `read` tool call, exact recovery
+  of an unseen marker, and zero error events. The goal-closure recheck on Pi
+  0.84.4 retained the same 524,288/8,192 catalog contract and passed another
+  real PTY tool nonce.
 
 Raw client evidence contains private fleet endpoints and remains in the
 private operator evidence store. The public result above records only the

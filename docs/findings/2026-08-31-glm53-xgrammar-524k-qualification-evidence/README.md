@@ -6,6 +6,9 @@ sanitized, portable evidence from the dual RTX PRO 6000 Max-Q TP=2/DCP=2
 qualification. Private router URLs, host identities, GPU UUIDs, credentials,
 and real-client traces are intentionally excluded.
 
+The derivative [publication summary](publication-summary.md) maps every compact
+public claim back to this finding and the retained artifacts.
+
 ## Feasibility
 
 - [`feasibility-input.json`](feasibility-input.json) records sourced and
