@@ -31,7 +31,23 @@ TRANSITION_PATH = "/v1/admin/transition"
 MAX_ROUTER_CONFIG_BYTES = 1024 * 1024
 
 
+_RUNTIME_INSTALLED_PROBE_CODE = """
+import json
+import sys
+
+from anvil_serving import router_manage
+
+report = router_manage.runtime_fleet_status(
+    sys.argv[1],
+    timeout=float(sys.argv[2]),
+)
+print(json.dumps(report, indent=2, sort_keys=True))
+raise SystemExit(1 if report["unreachable_aliases"] else 0)
+"""
+
+
 _RUNTIME_CONFIG_PROBE_CODE = """
+import json
 import os
 import sys
 import tempfile
@@ -48,21 +64,16 @@ handle = tempfile.NamedTemporaryFile(
 try:
     handle.write(raw)
     handle.close()
-    result = router_manage.main([
-        "fleet-status",
-        "--config",
+    report = router_manage.runtime_fleet_status(
         handle.name,
-        "--probe-perspective",
-        "router-runtime",
-        "--timeout",
-        sys.argv[1],
-        "--json",
-    ])
+        timeout=float(sys.argv[1]),
+    )
+    print(json.dumps(report, indent=2, sort_keys=True))
 finally:
     if not handle.closed:
         handle.close()
     os.unlink(handle.name)
-raise SystemExit(result)
+raise SystemExit(1 if report["unreachable_aliases"] else 0)
 """
 
 
@@ -858,6 +869,21 @@ def _decode_fleet_report(stdout):
     return payload
 
 
+def runtime_fleet_status(config_file, *, timeout=4.0, _probe=_probe_endpoint):
+    """Probe one config directly from the process that owns the router perspective."""
+    from .router import config as router_config
+
+    timeout = _validated_probe_timeout(timeout)
+    config = router_config.load(config_file)
+    return fleet_status(
+        config,
+        timeout=timeout,
+        _probe=_probe,
+        probe_perspective="router-runtime",
+        evidence_source="configured-file",
+    )
+
+
 def installed_fleet_status(
     *,
     container=DEFAULT_CONTAINER,
@@ -875,18 +901,9 @@ def installed_fleet_status(
         container,
         "python",
         "-c",
-        (
-            "import sys; from anvil_serving import router_manage; "
-            "raise SystemExit(router_manage.main(sys.argv[1:]))"
-        ),
-        "fleet-status",
-        "--config",
+        _RUNTIME_INSTALLED_PROBE_CODE,
         installed_config,
-        "--probe-perspective",
-        "router-runtime",
-        "--timeout",
         str(timeout),
-        "--json",
     ]
     try:
         result = _run(
