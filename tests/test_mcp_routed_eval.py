@@ -88,8 +88,9 @@ def test_routed_eval_live_run_requires_confirmation():
     assert refused.value.code == "human_approval_required"
 
 
-def test_routed_eval_live_run_resolves_only_named_credential(monkeypatch):
+def test_routed_eval_live_run_resolves_only_named_credential(monkeypatch, tmp_path):
     seen = {}
+    output = tmp_path / "private-evidence" / "credential-resolution.json"
 
     def run(**kwargs):
         seen.update(kwargs)
@@ -101,12 +102,18 @@ def test_routed_eval_live_run_resolves_only_named_credential(monkeypatch):
         "resolve_env_value",
         lambda name: ("private-test-token", "/private/.env"),
     )
+    monkeypatch.setattr(
+        openclaw_tools,
+        "_routed_eval_output_path",
+        lambda selected, run_id: str(output),
+    )
 
     result = mcp.tool_routed_eval(
         _arguments(dry_run=False, confirm=True, run_id="credential-resolution")
     )
 
     assert result["ok"] is True
+    assert output.parent.is_dir()
     assert seen["environment"] == {"ANVIL_ROUTER_TOKEN": "private-test-token"}
     assert "private-test-token" not in repr(result)
 
