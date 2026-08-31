@@ -95,6 +95,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-30-glm53-k3-dflash2-1m-optimization.md`;
 `docs/findings/2026-08-31-glm53-xgrammar-524k-qualification.md`;
 `docs/findings/2026-08-31-glm53-xgrammar-524k-qualification-evidence/README.md`;
+`docs/findings/2026-08-31-glm53-xgrammar-524k-qualification-evidence/publication-summary.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/closed/2026-07-27-release-sweep-fixes.md`;
 `.tickets/closed/2026-07-28-agents-a1-multimodal-qualification.md`;
