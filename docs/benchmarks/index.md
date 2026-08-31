@@ -5,7 +5,7 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-**Last evidence review: 2026-08-30.**
+**Last evidence review: 2026-08-31.**
 
 ## Start with the numbers
 
@@ -49,10 +49,11 @@ commands; it does not claim a live model result by itself.
 
 ## Production aliases and recent controls
 
-1. **GLM-5.3-Flash EXL3 K3 plus DFlash2 K5** — human-authorized `current`
-   one-week text/tools/image/OCR Primary at 1,048,576 tokens in exclusive TP=2
-   across both RTX PRO 6000 cards, with router c16, 8,192 maximum output, and
-   up to 16 images. Video is unsupported and the DFlash2 draft is
+1. **GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5** — `current`
+   text/tools/image/OCR Primary at 524,288 tokens in exclusive TP=2 across both
+   RTX PRO 6000 cards, with router c16, measured C2 at a nominal 250K target,
+   8,192 maximum output, and up to 16 images. Video is unsupported, the former
+   1M profile is the first same-model rollback, and the DFlash2 draft is
    noncommercial without separate permission.
 2. **RadixArk Qwen3.8 Flash Next NVFP4** — immediate retained
    text/image/OCR/video rollback at 262,144 tokens, exclusive TP=2, router c1,
@@ -78,15 +79,16 @@ commands; it does not claim a live model result by itself.
    fidelity/count failures. **Wan2.2 TI2V 5B** remains unavailable after
    its decodable sample failed prompt adherence and spatial quality.
 
-On 2026-08-30, the exact GLM-5.3-Flash EXL3 K3 target plus DFlash2 K5 draft
-became the one-week default after a matched optimization and promotion gate.
-At 1M/maxseq16/batch2,048 it measured 82.1/67.4/67.9 tok/s decode at
-4K/131K/240K, recovered the exact needle at a 950K target, passed tools 20/20,
-image/OCR 12/12, bounded quality 12/12, authenticated routing, and fresh
-Hermes/Pi/OpenClaw acceptance. The engine reported 2,917,371 KV tokens. K3 is
-a verified C16 alternate; batch4,096 is rejected. Video remains disabled and
-the DFlash2 license limits the recipe to evaluation/noncommercial use without
-separate permission. See the [GLM optimization and promotion](../findings/2026-08-30-glm53-k3-dflash2-1m-optimization.md).
+On 2026-08-31, the exact GLM-5.3-Flash K3 target plus DFlash2 K5 draft moved to
+a digest-pinned xgrammar-corrected 524K profile after a matched no-speculation
+A/B and full rollback/forward drill. It measured 83.08 tok/s at 4K and a pooled
+69.99 at 240K, versus 42.61 and 43.63 without speculation. The engine reported
+2,493,817 KV tokens, C2 nominal 250K completed 2/2, and direct structured,
+quality, image/OCR, exact router, and real OpenClaw/Hermes/Pi gates passed.
+Video remains disabled and the DFlash2 license limits the recipe to
+evaluation/noncommercial use without separate permission. The former 1M
+profile is the first rollback. See the
+[GLM xgrammar qualification](../findings/2026-08-31-glm53-xgrammar-524k-qualification.md).
 
 The 2026-08-29 Cardillo/Purtell TR3/EXL3 262K/524K qualification remains the
 historical starting point and GLM-specific rollback evidence. Adaptive MTP
