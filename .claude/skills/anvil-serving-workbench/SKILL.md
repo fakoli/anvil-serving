@@ -61,7 +61,7 @@ narration.
   `operator_config_export`, `observability_collect`, `host_manage`,
   `models_inventory`, `recipe_containers`, `model_cache_inventory`, and
   `cache_prune_plan`.
-- Harness: `openclaw_sync`, `client_catalog_sync`, `hermes_media_sync`,
+- Harness: `openclaw_sync`, `client_catalog_sync`, `routed_eval`, `hermes_media_sync`,
   `openclaw_gateway_status`, and `openclaw_gateway_restart`.
 - Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
   `benchmark_artifact`, `benchmark_harness_prepare`, `benchmark_harness_status`,
@@ -133,7 +133,10 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   and capability endpoints; preview first, preserve compaction/auth keys, and
   require confirmation before writing. Use `hermes_media_sync` to install the
   narrow media MCP catalog and packaged Hermes skill; keep credentials as
-  environment references and verify a second preview is empty.
+  environment references and verify a second preview is empty. Use
+  `routed_eval` on the client-owning host, locally or through its declared
+  controller, for fail-closed router identity plus real OpenClaw/Hermes
+  acceptance; do not substitute a response from another host's clients.
 - Router operations: use `router_status`, `router_fleet_status`, bounded `router_logs`,
   `router_manage`, `router_transition`, and `decision_summary`; lifecycle and
   tier-transition mutation is preview-first and live only with `confirm=true`

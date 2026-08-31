@@ -241,6 +241,94 @@ def test_installed_fleet_status_executes_inside_router_and_sanitizes_rows():
     assert "endpoint" not in report["rows"][0]
 
 
+def test_configured_fleet_status_executes_inside_router_with_stdin(tmp_path):
+    path = tmp_path / "candidate-router.toml"
+    path.write_text(textwrap.dedent(_TWO_TIERS), encoding="utf-8")
+    nested = {
+        "rows": [{
+            "kind": "alias",
+            "name": "llm.primary",
+            "target": "primary-local",
+            "host": "100.64.0.10",
+            "endpoint": "http://100.64.0.10:30002/health",
+            "endpoint_kind": "host-relative-loopback",
+            "probe_perspective": "router-runtime",
+            "reachable": True,
+            "detail": "HTTP 200",
+            "failure_class": None,
+        }],
+        "checked": 1,
+        "unreachable": 0,
+        "perspective_mismatches": 0,
+        "unreachable_aliases": [],
+        "evidence_source": "configured-file",
+        "probe_perspective": "router-runtime",
+    }
+    seen = []
+
+    def _run(argv, **kwargs):
+        seen.append((argv, kwargs))
+        return subprocess.CompletedProcess(argv, 0, json.dumps(nested), "")
+
+    report = router_manage.configured_fleet_status(str(path), _run=_run)
+
+    argv, kwargs = seen[0]
+    assert argv[:4] == ["docker", "exec", "-i", "anvil-router"]
+    assert str(path) not in argv
+    assert kwargs["input"].replace("\r\n", "\n") == textwrap.dedent(_TWO_TIERS)
+    assert report["evidence_source"] == "configured-file"
+    assert report["probe_perspective"] == "router-runtime"
+    assert len(report["config_sha256"]) == 64
+    assert "host" not in report["rows"][0]
+    assert "endpoint" not in report["rows"][0]
+
+
+def test_cmd_explicit_router_runtime_uses_container_probe(tmp_path, capsys):
+    path = tmp_path / "router.toml"
+    path.write_text(textwrap.dedent(_TWO_TIERS), encoding="utf-8")
+    calls = []
+    report = {
+        "rows": [],
+        "checked": 0,
+        "unreachable": 0,
+        "perspective_mismatches": 0,
+        "unreachable_aliases": [],
+        "evidence_source": "configured-file",
+        "probe_perspective": "router-runtime",
+        "config_sha256": "a" * 64,
+    }
+
+    rc = router_manage.cmd_fleet_status(
+        str(path),
+        as_json=True,
+        probe_perspective="router-runtime",
+        _probe=lambda *_args, **_kwargs: pytest.fail("host probe must not run"),
+        _configured_runtime=lambda *args, **kwargs: (
+            calls.append((args, kwargs)), report
+        )[1],
+    )
+
+    assert rc == 0
+    assert calls == [((str(path),), {"container": "anvil-router", "timeout": 4.0})]
+    assert json.loads(capsys.readouterr().out)["probe_perspective"] == "router-runtime"
+
+
+@pytest.mark.parametrize("container", ["", "--privileged", "bad/name", "bad name"])
+def test_configured_fleet_status_rejects_unsafe_container_names(tmp_path, container):
+    path = tmp_path / "router.toml"
+    path.write_text(textwrap.dedent(_TWO_TIERS), encoding="utf-8")
+    with pytest.raises(ValueError, match="container name"):
+        router_manage.configured_fleet_status(str(path), container=container)
+
+
+def test_configured_fleet_status_rejects_oversized_config(tmp_path):
+    path = tmp_path / "router.toml"
+    path.write_bytes(b"x" * (router_manage.MAX_ROUTER_CONFIG_BYTES + 1))
+
+    with pytest.raises(ValueError, match="1 MiB"):
+        router_manage.configured_fleet_status(str(path))
+
+
 def test_cmd_defaults_to_installed_router_evidence(capsys):
     report = {
         "rows": [],

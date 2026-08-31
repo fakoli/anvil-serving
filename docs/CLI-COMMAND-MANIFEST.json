@@ -10705,11 +10705,45 @@
       "path": "eval routed",
       "product_family": "evaluation-evidence",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "base_url",
+          "model",
+          "api_key_env",
+          "expected_served_model",
+          "expected_config_fingerprint",
+          "expected_router_config_sha256",
+          "min_context_tokens",
+          "clients",
+          "openclaw_provider",
+          "hermes_provider",
+          "hermes_expected_provider",
+          "no_harness_sync",
+          "openclaw_config",
+          "pi_models",
+          "pi_settings",
+          "client_state_path",
+          "client_backup_root",
+          "timeout_seconds",
+          "run_id",
+          "output",
+          "dry_run"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {},
+        "max_response_bytes": 1048576,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "routed_eval"
+      },
       "resource_role": "gateway",
       "summary": "Run fail-closed router and real-client acceptance for one alias.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
