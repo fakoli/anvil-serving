@@ -1505,11 +1505,13 @@ def test_recipe_load_dispatches_through_canonical_cli(request, capsys):
 
 def _recipe_container_inspect(
     *,
+    container_id="e" * 64,
     model="openai/gpt-oss-120b",
     revision="0123456789abcdef0123456789abcdef01234567",
     state="running",
 ):
     return json.dumps([{
+        "Id": container_id,
         "Config": {
             "Image": "vllm/vllm-openai:nightly",
             "Labels": {
@@ -1549,6 +1551,7 @@ def test_recipe_container_status_requires_exact_recipe_ownership():
 
     assert identity["state"] == "running"
     assert identity["health"] == "healthy"
+    assert identity["container_id"] == "e" * 64
     assert identity["image_id"] == "sha256:" + "a" * 64
 
 
@@ -1577,7 +1580,7 @@ def test_recipe_container_logs_are_bounded_and_identity_checked(capsys):
         _run=fake,
     ) == 0
     assert calls[-1] == [
-        "docker", "logs", "--tail", "37", "--since", "10m", "recipe-heavy",
+        "docker", "logs", "--tail", "37", "--since", "10m", "e" * 64,
     ]
     assert "candidate ready" in capsys.readouterr().out
 
@@ -1612,8 +1615,33 @@ def test_recipe_container_unload_rechecks_identity_before_exact_remove(capsys):
         _run=fake,
     ) == 0
     assert calls.count(["docker", "inspect", "recipe-heavy"]) == 2
-    assert calls[-1] == ["docker", "rm", "-f", "recipe-heavy"]
+    assert calls[-1] == ["docker", "rm", "-f", "e" * 64]
     assert "unloaded recipe container" in capsys.readouterr().out
+
+
+def test_recipe_container_unload_refuses_same_name_replacement():
+    calls = []
+    inspections = iter(("a" * 64, "f" * 64))
+
+    def fake(argv, **_kwargs):
+        calls.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return types.SimpleNamespace(
+                returncode=0,
+                stdout=_recipe_container_inspect(container_id=next(inspections)),
+                stderr="",
+            )
+        return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    with pytest.raises(serve_recipes.RecipeError, match="identity changed"):
+        models._recipe_container_unload(
+            _recipe_identity(),
+            "recipe-heavy",
+            confirm=True,
+            _run=fake,
+        )
+
+    assert all(call[:3] != ["docker", "rm", "-f"] for call in calls)
 
 
 def test_recipe_container_unload_reclaims_native_offload_after_remove(
@@ -1645,7 +1673,7 @@ def test_recipe_container_unload_reclaims_native_offload_after_remove(
     assert models._recipe_container_unload(
         recipe, "recipe-heavy", confirm=True, _run=fake,
     ) == 0
-    assert reclaimed and ["docker", "rm", "-f", "recipe-heavy"] in reclaimed[0]
+    assert reclaimed and ["docker", "rm", "-f", "e" * 64] in reclaimed[0]
 
 
 def test_recipe_container_operations_refuse_unlabeled_container():

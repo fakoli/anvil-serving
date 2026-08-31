@@ -14,9 +14,14 @@ def _completed(argv, *, stdout="", stderr="", returncode=0):
     return subprocess.CompletedProcess(argv, returncode, stdout, stderr)
 
 
+def _container_id(container: str) -> str:
+    return (container.encode("utf-8").hex() * 64)[:64]
+
+
 def _row(
     container: str,
     *,
+    container_id: str | None = None,
     model: str = "org/model",
     state: str = "running",
     running: bool = True,
@@ -33,6 +38,7 @@ def _row(
     if labels:
         resolved_labels.update(labels)
     return {
+        "Id": container_id or _container_id(container),
         "Name": "/" + container,
         "Image": "sha256:" + "d" * 64,
         "Args": [
@@ -98,6 +104,7 @@ def test_recipe_container_discovery_returns_only_safe_typed_fields() -> None:
     assert inventory["containers"] == [
         {
             "container": "candidate",
+            "container_id": _container_id("candidate"),
             "model": "org/model",
             "revision": "a" * 40,
             "recipe_digest": "b" * 64,
@@ -130,6 +137,8 @@ def test_recipe_container_discovery_includes_exited_owned_container() -> None:
 
 
 def test_recipe_container_discovery_skips_missing_malformed_and_non_anvil_labels() -> None:
+    missing_id = _row("missing-id")
+    del missing_id["Id"]
     missing_model = _row("missing")
     del missing_model["Config"]["Labels"][serve_recipes.RECIPE_MODEL_LABEL]
     malformed_digest = _row(
@@ -142,7 +151,7 @@ def test_recipe_container_discovery_skips_missing_malformed_and_non_anvil_labels
     )
 
     inventory = serve_recipes.discover_recipe_containers(
-        _run=_DiscoveryRun([missing_model, malformed_digest, non_anvil])
+        _run=_DiscoveryRun([missing_id, missing_model, malformed_digest, non_anvil])
     )
 
     assert inventory["containers"] == []
@@ -240,6 +249,94 @@ def test_recipe_status_survives_missing_origin_registry(
     ]) == 0
 
     assert json.loads(capsys.readouterr().out) == identity
+
+
+def test_discovered_recipe_unload_removes_revalidated_immutable_id(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    identity = serve_recipes._recipe_container_record(_row("candidate"))
+    assert identity is not None
+    monkeypatch.setattr(
+        serve_recipes,
+        "discover_recipe_containers",
+        lambda **_kwargs: {
+            "schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA,
+            "containers": [identity],
+        },
+    )
+    calls = []
+
+    assert models._discovered_recipe_container_unload(
+        identity,
+        confirm=True,
+        _run=lambda argv, **_kwargs: calls.append(argv) or _completed(argv),
+    ) == 0
+
+    assert calls == [["docker", "rm", "-f", identity["container_id"]]]
+    assert "candidate" in capsys.readouterr().out
+
+
+def test_discovered_recipe_logs_read_revalidated_immutable_id(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    identity = serve_recipes._recipe_container_record(_row("candidate"))
+    assert identity is not None
+    monkeypatch.setattr(
+        serve_recipes,
+        "discover_recipe_containers",
+        lambda **_kwargs: {
+            "schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA,
+            "containers": [identity],
+        },
+    )
+    calls = []
+
+    def run(argv, **_kwargs):
+        calls.append(argv)
+        return _completed(argv, stdout="candidate ready\n")
+
+    assert models._discovered_recipe_container_logs(
+        identity,
+        tail=17,
+        _run=run,
+    ) == 0
+
+    assert calls == [
+        ["docker", "logs", "--tail", "17", identity["container_id"]]
+    ]
+    assert capsys.readouterr().out == "candidate ready\n"
+
+
+def test_discovered_recipe_unload_refuses_same_name_replacement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = serve_recipes._recipe_container_record(
+        _row("candidate", container_id="a" * 64)
+    )
+    replacement = serve_recipes._recipe_container_record(
+        _row("candidate", container_id="f" * 64)
+    )
+    assert selected is not None and replacement is not None
+    monkeypatch.setattr(
+        serve_recipes,
+        "discover_recipe_containers",
+        lambda **_kwargs: {
+            "schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA,
+            "containers": [replacement],
+        },
+    )
+    calls = []
+
+    with pytest.raises(serve_recipes.RecipeError, match="identity changed"):
+        models._discovered_recipe_container_unload(
+            selected,
+            confirm=True,
+            _run=lambda argv, **_kwargs: calls.append(argv) or _completed(argv),
+        )
+
+    assert calls == []
 
 
 def test_recipe_containers_mcp_returns_the_same_typed_inventory(

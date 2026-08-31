@@ -1379,6 +1379,11 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
         raise serve_recipes.RecipeError(
             "docker returned malformed identity for recipe container %r" % container
         ) from None
+    container_id = row.get("Id")
+    if not isinstance(container_id, str) or not re.fullmatch(r"[0-9a-f]{64}", container_id):
+        raise serve_recipes.RecipeError(
+            "docker returned malformed identity for recipe container %r" % container
+        )
     expected_revision = (recipe.get("download") or {}).get("revision")
     observed_revision = labels.get(_RECIPE_REVISION_LABEL)
     mismatches = []
@@ -1396,6 +1401,7 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
     return {
         "schema": "recipe-container-status/v1",
         "container": container,
+        "container_id": container_id,
         "model": recipe["model"],
         "revision": observed_revision,
         "image": (row.get("Config") or {}).get("Image"),
@@ -1447,7 +1453,7 @@ def _recipe_container_logs(
     _run=subprocess.run,
 ):
     """Read bounded logs only after exact recipe-container ownership checks."""
-    _recipe_container_identity(recipe, container, _run=_run)
+    identity = _recipe_container_identity(recipe, container, _run=_run)
     if isinstance(tail, bool) or not isinstance(tail, int) or not 1 <= tail <= 5000:
         raise serve_recipes.RecipeError("tail must be from 1 through 5000")
     if since is not None and (
@@ -1474,7 +1480,7 @@ def _recipe_container_logs(
     argv = ["docker", "logs", "--tail", str(tail)]
     if since:
         argv += ["--since", since]
-    argv.append(container)
+    argv.append(identity["container_id"])
     try:
         completed = _run(
             argv,
@@ -1514,6 +1520,7 @@ def _recheck_discovered_recipe_container(identity, *, _run=subprocess.run):
     )
     fingerprint_fields = (
         "container",
+        "container_id",
         "model",
         "revision",
         "recipe_digest",
@@ -1535,7 +1542,7 @@ def _discovered_recipe_container_logs(
     contains=None,
     _run=subprocess.run,
 ):
-    _recheck_discovered_recipe_container(identity, _run=_run)
+    current = _recheck_discovered_recipe_container(identity, _run=_run)
     if isinstance(tail, bool) or not isinstance(tail, int) or not 1 <= tail <= 5000:
         raise serve_recipes.RecipeError("tail must be from 1 through 5000")
     if since is not None and (
@@ -1562,7 +1569,7 @@ def _discovered_recipe_container_logs(
     argv = ["docker", "logs", "--tail", str(tail)]
     if since:
         argv += ["--since", since]
-    argv.append(identity["container"])
+    argv.append(current["container_id"])
     try:
         completed = _run(
             argv,
@@ -1635,9 +1642,13 @@ def _recipe_container_unload(
         dry_run=False,
     ):
         return 3
-    _recipe_container_identity(recipe, container, _run=_run)
+    current = _recipe_container_identity(recipe, container, _run=_run)
+    if current["container_id"] != identity["container_id"]:
+        raise serve_recipes.RecipeError(
+            "recipe container identity changed after selection; rediscover and retry"
+        )
     completed = _run(
-        ["docker", "rm", "-f", container],
+        ["docker", "rm", "-f", current["container_id"]],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -1699,7 +1710,7 @@ def _discovered_recipe_container_unload(
         return 3
     current = _recheck_discovered_recipe_container(identity, _run=_run)
     completed = _run(
-        ["docker", "rm", "-f", current["container"]],
+        ["docker", "rm", "-f", current["container_id"]],
         capture_output=True,
         text=True,
         encoding="utf-8",
