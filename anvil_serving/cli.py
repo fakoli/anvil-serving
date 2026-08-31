@@ -1347,11 +1347,12 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
         error = execution_meta.get("error")
         if not isinstance(error, OperatorError):
             error = _error_for_exit(rc, stderr.getvalue())
+        data = execution_meta.get("data", stdout.getvalue() or None)
         envelope = error_envelope(
             command,
             context,
             error,
-            data=execution_meta.get("data"),
+            data=data,
             warnings=warnings,
         )
     print(render_json(envelope))

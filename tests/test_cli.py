@@ -269,6 +269,22 @@ def test_incompatible_json_globals_emit_only_usage_envelope(capsys):
     assert json.loads(captured.out)["error"]["class"] == "usage"
 
 
+def test_json_error_preserves_bounded_legacy_stdout(monkeypatch, capsys):
+    def failing_handler(argv):
+        assert argv == ["lint"]
+        print("ERROR missing-registry candidate-a")
+        return 1
+
+    monkeypatch.setattr(HandlerRef, "resolve", lambda self: failing_handler)
+
+    assert cli.main(["serves", "lint", "--json"]) == 1
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert captured.err == ""
+    assert payload["ok"] is False
+    assert payload["data"] == "ERROR missing-registry candidate-a\n"
+
+
 def test_json_mutation_never_prompts_and_requires_confirmation(monkeypatch, capsys):
     monkeypatch.setattr("builtins.input", lambda _prompt: pytest.fail("prompted in JSON mode"))
     monkeypatch.setattr(HandlerRef, "resolve", lambda self: pytest.fail("handler resolved"))

@@ -8,10 +8,12 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained one-week default is GLM-5.3-Flash EXL3 K3 plus DFlash2 K5 at
-exclusive TP=2/1,048,576 across both equal cards, router concurrency 16, an
-8,192-token output cap, and fail-closed admission of up to 16 images. Video is
-unsupported. The DFlash2 draft is noncommercial without separate permission.
+The maintained default is GLM-5.3-Flash EXL3 K3 plus DFlash2 K5 on the
+corrected xgrammar runtime at exclusive TP=2/524,288 across both equal cards,
+router concurrency 16, an 8,192-token output cap, and fail-closed admission of
+up to 16 images. The measured long-context concurrency gate is C2 at a nominal
+250K target. Video is unsupported. The DFlash2 draft is noncommercial without
+separate permission. The former 1M profile is the first same-model rollback.
 RadixArk Qwen3.8 Flash Next NVFP4 remains the immediate retained video-capable
 rollback at TP=2/262,144/c1.
 The former DeepSeek V4 Flash 0731 Infernal Invocation r18 1M and r15 393K deployments and
@@ -30,9 +32,34 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-30**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-31**.
 
-## GLM-5.3-Flash K3/DFlash2 1M optimization and promotion (2026-08-30)
+## GLM-5.3-Flash 524K xgrammar fix-forward qualification (2026-08-31)
+
+The exact K3 target and DFlash2 K5 draft were rebuilt into a digest-pinned
+runtime carrying the official xgrammar reasoning-end and post-reasoning
+speculative-validation corrections. The selected profile keeps TP=2/DCP=2,
+FP8 DS-MLA target KV, BF16 draft KV, maxseq16, 2,048-token batching, and
+image/OCR while reducing configured context from 1,048,576 to 524,288 for
+measured concurrent headroom.
+
+The engine reported 2,493,817 KV tokens, or 4.76 complete configured windows.
+Two concurrent nominal 250K requests completed 2/2 with an 8,192-token API
+completion allowance. In the matched A/B, DFlash2 improved median decode from
+42.61 to 83.08 tok/s at 4K (+95.0%) and from 43.63 to a pooled 69.99 tok/s at
+240K (+60.4%). The new profile also exceeded the former live K5 profile by
+1.2% at 4K and 3.1% at 240K.
+
+Both A/B arms passed 28/28 functional observations. The selected arm passed
+image/OCR, the 4K/131K/240K bounded context suite, intelligence 6/6, tools 3/3,
+and session recall 3/3. A complete rollback to the retained 1M profile passed
+direct, router, and real Pi gates before the 524K profile was restored. The
+forward route then passed exact router identity and all eight capabilities,
+real OpenClaw and Hermes shell-tool continuations without fallback, and Pi's
+normal extension-loaded PTY read-tool gate with zero errors. See the
+[full qualification and raw public artifacts](findings/2026-08-31-glm53-xgrammar-524k-qualification.md).
+
+## GLM-5.3-Flash K3/DFlash2 1M optimization and promotion (2026-08-30, historical rollback)
 
 The exact `wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1@319d66a8` target,
 `incoai/GLM-5.3-Flash-DFlash2@dc77ff1c` draft, and digest-pinned Purtell
@@ -56,11 +83,11 @@ because its 4K c1 decode was 82.1 tok/s versus 66.8. Raising scheduler batching
 to 4,096 reduced 4K decode to 62.5 tok/s and produced no C16 benefit, so that
 arm is rejected.
 
-This is the human-authorized one-week text/tools/image/OCR default at
-1,048,576 context, 8,192 output, router c16, and up to 16 images. C16 is a
-short-request scheduling ceiling, not proof of sixteen simultaneous 1M
-prompts. Video is unsupported. The DFlash2 draft's CC-BY-NC-ND-4.0 license
-makes this an evaluation/noncommercial recipe absent separate permission. See
+This profile is now the first same-model rollback at 1,048,576 context, 8,192
+output, router c16, and up to 16 images. C16 is a short-request scheduling
+ceiling, not proof of sixteen simultaneous 1M prompts. Video is unsupported.
+The DFlash2 draft's CC-BY-NC-ND-4.0 license makes this an
+evaluation/noncommercial recipe absent separate permission. See
 the [full optimization, promotion, and raw artifacts](findings/2026-08-30-glm53-k3-dflash2-1m-optimization.md).
 
 ## GLM-5.3-Flash dual-PRO qualification (2026-08-29)

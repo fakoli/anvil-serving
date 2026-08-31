@@ -21,10 +21,10 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "b581573e6d70089929d5937458d68039806d4dc2f19879ff12c22c3d1706517c"
+    "bfa9c873bd4baf78deed08c2a4287dc844e4062d0d433f380a62011a9ff83afe"
 )
 HANDLER_MAP_SHA256 = (
-    "e7395d43bce83b73e56229ed19a4fb5c84997620ee08d3bd63ecd149d263d672"
+    "4ff853831677824100c38e022f105f1edd816835f78683365b39bfeb3acf8ae3"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -64,11 +64,13 @@ TOOL_NAMES = [
     "host_manage",
     "models_inventory",
     "model_cache_inventory",
+    "recipe_containers",
     "cache_prune_plan",
     "openclaw_sync",
     "openclaw_gateway_restart",
     "openclaw_gateway_status",
     "client_catalog_sync",
+    "routed_eval",
     "hermes_media_sync",
     "benchmark_harness_prepare",
     "benchmark_harness_status",

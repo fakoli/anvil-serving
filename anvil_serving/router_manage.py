@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from . import guard
+from . import envfile, guard
 from .paths import config_path, runtime_url
 from .serves import docker_state
 from .transports import _is_safe_controller_ip
@@ -28,6 +28,58 @@ DEFAULT_SERVICE = "router"
 DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
 DEFAULT_INSTALLED_CONFIG = "/etc/anvil/config.toml"
 TRANSITION_PATH = "/v1/admin/transition"
+MAX_ROUTER_CONFIG_BYTES = 1024 * 1024
+MAX_COMPOSE_FILE_BYTES = 2 * 1024 * 1024
+_COMPOSE_ENV_REFERENCE_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)")
+_CREDENTIAL_ENV_NAME_RE = re.compile(
+    r"(?:^|_)(?:API_KEY|AUTHORIZATION|CREDENTIAL|PASSWORD|PRIVATE_KEY|SECRET|TOKEN)(?:$|_)"
+)
+
+
+_RUNTIME_INSTALLED_PROBE_CODE = """
+import json
+import sys
+
+from anvil_serving import router_manage
+
+report = router_manage.runtime_fleet_status(
+    sys.argv[1],
+    timeout=float(sys.argv[2]),
+)
+print(json.dumps(report, indent=2, sort_keys=True))
+raise SystemExit(1 if report["unreachable_aliases"] else 0)
+"""
+
+
+_RUNTIME_CONFIG_PROBE_CODE = """
+import json
+import os
+import sys
+import tempfile
+
+from anvil_serving import router_manage
+
+raw = sys.stdin.read()
+handle = tempfile.NamedTemporaryFile(
+    mode="w",
+    encoding="utf-8",
+    suffix=".toml",
+    delete=False,
+)
+try:
+    handle.write(raw)
+    handle.close()
+    report = router_manage.runtime_fleet_status(
+        handle.name,
+        timeout=float(sys.argv[1]),
+    )
+    print(json.dumps(report, indent=2, sort_keys=True))
+finally:
+    if not handle.closed:
+        handle.close()
+    os.unlink(handle.name)
+raise SystemExit(1 if report["unreachable_aliases"] else 0)
+"""
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -131,11 +183,14 @@ def resolve_compose_path(path=None):
     )
 
 
-def _run_argv(argv, _run, *, dry_run=False):
+def _run_argv(argv, _run, *, dry_run=False, env=None):
     if dry_run:
         return 0
     try:
-        result = _run(argv, capture_output=True, text=True)
+        kwargs = {"capture_output": True, "text": True}
+        if env is not None:
+            kwargs["env"] = env
+        result = _run(argv, **kwargs)
     except FileNotFoundError:
         print("docker not available", file=sys.stderr)
         return 1
@@ -172,6 +227,30 @@ def _compose_up_argv(compose, service, env_file=None, recreate=False):
     return argv + [service]
 
 
+def _compose_execution_env(compose, env_file, *, environ=None):
+    """Make file-backed Compose credentials authoritative without exposing them."""
+    if not env_file:
+        return None
+    try:
+        with open(compose, "rb") as handle:
+            raw = handle.read(MAX_COMPOSE_FILE_BYTES + 1)
+    except OSError as exc:
+        raise ValueError("could not inspect router Compose file") from exc
+    if len(raw) > MAX_COMPOSE_FILE_BYTES:
+        raise ValueError("router Compose file exceeds the 2 MiB limit")
+    try:
+        referenced = set(_COMPOSE_ENV_REFERENCE_RE.findall(raw.decode("utf-8")))
+        file_values = envfile.read_dotenv(env_file)
+    except (OSError, UnicodeError) as exc:
+        raise ValueError("could not inspect router Compose environment") from exc
+
+    execution_env = dict(os.environ if environ is None else environ)
+    for name in sorted(referenced & set(file_values)):
+        if _CREDENTIAL_ENV_NAME_RE.search(name.upper()):
+            execution_env[name] = file_values[name]
+    return execution_env
+
+
 def _container_compose_project(container, _run=subprocess.run):
     state = docker_state(container, _run=_run)
     if state in {"absent", "error"}:
@@ -202,7 +281,17 @@ def cmd_up(
     _run=subprocess.run,
     recreate=False,
     container=DEFAULT_CONTAINER,
+    environ=None,
 ):
+    try:
+        execution_env = _compose_execution_env(
+            compose,
+            env_file,
+            environ=environ,
+        )
+    except ValueError as exc:
+        print("cannot prepare router Compose environment: %s" % exc, file=sys.stderr)
+        return 1
     state, observed_project = _container_compose_project(container, _run=_run)
     if state == "error":
         print("cannot determine router Compose ownership", file=sys.stderr)
@@ -228,6 +317,7 @@ def cmd_up(
         _compose_up_argv(compose, service, env_file=env_file, recreate=recreate),
         _run,
         dry_run=dry_run,
+        env=execution_env,
     )
 
 
@@ -822,6 +912,21 @@ def _decode_fleet_report(stdout):
     return payload
 
 
+def runtime_fleet_status(config_file, *, timeout=4.0, _probe=_probe_endpoint):
+    """Probe one config directly from the process that owns the router perspective."""
+    from .router import config as router_config
+
+    timeout = _validated_probe_timeout(timeout)
+    config = router_config.load(config_file)
+    return fleet_status(
+        config,
+        timeout=timeout,
+        _probe=_probe,
+        probe_perspective="router-runtime",
+        evidence_source="configured-file",
+    )
+
+
 def installed_fleet_status(
     *,
     container=DEFAULT_CONTAINER,
@@ -839,18 +944,9 @@ def installed_fleet_status(
         container,
         "python",
         "-c",
-        (
-            "import sys; from anvil_serving import router_manage; "
-            "raise SystemExit(router_manage.main(sys.argv[1:]))"
-        ),
-        "fleet-status",
-        "--config",
+        _RUNTIME_INSTALLED_PROBE_CODE,
         installed_config,
-        "--probe-perspective",
-        "router-runtime",
-        "--timeout",
         str(timeout),
-        "--json",
     ]
     try:
         result = _run(
@@ -873,6 +969,68 @@ def installed_fleet_status(
     return report
 
 
+def configured_fleet_status(
+    config_file,
+    *,
+    container=DEFAULT_CONTAINER,
+    timeout=4.0,
+    _run=subprocess.run,
+):
+    """Probe one candidate config from inside the live router runtime.
+
+    The candidate TOML is bounded and supplied on stdin, never copied into the
+    container or exposed in process arguments.  The runtime uses a short-lived
+    temporary file only because the installed config loader accepts a path.
+    """
+    timeout = _validated_probe_timeout(timeout)
+    if not isinstance(container, str) or not _CONTAINER_NAME_RE.fullmatch(container):
+        raise ValueError("router container name is invalid")
+    selected = os.path.abspath(os.path.expanduser(config_file))
+    try:
+        with open(selected, "rb") as handle:
+            raw = handle.read(MAX_ROUTER_CONFIG_BYTES + 1)
+    except OSError as exc:
+        raise ValueError("could not read candidate router config") from exc
+    if len(raw) > MAX_ROUTER_CONFIG_BYTES:
+        raise ValueError("candidate router config exceeds the 1 MiB limit")
+    try:
+        config_text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ValueError("candidate router config is not valid UTF-8") from None
+
+    argv = [
+        "docker",
+        "exec",
+        "-i",
+        container,
+        "python",
+        "-c",
+        _RUNTIME_CONFIG_PROBE_CODE,
+        str(timeout),
+    ]
+    try:
+        result = _run(
+            argv,
+            input=config_text,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=min(600.0, max(30.0, timeout * 64 + 10.0)),
+        )
+    except FileNotFoundError:
+        raise ValueError("router-runtime fleet probe requires Docker") from None
+    except subprocess.TimeoutExpired:
+        raise ValueError("router-runtime fleet probe exceeded its total timeout") from None
+    if result.returncode not in {0, 1}:
+        raise ValueError("router-runtime fleet probe failed before producing a report")
+    report = _decode_fleet_report(result.stdout)
+    report["evidence_source"] = "configured-file"
+    report["probe_perspective"] = "router-runtime"
+    report["config_sha256"] = hashlib.sha256(raw).hexdigest()
+    return report
+
+
 def cmd_fleet_status(
     config_path_arg=None,
     as_json=False,
@@ -884,6 +1042,7 @@ def cmd_fleet_status(
     installed_config=DEFAULT_INSTALLED_CONFIG,
     _probe=_probe_endpoint,
     _installed=installed_fleet_status,
+    _configured_runtime=configured_fleet_status,
 ):
     """Report which configured capabilities have a reachable backing serve."""
     from .doctor import resolve_default_config_path
@@ -927,14 +1086,25 @@ def cmd_fleet_status(
         return 2
 
     perspective = probe_perspective or "command-host"
-    report = fleet_status(
-        config,
-        timeout=timeout,
-        _probe=_probe,
-        probe_perspective=perspective,
-        evidence_source="configured-file",
-    )
-    report["config_sha256"] = _config_sha256(path)
+    if perspective == "router-runtime":
+        try:
+            report = _configured_runtime(
+                path,
+                container=container,
+                timeout=timeout,
+            )
+        except ValueError as exc:
+            print("router-runtime fleet status failed: %s" % exc, file=sys.stderr)
+            return 2
+    else:
+        report = fleet_status(
+            config,
+            timeout=timeout,
+            _probe=_probe,
+            probe_perspective=perspective,
+            evidence_source="configured-file",
+        )
+        report["config_sha256"] = _config_sha256(path)
     if as_json:
         print(json.dumps(report, indent=2, sort_keys=True))
         return 1 if report["unreachable_aliases"] else 0

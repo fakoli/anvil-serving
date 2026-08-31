@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+import uuid
 
+from ....envfile import resolve_env_value
 from ..arguments import (
     arg_bool as _arg_bool,
+    bounded_float_arg as _bounded_float_arg,
     bounded_int_arg as _bounded_int_arg,
     bounded_integer_schema as _bounded_integer_schema,
     probe_api_key_env as _probe_api_key_env,
@@ -274,6 +279,11 @@ def tool_client_catalog_sync(args: dict) -> dict:
             restart=lambda: harness.cmd_restart_openclaw(
                 timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
             ),
+            refresh_openclaw_service=(
+                lambda: harness.cmd_refresh_openclaw_service_environment(
+                    timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+                )
+            ),
             restart_hermes=lambda: harness._restart_hermes_default(
                 hermes_bin=hermes_bin,
                 timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
@@ -282,6 +292,133 @@ def tool_client_catalog_sync(args: dict) -> dict:
     except (OSError, ClientCatalogError) as exc:
         raise ToolError("client_catalog_sync_failed", str(exc)) from exc
     return _ok(result)
+
+
+def _routed_eval_output_path(output: str, run_id: str) -> str:
+    root = Path(os.path.expanduser("~/.anvil-serving/evidence/routed-eval")).resolve()
+    selected = Path(
+        os.path.expanduser(output) if output else root / (run_id + ".json")
+    ).resolve()
+    try:
+        selected.relative_to(root)
+    except ValueError:
+        raise ToolError(
+            "unsafe_output_path",
+            "remote routed-eval output must remain under the private evidence root",
+        ) from None
+    return str(selected)
+
+
+def tool_routed_eval(args: dict) -> dict:
+    """Run fail-closed router and real-client acceptance on the owning host."""
+    from ....routed_eval import run_routed_eval
+
+    base_url = _safe_probe_url(_str_arg(args, "base_url", required=True))
+    if "api_key" in args:
+        raise ToolError(
+            "raw_secret_not_allowed",
+            "raw api_key is not accepted; use api_key_env",
+        )
+    api_key_env = _probe_api_key_env(
+        {"api_key_env": _str_arg(args, "api_key_env", "ANVIL_ROUTER_TOKEN")}
+    )
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    if not dry_run and not confirm:
+        raise ToolError(
+            "human_approval_required",
+            "live routed evaluation requires confirm=true",
+        )
+    runtime_environment: dict[str, str] = {}
+    if not dry_run:
+        token, _source = resolve_env_value(api_key_env)
+        if token:
+            runtime_environment[api_key_env] = token
+    run_id = _str_arg(args, "run_id", "") or ("routed-" + uuid.uuid4().hex)
+    output = _routed_eval_output_path(_str_arg(args, "output", ""), run_id)
+    if not dry_run:
+        try:
+            Path(output).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        except OSError as exc:
+            raise ToolError(
+                "evidence_directory_failed",
+                "could not prepare the private routed-eval evidence directory",
+            ) from exc
+    timeout_seconds = _bounded_float_arg(
+        args,
+        "timeout_seconds",
+        600.0,
+        min_value=1.0,
+        max_value=3600.0,
+    )
+    try:
+        artifact = run_routed_eval(
+            base_url=base_url,
+            alias=_str_arg(args, "model", required=True),
+            api_key_env=api_key_env,
+            expected_served_model=_str_arg(
+                args, "expected_served_model", required=True
+            ),
+            expected_config_fingerprint=(
+                _str_arg(args, "expected_config_fingerprint", "") or None
+            ),
+            expected_router_config_sha256=(
+                _str_arg(args, "expected_router_config_sha256", "") or None
+            ),
+            min_context_tokens=_bounded_int_arg(
+                args,
+                "min_context_tokens",
+                1,
+                min_value=1,
+                max_value=10_000_000,
+            ),
+            clients=_str_arg(args, "clients", "openclaw,hermes"),
+            openclaw_provider=_str_arg(args, "openclaw_provider", "anvil"),
+            hermes_provider=_str_arg(args, "hermes_provider", "anvil"),
+            hermes_expected_provider=_str_arg(
+                args, "hermes_expected_provider", "custom"
+            ),
+            timeout_seconds=timeout_seconds,
+            output=output,
+            run_id=run_id,
+            dry_run=dry_run,
+            sync_harnesses=not _arg_bool(
+                args.get("no_harness_sync"), False, name="no_harness_sync"
+            ),
+            openclaw_config=os.path.expanduser(
+                _str_arg(args, "openclaw_config", "~/.openclaw/openclaw.json")
+            ),
+            pi_models=os.path.expanduser(
+                _str_arg(args, "pi_models", "~/.pi/agent/models.json")
+            ),
+            pi_settings=os.path.expanduser(
+                _str_arg(args, "pi_settings", "~/.pi/agent/settings.json")
+            ),
+            client_state_path=os.path.expanduser(
+                _str_arg(
+                    args,
+                    "client_state_path",
+                    "~/.anvil-serving/state/client-catalog.json",
+                )
+            ),
+            client_backup_root=os.path.expanduser(
+                _str_arg(
+                    args,
+                    "client_backup_root",
+                    "~/.anvil-serving/backups/client-catalog",
+                )
+            ),
+            environment=runtime_environment,
+        )
+    except (OSError, ValueError) as exc:
+        raise ToolError("routed_eval_failed", str(exc)) from exc
+    if not dry_run and artifact.get("passed") is not True:
+        raise ToolError(
+            "routed_eval_failed",
+            "router or real-client acceptance failed",
+            artifact,
+        )
+    return _ok(artifact)
 
 
 def tool_hermes_media_sync(args: dict) -> dict:
@@ -493,6 +630,50 @@ FAMILY = ToolFamily(
                 }
             ),
             "handler": tool_client_catalog_sync,
+        },
+        "routed_eval": {
+            "description": (
+                "Run fail-closed router identity, client-catalog reconciliation, and real "
+                "OpenClaw/Hermes acceptance on the owning host. Requires confirm=true to run."
+            ),
+            "inputSchema": _schema(
+                {
+                    "base_url": {"type": "string"},
+                    "model": {"type": "string"},
+                    "api_key_env": {"type": "string"},
+                    "expected_served_model": {"type": "string"},
+                    "expected_config_fingerprint": {"type": "string"},
+                    "expected_router_config_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$",
+                    },
+                    "min_context_tokens": _bounded_integer_schema(
+                        1, 10_000_000, 1
+                    ),
+                    "clients": {"type": "string"},
+                    "openclaw_provider": {"type": "string"},
+                    "hermes_provider": {"type": "string"},
+                    "hermes_expected_provider": {"type": "string"},
+                    "no_harness_sync": {"type": "boolean"},
+                    "openclaw_config": {"type": "string"},
+                    "pi_models": {"type": "string"},
+                    "pi_settings": {"type": "string"},
+                    "client_state_path": {"type": "string"},
+                    "client_backup_root": {"type": "string"},
+                    "timeout_seconds": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 3600,
+                        "default": 600,
+                    },
+                    "run_id": {"type": "string"},
+                    "output": {"type": "string"},
+                    "dry_run": {"type": "boolean"},
+                    "confirm": {"type": "boolean"},
+                },
+                required=["base_url", "model", "expected_served_model"],
+            ),
+            "handler": tool_routed_eval,
         },
         "hermes_media_sync": {
             "description": (

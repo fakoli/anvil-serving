@@ -106,6 +106,13 @@ container, and exact Docker Compose command; it does not invoke Docker. Confirme
 `--compose` path always wins over the operator-home default; the command never
 changes or removes that operator-home file.
 
+For credential-shaped `${NAME}` references declared by the selected Compose file,
+values in the selected `--env-file` are authoritative over same-named ambient
+process values. This prevents an unrelated shell or harness environment from
+silently rotating router credentials during a recreate. Non-credential variables,
+including a per-invocation `ROUTER_IMAGE`, retain normal Compose override behavior.
+The lifecycle output never includes resolved credential values.
+
 `--recreate` is available only for `router up`. It maps to Docker Compose
 `--force-recreate` while retaining `--no-deps`, so the operation recreates only the
 selected router service and does not start or recreate model services, alter router
@@ -160,14 +167,18 @@ To inspect a file that may not be installed, pass it explicitly:
 
 ```bash
 anvil-serving router fleet-status --config candidate-router.toml
+anvil-serving router fleet-status --config candidate-router.toml --probe-perspective router-runtime
 ```
 
 That result is labeled `configured-file` and `command-host`. A file inspection
 is configuration evidence, not proof of live installed health. The optional
-`--probe-perspective router-runtime` is intended for a caller already running
-inside the router runtime; the normal live command selects that perspective
-automatically. The controller exposes the same live-only behavior through the
-bounded `router_fleet_status` tool.
+`--probe-perspective router-runtime` streams the bounded candidate config over
+stdin to the live router container, probes it from that runtime, removes the
+short-lived runtime file, and returns only the sanitized report. The candidate
+path and contents never enter the container process arguments. The normal live
+command selects the installed config and that perspective automatically. The
+controller exposes the same live-only behavior through the bounded
+`router_fleet_status` tool.
 
 It exits non-zero when a **declared alias** has no reachable backing serve,
 so it works as a pre-promotion or monitoring check. Purpose models and audio
