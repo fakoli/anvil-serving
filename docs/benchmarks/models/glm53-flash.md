@@ -89,9 +89,10 @@ videos.
 - multimodal: direct image understanding and verbatim OCR passed; up to 16
   images are admitted. Video remains disabled.
 - client acceptance: real OpenClaw and Hermes shell-tool continuations passed
-  with exact identity and no fallback. Pi 0.84.2's normal extension-loaded PTY
-  path made exactly one `read` call, recovered an unseen marker, and emitted
-  zero error events.
+  with exact identity and no fallback. Pi 0.84.2's initial normal
+  extension-loaded PTY path made exactly one `read` call, recovered an unseen
+  marker, and emitted zero error events; the goal-closure recheck on Pi 0.84.4
+  retained 524,288/8,192 and passed another real PTY tool nonce.
 
 ## Matched local comparison
 
