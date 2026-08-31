@@ -28,6 +28,41 @@ def test_restart_uses_resolved_openclaw_executable():
     assert calls == [["/opt/bin/openclaw", "gateway", "restart"]]
 
 
+def test_service_environment_refresh_uses_managed_openclaw_install():
+    calls = []
+
+    def run(argv, **_kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    assert harness.cmd_refresh_openclaw_service_environment(
+        _which=lambda _name: "/opt/bin/openclaw",
+        _run=run,
+    ) == 0
+    assert calls == [[
+        "/opt/bin/openclaw",
+        "gateway",
+        "install",
+        "--force",
+        "--json",
+    ]]
+
+
+def test_service_environment_refresh_does_not_expose_failed_output(capsys):
+    secret = "credential-that-must-not-be-printed"
+
+    assert harness.cmd_refresh_openclaw_service_environment(
+        _which=lambda _name: "/opt/bin/openclaw",
+        _run=lambda argv, **_kwargs: subprocess.CompletedProcess(
+            argv, 17, secret, secret
+        ),
+    ) == 1
+    captured = capsys.readouterr()
+    assert "status 17" in captured.err
+    assert secret not in captured.err
+    assert secret not in captured.out
+
+
 def test_restart_falls_back_to_verified_launchd_service(tmp_path, capsys):
     plist = tmp_path / "ai.openclaw.gateway.plist"
     _write_launchd(plist)
