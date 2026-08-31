@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -27,6 +28,26 @@ MAX_CLIENT_OUTPUT_BYTES = 1024 * 1024
 _CLIENTS = frozenset({"openclaw", "hermes"})
 _ENV_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 _RUN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+
+
+def _resolve_client_executable(name: str) -> str:
+    """Resolve a managed client without depending on an interactive shell PATH."""
+    resolved = shutil.which(name)
+    if resolved:
+        return resolved
+    home = Path.home()
+    candidates = (
+        home / ".local" / "bin" / name,
+        home / ".local" / "share" / "pnpm" / name,
+        Path("/opt/homebrew/bin") / name,
+        Path("/usr/local/bin") / name,
+    )
+    if os.name == "nt" and os.environ.get("APPDATA"):
+        candidates += (Path(os.environ["APPDATA"]) / "npm" / f"{name}.cmd",)
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return name
 
 
 def _utc_now() -> str:
@@ -270,14 +291,25 @@ def _run_client(
     try:
         completed = runner(tuple(argv), timeout_seconds)
     except FileNotFoundError as exc:
-        return {"returncode": None, "stdout": "", "stderr": str(exc), "timed_out": False,
-                "output_truncated": False, "latency_ms": round((time.monotonic() - started) * 1000)}
+        return {
+            "returncode": None, "stdout": "", "stderr": str(exc), "timed_out": False,
+            "launch_error": "executable_not_found", "output_truncated": False,
+            "latency_ms": round((time.monotonic() - started) * 1000),
+        }
+    except OSError as exc:
+        return {
+            "returncode": None, "stdout": "", "stderr": str(exc), "timed_out": False,
+            "launch_error": "executable_not_runnable", "output_truncated": False,
+            "latency_ms": round((time.monotonic() - started) * 1000),
+        }
     except subprocess.TimeoutExpired as exc:
         stdout, stdout_truncated = _bounded_process_text(exc.stdout)
         stderr, stderr_truncated = _bounded_process_text(exc.stderr)
-        return {"returncode": None, "stdout": stdout, "stderr": stderr, "timed_out": True,
-                "output_truncated": stdout_truncated or stderr_truncated,
-                "latency_ms": round((time.monotonic() - started) * 1000)}
+        return {
+            "returncode": None, "stdout": stdout, "stderr": stderr, "timed_out": True,
+            "launch_error": None, "output_truncated": stdout_truncated or stderr_truncated,
+            "latency_ms": round((time.monotonic() - started) * 1000),
+        }
     stdout, stdout_truncated = _bounded_process_text(getattr(completed, "stdout", ""))
     stderr, stderr_truncated = _bounded_process_text(getattr(completed, "stderr", ""))
     return {
@@ -285,6 +317,7 @@ def _run_client(
         "stdout": stdout,
         "stderr": stderr,
         "timed_out": False,
+        "launch_error": None,
         "output_truncated": stdout_truncated or stderr_truncated,
         "latency_ms": round((time.monotonic() - started) * 1000),
     }
@@ -298,6 +331,10 @@ def _client_failure(
         return None
     if process["timed_out"]:
         return "client process timed out"
+    if process.get("launch_error") == "executable_not_found":
+        return "client executable was not found on PATH or in standard install locations"
+    if process.get("launch_error") == "executable_not_runnable":
+        return "client executable could not be launched"
     if process["returncode"] != 0:
         return f"client process exited with status {process['returncode']}"
     if process["output_truncated"]:
@@ -311,6 +348,7 @@ def evaluate_openclaw(
     *, alias: str, provider: str, marker: str, probe_path: str, run_id: str,
     expected_context_tokens: int,
     timeout_seconds: float, runner: Callable[[Sequence[str], float], Any] = _default_runner,
+    executable: str = "openclaw",
 ) -> dict[str, Any]:
     model = f"{provider}/{alias}"
     prompt = (
@@ -318,7 +356,7 @@ def evaluate_openclaw(
         "Then reply with exactly the file contents and nothing else."
     )
     argv = (
-        "openclaw", "agent", "--agent", "main", "--session-key",
+        executable, "agent", "--agent", "main", "--session-key",
         f"agent:main:anvil-routed-eval-{run_id}", "--model", model,
         "--thinking", "off", "--message", prompt,
         "--timeout", str(int(timeout_seconds)), "--json",
@@ -384,6 +422,7 @@ def evaluate_hermes(
     *, alias: str, provider: str, expected_observed_provider: str, marker: str,
     probe_path: str,
     timeout_seconds: float, runner: Callable[[Sequence[str], float], Any] = _default_runner,
+    executable: str = "hermes",
 ) -> dict[str, Any]:
     usage_error = None
     usage: Mapping[str, Any] = {}
@@ -395,7 +434,7 @@ def evaluate_hermes(
             "and nothing else."
         )
         argv = (
-            "hermes", "--provider", provider, "--model", alias,
+            executable, "--provider", provider, "--model", alias,
             "--reasoning", "none", "--usage-file", usage_path,
             "--toolsets", "terminal", "-z", prompt,
         )
@@ -646,6 +685,14 @@ def run_routed_eval(
     can_run_clients = router["passed"] and harness_sync["passed"]
     if can_run_clients:
         expected_context_tokens = router["observed"]["context_limit_tokens"]
+        client_executables = {
+            client: (
+                _resolve_client_executable(client)
+                if runner is _default_runner
+                else client
+            )
+            for client in selected_clients
+        }
         for client in selected_clients:
             marker = "ANVIL_" + client.upper() + "_ROUTED_EVAL_" + uuid.uuid4().hex.upper()
             with tempfile.TemporaryDirectory(prefix="anvil-routed-tool-probe-") as temporary:
@@ -659,6 +706,7 @@ def run_routed_eval(
                         probe_path=str(probe_path), run_id=run_id,
                         expected_context_tokens=expected_context_tokens,
                         timeout_seconds=timeout_seconds, runner=runner,
+                        executable=client_executables[client],
                     ))
                 else:
                     results.append(evaluate_hermes(
@@ -666,6 +714,7 @@ def run_routed_eval(
                         expected_observed_provider=hermes_expected_provider,
                         marker=marker, probe_path=str(probe_path),
                         timeout_seconds=timeout_seconds, runner=runner,
+                        executable=client_executables[client],
                     ))
     artifact = {
         **plan, "dry_run": False, "started_at": started_at, "finished_at": _utc_now(),

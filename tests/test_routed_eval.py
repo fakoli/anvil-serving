@@ -3,6 +3,7 @@ from pathlib import Path
 import re
 from types import SimpleNamespace
 
+from anvil_serving import routed_eval
 from anvil_serving.routed_eval import run_routed_eval
 
 
@@ -310,6 +311,67 @@ def test_routed_eval_does_not_retain_failed_client_output(tmp_path):
     assert artifact["results"][0]["failure"] == "client process exited with status 17"
     assert secret not in json.dumps(artifact)
     assert secret not in (tmp_path / "routed.json").read_text(encoding="utf-8")
+
+
+def test_routed_eval_reports_missing_client_executable_without_retaining_path(tmp_path):
+    missing = str(tmp_path / "private-install" / "openclaw")
+
+    def missing_runner(_argv, _timeout):
+        raise FileNotFoundError(missing)
+
+    artifact = run_routed_eval(**_arguments(
+        tmp_path, clients="openclaw", runner=missing_runner,
+    ))
+
+    assert artifact["passed"] is False
+    assert artifact["results"][0]["failure"] == (
+        "client executable was not found on PATH or in standard install locations"
+    )
+    assert missing not in json.dumps(artifact)
+    assert json.loads((tmp_path / "routed.json").read_text(encoding="utf-8"))[
+        "passed"
+    ] is False
+
+
+def test_routed_eval_persists_bounded_permission_failure(tmp_path):
+    private_path = str(tmp_path / "private-install" / "openclaw")
+
+    def denied_runner(_argv, _timeout):
+        raise PermissionError(private_path)
+
+    artifact = run_routed_eval(**_arguments(
+        tmp_path, clients="openclaw", runner=denied_runner,
+    ))
+
+    assert artifact["passed"] is False
+    assert artifact["results"][0]["failure"] == "client executable could not be launched"
+    persisted = (tmp_path / "routed.json").read_text(encoding="utf-8")
+    assert private_path not in persisted
+    assert json.loads(persisted)["passed"] is False
+
+
+def test_resolve_client_executable_uses_standard_user_location(monkeypatch, tmp_path):
+    candidate = tmp_path / ".local" / "bin" / "openclaw"
+    candidate.parent.mkdir(parents=True)
+    candidate.write_text("launcher", encoding="utf-8")
+
+    monkeypatch.setattr(routed_eval.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(routed_eval.Path, "home", classmethod(lambda _cls: tmp_path))
+    monkeypatch.setattr(routed_eval.os, "access", lambda path, _mode: path == candidate)
+
+    assert routed_eval._resolve_client_executable("openclaw") == str(candidate)
+
+
+def test_resolve_client_executable_skips_non_executable_fallback(monkeypatch, tmp_path):
+    candidate = tmp_path / ".local" / "bin" / "openclaw"
+    candidate.parent.mkdir(parents=True)
+    candidate.write_text("not executable", encoding="utf-8")
+
+    monkeypatch.setattr(routed_eval.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(routed_eval.Path, "home", classmethod(lambda _cls: tmp_path))
+    monkeypatch.setattr(routed_eval.os, "access", lambda _path, _mode: False)
+
+    assert routed_eval._resolve_client_executable("openclaw") == "openclaw"
 
 
 def test_routed_eval_retains_router_request_failure_and_skips_clients(tmp_path):
