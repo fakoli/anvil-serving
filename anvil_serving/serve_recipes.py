@@ -40,6 +40,17 @@ _CONTAINER_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 _ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _BARE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+_HEX_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
+_SAFE_CONTAINER_VALUE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]*$")
+RECIPE_MANAGED_LABEL = "io.anvil-serving.managed-by"
+RECIPE_MODEL_LABEL = "io.anvil-serving.recipe.model"
+RECIPE_REVISION_LABEL = "io.anvil-serving.recipe.revision"
+RECIPE_DIGEST_LABEL = "io.anvil-serving.recipe.digest"
+RECIPE_REGISTRY_DIGEST_LABEL = "io.anvil-serving.recipe.registry-digest"
+RECIPE_NATIVE_KV_OFFLOAD_LABEL = "io.anvil-serving.recipe.native-kv-offload"
+RECIPE_MANAGED_VALUE = "models-recipes"
+RECIPE_CONTAINER_INVENTORY_SCHEMA = "recipe-container-inventory/v1"
+MAX_DISCOVERED_RECIPE_CONTAINERS = 256
 
 
 class RecipeError(ValueError):
@@ -115,6 +126,18 @@ def registry_digest(path) -> str | None:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def recipe_digest(recipe: dict) -> str:
+    """Return a stable digest of one validated recipe's semantic data."""
+    validate_recipe(recipe)
+    payload = json.dumps(
+        recipe,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("ascii")
+    return hashlib.sha256(payload).hexdigest()
 
 
 @contextmanager
@@ -584,6 +607,7 @@ def docker_run_argv(
     *,
     container: str | None = None,
     gpu_device: str | None = None,
+    registry_digest_value: str | None = None,
 ) -> list[str]:
     """Build the argv for a loopback-bound recipe load without shell interpolation."""
     validate_recipe(recipe, require_loadable=True)
@@ -602,6 +626,10 @@ def docker_run_argv(
             "gpu_device must be one or more distinct comma-separated UUIDs or "
             "indices without whitespace"
         )
+    if registry_digest_value is not None and not _HEX_DIGEST_RE.fullmatch(
+        registry_digest_value
+    ):
+        raise RecipeError("registry digest must be 64 lowercase hex characters")
     serve = recipe["serve"]
     hw = recipe.get("hardware") or {}
     argv = ["docker", "run", "-d"]
@@ -622,15 +650,28 @@ def docker_run_argv(
     argv += ["--gpus", gpu_request]
     argv += [
         "--label",
-        "io.anvil-serving.managed-by=models-recipes",
+        "%s=%s" % (RECIPE_MANAGED_LABEL, RECIPE_MANAGED_VALUE),
         "--label",
-        "io.anvil-serving.recipe.model=%s" % recipe["model"],
+        "%s=%s" % (RECIPE_MODEL_LABEL, recipe["model"]),
+        "--label",
+        "%s=%s" % (RECIPE_DIGEST_LABEL, recipe_digest(recipe)),
+        "--label",
+        "%s=%s"
+        % (
+            RECIPE_NATIVE_KV_OFFLOAD_LABEL,
+            "true" if uses_native_kv_offload(recipe) else "false",
+        ),
     ]
+    if registry_digest_value:
+        argv += [
+            "--label",
+            "%s=%s" % (RECIPE_REGISTRY_DIGEST_LABEL, registry_digest_value),
+        ]
     revision = (recipe.get("download") or {}).get("revision")
     if revision:
         argv += [
             "--label",
-            "io.anvil-serving.recipe.revision=%s" % revision,
+            "%s=%s" % (RECIPE_REVISION_LABEL, revision),
         ]
     declared_serve_env = list(serve.get("env", []))
     model_env = serve.get("model_env")
@@ -792,15 +833,245 @@ def uses_native_kv_offload(recipe: dict) -> bool:
     return False
 
 
+def _bounded_container_value(value, *, maximum: int) -> str | None:
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > maximum
+        or any(ord(character) < 0x20 or ord(character) == 0x7F for character in value)
+    ):
+        return None
+    return value
+
+
+def _recipe_bound_ports(row: dict) -> list[int]:
+    bindings = (row.get("HostConfig") or {}).get("PortBindings") or {}
+    ports = set()
+    if not isinstance(bindings, dict):
+        return []
+    for rows in bindings.values():
+        if not isinstance(rows, list):
+            continue
+        for binding in rows:
+            raw = binding.get("HostPort") if isinstance(binding, dict) else None
+            try:
+                port = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= port <= 65535:
+                ports.add(port)
+    return sorted(ports)
+
+
+def _recipe_gpu_selection(row: dict) -> list[str]:
+    selected = []
+    requests = (row.get("HostConfig") or {}).get("DeviceRequests") or []
+    if not isinstance(requests, list):
+        return []
+    for request in requests[:16]:
+        if not isinstance(request, dict):
+            continue
+        device_ids = request.get("DeviceIDs") or []
+        if isinstance(device_ids, list):
+            for value in device_ids[:16]:
+                safe = _bounded_container_value(value, maximum=128)
+                if safe and _SAFE_CONTAINER_VALUE_RE.fullmatch(safe) and safe not in selected:
+                    selected.append(safe)
+        if not device_ids and request.get("Count") == -1 and "all" not in selected:
+            selected.append("all")
+    return selected
+
+
+def _recipe_served_identity(row: dict, fallback: str) -> str:
+    config = row.get("Config") or {}
+    tokens = row.get("Args")
+    if not isinstance(tokens, list):
+        tokens = config.get("Cmd")
+    if not isinstance(tokens, list):
+        return fallback
+    for index, token in enumerate(tokens):
+        if not isinstance(token, str):
+            continue
+        if token == "--served-model-name" and index + 1 < len(tokens):
+            value = _bounded_container_value(tokens[index + 1], maximum=512)
+            return value or fallback
+        if token.startswith("--served-model-name="):
+            value = _bounded_container_value(token.split("=", 1)[1], maximum=512)
+            return value or fallback
+    return fallback
+
+
+def _recipe_container_record(row: dict) -> dict | None:
+    if not isinstance(row, dict):
+        return None
+    config = row.get("Config") or {}
+    labels = config.get("Labels") or {}
+    if not isinstance(labels, dict) or labels.get(RECIPE_MANAGED_LABEL) != RECIPE_MANAGED_VALUE:
+        return None
+    model = _bounded_container_value(labels.get(RECIPE_MODEL_LABEL), maximum=512)
+    name = _bounded_container_value(str(row.get("Name") or "").lstrip("/"), maximum=128)
+    container_id = row.get("Id")
+    if (
+        not model
+        or not name
+        or not _CONTAINER_NAME_RE.fullmatch(name)
+        or not isinstance(container_id, str)
+        or not _HEX_DIGEST_RE.fullmatch(container_id)
+    ):
+        return None
+    revision = labels.get(RECIPE_REVISION_LABEL)
+    if revision is not None:
+        revision = _bounded_container_value(revision, maximum=256)
+        if revision is None:
+            return None
+    recipe_hash = labels.get(RECIPE_DIGEST_LABEL)
+    registry_hash = labels.get(RECIPE_REGISTRY_DIGEST_LABEL)
+    if recipe_hash is not None and not _HEX_DIGEST_RE.fullmatch(str(recipe_hash)):
+        return None
+    if registry_hash is not None and not _HEX_DIGEST_RE.fullmatch(str(registry_hash)):
+        return None
+    native_raw = labels.get(RECIPE_NATIVE_KV_OFFLOAD_LABEL)
+    if native_raw not in {None, "true", "false"}:
+        return None
+    state = row.get("State") or {}
+    state_name = _bounded_container_value(state.get("Status"), maximum=32) or "unknown"
+    health = _bounded_container_value(
+        (state.get("Health") or {}).get("Status"), maximum=32
+    )
+    image_digest = row.get("Image")
+    if not isinstance(image_digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest):
+        image_digest = None
+    ports = _recipe_bound_ports(row)
+    return {
+        "container": name,
+        "container_id": container_id,
+        "model": model,
+        "revision": revision,
+        "recipe_digest": recipe_hash,
+        "registry_digest": registry_hash,
+        "image_digest": image_digest,
+        "served_identity": _recipe_served_identity(row, model),
+        "bound_port": ports[0] if len(ports) == 1 else None,
+        "bound_ports": ports,
+        "gpu_selection": _recipe_gpu_selection(row),
+        "state": state_name,
+        "running": bool(state.get("Running")),
+        "health": health,
+        "native_kv_offload": (
+            None if native_raw is None else native_raw == "true"
+        ),
+    }
+
+
+def discover_recipe_containers(*, _run=subprocess.run) -> dict:
+    """Return bounded, secret-free identities for Anvil recipe containers."""
+    try:
+        listed = _run(
+            [
+                "docker",
+                "ps",
+                "-a",
+                "--filter",
+                "label=%s=%s" % (RECIPE_MANAGED_LABEL, RECIPE_MANAGED_VALUE),
+                "--format",
+                "{{.ID}}",
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError as exc:
+        raise RecipeError("cannot discover recipe containers: %s" % exc) from None
+    if listed.returncode:
+        raise RecipeError("Docker recipe discovery failed")
+    ids = []
+    for line in (listed.stdout or "").splitlines():
+        container_id = line.strip()
+        if re.fullmatch(r"[0-9a-f]{12,64}", container_id) and container_id not in ids:
+            ids.append(container_id)
+    if len(ids) > MAX_DISCOVERED_RECIPE_CONTAINERS:
+        raise RecipeError(
+            "recipe container discovery exceeds the %d-container safety bound"
+            % MAX_DISCOVERED_RECIPE_CONTAINERS
+        )
+    if not ids:
+        return {"schema": RECIPE_CONTAINER_INVENTORY_SCHEMA, "containers": []}
+    try:
+        inspected = _run(
+            ["docker", "inspect", *ids],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError as exc:
+        raise RecipeError("cannot inspect recipe containers: %s" % exc) from None
+    if inspected.returncode:
+        raise RecipeError("Docker recipe identity inspection failed")
+    try:
+        rows = json.loads(inspected.stdout or "")
+    except json.JSONDecodeError:
+        raise RecipeError("Docker recipe identity inspection returned malformed JSON") from None
+    if not isinstance(rows, list):
+        raise RecipeError("Docker recipe identity inspection returned malformed JSON")
+    containers = []
+    for row in rows[:MAX_DISCOVERED_RECIPE_CONTAINERS]:
+        record = _recipe_container_record(row)
+        if record is not None:
+            containers.append(record)
+    containers.sort(key=lambda item: item["container"].casefold())
+    return {"schema": RECIPE_CONTAINER_INVENTORY_SCHEMA, "containers": containers}
+
+
+def select_recipe_container(
+    inventory: dict,
+    *,
+    model: str | None = None,
+    container: str | None = None,
+) -> dict:
+    """Select exactly one discovered recipe container or fail closed."""
+    if not model and not container:
+        raise RecipeError("specify MODEL, --container, or use `models recipes running`")
+    rows = list(inventory.get("containers") or [])
+    if container:
+        rows = [row for row in rows if row.get("container") == container]
+    if model:
+        exact = [row for row in rows if row.get("model") == model]
+        if exact:
+            rows = exact
+        else:
+            basename = model.rsplit("/", 1)[-1]
+            rows = [
+                row for row in rows
+                if str(row.get("model") or "").rsplit("/", 1)[-1] == basename
+            ]
+    if len(rows) == 1:
+        return rows[0]
+    if not rows:
+        raise RecipeError("no discovered Anvil recipe container matches the selector")
+    choices = ", ".join(row["container"] for row in rows[:16])
+    raise RecipeError(
+        "recipe container selector is ambiguous; add --container with one of: %s"
+        % choices
+    )
+
+
 def load_recipe(
     recipe: dict,
     container: str,
     *,
     gpu_device: str | None = None,
+    registry_digest_value: str | None = None,
     _run=subprocess.run,
 ) -> tuple[list[str], int]:
     """Start a named recipe container once and return its exact argv and exit code."""
-    argv = docker_run_argv(recipe, container=container, gpu_device=gpu_device)
+    argv = docker_run_argv(
+        recipe,
+        container=container,
+        gpu_device=gpu_device,
+        registry_digest_value=registry_digest_value,
+    )
     try:
         completed = _run(argv, check=False)
     except OSError:

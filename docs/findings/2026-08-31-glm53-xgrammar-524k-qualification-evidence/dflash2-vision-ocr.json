@@ -1,0 +1,119 @@
+{
+  "base_url": "http://127.0.0.1:8001/v1",
+  "budget": {
+    "max_completion_tokens": 8192,
+    "reasoning_headroom_tokens": 7168,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "ANVIL READY",
+    "42917",
+    "42"
+  ],
+  "model": "glm53-flash-exl3-k3-dflash2-k5-fp8-tp2-524k-vision-xgfix",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "This image shows a dark navy blue status display with three lines of text:\n\n1. **ANVIL READY** \u2014 in bright green, indicating the system/anvil is operational and ready\n2. **CODE 42917** \u2014 in white, likely an identification or reference code\n3. **TEMPERATURE 42 C** \u2014 in light blue, showing the current temperature reading of 42\u00b0C\n\nOverall, it appears to be a machine or process status screen confirming that the \"anvil\" is ready for use, with an associated code and a temperature reading of 42 degrees Celsius.",
+      "content_chars": 509,
+      "content_excerpt": "This image shows a dark navy blue status display with three lines of text:\n\n1. **ANVIL READY** \u2014 in bright green, indicating the system/anvil is operational and ready\n2. **CODE 42917** \u2014 in white, lik",
+      "expected": [
+        "ANVIL READY",
+        "42917",
+        "42"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 6.749,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 123,
+        "prompt_tokens": 333,
+        "prompt_tokens_details": null,
+        "total_tokens": 456
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "content_chars": 39,
+      "content_excerpt": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "expected": [
+        "ANVIL READY",
+        "42917",
+        "42"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.395,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 19,
+        "prompt_tokens": 334,
+        "prompt_tokens_details": null,
+        "total_tokens": 353
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "ANVIL READY",
+    "42917",
+    "42"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "6.7s all expected text present finish='stop' visible=509 reasoning_chars=0 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.4s all expected text present finish='stop' visible=39 reasoning_chars=0 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "low"
+  },
+  "video_expect": [],
+  "video_input": null
+}

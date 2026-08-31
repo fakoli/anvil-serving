@@ -37,6 +37,7 @@ swap.
 | See models already on this host | `models sync --dry-run` | Apply with `--confirm`, then inspect `model-library/INDEX.md`. |
 | Download a Hugging Face model | `models pull REPO --dry-run` | Apply with `--confirm`. |
 | Find a known working serve configuration | `models recipes list` | Inspect it with `models recipes show MODEL`. |
+| Discover recipe-loaded containers | `models recipes running` | Select an unambiguous model or exact container for status, logs, or unload. |
 | Replace the deployed Primary recipe | `models recipes list` | Choose a row that activates `primary`, inspect it, then preview `serves switch primary MODEL --dry-run`. |
 | Add or revise an operator recipe | `models recipes create|update ... --dry-run` | Apply with `--confirm`; retain the numbered backup. |
 | Start a candidate without changing routing | `models recipes load MODEL --container NAME --dry-run` | Apply, run `eval preflight`, then review a `serves switch`. |
@@ -52,6 +53,7 @@ swap.
 | `models score` | Rank models from benchmark evidence. |
 | `models recipes list` | List recorded serve recipes. |
 | `models recipes show` | Show one recipe. |
+| `models recipes running` | Discover label-owned recipe containers without registry dependence. |
 | `models recipes create` | Add one recipe to an operator registry. |
 | `models recipes update` | Replace one selected recipe. |
 | `models recipes delete` | Delete one selected recipe. |
@@ -244,17 +246,39 @@ change the successful load's exit code. Configure the default-off policy in
 
 ### Operate a loaded recipe
 
-`load` labels the candidate with its exact recipe model and revision. Status,
-logs, and unload verify those ownership labels before acting, so a mistyped
-container name cannot silently target an unrelated workload.
+`load` labels the candidate with its exact recipe model, revision, canonical
+recipe digest, source-registry digest, and native-offload classification.
+Legacy containers that predate the digest labels remain discoverable from the
+required Anvil ownership and model labels. Status, logs, and unload recheck the
+full immutable Docker container ID before acting; logs and removal use that ID,
+not the reusable name. A mistyped name, reused name, or same-name replacement
+therefore fails closed instead of silently targeting another container.
 
 ```bash
+anvil-serving models recipes running
+anvil-serving models recipes running --json
+anvil-serving models recipes status MODEL
 anvil-serving models recipes status MODEL --container my-candidate --registry ./serve-recipes.local.toml
 anvil-serving models recipes logs MODEL --container my-candidate --registry ./serve-recipes.local.toml --tail 200
 anvil-serving models recipes logs MODEL --container my-candidate --tail 500 --contains ERROR --contains "KV cache"
 anvil-serving models recipes unload MODEL --container my-candidate --registry ./serve-recipes.local.toml --dry-run
 anvil-serving models recipes unload MODEL --container my-candidate --registry ./serve-recipes.local.toml --confirm
 ```
+
+`running` asks Docker only for containers carrying the exact
+`io.anvil-serving.managed-by=models-recipes` label, then emits a bounded typed
+inventory: container name and immutable ID, model/revision, available recipe
+and registry digests, image digest, served identity, bound port, GPU selection,
+state, and health. It does not return environment values, raw launch commands,
+credentials, or endpoint addresses. Exited retained candidates are included.
+Missing or malformed identities and non-Anvil containers are excluded.
+
+When one discovered container matches, `status`, `logs`, and `unload` no longer
+require its name to be recovered out of band or its recipe to remain in the
+currently selected registry. Two matching containers fail closed and require
+an exact `--container`. An unload without a current recipe treats a missing
+native-offload label conservatively and invokes the existing twice-verified,
+exact-path shared-memory cleanup guard after removal.
 
 `--contains` is a case-insensitive literal filter and may be repeated; a line
 is emitted when it contains any selected literal. Filtering happens after the

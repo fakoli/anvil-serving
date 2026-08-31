@@ -109,6 +109,37 @@ def tool_model_cache_inventory(args: dict) -> dict:
     return _ok({"inventory": inventory})
 
 
+def tool_recipe_containers(args: dict) -> dict:
+    """Return bounded recipe-container identities without registry dependence."""
+    from .... import serve_recipes
+
+    allowed = {"model", "container"}
+    extras = sorted(str(key) for key in args if key not in allowed)
+    if extras:
+        raise ToolError(
+            "bad_argument",
+            "unsupported recipe_containers argument(s)",
+            {"arguments": extras},
+        )
+    model = _str_arg(args, "model", "")
+    container = _str_arg(args, "container", "")
+    try:
+        inventory = serve_recipes.discover_recipe_containers()
+        if model or container:
+            selected = serve_recipes.select_recipe_container(
+                inventory,
+                model=model or None,
+                container=container or None,
+            )
+            inventory = {
+                "schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA,
+                "containers": [selected],
+            }
+    except serve_recipes.RecipeError as exc:
+        raise ToolError("recipe_container_discovery_failed", str(exc)) from exc
+    return _ok({"inventory": inventory})
+
+
 def _cache_prune_plan_argv(mixture: list[str], *, include_servable: bool) -> list[str]:
     argv = [sys.executable, "-m", "anvil_serving.cli", "models", "cache", "prune", "--json"]
     if mixture:
@@ -192,6 +223,19 @@ FAMILY = ToolFamily(
                 }
             ),
             "handler": tool_model_cache_inventory,
+        },
+        "recipe_containers": {
+            "description": (
+                "Discover bounded, label-owned Anvil recipe containers without "
+                "reading registry state, environment values, or raw commands."
+            ),
+            "inputSchema": _schema(
+                {
+                    "model": {"type": "string"},
+                    "container": {"type": "string"},
+                }
+            ),
+            "handler": tool_recipe_containers,
         },
         "cache_prune_plan": {
             "description": "Return a JSON model-cache prune plan and dry-run report; deletion is not available through MCP.",

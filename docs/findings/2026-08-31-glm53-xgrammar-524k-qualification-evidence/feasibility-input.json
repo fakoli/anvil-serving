@@ -1,0 +1,195 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "glm53-k3-xgrammar-524k-dual-pro-c2",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 250000,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "operator-approved 250K through 600K replacement envelope",
+        "observed_at": "2026-08-31"
+      },
+      "output_reserve": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "router-visible reasoning and answer reserve",
+        "observed_at": "2026-08-31"
+      }
+    },
+    "concurrency": {
+      "value": 2,
+      "unit": "sequences",
+      "status": "assumed",
+      "source": "operator-requested minimum useful concurrency",
+      "observed_at": "2026-08-31"
+    },
+    "physical_vram_bytes": {
+      "value": 205283917824,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "two local RTX PRO 6000 Blackwell Max-Q cards at 97887 MiB each",
+      "observed_at": "2026-08-31"
+    },
+    "vram_reserves": {
+      "idle_gpu_allocations": {
+        "kind": "physical",
+        "variable": {
+          "value": 39845888,
+          "unit": "bytes",
+          "status": "measured",
+          "source": "retained isolated-lane idle allocation: 19 MiB per card",
+          "observed_at": "2026-08-29"
+        }
+      },
+      "five_percent_runtime_headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 10224350003,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "remainder of the pinned 0.950 GPU-memory ceiling after idle allocation",
+          "observed_at": "2026-08-31"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "identity, structured output, tools, context, quality, and stability hard gate",
+        "observed_at": "2026-08-31"
+      },
+      "max_relative_quality_loss": {
+        "value": 0.03,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "maximum acceptable loss against the current qualified K3 control",
+        "observed_at": "2026-08-31"
+      },
+      "min_warm_e2e_gain": {
+        "value": 0.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "operator requires a positive matched throughput improvement; absolute lane gate is greater than 67.9 output tokens per second near 240K",
+        "observed_at": "2026-08-31"
+      },
+      "min_tasks_per_hour_ratio": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "replacement may not reduce successful agent work per hour",
+        "observed_at": "2026-08-31"
+      }
+    }
+  },
+  "tracked_variables": {
+    "current_spec_kv_capacity_tokens": {
+      "value": 2917371,
+      "unit": "tokens",
+      "status": "measured",
+      "source": "current exact K3 plus DFlash2 K5 startup telemetry",
+      "observed_at": "2026-08-30",
+      "notes": "The corrected image changes only structured-output control flow, not model, draft, KV dtype, or allocation geometry."
+    },
+    "runtime_patch_source_hashes": {
+      "status": "confirmed",
+      "unit": "sha256",
+      "source": "hash-gated derived-image Dockerfile",
+      "observed_at": "2026-08-31",
+      "notes": "Pre-patch hashes are enforced in the derived-image Dockerfile; post-patch hashes are enforced after application."
+    }
+  },
+  "candidates": [
+    {
+      "id": "glm53-k3-524k-nospec-xgrammar-fixed",
+      "runtime_context_limit_tokens": {
+        "value": 524288,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "managed candidate recipe",
+        "observed_at": "2026-08-31"
+      },
+      "resident_components": {
+        "target_runtime_and_graph_conservative_proxy": {
+          "min": 158000000000,
+          "max": 165000000000,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "conservative carry-forward of the larger locally proven K3 plus DFlash2 resident envelope",
+          "observed_at": "2026-08-31"
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "request_cache_conservative_proxy": {
+          "min": 12000,
+          "max": 13000,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "conservative carry-forward of the locally proven target-plus-draft request-cache density",
+          "observed_at": "2026-08-31"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 2,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "two independent required sequences",
+        "observed_at": "2026-08-31"
+      },
+      "metrics": {},
+      "hard_failures": []
+    },
+    {
+      "id": "glm53-k3-524k-dflash2-k5-xgrammar-fixed",
+      "runtime_context_limit_tokens": {
+        "value": 524288,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "managed candidate recipe",
+        "observed_at": "2026-08-31"
+      },
+      "measured_max_stable_context_tokens": {
+        "value": 950000,
+        "unit": "tokens",
+        "status": "measured",
+        "source": "current exact K3 plus DFlash2 K5 local retrieval gate",
+        "observed_at": "2026-08-30",
+        "notes": "Same target, draft, KV dtypes, and allocation geometry; corrected runtime still requires local requalification."
+      },
+      "resident_components": {
+        "target_draft_runtime_and_graph_proxy": {
+          "min": 158000000000,
+          "max": 165000000000,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "locally proven K3 plus DFlash2 resident envelope",
+          "observed_at": "2026-08-30"
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "target_draft_request_cache_proxy": {
+          "min": 12000,
+          "max": 13000,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "local K3 plus DFlash2 request-cache density proxy",
+          "observed_at": "2026-08-30"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 2,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "two independent required sequences",
+        "observed_at": "2026-08-31"
+      },
+      "metrics": {},
+      "hard_failures": []
+    }
+  ]
+}

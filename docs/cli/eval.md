@@ -71,6 +71,32 @@ catalog. A normal qualification should leave reconciliation enabled because
 the resulting catalog change makes local client limits truthful to the active
 router; it is an exposure synchronization, not a model promotion.
 
+When the operator shell is on another host, dispatch the same command to the
+declared gateway owner through its controller:
+
+```bash
+anvil-serving eval routed \
+  --target host:client-gateway \
+  --transport controller \
+  --base-url http://100.64.0.10:8000/v1 \
+  --model llm.primary \
+  --api-key-env ANVIL_ROUTER_TOKEN \
+  --expected-served-model SERVED_MODEL \
+  --expected-config-fingerprint CONFIG_ID \
+  --expected-router-config-sha256 ROUTER_CONFIG_SHA256 \
+  --min-context-tokens 250000 \
+  --clients openclaw,hermes \
+  --confirm
+```
+
+Controller dispatch sends only the credential environment-variable name. The
+owning controller must expose the typed `routed_eval` operation and its
+topology transport must allow `eval-routed`. Live evidence defaults to the
+owning host's private `~/.anvil-serving/evidence/routed-eval/` directory;
+remote `--output` values are confined to that tree. This transport performs
+the same router-hash, catalog, real-client, and no-fallback gates as a local
+run; it is not a reduced remote smoke.
+
 ## Benchmark
 
 | Command | Purpose |

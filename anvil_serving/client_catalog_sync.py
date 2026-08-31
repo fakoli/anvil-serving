@@ -516,6 +516,109 @@ def _read_text_file(path: Path) -> str:
         raise ClientCatalogError("client config is not valid UTF-8 text: %s" % path) from exc
 
 
+def _openclaw_secret_env_name(openclaw: Mapping) -> str:
+    provider = (
+        openclaw.get("models", {})
+        .get("providers", {})
+        .get("anvil")
+    )
+    api_key = provider.get("apiKey") if isinstance(provider, Mapping) else None
+    if isinstance(api_key, Mapping) and api_key.get("source") == "env":
+        return _environment_reference(api_key.get("id"))
+    if isinstance(api_key, str):
+        reference = api_key.strip()
+        if reference.startswith("${") and reference.endswith("}"):
+            return _environment_reference(reference[2:-1])
+        if reference.startswith("$"):
+            return _environment_reference(reference[1:])
+    raise ClientCatalogError(
+        "OpenClaw Anvil apiKey must remain an environment SecretRef"
+    )
+
+
+def _read_optional_text_file(path: Path) -> str:
+    if path.is_symlink():
+        raise ClientCatalogError("refusing symbolic-link client config: %s" % path)
+    if not path.exists():
+        return ""
+    if not path.is_file():
+        raise ClientCatalogError("client config is not a regular file: %s" % path)
+    if path.stat().st_size > DEFAULT_MAX_RESPONSE_BYTES:
+        raise ClientCatalogError("client config exceeds the size limit: %s" % path)
+    try:
+        return path.read_bytes().decode("utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ClientCatalogError(
+            "client config is not valid UTF-8 text: %s" % path
+        ) from exc
+
+
+def _dotenv_double_quote(value: str) -> str:
+    if not isinstance(value, str) or not value or any(
+        character in value for character in ("\x00", "\r", "\n")
+    ):
+        raise ClientCatalogError("router credential cannot be persisted safely")
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _dotenv_assignment_value(source: str, *, name: str, label: str) -> str | None:
+    name = _environment_reference(name)
+    matches = []
+    for line in source.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith("export "):
+            stripped = stripped[7:].lstrip()
+        candidate, separator, remainder = stripped.partition("=")
+        if separator and candidate.strip() == name:
+            matches.append(remainder.strip())
+    if len(matches) > 1:
+        raise ClientCatalogError(
+            "%s contains duplicate router credential assignments" % label
+        )
+    if not matches:
+        return None
+    raw = matches[0]
+    if len(raw) >= 2 and raw.startswith("'") and raw.endswith("'"):
+        return raw[1:-1].replace("'\\''", "'")
+    if len(raw) >= 2 and raw.startswith('"') and raw.endswith('"'):
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        return value if isinstance(value, str) else None
+    return raw
+
+
+def _render_openclaw_state_env(source: str, *, name: str, value: str) -> bytes:
+    """Replace one dotenv assignment while preserving unrelated OpenClaw state."""
+    name = _environment_reference(name)
+    newline = "\r\n" if "\r\n" in source else "\n"
+    trailing_newline = source.endswith(("\n", "\r"))
+    lines = source.splitlines()
+    matches = []
+    for index, line in enumerate(lines):
+        stripped = line.lstrip()
+        if stripped.startswith("export "):
+            stripped = stripped[7:].lstrip()
+        candidate, separator, _remainder = stripped.partition("=")
+        if separator and candidate.strip() == name:
+            matches.append(index)
+    if len(matches) > 1:
+        raise ClientCatalogError(
+            "OpenClaw state env contains duplicate router credential assignments"
+        )
+    rendered = "%s=%s" % (name, _dotenv_double_quote(value))
+    if matches:
+        lines[matches[0]] = rendered
+    else:
+        lines.append(rendered)
+        trailing_newline = True
+    result = newline.join(lines)
+    if trailing_newline:
+        result += newline
+    return result.encode("utf-8")
+
+
 def _yaml_block(
     lines: list[str],
     *,
@@ -1572,11 +1675,13 @@ def sync_clients(
     environ: Mapping[str, str] | None = None,
     opener=None,
     restart: Callable[[], int] | None = None,
+    refresh_openclaw_service: Callable[[], int] | None = None,
     restart_hermes: Callable[[], int] | None = None,
     hermes_run=subprocess.run,
 ) -> dict:
     """Reconcile selected Mini clients from one authenticated router snapshot."""
     selected_clients = _normalize_clients(clients)
+    environ = os.environ if environ is None else environ
     catalog = fetch_client_catalog(
         base_url=base_url,
         api_key_env=api_key_env,
@@ -1594,10 +1699,35 @@ def sync_clients(
     desired = {}
     hermes_rows: list[dict] = []
     hermes_configs: dict[str, Path] = {}
+    openclaw_service_tracking = False
+    openclaw_service_env_matches = True
     if "openclaw" in selected_clients:
+        current_openclaw = _read_json_file(paths["openclaw"])
+        openclaw_secret_env_name = _openclaw_secret_env_name(current_openclaw)
         desired["openclaw"] = _json_bytes(
-            _render_openclaw_document(catalog, _read_json_file(paths["openclaw"]))
+            _render_openclaw_document(catalog, current_openclaw)
         )
+        paths["openclaw_env"] = paths["openclaw"].parent / ".env"
+        desired["openclaw_env"] = _render_openclaw_state_env(
+            _read_optional_text_file(paths["openclaw_env"]),
+            name=openclaw_secret_env_name,
+            value=environ[api_key_env],
+        )
+        paths["openclaw_service_env"] = (
+            paths["openclaw"].parent
+            / "service-env"
+            / "ai.openclaw.gateway.env"
+        )
+        openclaw_service_tracking = paths["openclaw_service_env"].exists()
+        if openclaw_service_tracking:
+            openclaw_service_env_matches = (
+                _dotenv_assignment_value(
+                    _read_optional_text_file(paths["openclaw_service_env"]),
+                    name=openclaw_secret_env_name,
+                    label="OpenClaw generated service env",
+                )
+                == environ[api_key_env]
+            )
     if "hermes" in selected_clients:
         if hermes_profiles:
             hermes_rows, hermes_configs = plan_hermes_profiles(
@@ -1626,17 +1756,40 @@ def sync_clients(
         name
         for name in desired
         if _file_sha256(paths[name]) != _sha256_bytes(desired[name])
+        or (
+            name == "openclaw_env"
+            and os.name != "nt"
+            and paths[name].exists()
+            and stat.S_IMODE(paths[name].stat().st_mode) != 0o600
+        )
     ]
     changed.extend(
         "hermes:" + row["profile"]
         for row in hermes_rows
         if row.get("changed_keys")
     )
+    prior_state_exists = paths["state"].exists()
     prior_state = _read_json_file(paths["state"], required=False)
+    openclaw_service_refresh_pending = (
+        "openclaw" in selected_clients
+        and openclaw_service_tracking
+        and not openclaw_service_env_matches
+    )
+    openclaw_service_marker_pending = (
+        "openclaw" in selected_clients
+        and openclaw_service_tracking
+        and prior_state.get("openclaw_service_restarted_sha256")
+        != catalog["config_sha256"]
+    )
     openclaw_restart_pending = (
         "openclaw" in selected_clients
         and restart_openclaw_on_change
-        and prior_state.get("openclaw_restarted_sha256") != catalog["config_sha256"]
+        and (
+            prior_state.get("openclaw_restarted_sha256") != catalog["config_sha256"]
+            or "openclaw_env" in changed
+            or openclaw_service_refresh_pending
+            or openclaw_service_marker_pending
+        )
     )
     hermes_restart_pending = (
         restart_hermes_on_change
@@ -1676,7 +1829,13 @@ def sync_clients(
             for name in desired:
                 if name not in changed:
                     continue
-                mode = stat.S_IMODE(paths[name].stat().st_mode) if paths[name].exists() else 0o600
+                mode = (
+                    0o600
+                    if name == "openclaw_env"
+                    else stat.S_IMODE(paths[name].stat().st_mode)
+                    if paths[name].exists()
+                    else 0o600
+                )
                 _atomic_write(paths[name], desired[name], mode=mode)
             if hermes_rows:
                 _apply_hermes_profile_plans(
@@ -1715,7 +1874,13 @@ def sync_clients(
 
     prior_hashes = prior_state.get("file_sha256")
     file_hashes = dict(prior_hashes) if isinstance(prior_hashes, Mapping) else {}
-    file_hashes.update({name: _file_sha256(paths[name]) for name in desired})
+    file_hashes.update(
+        {
+            name: _file_sha256(paths[name])
+            for name in desired
+            if name != "openclaw_env"
+        }
+    )
     file_hashes.update(
         {
             "hermes:" + profile: _file_sha256(path)
@@ -1726,19 +1891,88 @@ def sync_clients(
         "config_sha256": catalog["config_sha256"],
         "file_sha256": file_hashes,
         "openclaw_restarted_sha256": prior_state.get("openclaw_restarted_sha256"),
+        "openclaw_service_restarted_sha256": prior_state.get(
+            "openclaw_service_restarted_sha256"
+        ),
     }
-    _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
+
+    def restore_prior_state() -> None:
+        if prior_state_exists:
+            _atomic_write(paths["state"], _json_bytes(prior_state), mode=0o600)
+        elif paths["state"].exists():
+            paths["state"].unlink()
+
+    if openclaw_restart_pending:
+        pending_state = dict(state)
+        pending_state["openclaw_restarted_sha256"] = None
+        pending_state["openclaw_service_restarted_sha256"] = None
+        _atomic_write(paths["state"], _json_bytes(pending_state), mode=0o600)
+
+    restart = restart or (lambda: 1)
+    refresh_openclaw_service = refresh_openclaw_service or (lambda: 1)
+    openclaw_service_refreshed = False
+    refresh_pending = (
+        openclaw_restart_pending
+        and ("openclaw_env" in changed or openclaw_service_refresh_pending)
+    )
+    if refresh_pending:
+        refresh_ok = refresh_openclaw_service() == 0
+        if refresh_ok and openclaw_service_tracking:
+            refresh_ok = (
+                _dotenv_assignment_value(
+                    _read_optional_text_file(paths["openclaw_service_env"]),
+                    name=openclaw_secret_env_name,
+                    label="OpenClaw generated service env",
+                )
+                == environ[api_key_env]
+            )
+        if not refresh_ok:
+            if backup is None:
+                raise ClientCatalogError(
+                    "OpenClaw service refresh failed; the next run will retry"
+                )
+            _restore_backup(backup)
+            rollback_ok = refresh_openclaw_service() == 0
+            rollback_ok = restart() == 0 and rollback_ok
+            if hermes_restarted:
+                rollback_ok = restart_hermes() == 0 and rollback_ok
+            if not rollback_ok:
+                raise ClientCatalogError(
+                    "OpenClaw service refresh failed and rollback did not restore the clients"
+                )
+            restore_prior_state()
+            raise ClientCatalogError(
+                "OpenClaw configuration was restored after service refresh failed"
+            )
+        openclaw_service_refreshed = True
 
     restarted = False
     if openclaw_restart_pending:
-        restart = restart or (lambda: 1)
         if restart() != 0:
+            rollback_ok = backup is not None
+            if backup is not None:
+                _restore_backup(backup)
+                if openclaw_service_refreshed:
+                    rollback_ok = refresh_openclaw_service() == 0
+                rollback_ok = restart() == 0 and rollback_ok
+                if hermes_restarted:
+                    rollback_ok = restart_hermes() == 0 and rollback_ok
+            if not rollback_ok and backup is not None:
+                raise ClientCatalogError(
+                    "OpenClaw gateway restart failed and rollback did not restore the clients"
+                )
+            if backup is not None:
+                restore_prior_state()
+                raise ClientCatalogError(
+                    "OpenClaw configuration was restored after gateway restart failed"
+                )
             raise ClientCatalogError(
                 "OpenClaw config was reconciled but gateway restart failed; the next run will retry"
             )
         restarted = True
         state["openclaw_restarted_sha256"] = catalog["config_sha256"]
-        _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
+        state["openclaw_service_restarted_sha256"] = catalog["config_sha256"]
+    _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
     return _summary(
         catalog,
         clients=selected_clients,
