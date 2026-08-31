@@ -331,6 +331,14 @@ def tool_routed_eval(args: dict) -> dict:
             runtime_environment[api_key_env] = token
     run_id = _str_arg(args, "run_id", "") or ("routed-" + uuid.uuid4().hex)
     output = _routed_eval_output_path(_str_arg(args, "output", ""), run_id)
+    if not dry_run:
+        try:
+            Path(output).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        except OSError as exc:
+            raise ToolError(
+                "evidence_directory_failed",
+                "could not prepare the private routed-eval evidence directory",
+            ) from exc
     timeout_seconds = _bounded_float_arg(
         args,
         "timeout_seconds",
