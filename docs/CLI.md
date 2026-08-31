@@ -135,6 +135,7 @@ required operands, choices, and defaults.
 | `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
 | `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |
 | `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | - |
+| `models recipes running` | Discover Anvil recipe-loaded containers. | `read` / `bounded` | - |
 | `models recipes create` | Create one recipe in an operator registry. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes update` | Update one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

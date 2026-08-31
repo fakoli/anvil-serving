@@ -70,6 +70,18 @@ operator-supported serving path. Untagged candidates and experiments remain
 available by explicit name or `--group all`, but are not contacted merely
 because they exist in the manifest.
 
+When the manifest declares GPU-role budgets, status also performs bounded
+label-only discovery of active `models recipes load` containers. A container
+that is not represented by a manifest entry is reported as
+`unmanaged-by-manifest`; its Docker GPU selection is mapped through the
+installed topology to the stable role ids. It is never silently omitted from
+the ownership rows. If selection or discovery cannot be resolved, the overall
+mode is `unresolved` rather than `split`.
+
+`serves mode status` remains a successful read-only report when the mode is
+`unresolved`; consumers should inspect the returned `mode` and `unresolved`
+fields rather than treating the report itself as an execution failure.
+
 ## Start and stop serves
 
 ```bash
@@ -152,6 +164,12 @@ The `serves_mode` MCP tool exposes the same structured plan; live remote
 entry/leave requires its separate human-approval gate. `mode enter` refuses
 before any mutation on a lint/rollback-check error; see
 [Preflight gate on promote and mode enter](#preflight-gate-on-promote-and-mode-enter).
+It also refuses before mutation while an active recipe-loaded container owns a
+GPU outside the selected manifest, or when recipe-owner discovery is
+unavailable. Discover and inspect that owner with
+[`models recipes running`](models.md#operate-a-loaded-recipe), then unload it
+or add the intended durable manifest ownership before retrying the mode
+transaction.
 
 ## Serving profiles
 

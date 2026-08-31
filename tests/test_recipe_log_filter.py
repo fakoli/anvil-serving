@@ -13,6 +13,7 @@ def _recipe():
 
 def _inspect():
     return json.dumps([{
+        "Id": "e" * 64,
         "Config": {
             "Image": "example/runtime:1",
             "Labels": {

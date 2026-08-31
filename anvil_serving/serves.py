@@ -2544,8 +2544,88 @@ def reservation_summary(serves, _run=subprocess.run, _states=None):
     return reservations.ledger_summary(ledger)
 
 
-def operating_mode_summary(serves, state_of):
+def _unmanaged_recipe_ownership(serves, *, _run=subprocess.run, topology_path=None):
+    """Map active, non-manifest recipe containers onto declared GPU roles."""
+    budgets = reservations.budgets_of(serves)
+    if not budgets:
+        return {"owners": [], "discovery_error": None, "topology_resolved": False}
+    try:
+        inventory = serve_recipes.discover_recipe_containers(_run=_run)
+    except serve_recipes.RecipeError:
+        return {
+            "owners": [],
+            "discovery_error": "recipe container discovery unavailable",
+            "topology_resolved": False,
+        }
+    tracked = {serve["container"] for serve in serves}
+    active = [
+        row for row in inventory.get("containers") or []
+        if row.get("container") not in tracked
+        and row.get("state") in reservations.RESERVED_STATES
+    ]
+    if not active:
+        return {"owners": [], "discovery_error": None, "topology_resolved": False}
+    uuid_to_role = {}
+    topology_resolved = False
+    try:
+        from .topology import load_topology
+
+        topology = load_topology(resolve_topology_path(topology_path))
+        uuid_to_role = {
+            role.uuid.casefold(): role.id
+            for role in topology.gpu_roles
+            if role.id in budgets
+        }
+        topology_resolved = True
+    except Exception:
+        # The physical owner remains unresolved rather than guessed from card
+        # order when topology is absent or invalid.
+        pass
+    owners = []
+    for row in active:
+        selected = list(row.get("gpu_selection") or [])
+        resolved_roles = {
+            uuid_to_role[value.casefold()]
+            for value in selected
+            if isinstance(value, str) and value.casefold() in uuid_to_role
+        }
+        if "all" in {str(value).casefold() for value in selected} and topology_resolved:
+            resolved_roles.update(uuid_to_role.values())
+        resolved_roles = sorted(resolved_roles)
+        unresolved_selection = [
+            value for value in selected
+            if not isinstance(value, str)
+            or (
+                value.casefold() not in uuid_to_role
+                and not (value.casefold() == "all" and topology_resolved)
+            )
+        ]
+        if not selected:
+            unresolved_selection = ["unspecified"]
+        owners.append({
+            "owner": "recipe:%s" % row["container"],
+            "classification": "unmanaged-by-manifest",
+            "container": row["container"],
+            "model": row["model"],
+            "state": row["state"],
+            "gpu_selection": selected,
+            "gpu_roles": resolved_roles,
+            "unresolved_gpu_selection": unresolved_selection,
+        })
+    return {
+        "owners": owners,
+        "discovery_error": None,
+        "topology_resolved": topology_resolved,
+    }
+
+
+def operating_mode_summary(serves, state_of, recipe_ownership=None):
     """Structured split/exclusive mode and per-role ownership snapshot."""
+    recipe_ownership = recipe_ownership or {
+        "owners": [],
+        "discovery_error": None,
+        "topology_resolved": False,
+    }
     exclusive = [serve for serve in serves if reservations.is_exclusive(serve)]
     active = []
     unresolved = []
@@ -2568,6 +2648,16 @@ def operating_mode_summary(serves, state_of):
                     {"serve": reservation.serve, "state": reservation.state},
                 )
     unresolved = list(unresolved_by_serve.values())
+    for recipe_owner in recipe_ownership.get("owners") or []:
+        unresolved.append({
+            "serve": recipe_owner["owner"],
+            "state": "unmanaged-recipe-owner",
+        })
+    if recipe_ownership.get("discovery_error"):
+        unresolved.append({
+            "serve": "recipe-discovery",
+            "state": "unavailable",
+        })
     mode = (
         DUAL_GPU_EXCLUSIVE_MODE if len(active) == 1 and not unresolved
         else "unresolved" if unresolved or len(active) > 1
@@ -2579,8 +2669,13 @@ def operating_mode_summary(serves, state_of):
             reservation.serve for reservation in role_ledger.reservations
             if reservation.committed
         })
+        committed.extend(sorted({
+            owner["owner"]
+            for owner in recipe_ownership.get("owners") or []
+            if role in owner.get("gpu_roles", [])
+        }))
         role_ownership.append({"gpu_role": role, "owners": committed})
-    return {
+    result = {
         "mode": mode,
         "exclusive_owner": owner["name"] if owner else None,
         "gpu_roles": (
@@ -2598,9 +2693,19 @@ def operating_mode_summary(serves, state_of):
         ),
         "unresolved": unresolved,
     }
+    if recipe_ownership.get("owners") or recipe_ownership.get("discovery_error"):
+        result["recipe_owners"] = list(recipe_ownership.get("owners") or [])
+        result["recipe_discovery_error"] = recipe_ownership.get("discovery_error")
+    return result
 
 
-def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request.urlopen):
+def status_summary(
+    serves,
+    names=None,
+    _run=subprocess.run,
+    _open=urllib.request.urlopen,
+    _recipe_ownership=None,
+):
     """Machine-readable serve status for MCP/automation.
 
     Mirrors :func:`cmd_status` without printing. The shape is intentionally
@@ -2649,6 +2754,9 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
             ),
             "port_conflicts": conflicts,
         })
+    recipe_ownership = _recipe_ownership or _unmanaged_recipe_ownership(
+        serves, _run=_run
+    )
     return {
         "serves": rows,
         "selected": [r["name"] for r in rows],
@@ -2659,7 +2767,10 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
         "reservations": reservation_summary(
             status_scope, _run=_run, _states=states
         ),
-        "operating_mode": operating_mode_summary(serves, state_of),
+        "operating_mode": operating_mode_summary(
+            serves, state_of, recipe_ownership
+        ),
+        "recipe_ownership": recipe_ownership,
     }
 
 
@@ -2669,6 +2780,7 @@ def cmd_status(
     _run=subprocess.run,
     _open=urllib.request.urlopen,
     ledger_serves=None,
+    _recipe_ownership=None,
 ):
     # `names` (from positional selectors and/or --group) filters WHICH rows are
     # printed; the reservation ledger below still spans the WHOLE `serves` list,
@@ -2739,6 +2851,23 @@ def cmd_status(
     # above (every manifest serve was just inspected), so this section adds no
     # docker calls; manifests without [[gpu_roles]] print nothing extra.
     ledger_source = serves if ledger_serves is None else ledger_serves
+    recipe_ownership = _recipe_ownership or _unmanaged_recipe_ownership(
+        ledger_source, _run=_run
+    )
+    if recipe_ownership.get("owners"):
+        print("\nUnmanaged recipe owners (label-derived):")
+        for owner in recipe_ownership["owners"]:
+            print(
+                "  %s model=%s state=%s gpu_roles=%s"
+                % (
+                    owner["owner"],
+                    owner["model"],
+                    owner["state"],
+                    ",".join(owner["gpu_roles"]) or "unresolved",
+                )
+            )
+    if recipe_ownership.get("discovery_error"):
+        print("\nWARNING: recipe container discovery unavailable")
     budgets = reservations.budgets_of(ledger_source)
     if budgets:
         ledger = reservations.build_ledger(
@@ -2749,7 +2878,9 @@ def cmd_status(
             print("  " + role_ledger.describe())
             for r in role_ledger.reservations:
                 print("    %s%s" % (r.describe(), "" if r.committed else " [not committed]"))
-        mode = operating_mode_summary(ledger_source, state_of)
+        mode = operating_mode_summary(
+            ledger_source, state_of, recipe_ownership
+        )
         print("\nOperating mode: %s" % mode["mode"])
         if mode["exclusive_owner"]:
             print("  exclusive owner: %s (TP=%s)" % (
@@ -4526,6 +4657,7 @@ def cmd_mode(
     _open=urllib.request.urlopen,
     _sleep=time.sleep,
     _install_config=None,
+    _recipe_ownership=None,
 ):
     """Preview, enter, leave, or report the exclusive TP=2 operating mode."""
     gpu_containers = [
@@ -4537,10 +4669,16 @@ def cmd_mode(
     def state_of(container):
         return states.get(container, "absent")
 
+    recipe_ownership = _recipe_ownership or _unmanaged_recipe_ownership(
+        serves, _run=_run
+    )
     if action == "status":
-        summary = operating_mode_summary(serves, state_of)
+        summary = operating_mode_summary(serves, state_of, recipe_ownership)
         print(json.dumps(summary, indent=2, sort_keys=True))
-        return 0 if summary["mode"] != "unresolved" else 1
+        # Status is a read-only report, not a health gate. Preserve an
+        # unresolved operating mode in the typed payload without collapsing it
+        # into the dispatcher's generic non-zero execution error.
+        return 0
 
     try:
         plan = operating_mode_plan(serves, target_name, restore_group, state_of)
@@ -4552,6 +4690,23 @@ def cmd_mode(
     _print_operating_mode_plan(plan)
     if plan["unresolved"]:
         print("mode transition refused before container mutation: unresolved GPU workload")
+        return 1
+    if recipe_ownership.get("owners") or recipe_ownership.get("discovery_error"):
+        print(
+            "mode transition refused before container mutation: unmanaged or "
+            "unresolved recipe-loaded GPU ownership",
+            file=sys.stderr,
+        )
+        for owner in recipe_ownership.get("owners") or []:
+            print(
+                "  %s state=%s gpu_roles=%s"
+                % (
+                    owner["owner"],
+                    owner["state"],
+                    ",".join(owner["gpu_roles"]) or "unresolved",
+                ),
+                file=sys.stderr,
+            )
         return 1
     if action == "preview" or dry_run:
         return 0

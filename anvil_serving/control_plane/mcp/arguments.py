@@ -26,6 +26,7 @@ RAW_SECRET_AWARE_TOOLS = frozenset(
         "client_catalog_sync",
         "openclaw_sync",
         "preflight_probe",
+        "routed_eval",
     }
 )
 

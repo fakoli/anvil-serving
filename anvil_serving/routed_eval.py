@@ -465,6 +465,7 @@ def run_routed_eval(
     runner: Callable[[Sequence[str], float], Any] = _default_runner,
     syncer: Callable[..., dict[str, Any]] | None = None,
     restart_openclaw: Callable[[], int] | None = None,
+    refresh_openclaw_service: Callable[[], int] | None = None,
 ) -> dict[str, Any]:
     base_url = _validate_base_url(base_url)
     alias = _normalize_alias(alias)
@@ -564,6 +565,13 @@ def run_routed_eval(
                 return harness.cmd_restart_openclaw(
                     timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
                 )
+        if refresh_openclaw_service is None:
+            from . import harness
+
+            def refresh_openclaw_service() -> int:
+                return harness.cmd_refresh_openclaw_service_environment(
+                    timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+                )
         try:
             receipt = syncer(
                 base_url=base_url,
@@ -580,6 +588,7 @@ def run_routed_eval(
                 environ=env,
                 opener=catalog_opener,
                 restart=restart_openclaw,
+                refresh_openclaw_service=refresh_openclaw_service,
             )
             rows = {
                 row.get("id"): row
