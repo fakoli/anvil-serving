@@ -75,6 +75,7 @@ def test_routed_eval_dry_run_forwards_bounded_contract(monkeypatch):
     assert seen["timeout_seconds"] == 321.5
     assert seen["dry_run"] is True
     assert seen["sync_harnesses"] is True
+    assert seen["environment"] == {}
     assert seen["output"].endswith(
         str(Path("routed-eval") / "candidate-routed.json")
     )
@@ -85,6 +86,29 @@ def test_routed_eval_live_run_requires_confirmation():
         mcp.tool_routed_eval(_arguments(dry_run=False, confirm=False))
 
     assert refused.value.code == "human_approval_required"
+
+
+def test_routed_eval_live_run_resolves_only_named_credential(monkeypatch):
+    seen = {}
+
+    def run(**kwargs):
+        seen.update(kwargs)
+        return {"dry_run": False, "passed": True, "output": kwargs["output"]}
+
+    monkeypatch.setattr(routed_eval, "run_routed_eval", run)
+    monkeypatch.setattr(
+        openclaw_tools,
+        "resolve_env_value",
+        lambda name: ("private-test-token", "/private/.env"),
+    )
+
+    result = mcp.tool_routed_eval(
+        _arguments(dry_run=False, confirm=True, run_id="credential-resolution")
+    )
+
+    assert result["ok"] is True
+    assert seen["environment"] == {"ANVIL_ROUTER_TOKEN": "private-test-token"}
+    assert "private-test-token" not in repr(result)
 
 
 def test_routed_eval_remote_output_cannot_escape_private_evidence_root(tmp_path):

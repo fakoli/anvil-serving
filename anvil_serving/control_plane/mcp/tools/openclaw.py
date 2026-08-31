@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import uuid
 
+from ....envfile import resolve_env_value
 from ..arguments import (
     arg_bool as _arg_bool,
     bounded_float_arg as _bounded_float_arg,
@@ -323,6 +324,11 @@ def tool_routed_eval(args: dict) -> dict:
             "human_approval_required",
             "live routed evaluation requires confirm=true",
         )
+    runtime_environment: dict[str, str] = {}
+    if not dry_run:
+        token, _source = resolve_env_value(api_key_env)
+        if token:
+            runtime_environment[api_key_env] = token
     run_id = _str_arg(args, "run_id", "") or ("routed-" + uuid.uuid4().hex)
     output = _routed_eval_output_path(_str_arg(args, "output", ""), run_id)
     timeout_seconds = _bounded_float_arg(
@@ -389,6 +395,7 @@ def tool_routed_eval(args: dict) -> dict:
                     "~/.anvil-serving/backups/client-catalog",
                 )
             ),
+            environment=runtime_environment,
         )
     except (OSError, ValueError) as exc:
         raise ToolError("routed_eval_failed", str(exc)) from exc
