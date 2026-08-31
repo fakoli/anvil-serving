@@ -353,6 +353,7 @@ def _run(
     confirm=False,
     dry_run=True,
     restart=None,
+    refresh=None,
     restart_on_change=False,
 ):
     openclaw, pi_models, pi_settings = (
@@ -374,6 +375,7 @@ def _run(
         environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"},
         opener=opener,
         restart=restart,
+        refresh_openclaw_service=refresh or (lambda: 0),
         restart_openclaw_on_change=restart_on_change,
     )
 
@@ -514,6 +516,7 @@ def test_openclaw_state_env_rotation_is_durable_and_preserves_unrelated_entries(
         encoding="utf-8",
     )
     restarts = []
+    refreshes = []
 
     applied = _run(
         tmp_path,
@@ -521,12 +524,14 @@ def test_openclaw_state_env_rotation_is_durable_and_preserves_unrelated_entries(
         opener=_Opener(*_catalog()),
         confirm=True,
         dry_run=False,
+        refresh=lambda: refreshes.append("refresh") or 0,
         restart=lambda: restarts.append("restart") or 0,
         restart_on_change=True,
     )
 
     assert applied["changed"] == ["openclaw_env"]
     assert applied["openclaw_restarted"] is True
+    assert refreshes == ["refresh"]
     assert restarts == ["restart"]
     assert state_env.read_bytes() == (
         b'UNRELATED="preserve"\r\nROUTER_TOKEN="secret-never-returned"\r\n'
@@ -542,6 +547,7 @@ def test_openclaw_state_env_rotation_is_durable_and_preserves_unrelated_entries(
     )
     assert second["changed"] == []
     assert second["openclaw_restarted"] is False
+    assert refreshes == ["refresh"]
 
 
 def test_openclaw_state_env_rejects_duplicate_assignments_before_write(tmp_path):
@@ -557,6 +563,82 @@ def test_openclaw_state_env_rejects_duplicate_assignments_before_write(tmp_path)
         _run(tmp_path, clients="openclaw", opener=_Opener(*_catalog()))
 
     assert before == [path.read_bytes() for path in (*paths, state_env)]
+
+
+def test_openclaw_service_refresh_failure_restores_state_env_and_runtime(tmp_path):
+    _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        clients="openclaw",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+    state_env = tmp_path / ".env"
+    stale = b'UNRELATED="preserve"\nROUTER_TOKEN="stale"\n'
+    state_env.write_bytes(stale)
+    state_before = (tmp_path / "state.json").read_bytes()
+    refresh_results = iter((1, 0))
+    refreshes = []
+    restarts = []
+
+    def refresh():
+        refreshes.append("refresh")
+        return next(refresh_results)
+
+    with pytest.raises(ClientCatalogError, match="restored after service refresh"):
+        _run(
+            tmp_path,
+            clients="openclaw",
+            opener=_Opener(*_catalog()),
+            confirm=True,
+            dry_run=False,
+            refresh=refresh,
+            restart=lambda: restarts.append("restart") or 0,
+            restart_on_change=True,
+        )
+
+    assert state_env.read_bytes() == stale
+    assert (tmp_path / "state.json").read_bytes() == state_before
+    assert refreshes == ["refresh", "refresh"]
+    assert restarts == ["restart"]
+
+
+def test_openclaw_restart_failure_reinstalls_and_restarts_backup(tmp_path):
+    _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        clients="openclaw",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+    state_env = tmp_path / ".env"
+    stale = b'ROUTER_TOKEN="stale"\n'
+    state_env.write_bytes(stale)
+    restart_results = iter((1, 0))
+    refreshes = []
+    restarts = []
+
+    def restart():
+        restarts.append("restart")
+        return next(restart_results)
+
+    with pytest.raises(ClientCatalogError, match="restored after gateway restart"):
+        _run(
+            tmp_path,
+            clients="openclaw",
+            opener=_Opener(*_catalog()),
+            confirm=True,
+            dry_run=False,
+            refresh=lambda: refreshes.append("refresh") or 0,
+            restart=restart,
+            restart_on_change=True,
+        )
+
+    assert state_env.read_bytes() == stale
+    assert refreshes == ["refresh", "refresh"]
+    assert restarts == ["restart", "restart"]
 
 
 def test_openclaw_state_env_requires_an_environment_secret_ref(tmp_path):
