@@ -106,6 +106,13 @@ container, and exact Docker Compose command; it does not invoke Docker. Confirme
 `--compose` path always wins over the operator-home default; the command never
 changes or removes that operator-home file.
 
+For credential-shaped `${NAME}` references declared by the selected Compose file,
+values in the selected `--env-file` are authoritative over same-named ambient
+process values. This prevents an unrelated shell or harness environment from
+silently rotating router credentials during a recreate. Non-credential variables,
+including a per-invocation `ROUTER_IMAGE`, retain normal Compose override behavior.
+The lifecycle output never includes resolved credential values.
+
 `--recreate` is available only for `router up`. It maps to Docker Compose
 `--force-recreate` while retaining `--no-deps`, so the operation recreates only the
 selected router service and does not start or recreate model services, alter router
