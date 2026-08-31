@@ -28,6 +28,42 @@ DEFAULT_SERVICE = "router"
 DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
 DEFAULT_INSTALLED_CONFIG = "/etc/anvil/config.toml"
 TRANSITION_PATH = "/v1/admin/transition"
+MAX_ROUTER_CONFIG_BYTES = 1024 * 1024
+
+
+_RUNTIME_CONFIG_PROBE_CODE = """
+import os
+import sys
+import tempfile
+
+from anvil_serving import router_manage
+
+raw = sys.stdin.read()
+handle = tempfile.NamedTemporaryFile(
+    mode="w",
+    encoding="utf-8",
+    suffix=".toml",
+    delete=False,
+)
+try:
+    handle.write(raw)
+    handle.close()
+    result = router_manage.main([
+        "fleet-status",
+        "--config",
+        handle.name,
+        "--probe-perspective",
+        "router-runtime",
+        "--timeout",
+        sys.argv[1],
+        "--json",
+    ])
+finally:
+    if not handle.closed:
+        handle.close()
+    os.unlink(handle.name)
+raise SystemExit(result)
+"""
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -873,6 +909,68 @@ def installed_fleet_status(
     return report
 
 
+def configured_fleet_status(
+    config_file,
+    *,
+    container=DEFAULT_CONTAINER,
+    timeout=4.0,
+    _run=subprocess.run,
+):
+    """Probe one candidate config from inside the live router runtime.
+
+    The candidate TOML is bounded and supplied on stdin, never copied into the
+    container or exposed in process arguments.  The runtime uses a short-lived
+    temporary file only because the installed config loader accepts a path.
+    """
+    timeout = _validated_probe_timeout(timeout)
+    if not isinstance(container, str) or not _CONTAINER_NAME_RE.fullmatch(container):
+        raise ValueError("router container name is invalid")
+    selected = os.path.abspath(os.path.expanduser(config_file))
+    try:
+        with open(selected, "rb") as handle:
+            raw = handle.read(MAX_ROUTER_CONFIG_BYTES + 1)
+    except OSError as exc:
+        raise ValueError("could not read candidate router config") from exc
+    if len(raw) > MAX_ROUTER_CONFIG_BYTES:
+        raise ValueError("candidate router config exceeds the 1 MiB limit")
+    try:
+        config_text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ValueError("candidate router config is not valid UTF-8") from None
+
+    argv = [
+        "docker",
+        "exec",
+        "-i",
+        container,
+        "python",
+        "-c",
+        _RUNTIME_CONFIG_PROBE_CODE,
+        str(timeout),
+    ]
+    try:
+        result = _run(
+            argv,
+            input=config_text,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=min(600.0, max(30.0, timeout * 64 + 10.0)),
+        )
+    except FileNotFoundError:
+        raise ValueError("router-runtime fleet probe requires Docker") from None
+    except subprocess.TimeoutExpired:
+        raise ValueError("router-runtime fleet probe exceeded its total timeout") from None
+    if result.returncode not in {0, 1}:
+        raise ValueError("router-runtime fleet probe failed before producing a report")
+    report = _decode_fleet_report(result.stdout)
+    report["evidence_source"] = "configured-file"
+    report["probe_perspective"] = "router-runtime"
+    report["config_sha256"] = hashlib.sha256(raw).hexdigest()
+    return report
+
+
 def cmd_fleet_status(
     config_path_arg=None,
     as_json=False,
@@ -884,6 +982,7 @@ def cmd_fleet_status(
     installed_config=DEFAULT_INSTALLED_CONFIG,
     _probe=_probe_endpoint,
     _installed=installed_fleet_status,
+    _configured_runtime=configured_fleet_status,
 ):
     """Report which configured capabilities have a reachable backing serve."""
     from .doctor import resolve_default_config_path
@@ -927,14 +1026,25 @@ def cmd_fleet_status(
         return 2
 
     perspective = probe_perspective or "command-host"
-    report = fleet_status(
-        config,
-        timeout=timeout,
-        _probe=_probe,
-        probe_perspective=perspective,
-        evidence_source="configured-file",
-    )
-    report["config_sha256"] = _config_sha256(path)
+    if perspective == "router-runtime":
+        try:
+            report = _configured_runtime(
+                path,
+                container=container,
+                timeout=timeout,
+            )
+        except ValueError as exc:
+            print("router-runtime fleet status failed: %s" % exc, file=sys.stderr)
+            return 2
+    else:
+        report = fleet_status(
+            config,
+            timeout=timeout,
+            _probe=_probe,
+            probe_perspective=perspective,
+            evidence_source="configured-file",
+        )
+        report["config_sha256"] = _config_sha256(path)
     if as_json:
         print(json.dumps(report, indent=2, sort_keys=True))
         return 1 if report["unreachable_aliases"] else 0

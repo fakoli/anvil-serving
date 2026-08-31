@@ -160,14 +160,18 @@ To inspect a file that may not be installed, pass it explicitly:
 
 ```bash
 anvil-serving router fleet-status --config candidate-router.toml
+anvil-serving router fleet-status --config candidate-router.toml --probe-perspective router-runtime
 ```
 
 That result is labeled `configured-file` and `command-host`. A file inspection
 is configuration evidence, not proof of live installed health. The optional
-`--probe-perspective router-runtime` is intended for a caller already running
-inside the router runtime; the normal live command selects that perspective
-automatically. The controller exposes the same live-only behavior through the
-bounded `router_fleet_status` tool.
+`--probe-perspective router-runtime` streams the bounded candidate config over
+stdin to the live router container, probes it from that runtime, removes the
+short-lived runtime file, and returns only the sanitized report. The candidate
+path and contents never enter the container process arguments. The normal live
+command selects the installed config and that perspective automatically. The
+controller exposes the same live-only behavior through the bounded
+`router_fleet_status` tool.
 
 It exits non-zero when a **declared alias** has no reachable backing serve,
 so it works as a pre-promotion or monitoring check. Purpose models and audio
