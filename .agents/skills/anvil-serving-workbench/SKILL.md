@@ -166,9 +166,12 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   `skills/anvil-serving-benchmark-docs/SKILL.md`. Update the finding/index, run
   catalog, model dossier, and measured hardware page as one transaction; do
   not treat publication as serve or route authority. Let that canonical skill
-  decide the publication-ready result-card/publication-summary requirements. For format-only
-  work, reconcile complete retained artifacts rather than submitting a new
-  benchmark job or touching live serving state.
+  apply `references/artifact-set-contract.md` and the
+  `anvil-serving.benchmark-artifact-set/v1` template around the applicable
+  native evidence, including media qualification. Let it decide the
+  publication-ready result-card/publication-summary requirements. For
+  format-only work, reconcile complete retained artifacts rather than
+  submitting a new benchmark job or touching live serving state.
 - Promotion evidence: assemble status, gateway probes, preflight, benchmark
   artifacts, serve/direct-alias config diffs, and reviewer recommendation with
   `promoted=false`.

@@ -6,7 +6,8 @@ description: Publish and maintain hardware-first, publication-ready benchmark do
 # Anvil Serving Benchmark Docs
 
 Use this skill for the publication phase of every meaningful model run. Read
-`references/publication-contract.md`, `README.md`, `CLAUDE.md`,
+`references/artifact-set-contract.md`, `references/publication-contract.md`,
+`README.md`, `CLAUDE.md`,
 `docs/benchmarks/index.md`, and the applicable model or modality skill before
 editing.
 
@@ -26,7 +27,27 @@ editing.
 5. Stop rather than converting missing identity, failed loads, reasoning
    exhaustion, partial artifacts, or topology observations into qualification.
 
-## 2. Reuse retained evidence for format-only work
+## 2. Create the common artifact set
+
+For every new campaign, copy `templates/artifact-set/` into the dated finding's
+evidence directory before the first live request. The six common files provide
+the human index, `anvil-serving.benchmark-artifact-set/v1` role ledger, source
+registry, decision summary, friction log, and restoration record.
+
+Keep the applicable native evidence schema. Do not convert capacity,
+multimodal, voice, STT, media, kernel, context, agentic, or SWE artifacts into
+one lossy result shape. Instead, map their retained files to all ten semantic
+roles in `references/artifact-set-contract.md`. Every final role is
+`retained`, `not-applicable`, or `missing`; no final set may retain `pending`.
+Use `missing` for an evidence gap and `not-applicable` only with a reason.
+
+Fill the source registry and friction log during the campaign. Capture the
+starting state before mutation, complete restoration after post-run checks,
+and derive `summary.json` only from retained evidence. For recognized JSON
+artifacts, use `anvil-serving eval benchmark evidence show ARTIFACT --json` to
+normalize inspection without rewriting the source artifact.
+
+## 3. Reuse retained evidence for format-only work
 
 When the request is to migrate or improve an existing finding, do not load a
 model, restart a serve, or rerun a benchmark merely to populate the new format.
@@ -35,13 +56,14 @@ exact identity, configuration, measurement protocol, sample counts,
 distributions, failures, decision, and raw evidence links required by the
 publication contract.
 
-Derive headline values from those artifacts and reconcile the result card,
-publication summary, and detailed finding in tests. Do not reconstruct a missing metric
-from prose, round incompatible measurements into agreement, or turn an absent
-field into a claim. Record a publication gap when the retained evidence is
-insufficient; a format migration is not authority for a live rerun.
+Derive headline values from those artifacts and reconcile the artifact
+manifest, decision summary, result card, publication summary, and detailed
+finding in tests. Do not reconstruct a missing metric from prose, round
+incompatible measurements into agreement, or turn an absent field into a
+claim. Record a publication gap when the retained evidence is insufficient; a
+format migration is not authority for a live rerun.
 
-## 3. Apply the publication matrix
+## 4. Apply the publication matrix
 
 For every meaningful result:
 
@@ -66,7 +88,7 @@ new finding is reachable from the findings index, run catalog, dossier, and
 hardware page; verify that the run-catalog row links both its dossier and
 finding. Do not leave a finding-only update for a later pass.
 
-## 4. Keep dossiers consistent and readable
+## 5. Keep dossiers consistent and readable
 
 Create or migrate model dossiers with `templates/dossier.md`. Keep the eight
 canonical `##` headings exactly as written in that template so every dossier
@@ -98,7 +120,7 @@ rerun a model merely to make dossiers symmetrical, and never turn an unknown
 identity, metric, comparison, or gate into a placeholder claim. Omit empty
 optional subsections rather than publishing invented content.
 
-## 5. Make measured findings publication-ready
+## 6. Make measured findings publication-ready
 
 For a local `functional`, `capacity`, or `quality` result, add both:
 
@@ -115,6 +137,10 @@ close to every headline number. Include copy-ready short-post and Reddit
 variants, accessible screenshot alt text, and a claim ledger that maps each
 public claim to the finding or raw artifact.
 
+Link both the common `artifact-manifest.json` and the human `README.md` evidence
+index from the result card. The manifest inventories native evidence; it is not
+a replacement for raw artifacts.
+
 Treat the card and publication summary as derivative views. They never replace the dated
 finding or raw artifacts, and a platform-ready sentence must not broaden the
 measurement universe into a universal `best`, `fastest`, or `strongest` claim.
@@ -122,7 +148,7 @@ Research-only, readiness-only, and failed-load findings may use a result card;
 their publication summary is optional unless a compact public communication is
 required.
 
-## 6. Preserve decision boundaries
+## 7. Preserve decision boundaries
 
 Publishing documentation never authorizes `serves up`, `serves promote`,
 router configuration, alias changes, teardown, or rollback. Record
@@ -132,10 +158,11 @@ promotion occurred. Preserve negative and incomplete runs.
 Do not rewrite an older finding to match a newer conclusion. Add a new finding
 or linked erratum; keep stable URLs and compatibility pages.
 
-## 7. Validate
+## 8. Validate
 
 Run the installed `skill-creator` skill's `quick_validate.py` against
-`skills/anvil-serving-benchmark-docs`, then run:
+`skills/anvil-serving-benchmark-docs`. Parse every JSON file in
+`templates/artifact-set/`, then run:
 
 ```text
 python -m pytest tests/test_benchmark_docs_skill.py -q

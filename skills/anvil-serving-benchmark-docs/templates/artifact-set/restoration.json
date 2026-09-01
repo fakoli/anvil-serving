@@ -1,0 +1,18 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "YYYY-MM-DD-SLUG",
+  "status": "pending",
+  "mutation_required": false,
+  "starting_state": {
+    "captured": false,
+    "evidence": []
+  },
+  "ending_state": {
+    "captured": false,
+    "evidence": []
+  },
+  "differences": [],
+  "post_run_checks": [],
+  "verified": false,
+  "not_applicable_reason": null
+}
