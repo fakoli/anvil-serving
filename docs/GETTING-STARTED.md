@@ -16,6 +16,10 @@ Use `127.0.0.1` in local URLs.
   and vLLM are common options.
 - **For a managed Docker-backed GPU serve:** Docker, Compose v2, and a supported
   GPU host. `anvil-serving doctor` checks these host prerequisites.
+- **For the reference multi-device deployment:** Tailscale on every participating
+  server, harness, operator, and mobile device. A single-host loopback deployment
+  does not require it. Read [Private networking with Tailscale](TAILSCALE-NETWORKING.md)
+  before publishing any service across devices.
 
 ## Install
 
@@ -60,6 +64,22 @@ anvil-serving product journey control-plane-fleet
 
 The six-family boundary and cross-family handoffs are documented in
 [Product families and user journeys](PRODUCT-FAMILIES.md).
+
+## Choose the network shape
+
+A single-host installation keeps every URL on `127.0.0.1`; no private overlay
+is required. In the reference multi-device shape, services still bind to
+`127.0.0.1` on the device that owns them. Tailscale Serve projects only the
+reviewed gateway, controller, voice, or media path onto that device's private
+MagicDNS name.
+
+This preserves local defaults while adding user/device identity and
+least-privilege reachability between a primary inference node, harness node,
+voice/audio node, media/burst node, and approved mobile clients. Tailscale
+grants are the network boundary; Anvil router/controller tokens remain the
+application boundary. Follow [Private networking with Tailscale](TAILSCALE-NETWORKING.md)
+for the role map and policy layers, then [One tailnet endpoint](TAILNET-ENDPOINT-RUNBOOK.md)
+for the exact managed edge commands.
 
 ## Run local tiers
 
@@ -162,8 +182,9 @@ those aliases remains a human-gated promotion after model-quality review.
 
 ## Auth Before Exposure
 
-Loopback development does not require built-in auth. Before exposing the router beyond loopback,
-configure auth by env-var name:
+Loopback-only development does not require built-in auth. Before another
+device can reach the router—including through Tailscale Serve while the router
+itself remains on loopback—configure auth by env-var name:
 
 ```toml
 [server]
@@ -200,9 +221,12 @@ to need on a first run:
 - Read [Public product and private operator state](OPERATOR-PRIVACY.md) before
   recording real topology or deployment state.
 - Read [Device topologies](DEVICE-TOPOLOGIES.md) before spreading gateway, voice, router, or serve roles across more devices.
+- Read [Private networking with Tailscale](TAILSCALE-NETWORKING.md) before
+  making those roles reachable across devices or from a phone or tablet.
 - Read [Model settings](MODEL-SETTINGS-EXAMPLE.md) before serving thinking-by-default models.
 - Read [Operator playbooks](OPERATOR-PLAYBOOKS.md) to manage Docker Compose model serves.
-- Read [Voice pipeline](VOICE.md) to run STT/TTS lifecycle, the Realtime voice server, and model-free Mini gateway validation.
+- Read [Voice pipeline](VOICE.md) to run STT/TTS lifecycle, the Realtime voice
+  server, and model-free harness-node validation.
 - Read [Anvil Media commands](cli/media.md) to discover, qualify, run, and
   inspect bounded image/video workflows.
 - Read [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) for the reference gateway setup.
