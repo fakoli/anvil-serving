@@ -94,7 +94,7 @@ def test_top_level_help_groups_commands_and_shows_examples(capsys):
         "router run",
         "eval preflight",
         "anvil-serving serves status",
-        "--tier heavy --dry-run",
+        "--tier primary --dry-run",
         "https://fakoli.github.io/anvil-serving/CLI/",
     ):
         assert token in out

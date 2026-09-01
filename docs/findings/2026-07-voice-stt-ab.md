@@ -1,5 +1,8 @@
 # Voice STT A/B: parakeet.cpp vs vLLM-served Whisper
 
+> **Publication redaction:** Operator-specific GPU UUIDs were replaced with
+> stable labels. Hardware class, measurements, and event ordering are unchanged.
+
 > **STATUS: EXECUTED on fakoli-dark, 2026-07-05.** This records anvil task
 > T007 live evidence from sm_120 hardware using `scripts/voice/preflight_stt.py`.
 
@@ -13,8 +16,8 @@ reported:
 
 | GPU | UUID | device | free MiB before vLLM probe | used MiB before vLLM probe |
 |---|---|---|---:|---:|
-| 0 | `GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1` | NVIDIA GeForce RTX 5090 | 3454 | 29144 |
-| 1 | `GPU-d0f446cf-1771-414c-e116-a39138798a8c` | NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition | 6843 | 90596 |
+| 0 | `REDACTED_GPU_UUID_REMOVED_GPU` | NVIDIA GeForce RTX 5090 | 3454 | 29144 |
+| 1 | `REDACTED_GPU_UUID_COMPUTE_A` | NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition | 6843 | 90596 |
 
 Live serve inventory during the run:
 

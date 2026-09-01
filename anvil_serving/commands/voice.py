@@ -37,7 +37,7 @@ def commands() -> CommandNode:
             ),
             _node(
                 "audio",
-                "Manage Dark-owned STT/TTS lifecycle.",
+                "Manage topology-owned STT/TTS lifecycle.",
                 children=(
                     _resource_node(
                         "up",

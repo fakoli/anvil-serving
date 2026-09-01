@@ -1,19 +1,56 @@
 # GLM-5.3-Flash
 
+<!-- benchmark-dossier/v2 -->
+
 ## Current status and review date
 
-The 2026-08-31 fix-forward qualification selected the exact
-`wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1` target with the DFlash2 fixed-K5
-draft and a corrected xgrammar runtime as the replacement default. It owns the
-text, tools, image, and OCR aliases at 524,288 configured tokens, router
-concurrency 16, and up to 16 images. Video is unsupported. The former 1M K5
-profile remains the first rollback; the 4,096-token scheduler-chunk arm remains
-rejected. Review date: 2026-08-31.
+!!! info "Decision snapshot"
 
-The earlier `brandonmusic/GLM-5.3-Flash-tr3-4bpw` 262K/524K campaign remains
-retained historical evidence and the 262K image remains the one-week rollback.
-Adaptive K1-K5 plus ReplaySSM stays rejected for tool-call corruption. The
-unserved 0xSero 3.0-bpw release remains watch-only.
+    - **Product role:** selected published text, tools, image, and OCR
+      reference profile; this dossier records the evidence decision and does
+      not claim current live route or serve state.
+    - **Selected or best-qualified configuration:** exact
+      `wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1` target with DFlash2 fixed-K5,
+      corrected xgrammar runtime, TP=2/DCP=2, 524,288 configured tokens,
+      router c16, and up to 16 images.
+    - **Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q cards in
+      exclusive TP=2 over PCIe without NVLink under Windows 11, Docker
+      Desktop, and WSL2.
+    - **Evidence:** 28/28 direct functional observations, bounded quality,
+      206,296-actual-token retrieval, measured C2 at a nominal 250K target,
+      83.08 tok/s at 4K, and pooled 69.99 tok/s at 240K.
+    - **Decision:** retain the corrected 524K K5 profile as `current` in the
+      published comparison; the former 1M K5 profile is first same-model
+      rollback and the 4,096-token scheduler-chunk arm remains rejected.
+    - **Important limitation:** video is unsupported; DFlash2 is
+      noncommercial without separate permission; router c16 is not proof of
+      sixteen simultaneous full-window requests.
+    - **Review dates:** retained evidence through 2026-08-31; dossier-format
+      review 2026-08-31.
+
+### Review narrative
+
+#### 2026-08-29 — initial Cardillo/Purtell qualification
+
+The `brandonmusic/GLM-5.3-Flash-tr3-4bpw` 262K/524K campaign remains retained
+historical evidence and the 262K image remains the one-week rollback. Adaptive
+K1-K5 plus ReplaySSM stays rejected for tool-call corruption. The unserved
+0xSero 3.0-bpw release remains watch-only.
+
+#### 2026-08-30 — 1M optimization
+
+The DFlash2 fixed-K5 profile with 2,048-token batching became the selected
+same-model configuration in the dated campaign. The matched K3 arm remained a
+verified alternate, while the 4,096-token scheduler-chunk arm was rejected.
+
+#### 2026-08-31 — xgrammar fix-forward at 524K
+
+The fix-forward qualification selected the exact
+`wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1` target with the DFlash2 fixed-K5
+draft and a corrected xgrammar runtime as the replacement default. The
+published contract covers text, tools, image, and OCR at 524,288 configured
+tokens, router concurrency 16, and up to 16 images. Video is unsupported. The
+former 1M K5 profile remains the first rollback.
 
 ## Immutable identity
 
@@ -51,7 +88,7 @@ translation uses PyNCCL and disables custom PCIe all-reduce, B12X DCP A2A,
 and top-k owner exchange while preserving EXL3 K3 compute, sparse B12X MLA,
 FP8 target KV, and the DFlash2 draft.
 
-## Engine, quantization, KV, context, and concurrency recipes
+## Engine, quantization, KV, context, and concurrency recipe
 
 | Recipe | Role | Context | Decision |
 |---|---|---:|---|
@@ -94,7 +131,7 @@ videos.
   marker, and emitted zero error events; the goal-closure recheck on Pi 0.84.4
   retained 524,288/8,192 and passed another real PTY tool nonce.
 
-## Matched local comparison
+### Matched local comparison
 
 | Requested context | Matched no spec | Corrected DFlash2 K5 | Former 1M K5 | Current vs no spec | Current vs former 1M |
 |---:|---:|---:|---:|---:|---:|

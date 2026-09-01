@@ -1,5 +1,9 @@
 # GPT-OSS Puzzle 88B Heavy enablement
 
+> **Publication redaction:** Operator-specific GPU UUIDs in linked raw evidence
+> were replaced with stable labels. Hardware class, measurements, and event
+> ordering are unchanged.
+
 **Captured:** 2026-07-18<br>
 **Host:** Fakoli Dark; NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB<br>

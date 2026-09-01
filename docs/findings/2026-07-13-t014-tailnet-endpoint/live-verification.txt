@@ -1,7 +1,8 @@
 T014 single tailnet DNS endpoint — live verification
+Publication redaction: Host-specific Tailnet IPv4, Tailnet IPv6, and MagicDNS identities were replaced with the repository's synthetic IPv4, explicit IPv6 placeholder, and example DNS name; HTTP results and event ordering are unchanged.
 Captured: 2026-07-13T20:16:41Z  host: fakoli-dark (RTX 5090)
 MagicDNS (tailscale status --json .Self.DNSName): node-a.example.ts.net.
-Tailnet IPs: 100.64.0.10 / fd7a:115c:a1e0::8701:2247
+Tailnet IPs: 100.64.0.10 / <tailnet-ipv6>
 All requests below target http://node-a.example.ts.net:8000 (the MagicDNS name), never a raw IP.
 
 == GET /v1/models (authed) ==

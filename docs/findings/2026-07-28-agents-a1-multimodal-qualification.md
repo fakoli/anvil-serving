@@ -1,5 +1,9 @@
 # Agents-A1 multimodal and quantization qualification
 
+> **Publication redaction:** Operator-specific GPU UUIDs in linked raw evidence
+> were replaced with stable labels. Hardware class, measurements, and event
+> ordering are unchanged.
+
 **Observed:** 2026-07-28 through 2026-07-29 UTC
 **Host:** Fakoli Dark, Windows/WSL2, one NVIDIA RTX PRO 6000 Blackwell
 Max-Q Workstation Edition (96 GB, sm_120)

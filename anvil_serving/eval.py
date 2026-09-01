@@ -1,18 +1,14 @@
-"""anvil-serving eval — one entry point for the project's evaluations.
+"""One entry point for Anvil Serving endpoint evaluations.
 
-There are four evals in this repo, with three different invocation styles. This
-verb makes them uniform and fills in the fakoli-dark topology so the common case
-is one line:
+The endpoint helpers share one invocation shape:
 
-  eval preflight [--tier heavy|fast] [extra flags...]   correctness gate vs a live endpoint
-  eval benchmark [--tier heavy|fast] [extra flags...]   throughput / request-replay
-  eval benchmark [--tier primary] [extra flags...]      throughput / request-replay
+  eval preflight [--tier primary] [extra flags...]      correctness gate
+  eval benchmark [--tier primary] [extra flags...]      throughput / request replay
 
-`preflight`/`benchmark` resolve `--base-url`/`--model` from the serves manifest
-(examples/fakoli-dark/serves.toml), so `eval preflight --tier fast` just works
-when that serve is up — and prints a `serves up` hint when it isn't. Any extra
-flags are passed straight through to the underlying script
-(`eval preflight --tier fast --requests 5`). stdlib-only.
+`preflight` and `benchmark` can resolve `--base-url` and `--model` from a
+declared serve in the manifest. They print a managed `serves up` hint when that
+serve is unavailable. Extra flags pass through to the underlying evaluator
+(`eval preflight --tier primary --requests 5`). stdlib-only.
 """
 import argparse
 import os
@@ -181,7 +177,7 @@ def main(argv=None):
                            ("benchmark", "throughput / request-replay vs a live endpoint")):
         sp = sub.add_parser(name, help=helptext,
                             description="%s; unknown flags pass through to %s.py." % (helptext, name))
-        sp.add_argument("--tier", help="serve tier from the manifest (e.g. heavy, fast); "
+        sp.add_argument("--tier", help="serve name from the manifest (e.g. primary); "
                                        "fills --base-url/--model.")
         sp.add_argument("--manifest", help="serves manifest TOML used with --tier "
                                            "(default: bundled reference manifest).")

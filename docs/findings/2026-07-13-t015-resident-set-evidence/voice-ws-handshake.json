@@ -1,8 +1,8 @@
 # captured 2026-07-13T21:36:06Z UTC
-# stdlib WebSocket handshake to ws://127.0.0.1:8765 ON fakoli-mini, over passwordless ssh (no new deps)
+# stdlib WebSocket handshake to ws://127.0.0.1:8765 ON mini-host.example, over passwordless ssh (no new deps)
 
 {
-  "target": "ws://127.0.0.1:8765 on Fakoli-Mini-2.local",
+  "target": "ws://127.0.0.1:8765 on mini-host.example",
   "handshake_ok": true,
   "successful_path": "/v1/realtime",
   "attempts": [

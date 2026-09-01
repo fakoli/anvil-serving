@@ -1,4 +1,4 @@
-# Dark-owned STT/TTS audio serves for the OpenClaw Talk reference topology.
+# Topology-owned STT/TTS audio serves for the OpenClaw Talk reference topology.
 # Publishes each serve on the Dark loopback port (same-host local loop) and on
 # the tailnet bridge port that Fakoli Mini's realtime proxy targets
 # (100.64.0.10:30110 / :30111 — private tailnet only, never LAN).
@@ -17,7 +17,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       # Pin Compute B by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}
     networks:
       - voice
     deploy:
@@ -25,7 +25,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}"]
               capabilities: [gpu]
 
   tts:
@@ -37,7 +37,7 @@ services:
       - "${VOICE_AUDIO_PUBLISH:-127.0.0.1}:30111:8880"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}
     networks:
       - voice
     deploy:
@@ -45,7 +45,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}"]
               capabilities: [gpu]
 
 networks:

@@ -1,9 +1,9 @@
 """Normalized request/response audio gateway for ``/v1/audio/*``.
 
-The router's realtime proxy handles a long-lived speech-to-speech loop.  This
+The Anvil Voice realtime proxy handles a long-lived speech-to-speech loop.  This
 module is its deliberately separate, one-shot sibling: it translates the
-heterogeneous Dark-owned STT/TTS serve contracts into JSON-only, base64-safe
-responses for clients that have only the router base URL and bearer token.
+heterogeneous topology-owned STT/TTS serve contracts into JSON-only, base64-safe
+responses for clients that have only the Capability Gateway base URL and bearer token.
 
 This is not the chat policy pipeline and never falls back to a provider.  A
 configured route is the only possible upstream, selected by the caller's
@@ -179,7 +179,7 @@ def _multipart_encode(
     content_type: str,
     audio: bytes,
 ) -> Tuple[bytes, str]:
-    """Build the small multipart envelope expected by the Dark STT serve."""
+    """Build the small multipart envelope expected by the configured STT serve."""
     boundary = uuid.uuid4().hex
     parts: list[bytes] = []
     for name, value in fields.items():

@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Published the GLM 5.3 524K xgrammar qualification with pinned structured-
+  speculative runtime and routed-client evidence.
+
+### Changed
+
+- Recipe lifecycle receipts now bind to the live container identity, and
+  serve status accepts declared alternate ports without reporting false drift.
+- Routed client acceptance now carries the expected context contract through
+  OpenClaw and Hermes recovery, including managed service-environment refresh.
+- Documentation now uses one six-family product story, a task-oriented global
+  navigator, and a responsive evidence-led landing page.
+
+### Fixed
+
+- Router, controller, and client orchestration now fail closed across missing
+  credentials, evidence-root preparation, recursive fleet probes, unknown
+  Hermes status failures, and unrunnable client checks while retaining bounded
+  diagnostic output.
+
 ## [1.0.0] - 2026-08-30
 
 ### Added

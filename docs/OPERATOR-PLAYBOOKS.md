@@ -1,6 +1,6 @@
 # Operator playbooks
 
-Use the control plane to operate named local serves and direct capability aliases. The router
+Use the control plane to operate named local serves and capability aliases. The router
 does not infer intent, choose between models, or promote benchmark results.
 
 `anvil-serving serves` owns lifecycle for declared local model processes. `anvil-serving eval`
@@ -97,7 +97,7 @@ tiers. The `serves_mode` controller tool returns a structured plan. Live `enter`
 `human_approved=true`. Selecting or qualifying the first TP=2 model is a
 separate benchmark and promotion decision.
 
-## Direct aliases
+## Capability aliases
 
 The router's `[router.model_routes]` maps a caller-facing alias to exactly one local tier.
 Update that mapping only as an explicit configuration change, and only after the target serve
@@ -211,7 +211,7 @@ operator host or add a separately reviewed, narrowly scoped credential path.
 ## OpenClaw sync
 
 Render or apply OpenClaw provider configuration through `harness sync openclaw`. The generated
-provider names the router base URL, a token environment variable, and a direct model alias.
+provider names the router base URL, a token environment variable, and a capability alias.
 Do not use a decision endpoint or plugin classifier.
 
 ## Evidence and stop conditions

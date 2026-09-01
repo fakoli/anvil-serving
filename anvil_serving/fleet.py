@@ -130,11 +130,11 @@ def _local_hostname_matches(local_hostname: str, host_id: str) -> bool:
     host_id = host_id.lower()
     # Token match, not prefix and not bare containment: a repo may key a
     # host by its short name ("dark") while the machine reports
-    # "fakoli-dark", so prefix matching classified the local host as remote
+    # "node-dark", so prefix matching classified the local host as remote
     # and ssh'd to itself (observed live). Bare containment over-corrects —
     # "w" is a substring of "elsewhere" (caught by test) — so the short name
     # must match a whole '-'/'.'-separated token of the longer name.
-    # Compare on the first DNS label: macOS reports "fakoli-mini.local".
+    # Compare on the first DNS label: macOS reports "node-dark.example".
     label = local_hostname.split(".")[0]
 
     def _tokens(value):

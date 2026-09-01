@@ -1,5 +1,8 @@
 # Voice on a 16GB Mini: local STT+TTS, LLM routed to fakoli-dark
 
+> **Publication redaction:** The operator-specific network hostname was replaced
+> with a public-safe placeholder. The observed workflow and result are unchanged.
+
 > **STATUS: T016 LIVE PROOF SUPPORTED.** The harness is
 > `scripts/voice/mini_validation.py`. The acceptance command writes a JSON
 > report, appends one session row below, and returns nonzero unless the verdict
@@ -90,7 +93,7 @@ python scripts/voice/mini_validation.py --report /tmp/mini-negative.json --allow
 | host memory before load | _TBD_ | available/used GB |
 | host memory after serves ready | _TBD_ | available/used GB |
 | host memory after benchmark | _TBD_ | available/used GB; verdict uses this value |
-| expected Mini host match | _TBD_ | default pattern matches `Fakoli Mini`/`Fakoli-Mini-2`; override with `--target-host-pattern` only for renamed target hardware |
+| expected Mini host match | _TBD_ | default pattern matches `Fakoli Mini`/`mini-host.example`; override with `--target-host-pattern` only for renamed target hardware |
 | expected Mini hardware model | _TBD_ | default `Mac16,10`; override with `--target-hw-model-pattern` only for approved target hardware changes |
 | STT startup (s) | _TBD_ | |
 | STT memory proof after benchmark | _TBD_ | `docker_stats` for managed containers, or `macos_process_rss` attributed to the `127.0.0.1:30010` listener |

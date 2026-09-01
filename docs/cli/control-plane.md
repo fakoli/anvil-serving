@@ -108,7 +108,7 @@ anvil-serving harness sync openclaw --config configs/example.toml --dry-run
 anvil-serving harness sync openclaw --config configs/example.toml --out openclaw.json --base-url http://100.64.0.10:8000/v1 --confirm
 ```
 
-The router configuration supplies direct aliases and their tier context limits. `--base-url`
+The gateway configuration supplies capability aliases and their tier context limits. `--base-url`
 defaults to `http://127.0.0.1:8000/v1`; when OpenClaw runs on another host, set
 the router address that gateway can reach. Credential flags name environment
 variables—secret values are never written into an operator command.
@@ -124,7 +124,7 @@ Lifecycle and status remain separate:
 
 ```bash
 anvil-serving harness restart openclaw --dry-run
-anvil-serving harness restart openclaw --gateway-host fakoli-mini --confirm
+anvil-serving harness restart openclaw --gateway-host mini-host.example --confirm
 anvil-serving harness status openclaw
 anvil-serving harness status openclaw --topology operator-topology.toml --target host:mini --json
 ```

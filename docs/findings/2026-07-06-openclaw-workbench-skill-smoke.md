@@ -1,5 +1,8 @@
 # OpenClaw workbench skill smoke (2026-07-06)
 
+> **Publication redaction:** The operator-specific network hostname was replaced
+> with a public-safe placeholder. The observed workflow and result are unchanged.
+
 This note records the live Fakoli Mini smoke check for the manual
 `anvil-serving-workbench` skill install path. It is evidence for
 `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md`, not a replacement for the future
@@ -7,7 +10,7 @@ This note records the live Fakoli Mini smoke check for the manual
 
 ## Environment
 
-- Host: Fakoli Mini (`ssh fakoli-mini`)
+- Host: Fakoli Mini (`ssh mini-host.example`)
 - OpenClaw: `2026.6.11 (e085fa1)`
 - Shell prerequisite for non-interactive SSH:
 

@@ -66,7 +66,39 @@ new finding is reachable from the findings index, run catalog, dossier, and
 hardware page; verify that the run-catalog row links both its dossier and
 finding. Do not leave a finding-only update for a later pass.
 
-## 4. Make measured findings publication-ready
+## 4. Keep dossiers consistent and readable
+
+Create or migrate model dossiers with `templates/dossier.md`. Keep the eight
+canonical `##` headings exactly as written in that template so every dossier
+has the same navigation contract. The template is a presentation scaffold,
+not permission to manufacture missing evidence.
+
+At the top, include a `Decision snapshot` with product role, selected or
+best-qualified configuration, measured hardware, evidence labels and bounded
+headline result, decision/promotion boundary, important limitation, evidence
+cutoff, and dossier-review date. Use
+**Not recorded in retained evidence** when an item is unavailable. Do not omit
+the detailed narrative: split multi-review histories into dated or
+outcome-oriented subsections and preserve the technical reasoning below the
+snapshot.
+
+Use one subsection per materially different configuration or measurement
+lane. In evidence sections, label `Status`, `Measured`, `Limits`, and
+`Evidence`, then retain the complete narrative needed to interpret them.
+Group decisions into retained/selected and rejected/superseded/incomplete
+states. Group long failure lists by cause and give each item a bold lead label.
+Link the exact tracked recipe or container reconstruction page near the
+configuration summary. If the managed recipe is operator-private or contains
+private topology, link a sanitized public reconstruction page such as
+`docs/benchmarks/configurations.md` instead; never publish a private recipe
+path, endpoint, host identity, or secret-bearing command.
+
+For format-only migrations, reuse retained evidence under section 2. Never
+rerun a model merely to make dossiers symmetrical, and never turn an unknown
+identity, metric, comparison, or gate into a placeholder claim. Omit empty
+optional subsections rather than publishing invented content.
+
+## 5. Make measured findings publication-ready
 
 For a local `functional`, `capacity`, or `quality` result, add both:
 
@@ -90,7 +122,7 @@ Research-only, readiness-only, and failed-load findings may use a result card;
 their publication summary is optional unless a compact public communication is
 required.
 
-## 5. Preserve decision boundaries
+## 6. Preserve decision boundaries
 
 Publishing documentation never authorizes `serves up`, `serves promote`,
 router configuration, alias changes, teardown, or rollback. Record
@@ -100,7 +132,7 @@ promotion occurred. Preserve negative and incomplete runs.
 Do not rewrite an older finding to match a newer conclusion. Add a new finding
 or linked erratum; keep stable URLs and compatibility pages.
 
-## 6. Validate
+## 7. Validate
 
 Run the installed `skill-creator` skill's `quick_validate.py` against
 `skills/anvil-serving-benchmark-docs`, then run:

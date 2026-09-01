@@ -1,5 +1,9 @@
 # CUDA Green Context and MPS capability milestone
 
+> **Publication redaction:** Operator-specific GPU UUIDs in this finding and its
+> linked raw evidence were replaced with stable labels. Hardware class,
+> measurements, and event ordering are unchanged.
+
 **Point-in-time record, 2026-07-12.** Sources were accessed on 2026-07-12. This finding records
 upstream capability evidence, the repository extension points selected for a read-only inspector,
 and the first proposed mutating experiment. No Green Context, MPS daemon, MPS partition, MIG mode,
@@ -75,8 +79,8 @@ Read-only command evidence from this milestone:
 
 | Inspector field | Observed value |
 |---|---|
-| GPU 0 | RTX 5090, UUID `GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1`, compute capability 12.0 |
-| GPU 1 | RTX PRO 6000 Blackwell Max-Q, UUID `GPU-d0f446cf-1771-414c-e116-a39138798a8c`, compute capability 12.0 |
+| GPU 0 | RTX 5090, UUID `REDACTED_GPU_UUID_REMOVED_GPU`, compute capability 12.0 |
+| GPU 1 | RTX PRO 6000 Blackwell Max-Q, UUID `REDACTED_GPU_UUID_COMPUTE_A`, compute capability 12.0 |
 | Driver / CUDA UMD | 610.62 / 13.3 |
 | Host toolkit | CUDA 12.8 |
 | Green Context symbols | Driver `cuGreenCtxCreate=true`; Runtime `cudaGreenCtxCreate=unknown` |
@@ -94,7 +98,7 @@ WSL and Docker Desktop substrate evidence:
 | `docker-desktop` | `/dev/dxg` and WSL `libcuda.so` present; `dockerd` and `containerd` running |
 | Docker engine | `desktop-linux`, Docker 29.5.3 |
 | Probe image | Official NVIDIA CUDA 13.1.1 devel, pinned index/image identity `sha256:9cf8694a...14d32`, linux/amd64 |
-| Docker probe | Pass; UUID `GPU-04d3b6e7...40cf1`, RTX 5090, sm_120, 170 SMs, Runtime 13.1 / Driver 13.3, all Green Context prerequisite symbols present |
+| Docker probe | Pass; UUID `REDACTED_GPU_UUID_REMOVED_GPU`, RTX 5090, sm_120, 170 SMs, Runtime 13.1 / Driver 13.3, all Green Context prerequisite symbols present |
 
 The inspector reports driver version, driver-reported CUDA compatibility, `nvcc` toolkit version,
 host runtime symbol visibility, whether it is itself inside a container, Docker engine visibility,
@@ -200,15 +204,23 @@ Planned immutable inputs:
 
 Implemented prerequisite command (preview first; live execution requires confirmation):
 
+Discover the target GPU UUID on the machine that will run the probe, keep it
+in the private operator environment, and substitute it for the placeholder
+below. Do not copy a UUID from published evidence:
+
+```powershell
+nvidia-smi --query-gpu=index,name,uuid --format=csv,noheader
+```
+
 ```powershell
 anvil-serving host gpu-sharing probe `
   --compose-file examples/fakoli-dark/docker-compose.experiment.yml `
-  --gpu-uuid GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 `
+  --gpu-uuid GPU-REPLACE-WITH-YOUR-RTX-5090-UUID `
   --dry-run
 
 anvil-serving host gpu-sharing probe `
   --compose-file examples/fakoli-dark/docker-compose.experiment.yml `
-  --gpu-uuid GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 `
+  --gpu-uuid GPU-REPLACE-WITH-YOUR-RTX-5090-UUID `
   --confirm
 ```
 

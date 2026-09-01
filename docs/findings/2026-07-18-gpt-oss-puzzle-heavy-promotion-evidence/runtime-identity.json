@@ -31,7 +31,7 @@
   },
   "hardware": {
     "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
-    "gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "gpu_uuid": "REDACTED_GPU_UUID_COMPUTE_A",
     "memory_total_mib": 97887,
     "memory_used_mib": 93480,
     "driver": "610.62"

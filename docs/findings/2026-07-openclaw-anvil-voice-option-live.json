@@ -182,8 +182,8 @@
     "node scripts/check-extension-plugin-sdk-boundary.mjs --mode=plugin-sdk-internal extensions/anvil-voice",
     "node scripts/check-extension-plugin-sdk-boundary.mjs --mode=relative-outside-package extensions/anvil-voice",
     "git diff --check in both repositories",
-    "ssh fakoli-mini: mini_validation.py external lifecycle supported verdict",
-    "ssh fakoli-mini: node /tmp/anvil-voice-mini/t008-gateway-smoke.js against temporary ws://127.0.0.1:18790 gateway"
+    "ssh mini-host.example: mini_validation.py external lifecycle supported verdict",
+    "ssh mini-host.example: node /tmp/anvil-voice-mini/t008-gateway-smoke.js against temporary ws://127.0.0.1:18790 gateway"
   ],
   "raw_artifacts": [
     "docs/findings/2026-07-openclaw-anvil-voice-mini-validation.json",

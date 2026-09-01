@@ -10,8 +10,8 @@ import pytest
 from anvil_serving import deploy, serves
 
 CSV = (
-    "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
-    "1, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell\n"
+    "0, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090\n"
+    "1, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell\n"
 )
 
 
@@ -27,13 +27,13 @@ def _run_missing(*a, **k):
 
 def test_deploy_gpu_index_resolves_to_uuid_env_block():
     out = deploy.render("/w/model", gpu=1, _run=_run_ok)
-    assert "CUDA_VISIBLE_DEVICES: GPU-d0f446cf-1771-414c-e116-a39138798a8c" in out
+    assert "CUDA_VISIBLE_DEVICES: GPU-11111111-1111-1111-1111-111111111111" in out
     assert "CUDA_DEVICE_ORDER: PCI_BUS_ID" in out
-    assert 'device_ids: ["GPU-d0f446cf-1771-414c-e116-a39138798a8c"]' in out
+    assert 'device_ids: ["GPU-11111111-1111-1111-1111-111111111111"]' in out
 
 
 def test_deploy_gpu_uuid_spec_passthrough():
-    uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+    uuid = "GPU-33333333-3333-3333-3333-333333333333"
     out = deploy.render("/w/model", gpu=uuid, _run=_run_ok)
     assert f"CUDA_VISIBLE_DEVICES: {uuid}" in out
     assert f'device_ids: ["{uuid}"]' in out
@@ -270,7 +270,7 @@ def test_deploy_engine_vllm_argv_matches_multiplexer_build_cmd():
 def test_deploy_engine_vllm_gpu_pinning_env_matches_sglang_pattern():
     out = deploy.render("/w/model", gpu=1, engine="vllm", served_name="m", port=30001, _run=_run_ok)
     assert "CUDA_DEVICE_ORDER: PCI_BUS_ID" in out
-    assert "CUDA_VISIBLE_DEVICES: GPU-d0f446cf-1771-414c-e116-a39138798a8c" in out
+    assert "CUDA_VISIBLE_DEVICES: GPU-11111111-1111-1111-1111-111111111111" in out
 
 
 def test_deploy_engine_sglang_default_unchanged():

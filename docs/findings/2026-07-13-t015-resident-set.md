@@ -1,5 +1,9 @@
 # gpu-reservations:T015 — Live 5090 resident-set validation
 
+> **Publication redaction:** The operator-specific network hostname in linked raw
+> evidence was replaced with a public-safe placeholder. Measurements and event
+> ordering are unchanged.
+
 **Date:** 2026-07-13 (UTC) · **Box:** fakoli-dark (RTX 5090 "dark-fast", 32607 MiB) + RTX PRO 6000 (heavy)
 **Branch:** `agent/gpu-reservations-t015-live-5090-resident-set-validation`
 **Evidence:** `docs/findings/2026-07-13-t015-resident-set-evidence/`
@@ -36,7 +40,7 @@ gpu_role 'dark-fast': capacity 32607 MiB, reserve 4608 MiB, committed 26112 MiB,
 ## 3. Voice WS handshake + embeddings through the router (all residents up)
 
 - **Voice WS** (`voice-ws-handshake.json`): stdlib WebSocket upgrade to
-  `ws://127.0.0.1:8765` **on fakoli-mini** over passwordless ssh →
+  `ws://127.0.0.1:8765` **on mini-host.example** over passwordless ssh →
   `HTTP/1.1 101 Switching Protocols` on `/v1/realtime` with a valid
   `Sec-WebSocket-Accept`. `handshake_ok: true`.
 - **Embeddings through the router** (`embeddings-through-router.txt`):

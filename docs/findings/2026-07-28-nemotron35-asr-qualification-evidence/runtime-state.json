@@ -3,7 +3,7 @@
   "host": "Fakoli Dark",
   "candidate_gpu": {
     "name": "NVIDIA GeForce RTX 5090",
-    "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+    "uuid": "REDACTED_GPU_UUID_REMOVED_GPU",
     "total_mib": 32607,
     "observed_pre_candidate_mib_range": [28444, 29176],
     "nemotron_loaded_total_mib": 31652,
@@ -12,7 +12,7 @@
   },
   "protected_gpu": {
     "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
-    "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "uuid": "REDACTED_GPU_UUID_COMPUTE_A",
     "total_mib": 97887,
     "observed_used_mib": 90439,
     "heavy_remained_running": true

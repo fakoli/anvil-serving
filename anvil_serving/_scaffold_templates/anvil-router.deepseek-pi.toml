@@ -1,6 +1,6 @@
-# Fakoli Dark direct-alias router profile with DeepSeek as the exclusive primary.
+# Fakoli Dark capability-alias router profile with DeepSeek as the exclusive primary.
 # Existing aliases remain declared for clean unavailability while TP=2 owns
-# both GPU roles; llm.primary is the expected ready chat alias in this mode.
+# both GPU roles; llm.primary is the expected ready capability alias in this mode.
 [server]
 auth_env = "ANVIL_ROUTER_TOKEN"
 

@@ -1,5 +1,9 @@
 # Gemma 4 July 15 chat-template bakeoff and Heavy promotion
 
+> **Publication redaction:** Operator-specific GPU UUID prefixes in linked raw
+> evidence were replaced with stable labels. Hardware class, measurements, and
+> event ordering are unchanged.
+
 **Captured:** 2026-07-16<br>
 **Host/topology:** Fakoli Dark; RTX 5090 32 GB Fast lane and RTX PRO 6000 96 GB Heavy lane; one LLM serve per GPU during measurement<br>
 **Engine:** `vllm/vllm-openai:v0.25.1` (`sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089`)<br>

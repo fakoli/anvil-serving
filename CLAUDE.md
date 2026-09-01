@@ -49,8 +49,8 @@ one workflow; those profiles never choose a route or substitute a model.
   `dark-compute-b`. `dual-gpu-exclusive` mode admits exactly one declared TP=2
   serve on both cards and blocks every other GPU inference start.
 - **Capability placement:** `llm.primary`, `llm.voice`, and `vision.*` remain
-  direct aliases, not physical GPU classes. An unavailable backing serve never
-  falls back to the exclusive model or another tier.
+  capability aliases, not physical GPU classes. An unavailable backing serve
+  never falls back to the exclusive model or another tier.
 - **Fakoli Mini:** OpenClaw Gateway and voice Realtime/proxy only. It is
   model-free in the reference topology. Mini loopback audio proxy ports forward
   to Dark; they do not host models.
@@ -187,7 +187,7 @@ Use model depth at decision boundaries, then reduce it for bounded execution:
 - `docs/CONFIGURATION.md` — capability and metadata-authority configuration
 - `docs/OPERATOR-PRIVACY.md` — public/private repository and evidence boundary
 - `docs/THIN-CAPABILITY-GATEWAY.md` — meta-router request path and omissions
-- `docs/OPENCLAW-INTEGRATION-SPEC.md` — harness ownership and direct aliases
+- `docs/OPENCLAW-INTEGRATION-SPEC.md` — harness ownership and capability aliases
 - `docs/adr/0028-serving-benchmarks-and-thin-capability-gateway.md` — rationale
 - `docs/adr/0039-capability-meta-router.md` — meta-router product decision
 - `docs/adr/0042-anvil-serving-product-family-boundary.md` — umbrella/family decision

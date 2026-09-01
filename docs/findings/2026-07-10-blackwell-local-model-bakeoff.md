@@ -1,5 +1,9 @@
 # Blackwell Local Model Bakeoff
 
+> **Publication redaction:** Operator-specific GPU UUIDs in linked raw evidence
+> were replaced with stable labels. Hardware class, measurements, and event
+> ordering are unchanged.
+
 - **Date:** 2026-07-10 → 2026-07-11
 - **Host:** fakoli-dark (Windows 11 + WSL2 + Docker Desktop; RTX 5090 32 GB + RTX PRO 6000 Blackwell Max-Q 96 GB, both sm_120)
 - **Repository revision:** base round from `0e11df6`; 2026-07-11 extension measured on `bench/2026-07-11-bakeoff-extension` from `a5ab196` (post-#198 main)

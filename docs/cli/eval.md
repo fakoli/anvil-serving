@@ -49,7 +49,7 @@ copied from the prompt is therefore a failure.
 ```powershell
 anvil-serving eval routed `
   --base-url http://127.0.0.1:8000/v1 `
-  --model llm.secondary `
+  --model llm.primary `
   --api-key-env ANVIL_ROUTER_TOKEN `
   --expected-served-model SERVED_MODEL `
   --expected-config-fingerprint CONFIG_ID `
@@ -128,7 +128,7 @@ anvil-serving eval benchmark capacity `
   --base-url http://127.0.0.1:30002/v1 `
   --model MODEL `
   --engine vllm `
-  --gpu dark-heavy `
+  --gpu <gpu-label> `
   --requests 60 `
   --concurrency 20 `
   --seed 0 `
@@ -155,7 +155,7 @@ anvil-serving eval benchmark quality `
   --base-url http://127.0.0.1:30002/v1 `
   --model MODEL `
   --candidate-id MODEL `
-  --config-id vllm-heavy-v1 `
+  --config-id vllm-primary-v1 `
   --suite-file suites/quality.json `
   --output artifacts/quality.json `
   --confirm
@@ -178,7 +178,7 @@ examples are in [Context, agentic, and SWE benchmark jobs](../benchmarks/context
 
 Run preflight before a benchmark and retain artifact identity, endpoint, served model, hardware,
 engine, quantization, context, concurrency, failures, and caveats. Evaluation never changes a
-direct alias or serve automatically.
+capability alias or serve automatically.
 
 A nonzero exit means the requested workload did not complete or satisfy its
 gate. A stream without visible content is a failed request; it is not rewritten

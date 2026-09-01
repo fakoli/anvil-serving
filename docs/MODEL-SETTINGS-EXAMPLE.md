@@ -1,15 +1,23 @@
-# Model Settings — Qwen3.5-35B-A3B (AWQ 4-bit)
+# Historical model settings — Qwen3.5-35B-A3B (AWQ 4-bit)
 
-Source: the model card (`cyankiwi/Qwen3.5-35B-A3B-AWQ-4bit`, base `Qwen/Qwen3.5-35B-A3B`) + the
-model's `generation_config.json`. This document covers serving configuration for this model on the
-fast/heavy local tier (example: `served-model-name: qwen35-awq-local`).
+!!! note "Historical configuration note"
+
+    This page preserves a July 2026 model-settings example. It is not a current
+    deployment recommendation or an active operator configuration. Start with
+    [Model lifecycle](MODEL-LIFECYCLE.md) for managed recipes and the
+    [model dossiers](benchmarks/models/index.md) for current evidence status.
+
+Source at the time of the note: the unpinned model card
+(`cyankiwi/Qwen3.5-35B-A3B-AWQ-4bit`, base `Qwen/Qwen3.5-35B-A3B`) and its
+`generation_config.json`. The example used the served name `qwen35-awq-local`.
 
 ## What this model is
 
 35B total / **3B active**, 40 layers, hybrid **Gated DeltaNet (linear attn) + Gated Attention +
 MoE** (256 experts, 8+1 active), multimodal, **262K native context (→1M via YaRN)**, Apache-2.0.
 Benchmarks: **SWE-bench Verified 69.2, Terminal-Bench 2 40.5, BFCL-V4 67.3, TAU2-Bench 81.2,
-LiveCodeBench 74.6.** Genuinely strong for the specialist tier.
+LiveCodeBench 74.6.** These were external model-card claims, not local
+qualification results.
 
 ## The gotcha: thinking is ON by default
 
@@ -55,7 +63,7 @@ keep **≥128K** to preserve thinking quality.
 For OpenClaw or any harness that supports per-model default params, set these as the per-agent
 `generate_cfg`/`extra_body` for the local specialist slot.
 
-## SGLang server flags
+## Historical SGLang server flags
 
 - `--reasoning-parser qwen3` + `--tool-call-parser qwen3_coder` — parse thinking tokens + Qwen
   tool calls (required for agentic use).
@@ -63,9 +71,9 @@ For OpenClaw or any harness that supports per-model default params, set these as
 - `--context-length 131072` (128K), `--kv-cache-dtype fp8_e5m2`, `--mem-fraction-static 0.88`,
   `--max-running-requests 16`, `--cuda-graph-max-bs-decode 8`. (`--weight-loader-disable-mmap` was
   dropped in #108 — it was a 9P-bind-mount-era workaround, obsolete now that weights load from a
-  named Docker volume; see CLAUDE.md gotcha #16.)
+  named Docker volume.)
 
-### Speculative decoding via the model's native MTP (self-speculative) — production default
+### Historical native-MTP experiment
 
 The model ships a Multi-Token-Prediction head; SGLang self-speculates from it directly (no
 separate draft model or added VRAM cost):
@@ -74,18 +82,38 @@ separate draft model or added VRAM cost):
 --speculative-algorithm NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4
 ```
 
-**This is enabled by default in `docker-compose.yml` as of 2026-07-02** — validated live on this
-exact checkpoint before being turned on: +30-43% decode throughput depending on concurrency, ~82%
-draft-token acceptance rate, and confirmed SGLang issue #19796 (an SM120 NaN-on-prefix-cache-hit
-crash) does not reproduce on this stack. Known tradeoff: TTFT regresses under concurrency (+37% at
-concurrency=4); net end-to-end latency still improved in every trial. Full methodology and numbers:
+This setting was enabled in a July 2026 Compose configuration after a local
+experiment reported higher decode throughput and a TTFT tradeoff under
+concurrency. It is not the current default and does not generalize to another
+checkpoint, engine, runtime build, GPU, or context. Historical rationale:
 [ADR-0008](adr/0008-heavy-tier-speculative-decoding.md).
 
-## Process to change model settings (repeatable)
+## Apply settings through the managed lifecycle
 
-1. Edit the `docker-compose.yml` server flags and/or the sampling params above.
-2. Recreate the container with the updated compose file (`docker compose up -d --force-recreate`).
-3. Watch: `docker logs -f sglang` → "ready to roll"; `curl http://127.0.0.1:30000/health` → 200.
-4. Validate: `anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model qwen35-awq-local`
-   — pass `--no-thinking` (injects `chat_template_kwargs:{enable_thinking:false}`) so the model
-   returns actual content rather than timing out on the thinking budget.
+Do not copy the historical flags directly into a running container. Record a
+pinned candidate in the serve-recipe registry, inspect the resolved recipe,
+preview its load, and then confirm only the reviewed plan:
+
+```bash
+anvil-serving models recipes show <recipe-id>
+anvil-serving models recipes load <recipe-id> --dry-run
+anvil-serving models recipes load <recipe-id> --confirm
+anvil-serving models recipes status <recipe-id>
+```
+
+Run preflight as a separate, explicit qualification gate:
+
+```bash
+anvil-serving eval preflight \
+  --base-url http://127.0.0.1:<port>/v1 \
+  --model <served-model-name> \
+  --dry-run
+
+anvil-serving eval preflight \
+  --base-url http://127.0.0.1:<port>/v1 \
+  --model <served-model-name> \
+  --confirm
+```
+
+Qualification evidence does not promote or expose a route. Follow
+[model promotion and rollback](MODEL-PROMOTION.md) for that separate gate.

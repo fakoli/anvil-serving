@@ -10,9 +10,12 @@ The cross-family grammar, safety, output, and portability rules are recorded in
 compact manifest contract are recorded in
 [ADR-0029](adr/0029-modular-command-registry.md).
 
-## Command families
+## Command areas
 
-| Product family | Top-level verbs | Reference |
+Product discovery is the CLI's cross-family entry point; the remaining rows
+map to the six product families.
+
+| Area | Top-level verbs | Reference |
 | --- | --- | --- |
 | Product discovery | `product` | [Product discovery](cli/product.md) |
 | Model Serving | `init`, `models`, `serves` | [Models & recipes](cli/models.md) · [Model serves](cli/serves.md) |
@@ -246,7 +249,7 @@ required operands, choices, and defaults.
 | `voice` | Manage audio and realtime proxy operations. | `read` / `bounded` | - |
 | `voice up` | Start the co-located managed voice stack. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `voice down` | Stop the co-located managed voice stack. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `voice audio` | Manage Dark-owned STT/TTS lifecycle. | `read` / `bounded` | - |
+| `voice audio` | Manage topology-owned STT/TTS lifecycle. | `read` / `bounded` | - |
 | `voice audio up` | Start audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `voice audio down` | Stop audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `voice audio status` | Show bounded audio serve status. | `read` / `bounded` | - |

@@ -1,5 +1,9 @@
 # q36 on RTX PRO 6000: container recipe and first characterization
 
+> **Publication redaction:** Operator-specific GPU UUIDs in linked raw evidence
+> were replaced with stable labels. Hardware class, measurements, and event
+> ordering are unchanged.
+
 **Point-in-time record, 2026-07-13.** The actual `ambud/q36` engine built and
 served successfully on Fakoli Dark's RTX PRO 6000 Blackwell Max-Q. This is the
 first physical PRO 6000 result for a project whose pinned README described that

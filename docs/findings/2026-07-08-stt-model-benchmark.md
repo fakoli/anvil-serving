@@ -1,5 +1,9 @@
 # STT Model Benchmark And Candidate Recommendation
 
+> **Publication redaction:** Operator-specific GPU UUIDs and network hostnames
+> were replaced with stable labels or public-safe placeholders. Hardware class,
+> measurements, and event ordering are unchanged.
+
 > **Status: executed on Fakoli Dark, 2026-07-08.** This report covers
 > speech-to-text candidates for the OpenClaw/Anvil Voice path. Fakoli Mini was
 > kept model-free. Heavy was not disrupted. Fast was stopped only while the
@@ -15,7 +19,7 @@ Command/resource topology:
 
 - Command host and model host: Fakoli Dark.
 - Candidate GPU: RTX 5090, UUID
-  `GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1`.
+  `REDACTED_GPU_UUID_REMOVED_GPU`.
 - Heavy GPU: RTX PRO 6000, left running and untouched.
 - Mini: OpenClaw Gateway / Anvil Voice Realtime role only; no STT/TTS/LLM model
   serve was started on Mini.

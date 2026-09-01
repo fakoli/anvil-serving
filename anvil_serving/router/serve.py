@@ -1,4 +1,4 @@
-"""Direct capability gateway assembly and ``router run`` CLI.
+"""Thin capability gateway assembly and ``router run`` CLI.
 
 Chat routing is intentionally small: a caller-selected alias in
 ``[router.model_routes]`` resolves to one local tier.  The gateway retains the
@@ -192,7 +192,7 @@ def build_backend_for_tier(
     """Build the relay for one configured local chat tier."""
     if tier.privacy != PRIVACY_LOCAL:
         raise ConfigError(
-            f"direct model route tier {tier.id!r} must have privacy='local'"
+            f"capability-alias tier {tier.id!r} must have privacy='local'"
         )
     if tier.model is None and tier.metadata_source != METADATA_UPSTREAM:
         tier = discover_single_model(tier, transport=model_discovery_transport)
@@ -206,10 +206,10 @@ def build_backends(
     transport: Optional[Transport] = None,
     model_discovery_transport: Optional[DiscoveryTransport] = None,
 ) -> Tuple[Dict[str, Backend], List[Tuple[str, str]]]:
-    """Build every configured direct chat-tier relay.
+    """Build every configured chat-tier relay.
 
     The second tuple member is retained for the CLI's stable introspection
-    shape; a direct-local configuration has no credential-skipped cloud tier.
+    shape; a local-only configuration has no credential-skipped cloud tier.
     """
     backends: Dict[str, Backend] = {}
     for tier in config.tiers:
@@ -225,7 +225,7 @@ def build_backends(
 
 
 class _ConcurrencyLimitedBackend:
-    """Apply an optional configured in-flight cap to one direct tier."""
+    """Apply an optional configured in-flight cap to one configured tier."""
 
     def __init__(self, inner: Backend, max_concurrency: int) -> None:
         self._inner = inner
@@ -813,7 +813,7 @@ def build_server(
     admission: Optional[TierAdmission] = None,
     capacity_metrics: Optional[MetricsProvider] = None,
 ) -> ThreadingHTTPServer:
-    """Load direct routes and build an un-started authenticated front door."""
+    """Load configured capability routes and build an un-started authenticated front door."""
     config = load(config_path)
     server_config = load_server_config(config_path)
     environ: Mapping[str, str] = os.environ if env is None else env
@@ -840,7 +840,7 @@ def build_server(
     if backends is None:
         backends, _skipped = build_backends(config, env=env, transport=transport)
     if not backends:
-        raise ConfigError("no serviceable direct model-route tiers")
+        raise ConfigError("no serviceable configured capability tiers")
     if availability is None:
         availability = AlwaysAvailable() if injected else HttpHealthAvailability(config, env=env)
     if capacity_metrics is None:
@@ -986,7 +986,7 @@ def serve(
     host: str = "127.0.0.1",
     port: int = 8000,
 ) -> None:
-    """Run a configured direct-capability gateway until interrupted."""
+    """Run a configured thin capability gateway until interrupted."""
     try:
         authed = bool(load_server_config(config_path).auth_env)
     except ConfigError:
@@ -1042,7 +1042,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(prog="anvil-serving router run")
     ap.add_argument(
         "--config", metavar="PATH",
-        help="direct-router TOML config (default: config home, then ./router.toml)",
+        help="capability meta-router TOML config (default: config home, then ./router.toml)",
     )
     ap.add_argument("--host", default="127.0.0.1", help="bind host (default 127.0.0.1; never localhost)")
     ap.add_argument("--port", type=int, default=8000, help="bind port (default 8000)")

@@ -1230,8 +1230,12 @@ def test_recipe_show_prints_reconstructed_command_and_stats(request, capsys):
     out = capsys.readouterr().out
     assert rc == 0
     assert "183.2" in out  # measured throughput
-    # the reconstructed, reproducible docker run (positional model after the image).
-    assert "docker run -d --gpus device=GPU-d0f446cf" in out
+    # Public catalog inspection reconstructs the command without leaking or
+    # implying a host-specific GPU selection.
+    assert (
+        "docker run -d --gpus device=GPU-REPLACE-WITH-HOST-DISCOVERED-UUID"
+        in out
+    )
     assert "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e openai/gpt-oss-120b" in out
     assert "-v vllm-hfcache:/root/.cache/huggingface" in out
     # workload fit + download surfaced.
@@ -1481,8 +1485,10 @@ def test_recipe_write_rejects_unsupported_value_before_backup(tmp_path):
 
 
 def test_recipe_load_dry_run_selects_recipe_without_docker(request, capsys):
-    rc = models.main(["recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
-                      "--registry", _registry(request), "--dry-run"])
+    rc = models.main([
+        "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
+        "--registry", _registry(request), "--gpu-device", "0", "--dry-run",
+    ])
     out = capsys.readouterr().out
     assert rc == 0
     assert "RECIPE LOAD PLAN" in out
@@ -1497,7 +1503,7 @@ def test_recipe_load_dry_run_selects_recipe_without_docker(request, capsys):
 def test_recipe_load_dispatches_through_canonical_cli(request, capsys):
     rc = cli.main([
         "models", "recipes", "load", "gpt-oss-120b", "--container", "recipe-heavy",
-        "--registry", _registry(request), "--dry-run",
+        "--registry", _registry(request), "--gpu-device", "0", "--dry-run",
     ])
     assert rc == 0
     assert "RECIPE LOAD PLAN" in capsys.readouterr().out
@@ -1706,7 +1712,7 @@ def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys)
     )
     rc = models.main([
         "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
-        "--registry", _registry(request), "--confirm",
+        "--registry", _registry(request), "--gpu-device", "0", "--confirm",
     ])
     assert rc == 0
     assert seen == {"model": "openai/gpt-oss-120b", "container": "recipe-heavy"}
@@ -1984,7 +1990,7 @@ def test_recipe_load_waits_for_health_then_reclaims_once(
     monkeypatch.setattr(models.host_ops, "render_cache_reclaim_result", lambda _result: None)
     assert models.main([
         "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
-        "--registry", _registry(request), "--confirm",
+        "--registry", _registry(request), "--gpu-device", "0", "--confirm",
     ]) == 0
     assert events[0] == "load"
     assert events[1][0] == "health"
@@ -2021,7 +2027,7 @@ def test_recipe_load_readiness_timeout_fails_closed(request, monkeypatch):
     monkeypatch.setattr(models.host_ops, "render_cache_reclaim_result", lambda _result: None)
     assert models.main([
         "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
-        "--registry", _registry(request), "--confirm",
+        "--registry", _registry(request), "--gpu-device", "0", "--confirm",
     ]) == 1
     assert seen == []
 
@@ -2048,7 +2054,7 @@ def test_recipe_load_waits_for_health_when_cache_reclaim_is_disabled(
     )
     assert models.main([
         "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
-        "--registry", _registry(request), "--confirm",
+        "--registry", _registry(request), "--gpu-device", "0", "--confirm",
     ]) == 0
     assert health == [(
         "openai/gpt-oss-120b",

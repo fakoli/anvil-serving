@@ -38,7 +38,7 @@
     "fast_target_10240_unreachable": "confirmed (T011): fast stays 14336, reserve 4608"
   },
   "voice_ws_handshake": {
-    "target": "ws://127.0.0.1:8765 on fakoli-mini (passwordless ssh)",
+    "target": "ws://127.0.0.1:8765 on mini-host.example (passwordless ssh)",
     "status_line": "HTTP/1.1 101 Switching Protocols",
     "path": "/v1/realtime",
     "sec_websocket_accept_valid": true,

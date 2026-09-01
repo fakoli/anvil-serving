@@ -7,23 +7,23 @@ import subprocess
 from anvil_serving import gpus
 
 CSV = (
-    "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
-    "1, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell\n"
+    "0, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090\n"
+    "1, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell\n"
 )
 
 REORDERED_CSV = (
-    "0, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell\n"
-    "1, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
+    "0, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell\n"
+    "1, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090\n"
 )
 
 CAPACITY_CSV = (
-    "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090, 32607\n"
-    "1, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell, 97887\n"
+    "0, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090, 32607\n"
+    "1, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell, 97887\n"
 )
 
 ROLES = (
-    {"id": "fast", "uuid": "GPU-04D3B6E7-5691-3E86-1D34-C37999440CF1"},
-    {"id": "heavy", "uuid": "GPU-D0F446CF-1771-414C-E116-A39138798A8C"},
+    {"id": "fast", "uuid": "GPU-33333333-3333-3333-3333-333333333333"},
+    {"id": "heavy", "uuid": "GPU-11111111-1111-1111-1111-111111111111"},
 )
 
 
@@ -44,9 +44,9 @@ def _run_reordered(*a, **k):
 def test_list_gpus_parses_csv():
     rows = gpus.list_gpus(_run=_run_ok)
     assert rows == [
-        {"index": 0, "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+        {"index": 0, "uuid": "GPU-33333333-3333-3333-3333-333333333333",
          "name": "NVIDIA GeForce RTX 5090"},
-        {"index": 1, "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+        {"index": 1, "uuid": "GPU-11111111-1111-1111-1111-111111111111",
          "name": "NVIDIA RTX PRO 6000 Blackwell"},
     ]
 
@@ -75,13 +75,13 @@ def test_list_gpus_with_memory_parses_capacity_for_role_selection():
     assert rows == [
         {
             "index": 0,
-            "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+            "uuid": "GPU-33333333-3333-3333-3333-333333333333",
             "name": "NVIDIA GeForce RTX 5090",
             "memory_total_mib": 32607,
         },
         {
             "index": 1,
-            "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+            "uuid": "GPU-11111111-1111-1111-1111-111111111111",
             "name": "NVIDIA RTX PRO 6000 Blackwell",
             "memory_total_mib": 97887,
         },
@@ -97,7 +97,7 @@ def test_list_gpus_with_memory_ignores_malformed_rows():
 # ---- gpu_uuid ------------------------------------------------------------------
 
 def test_gpu_uuid_maps_index_to_uuid():
-    assert gpus.gpu_uuid(1, _run=_run_ok) == "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+    assert gpus.gpu_uuid(1, _run=_run_ok) == "GPU-11111111-1111-1111-1111-111111111111"
 
 
 def test_gpu_uuid_none_when_index_not_found():
@@ -112,18 +112,18 @@ def test_gpu_uuid_none_when_nvidia_smi_missing():
 
 def test_resolve_gpu_index_present_no_warning():
     uuid, warning = gpus.resolve_gpu(1, _run=_run_ok)
-    assert uuid == "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+    assert uuid == "GPU-11111111-1111-1111-1111-111111111111"
     assert warning is None
 
 
 def test_resolve_gpu_index_as_string():
     uuid, warning = gpus.resolve_gpu("0", _run=_run_ok)
-    assert uuid == "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+    assert uuid == "GPU-33333333-3333-3333-3333-333333333333"
     assert warning is None
 
 
 def test_resolve_gpu_uuid_spec_passthrough():
-    spec = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+    spec = "GPU-33333333-3333-3333-3333-333333333333"
     uuid, warning = gpus.resolve_gpu(spec, _run=_run_ok)
     assert uuid == spec
     assert warning is None
@@ -159,7 +159,7 @@ def test_resolve_gpu_never_raises_on_garbage_spec():
 # ---- resolve_gpu_roles --------------------------------------------------------
 
 def test_canonical_gpu_uuid_normalizes_hexadecimal_case():
-    assert gpus.canonical_gpu_uuid(ROLES[0]["uuid"]) == "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+    assert gpus.canonical_gpu_uuid(ROLES[0]["uuid"]) == "GPU-33333333-3333-3333-3333-333333333333"
 
 
 def test_resolve_gpu_roles_keeps_role_ownership_when_indexes_reorder():
@@ -167,12 +167,12 @@ def test_resolve_gpu_roles_keeps_role_ownership_when_indexes_reorder():
     reordered = gpus.resolve_gpu_roles(ROLES, _run=_run_reordered)
 
     assert [(row["role"], row["uuid"]) for row in original] == [
-        ("fast", "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"),
-        ("heavy", "GPU-d0f446cf-1771-414c-e116-a39138798a8c"),
+        ("fast", "GPU-33333333-3333-3333-3333-333333333333"),
+        ("heavy", "GPU-11111111-1111-1111-1111-111111111111"),
     ]
     assert [(row["role"], row["uuid"]) for row in reordered] == [
-        ("fast", "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"),
-        ("heavy", "GPU-d0f446cf-1771-414c-e116-a39138798a8c"),
+        ("fast", "GPU-33333333-3333-3333-3333-333333333333"),
+        ("heavy", "GPU-11111111-1111-1111-1111-111111111111"),
     ]
     assert [row["index"] for row in original] == [0, 1]
     assert [row["index"] for row in reordered] == [1, 0]
@@ -183,7 +183,7 @@ def test_resolve_gpu_roles_output_includes_role_uuid_and_runtime_context():
 
     assert row == {
         "role": "fast",
-        "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+        "uuid": "GPU-33333333-3333-3333-3333-333333333333",
         "index": 0,
         "name": "NVIDIA GeForce RTX 5090",
     }
@@ -235,7 +235,7 @@ def test_resolve_gpu_roles_rejects_missing_observed_uuid():
 
 
 def test_resolve_gpu_roles_rejects_duplicate_observed_uuid():
-    duplicate_csv = CSV + "2, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, duplicate\n"
+    duplicate_csv = CSV + "2, GPU-33333333-3333-3333-3333-333333333333, duplicate\n"
 
     try:
         gpus.resolve_gpu_roles(ROLES, _run=lambda *a, **k: duplicate_csv)

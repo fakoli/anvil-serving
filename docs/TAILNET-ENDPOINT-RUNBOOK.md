@@ -1,7 +1,7 @@
-# Single tailnet DNS endpoint (gpu-reservations:T014 / F008)
+# One tailnet endpoint
 
-**One front door, one name, one token.** The anvil-serving router publishes every
-serving surface — chat, embeddings, rerank, and direct OCR/vision aliases — from a
+**One front door, one name, one token.** The Anvil Serving gateway publishes every
+capability surface — chat, embeddings, rerank, OCR, and vision — from a
 **single HTTP front door** bound to the host's Tailscale interface and reached through the
 host's **MagicDNS name**. There is no separate router, embeddings, or OCR endpoint to
 resolve, no per-surface hostname, and no second port. This runbook records that decision,
@@ -33,8 +33,8 @@ bind address and one bearer token (ADR-0004):
 | Method | Path | Surface |
 |---|---|---|
 | GET | `/healthz` | Liveness (token-free — container healthchecks) |
-| GET | `/v1/models` | Direct-alias and purpose-model discovery |
-| POST | `/v1/chat/completions` | OpenAI chat through a configured direct alias |
+| GET | `/v1/models` | Capability-alias and purpose-model discovery |
+| POST | `/v1/chat/completions` | OpenAI chat through a configured capability alias |
 | POST | `/v1/messages` | Anthropic Messages |
 | POST | `/v1/embeddings` | Embeddings purpose model (routed by model name) |
 | POST | `/v1/rerank` | Rerank purpose model (routed by model name) |
@@ -54,9 +54,9 @@ surface — see the verification below.
 
 ## The MagicDNS form
 
-On the live multi-GPU box (`fakoli-dark`) the router publishes on the Tailscale IPv4
-`100.64.0.10:8000`. The MagicDNS name that resolves to that IP is read from Tailscale
-itself — never hardcoded:
+In the dated public reference configuration, the gateway publishes on the synthetic
+Tailscale IPv4 `100.64.0.10:8000`. Read the current MagicDNS name from Tailscale itself
+rather than hardcoding a host identity:
 
 ```bash
 tailscale status --json | python -c "import sys,json;print(json.load(sys.stdin)['Self']['DNSName'])"
@@ -77,7 +77,7 @@ to `100.64.0.10` and reaches the one front door. The three equivalent forms:
 |---|---|---|
 | **MagicDNS name** (preferred) | `http://node-a.example.ts.net:8000` | Human-facing, survives an IP change |
 | Tailnet IPv4 | `http://100.64.0.10:8000` | Scripts that already hold the IP |
-| Tailnet IPv6 | `http://[fd7a:115c:a1e0::8701:2247]:8000` | IPv6-only peers |
+| Tailnet IPv6 | `http://[<tailnet-ipv6>]:8000` | IPv6-only peers; substitute the address reported by Tailscale |
 
 ### Binding the front door to the tailnet
 
@@ -109,8 +109,8 @@ are a pair, never one without the other.
 ## Token auth
 
 Every surface except `GET /healthz` requires the bearer token (constant-time compared;
-never logged). The live token lives in `~/.env` and is **quoted** there — strip the quotes
-when exporting a single value:
+never logged). Keep the current token in the private operator environment. If its value is
+quoted there, strip the quotes when exporting a single value:
 
 ```bash
 # Load ANVIL_ROUTER_TOKEN, stripping surrounding quotes if present.
@@ -126,11 +126,17 @@ from the environment **once** at start (never per request).
 
 ---
 
-## Live verification (through the MagicDNS name)
+## Dated verification through MagicDNS
 
-Captured against the live `fakoli-dark` deployment on 2026-07-13; every request goes
-through `node-a.example.ts.net:8000`, none through a raw IP. Raw captures live in
-[`findings/2026-07-13-t014-tailnet-endpoint/`](findings/2026-07-13-t014-tailnet-endpoint/).
+The sanitized 2026-07-13 public evidence records requests through
+`node-a.example.ts.net:8000`, not a raw IP. It is a dated reference, not a claim about
+current operator state. See the [endpoint verification](findings/2026-07-13-t014-tailnet-endpoint/live-verification.txt)
+and [routed OCR capture](findings/2026-07-13-t014-tailnet-endpoint/routed-ocr-via-magicdns.txt).
+
+> **Publication redaction:** The original host-specific Tailnet IPv4, Tailnet IPv6,
+> and MagicDNS identities were replaced with the repository's synthetic IPv4,
+> explicit IPv6 placeholder, and example DNS name. HTTP results, model identity,
+> measurements, and event ordering are unchanged.
 
 ### 1. Discovery + auth enforcement — `GET /v1/models`
 
@@ -165,7 +171,7 @@ $ curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" 
 Routed **by model name**: an unknown embedding model is a clean 404 that names the served
 model — it never falls through to chat routing.
 
-### 3. Direct OCR alias — `POST /v1/chat/completions` (`model: "vision.ocr"`)
+### 3. OCR capability alias — `POST /v1/chat/completions` (`model: "vision.ocr"`)
 
 An OCR request is a chat completion naming the `vision.ocr` alias with an `image_url` content
 part; the router sends it to the resident PaddleOCR-VL serve — no separate OCR endpoint.

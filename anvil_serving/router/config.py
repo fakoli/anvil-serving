@@ -153,7 +153,7 @@ def _reject_unknown_keys(
 
 
 def normalize_model_alias(value: str) -> str:
-    """Return the wire-normalized spelling of a configured chat alias.
+    """Return the wire-normalized spelling of a configured capability alias.
 
     The vocabulary is closed: the normalized result must be a key in
     ``RouterConfig.model_routes`` to be servable.
@@ -185,7 +185,7 @@ class Tier:
     # ``estimate`` keeps the router's stdlib-only conservative token estimate
     # as the text context gate. ``upstream`` is an explicit opt-in for an
     # exact-identity local inference service whose own tokenizer enforces the
-    # declared context window. The selected tier remains direct-only; this
+    # declared context window. The selected tier remains the only target; this
     # never permits fallback or substitution.
     context_admission: str = CONTEXT_ADMISSION_ESTIMATE
     # Optional inline-table of extra JSON-serialisable keys merged verbatim into the
@@ -277,7 +277,7 @@ class PurposeModel:
 
 @dataclass(frozen=True)
 class AudioRoute:
-    """One Dark-owned audio serve behind the normalized router gateway.
+    """One topology-owned Anvil Voice audio serve behind the Capability Gateway.
 
     Audio routes never enter the quality-profile chat pipeline and never have
     provider fallback.  ``purpose`` selects the fixed request/response
@@ -299,10 +299,10 @@ class AudioRoute:
 
 @dataclass(frozen=True)
 class RouterConfig:
-    """Validated direct-serving topology.
+    """Validated Capability Gateway configuration.
 
     ``model_routes`` is the complete chat model vocabulary.  Every normalized
-    caller alias maps to exactly one configured local tier; there are no
+    capability alias maps to exactly one configured local tier; there are no
     presets, inferred intent classes, cloud escalation, or fallback pools.
     """
 
@@ -336,7 +336,7 @@ class RouterConfig:
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
-        """Lazy id -> Tier index for direct route resolution."""
+        """Lazy id -> Tier index for capability-alias route resolution."""
         return MappingProxyType({t.id: t for t in self.tiers})
 
     def tier(self, tier_id: str) -> Tier:
@@ -547,7 +547,7 @@ def _parse_tier(raw: object) -> Tier:
     _validate_auth_env(auth_env, f"tier {tid!r}: auth_env")
 
     # Optional: concrete provider model id to forward upstream instead of the
-    # routing token.  Absent or None -> fall back to request.model at dispatch time.
+    # capability alias.  Absent or None -> use request.model at dispatch time.
     tier_model = raw.get("model")
     if tier_model is not None and not isinstance(tier_model, str):
         raise ConfigError(
@@ -562,7 +562,7 @@ def _parse_tier(raw: object) -> Tier:
 
     # A configured local tier without an explicit served-model-name is a
     # footgun: the
-    # caller alias is forwarded upstream as the model id, and vLLM/SGLang reject
+    # capability alias is forwarded upstream as the model id, and vLLM/SGLang reject
     # an unknown model with HTTP 404.
     # Warn (non-fatal) at load so a misconfigured local tier is caught here, not
     # as a confusing per-request 404. (genericity:R001)
@@ -573,7 +573,7 @@ def _parse_tier(raw: object) -> Tier:
     ):
         print(
             f"[anvil-serving] WARNING: local tier {tid!r} has no `model` set; the "
-            f"request's routing token will be forwarded upstream as the model id "
+            f"request's capability alias will be forwarded upstream as the model id "
             f"and the serve will 404. Set model = \"<served-model-name>\" (the "
             f"serve's --served-model-name).",
             file=sys.stderr,
@@ -1051,7 +1051,7 @@ def load(path: str) -> RouterConfig:
     if not tiers:
         raise ConfigError(f"[router].tiers is empty in {path}")
 
-    # ``model_routes`` is the complete chat vocabulary.  Each alias selects
+    # ``model_routes`` is the complete chat vocabulary.  Each capability alias selects
     # exactly one local tier; there is no inferred/preset fallback path.
     raw_model_routes = router.get("model_routes")
     if not isinstance(raw_model_routes, dict):
@@ -1059,7 +1059,7 @@ def load(path: str) -> RouterConfig:
             f"[router].model_routes must be a non-empty table in {path}"
         )
     if not raw_model_routes:
-        raise ConfigError(f"[router].model_routes must declare at least one alias in {path}")
+        raise ConfigError(f"[router].model_routes must declare at least one capability alias in {path}")
 
     model_routes: dict[str, str] = {}
     seen_model_aliases: set[str] = set()
@@ -1075,16 +1075,16 @@ def load(path: str) -> RouterConfig:
 
     # TOML parses an unquoted ``llm.primary = "tier"`` as nested tables.
     # Flatten it so both that natural spelling and a quoted literal key express
-    # the same configured caller alias.
+    # the same configured capability alias.
     for alias, tier_id in _route_items(raw_model_routes):
         if not isinstance(alias, str) or not normalize_model_alias(alias):
             raise ConfigError(
-                f"model route alias must be a non-empty string, got {alias!r}"
+                f"capability alias must be a non-empty string, got {alias!r}"
             )
         normalized_alias = normalize_model_alias(alias)
         if normalized_alias in seen_model_aliases:
             raise ConfigError(
-                f"duplicate model route alias (case-insensitive): {alias!r}"
+                f"duplicate capability alias (case-insensitive): {alias!r}"
             )
         if not isinstance(tier_id, str) or tier_id not in seen_ids:
             raise ConfigError(
@@ -1104,7 +1104,7 @@ def load(path: str) -> RouterConfig:
             f"unaddressable tiers: {unaddressable}"
         )
 
-    # HTTP status returned when the selected direct tier is unavailable.
+    # HTTP status returned when the selected tier is unavailable.
     # Default 503 lets an upstream client apply its own transport retry policy.
     raw_exhaustion_status = router.get("exhaustion_status", 503)
     if (
@@ -1179,8 +1179,8 @@ def load(path: str) -> RouterConfig:
         seen_purpose_keys.add(key)
         purpose_models.append(pm)
 
-    # ``audio_routes``: optional Dark-owned STT/TTS routes behind the router's
-    # normalized JSON /v1/audio/* gateway.  Unlike purpose models, callers
+    # ``audio_routes``: optional topology-owned Anvil Voice STT/TTS routes behind
+    # the Capability Gateway's normalized JSON /v1/audio/* surface. Unlike purpose models, callers
     # select a purpose (or explicit route id), not the upstream model.  Multiple
     # routes may share a purpose, but purpose-only selection must have exactly
     # one default route (a lone route is its own default).

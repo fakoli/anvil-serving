@@ -1277,7 +1277,7 @@ def test_safe_passwordless_ssh_usernames_remain_valid(userinfo):
         (lambda data: data["hosts"][0].update(address="bad host"), "hosts[0].address"),
         (lambda data: data["hosts"][0].update(address="bad..host"), "hosts[0].address"),
         (lambda data: data["hosts"][0].update(address="https://anvil-gpu.tailnet.example"), "hosts[0].address"),
-        (lambda data: data["hosts"][0].update(address="ssh://fakoli-dark"), "hosts[0].address"),
+        (lambda data: data["hosts"][0].update(address="ssh://node-a.example"), "hosts[0].address"),
         (lambda data: data["hosts"][0].update(address="127.1"), "hosts[0].address"),
         (lambda data: data["hosts"][0].update(address="127.0.0.2"), "hosts[0].address"),
         (lambda data: data["hosts"][0].update(address="0x7f000001"), "hosts[0].address"),

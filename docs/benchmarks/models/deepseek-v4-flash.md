@@ -1,6 +1,44 @@
 # DeepSeek V4 Flash 0731
 
+<!-- benchmark-dossier/v2 -->
+
 ## Current status and review date
+
+!!! info "Decision snapshot"
+
+    - **Product role:** former human-approved text Primary; retained as
+      reproducible historical evidence, not a claim about the current live
+      route.
+    - **Selected or best-qualified configuration:** Infernal Invocation r18
+      B12X with DSpark K5, TP=2, 1,048,576 tokens, eight admitted sequences,
+      and 4,096-token batching.
+    - **Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q cards in
+      exclusive TP=2 over PCIe without NVLink.
+    - **Evidence:** DSpark K5 raised median decode from 76.4 to 142.1 tok/s at
+      4K and from 76.3 to 129.5 tok/s at 32K versus the otherwise matched
+      no-spec control; the profile also passed the retained 1M, functional,
+      quality, concurrency, and real-client gates.
+    - **Decision:** r18 became historical when Qwen3.8 Flash Next was promoted
+      on 2026-08-26. Earlier r15 and r33 profiles remain dated recovery and
+      comparison evidence.
+    - **Important limitation:** native CPU KV offload is a separate 262,144-
+      token WSL2 capacity lane, not part of r18; representative SWE scoring,
+      some routed >300K gates, and automatic rollback remain unproven.
+    - **Review dates:** retained evidence through 2026-08-26; dossier-format
+      review 2026-08-31.
+
+[Open the retained container configuration inventory](../configurations.md#additional-retained-families)
+or jump to the [decision](#decision-and-promotion-state),
+[known limitations](#failures-and-gotchas), or
+[dated evidence](#dated-run-history).
+
+### Review narrative
+
+The dated notes below preserve the full reasoning behind each decision. The
+later measurement sections retain the exact metrics, controls, failures, and
+promotion boundaries.
+
+#### 2026-08-21–26 — r18 1M qualification, promotion, and supersession
 
 The 2026-08-21 record qualifies and promotes Martin Vit's Infernal Invocation r18 B12X
 TP=2 DSpark K5 profile at 1,048,576 tokens, maxseq8, and 4,096-token batching.
@@ -13,6 +51,12 @@ Hermes/Pi/OpenClaw acceptance passed. r18 remained the text `llm.primary`
 until the 2026-08-26 Qwen3.8 Flash Next promotion and is now retained
 historical evidence.
 
+**Outcome:** the exact r18 K5 profile qualified at the model's declared 1M
+limit, passed the guarded client-facing transaction, and is now retained as a
+former Primary rather than presented as current deployment state.
+
+#### 2026-08-16 — r15 393K promotion
+
 The 2026-08-16 public record documents human approval of Martin Vit's
 Infernal Invocation r15 B12X TP=2 DSpark K5 profile for the text
 `llm.primary` route at 393,216 tokens, 4,096-token batching, and eight admitted
@@ -21,6 +65,12 @@ the authenticated router, repeated tools/session/diff/timeout checks 12/12,
 short c8 and long c2 capacity, and OpenClaw-compatible Anthropic wire calls.
 The r15 record is now historical. The prior r33 393K profile was the
 fixed-port managed recovery target while r18 was current.
+
+**Outcome:** r15 qualified and was promoted at 393,216 tokens, then became
+historical after r18. Its evidence remains a matched performance and routed
+acceptance reference.
+
+#### 2026-08-02–11 — native offload, r33 controls, and GPU-only capacity
 
 A derived WSL2 image also qualified native CPU KV offload at a 262,144
 served-token ceiling. It passed a cold ladder through 249,573 prompt tokens and
@@ -35,10 +85,18 @@ reported 725,543 GPU KV tokens and passed 238,507-, 339,310-, and
 359,900-actual-token direct requests without host offload. Review date:
 2026-08-26.
 
+**Outcome:** these lanes establish bounded WSL2 offload and GPU-only capacity
+results, but they do not extend the r18 contract or establish current routing.
+
+#### Earlier and still-open evidence
+
 The earlier SGLang 32K low-reasoning lane remains valid point-in-time evidence,
 not the current performance recipe. Community 0731 NVFP4 and GGUF conversions
 remain unqualified. The local maxseq16 lane has bounded c16 and three-tool-burst
 evidence, but not broad repeated multi-agent quality.
+
+**Outcome:** retain these as historical controls and research leads; do not
+promote their unmeasured or incomplete properties into the qualified contract.
 
 ## Immutable identity
 
@@ -67,6 +125,12 @@ figure is aggregate VRAM, not unified memory.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
+For reusable TOML, container field mapping, and standalone Docker
+reconstruction guidance, open the
+[container configuration inventory](../configurations.md#additional-retained-families).
+
+### Former r18 1M profile
+
 The former r18 profile uses image digest
 `sha256:414ec7d0d28358cfd8af0697f330f5c8acbb80e4dc4e5ba69c9fd5b5855ea804`,
 vLLM integration tree `f0fa1cefc1865d316c2478525f550e7646addc40`, B12X tree
@@ -82,6 +146,8 @@ direct NCCL P2P and NCCL cuMem device/host allocation are disabled, shared
 memory remains enabled, and PyTorch expandable segments are disabled. Model,
 JIT, and temporary build data use named Docker volumes.
 
+### r16 DSpark, offload, and extended-context recipes
+
 - [DSpark K5 recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-128k-recipe.toml)
 - [Same-image no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-nospec-128k-recipe.toml)
 - [256K 8 GiB native-offload recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-256k-offload8-wsl2-mmap-unpinned-recipe.toml)
@@ -93,6 +159,9 @@ JIT, and temporary build data use named Docker volumes.
 - [Native-offload and 256K qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md)
 - [650K/1M Pi qualification](../../findings/2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md)
 - [650K Primary promotion](../../findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion.md)
+
+### r33 target-only, batch, and DSpark recipes
+
 - [r33 target-only 131K recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-131k-recipe.toml)
 - [r33 target-only 131K batch-4096 control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-batch4096-131k-recipe.toml)
 - [r33 quality-first 393K candidate](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-r33-b12x-nospec-maxseq1-393k-recipe.toml)
@@ -100,15 +169,27 @@ JIT, and temporary build data use named Docker volumes.
 - [r33 quality-control qualification](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md)
 - [r33 batch-token A/B](../../findings/2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md)
 - [r33 393K Primary promotion](../../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md)
+
+### Infernal Invocation r15 recipes
+
 - [Infernal Invocation r15 K5 393K recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r15-b12x-dspark5-maxseq8-batch4096-393k-recipe.toml)
 - [Infernal Invocation r15 matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r15-b12x-nospec-maxseq8-batch4096-393k-recipe.toml)
 - [Infernal Invocation r15 393K promotion](../../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md)
+
+### Infernal Invocation r18 recipes
+
 - [Infernal Invocation r18 K5 1M recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-1m-recipe.toml)
 - [Infernal Invocation r18 K5 1M fixed-port promotion recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-dspark5-maxseq8-batch4096-1m-port39077-recipe.toml)
 - [Infernal Invocation r18 matched no-spec control](https://github.com/fakoli/anvil-serving/blob/main/configs/deepseek-v4-flash-0731-infernal-r18-b12x-nospec-maxseq8-batch4096-1m-recipe.toml)
 - [Infernal Invocation r18 1M qualification and promotion](../../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md)
 
 ## Evidence by measurement class
+
+Each subsection answers a distinct reuse question. Performance numbers remain
+bounded to the exact model, runtime, topology, context, and concurrency stated
+for that lane.
+
+### r18 — 1M performance and client acceptance
 
 The r18 DSpark K5 profile adds `functional`, `capacity`, matched
 `performance`, and bounded `quality` evidence at the model's 1,048,576-token
@@ -122,6 +203,11 @@ no-spec control, K5 raised median decode from 76.4 to 142.1 tok/s at 4K and
 exact routed identity, the complete routed API/tool subset, generation-2 Mini
 convergence, and real Hermes/Pi/OpenClaw acceptance.
 
+**Outcome:** qualified at the declared 1M context with matched DSpark gains and
+complete promotion-era client acceptance; now historical.
+
+### r15 — 393K performance and routed acceptance
+
 The r15 DSpark K5 profile adds `functional`, `capacity`, matched `performance`,
 bounded `quality`, and routed acceptance evidence. K5 versus the otherwise
 identical no-spec control measured 150.0 versus 76.4 tok/s median decode at
@@ -133,6 +219,12 @@ The stock English 390K routed needle still failed closed under the router's
 conservative byte estimator, and generic thinking-disable did not suppress
 r15 reasoning. Those are retained limits, not relabelled successes.
 
+**Outcome:** qualified former 393K Primary with strong matched DSpark gains;
+the conservative routed needle and reasoning-disable behavior remain explicit
+limits.
+
+### r33 — GPU-only 393K profile
+
 The historical r33 DSpark profile adds `functional`, `capacity`, and bounded
 `quality` evidence: exact managed routing passed, the direct context ladder
 reached 359,900 actual prompt tokens, and OpenClaw/Hermes client-path requests
@@ -140,6 +232,11 @@ passed after safe gateway restarts. It uses FP8 DS-MLA KV with no host
 offload and reported 725,543 GPU KV tokens. Routed, OpenClaw, and Hermes >300K remain
 unproven because the legacy routed needle generated a conservative 450,028-
 token admission estimate and failed 413.
+
+**Outcome:** direct GPU-only capacity reached 359,900 actual prompt tokens, but
+routed and client-path requests above 300K remain unproven.
+
+### r33 — target-only and batch-token controls
 
 The r33 target-only control adds `functional`, `capacity`, and bounded
 `quality` evidence on the same released checkpoint:
@@ -167,6 +264,11 @@ KV tokens, but the 94.861% reported-token increase does not reconcile with the
 4.715% KV-byte increase. A configured 393K start and actual >300K request are
 therefore still required before claiming over-300K GPU-only capacity.
 
+**Outcome:** the 4,096-token batch arm reduced measured activation pressure,
+but the unreconciled KV counters prevent a broader capacity claim.
+
+### r16 — baseline DSpark qualification
+
 The r16 revision has `functional`, `capacity`, and bounded `quality` evidence:
 
 - Low reasoning passed smoke, JSON, three typed tools, streaming tools,
@@ -183,6 +285,11 @@ The r16 revision has `functional`, `capacity`, and bounded `quality` evidence:
   median E2E from 3.88 to 1.60 seconds.
 - Cumulative DSpark counters recorded 4,865 accepted of 8,830 draft tokens,
   or 55.1% acceptance and 2.75 accepted tokens per draft.
+
+**Outcome:** the baseline established repeatable functional, quality, context,
+and matched DSpark performance evidence at the recorded 128K-era envelope.
+
+### r16 — native CPU KV offload
 
 The derived native-offload lane adds `functional` and `capacity` evidence:
 
@@ -203,6 +310,11 @@ The derived native-offload lane adds `functional` and `capacity` evidence:
   mapped the 8 and 16 GiB files, then reclaimed each after container removal
   and restored split mode.
 
+**Outcome:** WSL2 native offload and exact CPU-to-GPU replay worked through the
+measured 256K lane, including ownership-aware managed cleanup.
+
+### r16 — GPU-only Pi context
+
 The GPU-only Pi-context lane adds `functional` and `capacity` evidence:
 
 - The 650K/maxseq16 profile recovered a needle at approximately 640K in 120.6
@@ -210,6 +322,11 @@ The GPU-only Pi-context lane adds `functional` and `capacity` evidence:
   tool-result continuation, and Responses.
 - Its matched 32K c1 run completed 3/3 in 16.6 seconds at 5.59-second median
   E2E, 8,793 effective prefill tok/s, and 141.6 tok/s median decode.
+
+**Outcome:** the 650K profile passed the bounded Pi and retrieval gates, with
+the associated latency and concurrency limits preserved below.
+
+### 2026-08-03 — remote benchmark-worker smoke
 
 The 2026-08-03 remote benchmark-worker smoke adds bounded infrastructure and
 quality evidence. An 8K native context case passed 1/1, but no larger context
@@ -219,6 +336,12 @@ reasoning and final-answer checks. One pinned SWE-bench Verified instance,
 `django__django-11099`, resolved under the official grader. This qualifies the
 remote harness path for a scout campaign; it is not a representative SWE-bench
 score and does not change the current routing decision.
+
+**Outcome:** the remote harness path worked for a scout run; the single SWE
+case is not a representative model score.
+
+### 1M admission experiments
+
 - The first 1M profile admitted one sequence and recovered a 985K needle, but
   a three-tool burst fatally exceeded its locked B12X workspace. It is rejected
   for Pi agentic use.
@@ -231,6 +354,11 @@ score and does not change the current routing decision.
   687.83 MiB workspaces when only 514.25 MiB was available. The latter had a
   19,118-token Pi prompt and only 5,120 requested output tokens, proving that
   output clamping alone does not make the 1M profile safe.
+
+**Outcome:** 1M retrieval was feasible, but the retained B12X workspace
+failures reject these earlier r16 profiles for client-shaped Pi agentic use.
+
+### Earlier SGLang and separate vision lanes
 
 The prior SGLang lane used image digest
 `sha256:0aa5324c4f38bc66f4b55e1e12efab821ef614b1a8629259b2810ff72a6570e6`,
@@ -249,6 +377,12 @@ text-lane gates and image conditioning pass, but dense OCR and GUI-affordance
 reading confabulate against known ground truth, and the checkpoint has no
 chat template. See the
 [vision first-load finding](../../findings/2026-08-07-deepseek-0731-vision-nvfp4-sglang-first-load.md).
+
+**Outcome:** retain the SGLang text lane as point-in-time evidence; the vision
+overlay remains `no-promotion` because OCR/GUI grounding and chat-template
+requirements were not met.
+
+### External priors and community configuration research
 
 Current `external-prior` evidence strengthens the research priority without
 expanding the local contract:
@@ -281,16 +415,26 @@ See the
 and its machine-readable candidate ledger for the r33 candidates, precision
 decision, source classifications, subreddit coverage, and required gates.
 
+**Outcome:** these sources prioritize future NVFP4 and GGUF experiments; they
+do not expand the locally qualified contract.
+
 ## Decision and promotion state
 
-2026-08-21 Infernal Invocation r18 promotion: the exact digest-pinned K5
+The entries below are dated product decisions. They preserve the human gates
+and historical promotion state without implying a current live assignment.
+
+### 2026-08-21–26 — Infernal Invocation r18
+
+**Decision:** the exact digest-pinned K5
 profile was the human-approved `llm.primary` at 1,048,576 tokens with
 maxseq8 and batch4,096. The matched no-spec arm is rejected for deployment
 performance. The guarded router transaction, Mini context/compaction
 convergence, and real Hermes/Pi/OpenClaw acceptance passed. The profile became
 historical when Qwen3.8 Flash Next was promoted on 2026-08-26.
 
-2026-08-16 Infernal Invocation r15 promotion: after explicit human approval,
+### 2026-08-16 — Infernal Invocation r15
+
+**Decision:** after explicit human approval,
 the digest-pinned K5 profile became the exclusive TP=2 text `llm.primary` at
 393,216 tokens. The guarded transaction reran direct context, tools,
 streaming, tool-result, and Responses gates, installed the router profile,
@@ -300,14 +444,18 @@ Martin Vit's upstream receipt qualified 131,072 tokens on native Linux with
 two RTX PRO 6000 Blackwell GPUs on direct PCIe root ports; this WSL2 393K
 result is an independent local qualification.
 
-The 2026-08-02 public finding records human approval of the maxseq16 r16 DSpark
+### 2026-08-02 — r16 maxseq16 promotion record
+
+**Decision:** the public finding records human approval of the maxseq16 r16 DSpark
 profile as the exclusive TP=2 Primary for one Pi/OpenClaw coding user, with
 high reasoning as the client default and `llm.rollback` preserved explicitly.
 That is a dated promotion record, not a claim about the live operator
 assignment. The recorded router's optional per-tier output cap was 32,768 and
 warned instead of rejecting an oversized caller budget.
 
-2026-08-06 operator-directed retune: the pinned recipe now serves
+### 2026-08-06 — operator-directed retune
+
+**Outcome:** the pinned recipe now serves
 `MAX_MODEL_LEN=262144` with `MAX_NUM_BATCHED_TOKENS=8192` (previously
 650,000/4,096; serve and model names retain the historical `650k` suffix). The
 engine sized GPU KV cache at 272,040 tokens (1.04x concurrency at a full
@@ -316,7 +464,9 @@ JSON, tool batch x20, tool-result continuation) passed. The ~640K retrieval,
 650K-envelope performance rows, and client smokes above are dated history from
 the prior envelope and do not transfer without fresh measurement.
 
-2026-08-07 image upgrade: the pinned recipe moved from the r16 to the
+### 2026-08-07 — runtime image upgrade
+
+**Outcome:** the pinned recipe moved from the r16 to the
 digest-pinned r27 community image (official 0731 reasoning/tool prompt
 contract, tiered-offload lifetime fixes, InstantTensor registration fallback,
 `PYTHONHASHSEED=0`). KV cache re-sized to 272,107 tokens; a same-day
@@ -325,25 +475,33 @@ concurrency parity with the recorded r16 artifact (520 vs 513.5 aggregate
 tok/s). All r16-labeled performance figures on this page predate the image
 upgrade.
 
-2026-08-10 r33 quality control: the exact released checkpoint passed the
+### 2026-08-10 — r33 quality control
+
+**Decision:** the exact released checkpoint passed the
 target-only/no-spec 131K control on a digest-pinned r33 B12X runtime. The
 largest validated request contained 119,503 actual prompt tokens. The
 quality-first 393K candidate keeps FP8 KV and adds host capacity rather than
 introducing NVFP4 KV before a matched quality A/B. No route or promotion
 changed.
 
-2026-08-11 r33 393K promotion: after human approval, the GPU-only DSpark K5
+### 2026-08-11 — r33 393K promotion
+
+**Decision:** after human approval, the GPU-only DSpark K5
 profile became `llm.primary`. Direct capacity reached 359,900 actual prompt
 tokens; OpenClaw and Hermes were updated/restarted at 393,216 context,
 32,768 output, and high reasoning.
 The managed split restoration group is Agents-A1 plus Omni; Qwen was not
 started. Routed/OpenClaw/Hermes >300K and SWE scoring remain open.
 
-2026-08-10 batch-token A/B: the otherwise matched 4,096-token arm reduced
+### 2026-08-10 — batch-token A/B
+
+**Outcome:** the otherwise matched 4,096-token arm reduced
 profiled activation pressure, increased GPU KV allocation, passed the same
 bounded gates, and was healthy/direct-only at campaign close. It is the preferred basis
 for a GPU-only 393K experiment, but no route or promotion changed and no
 request above 300K has yet run.
+
+### Remaining gates and historical scope
 
 Earlier r16 1M profiles are experimental only; that statement does not apply
 to the exact qualified and promoted r18 profile. The current exclusive AI-only policy
@@ -353,7 +511,9 @@ gates include sustained multi-turn high/max testing, fixing and
 requalifying the client-shaped 1M B12X workspace failure, and pinned 0731 NVFP4
 W4A16/W4A4 comparisons.
 
-2026-08-07 vision-adapter first load: `no-promotion`, evaluated separately
+### 2026-08-07 — vision-adapter first load
+
+**Decision:** `no-promotion`, evaluated separately
 from the text Primary. The WebBrain 0731 vision overlay loaded and served on
 TP=2 with grounded image conditioning, but OCR/GUI reading confabulated and
 the checkpoint exposes no chat template, so it cannot serve a router chat
@@ -362,11 +522,15 @@ session; no alias, route, or promoted serve changed.
 
 ## Failures and gotchas
 
+### Startup translation and KV admission
+
 The first r16 start exposed an offline nested-speculative-model localization
 gap. The second exposed native-Linux NCCL defaults incompatible with WSL2. The
 third loaded both ranks but missed the 131K KV admission gate by 0.15 GiB at
 `max_num_seqs=16`; the qualified c1 recipe reduces admission to eight and the
 CUDA-graph cap to 48 without raising its memory-utilization ceiling.
+
+### Historical reserve and workspace pressure
 
 Both r16 profiles fail the 3 GiB reported-free reserve. Per-context sampling
 found only 1,179-1,203 MiB free on `dark-compute-a` and 2,031 MiB on
@@ -385,23 +549,33 @@ capacity result, not a new reserve policy. The 1M/maxseq1 profile also remains
 an explicit retained failure because its locked 514.25 MB B12X workspace could
 not satisfy a later 873.62 MB compressed-MLA allocation.
 
+### Reasoning-budget exhaustion
+
 Reasoning-budget exhaustion is still a real operational risk. One earlier
 SGLang capacity request and one additional r16 no-spec control run completed
 without visible content. High/max support proves protocol compatibility, not
 that arbitrarily large reasoning budgets are efficient.
 
+### Redistribution boundary
+
 The pinned runtime source repository has no root license file at the tested
 revision. The model weights are MIT, but local qualification does not establish
 permission to redistribute the image or derived runtime code.
 
+### Historical-invalid attempts
+
 The historical NGC vLLM architecture rejection and aborted NVFP4 load are not
 measurements of the current 0731 checkpoint.
+
+### Automatic rollback gap
 
 The r18 promotion also reproduced the existing automatic recovery defect for
 exclusive-to-exclusive rollback: ordinary bring-up correctly refuses the
 rollback serve without an ownership transfer. The r33 recovery profile remains
 available through the managed mode transition; automatic promotion rollback
 is not live-proven until the P1 orchestration issue is fixed.
+
+### Native-offload shared-memory lifecycle
 
 Native offload originally crashed on WSL2 because CUDA host registration of
 the process-shared mmap conflicted with the allocator lifetime. The derived
