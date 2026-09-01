@@ -121,8 +121,10 @@ selection.
 
 ## Quick start
 
-Python 3.11+ is the only runtime prerequisite. Docker and a GPU are required
-only for real local model serves.
+Python 3.11+ is the only Anvil runtime prerequisite. Docker and a GPU are
+required only for real local model serves. A single-host installation can stay
+entirely on loopback; the reference multi-device deployment also installs
+Tailscale and follows [Private networking with Tailscale](docs/TAILSCALE-NETWORKING.md).
 
 ```bash
 pip install -e .
@@ -176,12 +178,13 @@ mapping is an exposure decision, not a model promotion claim.
 | `anvil-serving mcp serve` / `controller` | Structured same-host or private control-plane access. |
 | `anvil-serving topology` / `fleet` / `host` | Ownership resolution, fleet parity/drift, and supported host utilities. |
 
-The reference split-host control plane runs the controller in the dedicated
-Linux `controller` image on Fakoli Dark and exposes it through host-owned
-Tailscale Serve. Fakoli Mini runs only the MCP stdio bridge used by OpenClaw.
+The reference split-host control plane runs the controller in a dedicated
+Linux `controller` image on the resource-owning inference node and exposes it
+through host-owned Tailscale Serve. A separate model-free harness node runs
+only the MCP stdio bridge used by OpenClaw.
 That bridge bundles the official TypeScript MCP SDK and accepts both the
 legacy initialize era through `2025-11-25` and the stateless `2026-07-28`
-era. Its authenticated downstream connection to Dark is pinned to
+era. Its authenticated downstream connection to the resource owner is pinned to
 `2026-07-28`; the controller itself never exposes a legacy endpoint. Remote
 MCP proxy mode therefore requires Node.js 20+, while the Python router,
 controller, and ordinary CLI remain stdlib-only.
@@ -190,6 +193,7 @@ controller, and ordinary CLI remain stdlib-only.
 
 - [Start here for the next internet model recipe](START_HERE.md)
 - [Getting started](docs/GETTING-STARTED.md)
+- [Private networking with Tailscale](docs/TAILSCALE-NETWORKING.md)
 - [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
 - [Capability meta-router](docs/META-ROUTER.md)
 - [Architecture](docs/ARCHITECTURE.md)
@@ -198,7 +202,7 @@ controller, and ordinary CLI remain stdlib-only.
 - [Meta-router request path](docs/THIN-CAPABILITY-GATEWAY.md)
 - [CLI reference](docs/CLI.md)
 - [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md)
-- [Fakoli Mini to Dark remote control](examples/fakoli-dark/REMOTE-CONTROL.md)
+- [Split-host remote-control example](examples/fakoli-dark/REMOTE-CONTROL.md)
 - [Voice pipeline](docs/VOICE.md)
 - [Anvil Media commands](docs/cli/media.md)
 - [Benchmarks](docs/benchmarks/index.md)
@@ -215,11 +219,14 @@ controller, and ordinary CLI remain stdlib-only.
   machine paths, and working evidence in a private operator repository selected
   through `ANVIL_SERVING_HOME`.
 - Use `127.0.0.1`, never `localhost`, for same-host URLs.
-- Keep router authentication enabled before exposing it beyond loopback.
+- Prefer Tailscale Serve to project selected loopback services into the
+  tailnet. Use least-privilege grants for network reachability and keep router
+  or controller authentication enabled on every published path.
 - Store credentials only through environment-variable references.
 - Treat readiness and preflight as different checks: readiness says a serve can
   receive traffic; preflight and benchmark evidence establish whether it should.
-- Fakoli Mini is model-free in the reference topology. Its local audio proxy
-  ports forward to Dark; they do not make Mini a serving host.
+- The dedicated harness node is model-free in the reference topology. A local
+  proxy port that forwards to another owner does not make the harness a model
+  serving host.
 
 See [SECURITY.md](SECURITY.md) for the threat model and reporting policy.

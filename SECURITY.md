@@ -46,8 +46,11 @@ to configured local model endpoints. Keep this in mind:
   to a non-loopback address (`--host 0.0.0.0`, or a LAN/tailnet IP) without configuring
   `auth_env`, **any** caller reachable on that network can drive configured model endpoints.
   Configure `auth_env` first, always, whenever the router is reachable from anywhere other than
-  the box it runs on. Treat network-level identity — a Tailscale ACL, a firewall rule, a private
-  mesh — as **defense-in-depth on top of the token**, never as a substitute for it.
+  the box it runs on. Treat network-level identity—a Tailscale grant or legacy
+  ACL, a firewall rule, or another private mesh policy—as **defense-in-depth on
+  top of the token**, never as a substitute for it. Prefer projecting a
+  loopback listener through Tailscale Serve over binding the process to every
+  interface; see [Private networking with Tailscale](docs/TAILSCALE-NETWORKING.md).
 - **The token secret itself is never stored in a config file** — only its env-var NAME is (via
   `auth_env`). Request metadata and decision records must never contain credential values.
 - **In the Docker/Compose deployment** (see the README's "Run the router in Docker" section),

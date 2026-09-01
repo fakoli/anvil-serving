@@ -141,6 +141,7 @@ declare it.
    reconciling a client.
 
 Continue with [Control Plane & Fleet commands](cli/control-plane.md),
+[Private networking with Tailscale](TAILSCALE-NETWORKING.md),
 [Fleet commands](cli/fleet.md), [Host & setup](cli/host.md), and the
 [Agent workbench](WORKBENCH.md).
 
