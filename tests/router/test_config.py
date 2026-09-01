@@ -94,7 +94,7 @@ def test_model_route_cannot_target_unknown_or_cloud_tier(tmp_path):
 def test_duplicate_normalized_route_alias_is_rejected(tmp_path):
     duplicate = _ONE_TIER + '"LLM.PRIMARY" = "primary"\n'
 
-    with pytest.raises(ConfigError, match="duplicate model route alias"):
+    with pytest.raises(ConfigError, match="duplicate capability alias"):
         load(_write(tmp_path, duplicate))
 
 

@@ -51,10 +51,27 @@ RECIPE_NATIVE_KV_OFFLOAD_LABEL = "io.anvil-serving.recipe.native-kv-offload"
 RECIPE_MANAGED_VALUE = "models-recipes"
 RECIPE_CONTAINER_INVENTORY_SCHEMA = "recipe-container-inventory/v1"
 MAX_DISCOVERED_RECIPE_CONTAINERS = 256
+PUBLIC_GPU_DEVICE_PLACEHOLDER = "GPU-REPLACE-WITH-HOST-DISCOVERED-UUID"
 
 
 class RecipeError(ValueError):
     """A recipe or recipe registry is invalid for a requested operation."""
+
+
+def _is_public_gpu_placeholder(value: str) -> bool:
+    """Return whether a selected device contains a published synthetic UUID."""
+    for item in value.split(","):
+        upper = item.upper()
+        if upper.startswith("GPU-REPLACE-WITH-"):
+            return True
+        if not upper.startswith("GPU-"):
+            continue
+        compact = upper.removeprefix("GPU-").replace("-", "")
+        if not re.fullmatch(r"[0-9A-F]{32}", compact):
+            continue
+        if len(set(compact)) == 1 or compact in {"0" * 31 + "1", "0" * 31 + "2"}:
+            return True
+    return False
 
 
 def _parse_named_volume(spec: str) -> tuple[str, str, bool]:
@@ -626,6 +643,11 @@ def docker_run_argv(
             "gpu_device must be one or more distinct comma-separated UUIDs or "
             "indices without whitespace"
         )
+    if gpu_device is not None and _is_public_gpu_placeholder(gpu_device):
+        raise RecipeError(
+            "gpu_device is a public placeholder; replace it with a "
+            "host-discovered GPU UUID or index"
+        )
     if registry_digest_value is not None and not _HEX_DIGEST_RE.fullmatch(
         registry_digest_value
     ):
@@ -636,8 +658,17 @@ def docker_run_argv(
     if container:
         argv += ["--name", container]
     gpu_uuid = gpu_device or hw.get("gpu_uuid")
+    public_preview_device = False
     if gpu_uuid is not None and (not isinstance(gpu_uuid, str) or "\x00" in gpu_uuid):
         raise RecipeError("recipe.hardware.gpu_uuid must be a string without NUL bytes")
+    if gpu_device is None and gpu_uuid and _is_public_gpu_placeholder(gpu_uuid):
+        if container is not None:
+            raise RecipeError(
+                "recipe.hardware.gpu_uuid is a public placeholder; pass --gpu-device "
+                "with a host-discovered GPU UUID or index"
+            )
+        gpu_uuid = PUBLIC_GPU_DEVICE_PLACEHOLDER
+        public_preview_device = True
     if gpu_uuid:
         gpu_request = "device=%s" % gpu_uuid
         # Docker's --gpus option parses a CSV capability request. A multi-device
@@ -728,7 +759,7 @@ def docker_run_argv(
     serve_env = [
         env
         for env in declared_serve_env
-        if gpu_device is None
+        if (gpu_device is None and not public_preview_device)
         or allow_index_pin
         or not env.startswith("CUDA_VISIBLE_DEVICES=")
     ]
@@ -788,6 +819,10 @@ def docker_run_argv(
 
 def reconstruct_docker_run(recipe: dict) -> str:
     """Reconstruct the reproducible `docker run` for a recipe.
+
+    Public recipe catalogs replace host GPU identity with an explicit
+    ``GPU-REPLACE-...`` token in this display-only command. A real load remains
+    fail-closed until the caller supplies ``--gpu-device``.
 
     The default image ENTRYPOINT is `vllm serve`, so the model is positional after
     the image. ``serve.model_path`` can select an immutable container-side snapshot

@@ -95,7 +95,7 @@ class VADConfig:
 
     ``silence_ms`` is the end-of-turn silence threshold. Kept in the 150-250ms
     band: long enough to not clip a mid-sentence breath, short enough to keep
-    turn-taking snappy (the purpose of the ``llm.voice`` direct alias this
+    turn-taking snappy (the purpose of the ``llm.voice`` capability alias this
     pipeline routes through -- see anvil_serving/router/classify.py). Bounds
     are enforced at construction so a misconfigured manifest fails fast rather
     than silently producing sluggish or hair-trigger turn-taking.

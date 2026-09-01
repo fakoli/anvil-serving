@@ -27,14 +27,14 @@
     {
       "index": 0,
       "name": "NVIDIA GeForce RTX 5090",
-      "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+      "uuid": "REDACTED_GPU_UUID_REMOVED_GPU",
       "used": 2590,
       "total": 32607
     },
     {
       "index": 1,
       "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
-      "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+      "uuid": "REDACTED_GPU_UUID_COMPUTE_A",
       "used": 510,
       "total": 97887
     }

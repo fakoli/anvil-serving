@@ -1,5 +1,9 @@
 # GPT-OSS Puzzle 88B local qualification
 
+> **Publication redaction:** Operator-specific GPU UUIDs in this finding and its
+> linked raw evidence were replaced with stable labels. Hardware class,
+> measurements, and event ordering are unchanged.
+
 Date: 2026-07-17
 
 Status: **implemented and locally qualified; recipe remains `unverified`**
@@ -25,7 +29,7 @@ assignments, publish an image, or make a general hardware-support claim.
   `sha256:2191e2740c6aac83489e2e4de597f1cafdabc2ca21cf8e412d6430b8239ad362`
 - vLLM version: `0.23.1rc1.dev1229+g1bf3b12d5`
 - Qualification GPU: NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
-  UUID `GPU-d0f446cf-1771-414c-e116-a39138798a8c`
+  UUID `REDACTED_GPU_UUID_COMPUTE_A`
 
 The vLLM change was ported from the behavioral diff and was not cherry-picked
 from the PR's original or merge commits.

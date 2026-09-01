@@ -11,6 +11,10 @@
 
 ## Dossier template
 
+Use `templates/dossier.md` for new dossiers and format-only migrations. The
+template carries the `benchmark-dossier/v2` marker and this stable navigation
+contract:
+
 ```markdown
 # Model
 
@@ -23,6 +27,35 @@
 ## Failures and gotchas
 ## Dated run history
 ```
+
+Inside that contract:
+
+- lead with a scannable `Decision snapshot` covering product role,
+  best-qualified configuration, measured hardware, evidence, decision and
+  promotion boundary, important limitation, evidence cutoff, and dossier
+  review date;
+- preserve the detailed review narrative, divided by date or outcome when it
+  spans multiple decisions;
+- group immutable identity, recipes, and evidence by materially different
+  configuration family instead of blending lanes;
+- label each evidence subsection with `Status`, `Measured`, `Limits`, and
+  `Evidence`, followed by the narrative needed to interpret the result;
+- separate retained/selected configurations from rejected, superseded, or
+  incomplete configurations;
+- group long failure lists by cause and use bold lead labels; and
+- keep every decision-relevant dated finding reachable.
+
+Link the exact public recipe when one is tracked and safe to publish. When the
+managed recipe belongs to the private operator repository or embeds private
+topology, link a sanitized public reconstruction page instead. Never expose a
+private repository path, endpoint, host identity, or credential to satisfy the
+dossier layout.
+
+When retained evidence lacks a field, publish **Not recorded in retained
+evidence**, **Not retained**, or **Unknown** as appropriate. Do not infer the
+value, erase the gap, or run live hardware solely to make the layout
+symmetrical. Optional subsections may be omitted when there is no supporting
+evidence, but the eight canonical `##` headings remain required.
 
 Use `not-qualified` in prose for failed/incomplete configurations, with the
 canonical evidence label `compatibility-only` or `historical-invalid` and the

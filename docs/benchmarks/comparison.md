@@ -46,25 +46,27 @@ dated finding before treating a row as a single experiment. Full rules:
 
 ---
 
-## Current Primary and retained single-card profiles
+## Published decision snapshot as of 2026-08-31
 
-GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5 now owns both 96 GB cards as
-the TP=2 text/image/OCR Primary at 524K/router-c16, with measured C2 at a
-nominal 250K target. The former 1M GLM profile is the first same-model rollback.
-RadixArk Qwen3.8 Flash Next NVFP4 is the retained video-capable rollback. The
-DeepSeek Infernal Invocation profiles and the Qwen3.8 27B single-service/
-two-service split remain retained historical recipes.
+This section synthesizes the latest dated public benchmark decisions; it does
+not report active deployment, routing, placement, or availability. In the
+2026-08-31 published decision, GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5
+was the TP=2 text/image/OCR Primary profile at 524K/router-c16, with measured C2
+at a nominal 250K target. The former 1M GLM profile was the first same-model
+rollback. RadixArk Qwen3.8 Flash Next NVFP4 was retained as the video-capable
+rollback. The DeepSeek Infernal Invocation profiles and the Qwen3.8 27B
+single-service/two-service split remain retained historical recipes.
 
-| Model / config | Status | Quant · KV | 4K median TTFT / E2E | Decode | Multimodal acceptance | Evidence |
-| --- | --- | --- | --- | ---: | --- | --- |
-| [GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5](models/glm53-flash.md) | `current` text/tools/image/OCR Primary; exclusive TP=2 | EXL3 K3 · FP8 DS-MLA target KV · BF16 draft KV · fixed K5 | 0.974 / 1.269 s | **83.08 tok/s** | image/OCR pass; up to 16 images; no video | [524K xgrammar qualification](../findings/2026-08-31-glm53-xgrammar-524k-qualification.md) |
-| [Qwen3.8 Flash Next RadixArk NVFP4](models/qwen38-flash-next.md) | immediate text/image/OCR/video rollback; exclusive TP=2 | ModelOpt NVFP4 · BF16 KV · MTP3 | **0.141 / 0.340 s** | **155.9 tok/s** | direct 30/30; live repeats 57/60 strict; four images or one video | [vision promotion](../findings/2026-08-26-qwen38-flash-next-vision-promotion.md) |
-| [GLM-5.3-Flash TR3/EXL3 4 bpw, vision fixed K5](models/glm53-flash.md) | historical GLM rollback evidence; exclusive TP=2 | EXL3 4 bpw · NVFP4 DS-MLA KV · fixed MTP5 | 1.052 / 1.568 s | 72.8 tok/s | image/OCR pass; video disabled | [qualification](../findings/2026-08-29-glm53-cardillo-purtell-qualification.md) |
-| [DeepSeek V4 Flash 0731, Infernal Invocation r18 DSpark K5](models/deepseek-v4-flash.md) | former text Primary; retained TP=2 evidence | B12X W4A8 · FP8 compressed MLA KV | aggregate TTFT/E2E not published | **142.1 tok/s** | text-only contract; routed and real-client acceptance passed | [promotion](../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md) |
-| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | former Primary/general-vision/OCR/video service | Official FP8 · FP8 E4M3 KV | 0.577 / 0.962 s | **111.4 tok/s** | CPU transport; direct 30/30, live admitted 28/28; two images, one video | [video expansion](../findings/2026-08-16-qwen38-27b-video-router.md) |
-| [Qwen3.8 27B official FP8, vLLM TP=1 MTP=3](models/qwen38-27b.md) | split rollback, text | Official FP8 · FP8 KV | 0.834 / 1.295 s | 93.6 tok/s | text only; routed tools 20/20 | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
-| [Qwen3.8 27B official BF16, vLLM TP=1 MTP=3](models/qwen38-27b.md) | split rollback, vision/OCR | BF16 · FP8 KV | 0.884 / 1.584 s | 62.0 tok/s | historical routed 30/30; 32-image request 1/1 | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
-| [Qwen3.8 27B Inferact NVFP4, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `challenger`, `no-promotion` | ModelOpt NVFP4 · FP8 KV | **0.448 / 0.914 s** | 98.1 tok/s | CPU transport: image/OCR pass; broader media open | [qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md) |
+| Model / config | Status | Recipe / config | Quant · KV | 4K median TTFT / E2E | Decode | Multimodal acceptance | Evidence |
+| --- | --- | --- | --- | --- | ---: | --- | --- |
+| [GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5](models/glm53-flash.md) | `current` text/tools/image/OCR Primary; exclusive TP=2 | [K5 + control](configurations.md#glm53-524k) | EXL3 K3 · FP8 DS-MLA target KV · BF16 draft KV · fixed K5 | 0.974 / 1.269 s | **83.08 tok/s** | image/OCR pass; up to 16 images; no video | [524K xgrammar qualification](../findings/2026-08-31-glm53-xgrammar-524k-qualification.md) |
+| [Qwen3.8 Flash Next RadixArk NVFP4](models/qwen38-flash-next.md) | immediate text/image/OCR/video rollback; exclusive TP=2 | [MTP3 + control](configurations.md#qwen38-flash-next) | ModelOpt NVFP4 · BF16 KV · MTP3 | **0.141 / 0.340 s** | **155.9 tok/s** | direct 30/30; live repeats 57/60 strict; four images or one video | [vision promotion](../findings/2026-08-26-qwen38-flash-next-vision-promotion.md) |
+| [GLM-5.3-Flash TR3/EXL3 4 bpw, vision fixed K5](models/glm53-flash.md) | historical GLM rollback evidence; exclusive TP=2 | [Recipe source](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-cardillo-tpurtell-fixed-mtp5-vision-sm120-tp2-262k-wsl2-v2-no-owner-exchange-recipe.toml) | EXL3 4 bpw · NVFP4 DS-MLA KV · fixed MTP5 | 1.052 / 1.568 s | 72.8 tok/s | image/OCR pass; video disabled | [qualification](../findings/2026-08-29-glm53-cardillo-purtell-qualification.md) |
+| [DeepSeek V4 Flash 0731, Infernal Invocation r18 DSpark K5](models/deepseek-v4-flash.md) | former text Primary; retained TP=2 evidence | [K5 + control](configurations.md#additional-retained-families) | B12X W4A8 · FP8 compressed MLA KV | aggregate TTFT/E2E not published | **142.1 tok/s** | text-only contract; routed and real-client acceptance passed | [promotion](../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md) |
+| [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | former Primary/general-vision/OCR/video service | [MTP3 + control](configurations.md#qwen38-27b-official-fp8) | Official FP8 · FP8 E4M3 KV | 0.577 / 0.962 s | **111.4 tok/s** | CPU transport; direct 30/30, live admitted 28/28; two images, one video | [video expansion](../findings/2026-08-16-qwen38-27b-video-router.md) |
+| [Qwen3.8 27B official FP8, vLLM TP=1 MTP=3](models/qwen38-27b.md) | split rollback, text | [Recipe source](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-27b-fp8-tp1-393k-mtp3-recipe.toml) | Official FP8 · FP8 KV | 0.834 / 1.295 s | 93.6 tok/s | text only; routed tools 20/20 | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
+| [Qwen3.8 27B official BF16, vLLM TP=1 MTP=3](models/qwen38-27b.md) | split rollback, vision/OCR | [Recipe source](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-27b-bf16-tp1-393k-mtp3-recipe.toml) | BF16 · FP8 KV | 0.884 / 1.584 s | 62.0 tok/s | historical routed 30/30; 32-image request 1/1 | [historical promotion](../findings/2026-08-14-qwen38-27b-split-promotion.md) |
+| [Qwen3.8 27B Inferact NVFP4, SGLang TP=1 MTP=3](models/qwen38-27b.md) | `challenger`, `no-promotion` | [Recipe source](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-27b-inferact-nvfp4-sglang-tp1-393k-mtp3-mm-cpu-recipe.toml) | ModelOpt NVFP4 · FP8 KV | **0.448 / 0.914 s** | 98.1 tok/s | CPU transport: image/OCR pass; broader media open | [qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md) |
 
 The BF16 32-image result is one request at concurrency one. It is not a claim
 of 32 concurrent requests.
@@ -354,7 +356,7 @@ image level only. STT RTF and isolated per-model VRAM were never measured.
 
 ## Where the recipes live
 
-- **[`configs/serve-recipes.toml`](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml)** — 31 recorded recipes with quantization, context, flags, and environment. **9 of the 31 pin an image by `sha256:` digest; 20 pin a mutable tag** (`vllm/vllm-openai:nightly`, `lmsysorg/sglang:latest`) **and 2 record no image at all**, so those 22 cannot be reproduced exactly. Inspect one locally:
+- **[`configs/serve-recipes.toml`](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml)** — 32 recorded recipes with quantization, context, flags, and environment. **9 of the 32 pin an image by `sha256:` digest; 21 pin a mutable tag** (`vllm/vllm-openai:nightly`, `lmsysorg/sglang:latest`) **and 2 record no image at all**, so those 23 cannot be reproduced exactly. Inspect one locally:
 
     ```bash
     anvil-serving models recipes show <model>

@@ -1,8 +1,8 @@
 <div align="center">
 
-![Anvil Serving - explicit local AI capabilities](docs/assets/banner.png)
+<img src="docs/assets/hero-anvil.png" alt="" width="320">
 
-# anvil-serving
+# Anvil Serving
 
 > **Operate, qualify, and expose local AI capabilities through explicit contracts.**
 
@@ -10,30 +10,25 @@
 [![Source Version](https://img.shields.io/badge/source-1.0.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
+[Get started](docs/GETTING-STARTED.md) ·
+[Choose a product journey](docs/PRODUCT-FAMILIES.md) ·
+[Browse benchmark evidence](docs/benchmarks/index.md) ·
+[Open the documentation](https://fakoli.github.io/anvil-serving/)
+
 </div>
 
-Anvil Serving is one umbrella product for local Model Serving, the Capability
+Anvil Serving is one local-first product for Model Serving, the Capability
 Gateway, Evaluation & Evidence, Anvil Voice, Anvil Media, and Control Plane &
-Fleet operations. Those families share one package, CLI, topology, safety
-contract, evidence policy, and release line. Anvil Voice and Anvil Media are
-first-class branded domains inside the umbrella, not separate products.
+Fleet operations. The six families share one package, CLI, topology, safety
+contract, evidence policy, and release line while retaining explicit authority
+boundaries. Anvil Voice and Anvil Media are first-class domains inside the
+umbrella, not separate products.
 
-The gateway family is an explicit **capability meta-router**: callers use a
-stable capability alias, operators map that alias to exactly one tier, and the
-selected inference service may report mutable facts about the model and
-context it currently serves. Its request implementation remains deliberately
-thin. There is no request classifier, quality-profile router, semantic
-fallback, cloud escalation, or hidden substitute model.
-
-The reference topology has two equivalent RTX PRO 6000 Blackwell Max-Q GPUs.
-In split mode, compatible LLM, Omni, voice, purpose-model, and ComfyUI workloads
-reserve Compute A or Compute B independently. In `dual-gpu-exclusive` mode,
-one explicitly declared TP=2 serve owns both cards and every other GPU
-inference workload is offline. Capability aliases remain independent of that
-placement. The gateway keeps authentication, dialect translation, streaming,
-readiness, admission, and decision evidence consistent across those
-capabilities. See [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
-for the authority boundary and the ordered path through each family.
+The result is a reproducible path from model artifact to qualified capability:
+operate a declared serve, collect independent evidence, make a human-gated
+exposure decision, and present callers with one exact endpoint. Anvil Serving
+does not hide fallback, cloud escalation, model substitution, or automatic
+promotion behind that path.
 
 ## Product families
 
@@ -54,6 +49,25 @@ anvil-serving product journey anvil-media
 anvil-serving product journey control-plane-fleet --json
 ```
 
+## Operating model
+
+The Capability Gateway is an explicit **capability meta-router**: callers use a
+stable capability alias, operators map that alias to exactly one tier, and the
+selected inference service may report bounded facts about the model and context
+it currently serves. The request path remains deliberately thin. There is no
+request classifier, quality-profile router, semantic fallback, cloud
+escalation, or hidden substitute model.
+
+The reference topology has two equivalent RTX PRO 6000 Blackwell Max-Q GPUs.
+In split mode, compatible LLM, Omni, voice, purpose-model, and ComfyUI workloads
+reserve Compute A or Compute B independently. In `dual-gpu-exclusive` mode,
+one explicitly declared TP=2 serve owns both cards and every other GPU
+inference workload is offline. Capability aliases remain independent of that
+placement. The gateway keeps authentication, dialect translation, streaming,
+readiness, admission, and decision evidence consistent across those
+capabilities. See [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
+for each authority boundary and its ordered path.
+
 ## Capability meta-router contract
 
 ```toml
@@ -62,7 +76,6 @@ llm.primary = "primary-local"
 llm.voice = "omni-local"
 vision.ocr = "omni-local"
 vision.general = "omni-local"
-vision.video = "primary-local"
 ```
 
 Send one of those aliases as the chat `model`. Matching is case-insensitive
@@ -95,7 +108,7 @@ The word **meta** describes the separation between a stable caller contract
 and the mutable configuration behind it. It does not mean that Anvil Serving
 chooses among models. The complete request path is:
 
-1. The caller chooses a declared capability alias such as `llm.secondary`.
+1. The caller chooses a declared capability alias such as `llm.primary`.
 2. Operator configuration maps that alias to exactly one tier and endpoint.
 3. The selected tier supplies configured metadata, or its one inference
    service supplies bounded live model metadata when explicitly enabled.

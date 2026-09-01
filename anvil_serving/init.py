@@ -17,7 +17,7 @@ explicit `--model`), and writes four mutually-consistent files into the CWD:
 
   ./docker-compose.yml   the SGLang/vLLM serve (via `deploy.render()`)
   ./serves.toml          the `[[serve]]` entry for `anvil-serving serves`
-  ./router.toml          a `[router]` config: ONE tier and one direct alias
+  ./router.toml          a `[router]` config: ONE tier and one capability alias
   ./operator-topology.toml  generic local command/resource ownership
 
 The generated serving files agree on served-name and port — `tier.model == served-name`, the
@@ -78,14 +78,14 @@ class InitError(Exception):
 # `.env`).
 _TEMPLATES_PACKAGE = "anvil_serving._scaffold_templates"
 
-# (real value in the reference instance, clearly-marked placeholder). Applied to
-# every scaffolded file so one machine's identity never rides onto a fresh host.
+# Public synthetic UUID fixtures are mapped to explicit operator placeholders.
+# Applied to every scaffolded file so no machine identity rides onto a fresh host.
 _SANITIZE = (
-    ("GPU-d0f446cf-1771-414c-e116-a39138798a8c", "GPU-REPLACE-WITH-COMPUTE-A-UUID"),
-    ("GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490", "GPU-REPLACE-WITH-COMPUTE-B-UUID"),
-    # Sanitize the removed RTX 5090 identity in operator files produced by an
-    # older reference scaffold. It must never ride onto a fresh host.
-    ("GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1", "GPU-REPLACE-WITH-COMPUTE-B-UUID"),
+    ("GPU-11111111-1111-1111-1111-111111111111", "GPU-REPLACE-WITH-COMPUTE-A-UUID"),
+    ("GPU-22222222-2222-2222-2222-222222222222", "GPU-REPLACE-WITH-COMPUTE-B-UUID"),
+    # Preserve the third synthetic fixture for files derived from the removed
+    # RTX 5090 reference slot; generated operator files still receive Compute B.
+    ("GPU-33333333-3333-3333-3333-333333333333", "GPU-REPLACE-WITH-COMPUTE-B-UUID"),
     ("GPU-00000000-0000-0000-0000-000000000002", "GPU-REPLACE-WITH-COMPUTE-A-UUID"),
     ("GPU-00000000-0000-0000-0000-000000000001", "GPU-REPLACE-WITH-COMPUTE-B-UUID"),
     ("100.64.0.10", "REPLACE-WITH-YOUR-TAILNET-IP"),
@@ -557,7 +557,7 @@ def _served_name(model_facts):
 def render_router_config(
     tier_id, served_name, port, context_limit=131072, disable_thinking=False
 ):
-    """Render a complete direct-alias router config for one local serve."""
+    """Render a complete capability-alias router config for one local serve."""
     tier_block = _deploy.render_tier_stub(
         tier_id, served_name, port, context_limit=context_limit,
         disable_thinking=disable_thinking)
@@ -838,7 +838,7 @@ def main(argv):
     print("  3. anvil-serving serves status         # wait for it to report healthy")
     print("  4. anvil-serving router run --config %s" % result["router"])
     print("  5. Point your harness at http://127.0.0.1:8000 (ANTHROPIC_BASE_URL) and set")
-    print("     your client model to the direct alias llm.primary.")
+    print("     your client model to the capability alias llm.primary.")
     print("     For OpenClaw: see docs/OPENCLAW-INTEGRATION-SPEC.md for the provider adapter.")
     return 0
 

@@ -1,4 +1,4 @@
-"""OpenClaw direct-alias provider sync and bounded gateway lifecycle helpers."""
+"""OpenClaw capability-alias provider sync and bounded gateway lifecycle helpers."""
 from __future__ import annotations
 
 import argparse
@@ -104,7 +104,7 @@ def _openclaw_input(tier):
 
 
 def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN", **_ignored):
-    """Render ordinary OpenAI-compatible OpenClaw models for direct aliases."""
+    """Render ordinary OpenAI-compatible OpenClaw models for capability aliases."""
     _validate_env(api_key_env, "api_key_env")
     routes = getattr(config, "model_routes", {})
     if not routes:
@@ -340,7 +340,7 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, voice=Fal
         except (OSError, ValueError) as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print("wrote OpenClaw direct-alias provider (%d aliases, %s) -> %s" % (
+        print("wrote OpenClaw capability-alias provider (%d aliases, %s) -> %s" % (
             preview["model_count"], mode, out))
     if _applied_payload is not None:
         _applied_payload.clear()

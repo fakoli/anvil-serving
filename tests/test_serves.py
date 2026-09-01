@@ -1948,7 +1948,7 @@ def _promotion_manifest(tmp_path):
         engine = "vllm"
 
         [[serve]]
-        name = "heavy"
+        name = "primary"
         container = "heavy-c"
         runtime = "docker"
         port = 30002
@@ -1968,7 +1968,7 @@ def _promotion_manifest(tmp_path):
         [[promotion]]
         name = "heavy-v2"
         candidate = "candidate"
-        target = "heavy"
+        target = "primary"
         rollback = "old-heavy"
         affected_tiers = ["primary-local"]
         router_config = "{dir}/router-promoted.toml"
@@ -2005,7 +2005,7 @@ def test_load_promotions_resolves_direct_router_configs(tmp_path):
     path = _promotion_manifest(tmp_path)
     (plan,) = serves.load_promotions(path)
     assert plan["name"] == "heavy-v2"
-    assert plan["target"] == "heavy"
+    assert plan["target"] == "primary"
     assert plan["rollback"] == "old-heavy"
     assert plan["affected_tiers"] == ["primary-local"]
     assert plan["router_config"] == str(tmp_path / "router-promoted.toml")
@@ -2116,8 +2116,8 @@ def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):
     ) == 0
     out = capsys.readouterr().out
     assert "stop candidate, old-heavy" in out
-    assert "start heavy" in out
-    assert "eval preflight --tier heavy" in out
+    assert "start primary" in out
+    assert "eval preflight --tier primary" in out
     assert "gate functional" in out
     assert "gate quality" in out
     assert "--thinking-mode enabled" in out

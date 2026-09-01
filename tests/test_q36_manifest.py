@@ -42,6 +42,6 @@ def test_q36_container_recipe_pins_source_images_model_and_gpu_boundary():
     assert '"127.0.0.1:39040:8080"' in compose
     assert '"vllm-hfcache:/root/.cache/huggingface:ro"' in compose
     assert "CUDA_VISIBLE_DEVICES: ${Q36_GPU_INDEX:-1}" in compose
-    assert "GPU-d0f446cf-1771-414c-e116-a39138798a8c" in compose
+    assert "GPU-11111111-1111-1111-1111-111111111111" in compose
     assert "5bc3e238d916f48a861bac2f8a1990a0e9b7e98d" in compose
     assert "Qwen3.6-35B-A3B-MXFP4_MOE.gguf" in compose

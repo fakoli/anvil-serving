@@ -16,7 +16,7 @@ services:
       WORKBENCH_ALLOW_INSECURE_DEV_ACTOR: ${WORKBENCH_ALLOW_INSECURE_DEV_ACTOR:-false}
       ANVIL_ROUTER_BASE_URL: ${ANVIL_ROUTER_BASE_URL:?set in env file}
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:?set in host environment}
-      # Explicit direct aliases allowed on Workbench's bounded Serving sandbox.
+      # Explicit capability aliases allowed on Workbench's bounded Serving sandbox.
       # Empty keeps the sandbox unavailable.
       WORKBENCH_SANDBOX_MODELS: ${WORKBENCH_SANDBOX_MODELS:-}
       WORKBENCH_EMBEDDING_MODEL: ${WORKBENCH_EMBEDDING_MODEL:-}

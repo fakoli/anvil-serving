@@ -85,11 +85,11 @@ def main(
         )
         examples = (
             "Examples:\n"
-            "  anvil-serving eval benchmark capacity --tier heavy --requests 10 "
-            "--concurrency 1 --output heavy-capacity.json --confirm\n"
+            "  anvil-serving eval benchmark capacity --tier primary --requests 10 "
+            "--concurrency 1 --output primary-capacity.json --confirm\n"
             "  anvil-serving eval benchmark capacity --base-url "
             "http://127.0.0.1:30002/v1 --model MODEL --engine vllm "
-            "--gpu dark-heavy --output run.json --confirm"
+            "--gpu GPU_ROLE --output run.json --confirm"
         )
     elif workload == "quality":
         description = (
@@ -97,11 +97,11 @@ def main(
         )
         examples = (
             "Examples:\n"
-            "  anvil-serving eval benchmark quality --tier heavy --suite-file suite.json "
-            "--candidate-id MODEL --config-id heavy-v1 --control-status verified "
+            "  anvil-serving eval benchmark quality --tier primary --suite-file suite.json "
+            "--candidate-id MODEL --config-id primary-v1 --control-status verified "
             "--control-evidence evidence/control.json --output quality.json --confirm\n"
             "  anvil-serving eval benchmark quality --base-url "
-            "http://127.0.0.1:30002/v1 --model MODEL --engine vllm --gpu dark-heavy "
+            "http://127.0.0.1:30002/v1 --model MODEL --engine vllm --gpu GPU_ROLE "
             "--suite intelligence --candidate-id MODEL --config-id direct "
             "--output quality.json --confirm"
         )

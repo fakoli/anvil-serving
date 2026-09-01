@@ -151,21 +151,21 @@ def test_topology_derived_hosts_exclude_local(tmp_path, monkeypatch):
         id = "t"
 
         [[hosts]]
-        id = "primary-node"
+        id = "node-dark"
         roles = ["gpu"]
 
         [[hosts]]
-        id = "companion-node"
+        id = "node-mini"
         roles = ["gateway"]
     """),
         encoding="utf-8",
     )
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
-    monkeypatch.setattr("socket.gethostname", lambda: "companion-node.local")
+    monkeypatch.setattr("socket.gethostname", lambda: "node-mini.example")
 
     hosts, note = fleet._topology_remote_hosts()
 
-    assert hosts == ["primary-node"]
+    assert hosts == ["node-dark"]
     assert note is None
 
 

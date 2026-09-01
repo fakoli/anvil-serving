@@ -1036,7 +1036,7 @@ def test_host_summary_darwin_reports_unified_memory(monkeypatch):
         "vm_stat": _DARWIN_VM_STAT,
         "memory_pressure -Q": "System-wide memory free percentage: 59%",
         "sysctl vm.swapusage": "vm.swapusage: total = 2048.00M  used = 512.00M  free = 1536.00M  (encrypted)",
-        "hostname": "mac.local",
+        "hostname": "mac.example",
         "scutil --get ComputerName": "Mac",
         "scutil --get LocalHostName": "Mac",
         "sysctl -n hw.model": "Mac16,5",

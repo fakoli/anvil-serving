@@ -7,6 +7,11 @@ contain synthetic benchmark prompts and outputs, loopback endpoints, and the
 exact served identity; they contain no credentials or reachable private
 network identity.
 
+> **Publication redaction:** Operator-specific absolute corpus paths in the two
+> linked image-only artifacts were replaced with the stable repository-relative
+> corpus path. Corpus identity and content hash, measurements, model outputs,
+> and event ordering are unchanged.
+
 ## Exact identity
 
 - Target:

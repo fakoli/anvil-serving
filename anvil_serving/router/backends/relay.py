@@ -1,6 +1,6 @@
 """Local OpenAI/Anthropic-compatible HTTP relay.
 
-The relay forwards a direct capability alias to one configured local model
+The relay forwards a capability alias to one configured local model
 serve. Authentication is optional and resolved from the tier's ``auth_env``
 name when present. The stdlib HTTP transports are injectable so tests remain
 hermetic.
@@ -256,7 +256,7 @@ def discover_single_model(
       serve convenience for a tier that never got a ``model =`` line.
     * Upstream reachable and advertises exactly ONE model -> the tier is
       returned with that id adopted as ``model`` (so the router forwards the
-      served-model-name upstream instead of the routing token — genericity:R001).
+      served-model-name upstream instead of the capability alias — genericity:R001).
     * Upstream reachable but advertises ZERO or MORE THAN ONE model -> raises
       :class:`ConfigError` naming the tier, the URL, and the candidate ids: an
       ambiguous/empty catalog is a real misconfiguration the operator must
@@ -266,7 +266,7 @@ def discover_single_model(
       body, unexpected shape) -> **non-fatal**: the tier is returned unchanged
       (``model`` stays ``None``, a warning is printed to stderr) so a cold or
       still-booting local serve does not prevent the router from starting; the
-      existing ``request.model`` fallback (the routing token forwarded as-is)
+      existing ``request.model`` fallback (the capability alias forwarded as-is)
       still applies for that tier until it is reachable.
     """
     if tier.model is not None or tier.privacy != PRIVACY_LOCAL:
@@ -281,7 +281,7 @@ def discover_single_model(
         print(
             f"[anvil-serving] tier {tier.id!r}: /v1/models auto-derive skipped "
             f"({type(exc).__name__}: {exc}); model stays unset for now (falls "
-            f"back to forwarding the request's routing token)",
+            f"back to forwarding the request's capability alias)",
             file=sys.stderr,
             flush=True,
         )
@@ -650,8 +650,8 @@ class RelayBackend:
 
     def _build_body(self, request: InternalRequest) -> Dict[str, Any]:
         self._validate_request(request)
-        # Prefer the tier's configured concrete provider model id over the routing
-        # token in request.model. A routing token (e.g. "planning", "quick-edit")
+        # Prefer the tier's configured concrete provider model id over the capability
+        # alias in request.model. A capability alias (e.g. "planning", "quick-edit")
         # forwarded verbatim to the upstream provider causes a 4xx rejection; the
         # tier's model field holds the real provider model name (close #43).
         upstream_model = self._tier.model or request.model

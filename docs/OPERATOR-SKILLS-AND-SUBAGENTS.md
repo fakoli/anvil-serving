@@ -2,7 +2,7 @@
 
 Use small models for bounded inspection, manifest parsing, command previews, and report drafting.
 Use a stronger independent model for architecture changes, benchmark synthesis, and adversarial
-review. Neither class may change a serve, direct alias, or host state without the required human
+review. Neither class may change a serve, capability alias, or host state without the required human
 authorization.
 
 | Role | Inputs | Output | Boundary |
@@ -21,13 +21,13 @@ The useful MCP surface is `router_status`, `decision_summary`, `serves_status`,
 `serves_manage`, `serves_promote`, `preflight_probe`, `benchmark_probe`,
 `benchmark_artifact`, `voice_manage`, `openclaw_sync`, and
 `client_catalog_sync`. The request path is intentionally
-separate: callers choose a configured direct alias and the gateway proxies it to one local tier.
+separate: callers choose a configured capability alias and the gateway proxies it to one local tier.
 
 The canonical voice operations procedure is
 `skills/anvil-serving-voice-ops/SKILL.md`. Voice benchmark output is
 voice-pipeline evidence; it is not LLM serve qualification evidence,
 `promotion_quality_evidence` remains `false`, and the result remains
-`promoted=false` until a human-approved serve or direct-alias change.
+`promoted=false` until a human-approved serve or capability-alias change.
 
 Multi-sample STT corpus qualification uses
 `skills/anvil-serving-stt-benchmark/SKILL.md`. It owns deterministic corpus

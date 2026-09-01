@@ -1,9 +1,10 @@
 # Getting Started
 
-This guide has two tracks:
-
-- **No-GPU evaluator smoke test:** prove the protocol front door without a model server.
-- **Real local-tier run:** route requests through local OpenAI-compatible serves.
+Anvil Serving helps you operate, qualify, and expose local AI capabilities
+through explicit, reviewable contracts. This guide follows the
+serving-and-gateway path from installation to a capability alias routed to a
+local endpoint. Use the installed product catalog below for Voice, Media,
+evaluation, or fleet-specific journeys.
 
 Use `127.0.0.1` in local URLs.
 
@@ -11,10 +12,10 @@ Use `127.0.0.1` in local URLs.
 
 - **Python >= 3.11** — the runtime is standard-library only; there are no required dependencies
   to install beyond the package itself.
-- **No GPU and no Docker** are needed for Track A.
-- **For Track B:** OpenAI-compatible model serves (SGLang or vLLM), typically run with Docker and
-  Compose v2 on a GPU host. `anvil-serving doctor` checks a machine for exactly these
-  requirements.
+- **At least one OpenAI-compatible model serve** for the routed request. SGLang
+  and vLLM are common options.
+- **For a managed Docker-backed GPU serve:** Docker, Compose v2, and a supported
+  GPU host. `anvil-serving doctor` checks these host prerequisites.
 
 ## Install
 
@@ -60,23 +61,24 @@ anvil-serving product journey control-plane-fleet
 The six-family boundary and cross-family handoffs are documented in
 [Product families and user journeys](PRODUCT-FAMILIES.md).
 
-## Start Real Local Tiers
+## Run local tiers
 
 `configs/example.toml` is a public loopback template. It expects compatible
 OpenAI-style model serves at:
 
 | Tier | URL | Purpose |
 |------|-----|---------|
-| `omni-local` | `http://127.0.0.1:30003/v1` | Auxiliary text, general vision, and OCR. |
+| `omni-local` | `http://127.0.0.1:30003/v1` | Voice-adjacent text, general vision, and OCR. |
 | `primary-local` | `http://127.0.0.1:30002/v1` | Higher-capacity local work. |
 
-**Where do these serves come from?** anvil-serving manages local model serves as Docker Compose
-services: declare them in a manifest, then run `anvil-serving serves up` (see
-[Operator playbooks](OPERATOR-PLAYBOOKS.md)). `anvil-serving serves render` renders a tuned compose file for a
-given GPU and model, and `configs/serve-recipes.toml` in the repository carries known-good serve
-recipes. The model names below (`gpt-oss-20b`, `qwen35-awq-local`) are not magic — they are the
-`model` values the two tiers in `configs/example.toml` declare; if your serves run different
-models, change the config's tier `model` fields (and these commands) to match.
+**Where do these serves come from?** Anvil Serving manages local model serves as
+Docker Compose services: declare them in a manifest, then run
+`anvil-serving serves up` (see [Operator playbooks](OPERATOR-PLAYBOOKS.md)).
+`anvil-serving serves render` renders a tuned Compose file for a given GPU and
+model, and `configs/serve-recipes.toml` carries recorded serve recipes. Each
+tier's `model` value must exactly match the model name advertised by its
+endpoint. Update those values before preflight if your serves advertise
+different names.
 
 For a single-model endpoint whose model or context changes independently, use
 `metadata_source = "upstream"` and omit duplicated `model` and
@@ -103,20 +105,21 @@ anvil-serving serves up --group voice --confirm
 anvil-serving router run             # uses ~/.anvil-serving/router.toml
 ```
 
-`init` detects stable NVIDIA GPU UUIDs and total memory, assigns the
-highest-VRAM card to Primary and the lowest-VRAM card to Auxiliary, and resolves this
-node's Tailscale IPv4 address. It writes those discovered values into
-`operator-topology.toml` when it can identify the current node in the reference
-topology. Equal capacities are resolved by runtime index.
-The generated workload mapping puts the primary LLM on Primary. Auxiliary can
-run the exclusive 30B Omni stack, or the smaller Omni model together with
-dedicated STT/TTS through `omni-voice-stack`. Embeddings/reranking and ComfyUI
-remain optional separate stacks.
+`init` detects stable NVIDIA GPU UUIDs and total memory, assigns the two largest
+distinct cards to Compute A and Compute B, and resolves this node's Tailscale
+IPv4 address. It writes those discovered values into `operator-topology.toml`
+when it can identify the current node in the reference topology. Equal-VRAM
+cards use canonical UUID ordering rather than runtime index, so a reboot cannot
+swap their stable roles. Workload capability remains independent of A/B
+placement, and a one-GPU machine leaves the second role unresolved rather than
+assigning both concurrent roles to one card. The generated manifests use those
+stable roles for declared reservations; lifecycle and promotion remain managed
+through `serves` commands and explicit groups.
 Values it cannot detect remain clearly marked
 placeholders. Secrets are never written (only `.env.example`). Existing
 operator files are backed up (`.anvil.bak.N`) only when their generated content
 differs; identical files are left in place without another backup. Use
-`--primary-gpu-uuid`, `--auxiliary-gpu-uuid`, or `--tailnet-ip` to override discovery,
+`--compute-a-gpu-uuid`, `--compute-b-gpu-uuid`, or `--tailnet-ip` to override discovery,
 or `--no-detect-host` to keep all host placeholders. Topology-aware commands
 default to `$ANVIL_SERVING_HOME/operator-topology.toml` after target resolution
 is requested; explicit `--topology`, `--config`, and `--manifest` paths always
@@ -129,11 +132,13 @@ Before starting the router, stand up those serves and validate each endpoint. `-
 serve's `--served-model-name`, so substitute whatever your manifest declares:
 
 ```bash
-anvil-serving eval preflight --base-url http://127.0.0.1:<port>/v1 --model <served-model>
+anvil-serving eval preflight --base-url http://127.0.0.1:<port>/v1 --model <served-model> --dry-run
+anvil-serving eval preflight --base-url http://127.0.0.1:<port>/v1 --model <served-model> --confirm
 ```
 
-For the two-tier `configs/example.toml` shape that means one preflight per tier endpoint, each
-naming that tier's own `model` value.
+For the two-tier `configs/example.toml` shape, preview and then run one
+confirmed preflight per tier endpoint, each naming that tier's own `model`
+value.
 
 Then start the router:
 
@@ -151,7 +156,7 @@ export OPENAI_API_BASE="http://127.0.0.1:8000/v1"
 ```
 
 Use `llm.primary` for the primary LLM. The `llm.voice`, `vision.general`, and
-`vision.ocr` aliases all select the one qualified Omni tier.
+`vision.ocr` aliases all select the one configured Omni tier.
 The smaller `omni-small` serve is intentionally not routed by default; switching
 those aliases remains a human-gated promotion after model-quality review.
 

@@ -170,7 +170,7 @@ Record this checklist for each run:
 ## Notes
 
 - Use `127.0.0.1` for local URLs on Windows.
-- Use the configured `--model_name llm.voice` direct alias for the first run.
+- Use the configured `--model_name llm.voice` capability alias for the first run.
 - If you need the voice agent to call tools, keep `--llm_backend chat-completions`; anvil's
   OpenAI relay preserves tool definitions and tool-call history on that path.
 - If you want `speech-to-speech` to use its default Responses API backend, anvil would need a

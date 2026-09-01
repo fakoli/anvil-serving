@@ -42,7 +42,7 @@ recorded in this ticket.
 - Confirmed the live model serves were already absent before the campaign.
   The production router remained running and healthy on `127.0.0.1:8000`.
 - Confirmed the RTX PRO 6000 is GPU index 1 with UUID
-  `GPU-d0f446cf-1771-414c-e116-a39138798a8c`.
+  `REDACTED_GPU_UUID_COMPUTE_A`.
 - Served Agents-A1 official FP8 at 262,144 tokens. Startup reported 35.31 GiB
   model memory, 51.93 GiB KV, 5,277,426 KV tokens, and 20.13 full-window
   concurrency. Smoke, JSON, 240K retrieval, and 20/20 tools passed.

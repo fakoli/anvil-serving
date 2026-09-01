@@ -1,6 +1,7 @@
-site_name: anvil-serving
+site_name: Anvil Serving
 site_description: >-
-  Operate, qualify, and expose local AI capabilities through explicit contracts.
+  Operate, qualify, and expose local AI capabilities through explicit,
+  reviewable contracts.
 site_url: https://fakoli.github.io/anvil-serving/
 repo_url: https://github.com/fakoli/anvil-serving
 repo_name: fakoli/anvil-serving
@@ -10,29 +11,43 @@ docs_dir: docs
 
 theme:
   name: material
+  icon:
+    logo: material/anvil
+    repo: fontawesome/brands/github
   palette:
     - media: '(prefers-color-scheme: light)'
       scheme: default
       primary: black
-      accent: deep orange
+      accent: cyan
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: '(prefers-color-scheme: dark)'
       scheme: slate
       primary: black
-      accent: deep orange
+      accent: cyan
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.path
+    - navigation.prune
     - navigation.top
     - navigation.footer
+    - navigation.tracking
     - search.suggest
     - search.highlight
+    - search.share
     - content.code.copy
+    - content.action.edit
+    - content.action.view
     - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
 
 plugins:
   - search
@@ -41,141 +56,83 @@ plugins:
       # automatically - no extra_javascript block needed.
       version: '11.4.1'
 
+# Keep the top level task-oriented and shallow. Dense catalogs remain reachable
+# through their index pages instead of expanding into the global navigator.
 nav:
-  - Home: index.md
-  - Product:
-      - Product families: PRODUCT-FAMILIES.md
-      - Product discovery commands: cli/product.md
-  - Get started: GETTING-STARTED.md
-  - Model Serving:
-      - Catalog, artifacts & recipes: MODEL-LIFECYCLE.md
-      - Promote and roll back: MODEL-PROMOTION.md
-      - Serve lifecycle commands: cli/serves.md
-      - Models & recipes commands: cli/models.md
-      - Model settings example: MODEL-SETTINGS-EXAMPLE.md
-  - Capability Gateway:
-      - Capability meta-router: META-ROUTER.md
-      - Architecture: ARCHITECTURE.md
-      - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
-      - Meta-router request path: THIN-CAPABILITY-GATEWAY.md
-      - Configuration reference: CONFIGURATION.md
-      - Embeddings & reranking: PURPOSE-MODELS.md
-      - Router commands: cli/router.md
-      - Terminology: TERMINOLOGY.md
-  - Anvil Voice:
-      - Voice pipeline: VOICE.md
-      - Voice commands: cli/voice.md
-  - Anvil Media:
-      - Media commands: cli/media.md
-      - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
-  - Control Plane & Fleet:
-      - Product discovery personas: PRODUCT-DISCOVERY-PERSONAS.md
-      - Fleet state & replication: FLEET-STATE.md
-      - 'Strategy: make divergence loud': STRATEGY-MAKE-DIVERGENCE-LOUD.md
-      - Operator playbooks: OPERATOR-PLAYBOOKS.md
-      - Public product and private operator state: OPERATOR-PRIVACY.md
-      - Repository history reset runbook: HISTORY-RESET-RUNBOOK.md
-      - Troubleshooting: TROUBLESHOOTING.md
-      - Host & setup commands: cli/host.md
-      - Fleet commands: cli/fleet.md
-      - Control Plane & Fleet commands: cli/control-plane.md
-      - Device topologies: DEVICE-TOPOLOGIES.md
-      - Tailnet endpoint runbook: TAILNET-ENDPOINT-RUNBOOK.md
-      - Agent workbench: WORKBENCH.md
-      - OpenClaw integration spec: OPENCLAW-INTEGRATION-SPEC.md
-      - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
-  - Command index: CLI.md
-  - Evaluation & Evidence:
+  - Get started:
+      - Overview: index.md
+      - Install and run a first serve: GETTING-STARTED.md
+      - Product map and journeys: PRODUCT-FAMILIES.md
+      - Discover the product from the CLI: cli/product.md
+  - Benchmarks & evidence:
       - Overview: benchmarks/index.md
-      - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
-      - Model comparison table: benchmarks/comparison.md
+      - Container configurations: benchmarks/configurations.md
+      - Model comparison: benchmarks/comparison.md
+      - Model dossiers: benchmarks/models/index.md
+      - Run catalog: benchmarks/runs.md
       - Hardware:
           - RTX PRO 6000: benchmarks/hardware/rtx-pro-6000.md
           - RTX 5090: benchmarks/hardware/rtx-5090.md
-      - Model dossiers:
-          - Index: benchmarks/models/index.md
-          - RTX PRO 6000:
-              - Qwen3.5 122B: benchmarks/models/qwen35-122b.md
-              - Inkling Small: benchmarks/models/inkling-small.md
-              - Laguna S 2.1 and XS: benchmarks/models/laguna-s-2.1.md
-              - GPT-OSS Puzzle 88B: benchmarks/models/gpt-oss-puzzle-88b.md
-              - GPT-OSS Puzzle 88B operator recipe: benchmarks/gpt-oss-puzzle-88b-recipe.md
-              - Agents-A1: benchmarks/models/agents-a1.md
-              - Gemma 4 variants: benchmarks/models/gemma-4.md
-              - Qwen3.6 27B variants: benchmarks/models/qwen36-27b.md
-              - Nemotron 3 Super 120B: benchmarks/models/nemotron3-super-120b.md
-              - Nemotron Puzzle 75B: benchmarks/models/nemotron-puzzle-75b.md
-              - GPT-OSS 120B: benchmarks/models/gpt-oss-120b.md
-              - Mistral Small 4: benchmarks/models/mistral-small-4.md
-              - MiniMax M2.7 REAP: benchmarks/models/minimax-m27-reap.md
-              - Ornith 1.0 35B: benchmarks/models/ornith-35b.md
-              - DeepSeek V4 Flash: benchmarks/models/deepseek-v4-flash.md
-          - RTX 5090:
-              - Nemotron Nano and Omni 30B: benchmarks/models/nemotron-omni-30b.md
-              - Qwen2.5-Omni 3B: benchmarks/models/qwen25-omni-3b.md
-              - Parakeet: benchmarks/models/parakeet.md
-              - Qwen3-ASR: benchmarks/models/qwen3-asr.md
-              - Nemotron 3.5 ASR: benchmarks/models/nemotron35-asr.md
-              - Kokoro: benchmarks/models/kokoro.md
-              - Gemma 4 E4B Fast: benchmarks/models/gemma4-e4b.md
-      - Run catalog: benchmarks/runs.md
-      - Methodology & evidence rules: benchmarks/methodology.md
+      - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
+      - Methodology and evidence rules: benchmarks/methodology.md
       - Finding publication format: benchmarks/finding-format.md
-      - Evaluation & benchmark commands: cli/eval.md
       - External benchmarks: EXTERNAL-BENCHMARKS.md
       - Findings index: findings/README.md
       - Archive:
-          - Chronological result archive: BENCHMARKS.md
-          - RTX PRO 6000 recipe index (compatibility): benchmarks/models.md
+          - Chronological results: BENCHMARKS.md
+          - RTX PRO 6000 recipe index: benchmarks/models.md
           - RTX PRO 6000 mention audit: benchmarks/rtx-pro-6000-audit.md
-  - Decisions:
-      - ADR overview: adr/README.md
-      - 'ADR-0001: Cloud cost & subscription auth': adr/0001-cloud-cost-and-subscription-auth.md
-      - 'ADR-0002: Serves are Compose-defined': adr/0002-serves-are-compose-defined.md
-      - 'ADR-0003: Portable defaults & generic onboarding': adr/0003-portable-defaults-and-generic-onboarding.md
-      - 'ADR-0004: Router as a service': adr/0004-router-as-a-service-containerized-and-authed.md
-      - 'ADR-0005: anvil-503 native failover unreliable': adr/0005-anvil-503-native-failover-unreliable.md
-      - 'ADR-0006: Multiplexer swap draining': adr/0006-multiplexer-swap-draining.md
-      - 'ADR-0007: Subscription-auth cloud tier (superseded)': adr/0007-subscription-auth-cloud-tier.md
-      - 'ADR-0008: Heavy-tier speculative decoding': adr/0008-heavy-tier-speculative-decoding.md
-      - 'ADR-0009: Profile write-back loop (superseded by ADR-0028)': adr/0009-profile-write-back-loop.md
-      - 'ADR-0010: Specialized-engine tier': adr/0010-specialized-engine-tier.md
-      - 'ADR-0011: Two-mode operation (superseded by ADR-0028)': adr/0011-two-mode-operation.md
-      - 'ADR-0012: Serve and router management verbs': adr/0012-serve-and-router-management-verbs.md
-      - 'ADR-0013: OpenClaw layers and MCP control plane': adr/0013-openclaw-layers-and-mcp-control-plane.md
-      - 'ADR-0014: Tailnet controller transport': adr/0014-tailnet-controller-transport.md
-      - 'ADR-0015: Operator skills and sub-agent workflows': adr/0015-operator-skills-and-subagent-workflows.md
-      - 'ADR-0016: Runtime tier readiness': adr/0016-runtime-tier-readiness.md
-      - 'ADR-0017: GPU residency reservations': adr/0017-gpu-residency-reservations.md
-      - 'ADR-0018: Router transition safety': adr/0018-router-transition-safety.md
-      - 'ADR-0019: anvil-serving owns the tailnet edge': adr/0019-anvil-serving-owns-the-tailnet-edge.md
-      - 'ADR-0020: init defaults to the home scaffold': adr/0020-init-defaults-to-home-scaffold-shipped-as-package-data.md
-      - 'ADR-0021: CLI interaction contract': adr/0021-cli-interaction-contract.md
-      - 'ADR-0022: Evaluation evidence protocol': adr/0022-evaluation-evidence-protocol.md
-      - 'ADR-0023: Lifecycle-aware WSL cache reclaim': adr/0023-lifecycle-aware-wsl-cache-reclaim.md
-      - 'ADR-0024: Normalized audio gateway': adr/0024-normalized-audio-gateway.md
-      - 'ADR-0025: TTS-authoritative Realtime transcripts': adr/0025-tts-authoritative-realtime-assistant-transcripts.md
-      - 'ADR-0026: Opt-in transparent response model': adr/0026-opt-in-transparent-response-model.md
-      - 'ADR-0027: Public findings are durable evidence': adr/0027-public-findings-are-durable-evidence.md
-      - 'ADR-0028: Serving, benchmarks, and a thin capability gateway': adr/0028-serving-benchmarks-and-thin-capability-gateway.md
-      - 'ADR-0029: Modular command registry': adr/0029-modular-command-registry.md
-      - 'ADR-0030: Containerized Dark controller and MCP 2026': adr/0030-containerized-remote-controller-and-mcp-2026.md
-      - 'ADR-0031: Dual-era TypeScript MCP bridge': adr/0031-dual-era-typescript-mcp-bridge.md
-      - 'ADR-0032: Public product, private operator state': adr/0032-public-product-private-operator-state.md
-      - 'ADR-0033: Production durability and plane contract': adr/0033-production-durability-and-plane-contract.md
-      - 'ADR-0034: Fleet control plane and node runtime classes': adr/0034-fleet-control-plane-and-node-runtime-classes.md
-      - 'ADR-0035: Fleet configuration reconciliation': adr/0035-fleet-configuration-reconciliation.md
-      - 'ADR-0036: Voice relocation and qualification host': adr/0036-voice-relocation-and-qualification-host.md
-      - 'ADR-0037: Caller-side prompt-lane classification': adr/0037-caller-side-prompt-lane-classification.md
-      - 'ADR-0038: Inference-owned model metadata': adr/0038-inference-owned-model-metadata.md
-      - 'ADR-0039: Capability meta-router': adr/0039-capability-meta-router.md
-      - 'ADR-0040: Media gateway and controller authority': adr/0040-media-gateway-and-controller-authority.md
-      - 'ADR-0041: Initial media workflows and policy': adr/0041-initial-media-workflows-and-policy.md
-      - 'ADR-0042: Anvil Serving product-family boundary': adr/0042-anvil-serving-product-family-boundary.md
-  - Changelog: changelog.md
+  - Operate:
+      - Model Serving:
+          - Catalog, artifacts, and recipes: MODEL-LIFECYCLE.md
+          - Promote and roll back: MODEL-PROMOTION.md
+      - Voice and Media:
+          - Voice pipeline: VOICE.md
+          - Media workflows: cli/media.md
+      - Fleet and host operations:
+          - Operator playbooks: OPERATOR-PLAYBOOKS.md
+          - Fleet state and replication: FLEET-STATE.md
+          - Device topologies: DEVICE-TOPOLOGIES.md
+          - Tailnet endpoint runbook: TAILNET-ENDPOINT-RUNBOOK.md
+  - Integrate:
+      - Capability Gateway:
+          - Gateway overview: META-ROUTER.md
+          - Request path: THIN-CAPABILITY-GATEWAY.md
+          - Embeddings and reranking: PURPOSE-MODELS.md
+      - OpenClaw integration: OPENCLAW-INTEGRATION-SPEC.md
+      - Agent workbench: WORKBENCH.md
+      - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
+  - Reference:
+      - Product contracts:
+          - Architecture: ARCHITECTURE.md
+          - Configuration: CONFIGURATION.md
+          - Terminology: TERMINOLOGY.md
+          - Public product and private operator state: OPERATOR-PRIVACY.md
+      - Command-line reference:
+          - Command index: CLI.md
+          - Serve lifecycle: cli/serves.md
+          - Models and recipes: cli/models.md
+          - Capability Gateway: cli/router.md
+          - Evaluation and benchmarks: cli/eval.md
+          - Voice: cli/voice.md
+          - Host and setup: cli/host.md
+          - Fleet: cli/fleet.md
+          - Control Plane and Fleet: cli/control-plane.md
+      - Help and project records:
+          - Troubleshooting: TROUBLESHOOTING.md
+          - Architecture decisions: adr/README.md
+          - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
+          - Product discovery personas: PRODUCT-DISCOVERY-PERSONAS.md
+          - Strategy - make divergence loud: STRATEGY-MAKE-DIVERGENCE-LOUD.md
+          - Model settings example: MODEL-SETTINGS-EXAMPLE.md
+          - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
+          - Repository history reset: HISTORY-RESET-RUNBOOK.md
+          - Changelog: changelog.md
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
   - tables
   - toc:
       permalink: true

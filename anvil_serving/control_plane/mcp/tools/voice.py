@@ -132,7 +132,7 @@ def _voice_manage_plan(config: str, *, profile: str = "") -> dict:
 
 
 def tool_voice_manage(args: dict) -> dict:
-    """Manage Dark-owned STT/TTS only after local topology authorization."""
+    """Manage topology-owned STT/TTS only after local topology authorization."""
     from ....topology import load_topology
     from ....voice import config as voice_config
     from ....voice import cli as voice_cli
@@ -206,7 +206,7 @@ def tool_voice_manage(args: dict) -> dict:
     except (OSError, ValueError) as exc:
         raise ToolError(
             "bad_audio_config",
-            "could not resolve Dark audio ownership",
+            "could not resolve audio ownership from topology",
             {"config": config, "topology": topology_path, "error": str(exc)},
         )
     assert data is not None and targets is not None

@@ -23,14 +23,14 @@ services:
       - "nemotron35-model:/models"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      NVIDIA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
+      NVIDIA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}"]
               capabilities: [gpu]
     entrypoint: ["/bin/bash", "-lc"]
     command:
@@ -61,14 +61,14 @@ services:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       # This pinned vLLM build parses CUDA_VISIBLE_DEVICES as an integer.
       # NVIDIA_VISIBLE_DEVICES and the reservation retain the host UUID boundary.
-      NVIDIA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
+      NVIDIA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}
       CUDA_VISIBLE_DEVICES: "0"
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}"]
               capabilities: [gpu]
     # Import the official qwen-asr package before vLLM so its Transformers
     # architecture registration is present in this pinned runtime.

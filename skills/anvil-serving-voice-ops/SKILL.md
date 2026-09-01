@@ -6,7 +6,7 @@ description: Operate topology-owned anvil-serving voice audio and Realtime proxy
 # Anvil Serving Voice Ops
 
 Use this skill for voice-pipeline operations: validating sidecar manifests,
-rendering speech-to-speech commands, managing Dark-owned STT/TTS, managing the
+rendering speech-to-speech commands, managing topology-owned STT/TTS, managing the
 persistent Mini Realtime proxy, selecting profiles, running the Mini-local
 forwarding bridge, and collecting bounded voice benchmarks.
 
@@ -38,7 +38,7 @@ forwarding bridge, and collecting bounded voice benchmarks.
    only. A non-gateway checkout cannot validate Mini-local proxy paths by
    calling its own `127.0.0.1`.
 6. Treat voice benchmark output as voice-pipeline evidence. Voice results do
-   not qualify an LLM serve or change a direct gateway alias.
+   not qualify an LLM serve or change a capability alias.
 7. Route multi-sample STT corpus qualification to
    `skills/anvil-serving-stt-benchmark/SKILL.md`. Keep this skill for
    single-turn audio/voice-pipeline evidence and topology lifecycle.
@@ -65,7 +65,7 @@ qualification. Voice benchmarks measure the voice pipeline: turn latency,
 TTFA, audio/STT/TTS behavior, realtime transport, and user-perceived loop
 quality. They can support a voice-pipeline status report, but an LLM serve
 still requires its own preflight, benchmark evidence, independent review, and
-human approval before an operator changes a direct alias.
+human approval before an operator changes a capability alias.
 
 Use `workflow_packet_validate` before handing a voice packet to the broader
 workbench. Voice artifacts must remain explicitly marked as non-promotion
@@ -140,7 +140,7 @@ workbench. Use `artifacts` entries with `kind: "voice-benchmark"` or
 `promotion_quality_evidence: false`. Keep `advisory_priors` empty unless
 external voice-specific priors are explicitly identified as advisory-only. Keep
 `promoted=false` and `human_gate_required=true` for any workflow that asks for
-a direct-alias change, public binds, cloud enablement, or long-running service
+a capability-alias change, public binds, cloud enablement, or long-running service
 starts.
 
 If the existing `voice` and `voice sidecar` verbs cannot cover the request,

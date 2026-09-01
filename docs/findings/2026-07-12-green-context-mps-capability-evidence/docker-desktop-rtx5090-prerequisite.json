@@ -19,9 +19,9 @@
   "ok": true,
   "runtime_version": 13010,
   "driver_version": 13030,
-  "cuda_visible_devices": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+  "cuda_visible_devices": "REDACTED_GPU_UUID_REMOVED_GPU",
   "gpu": {
-    "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+    "uuid": "REDACTED_GPU_UUID_REMOVED_GPU",
     "name": "NVIDIA GeForce RTX 5090",
     "compute_capability": "12.0",
     "sm_count": 170,

@@ -5,7 +5,9 @@
 # docs/findings/2026-07-04-hf-speech-to-speech-review.md for the design.
 #
 # Hygiene (enforced by anvil_serving.voice.config.validate_manifest):
-#   - 127.0.0.1, never localhost (Windows IPv6 stall -- CLAUDE.md gotcha #1).
+#   - Use 127.0.0.1, never localhost, for same-host URLs. On Windows,
+#     localhost may resolve through IPv6 before an IPv4-only service and delay
+#     connection attempts.
 #   - Secrets are referenced by ENV-VAR NAME only (the `*_env` keys below);
 #     never paste a literal key/token/secret/password into this file.
 #   - No URL-embedded credentials (https://user:pass@host/...).
@@ -25,7 +27,8 @@ realtime_port = 8765
 # realtime_token_env = "ANVIL_VOICE_REALTIME_TOKEN"  # required if realtime_host is non-loopback (LAN/tailnet)
 
 # The brain: OpenAI Chat Completions ONLY (never the Responses API), pointed
-# at the anvil gateway using the explicit low-latency voice alias.
+# at the Anvil Serving Capability Gateway using the configured `llm.voice`
+# capability alias.
 [voice.llm]
 base_url = "http://127.0.0.1:8000/v1"
 model = "llm.voice"

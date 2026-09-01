@@ -5,6 +5,33 @@ less precise. Anvil Serving uses a **result card** in the dated finding and a
 separate **publication summary** beside its raw artifacts. Both are derivative
 views: the dated finding and retained artifacts remain the evidence.
 
+## Model dossier presentation v2
+
+Use the
+[tracked dossier template](https://github.com/fakoli/anvil-serving/blob/main/skills/anvil-serving-benchmark-docs/templates/dossier.md)
+at `skills/anvil-serving-benchmark-docs/templates/dossier.md` when creating or
+reformatting a model dossier. It keeps the existing eight-section navigation
+contract while making dense histories easier to scan:
+
+1. a decision snapshot names the product role, best-qualified configuration,
+   measured hardware, evidence, decision boundary, important limitation,
+   evidence cutoff, and dossier review date;
+2. the complete review narrative remains visible and is divided by date or
+   outcome when several decisions accumulated;
+3. materially different configuration and measurement lanes receive separate
+   subsections;
+4. evidence subsections label status, measurements, limits, and links before
+   the detailed interpretation;
+5. selected, retained, rejected, superseded, and incomplete states remain
+   visibly separate; and
+6. long failure lists are grouped by cause with scannable lead labels.
+
+Formatting does not require every benchmark to contain the same amount of
+evidence. If retained artifacts do not record a field, say so explicitly. Do
+not infer the value, hide the gap, or run live hardware solely to make dossiers
+look symmetrical. The snapshot and labels organize the narrative; they do not
+replace it.
+
 ## Publication-ready finding v1
 
 Use this format for every local `functional`, `capacity`, or `quality` result.
