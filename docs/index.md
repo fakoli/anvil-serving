@@ -51,6 +51,17 @@ hide:
   </div>
 </section>
 
+<section class="anvil-section" aria-labelledby="private-network">
+  <div class="anvil-section__heading">
+    <h2 id="private-network">Local services, one private network</h2>
+    <p>Keep model, voice, media, router, and controller processes on each owning device's loopback interface. Tailscale supplies private device reachability and identity policy; Tailscale Serve publishes only the reviewed front doors.</p>
+  </div>
+  <div class="anvil-resource-list">
+    <a href="TAILSCALE-NETWORKING/"><strong>Set up private networking</strong><span>Understand device roles, identity, grants, MagicDNS, mobile access, and the Serve-to-loopback pattern.</span></a>
+    <a href="DEVICE-TOPOLOGIES/"><strong>Place roles across devices</strong><span>Separate primary inference, harness, voice, media, and operator ownership without exposing machine identity.</span></a>
+  </div>
+</section>
+
 <section class="anvil-section anvil-section--evidence" aria-labelledby="current-evidence">
   <div class="anvil-section__heading">
     <h2 id="current-evidence">Current benchmark evidence</h2>
