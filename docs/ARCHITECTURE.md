@@ -61,6 +61,7 @@ evidence so each mutable fact has one authority:
 | --- | --- | --- |
 | Capability | Caller alias plus `[router.model_routes]` | Selects exactly one tier or returns 404 |
 | Topology and policy | Operator-owned router configuration | Fixes endpoint, dialect, auth reference, readiness, and safety rules |
+| Private network | Tailscale user/node identity, grants, MagicDNS, and Serve | Makes only approved device paths reachable; does not replace Anvil application auth or resource ownership |
 | Served configuration | Router config or the selected inference service | Supplies model identity, context, and allowlisted runtime facts for admission and metadata |
 | Request | Router | Authenticates, validates, admits, translates, streams, and relays to the selected endpoint |
 | Media operation | Durable media service | Validates named workflows and owns idempotent jobs, cancellation, reconciliation, and artifact metadata |
@@ -81,14 +82,21 @@ host. See [ADR-0040](adr/0040-media-gateway-and-controller-authority.md).
 
 ## Capability topology
 
-Fakoli Dark exposes two equal RTX PRO 6000 Max-Q cards as stable UUID-backed
-`dark-compute-a` and `dark-compute-b` resources. Split mode admits compatible
+A representative primary inference node exposes two equivalent GPUs as stable
+UUID-backed Compute A and Compute B resources. Split mode admits compatible
 workloads independently on either role. `dual-gpu-exclusive` mode drains and
 stops every GPU inference competitor, then grants both roles to one explicitly
 configured TP=2 serve. The router and controller may remain online, but an
 alias whose backing serve is offline returns unavailable and never substitutes
-the TP=2 model. Fakoli Mini remains model-free; its loopback audio proxies
-forward to Dark rather than hosting a model.
+the TP=2 model.
+
+The broader multi-device example keeps a lightweight harness node model-free,
+places the voice agent and STT/TTS on a voice/audio node, and places ComfyUI
+plus an optional fast LLM on a media/burst node. Phones, tablets, and operator
+computers join only as approved clients. These are roles, not public machine
+identities or a claim about live operator state. See
+[Private networking with Tailscale](TAILSCALE-NETWORKING.md) and
+[Device topologies](DEVICE-TOPOLOGIES.md).
 
 `serves` manages compose-backed model lifecycle and GPU reservations.
 `eval preflight` and benchmark commands qualify a concrete endpoint. The
@@ -97,30 +105,33 @@ quality nor promotes a new recipe.
 
 ## Split-host controller
 
-Fakoli Dark owns the execution plane. Its dedicated Linux controller image
+The resource-owning inference node owns the execution plane. Its dedicated
+Linux controller image
 contains Anvil Serving, the pinned Docker CLI and Compose plugin, and the
 NVIDIA runtime view. It receives only the Docker socket, declared serving
 manifests, and a durable operation-state volume. Host loopback URLs in those
 manifests are rewritten to the explicit `host.docker.internal` alias inside
 the container; ordinary native and router-container behavior is unchanged.
 
-Fakoli Mini owns the client plane. `anvil-serving mcp serve` is the model-free
-stdio bridge that authenticates to the Dark controller through host-owned
-Tailscale Serve. The packaged bridge uses the official TypeScript MCP SDK:
+The harness node owns the client plane. `anvil-serving mcp serve` is the
+model-free stdio bridge that authenticates to the resource owner's controller
+through host-owned Tailscale Serve. The packaged bridge uses the official
+TypeScript MCP SDK:
 its client-facing side negotiates either the initialize era through
 `2025-11-25` or stateless `2026-07-28`, while its downstream client is pinned
 to `2026-07-28`. OpenClaw can therefore launch it with its initialize-based
-SDK without adding a legacy listener to Dark. The controller is published on
-Dark's Windows loopback only, so neither the container port nor Docker socket
+SDK without adding a legacy listener to the resource owner. The controller is
+published on the owning host's loopback only, so neither the container port
+nor Docker socket
 is directly reachable from the tailnet.
 
 ```mermaid
 flowchart LR
-    O["Legacy or modern MCP client on Fakoli Mini"] --> P["TypeScript SDK stdio bridge"]
-    P -->|"MCP 2026 only"| T["Tailscale Serve /anvil-controller on Fakoli Dark"]
+    O["Legacy or modern MCP client on harness node"] --> P["TypeScript SDK stdio bridge"]
+    P -->|"MCP 2026 only"| T["Tailscale Serve /anvil-controller on resource owner"]
     T --> C["controller container on 127.0.0.1:8765"]
     C --> D["Docker Desktop socket"]
-    C --> H["Dark host endpoints"]
+    C --> H["resource-owner host endpoints"]
     D --> S["router and declared serves"]
 ```
 
@@ -213,12 +224,12 @@ second path-validation implementation. Controller internals consume the public
 MCP catalog/call surface, while MCP foundations and tool families do not import
 controller internals.
 
-The Dark controller uses the `2026-07-28` stateless request contract
+The resource-owner controller uses the `2026-07-28` stateless request contract
 exclusively. `server/discover`, `tools/list`, and `tools/call` are the only
 JSON-RPC methods served at `/mcp`; `initialize` is intentionally absent.
 Request metadata and the matching `MCP-Protocol-Version`, `Mcp-Method`, and
 conditional `Mcp-Name` HTTP headers are validated before dispatch. The
-Mini-side bridge is the only dual-era boundary. The SDK pins one era per stdio
+harness-side bridge is the only dual-era boundary. The SDK pins one era per stdio
 connection, converts both client eras to a modern authenticated controller
 client, validates the controller identity and dynamic tool schemas, and
 returns the result in the caller's negotiated wire format.

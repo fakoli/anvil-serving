@@ -106,14 +106,19 @@ configured alias whose local tier cannot serve; it never falls back to another m
 
 ## Voice topology
 
-In the reference topology, Fakoli Dark owns LLM, STT, and TTS serves. Fakoli Mini owns the
-OpenClaw Gateway and realtime proxy only. Use `voice audio` and `voice proxy` commands with an
-explicit topology file; loopback addresses are host-relative.
+In the representative multi-device topology, the primary inference node owns
+the daily large-model gateway, a voice/audio node owns the voice agent plus
+STT/TTS, and a model-free harness node owns OpenClaw and its local bridge.
+Use `voice audio` and `voice proxy` commands with an explicit private topology
+file; loopback addresses are host-relative. See
+[Private networking with Tailscale](TAILSCALE-NETWORKING.md).
 
-## Operate Dark from Mini
+## Operate a resource owner from a harness node
 
-Build and start the restricted controller on Fakoli Dark from the repository
-root. Keep the token in the process environment or a host secret manager:
+Build and start the restricted controller on the resource-owning inference
+node from the repository root. The retained Compose example lives under
+`examples/fakoli-dark/`, but its directory name is not a required machine
+identity. Keep the token in the process environment or a host secret manager:
 
 ```powershell
 $env:ANVIL_CONTROLLER_TOKEN = '<generated secret>'
@@ -124,15 +129,16 @@ anvil-serving controller status --url http://127.0.0.1:8765
 
 By default the deployment publishes only `127.0.0.1:8765` (the host bind and
 host port come from the single `ANVIL_CONTROLLER_PUBLISH` spec, defaulting to
-`127.0.0.1:8765`), keeping the container-internal port canonical at `8765`. Expose that loopback listener
-to the tailnet from the Dark host, not from the container:
+`127.0.0.1:8765`), keeping the container-internal port canonical at `8765`.
+Expose that loopback listener to the tailnet from the owning host, not from the
+container:
 
 ```powershell
 tailscale serve --bg --set-path=/anvil-controller http://127.0.0.1:8765
 tailscale serve status
 ```
 
-If host port `8765` is already claimed on the Dark host (for example, another
+If host port `8765` is already claimed on the owning host (for example, another
 service or Windows HTTP.sys actively listening on `127.0.0.1:8765`), publish the
 controller to a free host port and point Tailscale Serve at it instead. Override
 the single `ANVIL_CONTROLLER_PUBLISH` spec (`<host-ip>:<host-port>:8765`), keeping
@@ -142,20 +148,17 @@ the host port distinct from the container-internal `8765`:
 $env:ANVIL_CONTROLLER_PUBLISH = '127.0.0.1:18765'
 docker compose -f examples/fakoli-dark/docker-compose.controller.yml up -d --wait controller
 anvil-serving controller status --url http://127.0.0.1:18765
-tailscale serve reset
 tailscale serve --bg --set-path=/anvil-controller http://127.0.0.1:18765
 tailscale serve status
 ```
 
-`tailscale serve reset` clears any prior route before you re-add the path, so the
-tailnet never proxies `/anvil-controller/mcp` to a leftover or unrelated listener
-on the old host port. Re-run `tailscale serve --bg --set-path=/anvil-controller
-http://127.0.0.1:18765` after the reset (as shown) to restore the proxy on the new
-host port. The `--bg` flag keeps Tailscale Serve up across disconnects; the reset
-and re-add pair replaces the backend at that path rather than stacking a route.
+Reapplying the same `--set-path` mapping replaces that path's target without
+resetting unrelated Tailscale Serve state. Verify the live result before
+changing the client URL. The `--bg` flag keeps the mapping active after the
+interactive command exits.
 
-On Fakoli Mini, install the same Anvil Serving revision and provide the same
-token to the OpenClaw gateway's owner-only service environment. Register the
+On the harness node, install the same Anvil Serving revision and provide the
+same token to the OpenClaw gateway's owner-only service environment. Register the
 stdio bridge through OpenClaw's current `mcp.servers` surface:
 
 ```bash
@@ -163,7 +166,7 @@ openclaw mcp add anvil-serving \
   --command /Users/<operator>/.local/bin/anvil-serving \
   --arg mcp --arg serve \
   --arg=--controller-url \
-  --arg https://fakoli-dark.<tailnet>.ts.net/anvil-controller/mcp \
+  --arg https://primary.example.ts.net/anvil-controller/mcp \
   --arg=--auth-env \
   --arg ANVIL_CONTROLLER_TOKEN \
   --env 'ANVIL_CONTROLLER_TOKEN=${ANVIL_CONTROLLER_TOKEN}' \
@@ -172,12 +175,12 @@ openclaw mcp probe anvil-serving
 openclaw mcp doctor
 ```
 
-The Mini-side process is a model-free stdio bridge using the packaged official
+The harness-side process is a model-free stdio bridge using the packaged official
 TypeScript MCP SDK. Its client-facing side accepts the initialize era through
 `2025-11-25` and stateless `2026-07-28`; its controller-facing side is pinned
 to `2026-07-28` and forwards the dynamically registered restricted tool
-catalog to Dark's `/mcp` endpoint. OpenClaw deliberately filters the ambient
-environment of stdio children, so the server declaration must include the
+catalog to the resource owner's `/mcp` endpoint. OpenClaw deliberately filters
+the ambient environment of stdio children, so the server declaration must include the
 literal reference `${ANVIL_CONTROLLER_TOKEN}` in its `env` map. OpenClaw
 resolves that reference from the gateway service environment when it activates
 the server. Never put the token value itself in `openclaw.json`.
@@ -192,8 +195,8 @@ never print the resolved config value while checking it.
 The native `mcp.servers` layout and the client's wire protocol are separate
 compatibility gates. The bridge test suite exercises the exact
 `@modelcontextprotocol/sdk` `1.29.0` generation bundled by OpenClaw
-`2026.7.1-2`, plus a modern SDK `2.0.0` client. Dark remains modern-only in
-both cases.
+`2026.7.1-2`, plus a modern SDK `2.0.0` client. The controller remains
+modern-only in both cases.
 
 The example controller includes Docker-compatible router, serve, voice,
 inventory, preflight, benchmark-probe, and workflow-validation tools. It

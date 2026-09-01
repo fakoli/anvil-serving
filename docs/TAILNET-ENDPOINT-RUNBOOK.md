@@ -1,12 +1,18 @@
 # One tailnet endpoint
 
-**One front door, one name, one token.** The Anvil Serving gateway publishes every
-capability surface — chat, embeddings, rerank, OCR, and vision — from a
-**single HTTP front door** bound to the host's Tailscale interface and reached through the
-host's **MagicDNS name**. There is no separate router, embeddings, or OCR endpoint to
-resolve, no per-surface hostname, and no second port. This runbook records that decision,
-the exact MagicDNS form, the live verification, and the TLS-via-`tailscale serve` and
-ComfyUI UI path-routing options.
+**One front door, one name, one token.** The Anvil Serving gateway publishes
+chat, embeddings, rerank, OCR, and vision from one HTTP front door on
+`127.0.0.1`. Tailscale Serve projects the reviewed paths from that loopback
+listener onto the owning node's private MagicDNS HTTPS name. There is no
+separate router, embeddings, or OCR endpoint to resolve, no per-surface
+hostname, and no raw model port exposed to peers.
+
+This runbook is the operational companion to
+[Private networking with Tailscale](TAILSCALE-NETWORKING.md). It records the
+exact MagicDNS form, managed `tailscale serve` mappings, dated direct-bind
+verification, and ComfyUI UI caveats. The Serve-to-loopback shape is preferred
+for multi-device use; a direct bind to a tailnet IP remains an explicit
+alternative.
 
 > Update (ADR-0019): the `tailscale serve` + ComfyUI path-routing sections below are **no
 > longer document-only**. anvil-serving now **owns the tailnet edge** through the
@@ -18,9 +24,9 @@ ComfyUI UI path-routing options.
 > [ADR-0019](adr/0019-anvil-serving-owns-the-tailnet-edge.md) and
 > [`edge` in the CLI reference](cli/control-plane.md#edge).
 >
-> Binding the front door to the tailnet (the section immediately below) is still a
-> `router run --host` choice; it is orthogonal to the `edge` verb, which fronts loopback
-> services under the one name.
+> Directly binding the front door to the tailnet is still a `router run
+> --host` choice. It is orthogonal to the preferred `edge` shape, which keeps
+> the process on loopback and fronts it under the one private name.
 
 ---
 
@@ -40,12 +46,12 @@ bind address and one bearer token (ADR-0004):
 | POST | `/v1/rerank` | Rerank purpose model (routed by model name) |
 | GET | `/v1/decisions` | Recent routing decisions |
 
-Because chat, embeddings, rerank, and the OCR/vision aliases are *already* one server,
-exposing them on the tailnet needs **nothing new** — just bind the existing front door to
-the tailnet interface. Standing up a second endpoint (a dedicated embeddings host, an OCR
-proxy, a separate DNS name) would duplicate auth, TLS, and discovery for zero benefit and
-would fragment the one credential the operator has to rotate. **The single endpoint is the
-whole design; T014 only points DNS at it.**
+Because chat, embeddings, rerank, and the OCR/vision aliases are *already* one
+server, publishing them needs no second application endpoint. The managed edge
+maps the existing `/v1` surface to its loopback listener. A dedicated
+embeddings host, OCR proxy, or separate DNS name would duplicate auth, TLS,
+and discovery and fragment the one credential the operator has to rotate.
+**The single endpoint is the whole design.**
 
 The `GET /healthz` `routes` list is the live proof that one server carries the unified
 surface — see the verification below.
@@ -54,36 +60,39 @@ surface — see the verification below.
 
 ## The MagicDNS form
 
-In the dated public reference configuration, the gateway publishes on the synthetic
-Tailscale IPv4 `100.64.0.10:8000`. Read the current MagicDNS name from Tailscale itself
-rather than hardcoding a host identity:
+The dated direct-bind reference used the synthetic Tailscale IPv4
+`100.64.0.10:8000`. The preferred managed edge uses HTTPS on the same node's
+MagicDNS name and proxies to loopback. In either shape, read the current name
+from Tailscale rather than hardcoding a host identity:
 
 ```bash
 tailscale status --json | python -c "import sys,json;print(json.load(sys.stdin)['Self']['DNSName'])"
 # -> node-a.example.ts.net.
 ```
 
-`.Self.DNSName` carries a trailing dot (a fully-qualified DNS name); strip it for URLs. The
-canonical endpoint is therefore:
+`.Self.DNSName` carries a trailing dot (a fully-qualified DNS name); strip it
+for URLs. The preferred managed endpoint is therefore:
 
 ```
-http://node-a.example.ts.net:8000
+https://node-a.example.ts.net
 ```
 
-Any tailnet peer (with MagicDNS enabled in the tailnet's DNS settings) resolves that name
-to `100.64.0.10` and reaches the one front door. The three equivalent forms:
+Any peer allowed by tailnet policy can resolve the MagicDNS name. The useful
+forms are:
 
 | Form | Endpoint | When |
 |---|---|---|
-| **MagicDNS name** (preferred) | `http://node-a.example.ts.net:8000` | Human-facing, survives an IP change |
-| Tailnet IPv4 | `http://100.64.0.10:8000` | Scripts that already hold the IP |
-| Tailnet IPv6 | `http://[<tailnet-ipv6>]:8000` | IPv6-only peers; substitute the address reported by Tailscale |
+| **MagicDNS HTTPS** (preferred) | `https://node-a.example.ts.net` | Tailscale Serve to loopback; human-facing and certificate-backed. |
+| Direct tailnet IPv4 | `http://100.64.0.10:8000` | Explicit direct-bind deployments only. |
+| Direct tailnet IPv6 | `http://[<tailnet-ipv6>]:8000` | Explicit IPv6 direct-bind deployments only. |
 
-### Binding the front door to the tailnet
+### Alternative: bind the front door directly to the tailnet
 
-The front door binds `127.0.0.1` by default (never `localhost` — that triggers a ~21 s
-IPv6 stall on Windows). To make it reachable on the tailnet, bind it to the tailnet
-interface at start time — **do not** change the default, pass `--host` on the `router run` verb:
+The front door binds `127.0.0.1` by default (never `localhost`—that triggers a
+~21 s IPv6 stall on Windows). Prefer leaving that default in place and using
+the managed edge. When direct binding is explicitly required, bind to the
+tailnet interface at start time—**do not** change the default; pass `--host`
+on the `router run` verb:
 
 ```bash
 # Bind all interfaces (tailnet included). REQUIRE token auth when non-loopback.
@@ -99,7 +108,8 @@ expose the front door with no credential. Always run the tailnet bind with
 `[server].auth_env` set (see the token section) — MagicDNS reachability and token auth
 are a pair, never one without the other.
 
-> Tailscale ACLs remain the outer boundary: only tailnet peers can reach
+> Tailscale grants or legacy ACLs remain the outer boundary: only allowed
+> peers can reach
 > `100.64.0.10:8000` at all. The bearer token is the inner boundary. T014 changes
 > neither — it documents binding the existing server to the interface Tailscale already
 > owns.
@@ -205,7 +215,6 @@ tailscale serve --bg --https=443 http://127.0.0.1:8000
 
 # Result: https://node-a.example.ts.net/v1/models  (443, valid TS cert)
 tailscale serve status          # inspect the mapping
-tailscale serve reset           # tear down ALL serve config for this node
 ```
 
 Trade-off: `tailscale serve` binds one HTTPS port per node, so HTTPS + ComfyUI path
@@ -215,8 +224,8 @@ Tailscale terminates TLS but forwards the `Authorization` header untouched.
 > Prefer `anvil-serving edge` over hand-run commands (ADR-0019): `edge up` renders and
 > applies exactly this config idempotently, and `edge down` removes **only** the mappings it
 > manages (per-path `… off`), never `tailscale serve reset`, so an operator-set mapping is
-> never clobbered. Applying still mutates tailnet serve state and requires HTTPS enabled in
-> the tailnet's ACL/DNS settings.
+> never clobbered. Applying still mutates tailnet Serve state and requires
+> HTTPS certificates to be enabled for the tailnet.
 
 ---
 
@@ -253,7 +262,8 @@ Caveats to validate before adopting:
 - **The ComfyUI tenant is on-demand and evicts a serve.** It is not always resident; path
   routing to `:8188` only works while the tenant is up (`up comfyui --evict`).
 - **Auth.** The router enforces its bearer token; ComfyUI has none. If ComfyUI is exposed
-  on the tailnet, its only boundary is the Tailscale ACL — scope tailnet access
+  on the tailnet, its only boundary is the Tailscale grant or legacy
+  ACL—scope tailnet access
   accordingly, or keep ComfyUI loopback-only and reach it via `tailscale serve` from a
   trusted peer.
 
@@ -264,11 +274,13 @@ Caveats to validate before adopting:
 
 ## Rollback / teardown
 
-`anvil-serving edge down --confirm` removes only the mappings the verb manages. To tear down
-the managed edge, or if the pieces were applied by hand:
+`anvil-serving edge down --confirm` removes only the mappings the verb manages.
+If a mapping was applied by hand, remove that exact HTTPS path rather than
+resetting every Serve mapping on the node:
 
 ```bash
-tailscale serve reset   # remove all serve config (HTTPS + path mappings) for this node
+tailscale serve --https=443 --set-path=/v1 off
+tailscale serve --https=443 --set-path=/comfyui off
 # Rebind the front door to loopback-only by restarting `router run` with --host 127.0.0.1.
 ```
 
@@ -280,6 +292,8 @@ The router and model-serve lifecycle is managed **only** through the anvil-servi
 
 ## See also
 
+- [Private networking with Tailscale](TAILSCALE-NETWORKING.md) — identity,
+  grants, mobile access, and the Serve-to-loopback architecture.
 - [Configuration reference](CONFIGURATION.md) — `[server].auth_env`, `[server].host`, and
   the tier/purpose-model keys.
 - [ComfyUI migration runbook](COMFYUI-MIGRATION-RUNBOOK.md) — the ComfyUI tenant and its

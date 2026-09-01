@@ -1,142 +1,162 @@
-# Device Topologies
+# Device topologies
 
-anvil-serving treats machine names as deployment facts, not product roles.
-Fakoli Mini and Fakoli Dark are the current reference devices, but the same
-architecture should expand to additional laptops, workstations, or small edge
-hosts when they are reachable over Tailscale or another private or direct network
-path.
+Anvil Serving treats machine names as private deployment facts, not product
+roles. The same architecture can span workstations, laptops, small edge
+systems, and mobile clients when each process has one declared owner and the
+devices have a reviewed private network path.
+
+For the reference multi-device network, start with
+[Private networking with Tailscale](TAILSCALE-NETWORKING.md). It explains how
+Tailscale identity, grants, MagicDNS, and Serve project selected loopback
+services without publishing raw model endpoints.
 
 ## Roles
 
-| Role | Owns | Current Reference Example |
-|---|---|---|
-| Gateway host | OpenClaw gateway, harness runtime, gateway-local restart/apply actions. | Fakoli Mini |
-| Voice host | Persistent or foreground Realtime proxy, Mini-local audio forwarding, and microphone/speaker path. | Fakoli Mini |
-| Audio model host | STT/TTS model endpoints and optional private bridge ports. | Fakoli Dark or another non-Mini audio host |
-| Router host | `anvil-serving router run` or deployed router container, router config, token auth, decision logs. | Fakoli Dark |
-| Serve host | GPU/CPU LLM serves, `serves.toml`, model cache, preflight and benchmark target endpoints. | Fakoli Dark |
-| Controller host | `anvil-serving controller serve` for structured remote operations on the resources it owns. | Usually the router/serve host |
-| Operator client | Codex, Claude Code, OpenClaw, or another tool calling MCP/controller tools. | Any trusted host |
+| Role | Owns | Representative placement |
+| --- | --- | --- |
+| Primary inference node | Capability Gateway, controller, daily large-model serves, manifests, model cache, and decision evidence. | A high-memory GPU workstation. |
+| Harness node | OpenClaw gateway, Codex/Claude Code or other harness runtimes, MCP stdio bridge, and harness-local restart/apply actions. | A small always-on system with no model serves. |
+| Voice and audio node | Voice agent or Realtime proxy, microphone/speaker path, STT, and TTS. | A laptop or workstation selected for interactive audio. |
+| Media and burst node | ComfyUI/media worker and an optional fast LLM for bounded or occasional workloads. | A separate GPU workstation. |
+| Controller node | `anvil-serving controller serve` for typed remote operations on the resources that node owns. | Usually co-located with each resource owner. |
+| Mobile or operator client | Browser, voice client, monitoring, and approved operator actions. | Any user-owned phone, tablet, or computer admitted to the private network. |
 
-A single device can hold several roles. A laptop can be a voice host, a router
-host, a gateway host, or all three. The important boundary is ownership: run
-lifecycle commands on the host that owns the process, config, manifest, and
-logs being changed.
+A device can hold several roles. The important boundary is ownership: run
+lifecycle commands on the device that owns the process, config, manifest,
+hardware reservation, and logs being changed. Network proximity does not
+transfer that authority.
 
-In the current reference OpenClaw topology, Fakoli Mini is intentionally
-model-free: its 16 GB RAM is reserved for OpenClaw Gateway, Anvil Voice
-Realtime/proxy, Claude Code, and Codex. Do not place STT, TTS, or LLM model
-serves on Mini for reference validation or candidate benchmarking. Mini-local
-audio remains an optional same-host mode for explicit local-audio tests only.
+The representative distribution deliberately separates steady large-model
+serving, lightweight harnesses, interactive audio, and on-demand media. It is
+an architecture example, not a claim about an operator's current deployment.
+Real device names and active assignments belong in private operator topology.
 
-## Connectivity Requirements
+## Connectivity requirements
 
 - Same-host URLs use `127.0.0.1`.
-- Cross-device URLs use a private reachable address: Tailscale tailnet DNS/IP,
-  private LAN/VPN address, or another direct private route.
-- Public interface exposure is not the default product contract. Treat it as a
-  separate security decision that needs an explicit human gate.
-- Tailscale or direct reachability is necessary but not sufficient for
-  management operations. Use service tokens and tailnet ACLs together.
-- Credentials stay in environment variables. Config files and manifests should
-  name env vars such as `ANVIL_ROUTER_TOKEN` or `ANVIL_CONTROLLER_TOKEN`, not
+- The preferred cross-device pattern keeps the service on `127.0.0.1` and
+  publishes only a reviewed path through Tailscale Serve on the owning device.
+- Direct binding to a tailnet IP is an explicit alternative, not the default.
+  A non-loopback bind still requires application authentication.
+- Public interface exposure is outside the reference product contract and
+  requires a separate threat model and human gate.
+- Tailscale reachability is necessary but not sufficient. Use least-privilege
+  grants (or existing ACLs) and the router/controller service token together.
+- Credentials stay in environment variables. Config files and manifests name
+  env vars such as `ANVIL_ROUTER_TOKEN` or `ANVIL_CONTROLLER_TOKEN`, never
   literal token values.
+- MagicDNS names and tailnet addresses are private operator values. Public
+  examples use synthetic names such as `primary.example.ts.net`.
 
-There are two planes:
+There are two traffic planes:
 
-| Plane | Examples | Cross-Device Rule |
-|---|---|---|
-| Data plane | Router front door, STT endpoint, TTS endpoint, model serve endpoint. | The caller's configured `base_url` must be reachable and authenticated if exposed beyond loopback. |
-| Control plane | `anvil-serving mcp serve`, `anvil-serving controller serve`, guarded lifecycle tools. | The resource-owning host runs the controller; the operator/gateway host bridges to it with `--controller-url` and `--auth-env`. |
+| Plane | Examples | Cross-device rule |
+| --- | --- | --- |
+| Data plane | Capability Gateway, voice front door, and bounded media APIs. | Publish one authenticated front door; do not expose raw LLM, STT, TTS, or ComfyUI worker ports by default. |
+| Control plane | MCP bridge, controller, and guarded lifecycle tools. | The resource-owning device runs the controller; clients reach its authenticated Tailscale Serve path. |
 
-## Expansion Patterns
+## Representative flows
 
-### Add Another Laptop As A Voice Host
+```mermaid
+flowchart LR
+    H["harness node"] -->|"HTTPS + router token"| R["primary gateway"]
+    V["voice/audio node"] -->|"llm.voice or llm.primary"| R
+    M["mobile/operator client"] -->|"approved private endpoint"| R
+    R -->|"loopback/internal"| L["large-model serves"]
+    R -->|"typed controller call"| B["media/burst node"]
+    B -->|"loopback/internal"| C["ComfyUI or fast LLM"]
+```
 
-Install anvil-serving and the chosen STT/TTS stack on the laptop. If STT/TTS
-run on the same laptop as `voice proxy run`, keep those endpoint URLs on
-`127.0.0.1` and use `lifecycle = "native"` or `lifecycle = "managed"` as
-appropriate.
+### Harness to primary inference
 
-Point `[voice.llm].base_url` at the reachable router host:
+The harness node is a client plane. It launches the local MCP stdio bridge and
+calls the primary inference node's gateway/controller endpoints over the
+tailnet. It does not need GPU runtimes or model weights.
+
+On the primary inference node, keep the controller on loopback and project a
+reviewed path with Tailscale Serve:
+
+```bash
+anvil-serving controller serve \
+  --host 127.0.0.1 \
+  --port 8765 \
+  --auth-token-env ANVIL_CONTROLLER_TOKEN
+
+tailscale serve --bg --set-path=/anvil-controller \
+  http://127.0.0.1:8765
+```
+
+The harness-side bridge uses the private HTTPS name and the same token env-var
+reference:
+
+```bash
+anvil-serving mcp serve \
+  --controller-url https://primary.example.ts.net/anvil-controller/mcp \
+  --auth-env ANVIL_CONTROLLER_TOKEN
+```
+
+Prefer the packaged controller deployment and managed configuration described
+in [Operator playbooks](OPERATOR-PLAYBOOKS.md) for a durable installation.
+SSH remains bounded bootstrap or recovery, not the normal remote transport.
+
+### Voice and audio node
+
+When the voice agent, STT, and TTS share one node, keep their internal URLs on
+`127.0.0.1`. Point only the voice LLM stage at the authenticated primary
+gateway:
 
 ```toml
 [voice.llm]
-base_url = "http://anvil-gpu.tailnet.example:8000/v1"
+base_url = "https://primary.example.ts.net/v1"
 model = "llm.voice"
 api_key_env = "ANVIL_ROUTER_TOKEN"
 ```
 
-If STT/TTS are remote from the voice host, set their `base_url` values to the
-remote private addresses and use `lifecycle = "external"` unless the lifecycle
-command is being run on the audio host itself through local CLI or a controller.
-`lifecycle = "native"` starts a process on the host running `voice audio up`; it is
-not a remote shell mechanism.
+If an audio stage moves to another owner, mark it external on the voice node
+and operate it locally—or through the controller—on the audio owner.
+`lifecycle = "native"` starts a process on the device running the command; it
+is not a remote-shell mechanism.
 
-For the reference split topology, run the product bridge on Mini. It binds only
-Mini loopback ports and derives the Dark target address and ports from topology:
+### Media and burst node
 
-```bash
-anvil-serving voice proxy bridge \
-  --topology ~/.anvil-serving/operator-topology.toml \
-  --config examples/voice/openclaw-anvil-voice.toml \
-  --profile mini-dark-audio-proxy
-```
+Keep ComfyUI and an optional fast LLM on loopback or an internal container
+network. The primary gateway or a co-located resource controller reaches the
+declared backend through the private network. Do not expose a raw model serve
+merely because it is used occasionally.
 
-Point the Mini voice profile at `127.0.0.1:30110` and
-`127.0.0.1:30111`, and keep STT/TTS lifecycle `external` there because Dark
-owns the model processes. Non-loopback and wildcard Mini listeners are always
-rejected. Dark target ports still require private reachability and tailnet/LAN
-ACLs.
+Publishing the ComfyUI browser UI is a separate choice. If it is required,
+scope a Tailscale Serve path and grants to the intended users, verify assets
+and WebSockets end to end, and remember that ComfyUI does not provide the
+router's bearer-token boundary. See [One tailnet endpoint](TAILNET-ENDPOINT-RUNBOOK.md).
 
-### Add Another Laptop As A Router Or Serve Host
+### Mobile and external access
 
-Run the router or model serves on that laptop, bind them to a private reachable
-address, and require token auth when the service is not loopback-only. Update
-gateway, voice, or benchmark configs to use the laptop's private address.
+A phone or tablet joins as a user-owned Tailscale device and reaches the same
+MagicDNS front door as a laptop. It needs no special public endpoint. Policy
+still decides which nodes and ports that identity can reach.
 
-For lifecycle and diagnostics, prefer a controller on the same laptop:
+For another person, invite them to the tailnet only when they need evolving
+access to several resources. For a fixed narrow use case, share one machine.
+Keep application tokens enabled in both cases; tailnet access alone does not
+authorize an Anvil request.
 
-```bash
-export ANVIL_CONTROLLER_TOKEN="<generate-and-store-out-of-band>"
-anvil-serving controller serve \
-  --host anvil-gpu.tailnet.example \
-  --port 8766 \
-  --auth-token-env ANVIL_CONTROLLER_TOKEN
-```
+## Operator checklist
 
-Operator clients then bridge to that controller instead of shelling into the
-host:
+Before adding or moving a role, record privately:
 
-```bash
-anvil-serving mcp serve \
-  --controller-url http://anvil-gpu.tailnet.example:8766 \
-  --auth-env ANVIL_CONTROLLER_TOKEN
-```
+- The role or roles the device owns.
+- Whether the node has user identity or reviewed service tags.
+- Every local listener and whether it binds to loopback, a private address, or
+  an internal container network.
+- The exact Tailscale Serve paths and grants that make selected listeners
+  reachable.
+- Which env-var references provide application auth.
+- Which controller owns lifecycle operations on that device.
+- Which negative network test proves an unapproved identity is denied.
+- Which Anvil validation proves the allowed path is ready: `router status`,
+  `serves status`, `voice audio status`, `eval preflight`, a media workflow
+  validation, or a real harness/client smoke.
 
-### Add Another Gateway Host
-
-A gateway host needs the router base URL reachable from that gateway and the
-right auth env vars available in the gateway process. Gateway-local actions,
-such as OpenClaw restart/apply, should stay local to that gateway. Remote
-router, serve, and benchmark operations should go through the controller on the
-resource-owning host.
-
-For OpenClaw Talk, the gateway host may also run Anvil Voice Realtime/proxy.
-That does not mean it should host STT/TTS/LLM models. Point audio profiles at
-remote private endpoints or at a same-gateway proxy that forwards to the audio
-model host; use same-host/native audio only when the task explicitly tests that
-optional mode.
-
-## Operator Checklist
-
-Before adding a new device, record:
-
-- Which role or roles the device owns.
-- The private address other devices will use to reach it.
-- Which services bind to loopback and which bind to a private address.
-- Which env vars provide service auth.
-- Which controller, if any, owns lifecycle operations on that device.
-- Which validation proves the device is ready: `router_status`,
-  `serves_status`, `voice_manage` preview, `preflight_probe`, or
-  `voice benchmark`.
+Reachability, health, and exact served identity are separate facts. A device
+does not become a qualified role owner merely because it appears in
+`tailscale status` or accepts a TCP connection.
