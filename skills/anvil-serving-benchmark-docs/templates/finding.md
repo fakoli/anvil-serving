@@ -35,8 +35,9 @@ comparison universe.
 **Important caveat:** Lead with the most decision-relevant failure, limitation,
 or missing comparison.
 
-Evidence manifest: `RELATIVE-EVIDENCE-README` · Publication summary:
-`RELATIVE-PUBLICATION-SUMMARY` (convert both placeholders to links in the finding)
+Artifact manifest: `RELATIVE-ARTIFACT-MANIFEST` · Evidence index:
+`RELATIVE-EVIDENCE-README` · Publication summary:
+`RELATIVE-PUBLICATION-SUMMARY` (convert all placeholders to links in the finding)
 
 ## Outcome and decision
 

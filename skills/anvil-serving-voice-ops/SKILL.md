@@ -122,6 +122,10 @@ evidence.
   Publish a meaningful retained result through
   `skills/anvil-serving-benchmark-docs/SKILL.md`; keep measured hardware
   separate from protected/co-resident hardware and retain `promoted=false`.
+  Apply its `references/artifact-set-contract.md` and
+  `anvil-serving.benchmark-artifact-set/v1` template around the native
+  `voice-benchmark-evidence/v1` file so workload, plan, identity, raw evidence,
+  friction, restoration, and decision roles remain explicit.
   Use that contract's publication-ready result card and publication summary when the retained
   voice artifact is meaningful; a format-only refresh does not rerun the
   bounded voice benchmark.

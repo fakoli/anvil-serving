@@ -5,6 +5,23 @@ less precise. Anvil Serving uses a **result card** in the dated finding and a
 separate **publication summary** beside its raw artifacts. Both are derivative
 views: the dated finding and retained artifacts remain the evidence.
 
+## Campaign artifact set v1
+
+Start every new campaign by copying the
+[tracked artifact-set templates](https://github.com/fakoli/anvil-serving/tree/main/skills/anvil-serving-benchmark-docs/templates/artifact-set)
+from `skills/anvil-serving-benchmark-docs/templates/artifact-set/` into the
+dated evidence directory. The common files are `README.md`,
+`artifact-manifest.json`, `source-registry.json`, `summary.json`,
+`friction-log.md`, and `restoration.json`.
+
+The `anvil-serving.benchmark-artifact-set/v1` manifest provides a stable role
+ledger around native capacity, durable-job, multimodal, voice, STT, media, and
+kernel evidence. It does not translate or replace those schemas. Finalize all
+ten roles as retained, not applicable with a reason, or missing with an
+explicit evidence gap; no final artifact set keeps a pending role. Follow
+`skills/anvil-serving-benchmark-docs/references/artifact-set-contract.md` for
+the complete role and hashing contract.
+
 ## Model dossier presentation v2
 
 Use the
@@ -52,7 +69,8 @@ contains:
 3. three to six headline measurements, each with conditions;
 4. why the result matters;
 5. the most important caveat or retained failure; and
-6. links to the evidence manifest and publication summary.
+6. links to the artifact manifest, human evidence index, and publication
+   summary.
 
 The full narrative follows the card and retains exact identity, method,
 distributions or ranges, failures, next experiments, raw links, and the
