@@ -1,0 +1,79 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "YYYY-MM-DD-SLUG",
+    "capability": "REPLACE_WITH_CAPABILITY",
+    "repository_revision": "0000000000000000000000000000000000000000",
+    "dirty_state": "REPLACE_WITH_CLEAN_OR_EXACT_DIRTY_STATE",
+    "started_at": "YYYY-MM-DDTHH:MM:SSZ",
+    "completed_at": null,
+    "evidence_labels": [],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "pending",
+      "files": [],
+      "reason": ""
+    }
+  ]
+}

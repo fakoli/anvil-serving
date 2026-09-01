@@ -24,8 +24,9 @@ what runs on it and how well, start there.
 
 For the compact publication contract, use the
 **[finding format](finding-format.md)**. It defines screenshot-ready result
-cards, X and Reddit variants, accessible alt text, and a claim ledger back to
-the full finding and raw artifacts.
+cards, the common campaign artifact-set template, X and Reddit variants,
+accessible alt text, and a claim ledger back to the full finding and raw
+artifacts.
 
 ## Browse by hardware
 

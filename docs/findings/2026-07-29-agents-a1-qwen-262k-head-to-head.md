@@ -15,7 +15,7 @@ result does not by itself authorize replacing the current Qwen Primary.
 Both candidates served a 262,144-token window on the same GPU at concurrency
 one with thinking disabled. They received the same 8K and 240K capacity request
 shapes and the unchanged 30-attempt
-[`multimodal-corpus/v1`](https://github.com/fakoli/anvil-serving/blob/main/benchmarks/corpora/agents-a1-v1/corpus.json)
+[`multimodal-corpus/v1`](https://github.com/fakoli/anvil-serving/blob/main/tests/fixtures/eval-data/agents-a1-v1/corpus.json)
 manifest, SHA-256
 `ebff9dcc87a7fd13f801fc19eeea7271aec01a99fe560d721be99c1c9becad49`.
 At least 16K of configured headroom remained above the planned 240K lane.

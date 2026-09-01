@@ -1,0 +1,26 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "YYYY-MM-DD-SLUG",
+  "complete": false,
+  "identity": {},
+  "workload": {},
+  "measurement": {
+    "path": "REPLACE_WITH_ONLINE_DIRECT_ROUTED_OFFLINE_OR_KERNEL",
+    "warm_cold_state": "REPLACE_WITH_STATE",
+    "sample_count": 0,
+    "statistics": []
+  },
+  "gates": [],
+  "headline_results": [],
+  "failures": [],
+  "limitations": [],
+  "decision": {
+    "evidence_labels": [],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "REPLACE_WITH_NEXT_GATE"
+  },
+  "evidence": []
+}

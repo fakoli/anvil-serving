@@ -1,0 +1,6 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "YYYY-MM-DD-SLUG",
+  "observed_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "sources": []
+}

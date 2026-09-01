@@ -12,7 +12,9 @@ the `anvil-serving` CLI and managed serve manifests; do not add skill scripts.
 
 1. Read `README.md`, `CLAUDE.md`,
    `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md`, and
-   `references/corpus-and-evidence.md`.
+   `references/corpus-and-evidence.md`. Also read
+   `../anvil-serving-benchmark-docs/references/artifact-set-contract.md` and
+   copy its common templates before the first live request.
 2. Record the command host, GPU identity, live containers, endpoint health,
    model names, image identities, and router audio route before mutation.
 3. Keep reference OpenClaw testing on Fakoli Dark. Fakoli Mini remains
@@ -97,6 +99,10 @@ protected/co-resident topology, corpus provenance, schedule, primary and
 synthetic metrics, failures, restoration state, capability boundaries, and a
 non-promotion decision. Update the run catalog, model dossier, and measured
 hardware page through that canonical publication contract.
+Wrap the native `stt-benchmark-evidence/v1` files in the shared
+`anvil-serving.benchmark-artifact-set/v1` manifest. Keep corpus, sequential,
+concurrency, partial/failure, friction, restoration, and decision-summary roles
+distinct rather than folding them into one STT result.
 For a complete retained `stt-benchmark-evidence/v1` artifact, create the
 publication-ready result card and publication summary from the recorded human/synthetic split,
 WER/CER, latency, throughput, concurrency, failures, and restoration fields;
