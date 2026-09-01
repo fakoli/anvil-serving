@@ -97,7 +97,7 @@
           "status": "running",
           "image": "ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128",
           "docker_name": "kokoro-tts",
-          "cuda_visible_devices": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+          "cuda_visible_devices": "REDACTED_GPU_UUID_COMPUTE_A",
           "device_requests": [
             {
               "Driver": "",

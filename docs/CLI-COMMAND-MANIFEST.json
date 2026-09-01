@@ -20096,7 +20096,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": null,
-      "summary": "Manage Dark-owned STT/TTS lifecycle.",
+      "summary": "Manage topology-owned STT/TTS lifecycle.",
       "transports": [],
       "visible": true
     },

@@ -58,7 +58,7 @@ The router becomes a first-class, optionally-containerized **service** with buil
   lifecycle unifies with the serves' compose lifecycle (ADR-0002).
 - **One authenticated endpoint** replaces N exposed model servers; the raw serves return to loopback/internal
   and the router→serve hop becomes local (the cross-network relay fragility is retired).
-- **Mini repoints** its OpenClaw `anvil` provider from a loopback URL to `http://<fakoli-dark>:8000/v1` with a
+- **Mini repoints** its OpenClaw `anvil` provider from a loopback URL to `http://node-a.example:8000/v1` with a
   bearer header carrying `ANVIL_ROUTER_TOKEN`. The advise-and-defer 503→native-failover contract (ADR-0001) is
   unchanged.
 - **New hot-path check:** every request is authenticated when a token is configured — constant-time, ~microseconds,

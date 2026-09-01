@@ -1,6 +1,9 @@
 # gpu-reservations:T006 — Gemma 4 E4B fast-tier promotion evidence (2026-07-13)
 
-Live evidence from fakoli-dark (RTX 5090, `GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1`)
+> **Publication redaction:** The operator-specific GPU UUID was replaced with a
+> stable label. Hardware class, measurements, and event ordering are unchanged.
+
+Live evidence from fakoli-dark (RTX 5090, `REDACTED_GPU_UUID_REMOVED_GPU`)
 for the promotion of `gemma4-e4b-it` from the `voice-gemma4-e4b` experiment serve to the
 resident `fast` serve with a declared ADR-0017 reservation.
 

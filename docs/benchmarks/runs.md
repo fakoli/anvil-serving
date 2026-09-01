@@ -5,6 +5,11 @@ This manually maintained catalog indexes retained, decision-relevant runs.
 `PRO relationship` prevents a co-resident or protected PRO 6000 from being
 reported as measured.
 
+Every status and decision in this catalog belongs to its dated evidence. Terms
+such as `current`, `Primary`, `rollback`, and `production` describe the
+published decision at that point in history; they do not report active routes,
+deployment, placement, or availability.
+
 ## Research-only recipe intake
 
 These records are indexed for decision reachability but are not benchmark runs

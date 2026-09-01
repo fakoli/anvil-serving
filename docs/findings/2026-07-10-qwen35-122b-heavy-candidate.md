@@ -1,5 +1,8 @@
 # Qwen3.5-122B-A10B-NVFP4 heavy-tier candidate — fakoli-dark
 
+> **Publication redaction:** The operator-specific GPU UUID was replaced with a
+> stable label. Hardware class, measurements, and event ordering are unchanged.
+
 **Point-in-time record, 2026-07-10.** Adds `nvidia/Qwen3.5-122B-A10B-NVFP4` as an anvil-serving-managed
 **heavy-tier evaluation candidate**, alongside (not replacing) the GPT-OSS-120B production heavy tier.
 This is a candidate record, not a promotion: the router was not modified and no `heavy-local` change was made.
@@ -12,7 +15,7 @@ This is a candidate record, not a promotion: the router was not modified and no 
 | Served model name | `qwen35-122b-a10b-nvfp4` |
 | Params | 122B total / ~10B active (MoE, `qwen3_5_moe`) |
 | Host / topology | fakoli-dark, Windows 11 + Docker Desktop (WSL2 backend); loopback `:39017` only |
-| GPU | RTX PRO 6000 Blackwell Max-Q, 96 GB, sm_120 (`GPU-d0f446cf-1771-414c-e116-a39138798a8c`), pinned single-GPU (no tensor parallelism) |
+| GPU | RTX PRO 6000 Blackwell Max-Q, 96 GB, sm_120 (`REDACTED_GPU_UUID_COMPUTE_A`), pinned single-GPU (no tensor parallelism) |
 | Engine / image | vLLM `0.19.0+6bc3197f.nv26.04` — `nvcr.io/nvidia/vllm:26.04-py3` (`sha256:98494fda…b2cb75b27`) |
 | Quantization | `modelopt_fp4` (NVFP4 weights), FP8 KV cache |
 | Context / concurrency | 131072 max-model-len, `max-num-seqs 1` |

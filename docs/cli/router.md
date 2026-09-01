@@ -27,7 +27,7 @@ owning documentation link.
 | `router down` | Stop the deployed router. |
 | `router restart` | Restart the deployed router. |
 | `router reload` | Reload router configuration. |
-| `router install-config` | Atomically install a validated direct-router config, including tier-set migrations. |
+| `router install-config` | Atomically install a validated capability meta-router config, including tier-set migrations. |
 | `router status` | Show bounded router status. |
 | `router logs` | Read bounded router logs or explicitly follow new output. |
 
@@ -56,7 +56,7 @@ anvil-serving router run --config configs/example.toml --host 127.0.0.1 --port 8
 
 Without `--config`, the router uses `$ANVIL_SERVING_HOME/router.toml` (default
 `~/.anvil-serving/router.toml`) before the legacy `./router.toml`. An explicit
-path selects one exact direct-alias topology. The router remains a stdlib-only
+path selects one exact capability-alias configuration. The router remains a stdlib-only
 foreground service; use the lifecycle commands when the deployment is managed
 by the operator substrate. The default bind is `127.0.0.1`; do not expose a
 non-loopback bind without an operator-provided authentication layer.
@@ -118,7 +118,7 @@ The lifecycle output never includes resolved credential values.
 selected router service and does not start or recreate model services, alter router
 configuration volumes, or modify the host outside Docker's requested router action.
 
-Install a complete direct-router config with the same preview-first boundary:
+Install a complete capability meta-router config with the same preview-first boundary:
 
 ```bash
 anvil-serving router install-config --config deployment/router.toml --dry-run

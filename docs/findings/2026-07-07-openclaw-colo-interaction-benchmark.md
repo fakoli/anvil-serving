@@ -1,5 +1,8 @@
 # OpenClaw COLO interaction benchmark (2026-07-07)
 
+> **Publication redaction:** The operator-specific network hostname was replaced
+> with a public-safe placeholder. The observed workflow and result are unchanged.
+
 > **STATUS: LIVE PASS CAPTURED.** From the Fakoli Mini OpenClaw gateway host,
 > the COLO runner reached the Fakoli Dark anvil-serving router and completed the
 > repeatable direct-router interaction benchmark without HTTP failures,
@@ -109,7 +112,7 @@ Use the caveat with the citation:
 ```bash
 python examples/openclaw/colo_smoke.py \
   --live \
-  --gateway-host fakoli-mini \
+  --gateway-host mini-host.example \
   --router-base-url http://100.64.0.10:8000/v1 \
   --run-generations \
   --run-interaction-benchmark \

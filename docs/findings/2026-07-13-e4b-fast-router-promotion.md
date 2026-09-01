@@ -1,5 +1,8 @@
 # Gemma 4 E4B Fast router promotion + harness lockstep (gpu-reservations:T007)
 
+> **Publication redaction:** The operator-specific network hostname was replaced
+> with a public-safe placeholder. The observed workflow and result are unchanged.
+
 **Point-in-time record, 2026-07-13.** The live fakoli-dark router config was promoted to the
 Gemma 4 E4B fast tier prepared by gpu-reservations:T006, the quality profile was reseeded for
 the new serve identity (chat-fast rows added, calibration pending), and the OpenClaw harness
@@ -45,7 +48,7 @@ serves only `gemma4-e4b-it` (`/v1/models`), so `served = fast-local` is the E4B 
 ## Harness lockstep (OpenClaw on fakoli-mini)
 
 `anvil-serving harness sync openclaw --config examples/fakoli-dark/anvil-router.live.toml
---base-url http://100.64.0.10:8000/v1 --gateway-host fakoli-mini --confirm` merged the rendered
+--base-url http://100.64.0.10:8000/v1 --gateway-host mini-host.example --confirm` merged the rendered
 provider into `~/.openclaw/openclaw.json` (backup taken). Rendered preset `contextWindow` values
 remain the LARGEST routed tier window per the clamp gotcha — 131072 for every preset, because
 each preset (including chat-fast, fast-first) still routes to the 131072-token heavy tier; the

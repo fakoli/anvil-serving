@@ -8,7 +8,7 @@ from anvil_serving import doctor
 from tests.conftest import proc
 
 
-CSV = "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
+CSV = "0, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090\n"
 
 
 # ---- individual checks -----------------------------------------------------------

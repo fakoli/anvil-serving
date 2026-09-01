@@ -706,8 +706,8 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         description=(
             "Run bounded correctness gates before trusting endpoint performance.\n\n"
             "Examples:\n"
-            "  anvil-serving eval preflight --tier heavy --checks smoke,json --dry-run\n"
-            "  anvil-serving eval preflight --tier heavy --checks smoke,json,needle,tools "
+            "  anvil-serving eval preflight --tier primary --checks smoke,json --dry-run\n"
+            "  anvil-serving eval preflight --tier primary --checks smoke,json,needle,tools "
             "--output preflight.json --confirm\n"
             "  anvil-serving eval preflight --base-url http://127.0.0.1:30002/v1 "
             "--model MODEL --thinking-mode enabled --reasoning-headroom-tokens 4096 "

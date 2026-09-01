@@ -1,5 +1,9 @@
 # Voice TTS Candidate Preflight: Kokoro-82M, Orpheus-3B, Qwen3-TTS
 
+> **Publication redaction:** Operator-specific GPU UUIDs in linked raw evidence
+> were replaced with stable labels. Hardware class, measurements, and event
+> ordering are unchanged.
+
 > **STATUS: PASSED for anvil task T009 on 2026-07-06.**
 > The no-argument packet proof command synthesized all three T009 candidates
 > on the fakoli-dark Blackwell workstation and exited 0:

@@ -5,6 +5,14 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
+!!! tip "Reproduce the measured container configurations"
+
+    Open **[Container configurations](configurations.md)** for the exact model
+    revisions, image digests, cache and named-volume mounts, environment,
+    engine flags, context, concurrency, and matched speculation controls behind
+    the current reference results. It also maps each recipe field to a generic
+    container runtime for readers who do not use Anvil Serving.
+
 **Last evidence review: 2026-08-31.**
 
 ## Start with the numbers
@@ -21,23 +29,23 @@ the full finding and raw artifacts.
 
 ## Browse by hardware
 
-| Hardware | Current role | Start here |
+| Hardware | Published evidence scope | Start here |
 |---|---|---|
-| 2× NVIDIA RTX PRO 6000 Blackwell Max-Q, 192 GB aggregate, sm_120 | Current Fakoli Dark topology; split workloads or exclusive TP=2 | [RTX PRO 6000](hardware/rtx-pro-6000.md) |
-| NVIDIA GeForce RTX 5090, 32 GB, sm_120 | Current isolated qualification lane plus historical Fakoli Dark results | [RTX 5090](hardware/rtx-5090.md) |
+| 2× NVIDIA RTX PRO 6000 Blackwell Max-Q, 192 GB aggregate, sm_120 | Measured dual-card reference configuration; split workloads or exclusive TP=2 | [RTX PRO 6000](hardware/rtx-pro-6000.md) |
+| NVIDIA GeForce RTX 5090, 32 GB, sm_120 | Measured single-card qualification configuration, plus retained historical results | [RTX 5090](hardware/rtx-5090.md) |
 
-Fakoli Dark now has two equal PRO 6000 cards. Aggregate VRAM is not unified
-memory, and the cards communicate over PCIe without NVLink. Exclusive TP=2
-runs must prove that both devices were selected and all other inference was
-offline. Fakoli Mini remains model-free in the reference topology. Historical
-mixed-card tests still say which card was measured and which was merely
-protected or co-resident.
+The published dual-PRO reference configuration uses two equal PRO 6000 cards.
+Aggregate VRAM is not unified memory, and the cards communicate over PCIe
+without NVLink. Exclusive TP=2 runs must prove that both devices were selected
+and all other inference was offline. The published reference topology keeps
+Fakoli Mini model-free. Historical mixed-card tests still say which card was
+measured and which was merely protected or co-resident.
 
 ## Browse by model
 
 Each **[model dossier](models/index.md)** is a stable, model-centered summary:
-current status, every measured configuration, working recipes, and links to the
-dated findings behind each conclusion.
+the latest published status, every measured configuration, working recipes,
+and links to the dated findings behind each conclusion.
 
 ## Run context, agentic, and repository evaluations
 
@@ -47,7 +55,11 @@ pinned mini-SWE-agent and official SWE-bench grading, cancellation, and the
 measured-versus-prior evidence boundary. The guide defines methodology and
 commands; it does not claim a live model result by itself.
 
-## Production aliases and recent controls
+## Published decisions and recent controls
+
+The decision labels below describe the latest dated public evidence for each
+reference configuration. They do not report or control any operator's live
+route assignments; active deployment state remains private.
 
 1. **GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5** — `current`
    text/tools/image/OCR Primary at 524,288 tokens in exclusive TP=2 across both
@@ -73,7 +85,7 @@ commands; it does not claim a live model result by itself.
    measurements. The RTX PRO 6000 was protected, not benchmarked.
 8. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
    direct 128K text/tools/image/OCR/video evidence, no route or promotion.
-9. **FLUX.2 Klein 4B FP8** — production-enabled RTX 5090 ComfyUI image
+9. **FLUX.2 Klein 4B FP8** — published as available for the RTX 5090 ComfyUI image
    workflow through Hermes/MCP at fixed 512/768/1024-pixel profiles; six of
    eight bounded visual samples passed strict review, with two retained draft
    fidelity/count failures. **Wan2.2 TI2V 5B** remains unavailable after
@@ -216,8 +228,10 @@ Evidence labels describe what was observed:
 | `historical-invalid` | Retained run is incomplete, incomparable, or missing identity needed for reuse. |
 
 Decision labels are separate: `current`, `rollback`, `challenger`,
-`no-promotion`, and `rejected`. A quality result can still be `no-promotion`;
-a failed load can be `rejected` while remaining useful compatibility evidence.
+`no-promotion`, and `rejected`. In this public documentation, they describe the
+latest published evidence decision for a reference configuration, not live
+deployment state. A quality result can still be `no-promotion`; a failed load
+can be `rejected` while remaining useful compatibility evidence.
 
 Full comparison rules, instrument definitions, and artifact requirements:
 [Methodology and evidence rules](methodology.md).

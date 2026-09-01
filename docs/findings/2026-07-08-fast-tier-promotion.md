@@ -1,5 +1,8 @@
 # Fast-Tier Promotion: Qwen3.6-35B-A3B-NVFP4
 
+> **Publication redaction:** The operator-specific network hostname was replaced
+> with a public-safe placeholder. The observed workflow and result are unchanged.
+
 Date: 2026-07-08
 
 ## Decision
@@ -112,11 +115,11 @@ Runtime status after promotion:
 OpenClaw gateway sync:
 
 ```powershell
-anvil-serving harness sync openclaw --config examples\fakoli-dark\anvil-router.live.toml --base-url http://100.64.0.10:8000/v1 --voice --voice-realtime-url ws://127.0.0.1:8765/v1/realtime --gateway-host fakoli-mini --restart
+anvil-serving harness sync openclaw --config examples\fakoli-dark\anvil-router.live.toml --base-url http://100.64.0.10:8000/v1 --voice --voice-realtime-url ws://127.0.0.1:8765/v1/realtime --gateway-host mini-host.example --restart
 ```
 
 Result: synced six Anvil preset models into
-`fakoli-mini:~/.openclaw/openclaw.json`, merged with existing config, took a
+`mini-host.example:~/.openclaw/openclaw.json`, merged with existing config, took a
 backup, and restarted the OpenClaw gateway.
 
 Local repo gates:

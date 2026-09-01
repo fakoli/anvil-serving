@@ -3,13 +3,13 @@
 **Audience:** an implementing agent (or contributor) executing a feature issue
 cold, without this repository's session history. Every open feature issue
 references this document. It captures the wiring recipes, verification gates,
-and environment gotchas learned while shipping features 1–8 and 11 of
+and environment constraints learned while executing the program in
 `STRATEGY-MAKE-DIVERGENCE-LOUD.md` (PRs #363–#372).
 
 ## The gate sequence (every feature, no exceptions)
 
 1. Implementation + tests on a branch cut from `origin/main`.
-2. `python -m pytest tests/ -q` fully green (see *known local failures* below).
+2. `python scripts/run_tests.py tests/ -q` fully green (see *known local failures* below).
 3. **Mutation check**: break your own logic (invert a comparison, disable a
    check) and confirm at least one test fails; restore. A test suite that
    passes against a broken implementation is not done. Verify the mutation hit
@@ -79,9 +79,9 @@ classification), the ssh probe pattern, `repo_tracked_files`/`_repo_hashes`.
   ... post-quantum ...`). Filter `** `-prefixed lines before reporting stderr
   as a failure detail, or the banner masquerades as the error.
 - **Hostname vs host id**: repos key hosts by short name (`dark`); machines
-  report `fakoli-dark` or `fakoli-mini.local`. Match on the first DNS label,
+  report `node-dark` or `node-dark.example`. Match on the first DNS label,
   then `-`-token membership. Bare containment is wrong (`"w" in
-  "elsewhere"`); bare prefix is wrong (`dark` vs `fakoli-dark`).
+  "elsewhere"`); bare prefix is wrong (`dark` vs `node-dark`).
 - **CRLF**: Windows checkouts flip line endings; content comparisons must
   normalize `\r\n` → `\n` or every file "differs".
 - **Compose profiles**: `docker compose config` EXCLUDES `profiles:`-gated

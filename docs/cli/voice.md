@@ -3,9 +3,9 @@
 [CLI overview](../CLI.md) · [Control plane & integrations](control-plane.md) · [Full voice guide](../VOICE.md)
 
 Use the `voice` family to operate the reference speech topology without
-confusing proxy ports with model ownership. Fakoli Dark owns STT and TTS model
-serves. Fakoli Mini may own the realtime proxy and loopback forwarders, but it
-is model-free by default.
+confusing proxy ports with model ownership. The declared topology owner runs
+the STT and TTS model serves. Fakoli Mini may own the realtime proxy and
+loopback forwarders, but it is model-free by default.
 
 ## Choose a workflow
 
@@ -31,7 +31,7 @@ is model-free by default.
 | `voice up` | Start managed STT, TTS, then the managed realtime proxy. |
 | `voice down` | Stop the managed realtime proxy, then managed STT/TTS. |
 
-### Operate Dark-owned audio serves
+### Operate topology-owned audio serves
 
 | Command | Purpose |
 | --- | --- |

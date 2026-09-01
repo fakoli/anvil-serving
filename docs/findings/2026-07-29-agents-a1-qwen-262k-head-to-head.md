@@ -1,5 +1,9 @@
 # Agents-A1 FP8 versus Qwen3.5 122B at 262K
 
+> **Publication redaction:** Operator-specific GPU UUIDs in linked raw evidence
+> were replaced with stable labels. Hardware class, measurements, and event
+> ordering are unchanged.
+
 **Observed:** 2026-07-29
 **Host:** Fakoli Dark, one NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation
 Edition (96 GB, sm_120)

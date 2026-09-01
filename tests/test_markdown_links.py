@@ -58,14 +58,27 @@ def test_check_accepts_relative_link_forms_and_ignores_non_file_content(tmp_path
             "<img src=\"assets/a b.png\" alt=\"raw image\">\n"
         ),
         "docs/guide.md": "# Start\n",
+        "docs/index.md": '<a href="guide/">MkDocs directory URL</a>\n',
         "docs/a b.md": "# Spaced\n",
         "assets/a b.png": "not really an image",
     })
 
     checked, problems = links.check(root)
 
-    assert checked == 3
+    assert checked == 4
     assert problems == ()
+
+
+def test_check_rejects_mkdocs_directory_url_outside_docs(tmp_path: Path):
+    root = _repo(tmp_path, {
+        "README.md": "[guide](guide/)\n",
+        "guide.md": "# Guide\n",
+    })
+
+    _checked, problems = links.check(root)
+
+    assert len(problems) == 1
+    assert "missing relative link target: 'guide'" in problems[0].message
 
 
 def test_check_reports_missing_case_mismatch_absolute_escape_and_backslash(tmp_path: Path):

@@ -1,5 +1,8 @@
 # Anvil Voice latency baseline for OpenClaw Talk (2026-07-07)
 
+> **Publication redaction:** The operator-specific network hostname was replaced
+> with a public-safe placeholder. The measurements and event ordering are unchanged.
+
 > **STATUS: BASELINE CAPTURED for `voice-latency-model-ab:T001`.** The active
 > Mini-local audio profile routes STT and TTS through loopback MLX Audio serves
 > on Fakoli Mini, and routes the LLM turn to the Fakoli Dark router as
@@ -20,7 +23,7 @@ not a promotion recommendation and does not change production routing.
 | Field | Value |
 |---|---|
 | Capture date | 2026-07-07 |
-| Gateway / voice host | Fakoli Mini (`Fakoli-Mini-2.local`) |
+| Gateway / voice host | Fakoli Mini (`mini-host.example`) |
 | Benchmark checkout | `/Users/operator/anvil-serving-t007` |
 | Benchmark checkout revision | `6d024c2480b9f935b06ae26213ca7cfb69568485` |
 | Checkout status | detached `HEAD`; unrelated dirty file `docs/findings/2026-07-voice-16gb-mini.md` |

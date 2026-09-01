@@ -81,7 +81,7 @@
     "candidate_id": "google/gemma-4-26B-A4B-it@01e5b3ee840d3a9e0b0b493c593e85398a30ef75",
     "config_id": "heavy-26b-bf16-256k-thinking",
     "engine": "vllm-0.25.1",
-    "gpu": "RTX-PRO-6000-GPU-d0f446cf",
+    "gpu": "RTX-PRO-6000-REDACTED_GPU_UUID_COMPUTE_A",
     "model": "gemma4-heavy-lab",
     "started_at": "2026-07-16T16:06:22Z"
   },

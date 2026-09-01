@@ -1,5 +1,9 @@
 # Nemotron 3.5 ASR qualification on Fakoli Dark
 
+> **Publication redaction:** Operator-specific GPU UUIDs in this finding and its
+> linked raw evidence were replaced with stable labels. Hardware class,
+> measurements, and event ordering are unchanged.
+
 > **Status: executed 2026-07-27 through 2026-07-28; no promotion.**
 > Nemotron 3.5 ASR is **not qualified** for the current one-shot Talk contract.
 > Qwen3-ASR 0.6B is a **qualified replacement candidate** under this
@@ -28,9 +32,9 @@ change the default STT route.
 
 - Host: Fakoli Dark.
 - Candidate GPU: NVIDIA GeForce RTX 5090,
-  `GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1`, 32,607 MiB.
+  `REDACTED_GPU_UUID_REMOVED_GPU`, 32,607 MiB.
 - Protected Heavy GPU: NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation
-  Edition, `GPU-d0f446cf-1771-414c-e116-a39138798a8c`, left running.
+  Edition, `REDACTED_GPU_UUID_COMPUTE_A`, left running.
 - Baseline: Parakeet `tdt-0.6b-v3` at `127.0.0.1:30010`, image ID
   `sha256:7a08005a8a26dd8fe3709f1df3d8dc44be7afef93a27e0830916cc2f54d0304e`.
 - Nemotron: loopback-only `127.0.0.1:39041`, Transformers 5.13.0,

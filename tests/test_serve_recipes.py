@@ -6,6 +6,7 @@ is proven round-trip-safe by parsing its output back through `tomllib`.
 """
 import json
 from datetime import date
+import shlex
 import tomllib
 from types import SimpleNamespace
 
@@ -22,7 +23,7 @@ _RECIPE = {
     "active_params_b": 5.1,
     "hardware": {
         "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q",
-        "gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+        "gpu_uuid": "GPU-test-device",
         "vram_total_gb": 96,
     },
     "serve": {
@@ -210,6 +211,38 @@ def test_docker_run_argv_refuses_unsafe_container_and_env():
     option_image = {**_RECIPE, "serve": {**_RECIPE["serve"], "image": "--privileged"}}
     with pytest.raises(sr.RecipeError, match="not an option"):
         sr.docker_run_argv(option_image, container="safe")
+
+
+@pytest.mark.parametrize(
+    "gpu_uuid",
+    [
+        "GPU-11111111-1111-1111-1111-111111111111",
+        "GPU-00000000-0000-0000-0000-000000000002",
+        "GPU-REPLACE-WITH-COMPUTE-A-UUID",
+        (
+            "GPU-11111111-1111-1111-1111-111111111111,"
+            "GPU-22222222-2222-2222-2222-222222222222"
+        ),
+    ],
+)
+def test_docker_run_argv_requires_override_for_public_gpu_placeholders(gpu_uuid):
+    recipe = {**_RECIPE, "hardware": {"gpu_uuid": gpu_uuid}}
+
+    with pytest.raises(sr.RecipeError, match=r"pass --gpu-device"):
+        sr.docker_run_argv(recipe, container="candidate")
+
+    argv = sr.docker_run_argv(recipe, container="candidate", gpu_device="0")
+    assert argv[argv.index("--gpus") + 1] == "device=0"
+    assert "CUDA_VISIBLE_DEVICES=0" in argv
+
+
+def test_docker_run_argv_rejects_public_placeholder_as_explicit_override():
+    with pytest.raises(sr.RecipeError, match=r"replace it with a host-discovered"):
+        sr.docker_run_argv(
+            _RECIPE,
+            container="candidate",
+            gpu_device="GPU-REPLACE-WITH-COMPUTE-A-UUID",
+        )
 
 
 # ---- READ: find_recipe (exact + basename) ------------------------------------------
@@ -427,11 +460,11 @@ def test_reconstruct_docker_run_includes_env_volume_and_flags():
     cmd = sr.reconstruct_docker_run(_RECIPE)
     assert "-e FLASHINFER_CUDA_ARCH_LIST=12.0f" in cmd
     assert (
-        "-e CUDA_VISIBLE_DEVICES=GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+        "-e CUDA_VISIBLE_DEVICES=GPU-test-device"
         in cmd
     )
     assert "-v vllm-hfcache:/root/.cache/huggingface" in cmd
-    assert "--gpus device=GPU-d0f446cf-1771-414c-e116-a39138798a8c" in cmd
+    assert "--gpus device=GPU-test-device" in cmd
     assert "-p 127.0.0.1:30002:30002" in cmd
     for flag in _RECIPE["serve"]["flags"]:
         assert flag in cmd
@@ -498,7 +531,7 @@ _FAKE_INSPECT = [{
     "HostConfig": {
         "DeviceRequests": [
             {"Driver": "nvidia",
-             "DeviceIDs": ["GPU-d0f446cf-1771-414c-e116-a39138798a8c"],
+             "DeviceIDs": ["GPU-inspected-device"],
              "Capabilities": [["gpu"]]},
         ],
         "PortBindings": {"30002/tcp": [{"HostIp": "127.0.0.1", "HostPort": "30002"}]},
@@ -539,7 +572,7 @@ def test_capture_from_container_parses_inspect_json():
         "--gpu-memory-utilization 0.88",
         "--max-model-len 131072",
     ]
-    assert cap["hardware"]["gpu_uuid"] == "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+    assert cap["hardware"]["gpu_uuid"] == "GPU-inspected-device"
 
 
 def test_capture_from_container_gpu_uuid_falls_back_to_cuda_visible_devices():
@@ -596,8 +629,8 @@ def test_capture_from_container_round_trips_into_a_reconstructable_recipe():
 # ---- CAPTURE: capture_hardware (fake nvidia-smi) -----------------------------------
 
 _SMI = (
-    "NVIDIA RTX PRO 6000 Blackwell Max-Q, 98304 MiB, GPU-d0f446cf-1771-414c-e116-a39138798a8c\n"
-    "NVIDIA GeForce RTX 5090, 32768 MiB, GPU-04d3b6e7-0000-0000-0000-000000000000\n"
+    "NVIDIA RTX PRO 6000 Blackwell Max-Q, 98304 MiB, GPU-11111111-1111-1111-1111-111111111111\n"
+    "NVIDIA GeForce RTX 5090, 32768 MiB, GPU-33333333-3333-3333-3333-333333333333\n"
 )
 
 
@@ -610,10 +643,10 @@ def _fake_smi(text):
 
 def test_capture_hardware_matches_uuid_and_converts_mib_to_gb():
     run = _fake_smi(_SMI)
-    hw = sr.capture_hardware("GPU-d0f446cf-1771-414c-e116-a39138798a8c", _run=run)
+    hw = sr.capture_hardware("GPU-11111111-1111-1111-1111-111111111111", _run=run)
     assert hw == {"gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q", "vram_total_gb": 96}
 
-    hw2 = sr.capture_hardware("GPU-04d3b6e7-0000-0000-0000-000000000000", _run=run)
+    hw2 = sr.capture_hardware("GPU-33333333-3333-3333-3333-333333333333", _run=run)
     assert hw2 == {"gpu": "NVIDIA GeForce RTX 5090", "vram_total_gb": 32}
 
 
@@ -628,14 +661,18 @@ def test_capture_hardware_empty_when_uuid_not_present():
 
 # ---- the shipped registry loads and reconstructs -----------------------------------
 
-def test_shipped_registry_reconstructs_gpt_oss(request):
+def test_shipped_registry_requires_gpu_override_to_load_gpt_oss(request):
     root = request.config.rootpath
     registry = sr.load_registry(str(root / "configs" / "serve-recipes.toml"))
     recipe = sr.find_recipe(registry, "gpt-oss-120b")
     assert recipe is not None
     assert recipe["measured"]["throughput_single_tok_s"] == pytest.approx(183.2)
-    cmd = sr.reconstruct_docker_run(recipe)
-    assert cmd.startswith("docker run -d --gpus device=GPU-d0f446cf")
+    preview = sr.reconstruct_docker_run(recipe)
+    assert sr.PUBLIC_GPU_DEVICE_PLACEHOLDER in preview
+    with pytest.raises(sr.RecipeError, match="public placeholder"):
+        sr.docker_run_argv(recipe, container="candidate")
+    cmd = shlex.join(sr.docker_run_argv(recipe, gpu_device="0"))
+    assert cmd.startswith("docker run -d --gpus device=0")
     assert "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e openai/gpt-oss-120b" in cmd
 
 
@@ -720,7 +757,7 @@ def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_rollback(request):
     assert recipe["hardware"] == {
         "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
         "arch": "sm_120",
-        "gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+        "gpu_uuid": "GPU-11111111-1111-1111-1111-111111111111",
         "vram_total_gb": 96,
     }
     serve = recipe["serve"]
@@ -734,8 +771,12 @@ def test_shipped_gpt_oss_puzzle_recipe_is_verified_heavy_rollback(request):
     assert "--max-model-len 131072" in serve["flags"]
     assert "--override-generation-config '{\"eos_token_id\":[200002,199999,200012]}'" in serve["flags"]
 
-    cmd = sr.reconstruct_docker_run(recipe)
-    assert cmd.startswith("docker run -d --gpus device=GPU-d0f446cf-1771-414c-e116-a39138798a8c")
+    preview = sr.reconstruct_docker_run(recipe)
+    assert sr.PUBLIC_GPU_DEVICE_PLACEHOLDER in preview
+    with pytest.raises(sr.RecipeError, match="public placeholder"):
+        sr.docker_run_argv(recipe, container="candidate")
+    cmd = shlex.join(sr.docker_run_argv(recipe, gpu_device="0"))
+    assert cmd.startswith("docker run -d --gpus device=0")
     assert serve["image"] in cmd
     assert "nvidia/gpt-oss-puzzle-88B" in cmd
     assert "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2" in cmd
@@ -794,10 +835,12 @@ def test_shipped_qwen35_recipe_is_verified_primary_rollback(request):
         "compose_service": "primary-qwen35-rollback",
     }
 
-    cmd = sr.reconstruct_docker_run(recipe)
-    assert cmd.startswith(
-        "docker run -d --gpus device=GPU-d0f446cf-1771-414c-e116-a39138798a8c"
-    )
+    preview = sr.reconstruct_docker_run(recipe)
+    assert sr.PUBLIC_GPU_DEVICE_PLACEHOLDER in preview
+    with pytest.raises(sr.RecipeError, match="public placeholder"):
+        sr.docker_run_argv(recipe, container="candidate")
+    cmd = shlex.join(sr.docker_run_argv(recipe, gpu_device="0"))
+    assert cmd.startswith("docker run -d --gpus device=0")
     assert serve["image"] in cmd
     assert "nvidia/Qwen3.5-122B-A10B-NVFP4" in cmd
     assert "--max-model-len 262144" in cmd

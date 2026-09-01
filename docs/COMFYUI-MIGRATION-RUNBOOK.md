@@ -6,15 +6,16 @@
 > Agents use only named workflow/job APIs; they never receive this migration
 > procedure, raw ComfyUI routes, model paths, or Docker access.
 
-The current first-release workflow, cold-start, UI, retention, quota, timeout,
-artifact, and qualification policies are defined by
+The workflow, cold-start, UI, retention, quota, timeout, artifact, and
+qualification policies in force when this record was written are defined by
 [ADR-0041](adr/0041-initial-media-workflows-and-policy.md). In particular,
 ComfyUI being healthy or a model appearing in its inventory does not make a
 workflow available. Exact graph/model identities, bounded compatibility,
 functional generation, measured capacity, rollback, and independent
 perceptual quality all remain separate gates.
 
-ComfyUI runs on fakoli-dark as an **on-demand image/video-generation tenant** of
+At execution time, the public reference placed ComfyUI as an **on-demand
+image/video-generation tenant** of
 the `dark-compute-b` RTX PRO 6000 role — its own compose project
 ([`examples/fakoli-dark/docker-compose.comfyui.yml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/docker-compose.comfyui.yml)),
 its own serves manifest
@@ -25,11 +26,11 @@ the [docs/VOICE.md](VOICE.md) isolation rule), and an ADR-0017 `on-demand` reser
 This runbook covers the **one-time migration** of the model library from the retired
 Windows portable install into the named volume the tenant serves from, and the standard
 bring-up/tear-down flow. It was executed on fakoli-dark on **2026-07-13**; the steps
-stay valid for re-runs on a rebuilt host.
+are retained as a point-in-time record, not as a current rebuild procedure.
 
 ## Why a named volume (and never a `C:/` bind mount)
 
-CLAUDE.md gotcha #15: a Windows bind mount reaches a Linux container over 9P at
+A Windows bind mount reaches a Linux container over 9P at
 ~15 MB/s — checkpoint-sized reads turn every cold model load into tens of minutes. A
 named docker volume lives on ext4 inside the docker-desktop WSL VM (D:-backed on this
 box) and loads natively. Model paths therefore live in `comfyui-models`; the one-time
@@ -64,6 +65,12 @@ files, so "a checkpoint is visible" is verified against
 `/models/diffusion_models` (the UI's loader list), not `/models/checkpoints`.
 
 ## One-time migration (executed 2026-07-13)
+
+!!! warning "Archived transcript — do not run as a current procedure"
+
+    The commands in this section document the completed one-time copy. Current
+    lifecycle and migration work must use the managed product surface and a
+    newly reviewed plan.
 
 Run from **PowerShell** (Git Bash mangles container paths — gotcha #11 — unless you
 prefix `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`).
@@ -102,14 +109,15 @@ Always through the product surface, never raw `docker` (ADR-0002 / CLAUDE.md):
 # Admission first: the manifest mirrors the serves.toml dark-compute-b reservations, so
 # `up` is denied with the honest ledger when the card is committed. Free residents
 # via the MAIN manifest (or evict the vision slot, below) until 12288 MiB is free.
-anvil-serving serves up comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
+anvil-serving serves up comfyui --manifest examples/fakoli-dark/serves.comfyui.toml --dry-run
+anvil-serving serves up comfyui --manifest examples/fakoli-dark/serves.comfyui.toml --confirm
 
 # UI: http://127.0.0.1:8188  (loopback-only; set COMFYUI_PUBLISH for tailnet opt-in)
 # API readiness: curl http://127.0.0.1:8188/system_stats
 # Library check:  curl http://127.0.0.1:8188/models/diffusion_models
 
 # Done with the task? Stopping the container IS the reservation release (ADR-0017).
-anvil-serving serves down comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
+anvil-serving serves down comfyui --manifest examples/fakoli-dark/serves.comfyui.toml --confirm
 anvil-serving serves status --manifest examples/fakoli-dark/serves.comfyui.toml  # free again
 ```
 
@@ -119,20 +127,31 @@ through the drained ADR-0018 transition (T005):
 ```bash
 anvil-serving serves up comfyui \
   --manifest examples/fakoli-dark/serves.comfyui.toml \
-  --evict --router-url http://100.64.0.10:8000
+  --evict --router-url http://100.64.0.10:8000 --dry-run
+anvil-serving serves up comfyui \
+  --manifest examples/fakoli-dark/serves.comfyui.toml \
+  --evict --router-url http://100.64.0.10:8000 --confirm
 # ... after the ComfyUI task:
-anvil-serving serves down comfyui --manifest examples/fakoli-dark/serves.comfyui.toml
-anvil-serving serves up vision --manifest examples/fakoli-dark/serves.toml
+anvil-serving serves down comfyui --manifest examples/fakoli-dark/serves.comfyui.toml --confirm
+anvil-serving serves up vision --manifest examples/fakoli-dark/serves.toml --dry-run
+anvil-serving serves up vision --manifest examples/fakoli-dark/serves.toml --confirm
 # then readmit tier vision-local per docs/CLI.md (`router readmit`).
 ```
 
-Capacity reality on the live box (2026-07-13): with the full resident set up (fast
+Capacity recorded on the reference host (2026-07-13): with the full resident set up (fast
 14336 + embeddings 3200 + reranker 3456 + ocr 6144 = 27136 of 27999 MiB) the ledger
 correctly **denies** `up comfyui` (free 863 < 12288) — that denial is the feature.
 Bring residents down via the main manifest (e.g. `serves down ocr embeddings
 reranker` frees 12800 → 13663 free) and restore them afterwards.
 
 ## Non-disruptive verification probe (no VRAM)
+
+!!! warning "Historical diagnostic transcript"
+
+    This direct-Docker probe is preserved to explain the original migration
+    evidence. It is not the current operational path. Use managed status,
+    lifecycle, and qualification commands for new work; if those surfaces
+    cannot provide the required evidence, record the product gap first.
 
 To validate the pinned image and the migrated volume **without** displacing the
 resident tenants (how the 2026-07-13 migration was verified while the ledger was

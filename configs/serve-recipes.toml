@@ -10,7 +10,7 @@ total_params_b = 27
 [recipe.hardware]
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
 arch = "sm_120"
-gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+gpu_uuid = "GPU-11111111-1111-1111-1111-111111111111"
 vram_total_gb = 96
 
 [recipe.serve]
@@ -63,7 +63,7 @@ total_params_b = 27
 [recipe.hardware]
 gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
-gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+gpu_uuid = "GPU-33333333-3333-3333-3333-333333333333"
 vram_total_gb = 32
 vram_note = "Previous auxiliary-local control capped context at 32768 and max-num-seqs at 4 to stay inside the 5090 budget."
 
@@ -121,7 +121,7 @@ active_params_b = 5.1
 [recipe.hardware]
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
 arch = "sm_120"
-gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+gpu_uuid = "GPU-11111111-1111-1111-1111-111111111111"
 vram_total_gb = 96
 vram_weights_gb = 66
 vram_note = "66 GiB weights; full 131072-ctx fp8 KV fits easily (~5 GiB) -> 5.69x max concurrency at 128k"
@@ -136,7 +136,7 @@ managed_serve = "heavy-gptoss-rollback"
 served_model_name = "gpt-oss-120b"
 env = [
   "FLASHINFER_CUDA_ARCH_LIST=12.0f",
-  "CUDA_VISIBLE_DEVICES=GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+  "CUDA_VISIBLE_DEVICES=GPU-11111111-1111-1111-1111-111111111111",
   "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
   "VLLM_USE_V2_MODEL_RUNNER=0",
   "CUDA_DEVICE_ORDER=PCI_BUS_ID",
@@ -234,7 +234,7 @@ active_params_b = 3
 [recipe.hardware]
 gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
-gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+gpu_uuid = "GPU-33333333-3333-3333-3333-333333333333"
 vram_total_gb = 32
 vram_note = "Promoted Fast recipe. The locally measured 32K / max-num-seqs 2 vLLM recipe passed the Fast bakeoff hard gates on the RTX 5090."
 
@@ -308,7 +308,7 @@ total_params_b = 31
 [recipe.hardware]
 gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
-gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+gpu_uuid = "GPU-33333333-3333-3333-3333-333333333333"
 vram_total_gb = 32
 vram_note = "Required bakeoff candidate. Expected KV pressure is high; begin with FP8 KV and reduced context before testing long-context targets. The Gemma 4 vLLM image currently needs integer GPU ids during model inspection; this recipe uses device 0, which fakoli-dark status evidence maps to the RTX 5090."
 
@@ -361,7 +361,7 @@ active_params_b = 3
 [recipe.hardware]
 gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
-gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+gpu_uuid = "GPU-33333333-3333-3333-3333-333333333333"
 vram_total_gb = 32
 vram_note = "Required bakeoff candidate. Community reports around llama.cpp quality are mixed; prefer SGLang/vLLM first, then GGUF only with explicit caveat tracking."
 
@@ -408,7 +408,7 @@ total_params_b = 24
 [recipe.hardware]
 gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
-gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+gpu_uuid = "GPU-33333333-3333-3333-3333-333333333333"
 vram_total_gb = 32
 vram_note = "Required bakeoff candidate. FP8 and GGUF paths should fit more easily than 31B/35B candidates; validate tool quality and voice latency."
 
@@ -464,7 +464,7 @@ active_params_b = 3
 [recipe.hardware]
 gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
-gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+gpu_uuid = "GPU-33333333-3333-3333-3333-333333333333"
 vram_total_gb = 32
 
 [recipe.serve]
@@ -551,7 +551,7 @@ total_params_b = 4
 [recipe.hardware]
 gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
-gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+gpu_uuid = "GPU-33333333-3333-3333-3333-333333333333"
 vram_total_gb = 32
 vram_note = "11.49 GiB measured model allocation; the 0.4396 device-memory fraction preserves the ADR-0017 Fast-card reservation while admitting the 32K window."
 
@@ -665,7 +665,7 @@ volume = "vllm-hfcache"
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
 arch = "sm_120"
 vram_total_gb = 96
-gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+gpu_uuid = "GPU-11111111-1111-1111-1111-111111111111"
 
 [recipe.serve]
 engine = "vllm"
@@ -738,7 +738,7 @@ volume = "vllm-hfcache"
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
 arch = "sm_120"
 vram_total_gb = 96
-gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+gpu_uuid = "GPU-11111111-1111-1111-1111-111111111111"
 
 [recipe.serve]
 engine = "vllm"
@@ -821,7 +821,7 @@ active_params_b = 10
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
 arch = "sm_120"
 vram_total_gb = 96
-gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+gpu_uuid = "GPU-11111111-1111-1111-1111-111111111111"
 
 [recipe.serve]
 engine = "vllm"
@@ -1254,7 +1254,7 @@ runbook = "docs/benchmarks/gpt-oss-puzzle-88b-recipe.md"
 [recipe.hardware]
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
 arch = "sm_120"
-gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+gpu_uuid = "GPU-11111111-1111-1111-1111-111111111111"
 vram_total_gb = 96
 
 [recipe.serve]
@@ -1267,7 +1267,7 @@ port = 30002
 context_tokens = 131072
 env = [
   "CUDA_DEVICE_ORDER=PCI_BUS_ID",
-  "CUDA_VISIBLE_DEVICES=GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+  "CUDA_VISIBLE_DEVICES=GPU-11111111-1111-1111-1111-111111111111",
   "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
   "VLLM_USE_V2_MODEL_RUNNER=0",
   "FLASHINFER_CUDA_ARCH_LIST=12.0f",
@@ -1314,7 +1314,7 @@ volume = "vllm-hfcache"
 [recipe.hardware]
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
 arch = "sm_120"
-gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+gpu_uuid = "GPU-11111111-1111-1111-1111-111111111111"
 vram_total_gb = 96
 
 [recipe.serve]
@@ -1327,7 +1327,7 @@ context_tokens = 262144
 port = 30002
 env = [
   "CUDA_DEVICE_ORDER=PCI_BUS_ID",
-  "CUDA_VISIBLE_DEVICES=GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+  "CUDA_VISIBLE_DEVICES=GPU-11111111-1111-1111-1111-111111111111",
   "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
   "VLLM_USE_V2_MODEL_RUNNER=0",
   "FLASHINFER_CUDA_ARCH_LIST=12.0f",
@@ -1387,7 +1387,7 @@ total_params_b = 27
 [recipe.hardware]
 gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
-gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+gpu_uuid = "GPU-33333333-3333-3333-3333-333333333333"
 vram_total_gb = 32
 
 [recipe.serve]
@@ -1447,7 +1447,7 @@ volume = "vllm-hfcache"
 [recipe.hardware]
 gpu = "NVIDIA GeForce RTX 5090"
 arch = "sm_120"
-gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+gpu_uuid = "GPU-33333333-3333-3333-3333-333333333333"
 vram_total_gb = 32
 
 [recipe.serve]
@@ -1511,7 +1511,7 @@ volume = "vllm-hfcache"
 [recipe.hardware]
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
 arch = "sm_120"
-gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+gpu_uuid = "GPU-11111111-1111-1111-1111-111111111111"
 vram_total_gb = 96
 
 [recipe.serve]
@@ -1524,7 +1524,7 @@ context_tokens = 32768
 port = 39031
 env = [
   "CUDA_DEVICE_ORDER=PCI_BUS_ID",
-  "CUDA_VISIBLE_DEVICES=GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+  "CUDA_VISIBLE_DEVICES=GPU-11111111-1111-1111-1111-111111111111",
   "VLLM_USE_V2_MODEL_RUNNER=0",
   "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
   "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
@@ -1562,7 +1562,7 @@ volume = "vllm-hfcache"
 [recipe.hardware]
 gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
 arch = "sm_120"
-gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+gpu_uuid = "GPU-11111111-1111-1111-1111-111111111111"
 vram_total_gb = 96
 
 [recipe.serve]
@@ -1575,7 +1575,7 @@ context_tokens = 32768
 port = 39031
 env = [
   "CUDA_DEVICE_ORDER=PCI_BUS_ID",
-  "CUDA_VISIBLE_DEVICES=GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+  "CUDA_VISIBLE_DEVICES=GPU-11111111-1111-1111-1111-111111111111",
   "VLLM_USE_V2_MODEL_RUNNER=0",
   "VLLM_USE_FLASHINFER_SAMPLER=0",
   "VLLM_LOGGING_LEVEL=INFO",

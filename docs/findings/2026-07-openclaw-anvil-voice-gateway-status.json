@@ -58,7 +58,7 @@
       "controlUi": {
         "allowInsecureAuth": true,
         "allowedOrigins": [
-          "http://fakoli-mini:18789",
+          "http://mini-host.example:18789",
           "https://node-b.example.ts.net",
           "http://100.64.0.10:18789"
         ]
@@ -71,7 +71,7 @@
       "controlUi": {
         "allowInsecureAuth": true,
         "allowedOrigins": [
-          "http://fakoli-mini:18789",
+          "http://mini-host.example:18789",
           "https://node-b.example.ts.net",
           "http://100.64.0.10:18789"
         ]
@@ -96,7 +96,7 @@
         "command": "node",
         "address": "127.0.0.1:18789",
         "commandLine": "/opt/homebrew/opt/node/bin/node /opt/homebrew/lib/node_modules/openclaw/dist/index.js gateway --port 18789",
-        "user": "sdoumbouya",
+        "user": "<operator-user>",
         "ppid": 1
       },
       {
@@ -104,7 +104,7 @@
         "command": "node",
         "address": "[::1]:18789",
         "commandLine": "/opt/homebrew/opt/node/bin/node /opt/homebrew/lib/node_modules/openclaw/dist/index.js gateway --port 18789",
-        "user": "sdoumbouya",
+        "user": "<operator-user>",
         "ppid": 1
       }
     ],

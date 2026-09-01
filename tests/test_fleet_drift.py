@@ -207,17 +207,17 @@ def test_json_output_contents(tmp_path, capsys):
 
 def test_short_host_id_matches_prefixed_hostname():
     # Observed live: repo keys the host as "dark", the machine reports
-    # "fakoli-dark"; prefix matching classified local as remote and ssh'd to
+    # "node-dark"; prefix matching classified local as remote and ssh'd to
     # itself. Containment keeps both spellings local.
     from anvil_serving.fleet import _local_hostname_matches
-    assert _local_hostname_matches("fakoli-dark", "dark")
-    assert _local_hostname_matches("dark", "fakoli-dark")
-    assert not _local_hostname_matches("fakoli-dark", "mini")
+    assert _local_hostname_matches("node-dark", "dark")
+    assert _local_hostname_matches("dark", "node-dark")
+    assert not _local_hostname_matches("node-dark", "mini")
     # Bare containment over-corrects: "w" is a substring of "elsewhere".
     assert not _local_hostname_matches("elsewhere", "w")
     # macOS reports a .local suffix; compare on the first DNS label.
-    assert _local_hostname_matches("fakoli-mini.local", "fakoli-mini")
-    assert _local_hostname_matches("ai-mbp25.local", "ai-mbp25")
+    assert _local_hostname_matches("node-mini.example", "node-mini")
+    assert _local_hostname_matches("node-mac.example", "node-mac")
 
 
 def test_windows_host_falls_back_to_python_launcher(tmp_path):

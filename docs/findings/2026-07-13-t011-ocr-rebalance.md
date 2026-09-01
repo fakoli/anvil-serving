@@ -1,5 +1,8 @@
 # T011 OCR bring-up + dark-fast resident-set rebalance (gpu-reservations:T011)
 
+> **Publication redaction:** The operator-specific network hostname was replaced
+> with a public-safe placeholder. The observed workflow and result are unchanged.
+
 **Point-in-time record, 2026-07-13.** The operator resolved the T015 capacity conflict
 documented by the first T011 pass (fast 18432 + embeddings 3200 + reranker 3456 left
 351 MiB free — `serves up ocr` correctly denied): rebalance the dark-fast ledger so the
@@ -74,7 +77,7 @@ STT/TTS sidecars) was ~5.7 GiB — above the 4608 reserve — so the ledger free
 
 * **OpenClaw gateway apply on Fakoli Mini**: `harness sync openclaw --config … --dry-run`
   renders `anvil/ocr` into the provider allowlist (model_count 7). The remote apply
-  (`--gateway-host fakoli-mini --confirm`) was denied by the operator's execution policy in
+  (`--gateway-host mini-host.example --confirm`) was denied by the operator's execution policy in
   this session — run it from an authorized session to complete the ADR/CLAUDE.md lockstep.
 * fast-local profile rows remain **uncalibrated** on the new fp8 fingerprint
   (gpu-reservations:T008 / `eval calibrate` is the measured write-back path).

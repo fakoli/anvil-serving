@@ -10,6 +10,7 @@ WRAPPER = ROOT / ".agents" / "skills" / "anvil-serving-benchmark-docs" / "SKILL.
 OPENAI_YAML = SKILL.parent / "agents" / "openai.yaml"
 FINDING_TEMPLATE = SKILL.parent / "templates" / "finding.md"
 PUBLICATION_TEMPLATE = SKILL.parent / "templates" / "publication-summary.md"
+DOSSIER_TEMPLATE = SKILL.parent / "templates" / "dossier.md"
 RUNS = ROOT / "docs" / "benchmarks" / "runs.md"
 AUDIT = ROOT / "docs" / "benchmarks" / "rtx-pro-6000-audit.md"
 PORTAL = ROOT / "docs" / "benchmarks" / "index.md"
@@ -114,12 +115,14 @@ def test_publication_ready_contract_has_guide_and_copyable_templates():
     guide = FINDING_FORMAT.read_text(encoding="utf-8")
     finding_template = FINDING_TEMPLATE.read_text(encoding="utf-8")
     publication_template = PUBLICATION_TEMPLATE.read_text(encoding="utf-8")
+    dossier_template = DOSSIER_TEMPLATE.read_text(encoding="utf-8")
 
     for text in (skill, reference, guide, finding_template):
         assert "benchmark-result-card/v1" in text
     for text in (skill, reference, guide, publication_template):
         assert "benchmark-publication-summary/v1" in text
     for template_path in (
+        "templates/dossier.md",
         "templates/finding.md",
         "templates/publication-summary.md",
     ):
@@ -147,6 +150,35 @@ def test_publication_ready_contract_has_guide_and_copyable_templates():
     assert "120-character title" in guide
     assert "effective prefill" in guide.casefold()
 
+    assert "benchmark-dossier/v2" in dossier_template
+    assert '!!! info "Decision snapshot"' in dossier_template
+    for label in (
+        "**Product role:**",
+        "**Selected or best-qualified configuration:**",
+        "**Measured hardware:**",
+        "**Evidence:**",
+        "**Decision:**",
+        "**Important limitation:**",
+        "**Review dates:**",
+        "**Status:**",
+        "**Measured:**",
+        "**Limits:**",
+    ):
+        assert label in dossier_template
+    assert "Not recorded in retained evidence" in dossier_template
+    assert "preserve the detailed reasoning" in dossier_template.casefold()
+    assert "../configurations.md#CONFIGURATION-ANCHOR" in dossier_template
+    assert "do not leave this instruction in a published dossier" in dossier_template
+    for invalid_link in (
+        "(RECIPE-OR-CONFIGURATION-LINK)",
+        "(FINDING-LINK)",
+        "(RELATIVE-FINDING-LINK)",
+    ):
+        assert invalid_link not in dossier_template
+    for text in (skill, reference, dossier_template):
+        assert "sanitized public reconstruction" in text
+        assert "private" in text
+
 
 def test_publication_surfaces_use_neutral_motivation_language():
     forbidden_motivation = "so" + "cial"
@@ -154,6 +186,7 @@ def test_publication_surfaces_use_neutral_motivation_language():
         SKILL,
         REFERENCE,
         OPENAI_YAML,
+        DOSSIER_TEMPLATE,
         FINDING_TEMPLATE,
         PUBLICATION_TEMPLATE,
         FINDING_FORMAT,
@@ -456,12 +489,38 @@ def test_every_dossier_uses_the_common_contract():
         "## Failures and gotchas",
         "## Dated run history",
     )
-    dossier_files = sorted(path for path in DOSSIERS.glob("*.md") if path.name != "index.md")
+    dossier_files = sorted(
+        path for path in DOSSIERS.glob("*.md") if path.name != "index.md"
+    )
     assert len(dossier_files) >= 20
+    snapshot_labels = (
+        "**Product role:**",
+        "**Selected or best-qualified configuration:**",
+        "**Measured hardware:**",
+        "**Evidence:**",
+        "**Decision:**",
+        "**Important limitation:**",
+        "**Review dates:**",
+    )
     for path in dossier_files:
         text = path.read_text(encoding="utf-8")
-        missing = [heading for heading in headings if heading not in text]
-        assert not missing, f"{path.relative_to(ROOT)} missing {missing}"
+        actual_headings = tuple(
+            line for line in text.splitlines() if line.startswith("## ")
+        )
+        assert actual_headings == headings, (
+            f"{path.relative_to(ROOT)} has non-canonical dossier headings: "
+            f"{actual_headings}"
+        )
+        status = _section(text, "## Current status and review date")
+        assert text.count("<!-- benchmark-dossier/v2 -->") == 1, path
+        assert '!!! info "Decision snapshot"' in status, path
+        assert "### Review narrative" in status, path
+        missing_snapshot = [label for label in snapshot_labels if label not in status]
+        assert not missing_snapshot, (
+            f"{path.relative_to(ROOT)} missing snapshot fields {missing_snapshot}"
+        )
+        assert "CONFIGURATION-ANCHOR" not in text, path
+        assert "do not leave this instruction in a published dossier" not in text, path
 
 
 def test_current_pro_decision_chain_is_consistent_in_maintained_views():
