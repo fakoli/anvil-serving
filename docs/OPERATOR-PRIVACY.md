@@ -24,8 +24,8 @@ runbooks, and working evidence. A small layout is sufficient:
 ```text
 anvil-serving-ops-private/
 ├── hosts/
-│   ├── dark/operator-home/  # Dark ANVIL_SERVING_HOME
-│   └── mini/operator-home/  # Mini ANVIL_SERVING_HOME
+│   ├── node-a/operator-home/  # one private ANVIL_SERVING_HOME
+│   └── node-b/operator-home/  # another private ANVIL_SERVING_HOME
 ├── evidence/            # private raw/working evidence
 ├── runbooks/            # operator-only procedures and decisions
 ├── migration/           # inventories and rollback manifests
@@ -46,14 +46,14 @@ presence or historical qualification text is not a promotion claim.
 On PowerShell, select one private host root for the current process:
 
 ```powershell
-$env:ANVIL_SERVING_HOME = 'C:\path\to\anvil-serving-ops-private\hosts\dark\operator-home'
+$env:ANVIL_SERVING_HOME = 'C:\path\to\anvil-serving-ops-private\hosts\node-a\operator-home'
 anvil-serving doctor
 ```
 
 On Bash:
 
 ```bash
-export ANVIL_SERVING_HOME=/path/to/anvil-serving-ops-private/hosts/dark/operator-home
+export ANVIL_SERVING_HOME=/path/to/anvil-serving-ops-private/hosts/node-a/operator-home
 anvil-serving doctor
 ```
 
