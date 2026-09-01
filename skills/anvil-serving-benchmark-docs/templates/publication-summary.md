@@ -17,6 +17,7 @@ artifacts are authoritative.
 - **Important caveat:** FAILURE, MISS, OR UNTESTED BOUNDARY
 - **Decision:** DECISION LABEL AND PROMOTION BOUNDARY
 - **Canonical evidence:** CANONICAL-FINDING-URL
+- **Artifact set:** RELATIVE-ARTIFACT-MANIFEST and RELATIVE-EVIDENCE-README
 
 ## X / short post
 

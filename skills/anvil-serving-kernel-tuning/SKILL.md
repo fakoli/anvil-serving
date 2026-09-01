@@ -92,8 +92,13 @@ making a skill-local operational script.
    managed recipe. Promotion remains separately human-gated.
 5. Publish the warning, tuning cost, default/tuned results, applicability
    boundary, recommendation, and raw artifact links through
-   `skills/anvil-serving-benchmark-docs/SKILL.md`. Its publication-ready result card
-   and publication summary must name the matched baseline, measurement path, repetitions,
-   delta calculation, and retained regression boundary. A format-only refresh
-   uses the paired retained artifacts and does not rerun the tuner or model.
+   `skills/anvil-serving-benchmark-docs/SKILL.md`. Apply its
+   `references/artifact-set-contract.md` and
+   `anvil-serving.benchmark-artifact-set/v1` template around the
+   `kernel-tune-manifest/v1`, default/tuned native evidence, startup proof,
+   friction, and restoration record. Its publication-ready result card and
+   publication summary must name the matched baseline, measurement path,
+   repetitions, delta calculation, and retained regression boundary. A
+   format-only refresh uses the paired retained artifacts and does not rerun
+   the tuner or model.
 6. Restore and verify the exact starting serve/router state.

@@ -39,15 +39,19 @@ hard gate passes and it clears the campaign’s explicit memory/throughput delta
 
 Publish:
 
-- before/after cache and serve state;
+- the common files and all ten roles from
+  `../../anvil-serving-benchmark-docs/references/artifact-set-contract.md`;
+- before/after cache and serve state as configuration and restoration evidence;
 - source registry with observed dates and evidence classes;
-- corpus and checksums;
-- raw text, image, video, capacity, and router artifacts;
-- failures and friction log;
-- final precision/modality decision table and restoration evidence.
+- corpus and checksums as the workload manifest;
+- native raw text, image, video, capacity, and router artifacts without schema
+  conversion;
+- failures and the live friction log; and
+- final precision/modality decision table in the decision summary.
 
 Complete publication through `skills/anvil-serving-benchmark-docs/SKILL.md`,
-including its publication-ready result card, publication summary, and artifact-consistency
+including its `anvil-serving.benchmark-artifact-set/v1` manifest,
+publication-ready result card, publication summary, and artifact-consistency
 checks. A format-only migration uses complete retained artifacts and does not
 authorize a model load or benchmark rerun.
 

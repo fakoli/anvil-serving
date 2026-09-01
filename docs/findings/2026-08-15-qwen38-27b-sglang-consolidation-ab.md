@@ -71,7 +71,7 @@ Portable assets:
 - [official BF16 multimodal recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-27b-official-bf16-sglang-tp1-393k-mtp3-mm-cpu-recipe.toml)
 - [official FP8 multimodal recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-27b-official-fp8-sglang-tp1-393k-mtp3-mm-cpu-recipe.toml)
 - [Inferact NVFP4 multimodal recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-27b-inferact-nvfp4-sglang-tp1-393k-mtp3-mm-cpu-recipe.toml)
-- [matched public image corpus](https://github.com/fakoli/anvil-serving/blob/main/benchmarks/corpora/agents-a1-v1/qwen38-image-ab.json)
+- [matched public image corpus](https://github.com/fakoli/anvil-serving/blob/main/tests/fixtures/eval-data/agents-a1-v1/qwen38-image-ab.json)
 
 ## Matched results
 

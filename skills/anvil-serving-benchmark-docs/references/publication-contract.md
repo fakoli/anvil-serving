@@ -1,5 +1,20 @@
 # Benchmark publication contract
 
+## Campaign artifact set v1
+
+Before publication, apply `artifact-set-contract.md`. Every new campaign starts
+from `templates/artifact-set/` and finalizes the common evidence index,
+`anvil-serving.benchmark-artifact-set/v1` manifest, source registry, decision
+summary, friction log, and restoration record. The manifest maps ten semantic
+artifact roles to the retained native files and their hashes.
+
+Do not flatten native `anvil-serving.benchmark-evidence/v1`,
+`anvil-serving.benchmark/v1`, `multimodal-benchmark-evidence/v1`,
+`voice-benchmark-evidence/v1`, `stt-benchmark-evidence/v1`,
+`anvil-serving.media-qualification/v1`, or `kernel-tune-manifest/v1`
+artifacts. A final role is `retained`, `not-applicable`, or `missing`; it is
+never `pending`. Missing evidence remains visible and limits the claim.
+
 ## Update matrix
 
 | Trigger | Finding + index | Run catalog | Dossier | Hardware page | Archive | Methodology |
@@ -75,7 +90,7 @@ derivative views in addition to its complete narrative and raw evidence:
 The result card contains one bounded local outcome, the exact setup, three to
 six headline measurements with their conditions, why the result matters, the
 most important caveat or failure, and links to the evidence manifest and
-publication summary. The exact setup includes the managed recipe or reproduction path and the
+human evidence index plus publication summary. The exact setup includes the managed recipe or reproduction path and the
 measurement layer: direct or routed online endpoint, offline engine, or kernel
 microbenchmark, plus warm/cold state when relevant. The detailed narrative
 follows it; the card does not replace any required identity, method, failure,
@@ -123,7 +138,8 @@ or running a live benchmark without separate authorization.
 State date, repository revision, host/topology, measured hardware, protected
 hardware, exact model/image/engine identity, recipe, workload, gate outcomes,
 metrics, failure details, decision, promotion boundary, raw artifact links, and
-current-doc impact. Link raw JSON rather than copying it.
+current-doc impact. Link the common `artifact-manifest.json`, evidence index,
+and raw JSON rather than copying raw results into prose.
 
 ## Run-catalog row template
 

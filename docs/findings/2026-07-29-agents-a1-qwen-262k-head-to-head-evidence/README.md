@@ -4,10 +4,11 @@ This directory retains the exact identities, startup records, request
 artifacts, failures, comparison, and restoration evidence for the 2026-07-29
 RTX PRO 6000 head-to-head.
 
-The comparison uses the unchanged
-`benchmarks/corpora/agents-a1-v1/corpus.json` manifest. Media bytes are never
+The comparison used the unchanged manifest now stored at
+`tests/fixtures/eval-data/agents-a1-v1/corpus.json`. Media bytes are never
 embedded in request logs; paths, MIME types, byte counts, and hashes are
-retained by `multimodal-benchmark-evidence/v1`.
+retained by `multimodal-benchmark-evidence/v1`. The raw artifacts preserve the
+former repository path that was recorded when the run occurred.
 
 No artifact in this directory authorizes a production route or model
 promotion.

@@ -10,7 +10,7 @@ with its own attribution and license record.
 the campaign's pinned vLLM image because that image already contains FFmpeg:
 
 ```powershell
-python benchmarks/corpora/agents-a1-v1/generate.py
+python tests/fixtures/eval-data/agents-a1-v1/generate.py
 ```
 
 The generator removes metadata, requests bit-exact output, fixes the video
@@ -21,3 +21,8 @@ produce the same hashes before the corpus is used as qualification evidence.
 The fixtures cover scene understanding, OCR, chart/table extraction, UI state,
 spatial counting, multi-image comparison, temporal order, state change, event
 localization, video OCR, long continuity, and mixed image/video requests.
+
+This corpus lives with the repository's other versioned evaluation fixtures.
+Historical benchmark artifacts may retain the former
+`benchmarks/corpora/agents-a1-v1` path as point-in-time execution evidence;
+do not rewrite those recorded artifact fields.

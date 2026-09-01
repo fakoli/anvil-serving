@@ -6,11 +6,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills" / "anvil-serving-benchmark-docs" / "SKILL.md"
 REFERENCE = SKILL.parent / "references" / "publication-contract.md"
+ARTIFACT_SET_REFERENCE = SKILL.parent / "references" / "artifact-set-contract.md"
 WRAPPER = ROOT / ".agents" / "skills" / "anvil-serving-benchmark-docs" / "SKILL.md"
 OPENAI_YAML = SKILL.parent / "agents" / "openai.yaml"
 FINDING_TEMPLATE = SKILL.parent / "templates" / "finding.md"
 PUBLICATION_TEMPLATE = SKILL.parent / "templates" / "publication-summary.md"
 DOSSIER_TEMPLATE = SKILL.parent / "templates" / "dossier.md"
+ARTIFACT_SET_TEMPLATES = SKILL.parent / "templates" / "artifact-set"
 RUNS = ROOT / "docs" / "benchmarks" / "runs.md"
 AUDIT = ROOT / "docs" / "benchmarks" / "rtx-pro-6000-audit.md"
 PORTAL = ROOT / "docs" / "benchmarks" / "index.md"
@@ -149,6 +151,8 @@ def test_publication_ready_contract_has_guide_and_copyable_templates():
     assert "280" in guide
     assert "120-character title" in guide
     assert "effective prefill" in guide.casefold()
+    assert "RELATIVE-ARTIFACT-MANIFEST" in finding_template
+    assert "**Artifact set:**" in publication_template
 
     assert "benchmark-dossier/v2" in dossier_template
     assert '!!! info "Decision snapshot"' in dossier_template
@@ -178,6 +182,107 @@ def test_publication_ready_contract_has_guide_and_copyable_templates():
     for text in (skill, reference, dossier_template):
         assert "sanitized public reconstruction" in text
         assert "private" in text
+
+
+def test_campaign_artifact_set_contract_has_valid_common_templates():
+    skill = SKILL.read_text(encoding="utf-8")
+    reference = ARTIFACT_SET_REFERENCE.read_text(encoding="utf-8")
+    publication = REFERENCE.read_text(encoding="utf-8")
+    guide = FINDING_FORMAT.read_text(encoding="utf-8")
+
+    for text in (skill, reference, publication, guide):
+        assert "anvil-serving.benchmark-artifact-set/v1" in text
+    assert "templates/artifact-set/" in skill
+    assert "templates/artifact-set/" in guide
+
+    expected_files = {
+        "README.md",
+        "artifact-manifest.json",
+        "source-registry.json",
+        "summary.json",
+        "friction-log.md",
+        "restoration.json",
+    }
+    assert {path.name for path in ARTIFACT_SET_TEMPLATES.iterdir()} == expected_files
+
+    manifest = json.loads(
+        (ARTIFACT_SET_TEMPLATES / "artifact-manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert manifest["schema"] == "anvil-serving.benchmark-artifact-set/v1"
+    assert manifest["campaign"]["promotion_authorized"] is False
+    roles = manifest["artifact_roles"]
+    assert [item["role"] for item in roles] == [
+        "evidence-index",
+        "source-registry",
+        "workload-manifest",
+        "run-plan",
+        "configuration-and-identity",
+        "raw-run-evidence",
+        "failures-and-friction",
+        "restoration",
+        "decision-summary",
+        "publication-summary",
+    ]
+    assert all(item["status"] == "pending" for item in roles)
+    assert all(item["files"] == [] for item in roles)
+    assert all(set(item) == {"role", "status", "files", "reason"} for item in roles)
+
+    source_registry = json.loads(
+        (ARTIFACT_SET_TEMPLATES / "source-registry.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    summary = json.loads(
+        (ARTIFACT_SET_TEMPLATES / "summary.json").read_text(encoding="utf-8")
+    )
+    restoration = json.loads(
+        (ARTIFACT_SET_TEMPLATES / "restoration.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert source_registry["schema"] == "anvil-serving.benchmark-source-registry/v1"
+    assert source_registry["sources"] == []
+    assert summary["schema"] == "anvil-serving.benchmark-decision-summary/v1"
+    assert summary["decision"]["promotion_authorized"] is False
+    assert restoration["schema"] == "anvil-serving.benchmark-restoration/v1"
+    assert restoration["verified"] is False
+
+    evidence_index = (ARTIFACT_SET_TEMPLATES / "README.md").read_text(
+        encoding="utf-8"
+    )
+    friction_log = (ARTIFACT_SET_TEMPLATES / "friction-log.md").read_text(
+        encoding="utf-8"
+    )
+    for heading in (
+        "## Campaign boundary",
+        "## Common campaign artifacts",
+        "## Workload and plan",
+        "## Raw run evidence",
+        "## Decision and publication",
+    ):
+        assert heading in evidence_index
+    for category in (
+        "manual-workaround",
+        "ambiguous-output",
+        "missing-identity",
+        "unsafe-default",
+        "repeated-command",
+        "failure",
+    ):
+        assert category in friction_log
+
+    for native_schema in (
+        "anvil-serving.benchmark-evidence/v1",
+        "anvil-serving.benchmark/v1",
+        "multimodal-benchmark-evidence/v1",
+        "voice-benchmark-evidence/v1",
+        "stt-benchmark-evidence/v1",
+        "anvil-serving.media-qualification/v1",
+        "kernel-tune-manifest/v1",
+    ):
+        assert native_schema in reference
 
 
 def test_publication_surfaces_use_neutral_motivation_language():
@@ -585,6 +690,8 @@ def test_benchmark_producing_skills_delegate_publication_ready_format():
         assert "publication-ready" in text, path
         assert "format-only" in text, path
         assert "retained" in text, path
+        assert "references/artifact-set-contract.md" in text, path
+        assert "anvil-serving.benchmark-artifact-set/v1" in text, path
     stt = skill_paths[1].read_text(encoding="utf-8")
     assert "protected/co-resident topology" in stt
     assert "non-promotion decision" in stt
