@@ -1,9 +1,11 @@
 # Configuration reference
 
-The router configuration is TOML. It defines local serving endpoints, an
-explicit closed capability vocabulary, and which authority supplies mutable
-served-model metadata for each tier. Configuration stores environment-variable
-names for credentials, never credential literals.
+By default, Anvil Serving reads live operator-owned TOML files from the
+configuration home. `router.toml` defines Capability Gateway routes and policy;
+`serves*.toml`, `voice.toml`, `host.toml`, `events.toml`, and
+`operator-topology.toml` remain owned by the product family that operates each
+domain. Configuration stores environment-variable names for credentials, never
+credential literals.
 
 The capability route and metadata authority are separate decisions. The
 operator always owns `alias -> tier -> endpoint`; `metadata_source` decides
@@ -25,17 +27,18 @@ packaged catalogs, such as the shipped recipe registry, may remain read-only
 discovery fallbacks; write operations require an explicit or operator-owned
 destination.
 
-For a production/public checkout, point `ANVIL_SERVING_HOME` at an
+For a real deployment, point `ANVIL_SERVING_HOME` at an
 access-controlled companion repository's host-specific `operator-home/`
 directory. Track real topology, deployment overlays, promoted assignments,
 and operator recipes there. Keep
 credentials outside Git in environment variables or file-backed secret stores.
 See [Public product and private operator state](OPERATOR-PRIVACY.md).
 
-The operator files include `router.toml`, `serves.toml`,
-`serve-recipes.toml`, `voice.toml`, `host.toml`, `operator-topology.toml`,
-Compose files, and `.env.example`. Each existing file is backed up beside the
-target as a numbered `.anvil.bak.N` file before `init` replaces it.
+The operator files include `router.toml`, `serves*.toml`,
+`serve-recipes.toml`, `voice.toml`, `host.toml`, `events.toml`,
+`operator-topology.toml`, Compose files, and `.env.example`. Each existing file
+is backed up beside the target as a numbered `.anvil.bak.N` file before `init`
+replaces it.
 Content-identical files are left untouched, so repeated runs do not create
 redundant backups, including for `.env.example`.
 
@@ -87,8 +90,7 @@ their stable roles. Workload capability is independent of A/B placement. It asks
 `tailscale ip -4` for this node's tailnet address. Detected values replace the
 corresponding template placeholders; unavailable values remain visibly
 unconfigured. `--compute-a-gpu-uuid`, `--compute-b-gpu-uuid`, and `--tailnet-ip`
-override individual values. Hidden Primary/Auxiliary flags remain temporary
-input compatibility aliases only. `--no-detect-host` leaves all host placeholders in
+override individual values. `--no-detect-host` leaves all host placeholders in
 place. A one-GPU machine does not silently assign both concurrent roles to the
 same card.
 
@@ -200,7 +202,7 @@ declaration remains a no-op. Cleanup only considers exact
 live mappings, a changed second scan, or an unavailable postcondition prevent a
 safe reclaim.
 
-## Minimal direct gateway
+## Minimal Capability Gateway
 
 ```toml
 [router]
@@ -531,5 +533,5 @@ These files are public templates, not live deployment defaults. They contain
 generic identities and must not be edited to match an operator workstation.
 
 The removed cloud-routing and mode-manifest examples are intentionally not
-supported by the direct gateway. Send cloud traffic through the owning harness,
-not through this local capability boundary.
+supported by the Capability Gateway. Send cloud traffic through the owning
+harness, not through this local capability boundary.

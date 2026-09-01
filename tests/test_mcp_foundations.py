@@ -21,7 +21,7 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "bfa9c873bd4baf78deed08c2a4287dc844e4062d0d433f380a62011a9ff83afe"
+    "6267545b55deb9221d64519e3c563a846299b20d931dde77c560b2e6454d0a1c"
 )
 HANDLER_MAP_SHA256 = (
     "4ff853831677824100c38e022f105f1edd816835f78683365b39bfeb3acf8ae3"

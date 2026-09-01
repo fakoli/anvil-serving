@@ -1,50 +1,115 @@
 # Qwen3.8 27B
 
+<!-- benchmark-dossier/v2 -->
+
 ## Current status and review date
 
-Former human-approved single-service profile: official FP8 on SGLang served
-Primary, multimodal, OCR, and video at TP=1/393,216 with EAGLE MTP `3/1/4`
-and CPU feature transport; the second GPU was empty. On 2026-08-16 it was
-superseded as text Primary by DeepSeek Infernal Invocation r15. Review date:
-2026-08-21. The review includes MTP=4/5, official-FP8 versus Inferact NVFP4, the
-matched BF16 consolidation A/B, and the guarded live promotion.
-The 2026-08-16 review adds direct and routed video qualification plus
-fail-closed router admission for one video.
-The 2026-08-17 review adds a separate RTX 5090 qualification of the RadixArk
-NVFP4 checkpoint, first at 65,536 and then at 131,072 tokens, including native
-video, mixed media, and eight-image/two-video boundary coverage. It is a
-measured direct challenger only; no route or promotion changed.
-The 2026-08-20 review adds a matched stock-versus-Sharp-v22.1 chat-template A/B
-on that 128K RTX 5090 profile. Sharp passed the functional gate but did not
-improve the bounded thinking-enabled diagnostic, so the stock template remains
-selected and no route or promotion changed.
-The 2026-08-21 review adds the exact official RTX 5090 NVFP4 DFlash2
-high-throughput/float32 arm. It booted at memory fraction 0.945 but exposed
-only 24,347 KV tokens and failed the retained 128K capacity gate. A bounded
-BF16/single-slot tuning ladder raised the safe ceiling to 70,262 KV tokens and
-passed a 49,549-token retrieval plus tools 20/20, but still could not satisfy
-the route contract. Both arms are rejected as replacements and the stock 128K
-recipe remains selected.
-The same review adds a dated external-source registry and a matched local
-MTP3/ReplaySSM A/B. ReplaySSM made recurrent-state replay negligible and decode
-rose 80.5% at 4K and 67.9% at 64K, but SGLang's separately loaded 5.73 GB MTP
-draft left only 70,231 KV tokens. Median 64K end-to-end latency was also 1.9%
-slower. The candidate is rejected as a 128K replacement; EXL3, NInfer, vLLM
-TurboQuant, and alternative NVFP4 recipes remain research leads only.
-The later 2026-08-21 managed llama.cpp campaign qualified Unsloth GGUF Q4_0
-with its matching Q4_0 MTP head at 262,144 tokens on the RTX 5090. It passed
-exact retrieval at 253,822 actual prompt tokens with an 8,192-token output
-reserve, long tools after 110K, agentic 16/18, neutral 101-turn endurance 3/3,
-and images 18/18. MTP raised matched short decode from 69.1 to 104.1 tok/s.
-It is the preferred RTX 5090 `FAST-TIER` challenger, but the independent SWE
+!!! info "Decision snapshot"
+
+    - **Product role:** former human-approved 96 GB single-service profile;
+      retained as reproducible evidence, not the current Primary or immediate
+      text rollback.
+    - **Selected or best-qualified configuration:** the former 96 GB service
+      used official FP8 on SGLang, TP=1, 393,216 tokens, concurrency one,
+      EAGLE MTP `3/1/4`, and CPU media transport. The preferred 32 GB
+      challenger is Unsloth GGUF Q4_0 with its matching MTP head at 262,144
+      tokens.
+    - **Measured hardware:** one- and two-card RTX PRO 6000 lanes and a
+      separate single-RTX-5090 lane; results are not interchangeable across
+      those topologies.
+    - **Evidence:** functional, capacity, bounded quality, performance,
+      multimodal, routed-client, and rejection evidence through 2026-08-22;
+      the GGUF lane passed retrieval at 253,822 actual prompt tokens with an
+      8,192-token reserve and MTP raised matched decode from 69.1 to 104.1
+      tok/s.
+    - **Decision:** retain the former service and reproducible recipes;
+      RadixArk NVFP4 and GGUF Q4_0 remain `no-promotion` challengers.
+    - **Important limitation:** the GGUF independent SWE gate and truthful
+      routed 250K contract are incomplete, GGUF has no native-video contract,
+      and the measured hardware/engine lanes are not directly comparable.
+    - **Review dates:** Retained evidence cutoff: 2026-08-22. Dossier-format
+      review: 2026-08-31.
+
+[Open the exact retained container configurations](../configurations.md#qwen38-27b-official-fp8)
+or jump to the [decision](#decision-and-promotion-state),
+[known limitations](#failures-and-gotchas), or
+[dated evidence](#dated-run-history).
+
+### Review narrative
+
+The dated notes below preserve the reasoning behind each decision. The later
+measurement sections retain the full metrics, controls, and caveats.
+
+#### 2026-08-14–15 — Official checkpoints, topology, and promotion
+
+The initial review covered official BF16 and FP8 qualification, the 1M-context
+continuation, the matched TP/MTP topology matrix, MTP=4/5, official FP8 versus
+Inferact NVFP4, the matched BF16 consolidation A/B, and the guarded live
+promotion. Official FP8 on SGLang with EAGLE MTP `3/1/4` became the
+human-approved single service for Primary, image, and OCR. The deeper MTP
+settings did not improve end-to-end performance.
+
+#### 2026-08-16 — Video and router admission
+
+The same official-FP8 service completed direct and routed video qualification.
+The router added fail-closed admission for one video without changing the
+model recipe. The service was superseded as text Primary by DeepSeek Infernal
+Invocation r15, but the Qwen configuration and evidence remain retained.
+
+#### 2026-08-17 — RadixArk NVFP4 on RTX 5090
+
+A separate 32 GB lane qualified the RadixArk NVFP4 checkpoint first at 65,536
+and then at 131,072 tokens. It covered native video, mixed media, and
+eight-image/two-video boundaries. This is a measured direct challenger only;
+no route or promotion changed.
+
+#### 2026-08-20 — Stock versus Sharp v22.1
+
+The matched chat-template A/B held the 128K RTX 5090 profile constant. Sharp
+passed the functional gate but did not improve the bounded thinking-enabled
+diagnostic. The stock template remains selected, with no route or promotion
+change.
+
+#### 2026-08-21 — DFlash2 capacity rejection
+
+The exact official RTX 5090 NVFP4 DFlash2 high-throughput/float32 arm booted at
+memory fraction 0.945 but exposed only 24,347 KV tokens and failed the retained
+128K capacity gate. A bounded BF16/single-slot tuning ladder raised the safe
+ceiling to 70,262 KV tokens and passed a 49,549-token retrieval plus tools
+20/20, but still could not satisfy the route contract. Both arms are rejected
+as replacements; the stock 128K recipe remains selected.
+
+#### 2026-08-21 — MTP3 and ReplaySSM
+
+A dated external-source registry informed a matched local MTP3/ReplaySSM A/B.
+ReplaySSM made recurrent-state replay negligible, and decode rose 80.5% at 4K
+and 67.9% at 64K. However, SGLang's separately loaded 5.73 GB MTP draft left
+only 70,231 KV tokens, and median 64K end-to-end latency was 1.9% slower. The
+candidate is rejected as a 128K replacement.
+
+EXL3, NInfer, vLLM TurboQuant, and alternative NVFP4 recipes remain research
+leads rather than local deployment claims.
+
+#### 2026-08-21 — GGUF Q4_0 and matching MTP head
+
+The managed llama.cpp campaign qualified Unsloth GGUF Q4_0 with its matching
+Q4_0 MTP head at 262,144 tokens on RTX 5090. It passed exact retrieval at
+253,822 actual prompt tokens with an 8,192-token output reserve, long tools
+after 110K, agentic 16/18, neutral 101-turn endurance 3/3, and images 18/18.
+MTP raised matched short decode from 69.1 to 104.1 tok/s.
+
+This is the preferred RTX 5090 `FAST-TIER` challenger, but the independent SWE
 gate is incomplete and no route or promotion changed. Conventional Q6_K with
 the same MTP head was disqualified by the conservative 32 GB capacity screen.
-The 2026-08-22 routed follow-up passed real OpenClaw and Hermes identity plus
+
+#### 2026-08-22 — Routed client follow-up
+
+The routed follow-up passed real OpenClaw and Hermes identity plus
 shell-tool/result-continuation smokes. It did not clear the 250K route gate:
 the bounded test route still declared the earlier 131,072-token SGLang/NVFP4
 compatibility fingerprint and video capability. Promotion remains closed until
-the router and client catalogs truthfully describe the 262K llama.cpp image-only
-recipe and routed acceptance passes with a 250,000-token minimum.
+the router and client catalogs truthfully describe the 262K llama.cpp
+image-only recipe and routed acceptance passes with a 250,000-token minimum.
 
 ## Immutable identity
 
@@ -92,11 +157,19 @@ hardware and context lane and is not directly comparable to the 96 GB-card
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
+The dossier summarizes the configuration families below. For reusable TOML,
+container field mapping, and standalone Docker reconstruction guidance, open
+the [container configuration page](../configurations.md#qwen38-27b-official-fp8).
+
+### Official vLLM baseline and controls
+
 BF16 multimodal used BF16 weights, FP8 KV, 262,144 native context, and two
 sequences. Official FP8 text used FP8 weights and KV, the same native context,
 and five sequences. Both used vLLM V1 with chunked prefill, no prefix caching,
 and no speculative decoding for the control. MTP=3, prefix caching, and
 unquantized KV were isolated one-variable arms.
+
+### Long-context and topology matrix
 
 The extended-context arm kept official FP8 weights, FP8 KV, TP=1, chunked
 prefill, no prefix caching, and no MTP, but configured 1,010,000 tokens with
@@ -106,6 +179,8 @@ The matched TP/MTP matrix fixed one admitted sequence and 4,096 batched tokens
 for both checkpoints. Split TP=1 used 393,216 tokens. Exclusive TP=2 used
 393,216, 600,000, and 1,010,000 tokens. Every point had an otherwise identical
 no-MTP control and `method=mtp,num_speculative_tokens=3` arm.
+
+### Former 96 GB SGLang service
 
 The historical split selected the 393,216-token TP=1 MTP=3 arm for both vLLM
 models. The later single-service profile instead ran the official-FP8 SGLang
@@ -122,6 +197,8 @@ feature transport instead of the failing automatic CUDA-IPC path. Both rounds
 compared official FP8 with Inferact ModelOpt NVFP4 and swapped placement across
 the equal cards.
 
+### RTX 5090 RadixArk SGLang lane
+
 The retained RTX 5090 RadixArk arm uses SGLang at the same pinned image digest,
 TP=1, 131,072 tokens, one running request, FP8 E4M3 KV, FlashInfer attention,
 2,048-token chunks, disabled radix cache, one Mamba/GDN state slot, CPU
@@ -130,12 +207,16 @@ of eight images and two videos. The managed recipe is
 `configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm-recipe.toml`; the
 otherwise matched 64K recipe is retained as rollback.
 
+### RTX 5090 GGUF lane
+
 The later GGUF arm uses llama.cpp at 262,144 tokens and concurrency one with
 Q4_0 K/V, full layer and projector offload, Flash Attention, batch 2,048,
 microbatch 512, Jinja templating, and reasoning disabled. The preferred arm
 adds the same-revision Q4_0 MTP head with three maximum draft tokens and Q4_0
 draft K/V. The no-spec arm is the matched control. Startup VRAM was 22,254 MiB
 without speculation and 25,408 MiB with MTP.
+
+### Rejected DFlash2 diagnostic lanes
 
 The rejected DFlash2 arm kept the same target snapshot and stable served name,
 but used the separately pinned draft, DFLASH with eight draft tokens, the
@@ -149,6 +230,12 @@ fraction 0.945. It allocated 70,262 KV tokens; its reproducible recipe is
 `configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-dflash2-debug-recipe.toml`.
 
 ## Evidence by measurement class
+
+Each subsection answers a different reuse question. Performance numbers are
+valid only for the named checkpoint, runtime, hardware, topology, context, and
+concurrency; a passing container or health check is not benchmark evidence.
+
+### RTX 5090 GGUF qualification
 
 On the RTX 5090 GGUF campaign, the no-spec and MTP arms both passed retrieval
 at 32K, 131K, 200K, 250K, and a 253,822-actual-token envelope. The latter kept
@@ -166,6 +253,8 @@ a fallback model, so client usage identity is a required gate. The 250K routed
 gate remains closed on stale 131,072-token compatibility metadata.
 See the [250K qualification](../../findings/2026-08-21-qwen38-27b-gguf-250k-rtx5090.md).
 
+### Official BF16/FP8 baseline
+
 Both official variants passed the thinking-disabled functional gate, repeated
 coding/tool/session checks, adaptive reasoning-control probes, and retrieval
 through 241,250 actual prompt tokens. BF16 passed 30/30 image/video/mixed-media
@@ -177,6 +266,8 @@ repeated quality gate; prefix caching reduced a repeated 30K-prefix c5 burst
 from 16.39 seconds TTFT with caching disabled to 0.41 seconds warm; unquantized
 KV retained correctness and 244,573-token retrieval but halved reported
 full-window capacity from 6.96 to 3.55 windows without a 4K speed gain.
+
+### Long-context and topology matrix
 
 The 1M-configured continuation passed a monotonic retrieval ladder through
 825,049 actual prompt tokens. The largest point passed 3/3 with exact output
@@ -191,6 +282,8 @@ TTFT 38% for BF16 and 35% for official FP8. Official FP8 TP=2 control measured
 decode 1.76-2.40x but used 7-11% of the engine-reported KV-token pool and did
 not improve extreme-context TTFT consistently. Each largest row is one cold
 pass; only the 4K 10-request runs carry p50/p95 statistics.
+
+### Speculative depth and SGLang comparisons
 
 The 2026-08-15 official-FP8 follow-up tested MTP=4 and MTP=5 concurrently,
 then swapped the settings across the two equal cards. Both passed complete
@@ -231,6 +324,8 @@ challenger; video, 32-image, concurrency, host-memory-pressure, broad vision
 quality, client acceptance, and a human gate were still required before the
 subsequent replacement of the then-current split.
 
+### Former promotion and video expansion
+
 The human-approved promotion then applied that exact official-FP8 profile.
 The managed cutover passed exact identity, coding, JSON, a 108K retrieval
 needle, and 20/20 tools. Direct and routed copies of the repeated image corpus
@@ -248,6 +343,8 @@ four images plus a video and correctly receives 413 under the two-image limit.
 Two-video overflow, malformed input, SSE ordering, grounded tool use, and the
 complete Primary regression gate also passed.
 
+### RTX 5090 RadixArk 128K qualification
+
 The 2026-08-17 RTX 5090 RadixArk NVFP4 qualification first established the 64K
 baseline, then retained a separate 128K recipe. The 128K arm passed coding and
 JSON, exact retrieval at 119,675 actual prompt tokens, and 20/20 tool calls.
@@ -259,6 +356,8 @@ weights consumed 20.14 GB; the engine exposed a 167,789-token FP8 KV pool and
 the host reported 3,928 MiB free after startup. This is bounded
 single-concurrency qualification evidence, not a broad computer-use benchmark
 or a promotion.
+
+### Agentic, SWE, and template evidence
 
 Evidence classes are `functional`, `capacity`, bounded `quality`, and
 multimodal. A later durable router-only campaign added separate agentic and
@@ -276,6 +375,8 @@ smaller thinking-disabled behavior suite it used 5.1% fewer tokens and was 5.0%
 faster, but passed 15/18 versus stock's 18/18 because it missed a declared
 literal-question-mark contract. This is bounded template evidence, not a
 general model-quality score.
+
+### DFlash2 and ReplaySSM rejections
 
 The 2026-08-21 DFlash2 trial is `compatibility-only` plus measured `capacity`.
 An initial local transcription at memory fraction 0.895 loaded both models but
@@ -305,31 +406,49 @@ passed the same surface at 105,649 prompt tokens.
 
 ## Decision and promotion state
 
-Former human-approved single-service profile. Official FP8 on SGLang with MTP
-`3/1/4` served Primary, general vision, OCR, and video at 393,216 tokens on one
-card while the other card was dormant. Direct video qualification passed
-14/14 and the live admitted corpus passed 28/28; Hermes/OpenClaw Primary client
-paths passed without fallback. The SGLang profile and former vLLM FP8/BF16
-split are retained managed recipes, but neither is the immediate text
-rollback; DeepSeek r33 393K now fills that role. TP=2 at 600K and 1.01M remains
-an offline/batch experiment.
-The RadixArk NVFP4 RTX 5090 recipe is the locally qualified 32 GB challenger
-when native vision and video are required. It remains `no-promotion`, and its
-131,072-token served window should not be conflated with the former 393K lane.
-Sharp v22.1 is rejected for this exact recipe; the stock template remains the
-qualified configuration.
-The exact official DFlash2 high-throughput/float32 profile is also rejected as
-a replacement for that 128K service. The BF16/no-radix/single-slot arm is the
-best measured short-context lead, but it is likewise rejected as a route
-replacement. Any distinct short-context deployment requires its own truthful
-served name, capability contract, benchmark, and human promotion gate.
-MTP3 plus ReplaySSM is rejected for the same route for a different memory
-reason: ReplaySSM removes the recurrent-state multiplier, but the 5.73 GB draft
-weight reservation still caps KV at 70,231. External full-context candidates
-remain dormant until one proves lower local end-to-end latency without losing
-the quality, tool, multimodal, or restoration contracts.
+!!! warning "Promotion remains human-gated"
 
-## External recipe watch and local follow-up
+    These findings preserve reproducible options and explicit rejection
+    reasons. They do not authorize a route, client-catalog, or live deployment
+    change.
+
+### Retained
+
+- **Former 96 GB service:** official FP8 on SGLang with MTP `3/1/4` served
+  Primary, general vision, OCR, and video at 393,216 tokens on one card while
+  the other card was dormant. Video passed 14/14 direct and 28/28 through the
+  live admitted corpus; Hermes and OpenClaw passed without fallback.
+- **Managed rollback evidence:** the SGLang profile and former vLLM FP8/BF16
+  split remain reproducible, but neither is the immediate text rollback.
+  DeepSeek r33 393K now fills that role.
+- **RTX 5090 native-video challenger:** RadixArk NVFP4 remains
+  `no-promotion`. Its 131,072-token window is a separate lane from the former
+  393K service.
+- **Offline capacity experiments:** TP=2 at 600K and 1.01M remains batch-like,
+  not an interactive route recommendation.
+
+### Rejected for the retained 128K route
+
+- **Sharp v22.1:** rejected for this exact RadixArk recipe; stock remains the
+  qualified chat template.
+- **DFlash2 float32:** exposed too little KV for the 128K service. The best
+  BF16/no-radix/single-slot diagnostic is a short-context research lead, not a
+  route replacement.
+- **MTP3 plus ReplaySSM:** removed the recurrent-state multiplier, but the
+  separate 5.73 GB draft still capped KV at 70,231 tokens.
+
+Any distinct short-context deployment needs its own truthful served name,
+capability contract, benchmark, restoration proof, and human promotion gate.
+External full-context candidates remain dormant until one proves lower local
+end-to-end latency without losing quality, tool, multimodal, or restoration
+contracts.
+
+### External recipe watch and local follow-up
+
+External results are recipe leads only. They become local evidence only after
+an otherwise matched, hardware-specific qualification.
+
+#### MTP=4/5 controls
 
 The 2026-08-15 external refresh added two dormant, official-weight vLLM
 qualification recipes. They change only the speculative depth from the
@@ -339,8 +458,10 @@ qualified TP=1/393K MTP=3 recipe:
 A same-product community sweep reports the best decode at depth 5, but its
 prompts, concurrency, runtime details, and quality method differ from the local
 campaign. The local two-lane and cross-card follow-up found no meaningful E2E
-win for depth 4 or 5, so MTP=3 remains the selected Qwen depth and both deeper recipes remain
-dormant `no-promotion` controls.
+win for depth 4 or 5. MTP=3 remains the selected Qwen depth, and both deeper
+recipes remain dormant `no-promotion` controls.
+
+#### SGLang quantized controls
 
 The SGLang cookbook follow-up is complete for no-speculation and in-checkpoint
 MTP text serving. Digest-pinned executable recipes retain official FP8 and the
@@ -350,9 +471,12 @@ Bounded image/OCR and a repeated six-case corpus pass on BF16 and both
 quantized checkpoints when CPU feature transport is forced. Two-image ordering
 is covered. The former official-FP8 profile subsequently passed one-video
 qualification; NVFP4 video, the 32-image ceiling, concurrency, broad vision
-quality, and host-memory-pressure remain open. The default CUDA-IPC path still fails in this exact WSL2/Docker/runtime
-combination. The widely shared 200+ tok/s result also adds a DSpark draft and
-remains an `external-prior`, not a local result.
+quality, and host-memory-pressure remain open. The default CUDA-IPC path still
+fails in this exact WSL2/Docker/runtime combination. The widely shared 200+
+tok/s result also adds a DSpark draft and remains an `external-prior`, not a
+local result.
+
+#### Excluded or dormant artifacts
 
 Other NVFP4, GGUF, AutoRound, and custom `.ninfer` artifacts remain excluded
 from the active production queue. Inferact NVFP4 remains a `no-promotion`
@@ -363,81 +487,92 @@ the native NVFP4 target passed its required gates.
 
 ## Failures and gotchas
 
-- The Sharp v22.1 A/B produced complete attempt records, but the generic
+### Evaluation and benchmark interpretation
+
+- **Sharp artifact scope:** the v22.1 A/B produced complete attempt records, but the generic
   inspector flags unrelated built-in suites as `not_run`, missing aggregate
   chat timing, and thinking control as `requested_unverified` in the quality
   lanes. Those artifacts are bounded diagnostics, not promotion-grade evidence.
-- Both stock and Sharp exhausted the 2,048-token completion cap on the same two
+- **Shared completion limit:** both stock and Sharp exhausted the 2,048-token completion cap on the same two
   MMLU-Pro items. Sharp also failed the narrow ambiguous-request punctuation
   contract despite safely declining to guess and requesting the missing input.
-- Official FP8 startup warned that absent attention q/prob scaling factors
+- **FP8 scaling:** official FP8 startup warned that absent attention q/prob scaling factors
   defaulted to 1.0. No independent quality result proves equivalence to
   unquantized KV.
-- vLLM warned that 4,096 batched tokens may be suboptimal with MTP=3. A later
+- **MTP batching:** vLLM warned that 4,096 batched tokens may be suboptimal with MTP=3. A later
   tune must be a matched one-variable A/B. The same warning appeared for
   MTP=4 and MTP=5.
-- MTP=4/5 short decode differed by roughly 7-8% between equal card roles.
+- **Placement variance:** MTP=4/5 short decode differed by roughly 7-8% between equal card roles.
   Cross-card placement is therefore required before attributing a small
   speculative-depth delta to the recipe.
-- The MTP=4/5 deterministic quality artifacts contain complete suite attempts
+- **MTP timing scope:** the MTP=4/5 deterministic quality artifacts contain complete suite attempts
   but no aggregate chat timing fields; they are bounded behavioral evidence,
   not timing comparisons.
-- The durable separate-worker campaign subsequently completed through the
+- **Agentic sample size:** the durable separate-worker campaign subsequently completed through the
   approved router alias. It exposed a repeated debug-loop weakness and a wide
   19-57 model-request range across the five resolved SWE tasks; neither the
   16/18 agentic result nor 5/5 fixed SWE sample should be generalized to a full
   benchmark score.
-- General-vision output is materially more verbose than OCR. The first routed
+
+### Serving behavior and long-context topology
+
+- **Vision verbosity:** general-vision output is materially more verbose than OCR. The first routed
   corpus exposed a dropped `chat_template_kwargs` extension; a
   thinking-disabled soft default and same-dialect relay forwarding corrected
   it without raising the final 512-token corpus cap.
-- The 1M-configured retrieval harness produced at most 825,049 API-reported
+- **1M continuation:** the 1M-configured retrieval harness produced at most 825,049 API-reported
   prompt tokens, and each largest run took almost 16 minutes.
-- The later matrix reached 985,107 actual prompt tokens on both checkpoints in
+- **Near-1M matrix:** the later matrix reached 985,107 actual prompt tokens on both checkpoints in
   TP=2, but TTFT remained 13.0-13.7 minutes. The result supersedes the earlier
   prompt-depth limit, not its offline/batch recommendation.
-- TP=2 lacked P2P and used PyNCCL over the socket-backed local path after vLLM
+- **TP=2 transport:** TP=2 lacked P2P and used PyNCCL over the socket-backed local path after vLLM
   disabled custom allreduce.
-- SGLang's first 393K launch required the explicit longer-context overwrite
+
+### SGLang, media, and router integration
+
+- **WSL2 media transport:** SGLang's first 393K launch required the explicit longer-context overwrite
   opt-in; its first WSL2 multimodal warmup failed with an invalid CUDA resource
   handle. CPU feature transport now passes bounded image/OCR and one-video
   qualification on the then-current official-FP8 profile, but it is not a blanket
   CUDA-IPC diagnosis and does not qualify 32 images.
-- The SGLang image label names `c4271c3`, but its internal build-version string
+- **Runtime identity:** the SGLang image label names `c4271c3`, but its internal build-version string
   names `561c8f3`; the digest is the execution identity and the discrepancy is
   retained.
-- Both SGLang candidates warned that missing FP8 KV scaling factors defaulted
+- **SGLang KV scaling:** both SGLang candidates warned that missing FP8 KV scaling factors defaulted
   to 1.0. The bounded gates passed, but unquantized-KV equivalence is unproven.
-- The RTX 5090 RadixArk run emitted the same FP8-KV scaling-factor warning.
+- **RadixArk KV scaling:** the RTX 5090 run emitted the same FP8-KV scaling-factor warning.
   Its bounded gates passed, but equivalence to unquantized KV remains unproven.
-- The first eight-image boundary artifact used expectations that did not exist
+- **Corrected image fixture:** the first eight-image boundary artifact used expectations that did not exist
   in the hash-pinned images. Inspection and the model output exposed the test
   error; the corrected canonical-label corpus passed 4/4, and both artifacts
   remain published.
-- The benchmark harness now records an explicit, bounded multi-video evidence
+- **Multi-video ceiling:** the benchmark harness now records an explicit, bounded multi-video evidence
   ceiling. That flag changes corpus admission only, not engine or router
   policy.
-- The generic evidence-inspector command does not recognize the multimodal
+- **Inspector schema gap:** the generic evidence-inspector command does not recognize the multimodal
   benchmark schema even though its complete attempt records report 30/30. A
   product-gap ticket tracks that fail-closed inspection limitation.
-- The first routed Responses probe supplied a chat-only thinking field that
+- **Responses compatibility:** the first routed Responses probe supplied a chat-only thinking field that
   SGLang rejects on `/v1/responses`. The redundant router soft default was
   removed; the recipe-level default keeps thinking disabled and the Responses
   subset passed. Chat-completions retains the caller control.
-- The generic evidence inspector flags absent aggregate chat timing in the
+- **Aggregate timing scope:** the generic evidence inspector flags absent aggregate chat timing in the
   deterministic agentic artifacts and unrelated `not_run` suites in the
   context-only artifacts. Only complete attempt/target records ground the
   published claims; aggregate quality timing is not claimed.
-- The RTX 5090 DFlash2 float32 arm requires memory fraction 0.945 and Mamba
+
+### RTX 5090 DFlash2 limits
+
+- **Float32 arm:** the RTX 5090 DFlash2 arm requires memory fraction 0.945 and Mamba
   full-memory ratio 10. At 0.895 it admitted zero requests; at 0.945 it booted
   but left only 24,347 target KV tokens and zero reported free GPU memory after
   target graph capture. Configured 262K context must not be reported as
   measured request capacity for this layout.
-- BF16 state, one persistent Mamba slot, disabled radix cache, and disabled
+- **Best diagnostic arm:** BF16 state, one persistent Mamba slot, disabled radix cache, and disabled
   prefill CUDA graphs raised the safe ceiling to 70,262 KV tokens. The tuned
   arm passed a complete 49,549-token functional gate, but the eight-token
   DFlash verifier still reserved 1.12 GB of intermediate BF16 SSM state.
-- No controlled throughput, quality, routed, or multimodal claim is retained.
+- **Evidence limit:** no controlled throughput, quality, routed, or multimodal claim is retained.
   Logged DFlash acceptance and throughput values remain diagnostic samples.
 
 ## Dated run history

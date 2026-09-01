@@ -538,7 +538,7 @@ FAMILY = ToolFamily(
     name="openclaw",
     tools={
         "openclaw_sync": {
-            "description": "Preview or apply an OpenClaw provider config from the router's direct model aliases.",
+            "description": "Preview or apply an OpenClaw provider config from the router's capability aliases.",
             "inputSchema": _schema(
                 {
                     "config": {"type": "string"},

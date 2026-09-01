@@ -15,20 +15,20 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 GPU_CSV = (
-    "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
-    "1, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell\n"
+    "0, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090\n"
+    "1, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell\n"
 )
 DETAIL_CSV = (
-    "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090, 12.0, 610.62\n"
-    "1, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell, 12.0, 610.62\n"
+    "0, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090, 12.0, 610.62\n"
+    "1, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell, 12.0, 610.62\n"
 )
 SM_CSV = (
-    "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, 170\n"
-    "1, GPU-d0f446cf-1771-414c-e116-a39138798a8c, 188\n"
+    "0, GPU-33333333-3333-3333-3333-333333333333, 170\n"
+    "1, GPU-11111111-1111-1111-1111-111111111111, 188\n"
 )
 ROLES = (
-    {"id": "fast", "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"},
-    {"id": "heavy", "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c"},
+    {"id": "fast", "uuid": "GPU-33333333-3333-3333-3333-333333333333"},
+    {"id": "heavy", "uuid": "GPU-11111111-1111-1111-1111-111111111111"},
 )
 
 
@@ -157,8 +157,8 @@ def test_supported_runtime_and_static_mps_are_reported_with_stable_roles():
 
 def test_gpu_roles_follow_uuid_when_runtime_indexes_reorder():
     reordered_inventory = (
-        "0, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell\n"
-        "1, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
+        "0, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell\n"
+        "1, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090\n"
     )
 
     def reordered_gpu_run(*_args, **_kwargs):
@@ -474,7 +474,7 @@ def test_compose_probe_is_profile_gated_uuid_pinned_and_non_mutating():
     )[0]
     assert 'profiles: ["gpu-sharing-probe"]' in service
     assert "platform: linux/amd64" in service
-    assert "COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490" in service
+    assert "COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222" in service
     assert "read_only: true" in service
     assert "cap_drop:" in service and '["ALL"]' in service
     assert "ports:" not in service

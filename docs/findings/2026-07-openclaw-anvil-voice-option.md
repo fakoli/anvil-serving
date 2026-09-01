@@ -1,5 +1,9 @@
 # OpenClaw Anvil Voice option discovery
 
+> **Publication redaction:** Operator-specific network hostnames in linked raw
+> evidence were replaced with public-safe placeholders. The observed workflow
+> and result are unchanged.
+
 Date: 2026-07-06
 
 > **Topology addendum (2026-07-08).** The live Mini-local audio validation

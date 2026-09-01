@@ -266,7 +266,7 @@ def _print_help() -> None:
     print("  anvil-serving product journey anvil-media")
     print("  anvil-serving router run --config configs/example.toml")
     print("  anvil-serving serves status")
-    print("  anvil-serving eval preflight --tier heavy --dry-run")
+    print("  anvil-serving eval preflight --tier primary --dry-run")
     print("  anvil-serving eval benchmark external list")
     print("  anvil-serving media capabilities")
     print()

@@ -19,13 +19,13 @@ def _run_missing(*a, **k):
 
 
 CSV = (
-    "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
-    "1, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell\n"
+    "0, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090\n"
+    "1, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell\n"
 )
 
 CAPACITY_CSV = (
-    "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090, 32607\n"
-    "1, GPU-d0f446cf-1771-414c-e116-a39138798a8c, NVIDIA RTX PRO 6000 Blackwell, 97887\n"
+    "0, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090, 32607\n"
+    "1, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell, 97887\n"
 )
 
 
@@ -189,7 +189,7 @@ def test_init_router_toml_loads_without_missing_model_warning(tmp_path, capsys):
     assert "WARNING" not in err  # no T001 missing-`model` warning on load
 
 
-def test_init_router_toml_declares_the_requested_direct_alias(tmp_path):
+def test_init_router_toml_declares_the_requested_capability_alias(tmp_path):
     out_dir = tmp_path / "onboard"
     result = init.run(model="/w/model", gpu="0", out_dir=str(out_dir), served_name="local",
                       tier_id="local-tier", _run=_run_missing)
@@ -204,7 +204,7 @@ def test_init_gpu_uuid_present_pins_compose(tmp_path):
     result = init.run(model="/w/model", gpu=1, out_dir=str(out_dir), served_name="local",
                       _run=_run_ok)
     compose = open(result["compose"], encoding="utf-8").read()
-    assert "CUDA_VISIBLE_DEVICES: GPU-d0f446cf-1771-414c-e116-a39138798a8c" in compose
+    assert "CUDA_VISIBLE_DEVICES: GPU-11111111-1111-1111-1111-111111111111" in compose
 
 
 def test_init_nvidia_smi_absent_falls_back_with_warning(tmp_path, capsys):
@@ -282,8 +282,8 @@ def test_cli_dispatches_init_and_rejects_unknown_onboard(tmp_path, monkeypatch, 
 
 # The reference-instance host values that MUST NOT ride onto a fresh machine.
 _REAL_HOST_VALUES = (
-    "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
-    "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+    "GPU-11111111-1111-1111-1111-111111111111",
+    "GPU-33333333-3333-3333-3333-333333333333",
     "100.64.0.10",
 )
 _EXPECTED_HOME_FILES = {

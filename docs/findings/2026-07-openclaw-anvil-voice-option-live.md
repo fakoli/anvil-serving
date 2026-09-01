@@ -1,5 +1,9 @@
 # OpenClaw Anvil Voice live validation
 
+> **Publication redaction:** Operator-specific network hostnames and the OS
+> account name in linked raw evidence were replaced with public-safe
+> placeholders. The observed workflow and result are unchanged.
+
 Date: 2026-07-06
 
 Task: `openclaw-anvil-voice-option:T008`

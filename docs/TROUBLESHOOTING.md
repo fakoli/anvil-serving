@@ -8,7 +8,7 @@ For a from-scratch setup walkthrough, start with [Getting started](GETTING-START
 
 ## The router returns HTTP 503
 
-**What it means.** The direct alias named by the request has no ready local serve, is
+**What it means.** The capability alias named by the request has no ready local serve, is
 quiesced, or has reached its admission limit. The gateway does not choose another model.
 
 A third 503 is unrelated to routing: `server busy; try again later` means the concurrency cap
@@ -18,9 +18,10 @@ was hit (see [Request rejected with 413 or a size cap](#request-rejected-with-41
 
 - `GET http://127.0.0.1:8000/v1/decisions` to identify the requested alias and its
   readiness or admission result.
-- Confirm the configured serve is up, then run `anvil-serving eval preflight --base-url
-  http://127.0.0.1:<port>/v1 --model <served-name>`.
-- Inspect the alias-to-tier binding in `[router.model_routes]`; unknown aliases are 404,
+- Confirm the configured serve is up, preview `anvil-serving eval preflight --base-url
+  http://127.0.0.1:<port>/v1 --model <served-name> --dry-run`, then run the reviewed gate
+  with `--confirm`.
+- Inspect the alias binding in `[router.model_routes]`; unknown aliases are 404,
   while a known alias with no admissible local tier is 503.
 
 **Fix.** Start or repair the configured local serve, then readmit it after any transition.
@@ -38,8 +39,7 @@ Exit code 0 means all passed; 1 means at least one failed.
 **What to check.**
 
 - **Serve not up / wrong port:** every test reports `error: <URLError>` — connection refused.
-  Confirm the serve is listening and the `--base-url` port matches (heavy `:30000`, fast `:30001`
-  in the examples).
+  Confirm the serve is listening and `--base-url` matches the declared serve endpoint.
 - **Wrong `--model` name:** the value must be the serve's `--served-model-name`, not the HF repo
   id or a gateway alias. A mismatch surfaces as an HTTP 404 / model-not-found error from the
   serve.
@@ -57,8 +57,8 @@ Exit code 0 means all passed; 1 means at least one failed.
 
   Check the model card to determine which class applies before assuming a control works.
 - **Tool-batch failures on new hardware:** garbage signatures (`<<tool`, `<|`, `function=`)
-  in the batch test are the known sm_120 failure mode — see CLAUDE.md gotcha 7 and
-  `docs/findings/blackwell-sm120-lab-notebook.md`.
+  in the batch test are the known sm_120 failure mode — see the
+  [Blackwell SM120 lab notebook](findings/blackwell-sm120-lab-notebook.md).
 
 **Fix.** Address the specific failing test; do not trust throughput numbers from a serve that
 has not passed preflight.
@@ -93,22 +93,22 @@ honored. Full per-model settings walkthrough: [Model settings](MODEL-SETTINGS-EX
 
 **What it means.** OpenClaw computes `max_completion_tokens = declared contextWindow − actual
 prompt tokens`, clamped to a floor of 1 — it does not reject an oversized prompt. If an alias's
-`contextWindow` in the OpenClaw provider config understates its direct tier's window, a growing
+`contextWindow` in the OpenClaw provider config understates its configured serve's window, a growing
 conversation eventually makes every turn's completion budget compute negative and floor to **1
 token**.
 
 **What to check.** Each alias's `contextWindow` in
-`~/.openclaw/openclaw.json` must equal its one configured tier's context
-window. In the reference config, `llm.primary` uses `primary-local`'s `131072`
-window and `llm.voice` uses `auxiliary-local`'s `32768` window.
+`~/.openclaw/openclaw.json` must equal its one configured serve's context
+window. In the reference config, `llm.primary` uses `primary-local`'s `262144`
+window and `llm.voice` uses `auxiliary-local`'s `65536` window.
 
 **Fix.** Let the product render the exact per-alias values:
 `anvil-serving harness sync openclaw --config configs/example.toml`.
 
 ## Port already in use
 
-**What it means.** Something else is bound to the port the router (default `8000`) or a model
-serve (commonly `:30000` heavy, `:30001` fast in the examples) wants.
+**What it means.** Something else is bound to the port the router (default `8000`) or a declared
+model serve wants.
 
 **Fix.** Start the router on a free port and use it in every URL and harness base-URL:
 
@@ -116,8 +116,8 @@ serve (commonly `:30000` heavy, `:30001` fast in the examples) wants.
 anvil-serving router run --config configs/example.toml --port 8010
 ```
 
-For serve ports, change the port mapping in the serve's compose file and update the matching
-tier's `base_url` in the router config — they must stay in lockstep.
+For serve ports, change the port mapping in the managed serve definition and update the matching
+route's `base_url` in the router config — they must stay in lockstep.
 
 ## Everything is slow on Windows for the first ~20 seconds
 
@@ -269,5 +269,5 @@ The current dual-PRO reference keeps capability aliases independent of Compute
 A/B placement. Entering `dual-gpu-exclusive` is a separate transaction: preview
 it with `serves mode preview`, drain and stop every GPU inference competitor,
 then grant both roles to one TP=2 owner. An unavailable alias remains
-unavailable; it must never fall back to that exclusive model. Any live Fakoli
-Dark promotion or mode entry remains a separate explicit human-gated operation.
+unavailable; it must never fall back to that exclusive model. Any production
+promotion or mode entry remains a separate, explicit, human-gated operation.

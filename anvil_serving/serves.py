@@ -877,7 +877,7 @@ def load_promotions(path):
 
     Paths are resolved relative to the manifest, matching ``serve.up``. A plan
     names the promoted and rollback serve, the fixed router tier ids, and one
-    complete direct-only router config for each model identity.
+    complete local-only capability meta-router config for each model identity.
     """
     with open(path, "rb") as f:
         data = tomllib.load(f)
@@ -975,7 +975,7 @@ def _exact_serve(serves, name):
 
 
 def _validate_promotion_topology(serves, plan):
-    """Validate both complete direct configs against their selected serve."""
+    """Validate both complete capability meta-router configs against their selected serve."""
     from .router.config import load as load_router_config
 
     target = _exact_serve(serves, plan["target"])
@@ -990,7 +990,7 @@ def _validate_promotion_topology(serves, plan):
     promoted = load_router_config(plan["router_config"])
     rolled_back = load_router_config(plan["rollback_router_config"])
     if dict(promoted.model_routes) != dict(rolled_back.model_routes):
-        raise ValueError("promotion router configs must declare identical direct aliases")
+        raise ValueError("promotion router configs must declare identical capability aliases")
     promoted_ids = {tier.id for tier in promoted.tiers}
     rollback_ids = {tier.id for tier in rolled_back.tiers}
     if promoted_ids != rollback_ids:
@@ -1196,7 +1196,7 @@ def _install_router_config(
     config_file, *, container=DEFAULT_ROUTER_CONTAINER,
     cfg_volume=DEFAULT_ROUTER_CFG_VOLUME, _run=subprocess.run,
 ):
-    """Validate and atomically install one direct config, then restart.
+    """Validate and atomically install one capability meta-router config, then restart.
 
     Returns 0 on success, 1 when the prior config was certainly retained or
     restored, and 4 when the deployed router state is uncertain.
@@ -1212,7 +1212,7 @@ def _install_router_config(
         "docker", "exec", "-i", container, "python", "-c",
         _DIRECT_CONFIG_VALIDATOR,
     ]
-    print("  validate direct router config: %s" % config_file)
+    print("  validate capability meta-router config: %s" % config_file)
     try:
         result = _run(
             validate, input=config_text, capture_output=True, text=True,
@@ -1278,7 +1278,7 @@ def _install_router_config(
     if restart.returncode == 0:
         return 0
 
-    print("  router restart failed; restoring the previous direct config")
+    print("  router restart failed; restoring the previous capability meta-router config")
     restore_script = (
         "if [ -f {bak} ]; then mv {bak} {cfg}; "
         "else rm -f {cfg}; fi"
@@ -1559,7 +1559,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
             return 1
     config_rc = _install_router_config(selected_config, _run=_run)
     if config_rc != 0:
-        print("  %s failed: direct router config was not installed" % label)
+        print("  %s failed: capability meta-router config was not installed" % label)
         return config_rc
     gateway_url = str(plan.get("router_health_url", "http://127.0.0.1:8000/healthz"))
     status = _await_gateway(
@@ -2268,7 +2268,7 @@ def cmd_switch(serves, promotions, registry, role, selector, manifest_path, *,
                     and _running_container_matches_recipe(
                         target, recipe, deployment, _run=_run
                     ):
-                print("  already active: direct tier, container health, and exact model identity match")
+                print("  already active: selected tier, container health, and exact model identity match")
                 return 0
             if not dry_run:
                 operation["status"] = "running"
@@ -4517,7 +4517,7 @@ def operating_mode_plan(serves, target_name, restore_group, state_of):
 
 
 def _mode_router_plan(serves, target, plan):
-    """Validate the complete direct-router swap for a routed exclusive owner."""
+    """Validate the complete capability meta-router swap for a routed exclusive owner."""
     tier_id = target.get("router_tier")
     if not tier_id:
         return None

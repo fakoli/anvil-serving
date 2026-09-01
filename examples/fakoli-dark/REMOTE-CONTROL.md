@@ -38,7 +38,7 @@ SSH to Mini and load the owner-only service environment into the current
 shell. This exports the existing token; it does not print it:
 
 ```bash
-ssh companion-node
+ssh mini-host.example
 set -a
 source "$HOME/.openclaw/service-env/ai.openclaw.gateway.env"
 set +a

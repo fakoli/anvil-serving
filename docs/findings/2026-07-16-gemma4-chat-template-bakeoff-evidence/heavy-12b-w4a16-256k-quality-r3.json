@@ -71,7 +71,7 @@
     "candidate_id": "google/gemma-4-12B-it-qat-w4a16-ct@5d8bb23cdbff01e89d2a1a47f3b3d29b877bca76",
     "config_id": "heavy-12b-w4a16-256k-thinking",
     "engine": "vllm-0.25.1",
-    "gpu": "RTX-PRO-6000-GPU-d0f446cf",
+    "gpu": "RTX-PRO-6000-REDACTED_GPU_UUID_COMPUTE_A",
     "model": "gemma4-heavy-lab",
     "started_at": "2026-07-16T15:52:42Z"
   },

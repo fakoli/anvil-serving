@@ -1846,7 +1846,7 @@ def build_parser():
     def add_dry_run(sp):
         sp.add_argument("--dry-run", action="store_true", help="print the lifecycle action without starting/stopping processes")
 
-    audio = sub.add_parser("audio", help="manage Dark-owned STT/TTS model serves")
+    audio = sub.add_parser("audio", help="manage topology-owned STT/TTS model serves")
     audio_sub = audio.add_subparsers(
         dest="audio_action",
         required=True,
@@ -1897,7 +1897,7 @@ def build_parser():
         )
         sp.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
 
-    sp = audio_sub.add_parser("up", help="bring up the Dark-owned STT/TTS serves")
+    sp = audio_sub.add_parser("up", help="bring up the topology-owned STT/TTS serves")
     add_audio_resolution(sp)
     add_dry_run(sp)
     sp.add_argument(
@@ -1909,7 +1909,7 @@ def build_parser():
     )
     sp.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
 
-    sp = audio_sub.add_parser("down", help="tear down the Dark-owned STT/TTS serves")
+    sp = audio_sub.add_parser("down", help="tear down the topology-owned STT/TTS serves")
     add_audio_resolution(sp)
     add_dry_run(sp)
     sp.add_argument(

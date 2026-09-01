@@ -49,7 +49,7 @@ these fit together at runtime.
 | Area | Modules | One-liner |
 |------|---------|-----------|
 | CLI | `cli.py` | Verb dispatch; each verb lazily imports its module. |
-| Router data plane | `router/front_door.py`, `router/dialects/`, `router/serve.py`, `router/availability.py`, `router/admission.py` | Authenticated direct-alias gateway, wire dialects, streaming relay, readiness, and admission control. |
+| Router data plane | `router/front_door.py`, `router/dialects/`, `router/serve.py`, `router/availability.py`, `router/admission.py` | Authenticated capability-alias gateway, wire dialects, streaming relay, readiness, and admission control. |
 | Router support | `router/config.py`, `router/decision_log.py`, `router/discovery.py` | Direct topology loading, metadata-only audit records, and `/v1/models` alias advertisement. |
 | Evaluation | `profile.py`, `eval.py`, `score.py`, `preflight.py`, `benchmark.py`, `benchmarking/` | Usage measurement plus repeatable endpoint qualification and benchmark evidence; `benchmark.py` is the public compatibility facade. |
 | Local serving tools | `serves.py`, `models.py`, `deploy.py`, `init.py`, `preflight.py`, `benchmark.py`, `multiplexer.py`, `cache_prune.py`, `doctor.py`, `host.py` | Compose-defined serves, model catalog, tuned compose rendering, correctness/capacity gates, single-GPU swapping, environment checks. |
@@ -59,8 +59,9 @@ these fit together at runtime.
 
 ## Extension recipes
 
-The data plane is intentionally small. Extensions should preserve the direct-alias
-contract and use the existing modules rather than recreate policy or fallback layers.
+The data plane is intentionally small. Extensions should preserve the
+capability-alias contract and use the existing modules rather than recreate
+policy or fallback layers.
 Details are in [Thin capability gateway](docs/THIN-CAPABILITY-GATEWAY.md).
 
 **Add a wire dialect** (a new protocol the front door speaks):

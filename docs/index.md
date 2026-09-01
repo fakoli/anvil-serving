@@ -1,74 +1,147 @@
-![Anvil Serving - explicit local AI capabilities](assets/banner.png)
+---
+title: Anvil Serving
+description: Operate, qualify, and expose local AI capabilities through explicit, reviewable contracts.
+hide:
+  - navigation
+  - toc
+---
 
-# anvil-serving
+<div class="anvil-home">
 
-> **Operate, qualify, and expose local AI capabilities through explicit contracts.**
+<section class="anvil-hero" aria-labelledby="anvil-hero-title">
+  <div class="anvil-hero__copy">
+    <h1 id="anvil-hero-title">Anvil Serving</h1>
+    <p class="anvil-hero__tagline">Operate, qualify, and expose local AI capabilities through explicit, reviewable contracts.</p>
+    <p class="anvil-hero__summary">One package and release line for Model Serving, the Capability Gateway, Evaluation &amp; Evidence, Anvil Voice, Anvil Media, and Control Plane &amp; Fleet. Each family has an explicit authority boundary and ordered CLI journey. There is no hidden model substitution.</p>
+    <div class="anvil-actions">
+      <a href="benchmarks/" class="md-button md-button--primary md-button--evidence">Browse benchmarks</a>
+      <a href="GETTING-STARTED/" class="md-button">Get started</a>
+    </div>
+  </div>
+  <div class="anvil-hero__visual">
+    <picture>
+      <source srcset="assets/hero-anvil.webp" type="image/webp">
+      <img src="assets/hero-anvil.png" alt="" width="768" height="664" loading="lazy" decoding="async" fetchpriority="low" aria-hidden="true">
+    </picture>
+  </div>
+</section>
 
-Anvil Serving is one product for Model Serving, the Capability Gateway,
-Evaluation & Evidence, Anvil Voice, Anvil Media, and Control Plane & Fleet
-operations. Each family has an explicit authority boundary and ordered CLI
-journey. They share one package and release line.
+<section class="anvil-section anvil-section--paths" aria-labelledby="choose-your-path">
+  <div class="anvil-section__heading">
+    <h2 id="choose-your-path">Choose your path</h2>
+    <p>Start with the outcome you need. Each path leads to current guidance, not a historical implementation record.</p>
+  </div>
+  <div class="anvil-paths">
+    <a class="anvil-path" href="benchmarks/">
+      <strong>Evaluate</strong>
+      <span>Compare measured models, hardware, and qualification evidence.</span>
+    </a>
+    <a class="anvil-path" href="MODEL-LIFECYCLE/">
+      <strong>Operate</strong>
+      <span>Run serving, gateway, voice, media, and fleet workflows safely.</span>
+    </a>
+    <a class="anvil-path" href="META-ROUTER/">
+      <strong>Integrate</strong>
+      <span>Connect through explicit APIs, aliases, protocols, and contracts.</span>
+    </a>
+    <a class="anvil-path anvil-path--evidence" href="OPERATOR-PRIVACY/">
+      <strong>Verify</strong>
+      <span>Confirm authority, safety, and evidence boundaries before exposure.</span>
+    </a>
+  </div>
+</section>
 
-Within that umbrella, the gateway is a capability meta-router: each configured
-alias maps to exactly one local tier. The selected inference service may own
-its mutable served-model metadata, while the router owns the alias, tier
-mapping, policy, and protocol boundary. It is not an intent classifier or an
-automatic model selector.
+<section class="anvil-section anvil-section--evidence" aria-labelledby="current-evidence">
+  <div class="anvil-section__heading">
+    <h2 id="current-evidence">Current benchmark evidence</h2>
+    <p>Model occupants and measurements change faster than capability contracts. Their dated evidence stays discoverable without becoming product documentation or a claim about the currently deployed operator state.</p>
+  </div>
+  <div class="anvil-resource-list">
+    <a href="benchmarks/comparison/"><strong>Model comparison</strong><span>Every measured configuration in one table.</span></a>
+    <a href="benchmarks/"><strong>Benchmarks overview</strong><span>Hardware-first recommendations and evidence labels.</span></a>
+    <a href="benchmarks/models/"><strong>Model dossiers</strong><span>Status, recipe, and decision boundary by model.</span></a>
+    <a href="benchmarks/runs/"><strong>Run catalog</strong><span>Reproducible run identities and artifact links.</span></a>
+    <a href="findings/"><strong>Dated findings</strong><span>Sanitized evidence snapshots retained as published.</span></a>
+  </div>
+</section>
 
-Models are interchangeable subjects of evaluation here. The docs below describe capabilities;
-the [evidence layer](benchmarks/index.md) records which models currently occupy which tier and
-what was measured to put them there.
+<section class="anvil-section" aria-labelledby="product-families">
+  <div class="anvil-section__heading">
+    <h2 id="product-families">One product, six operating families</h2>
+    <p>The families share one CLI, topology, safety contract, evidence policy, and release line. Each still owns a distinct operator outcome.</p>
+  </div>
+  <div class="anvil-family-list">
+    <a href="MODEL-LIFECYCLE/">
+      <strong>Model Serving</strong>
+      <span>Pin artifacts and recipes, manage lifecycle and reservations, and promote with a human gate.</span>
+      <em>Open model lifecycle</em>
+    </a>
+    <a href="META-ROUTER/">
+      <strong>Capability Gateway</strong>
+      <span>Expose exact authenticated aliases with translation, readiness, admission, and streaming.</span>
+      <em>Open the gateway</em>
+    </a>
+    <a class="anvil-family-list__evidence" href="benchmarks/">
+      <strong>Evaluation & Evidence</strong>
+      <span>Run preflight and comparison-safe benchmarks, then retain the evidence behind each decision.</span>
+      <em>Review evidence</em>
+    </a>
+    <a href="VOICE/">
+      <strong>Anvil Voice</strong>
+      <span>Operate STT, TTS, realtime proxy, profiles, and reproducible voice qualification.</span>
+      <em>Open voice</em>
+    </a>
+    <a href="cli/media/">
+      <strong>Anvil Media</strong>
+      <span>Run bounded named image and video workflows with durable jobs and artifacts.</span>
+      <em>Open media</em>
+    </a>
+    <a href="cli/control-plane/">
+      <strong>Control Plane & Fleet</strong>
+      <span>Resolve topology and ownership, dispatch typed operations, and keep fleet state explicit.</span>
+      <em>Open fleet operations</em>
+    </a>
+  </div>
+</section>
 
-## Product families
+<section class="anvil-section anvil-section--contract" aria-labelledby="operating-contract">
+  <div class="anvil-section__heading">
+    <h2 id="operating-contract">The operating contract</h2>
+    <p>Configuration, runtime state, qualification, and exposure are separate facts. Anvil Serving keeps those transitions explicit.</p>
+  </div>
+  <ol class="anvil-contract">
+    <li>
+      <strong>Declare</strong>
+      <span>Define models, aliases, policies, and authority boundaries as configuration.</span>
+    </li>
+    <li>
+      <strong>Operate</strong>
+      <span>Run serving, gateway, voice, media, and fleet workflows inside those boundaries.</span>
+    </li>
+    <li>
+      <strong>Qualify</strong>
+      <span>Measure with preflight and benchmarks. Evidence never auto-promotes.</span>
+    </li>
+    <li>
+      <strong>Expose</strong>
+      <span>Publish only approved capabilities through explicit, authenticated contracts.</span>
+    </li>
+  </ol>
+</section>
 
-| Family | Start here | Commands |
-| --- | --- | --- |
-| **Model Serving** — artifacts, recipes, lifecycle, reservations, and guarded promotion | [Model lifecycle](MODEL-LIFECYCLE.md) | `init`, `models`, `serves` |
-| **Capability Gateway** — exact aliases, auth, translation, readiness, admission, and streaming | [Capability meta-router](META-ROUTER.md) | `router` |
-| **Evaluation & Evidence** — preflight, routed acceptance, and comparison-safe benchmarks | [Evaluation commands](cli/eval.md) | `eval` |
-| **Anvil Voice** — STT/TTS, realtime proxy, profiles, and voice qualification | [Voice pipeline](VOICE.md) | `voice` |
-| **Anvil Media** — bounded named workflows, durable jobs, qualification, and artifacts | [Media commands](cli/media.md) | `media` |
-| **Control Plane & Fleet** — topology, typed dispatch, host utilities, integrations, and fleet state | [Control Plane & Fleet](cli/control-plane.md) | `topology`, `controller`, `mcp`, `fleet`, `host` |
+<section class="anvil-section" aria-labelledby="reference">
+  <div class="anvil-section__heading">
+    <h2 id="reference">Reference</h2>
+    <p>Use these pages when you need exact contracts, commands, or failure guidance.</p>
+  </div>
+  <div class="anvil-resource-list anvil-resource-list--reference">
+    <a href="ARCHITECTURE/"><strong>Architecture</strong><span>Components, authority planes, and deployment shapes.</span></a>
+    <a href="PRODUCT-FAMILIES/"><strong>Product map</strong><span>Family boundaries and ordered user journeys.</span></a>
+    <a href="CONFIGURATION/"><strong>Configuration</strong><span>Router, serve, voice, media, and fleet contracts.</span></a>
+    <a href="CLI/"><strong>Command index</strong><span>Every command family, policy, and option.</span></a>
+    <a href="TROUBLESHOOTING/"><strong>Troubleshooting</strong><span>Diagnose aliases, serves, authentication, and preflight.</span></a>
+    <a href="TERMINOLOGY/"><strong>Terminology</strong><span>Shared vocabulary for routes, serves, topology, and evidence.</span></a>
+  </div>
+</section>
 
-Run `anvil-serving product families` for the installed catalog or start with
-[Product families and user journeys](PRODUCT-FAMILIES.md). Then use
-[Getting started](GETTING-STARTED.md) for the first serving-and-gateway path.
-
-## Operating defaults
-
-- Model traffic uses configured direct aliases, one local target per alias.
-- Local URLs use `127.0.0.1`; credentials are environment-variable references only.
-- Token authentication is required before exposing the router beyond loopback.
-- A benchmark or preflight result never changes a serve or alias binding automatically.
-- Readiness proves an endpoint accepts traffic. Only `eval preflight` and benchmark artifacts
-  establish that it is a qualified capability.
-
-## Evidence
-
-Current model occupants, hardware measurements, and the reasoning behind every promotion live
-in a separate, dated layer — deliberately kept apart from the capability docs above, so that
-reference pages stay true as models change.
-
-| Read this | When you need |
-| --- | --- |
-| [Model comparison table](benchmarks/comparison.md) | **Every measured configuration in one table** — TTFT, throughput, reasoning, and recipe links. |
-| [Benchmarks overview](benchmarks/index.md) | Hardware-first current decisions and evidence labels. |
-| [Model dossiers](benchmarks/models/index.md) | Per-model status, recipe, and decision boundary. |
-| [RTX PRO 6000](benchmarks/hardware/rtx-pro-6000.md) | Primary LLM measurements and rollback chain. |
-| [RTX 5090](benchmarks/hardware/rtx-5090.md) | Image/video generation, Omni, vision, and STT/TTS measurements. |
-| [Result archive](BENCHMARKS.md) | Chronological campaigns and historical comparisons. |
-| [Findings](findings/README.md) | Dated evidence snapshots, immutable once published. |
-| [Decisions (ADRs)](adr/README.md) | Why the architecture is shaped the way it is. |
-
-## Reference
-
-| Read this | When you need |
-| --- | --- |
-| [Architecture](ARCHITECTURE.md) | System components and deployment shapes. |
-| [Product families](PRODUCT-FAMILIES.md) | Umbrella story, boundaries, and ordered user journeys. |
-| [Capability meta-router](META-ROUTER.md) | Product category, authority split, and non-goals. |
-| [Configuration reference](CONFIGURATION.md) | Router, serve, and voice configuration. |
-| [Command index](CLI.md) | Every command family and flag. |
-| [Troubleshooting](TROUBLESHOOTING.md) | Diagnose aliases, serves, auth, and preflight. |
-| [Terminology](TERMINOLOGY.md) | Tier, alias, serve, and evidence vocabulary. |
-| [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Gateway provider contract. |
+</div>

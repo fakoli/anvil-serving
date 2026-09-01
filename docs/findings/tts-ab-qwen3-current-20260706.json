@@ -230,13 +230,13 @@
           "status": "running",
           "image": "vllm/vllm-openai:nightly",
           "docker_name": "qwen3-tts",
-          "cuda_visible_devices": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+          "cuda_visible_devices": "REDACTED_GPU_UUID_REMOVED_GPU",
           "device_requests": [
             {
               "Driver": "nvidia",
               "Count": 0,
               "DeviceIDs": [
-                "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+                "REDACTED_GPU_UUID_REMOVED_GPU"
               ],
               "Capabilities": [
                 [

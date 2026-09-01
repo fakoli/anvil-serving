@@ -6,7 +6,7 @@ External inference benchmarks are performance priors for Anvil Serving. They hel
 
 They are not local qualification truth. Preflight and repeated local quality
 evaluation against the exact served model, engine, and hardware determine
-whether an operator should use that serve behind a direct alias.
+whether an operator should use that serve behind a capability alias.
 
 ## Curated DeepSeek V4 Flash 0731 prior
 
@@ -263,8 +263,8 @@ with its task and hardware identity:
 
 ```bash
 anvil-serving eval benchmark external notebook add \
-  --evidence heavy-quality.json \
-  --task heavy-tier \
+  --evidence primary-quality.json \
+  --task primary \
   --hardware rtx-pro-6000 \
   --db .anvil/benchmarks.sqlite \
   --confirm
@@ -274,7 +274,7 @@ List the latest run per candidate, or add `--all` to inspect the append history:
 
 ```bash
 anvil-serving eval benchmark external notebook list \
-  --task heavy-tier \
+  --task primary \
   --hardware rtx-pro-6000 \
   --db .anvil/benchmarks.sqlite
 ```
@@ -283,14 +283,14 @@ Render a comparison matrix and choose an explicit baseline when useful:
 
 ```bash
 anvil-serving eval benchmark external notebook render \
-  --task heavy-tier \
+  --task primary \
   --hardware rtx-pro-6000 \
-  --baseline current-heavy \
+  --baseline current-primary \
   --db .anvil/benchmarks.sqlite
 ```
 
 Notebook verdicts summarize retained evidence; they do not promote a model or
-change the active direct alias or serve configuration.
+change the active capability alias or serve configuration.
 
 ## Agent MCP Advisory Workflow
 

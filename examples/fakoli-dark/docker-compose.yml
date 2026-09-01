@@ -29,8 +29,8 @@
 # config volume; see the anvil-router-cfg volume, edited via `anvil-serving`).
 #
 # GPU UUIDs (env-overridable; default to THIS box so the file runs unchanged):
-#   COMPUTE_A_GPU_UUID default GPU-d0f446cf-1771-414c-e116-a39138798a8c (PRO 6000 Max-Q)
-#   COMPUTE_B_GPU_UUID default GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490 (PRO 6000 Max-Q)
+#   COMPUTE_A_GPU_UUID default GPU-11111111-1111-1111-1111-111111111111 (PRO 6000 Max-Q)
+#   COMPUTE_B_GPU_UUID default GPU-22222222-2222-2222-2222-222222222222 (PRO 6000 Max-Q)
 # Find yours with `nvidia-smi --query-gpu=index,uuid --format=csv` (or `anvil-serving doctor`).
 name: anvil-serving
 
@@ -51,7 +51,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-11111111-1111-1111-1111-111111111111}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -60,7 +60,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-11111111-1111-1111-1111-111111111111}"]
               capabilities: [gpu]
     ulimits:
       memlock: -1
@@ -107,7 +107,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-11111111-1111-1111-1111-111111111111}"]
               capabilities: [gpu]
     ulimits:
       memlock: -1
@@ -149,7 +149,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-11111111-1111-1111-1111-111111111111}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -160,7 +160,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-11111111-1111-1111-1111-111111111111}"]
               capabilities: [gpu]
     ulimits:
       memlock: -1
@@ -202,7 +202,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_A_GPU_UUID:-GPU-11111111-1111-1111-1111-111111111111}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -212,7 +212,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${COMPUTE_A_GPU_UUID:-GPU-11111111-1111-1111-1111-111111111111}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -253,7 +253,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -263,7 +263,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -304,7 +304,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       HF_TOKEN: ${HF_TOKEN:-}
@@ -313,7 +313,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     command: >
@@ -363,7 +363,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -374,7 +374,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # --runner pooling --convert embed: this vLLM (0.23) replaced the old `--task embed`
@@ -405,7 +405,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}
+      CUDA_VISIBLE_DEVICES: ${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -415,7 +415,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-f0c3bae2-f800-2c37-5bef-a6166b44c490}"]
+              device_ids: ["${COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222}"]
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # The upstream vLLM recipe for the original Qwen3-Reranker checkpoints: override the
@@ -464,7 +464,7 @@ services:
       ANVIL_MEDIA_CONTROLLER_URL: ${ANVIL_MEDIA_CONTROLLER_URL:-}
       ANVIL_MEDIA_CONTROLLER_TOKEN: ${ANVIL_MEDIA_CONTROLLER_TOKEN:-}
     volumes:
-      # The direct-alias config lives in the anvil-router-cfg volume (/etc/anvil), read-only
+      # The capability-alias config lives in the anvil-router-cfg volume (/etc/anvil), read-only
       # inside the container. Provision it before starting the router.
       # SEED IT on a fresh host before the first `up`: an EMPTY volume has no config.toml so the
       # router crash-loops; on an UPGRADE the persisted volume may still hold OLD tier ports, so
@@ -482,7 +482,7 @@ volumes:
   # Model weights (HF cache). External so `down -v` can never delete the pulled weights.
   vllm-hfcache:
     external: true
-  # Router direct-alias config. External so it survives recreates and is edited independently.
+  # Router capability-alias config. External so it survives recreates and is edited independently.
   anvil-router-cfg:
     external: true
   # ADR-0033 router durable state (quiesce intent, decision JSONL). Compose-managed:

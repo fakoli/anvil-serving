@@ -22,11 +22,11 @@ bearing rule is about how layers bind to each other:
       │ harness / LLM gateway  │ realtime voice proxy │   CONSUMER GATEWAYS
       │ (where intent enters)  │                      │   (ingress host / island)
       └───────────┬────────────┴───────────┬──────────┘
-                  │  aliases (llm.primary, llm.voice, audio purposes)
+                  │  capability aliases and named audio routes
       ┌───────────┴───────────────────────────────────┐
-      │ model router (data plane, authenticated)       │   MODEL GATEWAY
+      │ Capability Gateway (authenticated data plane)  │   CAPABILITY GATEWAY
       └───────────┬───────────────────────────────────┘
-                  │  installed intent: tiers → serves
+                  │  configured routes: aliases → tiers → endpoints
       ┌───────────┴───────────────────────────────────┐
       │ serves (GPU hosts, native islands)             │   SERVES
       └───────────────────────────────────────────────┘
@@ -36,8 +36,10 @@ bearing rule is about how layers bind to each other:
 ```
 
 **The binding rule: each layer references only the stable name of the layer
-below.** Consumers hold gateway hostnames. Gateways hold aliases. The router
-holds tier→serve bindings. Nothing skips a layer.
+below.** Consumers hold gateway hostnames. Consumer gateways hold capability
+aliases or named routes. The Capability Gateway holds configured
+alias→tier→endpoint bindings for chat and deterministic named routes for audio
+and purpose models. Nothing skips a layer.
 
 The payoff is measured, not theoretical. In the reference instance, one week
 relocated the entire voice capability and its LLM across hosts twice. The
@@ -91,7 +93,7 @@ questions, not files.
 - **Ingress host (gateway/operator, model-free):** the harness/LLM gateway
   and tenant ingress (tailnet-scoped TLS names onto loopback services);
   designated fleet operator per ADR-0034.
-- **Serving host (router + heavy GPU):** the model gateway and the promoted
+- **Serving host (gateway + heavy GPU):** the Capability Gateway and the promoted
   primary serve.
 - **GPU host:** serving capacity; capabilities move on and off it through
   the intent plane (its entire voice stack relocated without it losing its
@@ -104,7 +106,8 @@ questions, not files.
 ## What a capability move touches (the checklist this design produces)
 
 1. Serve lifecycle on source and destination hosts (park, don't delete).
-2. The model gateway's tier bindings — via its domain installer, all layers.
+2. The Capability Gateway's configured route bindings — via its domain
+   installer, all layers.
 3. Consumer-gateway configs *only if the gateway itself moved*.
 4. Nothing else: consumers bound to names come along for free; observation
    discovers the new reality by inspection; evidence records it.

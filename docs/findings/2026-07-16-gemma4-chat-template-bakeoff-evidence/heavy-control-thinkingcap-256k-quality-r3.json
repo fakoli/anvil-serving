@@ -71,7 +71,7 @@
     "candidate_id": "bottlecapai/ThinkingCap-Qwen3.6-27B-FP8",
     "config_id": "heavy-control-256k-thinking",
     "engine": "vllm-0.23.0-dev",
-    "gpu": "RTX-PRO-6000-GPU-d0f446cf",
+    "gpu": "RTX-PRO-6000-REDACTED_GPU_UUID_COMPUTE_A",
     "model": "thinkingcap-qwen36-27b-fp8",
     "started_at": "2026-07-16T15:22:41Z"
   },

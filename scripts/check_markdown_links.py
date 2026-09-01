@@ -139,6 +139,20 @@ def _tracked_directories(paths: tuple[str, ...]) -> set[str]:
     return directories
 
 
+def _mkdocs_source_candidate(source: str, target: str) -> str | None:
+    """Map a docs-only extensionless MkDocs URL to its Markdown source."""
+    source_parts = PurePosixPath(source).parts
+    target_parts = PurePosixPath(target).parts
+    if not source_parts or source_parts[0] != "docs":
+        return None
+    if not target_parts or target_parts[0] != "docs":
+        return None
+    path = PurePosixPath(target)
+    if path.suffix or not path.name:
+        return None
+    return f"{target.rstrip('/')}.md"
+
+
 def _local_target(source: str, target: str) -> str | None:
     target = target.strip()
     if not target or target.startswith("#") or target.startswith("?"):
@@ -209,7 +223,12 @@ def check(root: Path, *, max_markdown_bytes: int = MAX_MARKDOWN_BYTES) -> tuple[
                 continue
             if target is None or target in tracked_set or target in directories:
                 continue
+            mkdocs_source = _mkdocs_source_candidate(relative, target)
+            if mkdocs_source in tracked_set:
+                continue
             matches = folded.get(target.casefold(), set())
+            if not matches and mkdocs_source is not None:
+                matches = folded.get(mkdocs_source.casefold(), set())
             if matches:
                 message = f"link target case mismatch: {target!r}; tracked as {sorted(matches)!r}"
             else:

@@ -1,9 +1,10 @@
 # Capability meta-router
 
-Anvil Serving is a **capability meta-router** for local inference. It gives
-callers stable capability names while allowing the concrete serve behind one
-configured tier to change without teaching every client about model versions,
-quantization labels, engine names, or context settings.
+The Capability Gateway in Anvil Serving is a **capability meta-router** for
+local inference. It gives callers stable capability names while allowing the
+concrete serve behind one configured tier to change without teaching every
+client about model versions, quantization labels, engine names, or context
+settings.
 
 The term describes an authority boundary, not an automatic model chooser.
 Every accepted chat request still resolves through an exact, closed route:
@@ -18,7 +19,7 @@ model, or reinterpret the caller's intent.
 
 ## The three identities
 
-Anvil Serving keeps three identities separate:
+The Capability Gateway keeps three identities separate:
 
 | Identity | Example | Stability | Owner |
 | --- | --- | --- | --- |
@@ -50,7 +51,7 @@ allowed if the router policy disables them, and it may not redirect
 
 ## Request path
 
-For a chat request, the meta-router performs these steps:
+For a chat request, the Capability Gateway performs these steps:
 
 1. Authenticate the caller when front-door authentication is configured.
 2. Normalize the supplied `model` value and require an exact entry in
@@ -145,7 +146,7 @@ workflow, model, host, or provider.
 
 ## What meta-router does not mean
 
-Anvil Serving does not:
+The Capability Gateway's request path does not:
 
 - classify a prompt or infer a work class;
 - rank models, providers, or endpoints;
@@ -164,7 +165,7 @@ keep model promotion in a human-gated, evidence-backed operator transaction.
 
 ## Thin gateway and meta-router are complementary
 
-**Capability meta-router** is the product category: the stable contract and
+**Capability meta-router** is the Capability Gateway contract: the stable
 authority model across callers, operator configuration, inference services,
 and evidence.
 
@@ -175,7 +176,7 @@ relays without taking on model-selection or lifecycle authority.
 ADR-0028 established the thin direct gateway after removing the former
 intent-driven router. ADR-0038 added inference-owned metadata behind a stable
 alias. [ADR-0039](adr/0039-capability-meta-router.md) names the resulting
-product model and makes its invariants explicit.
+gateway contract and makes its invariants explicit.
 
 ## Operational consequence
 

@@ -573,7 +573,7 @@ _FAKE_CAP = {
         "env": ["FLASHINFER_CUDA_ARCH_LIST=12.0f"],
         "flags": ["--kv-cache-dtype fp8"],
     },
-    "hardware": {"gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c"},
+    "hardware": {"gpu_uuid": "GPU-11111111-1111-1111-1111-111111111111"},
 }
 
 
@@ -583,7 +583,7 @@ def _fake_capture(name):
 
 
 def _fake_hardware(gpu_uuid=None):
-    assert gpu_uuid == "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+    assert gpu_uuid == "GPU-11111111-1111-1111-1111-111111111111"
     return {"gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q", "vram_total_gb": 96}
 
 
@@ -595,7 +595,7 @@ def test_build_recipe_assembles_measured_serve_and_fit():
     assert r["hardware"] == {
         "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q",
         "vram_total_gb": 96,
-        "gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+        "gpu_uuid": "GPU-11111111-1111-1111-1111-111111111111",
     }
     assert r["serve"]["image"] == "vllm/vllm-openai:nightly"
     assert r["serve"]["context_tokens"] == 131072

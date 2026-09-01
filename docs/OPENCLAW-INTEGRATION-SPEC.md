@@ -1,13 +1,13 @@
 ---
-title: "anvil-serving x OpenClaw direct-alias contract"
+title: "Anvil Serving and OpenClaw capability-alias contract"
 date: 2026-07-26
 status: current-contract
 ---
 
 # OpenClaw integration contract
 
-OpenClaw uses anvil-serving as an OpenAI-compatible provider. It sends a configured
-direct alias to the router, which proxies that alias to its one declared local tier.
+OpenClaw uses Anvil Serving as an OpenAI-compatible provider. It sends a configured
+capability alias to the gateway, which proxies that alias to its one declared local tier.
 There is no intent plugin, request classifier, decision endpoint, quality-profile lookup,
 or automatic cross-model fallback.
 
@@ -72,8 +72,8 @@ anvil-serving harness sync clients \
 ```
 
 This sync preserves credentials and compaction policy, validates the router
-status/capability alias closure, and keeps distinct model limits distinct (for
-example, a large Primary window and a smaller Secondary window). Apply only
+status/capability-alias closure, and keeps limits for distinct aliases independent.
+Apply only
 after reviewing the config hash and model matrix, using `--confirm`.
 
 When a tier uses `metadata_source = "upstream"`, an inference-service model or
