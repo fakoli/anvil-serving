@@ -167,6 +167,14 @@ def test_publication_ready_contract_has_guide_and_copyable_templates():
         assert label in dossier_template
     assert "Not recorded in retained evidence" in dossier_template
     assert "preserve the detailed reasoning" in dossier_template.casefold()
+    assert "../configurations.md#CONFIGURATION-ANCHOR" in dossier_template
+    assert "do not leave this instruction in a published dossier" in dossier_template
+    for invalid_link in (
+        "(RECIPE-OR-CONFIGURATION-LINK)",
+        "(FINDING-LINK)",
+        "(RELATIVE-FINDING-LINK)",
+    ):
+        assert invalid_link not in dossier_template
     for text in (skill, reference, dossier_template):
         assert "sanitized public reconstruction" in text
         assert "private" in text
@@ -511,6 +519,8 @@ def test_every_dossier_uses_the_common_contract():
         assert not missing_snapshot, (
             f"{path.relative_to(ROOT)} missing snapshot fields {missing_snapshot}"
         )
+        assert "CONFIGURATION-ANCHOR" not in text, path
+        assert "do not leave this instruction in a published dossier" not in text, path
 
 
 def test_current_pro_decision_chain_is_consistent_in_maintained_views():

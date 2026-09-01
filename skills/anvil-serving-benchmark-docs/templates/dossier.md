@@ -23,8 +23,10 @@ If a field is absent from retained evidence, say
 **Not recorded in retained evidence**. Do not infer or run a live benchmark
 solely to fill the snapshot.
 
-[Open the retained public configuration](../configurations.md#ANCHOR) or jump to the
-[decision](#decision-and-promotion-state),
+After copying this template into `docs/benchmarks/models/`, replace
+`../configurations.md#CONFIGURATION-ANCHOR` with an actual reader-facing link
+to the exact retained public configuration. Then use the shortcuts to jump to
+the [decision](#decision-and-promotion-state),
 [known limitations](#failures-and-gotchas), or
 [dated evidence](#dated-run-history).
 
@@ -77,7 +79,9 @@ profiles, and rejected experiments into one paragraph.
 - **Topology:** TP, DCP, DEVICE COUNT, AND INTERCONNECT ASSUMPTION.
 - **Contract:** CONTEXT, OUTPUT RESERVE, CONCURRENCY, MODALITY, AND REASONING.
 - **Runtime controls:** BATCHING, CACHE, SPECULATION, MEMORY, AND TRANSPORT.
-- **Recipe:** [tracked public recipe or sanitized reconstruction](RECIPE-OR-CONFIGURATION-LINK).
+- **Recipe:** add a reader-facing link to the tracked public recipe or
+  sanitized reconstruction; do not leave this instruction in a published
+  dossier.
 
 ## Evidence by measurement class
 
@@ -92,7 +96,8 @@ replacement for methods, metrics, or failure analysis.
   statistic.
 - **Limits:** failure, missing comparison, untested boundary, or
   non-comparability statement.
-- **Evidence:** [dated finding](FINDING-LINK) and retained raw artifacts.
+- **Evidence:** add reader-facing links to the dated finding and retained raw
+  artifacts; do not leave this instruction in a published dossier.
 
 Detailed narrative explaining the controls, interpretation, and why the result
 does or does not change the decision.
@@ -133,7 +138,8 @@ navigate. Omit empty groups rather than filling them with invented text.
 
 ## Dated run history
 
-- [YYYY-MM-DD — descriptive result](RELATIVE-FINDING-LINK)
+- YYYY-MM-DD — add a reader-facing link to the descriptive result; do not
+  leave this instruction in a published dossier.
 
 Keep every decision-relevant finding reachable. When the review narrative
 already links each finding and the archive is long, a visible or collapsible
