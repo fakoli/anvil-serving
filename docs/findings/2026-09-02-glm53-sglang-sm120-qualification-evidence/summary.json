@@ -1,0 +1,66 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-02-glm53-sglang-sm120-qualification",
+  "complete": true,
+  "identity": {
+    "model": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO@c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+    "image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+    "served_model": "glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp"
+  },
+  "workload": {
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q, exclusive TP=2, PCIe without NVLink, WSL2",
+    "selected_context_tokens": 245760,
+    "selected_concurrency": 1,
+    "thinking_controls": ["disabled", "enabled"]
+  },
+  "measurement": {
+    "path": "online-direct",
+    "warm_cold_state": "cold managed starts plus warm functional, capacity, quality, multimodal, and endurance stages",
+    "sample_count": 160,
+    "statistics": [
+      "240K profile capacity r3 at nominal 4K, 120K, and 230K",
+      "60-request 4K endurance",
+      "15 deterministic coding-agent attempts",
+      "12 deterministic image attempts"
+    ]
+  },
+  "gates": [
+    {"name": "full functional preflight", "status": "passed", "detail": "all 10 checks; 20/20 tools; 194227-token long tool prompt"},
+    {"name": "thinking control", "status": "passed", "detail": "disabled forbids reasoning leakage; enabled requires dedicated reasoning"},
+    {"name": "coding-agent quality", "status": "passed", "detail": "15/15 deterministic attempts at 2048 visible tokens"},
+    {"name": "multimodal", "status": "passed", "detail": "12/12 deterministic image/OCR attempts"},
+    {"name": "endurance", "status": "passed", "detail": "60/60 requests"},
+    {"name": "post-workload reserve", "status": "passed", "detail": "3487 MiB free on each card; threshold 3072 MiB"},
+    {"name": "exact restoration", "status": "passed", "detail": "original container id, image, model, port, mode owner, router, and shared-memory state restored"}
+  ],
+  "headline_results": [
+    "131K adaptive MTP improved decode p50 by 39.7 percent at 4K and 29.2 percent at 120K versus matched no speculation",
+    "240K selected profile decode p50 was 108.57, 93.35, and 95.00 tok/s at nominal 4K, 120K, and 230K",
+    "240K selected profile effective prefill p50 was 16545, 5763, and 5608 tok/s at those points",
+    "499712 C4 short reached 147.54 aggregate output tok/s but the profile and its C1 reductions failed reserve policy",
+    "393216 C1 passed every functional and workload gate but fell to 2101 MiB free per card after workload"
+  ],
+  "failures": [
+    "NCCL cuMem mapping failed with CUDA 999 until NCCL_CUMEM_ENABLE=0",
+    "expandable_segments=True failed first distributed CUDA allocations until disabled",
+    "Torch symmetric-memory logits gatherer raised SIGFPE until a source-hash-gated ordinary NCCL fallback patch",
+    "checkpoint chat template leaked reasoning until a source-hash-gated enable_thinking template patch",
+    "499712, 393216, and intermediate C1 profiles failed the 3 GiB post-workload reserve policy",
+    "sparse-MLA CPB calibration rejected implausible fits and used its C++ heuristic"
+  ],
+  "limitations": [
+    "Qualification is local to dual RTX PRO 6000 Blackwell Max-Q under WSL2 and PCIe without NVLink.",
+    "Only C1 is qualified at the selected 245760-token profile; the high-concurrency external result is not reproduced.",
+    "The 230K nominal harness point measured 189627 prompt tokens.",
+    "Video was not qualified.",
+    "No sparse-MLA calibration tune was adopted without an exact default-versus-tuned end-to-end A/B."
+  ],
+  "decision": {
+    "evidence_labels": ["local-functional", "local-capacity", "local-performance", "local-quality", "local-multimodal", "local-endurance", "exact-restoration", "external-prior"],
+    "decision_labels": ["verified", "challenger", "no-promotion"],
+    "promotion_authorized": false,
+    "selected_recipe": "configs/glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp-recipe.toml",
+    "next_gate": "human decision before any promotion; tune the exact sparse-MLA CPB path only with matched end-to-end A/B evidence"
+  },
+  "evidence": ["safe240k-preflight-all-low.json", "safe240k-preflight-thinking-enabled.json", "safe240k-quality-coding-agent-v2-disabled-r3-visible2048.json", "safe240k-multimodal-image-c1.json", "safe240k-endurance-c1-4k-r60.json", "post-workload-state.json", "restoration.json"]
+}

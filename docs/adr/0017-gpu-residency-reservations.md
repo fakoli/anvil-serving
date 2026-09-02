@@ -49,6 +49,13 @@ serve lifecycle, not by the driver.
 2. **Topology capacity.** `[[gpu_roles]]` entries gain `vram_mib` (capacity)
    and `reserve_mib` (display/system reserve — the 5090 is also the Windows
    display GPU; ~2 GB is never reservable).
+   `reserve_mib` is an operator-declared default, not a universal promotion
+   veto. The operator or campaign owner may lower or waive it, including to
+   zero, for a role dedicated exclusively to model workloads. The manifest or
+   dated evidence must record the default, effective value, scope, and
+   rationale. A reserve waiver requires no separate approval gate and grants no
+   promotion authority; mixed graphics or co-resident workloads must continue
+   to declare their real reservation.
 3. **Ledger enforcement at the lifecycle verbs.** `serves up` (and
    `voice audio up`) acquires a reservation: if the sum of running reservations plus the
    request exceeds `vram_mib - reserve_mib` for that `gpu_role`, the command
@@ -84,6 +91,10 @@ serve lifecycle, not by the driver.
 - Reservations are honest but voluntary: a serve that lies about `vram_mib` can
   still OOM the card. The declared-vs-observed drift report (device-total
   deltas around serve start/stop) is the detection mechanism WSL2 allows.
+- A reduced or zero policy reserve does not waive runtime safety. Qualification
+  must retain per-device startup and post-representative-workload memory
+  samples and reject any OOM, CUDA error, crash, restart, corruption, or
+  unexplained request loss. Startup free memory alone is not sufficient.
 - `serves status` and the MCP `serves_status`/`reservation_status` surface show the
   per-GPU ledger, giving agents a safe way to answer "can model X fit right
   now?" without starting anything.

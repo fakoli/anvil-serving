@@ -1,0 +1,106 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO"
+status = "qualification-control"
+source = "2026-09-02 WSL2 NCCL-cuMem-off no-speculation control translated from ormandj/sglang-glm53-flash-sm120 v0.1.1-rc.14"
+family = "glm-5.3-flash-multimodal-moe"
+total_params_b = 744
+active_params_b = 40
+
+[recipe.download]
+repo = "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO"
+revision = "c3cbb9891b67c741bcbf6b176dd7af9265b069db"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate PCIe VRAM without NVLink under WSL2; exclusive TP=2 only. The upstream stable run used the same GPU product and PCIe topology under native Linux, so transport and reserve are requalified locally."
+
+[recipe.serve]
+engine = "sglang-glm53-sm120-v0.1.1-rc14"
+allow_cuda_visible_devices_index = true
+image = "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53"
+entrypoint = [
+  "bash",
+  "-lc",
+  '''set -e; LP=/opt/sglang-source/python/sglang/srt/layers/logits_processor.py; echo '05cfcbd9c1439af751a22fb03490a2e5a252ea4bf5ad5febdae1eb87dce1e9a7  /opt/sglang-source/python/sglang/srt/layers/logits_processor.py' | sha256sum -c -; test "$(grep -Fc 'enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,' "$LP")" = 1 || { echo 'anvil patch: logits gatherer anchor drift' >&2; exit 3; }; sed -i 's/enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,/enabled=False,/' "$LP"; grep -Fq 'enabled=False,' "$LP" || { echo 'anvil patch: logits gatherer postcondition failed' >&2; exit 4; }; echo 'anvil patch: symmetric-memory logits gatherer disabled; NCCL fallback selected'; SRC=/root/.cache/huggingface/hub/models--ormandj--GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO/snapshots/c3cbb9891b67c741bcbf6b176dd7af9265b069db/chat_template.jinja; DST=/root/.cache/glm53-ormandj-enable-thinking-chat-template.jinja; python3 -c 'import base64,hashlib,os,pathlib,sys; src=pathlib.Path(sys.argv[1]); dst=pathlib.Path(sys.argv[2]); raw=src.read_bytes(); expected="34d5ee66b12fa6446cdae131c352b8f68cd85369e0e6fda115583805fada3891"; actual=hashlib.sha256(raw).hexdigest(); actual==expected or sys.exit("anvil patch: source chat template hash drift"); old=base64.b64decode(os.environ["GLM53_CHAT_TEMPLATE_OLD_B64"]).decode(); new=base64.b64decode(os.environ["GLM53_CHAT_TEMPLATE_NEW_B64"]).decode(); text=raw.decode(); text.count(old)==1 or sys.exit("anvil patch: generation prompt anchor drift"); out=text.replace(old,new).encode(); hashlib.sha256(out).hexdigest()=="3133af873d620976b1561b76dc20ec2ad2599279ba61b873e872b1250f4f2ec5" or sys.exit("anvil patch: derived chat template hash mismatch"); dst.write_bytes(out)' "$SRC" "$DST"; echo 'anvil patch: enable_thinking-aware chat template derived from immutable snapshot'; exec sglang serve "$@" --chat-template "$DST"''',
+  "glm53-sglang-sm120",
+]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--ormandj--GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO/snapshots/c3cbb9891b67c741bcbf6b176dd7af9265b069db"
+quantization = "ModelOpt mixed W4A16 NVFP4 K32 routed experts plus FP8 weight-only attention/shared experts; FP8 E4M3 KV; BF16 recurrent state"
+context_tokens = 131072
+port = 39118
+startup_timeout_seconds = 3600
+served_model_name = "glm53-flash-ormandj-sglang-sm120-tp2-131k-nospec"
+ipc = "host"
+shm_size = "64gb"
+ulimits = ["memlock=-1", "nofile=1048576:1048576", "stack=67108864:67108864"]
+named_volumes = ["glm53-ormandj-sglang-v57-rc14-nospec-131k-wsl2-cache:/root/.cache"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "PYTHONHASHSEED=0",
+  "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+  "CUBLAS_WORKSPACE_CONFIG=:4096:2:16:8",
+  "GLM53_CHAT_TEMPLATE_OLD_B64=eyUtIGlmIGFkZF9nZW5lcmF0aW9uX3Byb21wdCAtJX0KICAgIDx8YXNzaXN0YW50fD57ey0gJzx0aGluaz4nIC19fQp7JS0gZW5kaWYgLSV9",
+  "GLM53_CHAT_TEMPLATE_NEW_B64=eyUtIGlmIGFkZF9nZW5lcmF0aW9uX3Byb21wdCAtJX0KICAgIHslLSBpZiBub3QgZW5hYmxlX3RoaW5raW5nIGlzIGRlZmluZWQgLSV9eyUtIHNldCBlbmFibGVfdGhpbmtpbmcgPSB0cnVlIC0lfXslLSBlbmRpZiAtJX0KICAgIDx8YXNzaXN0YW50fD57JS0gaWYgZW5hYmxlX3RoaW5raW5nIC0lfXt7LSAnPHRoaW5rPicgLX19eyUtIGVsc2UgLSV9e3stICc8dGhpbms+PC90aGluaz4nIC19fXslLSBlbmRpZiAtJX0KeyUtIGVuZGlmIC0lfQ==",
+  "NCCL_CUMEM_ENABLE=0",
+  "NCCL_DEBUG=INFO",
+  "SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION=0",
+  "TORCHINDUCTOR_CACHE_DIR=/root/.cache/torchinductor",
+  "TILELANG_CACHE_DIR=/root/.cache/tilelang",
+  "TRITON_CACHE_DIR=/root/.cache/triton",
+]
+flags = [
+  "--served-model-name glm53-flash-ormandj-sglang-sm120-tp2-131k-nospec",
+  "--tp-size 2",
+  "--quantization modelopt_mixed",
+  "--enable-multimodal",
+  "--image-processor-backend torchvision",
+  "--mm-process-config '{\"image\":{\"max_image_tokens\":3072}}'",
+  "--warmups serving_coverage",
+  "--moe-runner-backend flashinfer_cutlass",
+  "--disable-shared-experts-fusion",
+  "--disable-custom-all-reduce",
+  "--attention-backend dsa",
+  "--linear-attn-backend triton",
+  "--dsa-prefill-backend flashinfer_sparse_mla",
+  "--dsa-decode-backend flashinfer_sparse_mla",
+  "--kv-cache-dtype fp8_e4m3",
+  "--mamba-ssm-dtype bfloat16",
+  "--context-length 131072",
+  "--max-total-tokens 131072",
+  "--mem-fraction-static 0.99",
+  "--chunked-prefill-size 4096",
+  "--max-prefill-tokens 4096",
+  "--max-running-requests 1",
+  "--max-mamba-cache-size 5",
+  "--cuda-graph-max-bs-decode 1",
+  "--reasoning-parser glm45",
+  "--tool-call-parser glm47",
+  "--enable-metrics",
+  "--enable-cache-report",
+  "--host 0.0.0.0",
+  "--port 39118",
+]
+note = "First-boot and matched no-speculation control for the v0.1.1-rc.14 fix-forward image. It deliberately disables HiCache, all CPU/KV offload, and the upstream opt-in PCIe IPC allreduce after the exact enabled profile failed both TP ranks during their first distributed CUDA allocation under WSL2 while a minimal two-GPU CUDA probe passed. The otherwise identical retry failed at the same boundary. Isolated two-rank probes then proved two independent WSL2 controls: NCCL 2.30.7 failed in ncclCuMemMapAndSetAccess until NCCL_CUMEM_ENABLE=0, and the upstream expandable CUDA allocator still made the first rank-local tensor fail until expandable_segments was set false. With those fixed, the model loaded and tuned but Torch symmetric-memory rendezvous raised SIGFPE in the logits all-gather during decode-graph capture. The entrypoint verifies the exact source hash and one expected anchor, disables only that optimization, verifies the postcondition, and retains SGLang's normal NCCL all-gather fallback. The checkpoint chat template always opened a think block and ignored enable_thinking, which leaked hidden reasoning into content and broke strict JSON and Responses checks. The same entrypoint now verifies the immutable template hash and exact generation-prompt anchor, derives a hashed runtime-cache copy that defaults thinking on but emits an empty think block when enable_thinking is false, and supplies it with --chat-template without modifying the checkpoint. It caps the shared token pool and context at 131072, limits concurrency to one, allocates five recurrent-state slots, and captures only batch size one. Router and promotion state remain out of scope."
+
+[recipe.fit]
+suited = ["qualification", "compatibility", "text", "tool-use", "structured-output", "multimodal-control"]
+rationale = "Establishes local WSL2 correctness and a matched target-only performance control before adaptive native MTP or maximum-context testing."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO/tree/c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+]
+community = [
+  "https://github.com/ormandj/sglang-glm53-flash-sm120/tree/a547c90c74f1363920287eb80adc88a16d1e7005",
+]
+local = [
+  "docs/findings/2026-09-02-glm53-sglang-sm120-qualification-evidence/run-plan.json",
+]

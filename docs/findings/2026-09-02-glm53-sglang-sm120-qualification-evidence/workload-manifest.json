@@ -1,0 +1,13 @@
+{
+  "schema": "anvil-serving.llm-qualification-workload/v1",
+  "campaign_id": "2026-09-02-glm53-sglang-sm120-qualification",
+  "selection": "Repository-native deterministic preflight, benchmark, context, tool, structured-output, coding, quality, and concurrency workloads used by the current GLM comparison.",
+  "sampling": {"temperature": 0, "repetitions": "declared per native artifact", "thinking_first": "disabled"},
+  "context_targets": [4096, 120000, 131072, 230000, 262144, 380000, 393216, 450000, 499712],
+  "concurrency_targets": [1, 2, 4],
+  "output_reserve_tokens": 8192,
+  "corpora": ["tests/fixtures/eval-data/agents-a1-v1/image-corpus.json", "docs/findings/2026-08-01-deepseek-v4-flash-0731-nvfp4-evidence/coding-agent-suite-v2.json", "built-in deterministic preflight"],
+  "hashes": ["sha256:a514ae146b5aab3bcb55ae9fb27f55a41791a20863304d1bb95947e93931cd12", "sha256:2e8c4e7f9a20b37ef722d922c8729f4c1387e0d507fd176e9801829b5b8e510c"],
+  "licenses": ["repository test fixture; model/runtime licenses retained upstream"],
+  "finalized": true
+}

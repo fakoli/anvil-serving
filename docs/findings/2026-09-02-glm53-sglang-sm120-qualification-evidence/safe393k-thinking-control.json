@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "safe393k-preflight-all-low.json passed all ten checks with reasoning forbidden and zero reasoning leakage; safe393k-preflight-thinking-enabled.json passed smoke, JSON, five tool calls, tool-result continuation, and Responses API with reasoning required",
+  "observed_at": "2026-09-02T11:11:00Z"
+}

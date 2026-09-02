@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-02-glm53-sglang-sm120-qualification",
+  "status": "verified",
+  "mutation_required": true,
+  "starting_state": {"captured": true, "evidence": ["starting-live-state.json", "cache-before.json", "configuration-and-identity.json"]},
+  "ending_state": {"captured": true, "evidence": ["restored-live-state.json"]},
+  "differences": [],
+  "post_run_checks": [
+    "candidate container absent",
+    "incumbent retained container id 45a009b848afcbb8c6b979178f2b493c6f15327a964e93190affcd60811b2ac0",
+    "incumbent image sha256:4909e318ba1348a179824e210f90c268d6fc68e8b4e514af4782e26e6a1e5939",
+    "health 200 on 127.0.0.1:8001",
+    "exact served model and 524288 context",
+    "dual-gpu-exclusive owner restored",
+    "router running and primary-local exact identity ready",
+    "zero shared-memory files"
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

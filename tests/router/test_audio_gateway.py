@@ -570,11 +570,17 @@ def test_default_audio_transport_enforces_a_total_deadline_and_never_follows_red
 def test_default_audio_transport_records_the_bounded_count_for_an_oversized_response():
     class OversizedAudioHandler(BaseHTTPRequestHandler):
         def do_POST(self):
+            # Consume the complete request before closing the Windows socket.
+            # Leaving POST bytes unread can reset the connection before the
+            # client observes the deliberately oversized response.
+            request_bytes = int(self.headers.get("Content-Length", "0"))
+            self.rfile.read(request_bytes)
             self.send_response(200)
             self.send_header("Content-Type", "audio/pcm")
             self.send_header("Content-Length", "6")
             self.end_headers()
             self.wfile.write(b"\x00\x00\x00\x00\x00\x00")
+            self.wfile.flush()
 
         def log_message(self, format, *args):
             return

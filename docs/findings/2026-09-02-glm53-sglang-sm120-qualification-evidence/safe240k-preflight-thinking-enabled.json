@@ -1,0 +1,295 @@
+{
+  "base_url": "http://127.0.0.1:39118/v1",
+  "budget": {
+    "max_completion_tokens": 10240,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "tool-result",
+    "responses"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "required"
+  },
+  "image_expect": [],
+  "model": "glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nPython's built-in `sum()` does exactly this. You can also pass an optional start value, e.g. `sum(xs, 10)` to begin counting from 10.",
+      "content_chars": 156,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nPython's built-in `sum()` does exactly this. You can also pass an optional start value, e.g. `sum(xs, 10)` to begin counting from 10.",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 1000,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most idiomatic way is:\n\n```python\nsum(xs)\n```\n\nThat's it. Python has a built-in `sum()` functi",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 2.643,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 290,
+        "prompt_tokens": 28,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 244,
+        "total_tokens": 318
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 183,
+      "reasoning_excerpt": "The user wants me to return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose. This is a simple, direct request. I should just output the JSON object exactly as specified.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.469,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 53,
+        "prompt_tokens": 30,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 43,
+        "total_tokens": 83
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 103,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. I should call it with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 1.172,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 38,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 26,
+        "total_tokens": 5005
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 103,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. I should call it with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 1.58,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 38,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 4928
+        },
+        "reasoning_tokens": 26,
+        "total_tokens": 5005
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 103,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. I should call it with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 1.95,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 38,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 4928
+        },
+        "reasoning_tokens": 26,
+        "total_tokens": 5005
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 3,
+      "seconds": 2.342,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 4928
+        },
+        "reasoning_tokens": 21,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 103,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. I should call it with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 4,
+      "seconds": 2.799,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 38,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 4928
+        },
+        "reasoning_tokens": 26,
+        "total_tokens": 5005
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 122,
+      "reasoning_excerpt": "The user wants to know the weather in Oakland. I should use the get_weather tool with the city parameter set to \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.444,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 166,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 28,
+        "total_tokens": 206
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "OAKLAND 72F",
+      "content_chars": 11,
+      "content_excerpt": "OAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 151,
+      "reasoning_excerpt": "The user wants me to reply exactly \"OAKLAND 72F\" using the tool result. The tool result showed Oakland at 72\u00b0F, sunny. They want an exact reply format.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.55,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 47,
+        "prompt_tokens": 70,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 40,
+        "total_tokens": 117
+      },
+      "validation_detail": "tool result retained"
+    },
+    {
+      "content_chars": 5,
+      "content_excerpt": "READY",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 363,
+      "reasoning_excerpt": "The user has sent a message asking me to reply with exactly \"READY\". This is a simple instruction-following request. There's nothing harmful here \u2014 it's just asking for a specific one-word response.\n\n",
+      "reasoning_field": "reasoning_text",
+      "reasoning_tokens": null,
+      "response_status": "completed",
+      "seconds": 0.775,
+      "test": "responses",
+      "usage": {
+        "input_tokens": 16,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 77,
+        "output_tokens_details": {
+          "reasoning_tokens": 75
+        },
+        "total_tokens": 93
+      },
+      "validation_detail": "completed exact READY"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "2.6s got=\"```python\\nsum(xs)\\n```\\n\\nPython's built-in `sum()` d\" finish='stop' visible=156 reasoning_chars=1000 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=183 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "5/5 clean (sample: 1.2s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=103 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x5",
+      "passed": true
+    },
+    {
+      "detail": "1.0s tool result retained finish='stop' visible=11 reasoning_chars=151 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "0.8s status='completed' output='READY' reasoning_chars=363",
+      "name": "Responses API subset",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

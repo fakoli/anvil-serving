@@ -49,3 +49,22 @@ The later r18 promotion itself completed successfully and did not require
 rollback. The exact r33 profile remains recoverable through the managed
 exclusive-mode transition, but automatic promotion rollback is still not
 live-proven. This ticket remains open.
+
+## 2026-09-02 reproduction
+
+The recovery defect reproduced again during the no-promotion SGLang
+GLM-5.3-Flash qualification. A managed exclusive-mode entry successfully
+started the retained exclusive target, but router readmission failed because
+the invoking process did not have the configured token environment variable.
+The transaction then stopped the target and attempted to start the declared
+exclusive rollback group through ordinary `cmd_up`. Exclusive admission
+correctly refused that start because the recovery path had not re-entered or
+transferred exclusive ownership.
+
+The operator restored the exact retained target through a fresh managed
+exclusive-mode transaction after loading only the required user-local token
+into that subprocess. The retained container identity, served model, router
+admission, exclusive owner, and both GPU assignments were verified. This
+confirms that the service remained recoverable while independently confirming
+that automatic rollback is still defective. No admission weakening or raw
+Docker mutation was used; this ticket remains open.

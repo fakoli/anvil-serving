@@ -213,7 +213,7 @@ Every new benchmark finding should preserve:
 | Identity | model repository, served name, immutable revision, license/source type |
 | Hardware | host role, GPU model/count, architecture, relevant driver/runtime versions |
 | Engine | engine and version, image tag and digest, attention backend, parsers, engine-specific patches |
-| Memory recipe | weight quantization, KV dtype, GPU utilization, served context, KV capacity, admission cap |
+| Memory recipe | weight quantization, KV dtype, GPU utilization, served context, KV capacity, admission cap, default and effective per-device reserve, waiver scope/rationale, startup and post-representative-workload free VRAM |
 | Generation recipe | sampling settings, thinking control, reasoning headroom, visible-answer allowance, MTP/speculative settings |
 | Workload | suite revision, prompt length, request count, concurrency, cache policy, expected answer protocol |
 | Results | completion count, TTFT, effective prefill, generation duration, decode rate, mean inter-token latency, E2E, token counts, throughput class, quality attempts, truncations and failures |

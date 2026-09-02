@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving.qualification-live-state/v1",
+  "captured_at": "2026-09-02T08:27:06Z",
+  "mode": "dual-gpu-exclusive",
+  "serve_owner": "tp2-glm53-k3-dflash2-k5-524k-xgrammar",
+  "container": "glm53-k3-xgfix-dflash2-k5-524k",
+  "container_state": "running",
+  "health": "pass",
+  "model_list": "pass",
+  "served_model_name": "glm53-flash-exl3-k3-dflash2-k5-fp8-tp2-524k-vision-xgfix",
+  "configured_context_tokens": 524288,
+  "target": {
+    "repository": "wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1",
+    "revision": "319d66a8b53092b491f698440ecea781e4ddd4e4"
+  },
+  "draft": {
+    "repository": "incoai/GLM-5.3-Flash-DFlash2",
+    "revision": "dc77ff1c99eeb2df044ee3d4f0094eb033fee410"
+  },
+  "runtime_image_digest": "sha256:4909e318ba1348a179824e210f90c268d6fc68e8b4e514af4782e26e6a1e5939",
+  "router_state": "running and intentionally unchanged by candidate qualification",
+  "gpu_state": "both measured cards occupied by the exclusive serve",
+  "shared_memory": {
+    "active_files": 0,
+    "offload_files": 0,
+    "reclaimable_files": 0
+  },
+  "rollback_container_present": false,
+  "private_values_redacted": ["GPU UUIDs", "network identities", "credentials"]
+}

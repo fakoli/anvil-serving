@@ -1,0 +1,28 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-02-glm53-sglang-sm120-qualification",
+    "capability": "text-structured-tools-context-capacity-performance-image-ocr",
+    "repository_revision": "50f5f690d68cc493b687d316063352ce9e190940",
+    "dirty_state": "clean at campaign start",
+    "started_at": "2026-09-02T08:27:06Z",
+    "completed_at": "2026-09-02T12:15:45Z",
+    "evidence_labels": ["local-functional", "local-capacity", "local-performance", "local-quality", "local-multimodal", "local-endurance", "exact-restoration", "external-prior"],
+    "decision_labels": ["verified", "challenger", "no-promotion"],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": ["preflight/v2", "capacity-v3", "multimodal-corpus-run/v1", "anvil-serving.bakeoff-evidence/v3"],
+  "artifact_roles": [
+    {"role": "evidence-index", "status": "complete", "files": ["README.md", "artifact-manifest.json"], "reason": ""},
+    {"role": "source-registry", "status": "complete", "files": ["source-registry.json", "upstream-source-lock.json", "candidate-image-metadata.json"], "reason": ""},
+    {"role": "workload-manifest", "status": "complete", "files": ["workload-manifest.json"], "reason": ""},
+    {"role": "run-plan", "status": "complete", "files": ["run-plan.json"], "reason": ""},
+    {"role": "configuration-and-identity", "status": "complete", "files": ["configuration-and-identity.json", "safe240k-thinking-control.json"], "reason": ""},
+    {"role": "raw-run-evidence", "status": "complete", "files": ["nospec-131k-preflight-fixed-low.json", "adaptive-131k-preflight-all-low.json", "full499k-preflight-all-low.json", "safe393k-preflight-all-low.json", "safe240k-preflight-all-low.json", "safe240k-preflight-thinking-enabled.json", "safe240k-capacity-c1-4k-r3.json", "safe240k-capacity-c1-120k-r3.json", "safe240k-capacity-c1-230k-r3.json", "safe240k-quality-coding-agent-v2-disabled-r3-visible2048.json", "safe240k-multimodal-image-c1.json", "safe240k-endurance-c1-4k-r60.json", "post-workload-state.json"], "reason": "all failed, intermediate, and selected-profile artifacts remain in this directory"},
+    {"role": "failures-and-friction", "status": "complete", "files": ["friction-log.md", "nccl-cumem-probe.md", "log-audit.md", "safe393k-quality-coding-agent-v2-disabled-r3.json"], "reason": ""},
+    {"role": "restoration", "status": "complete", "files": ["starting-live-state.json", "restored-live-state.json", "restoration.json", "final-restoration-recheck.json"], "reason": ""},
+    {"role": "decision-summary", "status": "complete", "files": ["summary.json"], "reason": ""},
+    {"role": "publication-summary", "status": "complete", "files": ["publication-summary.md", "../2026-09-02-glm53-sglang-sm120-qualification.md"], "reason": ""},
+    {"role": "post-qualification-decision", "status": "complete", "files": ["vram-policy-reclassification.json", "promotion-publication-summary.md", "../2026-09-02-glm53-sglang-sm120-393k-promotion.md"], "reason": "later human-approved reserve waiver and promotion; campaign fields above remain the original point-in-time qualification decision"}
+  ]
+}

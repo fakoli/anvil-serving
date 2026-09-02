@@ -1,0 +1,24 @@
+{
+  "schema": "anvil-serving.qualification-live-recheck/v1",
+  "captured_at": "2026-09-02T12:15:45Z",
+  "outcome": "passed",
+  "mode": "dual-gpu-exclusive",
+  "serve_owner": "tp2-glm53-k3-dflash2-k5-524k-xgrammar",
+  "incumbent": {
+    "container": "glm53-k3-xgfix-dflash2-k5-524k",
+    "retained_container_id_matched": true,
+    "health_status": 200,
+    "served_model_name": "glm53-flash-exl3-k3-dflash2-k5-fp8-tp2-524k-vision-xgfix"
+  },
+  "router": {
+    "state": "running",
+    "tier": "primary-local",
+    "ready": true,
+    "readmitted": true,
+    "expected_and_observed_model_match_incumbent": true,
+    "authenticated_smoke": {"requests": 1, "passed": 1, "model_alias": "llm.primary"}
+  },
+  "gpu_count": 2,
+  "candidate_container_present": false,
+  "shared_memory": {"active_files": 0, "reclaimable_files": 0}
+}

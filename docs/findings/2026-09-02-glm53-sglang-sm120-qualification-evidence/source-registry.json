@@ -1,0 +1,77 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-02-glm53-sglang-sm120-qualification",
+  "observed_at": "2026-09-02T08:27:06Z",
+  "sources": [
+    {
+      "id": "upstream-stable-tag",
+      "url": "https://github.com/ormandj/sglang-glm53-flash-sm120/tree/v0.1.0",
+      "published_or_observed": "2026-09-01",
+      "observed_at": "2026-09-02",
+      "age_class": "current",
+      "evidence_type": "community-recipe",
+      "hardware_runtime_relevance": "Exact custom SM120 source and pinned release image for dual PCIe GPUs on native Linux; WSL2 remains locally unproven.",
+      "decision_impact": "Pins the initial candidate command, patches, image digest, and comparison expectations."
+    },
+    {
+      "id": "upstream-stable-release",
+      "url": "https://github.com/ormandj/sglang-glm53-flash-sm120/releases/tag/v0.1.0",
+      "published_or_observed": "2026-09-01",
+      "observed_at": "2026-09-02",
+      "age_class": "current",
+      "evidence_type": "community-benchmark",
+      "hardware_runtime_relevance": "Reports native-Linux measurements on the same GPU product class and two-card PCIe topology.",
+      "decision_impact": "Defines external performance and capacity priors; it is not local qualification evidence."
+    },
+    {
+      "id": "model-commit",
+      "url": "https://huggingface.co/ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO/tree/c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+      "published_or_observed": "2026-09-01",
+      "observed_at": "2026-09-02",
+      "age_class": "current",
+      "evidence_type": "model-artifact",
+      "hardware_runtime_relevance": "Exact W4A16 NVFP4 routed-expert checkpoint used by the stable recipe.",
+      "decision_impact": "Pins model and tokenizer identity and establishes the MIT artifact license."
+    },
+    {
+      "id": "sglang-glm-cookbook",
+      "url": "https://docs.sglang.ai/basic_usage/glm.html",
+      "published_or_observed": "observed 2026-09-02",
+      "observed_at": "2026-09-02",
+      "age_class": "current",
+      "evidence_type": "official-runtime-guidance",
+      "hardware_runtime_relevance": "Official GLM serving guidance; listed qualified accelerator families exclude RTX PRO 6000 and WSL2.",
+      "decision_impact": "Supports matched speculation controls and keeps HiCache disabled for the first local stage."
+    },
+    {
+      "id": "nvidia-wsl-guide",
+      "url": "https://docs.nvidia.com/cuda/wsl-user-guide/index.html",
+      "published_or_observed": "observed 2026-09-02",
+      "observed_at": "2026-09-02",
+      "age_class": "current",
+      "evidence_type": "official-platform-guidance",
+      "hardware_runtime_relevance": "Defines CUDA-on-WSL support and platform limitations; it does not validate this custom PCIe IPC path.",
+      "decision_impact": "Requires a local PCIe-IPC enabled/disabled A/B and conservative first boot."
+    },
+    {
+      "id": "upstream-rc14-source",
+      "url": "https://github.com/ormandj/sglang-glm53-flash-sm120/tree/a547c90c74f1363920287eb80adc88a16d1e7005",
+      "published_or_observed": "2026-09-02",
+      "observed_at": "2026-09-02",
+      "age_class": "current",
+      "evidence_type": "community-fix-forward-candidate",
+      "hardware_runtime_relevance": "Exact v0.1.1-rc.14 source for the same TP=2 SM120 target; its digest-pinned image exists, but upstream labels it unqualified.",
+      "decision_impact": "Selected for local qualification because it adds DSA radix correctness, bounded KDA extend, warmup, and image-memory fixes after stable v0.1.0."
+    },
+    {
+      "id": "sglang-glm53-tracker",
+      "url": "https://github.com/sgl-project/sglang/issues/37524",
+      "published_or_observed": "2026-09-02",
+      "observed_at": "2026-09-02",
+      "age_class": "current",
+      "evidence_type": "official-runtime-issue-tracker",
+      "hardware_runtime_relevance": "Tracks current GLM-5.3-Flash failures including long-context graph replay, ModelOpt mixed loading, TP>1 NextN, tool corruption, and DCP indexing.",
+      "decision_impact": "Expands the local hard gates for long-context first-token decode, TP=2 adaptive MTP, repeated tools, and exact graph coverage; DCP is intentionally absent."
+    }
+  ]
+}

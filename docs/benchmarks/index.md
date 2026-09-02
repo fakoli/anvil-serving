@@ -13,7 +13,7 @@ passing run never changes a serve or route without a separate human gate.
     the current reference results. It also maps each recipe field to a generic
     container runtime for readers who do not use Anvil Serving.
 
-**Last evidence review: 2026-08-31.**
+**Last evidence review: 2026-09-02.**
 
 ## Start with the numbers
 
@@ -62,35 +62,51 @@ The decision labels below describe the latest dated public evidence for each
 reference configuration. They do not report or control any operator's live
 route assignments; active deployment state remains private.
 
-1. **GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5** — `current`
-   text/tools/image/OCR Primary at 524,288 tokens in exclusive TP=2 across both
-   RTX PRO 6000 cards, with router c16, measured C2 at a nominal 250K target,
-   8,192 maximum output, and up to 16 images. Video is unsupported, the former
-   1M profile is the first same-model rollback, and the DFlash2 draft is
-   noncommercial without separate permission.
-2. **RadixArk Qwen3.8 Flash Next NVFP4** — immediate retained
+1. **GLM-5.3-Flash ormandj W4A16/NVFP4 SGLang** — `current`
+   text/tools/image/OCR published profile at 393,216 tokens/C1 in exclusive
+   TP=2 across both RTX PRO 6000 cards, with adaptive EAGLE, explicit thinking
+   control, a 4,096-token output cap, and real Pi/OpenClaw/Hermes acceptance.
+   The standing reserve was explicitly waived for the model-only pair while
+   the post-workload runtime safety gates remained in force.
+2. **GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5** — immediate exact
+   rollback at 524,288 tokens/router-c16, measured C2 at a nominal 250K target,
+   8,192 maximum output, and up to 16 images. Video is unsupported and the
+   DFlash2 draft is noncommercial without separate permission. The SGLang
+   245,760/C1 profile remains a conservative verified fallback.
+3. **RadixArk Qwen3.8 Flash Next NVFP4** — immediate retained
    text/image/OCR/video rollback at 262,144 tokens, exclusive TP=2, router c1,
    four-image/one-video admission, and the qualified hash-gated SM120 QSA-fast
    MTP3 profile.
-3. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
+4. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
    Primary profiles with retained TP=2 long-context, performance, quality, and
    real-client evidence.
-4. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
+5. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
    former text/image/OCR/video deployments with retained managed recipes.
-5. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
+6. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
    **Laguna S 2.1**, and **GPT-OSS Puzzle 88B** — retained qualified or
    promotion-era recipes, not the immediate selected deployment.
-6. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
+7. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
    controls.
-7. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
+8. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
-8. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
+9. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
    direct 128K text/tools/image/OCR/video evidence, no route or promotion.
-9. **FLUX.2 Klein 4B FP8** — published as available for the RTX 5090 ComfyUI image
+10. **FLUX.2 Klein 4B FP8** — published as available for the RTX 5090 ComfyUI image
    workflow through Hermes/MCP at fixed 512/768/1024-pixel profiles; six of
    eight bounded visual samples passed strict review, with two retained draft
    fidelity/count failures. **Wan2.2 TI2V 5B** remains unavailable after
    its decodable sample failed prompt adherence and spatial quality.
+
+On 2026-09-02, the exact ormandj GLM-5.3-Flash W4A16/NVFP4 checkpoint and
+rc14 SGLang image qualified and was human-promoted at 393,216 tokens/C1 on
+both PRO 6000 cards. The selected adaptive-MTP lane passed tools 20/20, coding
+15/15, media 12/12, endurance 60/60, and 4K/120K/262K/380K capacity through
+304,491 actual prompt tokens. After a recorded model-only reserve waiver, the
+managed direct/routed gates and real Pi/OpenClaw/Hermes acceptance passed;
+2,543 MiB/card remained after client work. The exact 524K incumbent is retained
+as rollback. See the
+[qualification](../findings/2026-09-02-glm53-sglang-sm120-qualification.md)
+and [promotion](../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md).
 
 On 2026-08-31, the exact GLM-5.3-Flash K3 target plus DFlash2 K5 draft moved to
 a digest-pinned xgrammar-corrected 524K profile after a matched no-speculation
