@@ -9,24 +9,26 @@
     - **Product role:** selected published text, tools, image, and OCR
       reference profile; this dossier records the evidence decision and does
       not claim current live route or serve state.
-    - **Selected or best-qualified configuration:** exact
-      `wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1` target with DFlash2 fixed-K5,
-      corrected xgrammar runtime, TP=2/DCP=2, 524,288 configured tokens,
-      router c16, and up to 16 images.
+    - **Selected or best-qualified configuration:** exact ormandj
+      W4A16/NVFP4 target on digest-pinned SGLang rc14, TP=2, 393,216
+      configured tokens, C1, adaptive EAGLE, and image/OCR support.
     - **Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q cards in
       exclusive TP=2 over PCIe without NVLink under Windows 11, Docker
       Desktop, and WSL2.
-    - **Evidence:** 28/28 direct functional observations, bounded quality,
-      206,296-actual-token retrieval, measured C2 at a nominal 250K target,
-      83.08 tok/s at 4K, and pooled 69.99 tok/s at 240K.
-    - **Decision:** retain the corrected 524K K5 profile as `current` in the
-      published comparison; the former 1M K5 profile is first same-model
-      rollback and the 4,096-token scheduler-chunk arm remains rejected.
-    - **Important limitation:** video is unsupported; DFlash2 is
-      noncommercial without separate permission; router c16 is not proof of
-      sixteen simultaneous full-window requests.
-    - **Review dates:** retained evidence through 2026-08-31; dossier-format
-      review 2026-08-31.
+    - **Evidence:** complete thinking-off/on, tool, Responses, capacity,
+      coding 15/15, media 12/12, endurance 60/60, managed/routed promotion,
+      and real Pi/OpenClaw/Hermes gates; 304,491 actual prompt tokens and
+      112.07 tok/s at 4K.
+    - **Decision:** record the 393K/C1 SGLang profile as `current` in the
+      published comparison after the human-approved model-only reserve waiver;
+      retain the corrected 524K EXL3/DFlash2 K5 profile as immediate rollback.
+    - **Important limitation:** video is unsupported; admission is C1; the
+      3,072 MiB standing reserve was waived only for this model-only GPU pair.
+      DFlash2 in the rollback is noncommercial without separate permission.
+    - **Conservative fallback:** the same SGLang profile at 245,760/C1 remains
+      independently verified with 3,487 MiB free per card after workload.
+    - **Review dates:** retained evidence through 2026-09-02; dossier-format
+      review 2026-09-02.
 
 ### Review narrative
 
@@ -52,6 +54,23 @@ published contract covers text, tools, image, and OCR at 524,288 configured
 tokens, router concurrency 16, and up to 16 images. Video is unsupported. The
 former 1M K5 profile remains the first rollback.
 
+#### 2026-09-02 — pinned SGLang SM120 qualification and promotion
+
+The exact ormandj W4A16/NVFP4 checkpoint and rc14 SGLang image were translated
+from an external native-Linux recipe to WSL2 and qualified under managed
+Anvil Serving lifecycle. A matched 131K adaptive-MTP/no-spec A/B showed
+adaptive MTP improving decode by 39.7% at 4K and 29.2% at the 120K target,
+with the 2.8% long-prefill difference inside the 3% equivalence band. The
+393,216-token/C1 lane passed direct function, tools, long tool, image/OCR,
+reasoning, 15/15 coding, 12/12 media, 60/60 endurance, and the full
+4K/120K/262K/380K performance sweep through 304,491 measured prompt tokens.
+It initially failed only the standing 3 GiB reserve policy at 2,101 MiB/card.
+After the operator declared the pair model-only and waived that reserve, a
+managed promotion passed direct, routed, and real Pi/OpenClaw/Hermes gates.
+The exact 524K incumbent remains the immediate rollback. The 245,760/C1 lane
+is a conservative verified fallback; the 499K lanes remain rejected or
+unverified.
+
 ## Immutable identity
 
 - Target: `wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1`
@@ -69,6 +88,19 @@ former 1M K5 profile remains the first rollback.
 - Quantization: EXL3/MCG K3 routed experts with native
   attention/shared/vision/MTP tensors; FP8 DS-MLA target KV; BF16 DFlash2
   draft KV
+
+The 2026-09-02 current SGLang profile has a separate immutable identity:
+
+- Target: `ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO`
+- Target revision: `c3cbb9891b67c741bcbf6b176dd7af9265b069db`
+- Runtime image:
+  `ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53`
+- Runtime source label: `ormandj/sglang-glm53-flash-sm120@a547c90`
+- SGLang source label: `sgl-project/sglang@4c2c169`
+- Served identity:
+  `glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp`
+- Quantization: ModelOpt W4A16/NVFP4 K32 experts, FP8 weight-only dense
+  tensors, FP8 KV, and adaptive EAGLE speculative decoding
 
 The target, draft, and runtime are third-party artifacts. The DFlash2 draft is
 CC-BY-NC-ND-4.0, so the combined recipe is evaluation/noncommercial unless
@@ -92,7 +124,9 @@ FP8 target KV, and the DFlash2 draft.
 
 | Recipe | Role | Context | Decision |
 |---|---|---:|---|
-| [DFlash2 K5, corrected xgrammar](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-dflash2-k5-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) | selected text/image/OCR default | 524,288 | `verified`, `current` |
+| [SGLang W4A16 adaptive MTP](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp-recipe.toml) | selected text/image/OCR default | 393,216 | `verified`, `current` |
+| [DFlash2 K5, corrected xgrammar](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-dflash2-k5-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) | immediate exact rollback | 524,288 | `verified`, rollback |
+| [SGLang W4A16 adaptive MTP, conservative](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp-recipe.toml) | conservative fallback | 245,760 | `verified`, fallback |
 | [Matched no-speculation control](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-nospec-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) | reliability/performance control | 524,288 | `verified`, control |
 | [Former DFlash2 K5, batch 2,048](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-dflash2-fp8-1m-vision-sm120-tp2-wsl2-recipe.toml) | first rollback | 1,048,576 | historical `verified`, rollback |
 | [DFlash2 K3, batch 2,048](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-exl3-k3-dflash2-k3-fp8-1m-vision-sm120-tp2-wsl2-recipe.toml) | former high-concurrency alternate | 1,048,576 | historical `verified` |
@@ -106,6 +140,15 @@ scheduling ceiling for short requests, not proof of sixteen simultaneous 524K
 prompts. The measured long-context concurrency gate is C2 at a nominal 250K
 target. The locally qualified media contract is up to 16 images and zero
 videos.
+
+The selected SGLang profile uses C1, 4,096 maximum output tokens, adaptive
+EAGLE, FP8 KV, and the multimodal visual tower. At 393,216 configured tokens
+it retained 2,101 MiB free on each card after qualification and 2,543 MiB after
+the promotion's routed/client work. The operator explicitly waived the
+standing 3,072 MiB reserve for this model-only pair without waiving runtime
+safety evidence. The 245,760 profile retained 3,487 MiB/card and remains the
+conservative fallback. The 499,712/C4 profile is rejected and the C1 variant
+is unverified.
 
 ## Evidence by measurement class
 
@@ -131,6 +174,17 @@ videos.
   marker, and emitted zero error events; the goal-closure recheck on Pi 0.84.4
   retained 524,288/8,192 and passed another real PTY tool nonce.
 
+For the 2026-09-02 SGLang profile, thinking-disabled preflight passed all
+ten observations, tools passed 20/20, and long needle/tool cases
+passed, and image understanding/OCR passed. Thinking-enabled smoke, JSON,
+tools 5/5, tool-result continuation, and Responses passed with dedicated
+reasoning. Bounded coding passed 15/15 at a 2,048-token visible budget, the
+media corpus passed 12/12, and endurance passed 60/60. The three-run capacity
+sweep measured 112.07/96.17/102.42/99.79 tok/s decode and
+16,729/5,749/5,579/5,457 tok/s effective prefill at nominal
+4K/120K/262K/380K targets respectively. Managed direct and routed gates plus
+real Pi/OpenClaw/Hermes acceptance passed after promotion.
+
 ### Matched local comparison
 
 | Requested context | Matched no spec | Corrected DFlash2 K5 | Former 1M K5 | Current vs no spec | Current vs former 1M |
@@ -145,19 +199,20 @@ model-intelligence ranking.
 
 ## Decision and promotion state
 
-The corrected 524K K5 profile with 2,048-token batching is the selected
-text/image/OCR default. It retains measured C2 headroom at a 250K-class prompt,
-eliminates the speculative structured-output failure, and improves local
-decode over both the matched no-speculation control and the former 1M K5
-profile. The former 1M image/config remains the first rollback. Raising
-batching to 4,096 remains rejected from the preceding campaign.
+The 393K/C1 SGLang adaptive-MTP profile is the selected published
+text/image/OCR default. It combines the complete direct qualification with
+managed, routed, and real-client promotion acceptance. The corrected 524K K5
+profile with 2,048-token batching is the immediate exact rollback; it retains
+measured C2 headroom at a 250K-class prompt and its corrected structured-output
+behavior. Raising its batching to 4,096 remains rejected.
 
-The 524K route advertises 8,192 maximum output, router c16, and 16 images.
+The selected SGLang contract advertises 393,216 context, 4,096 maximum output,
+C1, and image/OCR without video. During the recorded promotion,
 `llm.primary`, `llm.secondary`, `llm.auxiliary`, `llm.voice`,
 `vision.general`, and `vision.ocr` select the same exact service during this
-evaluation. Qwen3.8 Flash Next remains the retained video-capable rollback;
-the former 1M GLM profile is the first same-model rollback and the earlier
-262K GLM image remains an additional historical rollback.
+evaluation. Qwen3.8 Flash Next remains the retained video-capable rollback.
+The 524K EXL3/DFlash2 profile is the immediate same-model rollback, and the
+245,760/C1 SGLang lane is the conservative same-engine fallback.
 
 ## Failures and gotchas
 
@@ -180,11 +235,25 @@ the former 1M GLM profile is the first same-model rollback and the earlier
   an artificially small visible cap can end in reasoning without an answer.
 - No exact Docker-image removal product surface exists. The previous GLM image
   remains the intended one-week rollback; no broad prune was used.
+- The rc14 SGLang image required three narrow WSL2 fix-forwards:
+  `NCCL_CUMEM_ENABLE=0`, disabling expandable-segment allocation, and a
+  hash-gated fallback from the symmetric-memory logits gatherer to ordinary
+  NCCL. The derived chat template is also hash-gated so thinking-disabled
+  requests do not leak internal reasoning.
+- The 393K/C1 profile's original reserve-policy failure was reclassified under
+  the recorded model-only waiver; the physical 2,101 MiB/card measurement is
+  unchanged. The 499K/C4 lane is rejected and the 499K/C1 lane is unverified.
+- Sparse-MLA CPB calibration rejected implausible fitted results and retained
+  the engine heuristic. Optional NCCL plugin warnings were benign. No kernel
+  tune was stored because no exact default-versus-tuned end-to-end A/B showed
+  an improvement.
 
 ## Dated run history
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-09-02 | Human-approved 393K/C1 reserve reclassification, managed promotion fix-forward, routed gates, and real-client acceptance | Published `current` text/tools/image/OCR profile; 304,491 actual prompt tokens, 112.07/96.17/102.42/99.79 tok/s at 4K/120K/262K/380K targets, direct and routed gates, Pi/OpenClaw/Hermes pass, 2,543 MiB/card after client work, exact 524K rollback retained; [promotion finding](../../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md) |
+| 2026-09-02 | Pinned ormandj SGLang SM120 translation, WSL2 fix-forward, matched adaptive/no-spec A/B, 240K full qualification, larger-envelope feasibility, endurance, and exact incumbent restoration | 245,760/c1 adaptive MTP selected as a verified challenger with no promotion; 108.57/93.35/95.00 tok/s decode at 4K/120K/230K, quality 15/15, media 12/12, endurance 60/60, and 3,487 MiB/card post-workload reserve; [finding and raw artifacts](../../findings/2026-09-02-glm53-sglang-sm120-qualification.md) |
 | 2026-08-31 | xgrammar fix-forward image, matched 524K no-spec/DFlash2 A/B, C2 250K-class gate, rollback drill, router, and real-client forward restore | corrected DFlash2 K5 selected at 524K; 83.08 tok/s at 4K and pooled 69.99 at 240K; C2 2/2; full [finding and raw artifacts](../../findings/2026-08-31-glm53-xgrammar-524k-qualification.md) |
 | 2026-08-30 | Current-source refresh, K5/K3/batch4,096 A/B, 4K-500K performance, 950K retrieval, image/OCR, quality, router, and real-client promotion | K5/batch2,048 selected as `current` one-week default; K3 verified alternate; batch4,096 rejected; full [finding and raw artifacts](../../findings/2026-08-30-glm53-k3-dflash2-1m-optimization.md) |
 | 2026-08-29 | Cardillo/Purtell translation, adaptive/fixed/no-spec A/B, vision/OCR, 250K and near-500K capacity | TR3 vision fixed K5 and no-spec 524K qualified as challengers; adaptive MTP rejected; 0xSero 3.0-bpw watch-only; [historical finding](../../findings/2026-08-29-glm53-cardillo-purtell-qualification.md) |

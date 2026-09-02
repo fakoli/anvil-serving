@@ -879,6 +879,10 @@ def load_promotions(path):
     names the promoted and rollback serve, the fixed router tier ids, and one
     complete local-only capability meta-router config for each model identity.
     """
+    from .benchmarking.artifacts import validate_write_target
+    from .model_controls import REASONING_EFFORT_CHOICES
+    from .preflight import parse_checks, validate_image_path, validate_video_path
+
     with open(path, "rb") as f:
         data = tomllib.load(f)
     mdir = os.path.dirname(os.path.abspath(path))
@@ -939,6 +943,16 @@ def load_promotions(path):
             if (isinstance(value, bool) or not isinstance(value, numbers.Real)
                     or not math.isfinite(value) or value <= 0):
                 raise ValueError("promotion %s must be a finite positive number" % field)
+        for field, minimum, maximum in (
+            ("needle_ctx", 1, 1000000),
+            ("tool_batch", 1, 128),
+        ):
+            value = plan[field]
+            if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
+                raise ValueError(
+                    "promotion %s must be an integer from %s through %s"
+                    % (field, minimum, maximum)
+                )
         default_gate = {
             "name": "preflight", "checks": "smoke,json,needle,tools",
             "thinking_mode": "default", "visible_answer_tokens": 256,
@@ -958,9 +972,106 @@ def load_promotions(path):
                     raise ValueError("promotion gate has invalid thinking_mode: %r" % gate)
                 if gate["reasoning_evidence"] not in {"any", "required", "forbidden"}:
                     raise ValueError("promotion gate has invalid reasoning_evidence: %r" % gate)
+                reasoning_effort = gate.get("reasoning_effort")
+                if (
+                    reasoning_effort is not None
+                    and reasoning_effort not in REASONING_EFFORT_CHOICES
+                ):
+                    raise ValueError(
+                        "promotion gate %r has invalid reasoning_effort: %r"
+                        % (gate["name"], reasoning_effort)
+                    )
+                if reasoning_effort is not None and gate["thinking_mode"] != "default":
+                    raise ValueError(
+                        "promotion gate %r cannot combine reasoning_effort with thinking_mode"
+                        % gate["name"]
+                    )
+                for token_field, minimum in (
+                    ("visible_answer_tokens", 1),
+                    ("reasoning_headroom_tokens", 0),
+                ):
+                    value = gate[token_field]
+                    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+                        raise ValueError(
+                            "promotion gate %r %s must be an integer greater than or equal to %s"
+                            % (gate["name"], token_field, minimum)
+                        )
+                if gate["visible_answer_tokens"] + gate["reasoning_headroom_tokens"] > 65536:
+                    raise ValueError(
+                        "promotion gate %r combined completion allocation cannot exceed 65536"
+                        % gate["name"]
+                    )
+                try:
+                    selected_checks = set(parse_checks(gate.get("checks")))
+                except ValueError as exc:
+                    raise ValueError(
+                        "promotion gate %r has invalid checks: %s"
+                        % (gate["name"], exc)
+                    ) from exc
+                for path_field in ("json_out", "image_path", "video_path"):
+                    if gate.get(path_field):
+                        value = str(gate[path_field]).replace("{dir}", mdir)
+                        gate[path_field] = os.path.abspath(
+                            value if os.path.isabs(value) else os.path.join(mdir, value)
+                        )
+                for path_field, validate in (
+                    ("image_path", validate_image_path),
+                    ("video_path", validate_video_path),
+                ):
+                    if gate.get(path_field):
+                        try:
+                            validate(gate[path_field])
+                        except ValueError as exc:
+                            raise ValueError(
+                                "promotion gate %r has invalid %s: %s"
+                                % (gate["name"], path_field, exc)
+                            ) from exc
                 if gate.get("json_out"):
-                    value = str(gate["json_out"]).replace("{dir}", mdir)
-                    gate["json_out"] = os.path.abspath(value if os.path.isabs(value) else os.path.join(mdir, value))
+                    try:
+                        validate_write_target(gate["json_out"], label="preflight output")
+                    except OSError as exc:
+                        raise ValueError(
+                            "promotion gate %r has invalid json_out: %s"
+                            % (gate["name"], exc)
+                        ) from exc
+                for expectation_field in (
+                    "image_expect", "ocr_expect", "video_expect",
+                ):
+                    expectations = gate.get(expectation_field, [])
+                    if (
+                        not isinstance(expectations, list)
+                        or not all(isinstance(item, str) and item for item in expectations)
+                    ):
+                        raise ValueError(
+                            "promotion gate %s must be an array of non-empty strings"
+                            % expectation_field
+                        )
+                    gate[expectation_field] = list(expectations)
+                if {"image", "ocr"} & selected_checks and not gate.get("image_path"):
+                    raise ValueError(
+                        "promotion gate %r checks image or ocr but has no image_path"
+                        % gate["name"]
+                    )
+                if "image" in selected_checks and not gate["image_expect"]:
+                    raise ValueError(
+                        "promotion gate %r checks image but has no image_expect"
+                        % gate["name"]
+                    )
+                if "ocr" in selected_checks and not gate["ocr_expect"]:
+                    raise ValueError(
+                        "promotion gate %r checks ocr but has no ocr_expect"
+                        % gate["name"]
+                    )
+                if "video" in selected_checks and not gate.get("video_path"):
+                    raise ValueError(
+                        "promotion gate %r checks video but has no video_path"
+                        % gate["name"]
+                    )
+                if "video" in selected_checks and not gate["video_expect"]:
+                    raise ValueError(
+                        "promotion gate %r checks video but has no video_expect"
+                        % gate["name"]
+                    )
                 normalized.append(gate)
             plan[field] = normalized
         plans.append(plan)
@@ -1474,24 +1585,68 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         label, ", ".join(stop_names), target["name"], len(gates),
         os.path.basename(selected_config)))
     if dry_run:
+        stopped_containers = {
+            _exact_serve(serves, name)["container"] for name in stop_names
+        }
+        # Preview the same post-stop reservation state the real transaction
+        # reaches. Otherwise an exclusive rollback owner that the plan has
+        # just printed as stopped incorrectly blocks its exclusive target.
+        post_stop_ledger = [
+            serve for serve in serves
+            if serve["container"] not in stopped_containers
+        ]
         for tier_id in plan["affected_tiers"]:
             print("  gate: quiesce router tier %s" % tier_id)
             print("  gate: drain router tier %s (timeout %ss)" % (
                 tier_id, plan["drain_timeout"]))
-        cmd_down(
+        down_result = cmd_down(
             serves, stop_names, dry_run=True, keep_container=True, _run=_run
         )
-        cmd_up(serves, [target["name"]], dry_run=True, recreate=True, _run=_run)
-        print("  gate: exact served-model identity for %s" % target["served_name"])
+        if down_result != 0:
+            return down_result
+        up_result = cmd_up(
+            serves,
+            [target["name"]],
+            dry_run=True,
+            recreate=True,
+            ledger_serves=post_stop_ledger,
+            _allow_exclusive_target=reservations.is_exclusive(target),
+            _run=_run,
+        )
+        if up_result != 0:
+            return up_result
+        print(
+            "  planned gate: exact served-model identity for %s "
+            "(deferred until live execution)" % target["served_name"]
+        )
         for gate in gates:
-            print("  gate %s: eval preflight --tier %s --checks %s --thinking-mode %s "
-                  "--visible-answer-tokens %s --reasoning-headroom-tokens %s" % (
-                      gate["name"], target["name"], gate["checks"], gate["thinking_mode"],
-                      gate["visible_answer_tokens"], gate["reasoning_headroom_tokens"]))
-        print("  apply: atomically install %s and restart the router" % selected_config)
-        print("  verify: router gateway is reachable after the serve swap")
-        print("  verify: post-restart health and model identity for %s" % (
-            ", ".join(plan["affected_tiers"])))
+            print(
+                "  planned gate %s: eval preflight --tier %s --checks %s "
+                "--thinking-mode %s --visible-answer-tokens %s "
+                "--reasoning-headroom-tokens %s (deferred until live execution)"
+                % (
+                    gate["name"], target["name"], gate["checks"],
+                    gate["thinking_mode"], gate["visible_answer_tokens"],
+                    gate["reasoning_headroom_tokens"],
+                )
+            )
+        print(
+            "  planned apply: atomically install %s and restart the router "
+            "(deferred until live execution)" % selected_config
+        )
+        print(
+            "  planned verify: router gateway reachability after the serve swap "
+            "(deferred until live execution)"
+        )
+        print(
+            "  planned verify: post-restart health and model identity for %s "
+            "(deferred until live execution)"
+            % ", ".join(plan["affected_tiers"])
+        )
+        print(
+            "  dry-run result: static admission passed; runtime stop/start, health, "
+            "preflight, router apply, and post-restart verification were not executed"
+        )
         return 0
 
     quiesced = []
@@ -1529,7 +1684,14 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     )
     if reuse_target:
         print("  resume: %s is already healthy with exact model identity" % target["name"])
-    elif cmd_up(serves, [target["name"]], recreate=True, _run=_run) != 0:
+    elif cmd_up(
+        serves,
+        [target["name"]],
+        recreate=True,
+        ledger_serves=serves,
+        _allow_exclusive_target=reservations.is_exclusive(target),
+        _run=_run,
+    ) != 0:
         return 1
     startup_timeout = plan["rollback_startup_timeout"] if rollback else plan["startup_timeout"]
     if not _await_healthy(target, startup_timeout, plan["poll_interval"],
@@ -1551,6 +1713,16 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         ]
         if gate.get("reasoning_effort"):
             preflight.extend(["--reasoning-effort", str(gate["reasoning_effort"])])
+        if gate.get("image_path"):
+            preflight.extend(["--image-path", str(gate["image_path"])])
+        for expectation in gate.get("image_expect", []):
+            preflight.extend(["--image-expect", expectation])
+        for expectation in gate.get("ocr_expect", []):
+            preflight.extend(["--ocr-expect", expectation])
+        if gate.get("video_path"):
+            preflight.extend(["--video-path", str(gate["video_path"])])
+        for expectation in gate.get("video_expect", []):
+            preflight.extend(["--video-expect", expectation])
         if gate.get("json_out"):
             preflight.extend(["--json-out", str(gate["json_out"])])
         if _promotion_cli(preflight, _run=_run) != 0:

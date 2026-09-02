@@ -1,0 +1,37 @@
+{
+  "schema": "anvil-serving.llm-qualification-run-plan/v1",
+  "campaign_id": "2026-09-02-glm53-sglang-sm120-qualification",
+  "decision": "challenger-no-promotion",
+  "controls": {
+    "hardware": "2x RTX PRO 6000 Blackwell Max-Q, exclusive TP=2, PCIe, no NVLink, WSL2",
+    "model_revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+    "image_digest": "sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+    "first_boot_total_tokens": 131072,
+    "output_reserve_tokens": 8192,
+    "cpu_kv_offload": false,
+    "hicache": false
+  },
+  "stages": [
+    "snapshot-starting-state-and-storage",
+    "managed-pull-and-conservative-load",
+    "health-exact-identity-and-thinking-disabled-preflight",
+    "functional-json-tools-streaming-responses-recovery-and-coding",
+    "matched-native-mtp-versus-no-speculation-ab",
+    "matched-pcie-ipc-enabled-versus-disabled-ab",
+    "context-ladder-131k-262k-393k-safe-maximum",
+    "concurrency-c1-c2-c4-and-actual-206630-token-c2",
+    "bounded-quality-and-endurance",
+    "managed-unload-exact-restore-and-post-run-verification",
+    "sanitized-publication-and-full-repository-validation"
+  ],
+  "hard_gates": [
+    "exact served identity",
+    "visible answer and allowed finish reason",
+    "100 percent deterministic assertions",
+    "valid JSON and tool calls",
+    "no OOM, corruption, unexplained loss, or restart",
+    "at least 3 GiB free VRAM per card for a recommended profile",
+    "exact restoration of starting serve and router state"
+  ],
+  "expected_negative_gate": "Two independent requests of 250000 prompt plus 8192 output exceed stable v0.1.0's 507904-token pool by 8480 tokens and rc.14's documented 499712-token pool by 16672 tokens; retain measured admission failure or reduced actual prompts rather than retrying as a startup defect."
+}
