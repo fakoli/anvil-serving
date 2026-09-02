@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.external-recipe-source-lock/v1",
+  "observed_at": "2026-09-02",
+  "repository": "https://github.com/ormandj/sglang-glm53-flash-sm120",
+  "stable": {
+    "tag": "v0.1.0",
+    "source_commit": "f0edcfab8f6633ff29df87cbb3e32f117a5d7636",
+    "image_digest": "sha256:47a2e75b0f93a49a08c9fccaa76e6a5d82bf1e6c98b5ca96c411788e5ff4b8cd",
+    "upstream_status": "qualified"
+  },
+  "fix_forward": {
+    "candidate_tag": "v0.1.1-rc.14",
+    "source_commit": "a547c90c74f1363920287eb80adc88a16d1e7005",
+    "observed_docs_commit": "04fddeaecf267f670d9df287a06ef3f972b42ba4",
+    "image_digest": "sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+    "upstream_status": "source candidate; upstream performance and capacity claims still belong to v0.1.0",
+    "material_changes": [
+      "DSA radix top-k overflow correctness and crash protection",
+      "token-blocked KDA extend with recurrent-state carry",
+      "serving-coverage, natural-text, sampling, and long-decode warmup expansion",
+      "torchvision CPU image preprocessing and raw-feature release",
+      "bounded 4096-token prefill ceiling",
+      "extended memory profiling"
+    ]
+  },
+  "layer_relationship": {
+    "stable_compressed_gib": 13.66,
+    "candidate_compressed_gib": 13.66,
+    "shared_compressed_gib": 13.33,
+    "candidate_incremental_compressed_gib": 0.33
+  },
+  "decision": "Qualify the exact rc.14 digest locally; use stable v0.1.0 numbers only as external priors, not as rc.14 evidence."
+}

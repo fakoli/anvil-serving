@@ -8,12 +8,14 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained default is GLM-5.3-Flash EXL3 K3 plus DFlash2 K5 on the
-corrected xgrammar runtime at exclusive TP=2/524,288 across both equal cards,
-router concurrency 16, an 8,192-token output cap, and fail-closed admission of
-up to 16 images. The measured long-context concurrency gate is C2 at a nominal
-250K target. Video is unsupported. The DFlash2 draft is noncommercial without
-separate permission. The former 1M profile is the first same-model rollback.
+The maintained published default is the pinned ormandj GLM-5.3-Flash
+W4A16/NVFP4 checkpoint on digest-pinned SGLang rc14 at exclusive
+TP=2/393,216/C1 across both equal cards. It uses FP8 KV, adaptive EAGLE,
+explicit thinking control, a 4,096-token output cap, and image/OCR support;
+video is unsupported. Its original 3 GiB reserve failure was explicitly waived
+for the model-only GPU pair while all post-workload safety gates remained in
+force. The former 524K EXL3 K3 plus DFlash2 K5 profile is the immediate exact
+rollback. DFlash2 is noncommercial without separate permission.
 RadixArk Qwen3.8 Flash Next NVFP4 remains the immediate retained video-capable
 rollback at TP=2/262,144/c1.
 The former DeepSeek V4 Flash 0731 Infernal Invocation r18 1M and r15 393K deployments and
@@ -23,8 +25,9 @@ split remain qualified rollback- or promotion-era evidence. The earlier r16
 650K profile, Laguna S 2.1, and GPT-OSS Puzzle remain qualified historical
 recipes but are not the immediate restoration contract for this profile.
 The prior GLM-5.3-Flash TR3/EXL3 4 bpw 262K/524K qualification remains
-historical and the earlier image/profile is retained as the GLM-specific
-rollback. Adaptive MTP remains rejected for tool corruption.
+historical. That runtime's adaptive MTP remains rejected for tool corruption.
+The separately qualified SGLang 245,760/C1 profile remains a conservative
+verified fallback; the 499,712-token envelopes remain rejected or unverified.
 Gemma 4 and ThinkingCap remain historical controls. Fakoli
 Dark has two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
 now-removed RTX 5090 while the PRO 6000 was protected. Older sections below
@@ -32,7 +35,40 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-08-31**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-02**.
+
+## GLM-5.3-Flash SGLang SM120 qualification (2026-09-02)
+
+The exact
+`ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO@c3cbb9891b67`
+checkpoint and rc14 SGLang image were translated from the community recipe to
+dual RTX PRO 6000 Max-Q cards under WSL2. The managed profile uses TP=2,
+ModelOpt W4A16/NVFP4 K32 experts, FP8 KV, adaptive EAGLE, explicit thinking
+control, image/OCR, and 393,216 configured tokens at C1. Fix-forward work
+disabled WSL2-incompatible cuMem and expandable-segment allocation, replaced
+one symmetric-memory logits gatherer with a hash-gated ordinary-NCCL fallback,
+and supplied a hash-gated chat template that honors thinking-disabled calls.
+
+In the matched 131K A/B, adaptive MTP improved decode from 74.10 to 103.52
+tok/s at 4K (+39.7%) and from 73.56 to 95.06 tok/s at the 120K target (+29.2%).
+Its long-prefill result was 2.8% below the control, inside the declared 3%
+equivalence band. The selected 393K profile measured median decode of
+112.07/96.17/102.42/99.79 tok/s and effective prefill of
+16,729/5,749/5,579/5,457 tok/s at nominal 4K/120K/262K/380K targets. The
+deepest row contained 304,491 measured prompt tokens.
+
+The complete direct gate passed: thinking-disabled preflight 10/10, tools
+20/20, long needle and tool use, image/OCR, explicit thinking-enabled
+reasoning, coding 15/15, media 12/12, and endurance 60/60. Qualification ended
+with 2,101 MiB free per card after workload. The operator waived the standing
+3,072 MiB reserve for the model-only GPU pair; after managed promotion, routed
+gates, and real Pi/OpenClaw/Hermes work, 2,543 MiB remained free per card with
+no OOM, restart, crash, CUDA error, traceback, or shared-memory residue. The
+first promotion attempt exposed a missing image/OCR fixture contract in the
+promotion manifest; that product defect was fixed and unit-tested before the
+successful retry. The exact 524K incumbent is retained as rollback. See the
+[qualification](findings/2026-09-02-glm53-sglang-sm120-qualification.md) and
+[promotion finding](findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md).
 
 ## GLM-5.3-Flash 524K xgrammar fix-forward qualification (2026-08-31)
 

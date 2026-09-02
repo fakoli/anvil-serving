@@ -36,6 +36,9 @@ def test_skill_contract_keeps_unknowns_and_classifications_distinct():
         "benchmark-survivor",
         "never insert a convenient zero",
         "matched no-speculation control",
+        "operator or campaign owner",
+        "default reserve, effective reserve",
+        "reserve waiver does not waive",
     ):
         assert phrase in skill
     for phrase in (
@@ -45,6 +48,8 @@ def test_skill_contract_keeps_unknowns_and_classifications_distinct():
         "warm_e2e_gain",
         "tasks_per_hour_ratio",
         "An unknown value has a missing lower or upper bound",
+        "default and effective reserve",
+        "does not grant promotion authority",
     ):
         assert phrase in contract
 

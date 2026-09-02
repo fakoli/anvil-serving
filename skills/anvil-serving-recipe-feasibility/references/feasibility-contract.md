@@ -28,6 +28,14 @@ Use five evidence statuses:
 - `assumed`: an explicit campaign policy or planning value.
 - `unknown`: not yet bounded.
 
+Policy reserves are declared campaign inputs rather than immutable hardware
+facts. The operator or campaign owner may explicitly lower or waive one,
+including to zero, when the scoped device is model-only. The record must retain
+the default and effective reserve, scope, rationale, and per-device startup and
+post-representative-workload telemetry. This needs no separate reserve-specific
+approval, but it does not grant promotion authority or waive correctness,
+stability, OOM, crash, restart, CUDA-error, or request-loss gates.
+
 ## 2. Equations
 
 Required resident tokens:
@@ -204,7 +212,11 @@ Apply precedence in this order:
 Only rules 1 and 2 support an unconditional technical rejection. Rule 3 is a
 conditional rejection under the encoded planning bounds. Rule 4 is a rejection
 under the campaign's explicit operating policy. Label both qualifications in
-the result instead of presenting either as a hardware fact.
+the result instead of presenting either as a hardware fact. If that policy is
+later explicitly waived, recompute the classification from retained evidence.
+A startup-only sample is insufficient for the lower-reserve policy; without
+post-representative-workload evidence the candidate remains unresolved or
+unverified rather than becoming qualified by declaration.
 
 ## 6. Evidence feedback
 
@@ -217,6 +229,9 @@ Preserve the input and result together. After a managed serve attempt:
 4. Re-run the same calculator and compare classifications.
 5. Never overwrite the earlier input/result artifact; create a new dated
    revision so the change in knowledge is auditable.
+6. When a reserve changes, preserve both the former classification and a dated
+   reclassification record naming the default reserve, effective reserve,
+   waiver scope, operator rationale, and exact workload evidence reused.
 
 Use the LLM qualification skill for real serving evidence and the benchmark
 documentation skill when the result changes a published shortlist or finding.

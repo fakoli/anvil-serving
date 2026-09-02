@@ -1,0 +1,23 @@
+{
+  "schema": "anvil-serving.container-image-metadata/v1",
+  "observed_at": "2026-09-02",
+  "reference": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+  "manifest_digest": "sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+  "oci_source": "https://github.com/ormandj/sglang-glm53-flash-sm120",
+  "oci_revision": "a547c90c74f1363920287eb80adc88a16d1e7005",
+  "oci_version": "0.1.1",
+  "release_candidate": "rc.14",
+  "cache_schema": "v54",
+  "sglang": {
+    "head": "4c2c169e6ba15aee5408b250ce25ff7e73388d9b",
+    "tree": "9b2b368a6b0ce6726980dab7ac784e1f9f980e36",
+    "patch_sha256": "010a3c9348d4d981cc71878d43a640894177f3803fa81b1aa8c686fcf20e72d0"
+  },
+  "flashinfer": {
+    "head": "286eee4e2999a825716eab68e597cb1ee0881e1b",
+    "tree": "bdc33c22f0e0c8e16321890ed3ebb2b82f4afdce"
+  },
+  "modelopt_head": "022767c7ab3d7d36211affd85e5c496770cde768",
+  "entrypoint": "/opt/nvidia/nvidia_entrypoint.sh",
+  "metadata_limit": "The image label describes planned quantization; checkpoint completeness, served identity, and output correctness require independent local gates."
+}

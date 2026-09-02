@@ -384,6 +384,27 @@ def test_load_video_data_is_bounded_and_records_identity(tmp_path):
     assert len(identity["sha256"]) == 64
 
 
+@pytest.mark.parametrize(
+    ("validator", "filename", "expected"),
+    [
+        (pf.validate_image_path, "missing.png", "image path is not a regular file"),
+        (pf.validate_video_path, "missing.mp4", "video path is not a regular file"),
+    ],
+)
+def test_validate_media_path_rejects_missing_fixture(
+    tmp_path, validator, filename, expected
+):
+    with pytest.raises(ValueError, match=expected):
+        validator(tmp_path / filename)
+
+
+def test_parse_checks_rejects_unknown_or_non_string_values():
+    with pytest.raises(ValueError, match=r"unknown=\['bogus'\]"):
+        pf.parse_checks("smoke,bogus")
+    with pytest.raises(ValueError, match="comma-separated string"):
+        pf.parse_checks(["smoke"])
+
+
 def test_multimodal_check_requires_all_independent_expectations(monkeypatch):
     def fake_chat(*args, **kwargs):
         messages = args[2]

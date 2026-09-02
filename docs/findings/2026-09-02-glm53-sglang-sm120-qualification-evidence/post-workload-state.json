@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.qualification-post-workload-state/v1",
+  "observed_at": "2026-09-02T11:40:50Z",
+  "model": "glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp",
+  "health_status": 200,
+  "configured_context_tokens": 245760,
+  "container_id": "070342ec04c5c74d7c7fcb3d45e551a1b48c594b1cdbc6225cc9154ada575073",
+  "gpu_free_mib": [3487, 3487],
+  "reserve_threshold_mib": 3072,
+  "reserve_passed": true,
+  "requests_total": 160,
+  "prompt_tokens_total": 1580460,
+  "generation_tokens_total": 12323,
+  "max_total_num_tokens": 245760,
+  "kv_cache_memory_gib_per_rank": 1.984464406967163,
+  "adaptive_mtp": {"accept_length": 2.475, "accept_rate": 0.49166666666666664, "steps": 3, "draft_tokens": 4},
+  "shared_memory_files": 0,
+  "oom_or_crash_observed": false
+}

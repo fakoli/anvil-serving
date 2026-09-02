@@ -1918,6 +1918,7 @@ def test_load_manifest_rejects_bad_shared_volumes(tmp_path):
 # ---- guarded promotion ------------------------------------------------------
 
 def _promotion_manifest(tmp_path):
+    (tmp_path / "fixture.png").write_bytes(b"bounded promotion image fixture")
     for filename, model in (
         ("router-promoted.toml", "new-heavy"),
         ("router-rollback.toml", "old-heavy"),
@@ -1979,6 +1980,9 @@ def _promotion_manifest(tmp_path):
         [[promotion.gate]]
         name = "functional"
         checks = "smoke,json,needle,tools"
+        image_path = "{dir}/fixture.png"
+        image_expect = ["ANVIL SERVING", "STATUS READY"]
+        ocr_expect = ["ANVIL SERVING"]
         thinking_mode = "disabled"
         visible_answer_tokens = 256
         reasoning_headroom_tokens = 0
@@ -2003,6 +2007,7 @@ def _promotion_manifest(tmp_path):
 
 def test_load_promotions_resolves_direct_router_configs(tmp_path):
     path = _promotion_manifest(tmp_path)
+    (tmp_path / "fixture.png").write_bytes(b"not decoded during manifest load")
     (plan,) = serves.load_promotions(path)
     assert plan["name"] == "heavy-v2"
     assert plan["target"] == "primary"
@@ -2011,8 +2016,132 @@ def test_load_promotions_resolves_direct_router_configs(tmp_path):
     assert plan["router_config"] == str(tmp_path / "router-promoted.toml")
     assert plan["rollback_router_config"] == str(tmp_path / "router-rollback.toml")
     assert [gate["name"] for gate in plan["gate"]] == ["functional", "quality"]
+    assert plan["gate"][0]["image_path"] == str(tmp_path / "fixture.png")
+    assert plan["gate"][0]["image_expect"] == ["ANVIL SERVING", "STATUS READY"]
+    assert plan["gate"][0]["ocr_expect"] == ["ANVIL SERVING"]
     assert plan["gate"][1]["reasoning_headroom_tokens"] == 4096
     assert plan["rollback_gate"][0]["thinking_mode"] == "unsupported"
+
+
+def test_load_promotions_rejects_missing_media_before_transition(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    (tmp_path / "fixture.png").unlink()
+
+    with pytest.raises(
+        ValueError,
+        match="promotion gate 'functional' has invalid image_path: "
+        "image path is not a regular file",
+    ):
+        serves.load_promotions(path)
+
+
+@pytest.mark.parametrize(
+    ("checks", "remove_line", "expected"),
+    [
+        ("image", 'image_path = "{dir}/fixture.png"\n', "has no image_path"),
+        ("image", 'image_expect = ["ANVIL SERVING", "STATUS READY"]\n',
+         "has no image_expect"),
+        ("ocr", 'ocr_expect = ["ANVIL SERVING"]\n', "has no ocr_expect"),
+    ],
+)
+def test_load_promotions_rejects_incomplete_image_gate_before_transition(
+    tmp_path, checks, remove_line, expected
+):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8")
+    text = text.replace(
+        'checks = "smoke,json,needle,tools"', f'checks = "{checks}"', 1
+    ).replace(remove_line, "", 1)
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_incomplete_video_gate_before_transition(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        'checks = "smoke,json,needle,tools"', 'checks = "video"', 1
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="has no video_path"):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_unknown_check_before_transition(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        'checks = "smoke,json,needle,tools"', 'checks = "smoke,bogus"', 1
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"invalid checks.*unknown=\['bogus'\]"):
+        serves.load_promotions(path)
+
+
+@pytest.mark.parametrize(
+    ("field", "old", "new", "expected"),
+    [
+        ("needle_ctx", "131072", "0", "integer from 1 through 1000000"),
+        ("tool_batch", "20", "129", "integer from 1 through 128"),
+    ],
+)
+def test_load_promotions_rejects_invalid_preflight_plan_ranges(
+    tmp_path, field, old, new, expected
+):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        f"{field} = {old}", f"{field} = {new}", 1
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_invalid_preflight_token_budget(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        "reasoning_headroom_tokens = 0", "reasoning_headroom_tokens = 65536", 1
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="combined completion allocation"):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_conflicting_reasoning_controls(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        'thinking_mode = "disabled"',
+        'thinking_mode = "disabled"\nreasoning_effort = "high"',
+        1,
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="cannot combine reasoning_effort"):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_unwritable_preflight_output(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        'checks = "smoke,json,needle,tools"',
+        'checks = "smoke,json,needle,tools"\njson_out = "{dir}/missing/evidence.json"',
+        1,
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="invalid json_out.*directory does not exist"):
+        serves.load_promotions(path)
 
 
 def test_load_promotions_rejects_nonpositive_poll_interval(tmp_path):
@@ -2122,7 +2251,72 @@ def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):
     assert "gate quality" in out
     assert "--thinking-mode enabled" in out
     assert "--reasoning-headroom-tokens 4096" in out
-    assert "atomically install" in out
+    assert "planned apply: atomically install" in out
+    assert "deferred until live execution" in out
+    assert "static admission passed" in out
+    assert "runtime stop/start" in out
+    assert "were not executed" in out
+
+
+def test_cmd_promote_dry_run_propagates_target_admission_failure(
+    tmp_path, monkeypatch, capsys
+):
+    path = _promotion_manifest(tmp_path)
+    (tmp_path / "fixture.png").write_bytes(b"bounded image fixture")
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    monkeypatch.setattr(serves, "cmd_down", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(serves, "cmd_up", lambda *args, **kwargs: 7)
+
+    assert serves.cmd_promote(
+        managed, plans, "heavy-v2", path, dry_run=True
+    ) == 7
+    out = capsys.readouterr().out
+    assert "atomically install" not in out
+    assert "verify: router gateway" not in out
+
+
+def test_cmd_promote_dry_run_allows_exclusive_to_exclusive_swap(tmp_path, capsys):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8")
+    role_rows = textwrap.dedent("""
+        [[gpu_roles]]
+        id = "dark-compute-a"
+        vram_mib = 100
+        reserve_mib = 0
+
+        [[gpu_roles]]
+        id = "dark-compute-b"
+        vram_mib = 100
+        reserve_mib = 0
+
+    """)
+    exclusive = textwrap.dedent("""
+        gpu_roles = ["dark-compute-a", "dark-compute-b"]
+        vram_mib = 100
+        residency = "on-demand"
+        operating_mode = "dual-gpu-exclusive"
+        tensor_parallel_size = 2
+    """)
+    for model in ("new-heavy", "old-heavy"):
+        anchor = f'model = "{model}"\nengine = "vllm"'
+        text = text.replace(anchor, anchor + "\n" + exclusive, 1)
+    manifest.write_text(role_rows + text, encoding="utf-8")
+
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    assert serves.cmd_promote(
+        managed,
+        plans,
+        "heavy-v2",
+        path,
+        dry_run=True,
+        _run=_inspect_returning("running"),
+    ) == 0
+    out = capsys.readouterr().out
+    assert "exclusive admission denied" not in out
+    assert "start primary" in out
 
 
 def test_cmd_promote_failure_runs_complete_rollback(tmp_path, monkeypatch):
@@ -2277,6 +2471,7 @@ def test_safe_promotion_orders_quiesce_drain_config_restart_before_readiness(
     tmp_path, monkeypatch
 ):
     path = _promotion_manifest(tmp_path)
+    (tmp_path / "fixture.png").write_bytes(b"not decoded by mocked preflight")
     managed = serves.load_manifest(path)
     # An unrelated resident Fast serve is present but outside the managed pair.
     managed.append({
@@ -2328,6 +2523,18 @@ def test_safe_promotion_orders_quiesce_drain_config_restart_before_readiness(
     assert quiesce < drain < first_stop < post_restart
     assert applied == [str(tmp_path / "router-promoted.toml")]
     assert not any("fast-c" in call for call in calls)
+    preflight = next(call for call in calls if "preflight" in call)
+    assert preflight[preflight.index("--image-path") + 1] == str(tmp_path / "fixture.png")
+    assert [
+        preflight[index + 1]
+        for index, token in enumerate(preflight)
+        if token == "--image-expect"
+    ] == ["ANVIL SERVING", "STATUS READY"]
+    assert [
+        preflight[index + 1]
+        for index, token in enumerate(preflight)
+        if token == "--ocr-expect"
+    ] == ["ANVIL SERVING"]
 
 
 def test_promotion_retries_transient_post_restart_readiness(tmp_path, monkeypatch):
