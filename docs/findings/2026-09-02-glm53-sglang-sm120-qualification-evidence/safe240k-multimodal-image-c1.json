@@ -898,7 +898,7 @@
         "sampling": null
       }
     ],
-    "path": "C:\\Users\\sdoum\\ai-code\\anvil-serving-wt-glm53-sglang-sm120\\tests\\fixtures\\eval-data\\agents-a1-v1\\image-corpus.json",
+    "path": "tests/fixtures/eval-data/agents-a1-v1/image-corpus.json",
     "provenance": {
       "derived_from": "corpus.json",
       "observed_date": "2026-08-29",
