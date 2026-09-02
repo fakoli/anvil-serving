@@ -194,6 +194,27 @@ def validate_video_path(path):
     )
 
 
+PREFLIGHT_CHECKS = frozenset({
+    "smoke", "json", "needle", "tools", "long-tools", "streaming-tools",
+    "tool-result", "responses", "image", "ocr", "video",
+})
+
+
+def parse_checks(value):
+    """Return a validated preflight check list for CLI and promotion admission."""
+    if not isinstance(value, str):
+        raise ValueError("preflight checks must be a comma-separated string")
+    selected = [item.strip() for item in value.split(",") if item.strip()]
+    unknown = sorted(set(selected) - PREFLIGHT_CHECKS)
+    if not selected or unknown:
+        raise ValueError(
+            "--checks must select smoke,json,needle,tools,long-tools,streaming-tools,"
+            "tool-result,responses,image,ocr,video; unknown=%s"
+            % unknown
+        )
+    return selected
+
+
 def load_image_data(path):
     """Return a bounded image data URL plus non-sensitive input identity."""
     image_path, size, mime = validate_image_path(path)
@@ -811,18 +832,10 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         ap.error("--tool-batch must be from 1 through 128")
     if not 0 < a.timeout <= 3600:
         ap.error("--timeout must be greater than 0 and at most 3600 seconds")
-    selected = [item.strip() for item in a.checks.split(",") if item.strip()]
-    known_checks = {
-        "smoke", "json", "needle", "tools", "long-tools", "streaming-tools",
-        "tool-result", "responses", "image", "ocr", "video",
-    }
-    unknown = sorted(set(selected) - known_checks)
-    if not selected or unknown:
-        ap.error(
-            "--checks must select smoke,json,needle,tools,long-tools,streaming-tools,"
-            "tool-result,responses,image,ocr,video; unknown=%s"
-            % unknown
-        )
+    try:
+        selected = parse_checks(a.checks)
+    except ValueError as exc:
+        ap.error(str(exc))
     image_data = None
     image_identity = None
     if {"image", "ocr"} & set(selected):

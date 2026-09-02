@@ -2035,6 +2035,54 @@ def test_load_promotions_rejects_missing_media_before_transition(tmp_path):
         serves.load_promotions(path)
 
 
+@pytest.mark.parametrize(
+    ("checks", "remove_line", "expected"),
+    [
+        ("image", 'image_path = "{dir}/fixture.png"\n', "has no image_path"),
+        ("image", 'image_expect = ["ANVIL SERVING", "STATUS READY"]\n',
+         "has no image_expect"),
+        ("ocr", 'ocr_expect = ["ANVIL SERVING"]\n', "has no ocr_expect"),
+    ],
+)
+def test_load_promotions_rejects_incomplete_image_gate_before_transition(
+    tmp_path, checks, remove_line, expected
+):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8")
+    text = text.replace(
+        'checks = "smoke,json,needle,tools"', f'checks = "{checks}"', 1
+    ).replace(remove_line, "", 1)
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_incomplete_video_gate_before_transition(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        'checks = "smoke,json,needle,tools"', 'checks = "video"', 1
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="has no video_path"):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_unknown_check_before_transition(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        'checks = "smoke,json,needle,tools"', 'checks = "smoke,bogus"', 1
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"invalid checks.*unknown=\['bogus'\]"):
+        serves.load_promotions(path)
+
+
 def test_load_promotions_rejects_nonpositive_poll_interval(tmp_path):
     path = _promotion_manifest(tmp_path)
     text = (tmp_path / "serves.toml").read_text(encoding="utf-8")

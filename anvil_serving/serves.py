@@ -879,7 +879,7 @@ def load_promotions(path):
     names the promoted and rollback serve, the fixed router tier ids, and one
     complete local-only capability meta-router config for each model identity.
     """
-    from .preflight import validate_image_path, validate_video_path
+    from .preflight import parse_checks, validate_image_path, validate_video_path
 
     with open(path, "rb") as f:
         data = tomllib.load(f)
@@ -960,6 +960,13 @@ def load_promotions(path):
                     raise ValueError("promotion gate has invalid thinking_mode: %r" % gate)
                 if gate["reasoning_evidence"] not in {"any", "required", "forbidden"}:
                     raise ValueError("promotion gate has invalid reasoning_evidence: %r" % gate)
+                try:
+                    selected_checks = set(parse_checks(gate.get("checks")))
+                except ValueError as exc:
+                    raise ValueError(
+                        "promotion gate %r has invalid checks: %s"
+                        % (gate["name"], exc)
+                    ) from exc
                 for path_field in ("json_out", "image_path", "video_path"):
                     if gate.get(path_field):
                         value = str(gate[path_field]).replace("{dir}", mdir)
@@ -991,6 +998,31 @@ def load_promotions(path):
                             % expectation_field
                         )
                     gate[expectation_field] = list(expectations)
+                if {"image", "ocr"} & selected_checks and not gate.get("image_path"):
+                    raise ValueError(
+                        "promotion gate %r checks image or ocr but has no image_path"
+                        % gate["name"]
+                    )
+                if "image" in selected_checks and not gate["image_expect"]:
+                    raise ValueError(
+                        "promotion gate %r checks image but has no image_expect"
+                        % gate["name"]
+                    )
+                if "ocr" in selected_checks and not gate["ocr_expect"]:
+                    raise ValueError(
+                        "promotion gate %r checks ocr but has no ocr_expect"
+                        % gate["name"]
+                    )
+                if "video" in selected_checks and not gate.get("video_path"):
+                    raise ValueError(
+                        "promotion gate %r checks video but has no video_path"
+                        % gate["name"]
+                    )
+                if "video" in selected_checks and not gate["video_expect"]:
+                    raise ValueError(
+                        "promotion gate %r checks video but has no video_expect"
+                        % gate["name"]
+                    )
                 normalized.append(gate)
             plan[field] = normalized
         plans.append(plan)
