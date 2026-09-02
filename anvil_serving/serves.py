@@ -1615,16 +1615,38 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         )
         if up_result != 0:
             return up_result
-        print("  gate: exact served-model identity for %s" % target["served_name"])
+        print(
+            "  planned gate: exact served-model identity for %s "
+            "(deferred until live execution)" % target["served_name"]
+        )
         for gate in gates:
-            print("  gate %s: eval preflight --tier %s --checks %s --thinking-mode %s "
-                  "--visible-answer-tokens %s --reasoning-headroom-tokens %s" % (
-                      gate["name"], target["name"], gate["checks"], gate["thinking_mode"],
-                      gate["visible_answer_tokens"], gate["reasoning_headroom_tokens"]))
-        print("  apply: atomically install %s and restart the router" % selected_config)
-        print("  verify: router gateway is reachable after the serve swap")
-        print("  verify: post-restart health and model identity for %s" % (
-            ", ".join(plan["affected_tiers"])))
+            print(
+                "  planned gate %s: eval preflight --tier %s --checks %s "
+                "--thinking-mode %s --visible-answer-tokens %s "
+                "--reasoning-headroom-tokens %s (deferred until live execution)"
+                % (
+                    gate["name"], target["name"], gate["checks"],
+                    gate["thinking_mode"], gate["visible_answer_tokens"],
+                    gate["reasoning_headroom_tokens"],
+                )
+            )
+        print(
+            "  planned apply: atomically install %s and restart the router "
+            "(deferred until live execution)" % selected_config
+        )
+        print(
+            "  planned verify: router gateway reachability after the serve swap "
+            "(deferred until live execution)"
+        )
+        print(
+            "  planned verify: post-restart health and model identity for %s "
+            "(deferred until live execution)"
+            % ", ".join(plan["affected_tiers"])
+        )
+        print(
+            "  dry-run result: static admission passed; runtime stop/start, health, "
+            "preflight, router apply, and post-restart verification were not executed"
+        )
         return 0
 
     quiesced = []

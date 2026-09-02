@@ -2251,7 +2251,11 @@ def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):
     assert "gate quality" in out
     assert "--thinking-mode enabled" in out
     assert "--reasoning-headroom-tokens 4096" in out
-    assert "atomically install" in out
+    assert "planned apply: atomically install" in out
+    assert "deferred until live execution" in out
+    assert "static admission passed" in out
+    assert "runtime stop/start" in out
+    assert "were not executed" in out
 
 
 def test_cmd_promote_dry_run_propagates_target_admission_failure(
