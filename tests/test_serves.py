@@ -1979,6 +1979,9 @@ def _promotion_manifest(tmp_path):
         [[promotion.gate]]
         name = "functional"
         checks = "smoke,json,needle,tools"
+        image_path = "{dir}/fixture.png"
+        image_expect = ["ANVIL SERVING", "STATUS READY"]
+        ocr_expect = ["ANVIL SERVING"]
         thinking_mode = "disabled"
         visible_answer_tokens = 256
         reasoning_headroom_tokens = 0
@@ -2003,6 +2006,7 @@ def _promotion_manifest(tmp_path):
 
 def test_load_promotions_resolves_direct_router_configs(tmp_path):
     path = _promotion_manifest(tmp_path)
+    (tmp_path / "fixture.png").write_bytes(b"not decoded during manifest load")
     (plan,) = serves.load_promotions(path)
     assert plan["name"] == "heavy-v2"
     assert plan["target"] == "primary"
@@ -2011,6 +2015,9 @@ def test_load_promotions_resolves_direct_router_configs(tmp_path):
     assert plan["router_config"] == str(tmp_path / "router-promoted.toml")
     assert plan["rollback_router_config"] == str(tmp_path / "router-rollback.toml")
     assert [gate["name"] for gate in plan["gate"]] == ["functional", "quality"]
+    assert plan["gate"][0]["image_path"] == str(tmp_path / "fixture.png")
+    assert plan["gate"][0]["image_expect"] == ["ANVIL SERVING", "STATUS READY"]
+    assert plan["gate"][0]["ocr_expect"] == ["ANVIL SERVING"]
     assert plan["gate"][1]["reasoning_headroom_tokens"] == 4096
     assert plan["rollback_gate"][0]["thinking_mode"] == "unsupported"
 
@@ -2123,6 +2130,49 @@ def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):
     assert "--thinking-mode enabled" in out
     assert "--reasoning-headroom-tokens 4096" in out
     assert "atomically install" in out
+
+
+def test_cmd_promote_dry_run_allows_exclusive_to_exclusive_swap(tmp_path, capsys):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8")
+    role_rows = textwrap.dedent("""
+        [[gpu_roles]]
+        id = "dark-compute-a"
+        vram_mib = 100
+        reserve_mib = 0
+
+        [[gpu_roles]]
+        id = "dark-compute-b"
+        vram_mib = 100
+        reserve_mib = 0
+
+    """)
+    exclusive = textwrap.dedent("""
+        gpu_roles = ["dark-compute-a", "dark-compute-b"]
+        vram_mib = 100
+        residency = "on-demand"
+        operating_mode = "dual-gpu-exclusive"
+        tensor_parallel_size = 2
+    """)
+    for model in ("new-heavy", "old-heavy"):
+        anchor = f'model = "{model}"\nengine = "vllm"'
+        text = text.replace(anchor, anchor + "\n" + exclusive, 1)
+    manifest.write_text(role_rows + text, encoding="utf-8")
+
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    assert serves.cmd_promote(
+        managed,
+        plans,
+        "heavy-v2",
+        path,
+        dry_run=True,
+        _run=_inspect_returning("running"),
+    ) == 0
+    out = capsys.readouterr().out
+    assert "exclusive admission denied" not in out
+    assert "start primary" in out
 
 
 def test_cmd_promote_failure_runs_complete_rollback(tmp_path, monkeypatch):
@@ -2277,6 +2327,7 @@ def test_safe_promotion_orders_quiesce_drain_config_restart_before_readiness(
     tmp_path, monkeypatch
 ):
     path = _promotion_manifest(tmp_path)
+    (tmp_path / "fixture.png").write_bytes(b"not decoded by mocked preflight")
     managed = serves.load_manifest(path)
     # An unrelated resident Fast serve is present but outside the managed pair.
     managed.append({
@@ -2328,6 +2379,18 @@ def test_safe_promotion_orders_quiesce_drain_config_restart_before_readiness(
     assert quiesce < drain < first_stop < post_restart
     assert applied == [str(tmp_path / "router-promoted.toml")]
     assert not any("fast-c" in call for call in calls)
+    preflight = next(call for call in calls if "preflight" in call)
+    assert preflight[preflight.index("--image-path") + 1] == str(tmp_path / "fixture.png")
+    assert [
+        preflight[index + 1]
+        for index, token in enumerate(preflight)
+        if token == "--image-expect"
+    ] == ["ANVIL SERVING", "STATUS READY"]
+    assert [
+        preflight[index + 1]
+        for index, token in enumerate(preflight)
+        if token == "--ocr-expect"
+    ] == ["ANVIL SERVING"]
 
 
 def test_promotion_retries_transient_post_restart_readiness(tmp_path, monkeypatch):

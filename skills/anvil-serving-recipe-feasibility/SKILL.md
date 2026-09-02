@@ -22,7 +22,13 @@ a campaign input.
    never insert a convenient zero.
 3. Separate physical capacity from the operational policy envelope. Physical
    reserves include real co-resident allocations. Policy reserves include
-   required driver/desktop headroom and an explicit uncertainty band.
+   declared driver/desktop headroom and an explicit uncertainty band. A policy
+   reserve is a campaign default, not a universal hardware fact: the operator or campaign owner
+   may explicitly reduce or waive it, including to zero, for
+   a model-only device. Record the default reserve, effective reserve, scope,
+   rationale, and the workload telemetry that makes the waiver safe. No
+   separate reserve-specific approval is required; promotion authority remains
+   a distinct gate.
 4. Model target weights, draft weights, projector, recurrent state, graphs,
    workspace, per-sequence state, KV bytes per token, and residency multiplier
    separately. Do not infer GPU allocation from checkpoint bytes alone.
@@ -65,6 +71,11 @@ a campaign input.
 - Disqualify mathematically only when optimistic bounds fail. Label a failure
   caused by headroom or uncertainty policy as `policy-infeasible`, not physical
   impossibility.
+- A reserve waiver does not waive workload safety, stability, or correctness.
+  Require per-device startup and post-representative-workload telemetry plus no
+  OOM, CUDA error, crash, restart, or unexplained request loss. Without that
+  evidence, leave the candidate `unresolved` or `unverified`; do not infer
+  safety from startup free VRAM alone.
 - Require estimated quantities to carry explicit lower and upper bounds. A
   convenient point estimate is not an optimistic or pessimistic bound.
 - Use only measured or confirmed behavioral evidence for `math-qualified` or

@@ -1,0 +1,11 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "safe240k-preflight-all-low.json passed all ten checks with reasoning forbidden and zero reasoning leakage; safe240k-preflight-thinking-enabled.json passed smoke, JSON, five tool calls, tool-result continuation, and Responses API with reasoning required",
+  "model": "glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp",
+  "observed_at": "2026-09-02T11:34:18.3929845Z",
+  "disabled_evidence": "safe240k-preflight-all-low.json",
+  "enabled_evidence": "safe240k-preflight-thinking-enabled.json",
+  "result": "enable_thinking=false produced no reasoning content; enable_thinking=true produced a dedicated reasoning channel across smoke, JSON, tools, tool-result continuation, and Responses API checks."
+}

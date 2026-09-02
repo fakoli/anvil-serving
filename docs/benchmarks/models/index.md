@@ -22,7 +22,7 @@ for the maintained cross-model view.
 
 | Dossier | Latest published decision | Contents |
 |---|---|---|
-| [GLM-5.3-Flash](glm53-flash.md) | `current` text/tools/image/OCR Primary | EXL3 K3 target plus DFlash2 K5 through the corrected xgrammar runtime; exclusive TP=2 at 524,288/maxseq16/router-c16 with measured C2 nominal 250K, up to 16 images, 83.08 tok/s at 4K and pooled 69.99 at 240K, and real Hermes/Pi/OpenClaw acceptance; former 1M first rollback; no video; noncommercial draft boundary |
+| [GLM-5.3-Flash](glm53-flash.md) | `current` text/tools/image/OCR reference at SGLang 393K/C1 | Pinned ormandj W4A16/NVFP4 adaptive-MTP on TP=2: 112.07/96.17/102.42/99.79 tok/s decode at nominal 4K/120K/262K/380K, 304,491 measured prompt tokens, coding 15/15, media 12/12, endurance 60/60, managed and routed gates, and real Pi/OpenClaw/Hermes acceptance; exact 524K EXL3/DFlash2 profile retained as rollback |
 | [Qwen3.8 Flash Next](qwen38-flash-next.md) | immediate retained text/image/OCR/video rollback | RadixArk ModelOpt NVFP4, exclusive TP=2 at 262K/c1; hash-gated SM120 QSA-fast plus MTP3; direct vision 30/30, live routed repeats 57/60 strict, four-image/one-video admission, 155.9/114.7/112.9 median decode tok/s at 4K/128K/254K targets, full-reserve request, and fresh OpenClaw/Hermes/Pi acceptance |
 | [DeepSeek V4 Flash 0731](deepseek-v4-flash.md) | former text Primary / retained evidence | Infernal Invocation r18/r15 B12X/DSpark K5 promotion history, matched no-spec A/B, long-context capacity, and client acceptance |
 | [Qwen3.8 27B](qwen38-27b.md) | former single service / retained recipe | Official FP8 SGLang TP=1/393K/MTP `3/1/4` text/image/OCR/video evidence |

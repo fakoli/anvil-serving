@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving-vram-policy-reclassification/v1",
+  "observed_at": "2026-09-02",
+  "recipe": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+  "configured_context_tokens": 393216,
+  "concurrency": 1,
+  "default_reserve_mib_per_gpu": 3072,
+  "effective_reserve_mib_per_gpu": 0,
+  "waiver": true,
+  "waiver_scope": "this profile on the model-only dual-RTX-PRO exclusive pair",
+  "waiver_rationale": "the two GPUs host model workloads only; the operator accepted a zero standing reserve while retaining runtime safety gates",
+  "qualification_post_workload_free_mib_per_gpu": [2101, 2101],
+  "post_promotion_client_workload_free_mib_per_gpu": [2543, 2543],
+  "runtime_safety_gates_retained": [
+    "functional",
+    "capacity",
+    "quality",
+    "post-workload telemetry",
+    "oom",
+    "crash",
+    "cuda-error",
+    "restart",
+    "shared-memory residue",
+    "rollback"
+  ],
+  "previous_status": "policy-infeasible",
+  "new_status": "verified",
+  "promotion_decision": "human-approved-current",
+  "finding": "../2026-09-02-glm53-sglang-sm120-393k-promotion.md"
+}

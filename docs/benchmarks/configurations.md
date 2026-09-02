@@ -20,6 +20,7 @@ recipe files, so this page changes when the source recipe changes.
 | Configuration family | Recorded hardware and runtime | Served envelope | Exact source |
 |---|---|---|---|
 | GLM-5.3-Flash EXL3 K3 + DFlash2 K5 and matched no-spec control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, vLLM-derived local image, TP=2/DCP=2 | 524,288 tokens, max 16 sequences, up to 16 images, no video | [Open pair](#glm53-524k) |
+| GLM-5.3-Flash ormandj W4A16/NVFP4 SGLang adaptive MTP and control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, digest-pinned SGLang rc14, TP=2 | current 393,216-token C1 lane; 245,760-token fallback, 131K A/B, and 499K negative controls retained | [Open family](#glm53-sglang-sm120) |
 | Qwen3.8 Flash Next RadixArk NVFP4 MTP3 and matched no-spec control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, digest-pinned SGLang with hash-gated SM120 patching, TP=2 | 262,144 tokens, one running request | [Open pair](#qwen38-flash-next) |
 | Qwen3.8 27B official FP8 SGLang MTP3 multimodal and no-spec campaign control | 1× RTX PRO 6000 Blackwell Max-Q, WSL2, digest-pinned SGLang, TP=1 | 393,216 tokens, one running request, CPU media transport | [Open pair](#qwen38-27b-official-fp8) |
 | Qwen3.8 27B RadixArk NVFP4 multimodal | 1× RTX 5090, digest-pinned SGLang, TP=1 | 131,072 tokens, one request, up to eight images or two videos | [Open configuration](#qwen38-27b-radixark-rtx5090) |
@@ -128,7 +129,7 @@ their contents; the pinned model snapshot may not.
     Another GPU, native Linux, another CUDA/driver build, or a different GPU
     count is a new configuration requiring fresh evidence.
 
-    The current GLM 524K image is a local Anvil-derived build. Recreate it from
+    The rollback GLM 524K image is a local Anvil-derived build. Recreate it from
     the tracked
     [Dockerfile](https://github.com/fakoli/anvil-serving/blob/main/configs/runtime-patches/vllm/487ecf187-xgrammar-spec-reasoning-end/Dockerfile)
     and
@@ -173,6 +174,45 @@ draft KV. Both use `vllm-hfcache` for model snapshots and
     ```toml
     --8<-- "configs/glm53-flash-purtell-k3-nospec-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml"
     ```
+
+## GLM-5.3-Flash SGLang SM120 adaptive MTP and control { #glm53-sglang-sm120 }
+
+This family pins ormandj checkpoint revision
+`c3cbb9891b67c741bcbf6b176dd7af9265b069db` and rc14 image digest
+`0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53`.
+The qualified WSL2 translation uses TP=2, FP8 KV, explicit thinking control,
+image/OCR, and hash-gated source/template patches. The 131K matched pair
+isolates adaptive EAGLE. The human-approved 393,216/C1 adaptive profile is the
+published current contract after an explicit model-only reserve waiver; the
+245,760/C1 profile remains the conservative verified fallback. The 499K/C4
+profile is rejected and the 499K/C1 profile remains unverified.
+
+[Qualification evidence](../findings/2026-09-02-glm53-sglang-sm120-qualification.md)
+· [Promotion](../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md)
+· [Model dossier](models/glm53-flash.md)
+
+??? example "Adaptive MTP, 393,216 tokens — current tracked recipe"
+
+    ```toml
+    --8<-- "configs/glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp-recipe.toml"
+    ```
+
+??? example "Adaptive MTP, 245,760 tokens — conservative fallback"
+
+    ```toml
+    --8<-- "configs/glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp-recipe.toml"
+    ```
+
+??? example "Matched no-speculation 131K control"
+
+    ```toml
+    --8<-- "configs/glm53-flash-ormandj-sglang-sm120-tp2-131k-nospec-recipe.toml"
+    ```
+
+Additional retained recipes:
+[131K adaptive](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-131k-adaptive-mtp-recipe.toml),
+[499K/C1 unverified](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-499k-c1-adaptive-mtp-recipe.toml), and
+[499K/C4 rejected](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-499k-adaptive-mtp-recipe.toml).
 
 ## Qwen3.8 Flash Next MTP3 and control { #qwen38-flash-next }
 

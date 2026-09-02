@@ -958,9 +958,25 @@ def load_promotions(path):
                     raise ValueError("promotion gate has invalid thinking_mode: %r" % gate)
                 if gate["reasoning_evidence"] not in {"any", "required", "forbidden"}:
                     raise ValueError("promotion gate has invalid reasoning_evidence: %r" % gate)
-                if gate.get("json_out"):
-                    value = str(gate["json_out"]).replace("{dir}", mdir)
-                    gate["json_out"] = os.path.abspath(value if os.path.isabs(value) else os.path.join(mdir, value))
+                for path_field in ("json_out", "image_path", "video_path"):
+                    if gate.get(path_field):
+                        value = str(gate[path_field]).replace("{dir}", mdir)
+                        gate[path_field] = os.path.abspath(
+                            value if os.path.isabs(value) else os.path.join(mdir, value)
+                        )
+                for expectation_field in (
+                    "image_expect", "ocr_expect", "video_expect",
+                ):
+                    expectations = gate.get(expectation_field, [])
+                    if (
+                        not isinstance(expectations, list)
+                        or not all(isinstance(item, str) and item for item in expectations)
+                    ):
+                        raise ValueError(
+                            "promotion gate %s must be an array of non-empty strings"
+                            % expectation_field
+                        )
+                    gate[expectation_field] = list(expectations)
                 normalized.append(gate)
             plan[field] = normalized
         plans.append(plan)
@@ -1474,6 +1490,16 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         label, ", ".join(stop_names), target["name"], len(gates),
         os.path.basename(selected_config)))
     if dry_run:
+        stopped_containers = {
+            _exact_serve(serves, name)["container"] for name in stop_names
+        }
+        # Preview the same post-stop reservation state the real transaction
+        # reaches. Otherwise an exclusive rollback owner that the plan has
+        # just printed as stopped incorrectly blocks its exclusive target.
+        post_stop_ledger = [
+            serve for serve in serves
+            if serve["container"] not in stopped_containers
+        ]
         for tier_id in plan["affected_tiers"]:
             print("  gate: quiesce router tier %s" % tier_id)
             print("  gate: drain router tier %s (timeout %ss)" % (
@@ -1481,7 +1507,15 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         cmd_down(
             serves, stop_names, dry_run=True, keep_container=True, _run=_run
         )
-        cmd_up(serves, [target["name"]], dry_run=True, recreate=True, _run=_run)
+        cmd_up(
+            serves,
+            [target["name"]],
+            dry_run=True,
+            recreate=True,
+            ledger_serves=post_stop_ledger,
+            _allow_exclusive_target=reservations.is_exclusive(target),
+            _run=_run,
+        )
         print("  gate: exact served-model identity for %s" % target["served_name"])
         for gate in gates:
             print("  gate %s: eval preflight --tier %s --checks %s --thinking-mode %s "
@@ -1529,7 +1563,14 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     )
     if reuse_target:
         print("  resume: %s is already healthy with exact model identity" % target["name"])
-    elif cmd_up(serves, [target["name"]], recreate=True, _run=_run) != 0:
+    elif cmd_up(
+        serves,
+        [target["name"]],
+        recreate=True,
+        ledger_serves=serves,
+        _allow_exclusive_target=reservations.is_exclusive(target),
+        _run=_run,
+    ) != 0:
         return 1
     startup_timeout = plan["rollback_startup_timeout"] if rollback else plan["startup_timeout"]
     if not _await_healthy(target, startup_timeout, plan["poll_interval"],
@@ -1551,6 +1592,16 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         ]
         if gate.get("reasoning_effort"):
             preflight.extend(["--reasoning-effort", str(gate["reasoning_effort"])])
+        if gate.get("image_path"):
+            preflight.extend(["--image-path", str(gate["image_path"])])
+        for expectation in gate.get("image_expect", []):
+            preflight.extend(["--image-expect", expectation])
+        for expectation in gate.get("ocr_expect", []):
+            preflight.extend(["--ocr-expect", expectation])
+        if gate.get("video_path"):
+            preflight.extend(["--video-path", str(gate["video_path"])])
+        for expectation in gate.get("video_expect", []):
+            preflight.extend(["--video-expect", expectation])
         if gate.get("json_out"):
             preflight.extend(["--json-out", str(gate["json_out"])])
         if _promotion_cli(preflight, _run=_run) != 0:
