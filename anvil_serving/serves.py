@@ -879,6 +879,8 @@ def load_promotions(path):
     names the promoted and rollback serve, the fixed router tier ids, and one
     complete local-only capability meta-router config for each model identity.
     """
+    from .preflight import validate_image_path, validate_video_path
+
     with open(path, "rb") as f:
         data = tomllib.load(f)
     mdir = os.path.dirname(os.path.abspath(path))
@@ -964,6 +966,18 @@ def load_promotions(path):
                         gate[path_field] = os.path.abspath(
                             value if os.path.isabs(value) else os.path.join(mdir, value)
                         )
+                for path_field, validate in (
+                    ("image_path", validate_image_path),
+                    ("video_path", validate_video_path),
+                ):
+                    if gate.get(path_field):
+                        try:
+                            validate(gate[path_field])
+                        except ValueError as exc:
+                            raise ValueError(
+                                "promotion gate %r has invalid %s: %s"
+                                % (gate["name"], path_field, exc)
+                            ) from exc
                 for expectation_field in (
                     "image_expect", "ocr_expect", "video_expect",
                 ):
@@ -1504,10 +1518,12 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
             print("  gate: quiesce router tier %s" % tier_id)
             print("  gate: drain router tier %s (timeout %ss)" % (
                 tier_id, plan["drain_timeout"]))
-        cmd_down(
+        down_result = cmd_down(
             serves, stop_names, dry_run=True, keep_container=True, _run=_run
         )
-        cmd_up(
+        if down_result != 0:
+            return down_result
+        up_result = cmd_up(
             serves,
             [target["name"]],
             dry_run=True,
@@ -1516,6 +1532,8 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
             _allow_exclusive_target=reservations.is_exclusive(target),
             _run=_run,
         )
+        if up_result != 0:
+            return up_result
         print("  gate: exact served-model identity for %s" % target["served_name"])
         for gate in gates:
             print("  gate %s: eval preflight --tier %s --checks %s --thinking-mode %s "

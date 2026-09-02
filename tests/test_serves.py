@@ -1918,6 +1918,7 @@ def test_load_manifest_rejects_bad_shared_volumes(tmp_path):
 # ---- guarded promotion ------------------------------------------------------
 
 def _promotion_manifest(tmp_path):
+    (tmp_path / "fixture.png").write_bytes(b"bounded promotion image fixture")
     for filename, model in (
         ("router-promoted.toml", "new-heavy"),
         ("router-rollback.toml", "old-heavy"),
@@ -2020,6 +2021,18 @@ def test_load_promotions_resolves_direct_router_configs(tmp_path):
     assert plan["gate"][0]["ocr_expect"] == ["ANVIL SERVING"]
     assert plan["gate"][1]["reasoning_headroom_tokens"] == 4096
     assert plan["rollback_gate"][0]["thinking_mode"] == "unsupported"
+
+
+def test_load_promotions_rejects_missing_media_before_transition(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    (tmp_path / "fixture.png").unlink()
+
+    with pytest.raises(
+        ValueError,
+        match="promotion gate 'functional' has invalid image_path: "
+        "image path is not a regular file",
+    ):
+        serves.load_promotions(path)
 
 
 def test_load_promotions_rejects_nonpositive_poll_interval(tmp_path):
@@ -2130,6 +2143,24 @@ def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):
     assert "--thinking-mode enabled" in out
     assert "--reasoning-headroom-tokens 4096" in out
     assert "atomically install" in out
+
+
+def test_cmd_promote_dry_run_propagates_target_admission_failure(
+    tmp_path, monkeypatch, capsys
+):
+    path = _promotion_manifest(tmp_path)
+    (tmp_path / "fixture.png").write_bytes(b"bounded image fixture")
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    monkeypatch.setattr(serves, "cmd_down", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(serves, "cmd_up", lambda *args, **kwargs: 7)
+
+    assert serves.cmd_promote(
+        managed, plans, "heavy-v2", path, dry_run=True
+    ) == 7
+    out = capsys.readouterr().out
+    assert "atomically install" not in out
+    assert "verify: router gateway" not in out
 
 
 def test_cmd_promote_dry_run_allows_exclusive_to_exclusive_swap(tmp_path, capsys):

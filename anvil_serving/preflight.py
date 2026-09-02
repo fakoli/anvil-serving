@@ -148,21 +148,55 @@ def chat_stream(base, model, messages, key=None, max_tokens=256, tools=None,
     return events, done, time.time() - started
 
 
+def _validate_media_path(path, *, kind, max_bytes, allowed_mimes, type_error):
+    """Validate one local media fixture without reading it into memory."""
+    if not path:
+        requirement = (
+            "multimodal checks require --image-path"
+            if kind == "image"
+            else "video check requires --video-path"
+        )
+        raise ValueError(requirement)
+    media_path = os.path.abspath(os.path.expanduser(path))
+    if os.path.islink(media_path):
+        raise ValueError("%s path cannot be a symbolic link: %s" % (kind, media_path))
+    if not os.path.isfile(media_path):
+        raise ValueError("%s path is not a regular file: %s" % (kind, media_path))
+    size = os.path.getsize(media_path)
+    if not 0 < size <= max_bytes:
+        limit_mib = max_bytes // (1024 * 1024)
+        raise ValueError("%s must be from 1 byte through %s MiB" % (kind, limit_mib))
+    mime, _encoding = mimetypes.guess_type(media_path)
+    if mime not in allowed_mimes:
+        raise ValueError(type_error)
+    return media_path, size, mime
+
+
+def validate_image_path(path):
+    """Validate an image fixture using the preflight admission policy."""
+    return _validate_media_path(
+        path,
+        kind="image",
+        max_bytes=10 * 1024 * 1024,
+        allowed_mimes={"image/jpeg", "image/png", "image/webp"},
+        type_error="image must be PNG, JPEG, or WebP",
+    )
+
+
+def validate_video_path(path):
+    """Validate a video fixture using the preflight admission policy."""
+    return _validate_media_path(
+        path,
+        kind="video",
+        max_bytes=128 * 1024 * 1024,
+        allowed_mimes={"video/mp4", "video/webm", "video/quicktime"},
+        type_error="video must be MP4, WebM, or QuickTime",
+    )
+
+
 def load_image_data(path):
     """Return a bounded image data URL plus non-sensitive input identity."""
-    if not path:
-        raise ValueError("multimodal checks require --image-path")
-    image_path = os.path.abspath(os.path.expanduser(path))
-    if os.path.islink(image_path):
-        raise ValueError("image path cannot be a symbolic link: %s" % image_path)
-    if not os.path.isfile(image_path):
-        raise ValueError("image path is not a regular file: %s" % image_path)
-    size = os.path.getsize(image_path)
-    if not 0 < size <= 10 * 1024 * 1024:
-        raise ValueError("image must be from 1 byte through 10 MiB")
-    mime, _encoding = mimetypes.guess_type(image_path)
-    if mime not in {"image/jpeg", "image/png", "image/webp"}:
-        raise ValueError("image must be PNG, JPEG, or WebP")
+    image_path, size, mime = validate_image_path(path)
     with open(image_path, "rb") as handle:
         raw = handle.read(10 * 1024 * 1024 + 1)
     if len(raw) != size:
@@ -178,20 +212,8 @@ def load_image_data(path):
 
 def load_video_data(path):
     """Return a bounded video data URL plus non-sensitive input identity."""
-    if not path:
-        raise ValueError("video check requires --video-path")
-    video_path = os.path.abspath(os.path.expanduser(path))
-    if os.path.islink(video_path):
-        raise ValueError("video path cannot be a symbolic link: %s" % video_path)
-    if not os.path.isfile(video_path):
-        raise ValueError("video path is not a regular file: %s" % video_path)
-    size = os.path.getsize(video_path)
     max_bytes = 128 * 1024 * 1024
-    if not 0 < size <= max_bytes:
-        raise ValueError("video must be from 1 byte through 128 MiB")
-    mime, _encoding = mimetypes.guess_type(video_path)
-    if mime not in {"video/mp4", "video/webm", "video/quicktime"}:
-        raise ValueError("video must be MP4, WebM, or QuickTime")
+    video_path, size, mime = validate_video_path(path)
     with open(video_path, "rb") as handle:
         raw = handle.read(max_bytes + 1)
     if len(raw) != size:
