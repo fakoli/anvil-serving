@@ -2083,6 +2083,67 @@ def test_load_promotions_rejects_unknown_check_before_transition(tmp_path):
         serves.load_promotions(path)
 
 
+@pytest.mark.parametrize(
+    ("field", "old", "new", "expected"),
+    [
+        ("needle_ctx", "131072", "0", "integer from 1 through 1000000"),
+        ("tool_batch", "20", "129", "integer from 1 through 128"),
+    ],
+)
+def test_load_promotions_rejects_invalid_preflight_plan_ranges(
+    tmp_path, field, old, new, expected
+):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        f"{field} = {old}", f"{field} = {new}", 1
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_invalid_preflight_token_budget(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        "reasoning_headroom_tokens = 0", "reasoning_headroom_tokens = 65536", 1
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="combined completion allocation"):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_conflicting_reasoning_controls(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        'thinking_mode = "disabled"',
+        'thinking_mode = "disabled"\nreasoning_effort = "high"',
+        1,
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="cannot combine reasoning_effort"):
+        serves.load_promotions(path)
+
+
+def test_load_promotions_rejects_unwritable_preflight_output(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    manifest = tmp_path / "serves.toml"
+    text = manifest.read_text(encoding="utf-8").replace(
+        'checks = "smoke,json,needle,tools"',
+        'checks = "smoke,json,needle,tools"\njson_out = "{dir}/missing/evidence.json"',
+        1,
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="invalid json_out.*directory does not exist"):
+        serves.load_promotions(path)
+
+
 def test_load_promotions_rejects_nonpositive_poll_interval(tmp_path):
     path = _promotion_manifest(tmp_path)
     text = (tmp_path / "serves.toml").read_text(encoding="utf-8")

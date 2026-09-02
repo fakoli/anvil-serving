@@ -879,6 +879,8 @@ def load_promotions(path):
     names the promoted and rollback serve, the fixed router tier ids, and one
     complete local-only capability meta-router config for each model identity.
     """
+    from .benchmarking.artifacts import validate_write_target
+    from .model_controls import REASONING_EFFORT_CHOICES
     from .preflight import parse_checks, validate_image_path, validate_video_path
 
     with open(path, "rb") as f:
@@ -941,6 +943,16 @@ def load_promotions(path):
             if (isinstance(value, bool) or not isinstance(value, numbers.Real)
                     or not math.isfinite(value) or value <= 0):
                 raise ValueError("promotion %s must be a finite positive number" % field)
+        for field, minimum, maximum in (
+            ("needle_ctx", 1, 1000000),
+            ("tool_batch", 1, 128),
+        ):
+            value = plan[field]
+            if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
+                raise ValueError(
+                    "promotion %s must be an integer from %s through %s"
+                    % (field, minimum, maximum)
+                )
         default_gate = {
             "name": "preflight", "checks": "smoke,json,needle,tools",
             "thinking_mode": "default", "visible_answer_tokens": 256,
@@ -960,6 +972,35 @@ def load_promotions(path):
                     raise ValueError("promotion gate has invalid thinking_mode: %r" % gate)
                 if gate["reasoning_evidence"] not in {"any", "required", "forbidden"}:
                     raise ValueError("promotion gate has invalid reasoning_evidence: %r" % gate)
+                reasoning_effort = gate.get("reasoning_effort")
+                if (
+                    reasoning_effort is not None
+                    and reasoning_effort not in REASONING_EFFORT_CHOICES
+                ):
+                    raise ValueError(
+                        "promotion gate %r has invalid reasoning_effort: %r"
+                        % (gate["name"], reasoning_effort)
+                    )
+                if reasoning_effort is not None and gate["thinking_mode"] != "default":
+                    raise ValueError(
+                        "promotion gate %r cannot combine reasoning_effort with thinking_mode"
+                        % gate["name"]
+                    )
+                for token_field, minimum in (
+                    ("visible_answer_tokens", 1),
+                    ("reasoning_headroom_tokens", 0),
+                ):
+                    value = gate[token_field]
+                    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+                        raise ValueError(
+                            "promotion gate %r %s must be an integer greater than or equal to %s"
+                            % (gate["name"], token_field, minimum)
+                        )
+                if gate["visible_answer_tokens"] + gate["reasoning_headroom_tokens"] > 65536:
+                    raise ValueError(
+                        "promotion gate %r combined completion allocation cannot exceed 65536"
+                        % gate["name"]
+                    )
                 try:
                     selected_checks = set(parse_checks(gate.get("checks")))
                 except ValueError as exc:
@@ -985,6 +1026,14 @@ def load_promotions(path):
                                 "promotion gate %r has invalid %s: %s"
                                 % (gate["name"], path_field, exc)
                             ) from exc
+                if gate.get("json_out"):
+                    try:
+                        validate_write_target(gate["json_out"], label="preflight output")
+                    except OSError as exc:
+                        raise ValueError(
+                            "promotion gate %r has invalid json_out: %s"
+                            % (gate["name"], exc)
+                        ) from exc
                 for expectation_field in (
                     "image_expect", "ocr_expect", "video_expect",
                 ):
