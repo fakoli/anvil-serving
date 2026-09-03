@@ -2,7 +2,8 @@
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark, Windows 11 with
-Docker Desktop/WSL2. **Reviewed and last locally measured:** 2026-09-02.
+Docker Desktop/WSL2. **Last locally measured:** 2026-09-02. **Evidence
+interpretation reviewed:** 2026-09-03.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -124,6 +125,14 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 ## Capacity and recipe comparisons
 
+Configured concurrency is not full-window capacity. In the GLM rows below,
+`maxseq16` means the scheduler may run sixteen requests; it does not mean the
+KV pool can hold sixteen requests at the served context ceiling. The current
+SGLang profile is configured and qualified at C1. The corrected 524K rollback
+proved C2 at 206,630 prompt tokens/request, while the historical BrandonMusic
+C16 artifacts used 4K prompts. See the
+[cross-run capacity interpretation](../../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
+
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
 | GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang adaptive EAGLE, TP=2 | 393,216 | 1; image/OCR; video zero | published current; FP8 KV; 304,491 actual prompt tokens at the 380K target; 2,101 MiB/card after qualification and 2,543 after client work under an explicit model-only zero-reserve waiver; 240K remains the conservative verified fallback |
@@ -182,6 +191,12 @@ profile and then qualified for one video; Inferact NVFP4 remains no-promotion.
 
 ## Recent changes
 
+- 2026-09-03: a cross-run GLM review separated scheduler ceilings,
+  shared/reported KV-token pools, short-request batching, and measured
+  long-context concurrency. The current 393K SGLang profile remains C1; the
+  immediate corrected 524K rollback retains a measured C2 206,630-token/request
+  gate; historical BrandonMusic maxseq16 results remain short-request evidence.
+  No model was loaded and no route, recipe, or deployment changed.
 - 2026-09-02: the pinned ormandj GLM-5.3-Flash W4A16/NVFP4 rc14 SGLang
   profile was translated to WSL2, qualified through 304,491 actual prompt
   tokens at TP=2/393,216/C1, and human-promoted under an explicit model-only
