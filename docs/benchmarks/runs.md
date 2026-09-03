@@ -19,6 +19,14 @@ and name no measured hardware.
 |---|---|---|---|---|
 | 2026-08-15 | Qwen3.8 27B external recipe refresh | `external-prior`; current official vLLM/SGLang recipes, exact-hardware Reddit MTP sweep, X discovery, and community runtime reports | Queue matched official-FP8 MTP=3/4/5 A/B; prepare digest-pinned SGLang official-weight spike; no live or promotion change | [Qwen3.8 27B](models/qwen38-27b.md) · [recipe refresh](../findings/2026-08-15-qwen38-27b-external-recipe-refresh.md) |
 
+## Cross-run benchmark interpretations
+
+These records synthesize retained measurements without claiming a new run.
+
+| Date | Subject | Evidence | Decision | Dossier / finding |
+|---|---|---|---|---|
+| 2026-09-03 | GLM-5.3-Flash scheduler concurrency versus KV capacity | derivative `capacity` comparison of the retained 2026-08-29, 2026-08-31, and 2026-09-02 local artifacts; no live request or configuration change | C16 is a short-request scheduler ceiling, not sixteen full windows; keep current SGLang at qualified C1, recognize the corrected rollback's measured C2 long-context headroom, and benchmark any higher current-profile admission before changing the published contract | [GLM-5.3-Flash](models/glm53-flash.md) · [concurrency interpretation](../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md) |
+
 ## RTX PRO 6000 runs
 
 | Date | Capability | Exact model/configuration | Measured hardware | Evidence | Decision | Dossier / finding |

@@ -28,8 +28,8 @@
       DFlash2 in the rollback is noncommercial without separate permission.
     - **Conservative fallback:** the same SGLang profile at 245,760/C1 remains
       independently verified with 3,487 MiB free per card after workload.
-    - **Review dates:** retained evidence through 2026-09-02; dossier-format
-      review 2026-09-02.
+    - **Review dates:** retained evidence through 2026-09-02; cross-run
+      concurrency review 2026-09-03.
 
 ### Review narrative
 
@@ -83,6 +83,17 @@ representative full-suite score. The campaign also fixed the managed harness's
 isolated Python environment, detached Docker discovery, ambient global config,
 venv validation, and missing-trajectory classification; see the
 [SWE smoke finding](../../findings/2026-09-02-glm53-sglang-sm120-swe-smoke.md).
+
+#### 2026-09-03 — concurrency and KV-capacity interpretation
+
+A cross-run review separated scheduler ceilings from KV-resident capacity and
+measured long-context concurrency. The current SGLang profile remains C1 with
+a configured 393,216-token shared pool. The corrected 524K rollback reports
+2,493,817 KV tokens and proved C2 at 206,630 prompt tokens/request. The
+historical BrandonMusic fixed-K5 524K lane completed C16 only with 4K prompts;
+its reported pool was 565,898 tokens, or 1.08 complete windows. Thus maxseq16
+is not evidence for sixteen full 524K conversations. See the
+[cross-run interpretation](../../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
 
 ## Immutable identity
 
@@ -162,6 +173,14 @@ standing 3,072 MiB reserve for this model-only pair without waiving runtime
 safety evidence. The 245,760 profile retained 3,487 MiB/card and remains the
 conservative fallback. The 499,712/C4 profile is rejected and the C1 variant
 is unverified.
+
+For planning only, the current 393,216-token shared pool divides to 196,608
+total tokens/request at C2 and 98,304 at C4 before output, media, protocol, and
+runtime headroom. A first C2 text gate at 180,000 prompt + 4,096 output per
+request would leave 25,024 tokens in the shared pool. This is not qualified:
+the current recipe also fixes one running request and batch-size-one decode
+graphs, so increasing concurrency requires a managed candidate load and the
+full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
@@ -265,6 +284,7 @@ The 524K EXL3/DFlash2 profile is the immediate same-model rollback, and the
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-09-03 | Cross-run scheduler, KV-capacity, and measured-concurrency reconciliation | Current SGLang remains qualified at 393K/C1; corrected 524K rollback retains measured C2 at 206,630 prompt tokens/request; historical BrandonMusic C16 is short-request evidence, not full-window concurrency; [interpretation and artifact links](../../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md) |
 | 2026-09-02 | Isolated-worker SWE-bench Verified smoke and harness fix-forward | Fixed `django__django-11099` attempted 1/1, officially graded 1/1, and resolved 1/1 through 11 routed requests; one-instance smoke only; [finding and sanitized evidence](../../findings/2026-09-02-glm53-sglang-sm120-swe-smoke.md) |
 | 2026-09-02 | Human-approved 393K/C1 reserve reclassification, managed promotion fix-forward, routed gates, and real-client acceptance | Published `current` text/tools/image/OCR profile; 304,491 actual prompt tokens, 112.07/96.17/102.42/99.79 tok/s at 4K/120K/262K/380K targets, direct and routed gates, Pi/OpenClaw/Hermes pass, 2,543 MiB/card after client work, exact 524K rollback retained; [promotion finding](../../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md) |
 | 2026-09-02 | Pinned ormandj SGLang SM120 translation, WSL2 fix-forward, matched adaptive/no-spec A/B, 240K full qualification, larger-envelope feasibility, endurance, and exact incumbent restoration | 245,760/c1 adaptive MTP selected as a verified challenger with no promotion; 108.57/93.35/95.00 tok/s decode at 4K/120K/230K, quality 15/15, media 12/12, endurance 60/60, and 3,487 MiB/card post-workload reserve; [finding and raw artifacts](../../findings/2026-09-02-glm53-sglang-sm120-qualification.md) |

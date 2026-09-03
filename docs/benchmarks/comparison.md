@@ -46,7 +46,7 @@ dated finding before treating a row as a single experiment. Full rules:
 
 ---
 
-## Published decision snapshot as of 2026-09-02
+## Published decision snapshot as of 2026-09-03
 
 This section synthesizes the latest dated public benchmark decisions; it does
 not report active deployment, routing, placement, or availability. In the
@@ -73,6 +73,34 @@ split remain retained historical recipes.
 
 The BF16 32-image result is one request at concurrency one. It is not a claim
 of 32 concurrent requests.
+
+### GLM scheduler concurrency versus KV capacity
+
+Three values must remain separate: the configured scheduler ceiling, the
+shared or reported KV-token pool, and the deepest concurrency actually
+measured. The retained GLM campaigns make the distinction concrete:
+
+| Profile | Scheduler | Shared/reported pool | Measured long concurrency | Measured short concurrency | Interpretation |
+|---|---:|---:|---|---|---|
+| Current ormandj SGLang adaptive EAGLE, 393K | 1 | 393,216 configured shared tokens | C1 at 304,491 prompt tokens | C1 only | selected for faster interactive decode; higher admission is unqualified |
+| Immediate EXL3 K3 + corrected DFlash2 K5 rollback, 524K | 16 | 2,493,817 reported KV tokens / 4.76 windows | C2 at 206,630 prompt tokens/request, 2/2 | no corrected-524K C16 artifact | proven long-context C2 headroom; C16 remains only a scheduler ceiling |
+| BrandonMusic vision fixed K5, 262K | 16 | 560,866 / 2.14 windows | C1 at 206,296 prompt tokens | C16 at 4K, 16/16, 28.3 `agg` tok/s | successful short batching, not sixteen 262K windows |
+| BrandonMusic text fixed K5, 524K | 16 | 565,898 / 1.08 windows | C1 at 495,045 prompt tokens | C16 at 4K, 16/16, 23.85 `agg` tok/s | effectively one full 524K window despite maxseq16 |
+| BrandonMusic text no spec, 524K | 16 | 1,603,111 / 3.06 windows | C1 at 495,045 prompt tokens | C16 was measured on the 262K companion only | removing speculation preserves more KV headroom; 524K C16 remains unmeasured |
+
+The immediate rollback's EXL3 K3 target, FP8 DS-MLA KV, TP=2/DCP=2 layout,
+and different runtime/state caches plausibly contribute to its larger reported
+pool. They were not isolated one at a time, so the cross-run comparison proves
+the resulting capacity, not a per-setting causal breakdown. The current
+profile remains the faster selected lane: 112.07 tok/s decode at 4K versus
+83.08 for the rollback.
+
+For the current fixed 393,216-token pool, an equal C2 share is 196,608 total
+tokens/request before practical headroom. A first text-only qualification at
+180,000 prompt + 4,096 output per request would leave 25,024 shared tokens;
+C4 at 80,000 + 4,096 would leave 56,832. Both are planning bounds, not results,
+and require scheduler/graph-state changes plus full managed requalification.
+See the [cross-run interpretation and exact artifact links](../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
 
 ### Remote coding-agent comparison
 
