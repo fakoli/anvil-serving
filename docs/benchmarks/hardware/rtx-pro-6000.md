@@ -54,7 +54,7 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 | Candidate | Repeated quality | Capacity and context evidence | Decision |
 |---|---|---|---|
-| GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang adaptive EAGLE, TP=2, 393K/C1 | thinking-disabled preflight 10/10, tools 20/20, long needle/tool, and image/OCR; thinking-enabled contract; coding 15/15, media 12/12, endurance 60/60; managed/routed gates and real Pi/OpenClaw/Hermes pass | 304,491 actual prompt tokens at the 380K target; median decode 112.07/96.17/102.42/99.79 tok/s and effective prefill 16,729/5,749/5,579/5,457 tok/s at 4K/120K/262K/380K; 2,101 MiB/card after qualification and 2,543 after client work | `current` text/image/OCR; C1 and 4,096 output; explicit model-only zero-reserve waiver; 240K conservative fallback; 499K rejected/unverified |
+| GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang adaptive EAGLE, TP=2, 393K/C1 | thinking-disabled preflight 10/10, tools 20/20, long needle/tool, and image/OCR; thinking-enabled contract; coding 15/15, media 12/12, endurance 60/60; managed/routed gates and real Pi/OpenClaw/Hermes pass; fixed SWE-bench Verified smoke officially resolved 1/1 through 11 routed requests | 304,491 actual prompt tokens at the 380K target; median decode 112.07/96.17/102.42/99.79 tok/s and effective prefill 16,729/5,749/5,579/5,457 tok/s at 4K/120K/262K/380K; 2,101 MiB/card after qualification and 2,543 after client work; SWE agent/grader 34.216/29.076 s | `current` text/image/OCR; C1 and 4,096 output; explicit model-only zero-reserve waiver; one-instance SWE smoke only; 240K conservative fallback; 499K rejected/unverified |
 | GLM-5.3-Flash EXL3 K3 target plus corrected DFlash2 K5, TP=2, 524K/c16 | intelligence 6/6, session 3/3, tools 20/20 plus repeated tools 3/3; image/OCR; authenticated route and fresh Hermes/Pi/OpenClaw acceptance | 206,296-actual-token retrieval; 2,493,817 KV tokens / 4.76 complete windows; median decode 83.08 tok/s at 4K and pooled 69.99 at 240K; C2 nominal 250K 2/2 | immediate exact rollback; K5/batch2,048; 16 images, no video; DFlash2 noncommercial boundary |
 | Qwen3.8 Flash Next RadixArk NVFP4, SGLang QSA-fast MTP3, TP=2, 262K/c1 | thinking-disabled intelligence 6/6, session 3/3, tools 3/3; direct media 30/30; isolated router 27/30 then 30/30; live router 29/30 then 28/30; edge suite 8/8; exact routed identity and fresh OpenClaw/Hermes/Pi acceptance | 253,703 actual prompt tokens with 8,192 output request; 516,032 maximum server tokens; 6.275 GiB KV per rank; six-size sweep 25/25; median decode 155.9/114.7/112.9 tok/s at 4K/128K/254K targets and 102.0 at full reserve | immediate retained text/image/OCR/video rollback; hash-gated PR #36556 SM120 fast path; c1, four images or one video |
 | GLM-5.3-Flash TR3/EXL3 4 bpw, fixed K5/no-spec, TP=2 | vision/OCR, tools 20/20, agent protocols, and high-reasoning bounded coding 15/15 pass; adaptive arm tools only 12/20 and rejected | vision fixed K5 72.8/55.7 tok/s decode at 4K/128K, exact retrieval at a 250K target / 206,296 actual prompt tokens, and 560,866 KV tokens; 524K text arms pass 495,045-token retrieval and 497,976-token tool use; no-spec reports 1,603,111 KV tokens | historical GLM starting point and GLM-specific rollback evidence |
@@ -190,6 +190,13 @@ profile and then qualified for one video; Inferact NVFP4 remains no-promotion.
   CUDA error, or shared-memory residue. The first promotion attempt exposed a
   missing media-fixture manifest contract, which was fixed and tested before
   the successful retry. The exact 524K profile is retained as rollback.
+- 2026-09-02: the GLM 393K subject resolved the fixed
+  `django__django-11099` SWE-bench Verified smoke 1/1 under the official
+  grader from an isolated macOS worker. The run used 11 routed requests and completed
+  its agent/grader stages in 34.216/29.076 seconds. Revision-bound harness
+  dependencies and ambient worker configuration were fixed forward before the
+  retained run; the result is bounded infrastructure and repository-agent
+  evidence, not a full-suite score.
 - 2026-08-31: a digest-pinned xgrammar correction removed the DFlash2
   structured-generation failure, and the matched 524K K5 arm improved decode
   from 42.61 to 83.08 tok/s at 4K and from 43.63 to a pooled 69.99 at 240K.

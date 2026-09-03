@@ -19,6 +19,7 @@ from .jobs import (
     utc_now,
     validate_job_spec,
 )
+from .harnesses import resolve_container_binary
 
 
 BENCHMARK_PREFLIGHT_SCHEMA = "anvil-serving.benchmark-preflight/v1"
@@ -215,7 +216,7 @@ def run_benchmark_preflight(
     )
     Path(run_path).mkdir(parents=True, exist_ok=True)
     free_disk = int(disk_usage(run_path).free)
-    docker = container_binary if container_binary is not None else shutil.which("docker")
+    docker = container_binary if container_binary is not None else resolve_container_binary()
     checks = []
     model_host_id = required["model_host_id"]
     if client_topology == "co-resident":
