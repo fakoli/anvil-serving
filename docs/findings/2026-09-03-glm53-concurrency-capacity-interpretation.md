@@ -29,7 +29,7 @@ deployment state.
 
 | Headline measurement | Local result | Conditions |
 |---|---:|---|
-| Current deep-context capacity | 304,491 prompt tokens, C1 | 393,216 configured shared token pool; 4,096 maximum output; p50 of three at the nominal 380K target |
+| Current deep-context capacity | 304,491 prompt tokens, C1 | 393,216 configured shared token pool; 256-token output cap exercised; p50 of three at the nominal 380K target; the separate published profile contract allows up to 4,096 output tokens |
 | Immediate rollback long concurrency | 2/2 at 206,630 prompt tokens/request | nominal 250K, C2, 8,192-token completion allowance; 2,493,817 reported KV tokens |
 | Historical BrandonMusic fixed-K5 short concurrency | 16/16 at 4K | 524,288 configured context; 23.85 aggregate output tok/s; not sixteen full-context requests |
 
