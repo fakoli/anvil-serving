@@ -1,0 +1,64 @@
+{
+  "schema": "anvil-serving.benchmark-configuration/v1",
+  "captured_at": "2026-09-03T12:04:28Z",
+  "repository": {
+    "branch": "codex/qwen38-ninfer-nvfp4-5090-20260903",
+    "revision": "3fe82086592830ac1707ceaa8184428d2622ac7e",
+    "origin_main_revision": "3fe82086592830ac1707ceaa8184428d2622ac7e",
+    "worktree": "isolated sibling worktree; operator path omitted",
+    "dirty_state": "clean before campaign artifacts"
+  },
+  "command_boundary": {
+    "host_os": "Windows",
+    "container_runtime": "Docker Desktop Linux containers",
+    "topology": "isolated single-RTX-5090 candidate lane; operator and network identity omitted",
+    "structured_controller_available_to_this_session": false,
+    "credential_requirement": "public artifact; no Hugging Face token required",
+    "credential_presence": {"HF_TOKEN": false, "HUGGING_FACE_HUB_TOKEN": false}
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "architecture": "sm_120",
+    "memory_total_mib": 32607,
+    "memory_used_mib": 26024,
+    "memory_free_mib": 6164,
+    "driver_version": "616.56",
+    "gpu_uuid": "retained only in private operator state"
+  },
+  "starting_serve": {
+    "managed": true,
+    "model": "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K",
+    "container": "anvil-qwen38-27b-ud-q4xl-native-mtp3",
+    "state": "running",
+    "health": "healthy",
+    "image_digest": "sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
+    "model_revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "served_model_name": "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-262k",
+    "context_tokens": 262144,
+    "concurrency": 1
+  },
+  "candidate": {
+    "artifact_repository": "neroued/Qwen3.8-27B-nvfp4-NInfer",
+    "artifact_revision": "204e3d92c30d9d05f3300d2f52e443ad1edf6ddf",
+    "artifact_file": "qwen3_8_27b_nvfp4.ninfer",
+    "artifact_bytes": 21492695040,
+    "artifact_sha256": "bb3360522a06e136e0367f5703414d26272b7285c8a6ab6194135c17dbd81b32",
+    "runtime_repository": "https://github.com/Neroued/ninfer",
+    "runtime_revision": "e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef",
+    "base_image": "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca",
+    "engine": "ninfer",
+    "quantization": "NVFP4 and row-scaled FP8 mixed target; INT8 group-64 KV",
+    "context_tokens": 252928,
+    "output_reserve_tokens": 8192,
+    "concurrency": 1,
+    "direct_endpoint": "http://127.0.0.1:8081/v1",
+    "router_or_client_change_planned": false
+  },
+  "cache_before": {
+    "volume": "vllm-hfcache",
+    "logical_bytes": 94908167904,
+    "available_bytes": 479919501312,
+    "candidate_present": false,
+    "incomplete_bytes": 0
+  }
+}

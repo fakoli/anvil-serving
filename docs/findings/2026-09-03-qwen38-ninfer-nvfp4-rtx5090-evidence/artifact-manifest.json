@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-03-qwen38-ninfer-nvfp4-rtx5090",
+    "capability": "text-and-tools",
+    "repository_revision": "3fe82086592830ac1707ceaa8184428d2622ac7e",
+    "dirty_state": "clean isolated codex worktree at campaign start",
+    "started_at": "2026-09-03T12:04:28Z",
+    "completed_at": "2026-09-03T12:38:41Z",
+    "evidence_labels": ["local-functional", "local-capacity", "local-performance", "local-quality", "exact-restoration"],
+    "decision_labels": ["verified", "challenger", "no-promotion"],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": ["preflight/v2", "anvil-serving.benchmark/v1", "anvil-serving.fast-tier-bakeoff/v1"],
+  "artifact_roles": [
+    {"role": "evidence-index", "status": "complete", "files": ["README.md", "artifact-manifest.json"], "reason": ""},
+    {"role": "source-registry", "status": "complete", "files": ["source-registry.json"], "reason": ""},
+    {"role": "workload-manifest", "status": "complete", "files": ["workload-manifest.json"], "reason": ""},
+    {"role": "run-plan", "status": "complete", "files": ["run-plan.json"], "reason": ""},
+    {"role": "configuration-and-identity", "status": "complete", "files": ["configuration-start.json", "configuration-end.json", "../../../configs/qwen38-27b-ninfer-nvfp4-rtx5090-252k-recipes.toml"], "reason": ""},
+    {"role": "raw-run-evidence", "status": "complete", "files": ["capacity-nospec-4k-c1.json", "capacity-nospec-4k-c1-warm.json", "capacity-mtp3-4k-c1.json", "capacity-mtp3-4k-c1-warm.json", "preflight-nospec-smoke.json", "preflight-nospec-json.json", "preflight-nospec-tools-c1.json", "preflight-nospec-tools.json", "preflight-nospec-needle-244k.json", "preflight-mtp3-smoke.json", "preflight-mtp3-json.json", "preflight-mtp3-tools-c1.json", "preflight-mtp3-tools.json", "preflight-mtp3-needle-244k.json", "preflight-mtp3-needle-244k-output-reserve-8192.json", "quality-nospec.json", "quality-mtp3.json", "restoration-smoke.json"], "reason": "all passing, failed-admission, repeat, and selected-profile artifacts remain retained"},
+    {"role": "failures-and-friction", "status": "complete", "files": ["friction-log.md", "preflight-nospec-tools.json", "preflight-mtp3-tools.json"], "reason": "the three explicit 429 admissions in each burst remain first-class evidence"},
+    {"role": "restoration", "status": "complete", "files": ["configuration-start.json", "configuration-end.json", "restoration.json", "restoration-smoke.json"], "reason": ""},
+    {"role": "decision-summary", "status": "complete", "files": ["summary.json"], "reason": ""},
+    {"role": "publication-summary", "status": "complete", "files": ["publication-summary.md", "../2026-09-03-qwen38-ninfer-nvfp4-rtx5090.md"], "reason": ""}
+  ]
+}

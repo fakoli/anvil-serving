@@ -1,0 +1,22 @@
+{
+  "schema": "anvil-serving.benchmark-workload-manifest/v1",
+  "campaign_id": "2026-09-03-qwen38-ninfer-nvfp4-rtx5090",
+  "selection_rule": "Run exact identity and thinking-disabled smoke first; only passing arms advance to deterministic tools, unique-prefix performance samples, and the 244,480-token retrieval gate with 8,192 output tokens reserved.",
+  "licenses": ["Anvil Serving MIT", "Qwen3.8 and NInfer artifacts Apache-2.0"],
+  "implementation": {
+    "repository_revision": "3fe82086592830ac1707ceaa8184428d2622ac7e",
+    "preflight_surface": "anvil-serving eval preflight",
+    "capacity_surface": "anvil-serving eval benchmark capacity",
+    "quality_surface": "anvil-serving eval benchmark quality"
+  },
+  "cases": [
+    {"id": "identity", "assertion": "GET /v1/models returns only the exact served model id and max_model_len 252928."},
+    {"id": "smoke", "assertion": "Thinking-disabled deterministic visible answer passes with an allowed finish reason."},
+    {"id": "json", "assertion": "Retain the exact result; current NInfer docs declare constrained JSON unsupported, so failure blocks parity but is not hidden."},
+    {"id": "tools-20", "assertion": "Twenty deterministic tool-call attempts parse as valid calls with matching names and arguments."},
+    {"id": "performance-short", "assertion": "Five unique-prefix C1 requests per arm retain TTFT, E2E, decode, prompt rate, and cache_n."},
+    {"id": "retrieval-244480", "assertion": "A nominal 244480-token needle prompt retrieves the exact marker while reserving 8192 output tokens."},
+    {"id": "gpu-post-workload", "assertion": "Retain startup and post-representative-workload memory with no OOM, CUDA error, crash, restart, or request loss."}
+  ],
+  "media": []
+}
