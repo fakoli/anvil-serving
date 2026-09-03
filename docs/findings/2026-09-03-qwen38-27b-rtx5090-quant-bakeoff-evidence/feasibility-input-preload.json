@@ -1,0 +1,101 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "qwen38-27b-rtx5090-quant-bakeoff-preload",
+  "requirements": {
+    "tokens": {
+      "prompt": {"value": 57344, "unit": "tokens", "status": "assumed", "source": "minimum advertised candidate window minus output reserve", "observed_at": "2026-09-03"},
+      "output_reserve": {"value": 8192, "unit": "tokens", "status": "assumed", "source": "campaign requirement", "observed_at": "2026-09-03"}
+    },
+    "concurrency": {"value": 1, "unit": "sequences", "status": "assumed", "source": "first qualification lane", "observed_at": "2026-09-03"},
+    "physical_vram_bytes": {"value": 34190917632, "unit": "bytes", "status": "measured", "source": "RTX 5090 nvidia-smi baseline", "observed_at": "2026-09-03"},
+    "vram_reserves": {
+      "idle_unavailable": {"kind": "physical", "variable": {"value": 440401920, "unit": "bytes", "status": "measured", "source": "difference between reported total and free VRAM at process-free idle baseline", "observed_at": "2026-09-03"}},
+      "co_resident": {"kind": "physical", "variable": {"value": 0, "unit": "bytes", "status": "measured", "source": "process-free idle baseline", "observed_at": "2026-09-03"}},
+      "campaign_headroom": {"kind": "policy", "variable": {"value": 0, "unit": "bytes", "status": "assumed", "source": "operator-authorized dedicated-GPU reserve waiver after idle baseline", "observed_at": "2026-09-03", "notes": "Default was 3 GiB. Startup and representative-workload stability telemetry remain mandatory."}}
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {"value": 1.0, "unit": "ratio", "status": "assumed", "source": "qualification hard gate", "observed_at": "2026-09-03"},
+      "max_relative_quality_loss": {"value": 0.03, "unit": "ratio", "status": "assumed", "source": "campaign intelligence-loss budget", "observed_at": "2026-09-03"},
+      "min_warm_e2e_gain": {"value": 0.10, "unit": "ratio", "status": "assumed", "source": "speculation retention gate", "observed_at": "2026-09-03"}
+    }
+  },
+  "tracked_variables": {
+    "runtime_fixed_allocation": {"status": "unknown", "unit": "bytes", "notes": "Measured independently for each loaded candidate."},
+    "kv_bytes_per_token": {"status": "unknown", "unit": "bytes/token", "notes": "Derived from engine startup telemetry or stable context evidence after load."},
+    "concurrency_capacity": {"status": "unknown", "unit": "sequences", "notes": "Measured only after deterministic single-stream gates pass."}
+  },
+  "candidates": [
+    {
+      "id": "unsloth-dynamic-v3-native-mtp3",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "pinned managed recipe", "observed_at": "2026-09-03"},
+      "measured_max_stable_context_tokens": {"value": 262144, "unit": "tokens", "status": "measured", "source": "retained local qualification", "observed_at": "2026-09-03"},
+      "resident_components": {"target_weights": {"value": 17559178144, "unit": "bytes", "status": "confirmed", "source": "pinned Hugging Face artifact", "observed_at": "2026-09-03"}, "runtime_fixed": {"status": "unknown", "unit": "bytes", "notes": "Captured from the live baseline rather than used for pruning."}},
+      "per_token_components": {"kv": {"status": "unknown", "unit": "bytes/token", "notes": "Runtime-specific mixed Q4 target/draft KV."}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "concurrency-one control", "observed_at": "2026-09-03"}
+    },
+    {
+      "id": "neroued-ninfer-nospec-mtp3",
+      "runtime_context_limit_tokens": {"value": 252928, "unit": "tokens", "status": "confirmed", "source": "pinned managed recipe", "observed_at": "2026-09-03"},
+      "measured_max_stable_context_tokens": {"value": 252928, "unit": "tokens", "status": "measured", "source": "retained local qualification", "observed_at": "2026-09-03"},
+      "resident_components": {"target_weights": {"value": 21492695890, "unit": "bytes", "status": "confirmed", "source": "pinned Hugging Face repository total", "observed_at": "2026-09-03"}, "runtime_fixed": {"status": "unknown", "unit": "bytes", "notes": "Measured NInfer residency is retained separately and will be fed back after the standardized rerun."}},
+      "per_token_components": {"kv": {"status": "unknown", "unit": "bytes/token", "notes": "INT8 group-64 KV density is not inferred from checkpoint bytes."}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "concurrency-one control", "observed_at": "2026-09-03"}
+    },
+    {
+      "id": "gittensor-sglang-nospec",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "checkpoint-derived native context and publisher full-native-window profile", "observed_at": "2026-09-03"},
+      "measured_max_stable_context_tokens": {"status": "unknown", "unit": "tokens", "notes": "The publisher's 320,960 figure is KV-pool capacity. A local stable occupied-cache proof at the 262,144 native limit is pending."},
+      "resident_components": {"target_weights": {"value": 17916112584, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API at pinned revision", "observed_at": "2026-09-03"}, "runtime_fixed": {"status": "unknown", "unit": "bytes", "notes": "SGLang graphs, GDN state, and workspace are load-bearing and measured at startup."}},
+      "per_token_components": {"target_kv": {"status": "unknown", "unit": "bytes/token", "notes": "FP8 KV plus recurrent state; publisher capacity is a prior, not a local allocation measurement."}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "concurrency-one capacity gate", "observed_at": "2026-09-03"}
+    },
+    {
+      "id": "gittensor-sglang-dspark",
+      "runtime_context_limit_tokens": {"value": 165169, "unit": "tokens", "status": "confirmed", "source": "publisher RTX 5090 SGLang DSpark maximum-context report", "observed_at": "2026-09-03"},
+      "measured_max_stable_context_tokens": {"value": 165169, "unit": "tokens", "status": "confirmed", "source": "publisher RTX 5090 SGLang DSpark report; local proof pending", "observed_at": "2026-09-03"},
+      "resident_components": {"target_weights": {"value": 17916112584, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API at pinned target revision", "observed_at": "2026-09-03"}, "draft_weights": {"value": 1399670058, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API at pinned DSpark revision", "observed_at": "2026-09-03"}, "runtime_fixed": {"status": "unknown", "unit": "bytes", "notes": "Draft graphs, verifier workspace, and recurrent state are measured at startup."}},
+      "per_token_components": {"target_and_draft_kv": {"status": "unknown", "unit": "bytes/token", "notes": "Draft KV layout is runtime-specific."}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "concurrency-one capacity gate", "observed_at": "2026-09-03"}
+    },
+    {
+      "id": "quasar-vllm-mtp2",
+      "runtime_context_limit_tokens": {"value": 65536, "unit": "tokens", "status": "confirmed", "source": "publisher RTX 5090 guidance", "observed_at": "2026-09-03"},
+      "measured_max_stable_context_tokens": {"status": "unknown", "unit": "tokens", "notes": "No local load yet."},
+      "resident_components": {"target_weights": {"value": 20559281336, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API at d8e6fbfa3e3a78899b440222b827430045a05b44", "observed_at": "2026-09-03"}, "runtime_fixed": {"status": "unknown", "unit": "bytes", "notes": "vLLM runtime residency and MTP allocation pending."}},
+      "per_token_components": {"kv": {"status": "unknown", "unit": "bytes/token", "notes": "KV format and density are measured after load."}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "concurrency-one first gate", "observed_at": "2026-09-03"}
+    },
+    {
+      "id": "redhat-vllm-mtp4",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "upstream native context; single-5090 recipe remains a benchmark target", "observed_at": "2026-09-03"},
+      "measured_max_stable_context_tokens": {"status": "unknown", "unit": "tokens", "notes": "No local load of the current revision yet."},
+      "resident_components": {"target_weights": {"value": 22568192096, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API at 285eba88b22cc7664d2e120eca75ddb7c7dfd6b7", "observed_at": "2026-09-03"}, "mtp_weights": {"value": 849400392, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API at pinned revision", "observed_at": "2026-09-03"}, "runtime_fixed": {"status": "unknown", "unit": "bytes", "notes": "Custom-vLLM graphs, XQA, workspace, and KV residency pending."}},
+      "per_token_components": {"kv": {"status": "unknown", "unit": "bytes/token", "notes": "NVFP4 KV/XQA recipe is not assumed from model size."}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "concurrency-one first gate", "observed_at": "2026-09-03"}
+    },
+    {
+      "id": "cometkim-ninfer-mtp3",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "publisher same-GPU profile", "observed_at": "2026-09-03"},
+      "measured_max_stable_context_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "publisher RTX 5090 startup report; local proof pending", "observed_at": "2026-09-03"},
+      "resident_components": {"target_weights": {"value": 18324094014, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API repository total at 4f302e0c324771bbd48c419a8d0319e39334ba23", "observed_at": "2026-09-03"}, "runtime_fixed": {"status": "unknown", "unit": "bytes", "notes": "Forked NInfer runtime allocation pending local load."}},
+      "per_token_components": {"kv": {"status": "unknown", "unit": "bytes/token", "notes": "INT8 KV density is measured from the exact fork."}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "concurrency-one first gate", "observed_at": "2026-09-03"}
+    },
+    {
+      "id": "telperion-autoround-vllm-mtp2",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "upstream native context; publisher did not claim single-5090 capacity", "observed_at": "2026-09-03"},
+      "measured_max_stable_context_tokens": {"status": "unknown", "unit": "tokens", "notes": "Publisher benchmark used two B300 GPUs; local 5090 capacity is unresolved."},
+      "resident_components": {"target_weights": {"value": 22902605024, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API target shards excluding MTP", "observed_at": "2026-09-03"}, "mtp_weights": {"value": 849400424, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API at 4e81b8843cac2a7f053eda6dfd56d11be3dbafe7", "observed_at": "2026-09-03"}, "runtime_fixed": {"status": "unknown", "unit": "bytes", "notes": "vLLM graphs and workspace pending."}},
+      "per_token_components": {"kv": {"status": "unknown", "unit": "bytes/token", "notes": "Publisher provides calibrated FP8 scales but not local allocation."}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "concurrency-one first gate", "observed_at": "2026-09-03"}
+    },
+    {
+      "id": "cdiamond-imatrix-gguf-mtp",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "publisher text-only profile", "observed_at": "2026-09-03"},
+      "measured_max_stable_context_tokens": {"value": 261756, "unit": "tokens", "status": "confirmed", "source": "publisher 24 GB Blackwell occupied-cache result: 261,500 input plus 256 output", "observed_at": "2026-09-03"},
+      "resident_components": {"target_weights": {"value": 17125207136, "unit": "bytes", "status": "confirmed", "source": "Hugging Face API at ac343e8f44caef0896f79d372ecc07ef7ab34ec8", "observed_at": "2026-09-03"}, "runtime_fixed": {"status": "unknown", "unit": "bytes", "notes": "llama.cpp graphs and embedded MTP allocation pending local load."}},
+      "per_token_components": {"target_and_draft_kv": {"status": "unknown", "unit": "bytes/token", "notes": "Q4 target and F16 draft KV density is measured locally."}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "concurrency-one capacity gate", "observed_at": "2026-09-03"}
+    }
+  ]
+}

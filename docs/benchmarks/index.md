@@ -22,6 +22,11 @@ configuration — TTFT, throughput, context, reasoning mode, and recipe link —
 in one place, grouped by card. If you have one of these GPUs and want to know
 what runs on it and how well, start there.
 
+For the newest single-card Qwen measurements, the dedicated
+**[Qwen3.8 27B RTX 5090 quant comparison](qwen38-27b-rtx5090-quant-comparison.md)**
+shows every fresh no-speculation/speculation pair, full-context proof, and
+failure without compressing the operator's TTFT-first ranking into one score.
+
 For the compact publication contract, use the
 **[finding format](finding-format.md)**. It defines screenshot-ready result
 cards, the common campaign artifact-set template, X and Reddit variants,
@@ -77,27 +82,32 @@ route assignments; active deployment state remains private.
    text/image/OCR/video rollback at 262,144 tokens, exclusive TP=2, router c1,
    four-image/one-video admission, and the qualified hash-gated SM120 QSA-fast
    MTP3 profile.
-4. **Qwen3.8 27B NInfer NVFP4 MTP3** — preferred measured direct RTX 5090
-   text/tools performance challenger at 252,928 tokens/C1; 0.430-second median
-   TTFT, 165.9 tok/s decode, and a 201,746-token prompt with 8,192 output cap.
-   It remains `no-promotion` because admission, normal reserve, runtime-image,
-   routed/client, and broader quality gates are open; the GGUF incumbent was
-   restored.
-5. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
+4. **Gittensor Qwen3.8 27B RTX5090 NVFP4 target-only SGLang** — preferred
+   measured direct RTX 5090 TTFT challenger: 50.9 ms warm median TTFT, 79.5
+   tok/s decode, and a 244,002-token actual prompt. The advertised DSpark pair
+   failed on incompatible shapes and FP8 KV scales need further validation;
+   `no-promotion`, exact GGUF incumbent restored. Unsloth Dynamic V3.0 MTP3
+   is the strongest clean bounded-64K speculative arm at 137.7 tok/s with
+   tools 20/20.
+5. **Qwen3.8 27B NInfer NVFP4 MTP3** — retained direct decode challenger at
+   252,928 tokens/C1; 0.430-second median TTFT and 165.9 tok/s decode. Its
+   admission, reserve, runtime-image, routed/client, and broader gates remain
+   open.
+6. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
    Primary profiles with retained TP=2 long-context, performance, quality, and
    real-client evidence.
-6. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
+7. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
    former text/image/OCR/video deployments with retained managed recipes.
-7. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
+8. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
    **Laguna S 2.1**, and **GPT-OSS Puzzle 88B** — retained qualified or
    promotion-era recipes, not the immediate selected deployment.
-8. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
+9. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
    controls.
-9. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
+10. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
-10. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
+11. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
    direct 128K text/tools/image/OCR/video evidence, no route or promotion.
-11. **FLUX.2 Klein 4B FP8** — published as available for the RTX 5090 ComfyUI image
+12. **FLUX.2 Klein 4B FP8** — published as available for the RTX 5090 ComfyUI image
    workflow through Hermes/MCP at fixed 512/768/1024-pixel profiles; six of
    eight bounded visual samples passed strict review, with two retained draft
    fidelity/count failures. **Wan2.2 TI2V 5B** remains unavailable after

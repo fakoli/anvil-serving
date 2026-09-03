@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-03-qwen38-27b-rtx5090-quant-bakeoff",
+    "capability": "text-llm",
+    "repository_revision": "aed0214e03d2fe0e8220e3249a12f90994fd89b5",
+    "dirty_state": "clean isolated worktree at campaign start",
+    "started_at": "2026-09-03T18:37:23Z",
+    "completed_at": "2026-09-03T21:30:00Z",
+    "evidence_labels": ["functional", "capacity", "matched-performance", "bounded-quality", "compatibility-failure", "exact-restoration"],
+    "decision_labels": ["challenger", "no-promotion"],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": ["preflight/v2", "capacity-v3"],
+  "artifact_roles": [
+    {"role": "evidence-index", "status": "present", "files": ["README.md"]},
+    {"role": "source-registry", "status": "present", "files": ["source-registry.json"]},
+    {"role": "workload-manifest", "status": "present", "files": ["workload-manifest.json"]},
+    {"role": "run-plan", "status": "present", "files": ["run-plan.json"]},
+    {"role": "configuration-and-identity", "status": "present", "files": ["configuration.json", "gpu-idle-baseline.json"]},
+    {"role": "raw-run-evidence", "status": "present", "files": ["*-preflight.json", "*-timing-4k-*.json", "*-capacity-*.json", "*-quality.json", "*-runtime-metrics.json"]},
+    {"role": "failures-and-friction", "status": "present", "files": ["friction-log.md", "gittensor-dspark-load-failure.json", "*invalid-thinking-control.json"]},
+    {"role": "feasibility", "status": "present", "files": ["feasibility-input-preload.json", "feasibility-result-preload.json", "feasibility-result-preload.md"]},
+    {"role": "restoration", "status": "present", "files": ["restoration.json", "restoration-preflight.json"]},
+    {"role": "decision-summary", "status": "present", "files": ["summary.json"]},
+    {"role": "publication-summary", "status": "present", "files": ["publication-summary.md"]}
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "under 5 MiB"
+}

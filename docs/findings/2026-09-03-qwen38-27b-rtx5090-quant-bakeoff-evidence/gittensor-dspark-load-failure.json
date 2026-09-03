@@ -1,0 +1,38 @@
+{
+  "schema": "anvil-serving.candidate-load-failure/v1",
+  "observed_at": "2026-09-03T18:58:09Z",
+  "candidate": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090-SGLang-DSpark-165169",
+  "host_label": "Fakoli Dark",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "runtime": {
+    "engine": "sglang",
+    "image": "lmsysorg/sglang:v0.5.18@sha256:bde16a8447b19e89056b9eea06c72be6c02801dc89d528c9ea90c53368fd74bf",
+    "target_revision": "b8ca3826548c9a7735642feb05c3c473f1fede1f",
+    "draft_revision": "eba1ac5a66c74902eaa95a4000a7c5eda96d8e95",
+    "context_tokens": 165169,
+    "max_running_requests": 2,
+    "kv_cache_dtype": "fp8_e4m3",
+    "mem_fraction_static": 0.9
+  },
+  "load_progress": {
+    "target_weight_gb_reported": 17.10,
+    "draft_weight_gb_reported": 1.44,
+    "target_kv_tokens_allocated": 142219,
+    "draft_kv_tokens_allocated": 142219,
+    "target_kv_k_gb": 2.17,
+    "target_kv_v_gb": 2.17,
+    "draft_kv_k_gb": 0.68,
+    "draft_kv_v_gb": 0.68,
+    "reached_readiness": false
+  },
+  "failure": {
+    "stage": "DSpark draft CUDA-graph capture and FlashInfer autotune",
+    "exception": "RuntimeError",
+    "message": "mat1 and mat2 shapes cannot be multiplied (14x5120 and 2560x248320)",
+    "classification": "target-drafter-runtime hidden-width incompatibility",
+    "memory_failure": false,
+    "repeat_without_change": false
+  },
+  "decision": "rejected",
+  "decision_note": "The advertised speculative lane cannot serve with the pinned final target, drafter, and SGLang v0.5.18 combination. Lowering memory or context would not repair the matrix-width mismatch."
+}

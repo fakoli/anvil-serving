@@ -1,0 +1,146 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "RedHatAI/Qwen3.8-27B-NVFP4-vLLM-NoSpec-64K"
+status = "candidate"
+source = "2026-09-03 bounded stock-vLLM single-RTX-5090 control derived from current model and community recipes"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "RedHatAI/Qwen3.8-27B-NVFP4"
+revision = "285eba88b22cc7664d2e120eca75ddb7c7dfd6b7"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "Current community evidence uses a custom vLLM v0.28 patch stack for 262K and NVFP4 KV. This bounded stock-vLLM intake deliberately starts at 65,536 tokens with default KV and no disk tier."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--RedHatAI--Qwen3.8-27B-NVFP4/snapshots/285eba88b22cc7664d2e120eca75ddb7c7dfd6b7"
+quantization = "llm-compressor NVFP4 target with FP8 lm_head; default vLLM KV"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-redhat-nvfp4-nospec-64k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-redhat-vllm-0271:/root/.cache/vllm"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--served-model-name qwen38-27b-redhat-nvfp4-nospec-64k",
+  "--trust-remote-code",
+  "--quantization compressed-tensors",
+  "--max-model-len 65536",
+  "--max-num-seqs 2",
+  "--gpu-memory-utilization 0.90",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Matched no-speculation intake on stock vLLM. This is intentionally not the community's custom v0.28 NVFP4-KV/disk-tier stack and must not inherit its 262K, throughput, or fidelity claims."
+
+[recipe.fit]
+suited = ["single-gpu-intake", "matched-control", "64k-context", "quality-challenger"]
+not_suited = ["automatic-promotion", "community-custom-stack-equivalence", "full-native-context"]
+rationale = "Separates checkpoint viability from the specialized patch stack before any expensive custom-runtime reproduction."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://docs.vllm.ai/en/v0.27.1/",
+]
+community = [
+  "https://huggingface.co/RedHatAI/Qwen3.8-27B-NVFP4/tree/285eba88b22cc7664d2e120eca75ddb7c7dfd6b7",
+  "https://github.com/adrienbrault/qwen3.8-27b-rtx5090/tree/42f0844aa6744f4faefa26d344145e6062a80092",
+]
+
+[[recipe]]
+model = "RedHatAI/Qwen3.8-27B-NVFP4-vLLM-MTP4-64K"
+status = "candidate"
+source = "2026-09-03 bounded stock-vLLM single-RTX-5090 MTP4 arm derived from current model and community recipes"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "RedHatAI/Qwen3.8-27B-NVFP4"
+revision = "285eba88b22cc7664d2e120eca75ddb7c7dfd6b7"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "The current community one-card recipe advertises MTP4 but depends on a custom vLLM v0.28 NVFP4-KV stack. This arm tests the checkpoint's integrated MTP4 path on pinned stock vLLM at 65,536 tokens."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--RedHatAI--Qwen3.8-27B-NVFP4/snapshots/285eba88b22cc7664d2e120eca75ddb7c7dfd6b7"
+quantization = "llm-compressor NVFP4 target, FP8 lm_head, integrated BF16 MTP head; default vLLM KV"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-redhat-nvfp4-mtp4-64k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-redhat-vllm-0271:/root/.cache/vllm"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--served-model-name qwen38-27b-redhat-nvfp4-mtp4-64k",
+  "--trust-remote-code",
+  "--quantization compressed-tensors",
+  "--max-model-len 65536",
+  "--max-num-seqs 2",
+  "--gpu-memory-utilization 0.90",
+  "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":4}'",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Publisher-shipped MTP head with the community-advertised four-token proposal depth, otherwise matched to the bounded stock-vLLM control. This must not inherit results from the custom NVFP4-KV stack."
+
+[recipe.fit]
+suited = ["single-gpu-intake", "speculative-decoding", "64k-context", "quality-challenger"]
+not_suited = ["automatic-promotion", "community-custom-stack-equivalence", "full-native-context"]
+rationale = "Credits MTP4 only if the exact stock-runtime arm reaches readiness and improves the matched control."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://docs.vllm.ai/en/v0.27.1/",
+]
+community = [
+  "https://huggingface.co/RedHatAI/Qwen3.8-27B-NVFP4/tree/285eba88b22cc7664d2e120eca75ddb7c7dfd6b7",
+  "https://github.com/adrienbrault/qwen3.8-27b-rtx5090/tree/42f0844aa6744f4faefa26d344145e6062a80092",
+]

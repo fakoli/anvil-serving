@@ -1,0 +1,91 @@
+{
+  "base_url": "http://127.0.0.1:8081/v1",
+  "completed": 1,
+  "concurrency": 1,
+  "context_distribution": {
+    "57088": 1
+  },
+  "context_seed": 0,
+  "context_tokens": 57344,
+  "engine": "vllm",
+  "failed": 0,
+  "failures": [],
+  "finished_at": "2026-09-03T20:03:30Z",
+  "gpu": "rtx-5090",
+  "manifest": null,
+  "max_context_tokens": 65536,
+  "max_tokens": 256,
+  "measurement_protocol": "capacity-v3",
+  "metrics": {
+    "content_chunks": 49,
+    "content_chunks_s": null,
+    "decode_tok_s_p50": 58.907470791978376,
+    "decode_tok_s_p95": 58.907470791978376,
+    "e2e_p50_ms": 8911.419399955776,
+    "e2e_p95_ms": 8911.419399955776,
+    "effective_prefill_tok_s_p50": 6616.163876507717,
+    "effective_prefill_tok_s_p95": 6616.163876507717,
+    "generation_p50_ms": 831.8129999679513,
+    "generation_p95_ms": 831.8129999679513,
+    "mean_inter_token_latency_ms_p50": 16.975775509550026,
+    "mean_inter_token_latency_ms_p95": 16.975775509550026,
+    "output_token_sources": {
+      "usage": 1
+    },
+    "output_tokens": 50,
+    "prefix_cache_hit_avg": null,
+    "prompt_token_samples": 1,
+    "prompt_tokens": 53456,
+    "prompt_tokens_p50": 53456.0,
+    "prompt_tokens_p95": 53456.0,
+    "reasoning_chunks": 0,
+    "throughput_tok_s": 5.609664824221859,
+    "time_to_first_output_p50_ms": 8079.606399987824,
+    "time_to_first_output_p95_ms": 8079.606399987824,
+    "ttft_p50_ms": 8079.607699997723,
+    "ttft_p95_ms": 8079.607699997723,
+    "ttft_samples": 1
+  },
+  "model": "qwen38-27b-telperion-autoround-nospec-64k",
+  "request_timings": [
+    {
+      "content_chunks": 49,
+      "decode_tok_s": 58.907470791978376,
+      "e2e_ms": 8911.419399955776,
+      "effective_prefill_tok_s": 6616.163876507717,
+      "generation_ms": 831.8129999679513,
+      "mean_inter_token_latency_ms": 16.975775509550026,
+      "output_token_source": "usage",
+      "output_tokens": 50,
+      "planned_context_tokens": 57088,
+      "prompt_tokens": 53456,
+      "reasoning_chunks": 0,
+      "request_index": 0,
+      "time_to_first_output_ms": 8079.606399987824,
+      "ttft_ms": 8079.607699997723,
+      "visible_generation_ms": 831.8116999580525
+    }
+  ],
+  "requests": 1,
+  "run_id": "benchmark-20260903T200321Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": null,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  },
+  "source_recipe": null,
+  "started_at": "2026-09-03T20:03:21Z",
+  "tier": null,
+  "timing_methodology": {
+    "clock": "client time.perf_counter",
+    "decode": "usage completion tokens after the first token divided by client-observed generation time; completion tokens may include reasoning tokens",
+    "effective_prefill": "usage.prompt_tokens divided by client-observed time to first output; includes queueing, scheduling, prefill, and first-token work",
+    "generation": "client-observed E2E minus time to first output",
+    "mean_inter_token_latency": "client-observed generation time divided by completion tokens after the first token; not a raw per-token timestamp trace",
+    "time_to_first_output": "request start through the first non-empty streamed reasoning or content delta",
+    "ttft": "request start through the first non-empty streamed content delta"
+  },
+  "wall_clock_ms": 8913.188499980606
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "anvil-serving.benchmark-configuration/v1",
+  "campaign_id": "2026-09-03-qwen38-27b-rtx5090-quant-bakeoff",
+  "repository": {
+    "revision": "aed0214e03d2fe0e8220e3249a12f90994fd89b5",
+    "branch": "codex/qwen38-5090-quant-bakeoff-20260903",
+    "dirty_at_start": false,
+    "base": "origin/main@3fe82086592830ac1707ceaa8184428d2622ac7e plus the previously published NInfer qualification commit"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "gpu_count": 1,
+    "physical_vram_mib": 32607,
+    "gpu_uuid": "redacted from public evidence",
+    "driver": "616.56",
+    "topology": "single local model-serving GPU"
+  },
+  "vram_policy": {
+    "default_reserve_mib": 3072,
+    "effective_reserve_mib": 0,
+    "scope": "this campaign only",
+    "rationale": "The operator explicitly dedicated the RTX 5090 to this bakeoff and waived the normal 3 GiB policy reserve after an idle baseline showed no compute or graphics processes, 0 MiB reported used, 32,187 MiB reported free, 0% GPU utilization, 1% memory utilization, and P8 state.",
+    "idle_baseline_evidence": "gpu-idle-baseline.json",
+    "physical_unavailable_mib": 420,
+    "physical_unavailable_note": "Difference between the device's 32,607 MiB total and 32,187 MiB free at the process-free idle baseline; retained as unavailable physical capacity rather than a policy reserve.",
+    "safety_gate": "Each candidate still requires startup and post-representative-workload telemetry with no OOM, CUDA error, crash, restart, or unexplained request loss."
+  },
+  "starting_state": {
+    "router": "absent",
+    "managed_manifest_serves": [],
+    "recipe_candidate": {
+      "public_identity": "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K",
+      "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+      "endpoint": "http://127.0.0.1:8080/v1",
+      "health": "healthy",
+      "context_tokens": 262144,
+      "restore_required": true
+    },
+    "gpu_memory": {"used_mib": 25990, "free_mib": 6198},
+    "cache_available_bytes": 446869753856
+  },
+  "promotion_authorized": false
+}
