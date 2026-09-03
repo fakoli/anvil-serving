@@ -162,7 +162,6 @@ def _run_suite(
         cache_root=cache_root,
         ownership_id=spec["ownership_id"],
         run_id=spec["run_id"],
-        python_executable=sys.executable,
         request_controls={
             key: parameters[key]
             for key in ("thinking_mode", "reasoning_effort")
