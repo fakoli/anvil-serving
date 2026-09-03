@@ -1,0 +1,15 @@
+{
+  "schema": "anvil-serving.speculative-runtime-metrics/v1",
+  "campaign_id": "2026-09-03-qwen38-27b-rtx5090-quant-bakeoff",
+  "candidate": "qwen38-27b-telperion-autoround-mtp2-64k",
+  "runtime": "vllm-0.27.1",
+  "draft_tokens_per_step": 2,
+  "observed": {
+    "draft_sequences": 462,
+    "proposed_tokens": 924,
+    "accepted_tokens": 797,
+    "acceptance_rate": 0.8626,
+    "accepted_by_position": [429, 368]
+  },
+  "source": "bounded runtime metrics captured after the matched warm and long-context workloads"
+}

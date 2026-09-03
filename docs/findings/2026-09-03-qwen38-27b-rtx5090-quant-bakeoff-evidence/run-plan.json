@@ -1,0 +1,37 @@
+{
+  "schema": "anvil-serving.benchmark-run-plan/v1",
+  "campaign_id": "2026-09-03-qwen38-27b-rtx5090-quant-bakeoff",
+  "ranking_priority": ["ttft", "decode_tokens_per_second", "usable_context_and_kv", "concurrency"],
+  "hard_gates": [
+    "exact served identity",
+    "thinking-disabled deterministic smoke",
+    "valid JSON and tool-call structure",
+    "durable-context exact retrieval",
+    "no OOM, CUDA error, crash, restart, parser corruption, or unexplained request loss"
+  ],
+  "paired_control_rule": "For each target/runtime, compare no speculation with only the publisher-advertised speculative mechanism changed. Any unavoidable mismatch is labeled non-comparable.",
+  "candidates": [
+    {"id": "unsloth-dynamic-v3-gguf", "role": "incumbent-control", "speculation": ["native-mtp3"]},
+    {"id": "neroued-ninfer", "role": "qualified-control", "speculation": ["none", "mtp3"]},
+    {"id": "cdiamond-imatrix-gguf", "role": "challenger", "speculation": ["none", "embedded-mtp"]},
+    {"id": "gittensor-rtx5090", "role": "challenger", "speculation": ["none", "dspark"]},
+    {"id": "quasar-nvfp4", "role": "challenger", "speculation": ["none", "supported-mtp-if-exposed"]},
+    {"id": "redhat-nvfp4", "role": "challenger", "speculation": ["none", "mtp4"]},
+    {"id": "cometkim-ninfer", "role": "challenger", "speculation": ["none", "mtp3"]},
+    {"id": "telperion-autoround", "role": "challenger", "speculation": ["none", "supported-mtp-if-exposed"]}
+  ],
+  "stages": [
+    {"id": "boot", "context_tokens": 8192, "concurrency": 1, "purpose": "fast compatibility and identity smoke"},
+    {"id": "advertised-profile", "context_tokens": "publisher-advertised single-RTX-5090 value; otherwise feasibility-bounded value", "concurrency": 1, "purpose": "capacity and representative timing"},
+    {"id": "timing", "prompt_tokens": 4096, "max_output_tokens": 256, "warm_repetitions": 5, "purpose": "TTFT and decode distribution"},
+    {"id": "decode", "prompt_tokens": 512, "max_output_tokens": 2048, "warm_repetitions": 3, "purpose": "sustained decode rate"},
+    {"id": "durable-context", "prompt_tokens": "advertised context minus 8192 output reserve", "max_output_tokens": 8192, "concurrency": 1, "purpose": "exact retrieval and stable usable KV"},
+    {"id": "concurrency", "prompt_tokens": 4096, "max_output_tokens": 256, "concurrency_points": [1, 2, 4], "purpose": "highest stable concurrent request count within the same declared context"}
+  ],
+  "stop_rules": [
+    "Stop a lane after the earliest actionable startup failure is retained.",
+    "Do not run performance scoring after a deterministic functional hard-gate failure.",
+    "Do not silently reduce the advertised context; record the failure and, if useful, run one explicitly labeled bounded diagnostic profile.",
+    "Do not promote or change a live alias as part of the bakeoff."
+  ]
+}

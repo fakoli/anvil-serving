@@ -1,0 +1,159 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "cdiamond/Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF-NoSpec-262K"
+status = "candidate"
+source = "2026-09-03 matched target-only control for the publisher's 256K Blackwell profile"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "cdiamond/Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF"
+revision = "ac343e8f44caef0896f79d372ecc07ef7ab34ec8"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "Publisher filled 261,500 input plus 256 output tokens on a 24 GB Blackwell GPU. Local RTX 5090 capacity and stability remain hard gates."
+
+[recipe.serve]
+engine = "llamacpp"
+image = "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac"
+entrypoint = ["/app/llama-server"]
+model_flag = "-m"
+model_path = "/root/.cache/huggingface/hub/models--cdiamond--Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF/snapshots/ac343e8f44caef0896f79d372ecc07ef7ab34ec8/Qwen3.8-27B-iMatrix-NVFP4-MTP.gguf"
+quantization = "5.01 BPW iMatrix hybrid: NVFP4 target with Q5_K attention/GDN protection, late Q5_K/Q6_K FFN protection, Q8_0 output, embedded NVFP4 MTP; Q4_0 target KV"
+context_tokens = 262144
+port = 8080
+health = "/health"
+startup_timeout_seconds = 1800
+served_model_name = "qwen38-27b-cdiamond-imatrix-nvfp4-nospec-262k"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "GGML_CUDA_GRAPH_OPT=1",
+]
+flags = [
+  "--alias qwen38-27b-cdiamond-imatrix-nvfp4-nospec-262k",
+  "--fit off",
+  "--ctx-size 262144",
+  "--parallel 1",
+  "--ctx-checkpoints 4",
+  "--batch-size 512",
+  "--ubatch-size 256",
+  "--threads 8",
+  "--threads-batch 8",
+  "--n-gpu-layers 999",
+  "--flash-attn on",
+  "--cache-type-k q4_0",
+  "--cache-type-v q4_0",
+  "--jinja",
+  "--reasoning off",
+  "--temp 0",
+  "--metrics",
+  "--host 0.0.0.0",
+  "--port 8080",
+]
+note = "Target-only matched control. The model file still contains the embedded MTP layer, but no speculative flags activate it. The image is the already-qualified llama.cpp revision a298422da78eb75e440a7de0ca408af64d323d93. No projector is loaded because this campaign is text-only."
+
+[recipe.fit]
+suited = ["single-gpu", "long-context", "matched-control", "text"]
+not_suited = ["automatic-promotion", "qualified-vision"]
+rationale = "Separates target quantization and KV capacity from embedded-MTP effects on the same runtime and artifact."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://github.com/ggml-org/llama.cpp/tree/a298422da78eb75e440a7de0ca408af64d323d93",
+]
+community = [
+  "https://huggingface.co/cdiamond/Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF/tree/ac343e8f44caef0896f79d372ecc07ef7ab34ec8",
+]
+
+[[recipe]]
+model = "cdiamond/Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF-MTP8-262K"
+status = "candidate"
+source = "2026-09-03 publisher-advertised 256K embedded-MTP Blackwell profile"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "cdiamond/Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF"
+revision = "ac343e8f44caef0896f79d372ecc07ef7ab34ec8"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "Publisher filled 261,500 input plus 256 output tokens on a 24 GB Blackwell GPU. Local RTX 5090 capacity and stability remain hard gates."
+
+[recipe.serve]
+engine = "llamacpp"
+image = "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac"
+entrypoint = ["/app/llama-server"]
+model_flag = "-m"
+model_path = "/root/.cache/huggingface/hub/models--cdiamond--Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF/snapshots/ac343e8f44caef0896f79d372ecc07ef7ab34ec8/Qwen3.8-27B-iMatrix-NVFP4-MTP.gguf"
+quantization = "5.01 BPW iMatrix hybrid target with embedded NVFP4 MTP; Q4_0 target KV and F16 draft KV"
+context_tokens = 262144
+port = 8080
+health = "/health"
+startup_timeout_seconds = 1800
+served_model_name = "qwen38-27b-cdiamond-imatrix-nvfp4-mtp8-262k"
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "LLAMA_SPEC_CHAIN=1",
+  "GGML_CUDA_GRAPH_OPT=1",
+]
+flags = [
+  "--alias qwen38-27b-cdiamond-imatrix-nvfp4-mtp8-262k",
+  "--fit off",
+  "--ctx-size 262144",
+  "--parallel 1",
+  "--ctx-checkpoints 4",
+  "--batch-size 512",
+  "--ubatch-size 256",
+  "--threads 8",
+  "--threads-batch 8",
+  "--n-gpu-layers 999",
+  "--flash-attn on",
+  "--cache-type-k q4_0",
+  "--cache-type-v q4_0",
+  "--spec-type draft-mtp",
+  "--spec-default",
+  "--spec-draft-n-max 8",
+  "--spec-draft-n-min 0",
+  "--spec-draft-p-min 0",
+  "--spec-draft-type-k f16",
+  "--spec-draft-type-v f16",
+  "--spec-draft-threads 8",
+  "--spec-draft-threads-batch 8",
+  "--spec-draft-backend-sampling",
+  "--jinja",
+  "--reasoning off",
+  "--temp 0",
+  "--metrics",
+  "--host 0.0.0.0",
+  "--port 8080",
+]
+note = "Publisher-advertised maximum-throughput MTP8 profile, text-only and otherwise matched to the target-only control. The publisher warns that MTP8 is deterministic within its own configuration but not batch-invariant relative to target-only decode; token equivalence is therefore a hard local diagnostic rather than an assumed property."
+
+[recipe.fit]
+suited = ["single-gpu", "long-context", "speculative-decoding", "interactive-text"]
+not_suited = ["automatic-promotion", "lossless-speculation-claim", "qualified-vision"]
+rationale = "Tests the publisher's advertised MTP8 speed point and full 256K occupied-cache behavior on the roomier RTX 5090."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://github.com/ggml-org/llama.cpp/tree/a298422da78eb75e440a7de0ca408af64d323d93",
+]
+community = [
+  "https://huggingface.co/cdiamond/Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF/tree/ac343e8f44caef0896f79d372ecc07ef7ab34ec8",
+  "https://github.com/ggml-org/llama.cpp/issues/25618",
+]

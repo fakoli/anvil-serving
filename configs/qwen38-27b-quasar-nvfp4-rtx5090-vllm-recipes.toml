@@ -1,0 +1,146 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "QUASAR-QAT/Qwen3.8-27B-QUASAR-NVFP4-vLLM-NoSpec-64K"
+status = "candidate"
+source = "2026-09-03 publisher-advertised RTX 5090 65,536-token vLLM no-speculation control"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "QUASAR-QAT/Qwen3.8-27B-QUASAR-NVFP4"
+revision = "d8e6fbfa3e3a78899b440222b827430045a05b44"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "The publisher explicitly recommends reducing max model length to 65,536 on a 32 GB RTX 5090."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--QUASAR-QAT--Qwen3.8-27B-QUASAR-NVFP4/snapshots/d8e6fbfa3e3a78899b440222b827430045a05b44"
+quantization = "QUASAR QAT NVFP4 W4A4 on all 496 transformer linear layers; default vLLM KV"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-quasar-nvfp4-nospec-64k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-quasar-vllm-0271:/root/.cache/vllm"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--served-model-name qwen38-27b-quasar-nvfp4-nospec-64k",
+  "--trust-remote-code",
+  "--quantization compressed-tensors",
+  "--max-model-len 65536",
+  "--max-num-seqs 4",
+  "--gpu-memory-utilization 0.85",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Matched no-speculation control using the publisher's 32 GB context and memory-utilization guidance. The repository does not currently declare an explicit license tag or tracked license file; local qualification does not grant redistribution rights."
+
+[recipe.fit]
+suited = ["single-gpu", "quality-challenger", "matched-control", "64k-context"]
+not_suited = ["automatic-promotion", "redistribution-without-license-review", "full-native-context"]
+rationale = "Tests whether the smallest all-linear QAT NVFP4 checkpoint preserves quality while keeping useful 64K context on the 5090."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://docs.vllm.ai/en/v0.27.1/",
+]
+community = [
+  "https://huggingface.co/QUASAR-QAT/Qwen3.8-27B-QUASAR-NVFP4/tree/d8e6fbfa3e3a78899b440222b827430045a05b44",
+  "https://arxiv.org/abs/2608.13966",
+]
+
+[[recipe]]
+model = "QUASAR-QAT/Qwen3.8-27B-QUASAR-NVFP4-vLLM-MTP2-64K"
+status = "candidate"
+source = "2026-09-03 publisher-advertised RTX 5090 65,536-token vLLM MTP2 profile"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "QUASAR-QAT/Qwen3.8-27B-QUASAR-NVFP4"
+revision = "d8e6fbfa3e3a78899b440222b827430045a05b44"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "The publisher explicitly recommends reducing max model length to 65,536 on a 32 GB RTX 5090."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--QUASAR-QAT--Qwen3.8-27B-QUASAR-NVFP4/snapshots/d8e6fbfa3e3a78899b440222b827430045a05b44"
+quantization = "QUASAR QAT NVFP4 W4A4 on all 496 transformer linear layers with integrated MTP2; default vLLM KV"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-quasar-nvfp4-mtp2-64k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-quasar-vllm-0271:/root/.cache/vllm"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--served-model-name qwen38-27b-quasar-nvfp4-mtp2-64k",
+  "--trust-remote-code",
+  "--quantization compressed-tensors",
+  "--max-model-len 65536",
+  "--max-num-seqs 4",
+  "--gpu-memory-utilization 0.85",
+  "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":2}'",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Publisher-advertised MTP2 arm, otherwise matched to the no-speculation recipe. The repository does not currently declare an explicit license tag or tracked license file; local qualification does not grant redistribution rights."
+
+[recipe.fit]
+suited = ["single-gpu", "quality-challenger", "speculative-decoding", "64k-context"]
+not_suited = ["automatic-promotion", "redistribution-without-license-review", "full-native-context"]
+rationale = "Credits MTP only if matched end-to-end latency and successful-task throughput improve over the control."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://docs.vllm.ai/en/v0.27.1/",
+]
+community = [
+  "https://huggingface.co/QUASAR-QAT/Qwen3.8-27B-QUASAR-NVFP4/tree/d8e6fbfa3e3a78899b440222b827430045a05b44",
+  "https://arxiv.org/abs/2608.13966",
+]
