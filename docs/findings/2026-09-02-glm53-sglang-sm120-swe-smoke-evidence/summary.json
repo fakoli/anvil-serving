@@ -1,0 +1,89 @@
+{
+  "schema": "anvil-serving.publication-summary/v1",
+  "date": "2026-09-02",
+  "run": {
+    "run_id": "glm53-sglang393k-swe-smoke-20260902-07",
+    "profile": "smoke",
+    "suite": "swe",
+    "spec_sha256": "1de9d78af177655fb502dc91fa46d94fcc1a6784b34691dbcca888fcd6955195",
+    "submitted_at": "2026-09-03T03:05:20.396623Z",
+    "started_at": "2026-09-03T03:05:20.499348Z",
+    "finished_at": "2026-09-03T03:06:23.993913Z"
+  },
+  "subject": {
+    "model": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
+    "model_revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+    "served_model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+    "runtime_image_digest": "sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+    "runtime_source_revision": "4c2c169b53dbf362f0cd95111f4ae275cd0167c1",
+    "configured_context": 393216,
+    "max_output_tokens": 4096,
+    "concurrency": 1,
+    "request_control": "thinking-enabled"
+  },
+  "topology": {
+    "model_host": "local dual-GPU host",
+    "model_hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q, exclusive TP=2 over PCIe without NVLink",
+    "worker": "isolated macOS arm64 worker",
+    "worker_platform": "macOS arm64",
+    "evaluation_container_platform": "linux/amd64"
+  },
+  "harness": {
+    "mini_swe_agent_revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+    "swe_bench_revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+    "dataset_revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "profile_sha256": "090745451099214af7c222f736769737911453fe9e9c5d14ffc04f5a4a3e4586",
+    "asset_cache_identity": "47884e1ba394016ec3293d1385e2f82580dc4ace2f71f7a427e323306d1920fe",
+    "python": "CPython 3.14.6",
+    "resolved_package_count": 113,
+    "resolved_packages_sha256": "b4ad822012fce20c5c4ee851a71d68920361f61fd6586edc56a85c338d355b52",
+    "worker_image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+    "instance_image_repo_digest": "swebench/sweb.eval.x86_64.django_1776_django-11099@sha256:cca302934edd881cc4f1e4647a389a25cdaa3c02bfa33667a4204934a09c4fb1",
+    "instance_image_id": "sha256:b2ef446a617d9ae83dad07fcc470d745b2134d4b5a488438da5854cab2251b61"
+  },
+  "preflight": {
+    "passed": true,
+    "free_disk_bytes": 117047164928,
+    "checks": [
+      "worker_isolation",
+      "worker_compatibility",
+      "free_disk",
+      "container_capability",
+      "owned_output",
+      "harness_assets",
+      "endpoint_identity"
+    ]
+  },
+  "result": {
+    "state": "completed",
+    "instance_id": "django__django-11099",
+    "attempted": 1,
+    "graded": 1,
+    "resolved": 1,
+    "resolve_rate": 1.0,
+    "model_request_count": 11,
+    "agent_duration_seconds": 34.215576,
+    "grader_duration_seconds": 29.07622,
+    "official_grader_report_sha256": "2ebbcc2889dc004393f68a0c56d3a4de6f9facaac9b3f4fa3e79f9dc9eb6851b",
+    "prediction_sha256": "e754832b486e044c733c1398de02f9bc0d2d872d5308f2956d16390e061ffd3b",
+    "token_counts": null
+  },
+  "artifacts": {
+    "terminal_sha256": "54dc289d77e2dd25d06d7d63fa8cc275d5fe0e583d590a515857fb557dcef11e",
+    "assets_sha256": "1761451cf6d96fa55a65a2d83fb5ba6f4b3e34a4c9158975509fc15904fbef73",
+    "preflight_sha256": "3a5d3e39beb4175aaf15a02ad9b6f8c9c4b21824cc82395fd27f8f8b2cc7cef1",
+    "swe_sha256": "58ec3b8c1c9dc278474ad8a7b12f1faab17b4dc0bb1e5ac9a07ae225543937a3"
+  },
+  "publication": {
+    "sanitized": true,
+    "omitted": [
+      "credentials",
+      "private endpoint",
+      "machine-local paths",
+      "problem statement",
+      "trajectory messages",
+      "model response bodies"
+    ],
+    "scope": "one fixed SWE-bench Verified smoke instance; not a full-suite score"
+  }
+}
