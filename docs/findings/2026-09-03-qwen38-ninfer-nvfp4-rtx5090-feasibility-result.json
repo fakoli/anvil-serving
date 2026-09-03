@@ -1,0 +1,423 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "2026-09-03-qwen38-ninfer-nvfp4-rtx5090",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 252928,
+    "max": 252928
+  },
+  "physical_available_bytes": {
+    "min": 34190917632,
+    "max": 34190917632
+  },
+  "policy_available_bytes": {
+    "min": 33117175808,
+    "max": 33117175808
+  },
+  "candidates": [
+    {
+      "id": "qwen38-ninfer-nvfp4-mtp3-252928-c1",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "pass",
+        "measured_context_evidence_status": "estimated",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "actual": {
+            "min": null,
+            "max": null
+          },
+          "required_min": {
+            "min": 1,
+            "max": 1
+          },
+          "projected_status": "unknown",
+          "evidence_statuses": {
+            "deterministic_pass_rate": "unknown"
+          },
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "relative_loss": {
+            "min": null,
+            "max": null
+          },
+          "required_max": {
+            "min": 0.03,
+            "max": 0.03
+          },
+          "projected_status": "unknown",
+          "evidence_statuses": {
+            "quality_score": "unknown",
+            "reference_quality_score": "unknown"
+          },
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "gain": {
+            "min": null,
+            "max": null
+          },
+          "required_min": {
+            "min": 0.1,
+            "max": 0.1
+          },
+          "projected_status": "unknown",
+          "evidence_statuses": {
+            "warm_e2e_seconds": "unknown",
+            "no_spec_warm_e2e_seconds": "unknown"
+          },
+          "missing_variables": [
+            "no_spec_warm_e2e_seconds",
+            "warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "ratio": {
+            "min": null,
+            "max": null
+          },
+          "required_min": {
+            "min": 1,
+            "max": 1
+          },
+          "projected_status": "unknown",
+          "evidence_statuses": {
+            "successful_tasks_per_hour": "unknown",
+            "reference_tasks_per_hour": "unknown"
+          },
+          "missing_variables": [
+            "reference_tasks_per_hour",
+            "successful_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 252928,
+        "max": 252928
+      },
+      "demand_bytes": {
+        "min": 23564681216,
+        "max": 33117175808
+      },
+      "physical_available_bytes": {
+        "min": 34190917632,
+        "max": 34190917632
+      },
+      "policy_available_bytes": {
+        "min": 33117175808,
+        "max": 33117175808
+      },
+      "physical_margin_bytes": {
+        "min": 1073741824,
+        "max": 10626236416
+      },
+      "policy_margin_bytes": {
+        "min": 0,
+        "max": 9552494592
+      },
+      "estimated_max_tokens_physical": {
+        "min": 318464,
+        "max": 1550076
+      },
+      "estimated_max_tokens_policy": {
+        "min": 252928,
+        "max": 1419004
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.tokens.protocol",
+        "requirements.concurrency",
+        "requirements.vram_reserves.co_resident.variable",
+        "candidates[0].measured_max_stable_context_tokens",
+        "candidates[0].resident_components.runtime_fixed_mtp_graphs_and_sequence_state",
+        "candidates[0].per_token_components.target_and_mtp_kv",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 244480,
+      "max": 244480,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-03",
+      "notes": "Useful long-context target below the exact artifact's upstream-tested ceiling."
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-03",
+      "notes": "Reserved even though deterministic probes should terminate earlier."
+    },
+    {
+      "path": "requirements.tokens.protocol",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 256,
+      "max": 256,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-03",
+      "notes": "Chat template and protocol allowance."
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "requests",
+      "min": 1,
+      "max": 1,
+      "source": "interactive single-user challenger scope",
+      "observed_at": "2026-09-03",
+      "notes": "A later campaign may evaluate NInfer's bounded C2-C8 serving."
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 34190917632,
+      "max": 34190917632,
+      "source": "local nvidia-smi, 32607 MiB",
+      "observed_at": "2026-09-03",
+      "notes": "Exact local RTX 5090 visible capacity."
+    },
+    {
+      "path": "requirements.vram_reserves.co_resident.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 0,
+      "max": 0,
+      "source": "exclusive candidate-lane plan",
+      "observed_at": "2026-09-03",
+      "notes": "The incumbent managed serve will be unloaded before candidate start."
+    },
+    {
+      "path": "requirements.vram_reserves.engine_sizing_headroom.variable",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 1073741824,
+      "max": 1073741824,
+      "source": "NInfer current resource-sizing contract for --kv-capacity auto",
+      "observed_at": "2026-09-03",
+      "notes": "The default campaign reserve is 3 GiB; this isolated model-only trial uses NInfer's 1 GiB automatic sizing reserve and requires local post-workload telemetry."
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "NInfer Qwen3.8 registered target contract",
+      "observed_at": "2026-09-03",
+      "notes": "Logical model ceiling; actual KV capacity remains a startup result."
+    },
+    {
+      "path": "candidates[0].measured_max_stable_context_tokens",
+      "status": "estimated",
+      "unit": "tokens",
+      "min": 252928,
+      "max": 262144,
+      "source": "official exact-artifact evaluation on one RTX 5090 at 252,928 tokens",
+      "observed_at": "2026-09-03",
+      "notes": "Same GPU product and artifact, different host; local stability is not yet measured."
+    },
+    {
+      "path": "candidates[0].resident_components.target_checkpoint_bytes",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 21492695040,
+      "max": 21492695040,
+      "source": "neroued/Qwen3.8-27B-nvfp4-NInfer artifact manifest at 204e3d92c30d9d05f3300d2f52e443ad1edf6ddf",
+      "observed_at": "2026-09-03",
+      "notes": "Logical checkpoint bytes, not GPU allocation."
+    },
+    {
+      "path": "candidates[0].resident_components.runtime_fixed_mtp_graphs_and_sequence_state",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 0,
+      "max": 7480508416,
+      "source": "same-GPU operating envelope after reserving the exact checkpoint, a conservative 16 KiB/token KV upper bound, and NInfer's confirmed 1 GiB auto-sizing headroom",
+      "observed_at": "2026-09-03",
+      "notes": "Paper bound only; runtime fixed, graphs, proposal head, recurrent state, and sequence state must be narrowed after local startup evidence."
+    },
+    {
+      "path": "candidates[0].per_token_components.target_and_mtp_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 8192,
+      "max": 16384,
+      "source": "registered Qwen3.8 hybrid-attention geometry with INT8 group-64 KV; BF16-equivalent ceiling retained as a conservative bound",
+      "observed_at": "2026-09-03",
+      "notes": "Includes target and MTP KV planning allowance; local startup logs must replace this interval."
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "single independent sequence",
+      "observed_at": "2026-09-03",
+      "notes": "NInfer uses one shared main-text KV pool at concurrency one."
+    },
+    {
+      "path": "candidates[0].metrics.deterministic_pass_rate",
+      "status": "unknown",
+      "unit": "ratio",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Requires local preflight."
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1.0,
+      "max": 1.0,
+      "source": "campaign hard gate",
+      "observed_at": "2026-09-03",
+      "notes": "Identity, visible answer, retrieval, and tool assertions may not be averaged down."
+    },
+    {
+      "path": "candidates[0].metrics.quality_score",
+      "status": "unknown",
+      "unit": "score",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Official scores are external priors and are not a local matched metric."
+    },
+    {
+      "path": "candidates[0].metrics.reference_quality_score",
+      "status": "unknown",
+      "unit": "score",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No protocol-matched local reference selected yet."
+    },
+    {
+      "path": "requirements.thresholds.max_relative_quality_loss",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.03,
+      "max": 0.03,
+      "source": "balanced-challenger quality policy",
+      "observed_at": "2026-09-03",
+      "notes": "Compared with retained higher-fidelity or incumbent evidence only when protocols match."
+    },
+    {
+      "path": "candidates[0].metrics.warm_e2e_seconds",
+      "status": "unknown",
+      "unit": "seconds",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Requires the local MTP3 arm."
+    },
+    {
+      "path": "candidates[0].metrics.no_spec_warm_e2e_seconds",
+      "status": "unknown",
+      "unit": "seconds",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Requires the matched local no-speculation arm."
+    },
+    {
+      "path": "requirements.thresholds.min_warm_e2e_gain",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.1,
+      "max": 0.1,
+      "source": "speculation-retention policy",
+      "observed_at": "2026-09-03",
+      "notes": "MTP3 must improve matched warm end-to-end latency by at least 10 percent versus no speculation."
+    },
+    {
+      "path": "candidates[0].metrics.successful_tasks_per_hour",
+      "status": "unknown",
+      "unit": "tasks/hour",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Not measured by the first compatibility pass."
+    },
+    {
+      "path": "candidates[0].metrics.reference_tasks_per_hour",
+      "status": "unknown",
+      "unit": "tasks/hour",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Not measured by the first compatibility pass."
+    },
+    {
+      "path": "requirements.thresholds.min_tasks_per_hour_ratio",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1.0,
+      "max": 1.0,
+      "source": "balanced-challenger usefulness policy",
+      "observed_at": "2026-09-03",
+      "notes": "No regression is allowed when a comparable task-level measure exists."
+    }
+  ],
+  "unresolved_variables": [
+    "candidates[0].metrics.deterministic_pass_rate",
+    "candidates[0].metrics.quality_score",
+    "candidates[0].metrics.reference_quality_score",
+    "candidates[0].metrics.warm_e2e_seconds",
+    "candidates[0].metrics.no_spec_warm_e2e_seconds",
+    "candidates[0].metrics.successful_tasks_per_hour",
+    "candidates[0].metrics.reference_tasks_per_hour"
+  ],
+  "promotion_authority": false
+}

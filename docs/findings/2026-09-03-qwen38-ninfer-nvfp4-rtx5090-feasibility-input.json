@@ -1,0 +1,211 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "2026-09-03-qwen38-ninfer-nvfp4-rtx5090",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 244480,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "campaign requirement",
+        "observed_at": "2026-09-03",
+        "notes": "Useful long-context target below the exact artifact's upstream-tested ceiling."
+      },
+      "output_reserve": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "campaign requirement",
+        "observed_at": "2026-09-03",
+        "notes": "Reserved even though deterministic probes should terminate earlier."
+      },
+      "protocol": {
+        "value": 256,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "campaign requirement",
+        "observed_at": "2026-09-03",
+        "notes": "Chat template and protocol allowance."
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "requests",
+      "status": "assumed",
+      "source": "interactive single-user challenger scope",
+      "observed_at": "2026-09-03",
+      "notes": "A later campaign may evaluate NInfer's bounded C2-C8 serving."
+    },
+    "physical_vram_bytes": {
+      "value": 34190917632,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "local nvidia-smi, 32607 MiB",
+      "observed_at": "2026-09-03",
+      "notes": "Exact local RTX 5090 visible capacity."
+    },
+    "vram_reserves": {
+      "co_resident": {
+        "kind": "physical",
+        "variable": {
+          "value": 0,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "exclusive candidate-lane plan",
+          "observed_at": "2026-09-03",
+          "notes": "The incumbent managed serve will be unloaded before candidate start."
+        }
+      },
+      "engine_sizing_headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 1073741824,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "NInfer current resource-sizing contract for --kv-capacity auto",
+          "observed_at": "2026-09-03",
+          "notes": "The default campaign reserve is 3 GiB; this isolated model-only trial uses NInfer's 1 GiB automatic sizing reserve and requires local post-workload telemetry."
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "campaign hard gate",
+        "observed_at": "2026-09-03",
+        "notes": "Identity, visible answer, retrieval, and tool assertions may not be averaged down."
+      },
+      "max_relative_quality_loss": {
+        "value": 0.03,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "balanced-challenger quality policy",
+        "observed_at": "2026-09-03",
+        "notes": "Compared with retained higher-fidelity or incumbent evidence only when protocols match."
+      },
+      "min_warm_e2e_gain": {
+        "value": 0.1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "speculation-retention policy",
+        "observed_at": "2026-09-03",
+        "notes": "MTP3 must improve matched warm end-to-end latency by at least 10 percent versus no speculation."
+      },
+      "min_tasks_per_hour_ratio": {
+        "value": 1.0,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "balanced-challenger usefulness policy",
+        "observed_at": "2026-09-03",
+        "notes": "No regression is allowed when a comparable task-level measure exists."
+      }
+    }
+  },
+  "reserve_policy_change": {
+    "default_reserve_bytes": 3221225472,
+    "effective_reserve_bytes": 1073741824,
+    "scope": "one isolated model-only RTX 5090 candidate at concurrency one",
+    "rationale": "The engine's automatic KV sizing preserves 1 GiB; promotion remains forbidden and local startup plus post-representative-workload telemetry is mandatory."
+  },
+  "candidates": [
+    {
+      "id": "qwen38-ninfer-nvfp4-mtp3-252928-c1",
+      "runtime_context_limit_tokens": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "NInfer Qwen3.8 registered target contract",
+        "observed_at": "2026-09-03",
+        "notes": "Logical model ceiling; actual KV capacity remains a startup result."
+      },
+      "measured_max_stable_context_tokens": {
+        "min": 252928,
+        "max": 262144,
+        "unit": "tokens",
+        "status": "estimated",
+        "source": "official exact-artifact evaluation on one RTX 5090 at 252,928 tokens",
+        "observed_at": "2026-09-03",
+        "notes": "Same GPU product and artifact, different host; local stability is not yet measured."
+      },
+      "resident_components": {
+        "target_checkpoint_bytes": {
+          "value": 21492695040,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "neroued/Qwen3.8-27B-nvfp4-NInfer artifact manifest at 204e3d92c30d9d05f3300d2f52e443ad1edf6ddf",
+          "observed_at": "2026-09-03",
+          "notes": "Logical checkpoint bytes, not GPU allocation."
+        },
+        "runtime_fixed_mtp_graphs_and_sequence_state": {
+          "min": 0,
+          "max": 7480508416,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "same-GPU operating envelope after reserving the exact checkpoint, a conservative 16 KiB/token KV upper bound, and NInfer's confirmed 1 GiB auto-sizing headroom",
+          "observed_at": "2026-09-03",
+          "notes": "Paper bound only; runtime fixed, graphs, proposal head, recurrent state, and sequence state must be narrowed after local startup evidence."
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "target_and_mtp_kv": {
+          "min": 8192,
+          "max": 16384,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "registered Qwen3.8 hybrid-attention geometry with INT8 group-64 KV; BF16-equivalent ceiling retained as a conservative bound",
+          "observed_at": "2026-09-03",
+          "notes": "Includes target and MTP KV planning allowance; local startup logs must replace this interval."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "single independent sequence",
+        "observed_at": "2026-09-03",
+        "notes": "NInfer uses one shared main-text KV pool at concurrency one."
+      },
+      "metrics": {
+        "deterministic_pass_rate": {
+          "unit": "ratio",
+          "status": "unknown",
+          "notes": "Requires local preflight."
+        },
+        "quality_score": {
+          "unit": "score",
+          "status": "unknown",
+          "notes": "Official scores are external priors and are not a local matched metric."
+        },
+        "reference_quality_score": {
+          "unit": "score",
+          "status": "unknown",
+          "notes": "No protocol-matched local reference selected yet."
+        },
+        "warm_e2e_seconds": {
+          "unit": "seconds",
+          "status": "unknown",
+          "notes": "Requires the local MTP3 arm."
+        },
+        "no_spec_warm_e2e_seconds": {
+          "unit": "seconds",
+          "status": "unknown",
+          "notes": "Requires the matched local no-speculation arm."
+        },
+        "successful_tasks_per_hour": {
+          "unit": "tasks/hour",
+          "status": "unknown",
+          "notes": "Not measured by the first compatibility pass."
+        },
+        "reference_tasks_per_hour": {
+          "unit": "tasks/hour",
+          "status": "unknown",
+          "notes": "Not measured by the first compatibility pass."
+        }
+      },
+      "hard_failures": []
+    }
+  ]
+}

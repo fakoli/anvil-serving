@@ -18,6 +18,10 @@ force. The former 524K EXL3 K3 plus DFlash2 K5 profile is the immediate exact
 rollback. DFlash2 is noncommercial without separate permission.
 RadixArk Qwen3.8 Flash Next NVFP4 remains the immediate retained video-capable
 rollback at TP=2/262,144/c1.
+On one RTX 5090, NInfer NVFP4 MTP3 is now the preferred published direct
+Qwen3.8 27B text/tools performance challenger at 252,928/C1. It remains
+`no-promotion`; the broader Unsloth GGUF incumbent was restored and no route or
+client catalog changed.
 The former DeepSeek V4 Flash 0731 Infernal Invocation r18 1M and r15 393K deployments and
 official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
 retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
@@ -55,6 +59,32 @@ profile C2 gate can start at 180K prompt + 4,096 output per request inside the
 existing shared pool, but that is planning arithmetic rather than a measured
 result and requires scheduler/graph-state changes plus full requalification.
 See the [cross-run interpretation and artifact links](findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
+
+## Qwen3.8 27B NInfer NVFP4 qualification on RTX 5090 (2026-09-03)
+
+The exact `neroued/Qwen3.8-27B-nvfp4-NInfer@204e3d92` artifact and NInfer
+`e3aeaf8c` runtime revision were qualified through matched managed
+no-speculation and MTP3 arms at 252,928 tokens, C1, INT8 KV, and thinking
+disabled. Across five first-run 4K requests per arm, MTP3 held median TTFT
+near-flat at 0.430 versus 0.421 seconds, raised median decode from 75.3 to
+165.9 tok/s, and reduced median E2E from 1.085 to 0.720 seconds. Immediate
+repeats preserved the conclusion at 184.2 versus 75.3 tok/s median decode.
+
+The selected arm returned the exact marker from a nominal 244,480-token fixture
+containing 201,746 API-reported prompt tokens while accepting an 8,192-token
+completion cap; E2E was 70.4 seconds. Smoke, structured JSON, C1 tools,
+streaming and continuation tools, coding 3/3, timeout triage 3/3, repeated tools
+3/3, and the 32K context gate passed. Both 20-way shared-prefix tool bursts
+completed 17/20 because three requests received explicit C1
+`server_overloaded` admissions. MTP3 left 2,354 MiB free, above the campaign's
+explicit 1 GiB model-only floor but below the ordinary 3 GiB reserve.
+
+The result therefore selects NInfer MTP3 only as the preferred measured direct
+text/tools performance challenger. A promotion-grade digest-pinned runtime,
+admission and reserve decisions, routed/client acceptance, broader agentic/SWE
+coverage, and any claimed multimodal/endurance coverage remain open. Both
+candidate containers were unloaded; the exact GGUF incumbent was restored and
+passed a fresh smoke. See the [qualification finding and raw evidence](findings/2026-09-03-qwen38-ninfer-nvfp4-rtx5090.md).
 
 ## GLM-5.3-Flash SGLang SM120 qualification (2026-09-02)
 
@@ -363,13 +393,16 @@ target and added native MTP3 plus ReplaySSM. Decode improved 80.5% at 4K and
 dominated. Both speculative families are rejected as replacements.
 
 EXL3 has the strongest published external fidelity/context evidence, while
-NInfer has the largest speed upside. Neither currently clears the local desk
+NInfer has the largest speed upside. At that date, neither cleared the local desk
 screen: EXL3's own profiles trade prefill against fidelity and report no
 all-gates winner; NInfer lacks a comparable tool and long-context reasoning
 gate on a stable upstream runtime. The exact no-speculation 128K baseline was
 restored and passed a 105,649-token retrieval plus the complete tool/API subset.
 No route or promotion changed. See the
 [recipe research finding](findings/2026-08-21-qwen38-27b-rtx5090-recipe-research.md).
+The September 3 NInfer qualification above supersedes only that candidate's
+unmeasured status; its new admission, reserve, and runtime-provenance gates
+remain open.
 
 ## Qwen3.8 27B RadixArk NVFP4 on RTX 5090 (2026-08-17)
 
