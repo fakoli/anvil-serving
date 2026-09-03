@@ -1,0 +1,47 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-03-qwen38-ninfer-nvfp4-rtx5090",
+  "observed_at": "2026-09-03T12:04:28Z",
+  "sources": [
+    {
+      "id": "ninfer-runtime",
+      "url": "https://github.com/Neroued/ninfer/tree/e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef",
+      "published_or_observed": "2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "Exact source revision for the single-RTX-5090 NInfer runtime.",
+      "decision_impact": "Pins the source build and current server contract."
+    },
+    {
+      "id": "ninfer-nvfp4-artifact",
+      "url": "https://huggingface.co/neroued/Qwen3.8-27B-nvfp4-NInfer/tree/204e3d92c30d9d05f3300d2f52e443ad1edf6ddf",
+      "published_or_observed": "2026-08-19",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "runtime-author-artifact-and-model-card",
+      "hardware_runtime_relevance": "Exact 21,492,695,040-byte NVFP4 artifact with RTX 5090 performance and evaluation evidence.",
+      "decision_impact": "Replaced the older groupwise-int intake candidate as the balanced challenger."
+    },
+    {
+      "id": "qwen-base",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B/tree/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "published_or_observed": "2026-08-13",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "official-base-model",
+      "hardware_runtime_relevance": "Base checkpoint provenance for the exact NInfer artifact.",
+      "decision_impact": "Establishes immutable base-model identity."
+    },
+    {
+      "id": "unsloth-nvfp4-source",
+      "url": "https://huggingface.co/unsloth/Qwen3.8-27B-NVFP4/tree/60e813d4dbbdc5d64cf3f5a8caf2897bedf03679",
+      "published_or_observed": "2026-08-18",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "official-quantized-source",
+      "hardware_runtime_relevance": "Packed NVFP4 and FP8 source weights used by the NInfer conversion.",
+      "decision_impact": "Supports the fidelity and Blackwell-acceleration prior; does not replace local testing."
+    }
+  ]
+}

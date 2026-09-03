@@ -11,24 +11,28 @@
       text rollback.
     - **Selected or best-qualified configuration:** the former 96 GB service
       used official FP8 on SGLang, TP=1, 393,216 tokens, concurrency one,
-      EAGLE MTP `3/1/4`, and CPU media transport. The preferred 32 GB
-      challenger is Unsloth GGUF Q4_0 with its matching MTP head at 262,144
-      tokens.
+      EAGLE MTP `3/1/4`, and CPU media transport. The preferred measured 32 GB
+      direct text/tools performance challenger is NInfer NVFP4 with integrated
+      MTP3 at 252,928 tokens. Unsloth GGUF Q4_0/MTP3 remains the broader-
+      capability 32 GB incumbent at 262,144 tokens.
     - **Measured hardware:** one- and two-card RTX PRO 6000 lanes and a
       separate single-RTX-5090 lane; results are not interchangeable across
       those topologies.
     - **Evidence:** functional, capacity, bounded quality, performance,
-      multimodal, routed-client, and rejection evidence through 2026-08-22;
-      the GGUF lane passed retrieval at 253,822 actual prompt tokens with an
-      8,192-token reserve and MTP raised matched decode from 69.1 to 104.1
-      tok/s.
-    - **Decision:** retain the former service and reproducible recipes;
-      RadixArk NVFP4 and GGUF Q4_0 remain `no-promotion` challengers.
-    - **Important limitation:** the GGUF independent SWE gate and truthful
-      routed 250K contract are incomplete, GGUF has no native-video contract,
-      and the measured hardware/engine lanes are not directly comparable.
-    - **Review dates:** Retained evidence cutoff: 2026-08-22. Dossier-format
-      review: 2026-08-31.
+      multimodal, routed-client, and rejection evidence through 2026-09-03.
+      NInfer MTP3 measured 0.430-second median TTFT and 165.9 tok/s decode at
+      4K/C1, and passed a 201,746-token prompt with an 8,192-token completion
+      cap. GGUF retains deeper 253,822-token, image/OCR, agentic, endurance,
+      and routed-client evidence.
+    - **Decision:** retain NInfer MTP3 as the preferred direct text/tools
+      performance challenger and GGUF as the broader-capability incumbent;
+      both remain `no-promotion`.
+    - **Important limitation:** NInfer completed only 17/20 shared-prefix tool
+      requests, missed the ordinary 3 GiB reserve, and lacks routed/client,
+      multimodal, broad agentic/SWE, endurance, and promotion-grade baked-image
+      evidence. The measured hardware/engine lanes are not interchangeable.
+    - **Review dates:** Retained evidence cutoff: 2026-09-03. Dossier-format
+      review: 2026-09-03.
 
 [Open the exact retained container configurations](../configurations.md#qwen38-27b-official-fp8)
 or jump to the [decision](#decision-and-promotion-state),
@@ -87,8 +91,9 @@ and 67.9% at 64K. However, SGLang's separately loaded 5.73 GB MTP draft left
 only 70,231 KV tokens, and median 64K end-to-end latency was 1.9% slower. The
 candidate is rejected as a 128K replacement.
 
-EXL3, NInfer, vLLM TurboQuant, and alternative NVFP4 recipes remain research
-leads rather than local deployment claims.
+At that date, EXL3, NInfer, vLLM TurboQuant, and alternative NVFP4 recipes were
+research leads rather than local deployment claims. The September 3 NInfer
+qualification below supersedes only that candidate's unmeasured status.
 
 #### 2026-08-21 — GGUF Q4_0 and matching MTP head
 
@@ -110,6 +115,22 @@ the bounded test route still declared the earlier 131,072-token SGLang/NVFP4
 compatibility fingerprint and video capability. Promotion remains closed until
 the router and client catalogs truthfully describe the 262K llama.cpp
 image-only recipe and routed acceptance passes with a 250,000-token minimum.
+
+#### 2026-09-03 — NInfer NVFP4 and integrated MTP3
+
+The exact current `.ninfer` artifact and NInfer runtime revision completed a
+managed matched no-speculation/MTP3 qualification on one RTX 5090. At 4K/C1,
+MTP3 raised median decode from 75.3 to 165.9 tok/s and reduced median E2E from
+1.085 to 0.720 seconds while TTFT changed from 0.421 to 0.430 seconds. It
+returned the exact marker from a 201,746-token API-reported prompt while
+accepting an 8,192-token completion cap. Bounded smoke, JSON, C1/streaming/
+continuation tools, coding, triage, and repeated tool gates passed.
+
+It remains a direct performance challenger only. Both 20-way shared-prefix
+tool bursts finished 17/20 under the C1 scheduler, MTP3 left 2,354 MiB free
+against the ordinary 3 GiB reserve, and the runtime intake still resolves
+Ubuntu packages without immutable package versions. The GGUF incumbent was
+restored; no route or client catalog changed.
 
 ## Immutable identity
 
@@ -143,6 +164,14 @@ image-only recipe and routed acceptance passes with a 250,000-token minimum.
 - llama.cpp qualification runtime: b10548, commit
   `a298422da78eb75e440a7de0ca408af64d323d93`, image digest
   `sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac`.
+- RTX 5090 NInfer NVFP4 qualification artifact:
+  `neroued/Qwen3.8-27B-nvfp4-NInfer@204e3d92c30d9d05f3300d2f52e443ad1edf6ddf`,
+  `qwen3_8_27b_nvfp4.ninfer`, SHA-256
+  `bb3360522a06e136e0367f5703414d26272b7285c8a6ab6194135c17dbd81b32`.
+- NInfer qualification runtime revision:
+  `Neroued/ninfer@e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef`; digest-pinned
+  CUDA 13.1.2 development base
+  `sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca`.
 
 ## Tested hardware and topology
 
@@ -151,9 +180,9 @@ Blackwell Max-Q cards and left the other card empty. Prior tests include one
 TP=1 serve per card in split mode and exclusive TP=2 at 393K, 600K, and 1.01M.
 The cards are independent PCIe devices; aggregate VRAM is not unified memory,
 and the TP=2 runtime could not enable GPU P2P.
-The 2026-08-17 challenger used one 32 GB RTX 5090 at TP=1. It is a distinct
-hardware and context lane and is not directly comparable to the 96 GB-card
-393K production history.
+The 2026-08-17 and 2026-09-03 challengers used one 32 GB RTX 5090 at TP=1.
+They are distinct hardware, engine, quantization, and context lanes and are not
+directly comparable to the 96 GB-card 393K production history.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
@@ -216,6 +245,18 @@ adds the same-revision Q4_0 MTP head with three maximum draft tokens and Q4_0
 draft K/V. The no-spec arm is the matched control. Startup VRAM was 22,254 MiB
 without speculation and 25,408 MiB with MTP.
 
+### RTX 5090 NInfer NVFP4 lane
+
+The NInfer lane uses the exact revision and artifact SHA listed above at
+252,928 tokens, concurrency one, INT8 KV, and thinking disabled. The selected
+arm uses the artifact's integrated MTP proposal path with three draft tokens
+and the lm-head draft; the matched control disables speculation. Startup used
+28,542 MiB without speculation and 29,834 MiB with MTP3. The managed intake
+recipe is `configs/qwen38-27b-ninfer-nvfp4-rtx5090-252k-recipes.toml`.
+It builds the exact NInfer source revision on a digest-pinned CUDA base and
+verifies the model artifact SHA, but apt package resolution is not immutable;
+the recipe is not promotion-grade runtime provenance.
+
 ### Rejected DFlash2 diagnostic lanes
 
 The rejected DFlash2 arm kept the same target snapshot and stable served name,
@@ -252,6 +293,23 @@ control also proved that a wrong Hermes provider selector can silently select
 a fallback model, so client usage identity is a required gate. The 250K routed
 gate remains closed on stale 131,072-token compatibility metadata.
 See the [250K qualification](../../findings/2026-08-21-qwen38-27b-gguf-250k-rtx5090.md).
+
+### RTX 5090 NInfer NVFP4 qualification
+
+The matched five-request 4K/C1 run measured 0.430-second median TTFT,
+165.9 tok/s median decode, and 0.720-second median E2E with MTP3, versus
+0.421 seconds, 75.3 tok/s, and 1.085 seconds without speculation. The immediate
+repeat retained the direction at 184.2 versus 75.3 tok/s decode. The harness
+reported zero cached prompt tokens in all four capacity artifacts.
+
+Both arms passed smoke, structured JSON, single-request tools, streaming
+tools, tool-result continuation, nominal 244,480 retrieval with 201,746
+API-reported prompt tokens, and repeated coding/triage/tools 3/3. The selected
+arm also passed that prompt with an 8,192-token completion cap in 70.4 seconds.
+Each 20-way shared-prefix burst completed only 17/20 because three requests
+received explicit `429 server_overloaded` admissions. MTP3 left 2,354 MiB free:
+above this experiment's explicit 1 GiB floor, below the ordinary 3 GiB reserve.
+See the [NInfer qualification](../../findings/2026-09-03-qwen38-ninfer-nvfp4-rtx5090.md).
 
 ### Official BF16/FP8 baseline
 
@@ -424,6 +482,14 @@ passed the same surface at 105,649 prompt tokens.
 - **RTX 5090 native-video challenger:** RadixArk NVFP4 remains
   `no-promotion`. Its 131,072-token window is a separate lane from the former
   393K service.
+- **RTX 5090 direct text/tools performance challenger:** NInfer NVFP4 MTP3 is
+  preferred on the measured short-latency/decode and 201,746-token direct
+  surface. It remains `no-promotion` with admission, ordinary reserve,
+  promotion-grade runtime, routed/client, broad agentic/SWE, multimodal, and
+  endurance gates open.
+- **RTX 5090 broader-capability incumbent:** Unsloth GGUF Q4_0/MTP3 retains
+  its deeper 253,822-token, tools 20/20, image/OCR, agentic, endurance, and
+  routed-client evidence. The exact serve was restored after NInfer testing.
 - **Offline capacity experiments:** TP=2 at 600K and 1.01M remains batch-like,
   not an interactive route recommendation.
 
@@ -479,11 +545,12 @@ local result.
 #### Excluded or dormant artifacts
 
 Other NVFP4, GGUF, AutoRound, and custom `.ninfer` artifacts remain excluded
-from the active production queue. Inferact NVFP4 remains a `no-promotion`
-control. RadixArk NVFP4 is now a qualified RTX 5090 challenger with native
-video evidence, while the official-FP8 SGLang arm remains the retained former
-96 GB-card Qwen profile. The Unsloth GGUF fallback was not downloaded because
-the native NVFP4 target passed its required gates.
+from the active production queue. The exact current NInfer NVFP4 artifact is
+now a qualified direct text/tools performance challenger, not a production
+selection. Inferact NVFP4 remains a `no-promotion` control. RadixArk NVFP4 is a
+qualified RTX 5090 challenger with native-video evidence, while the official-
+FP8 SGLang arm remains the retained former 96 GB-card Qwen profile. Unsloth
+GGUF remains the broader-capability RTX 5090 incumbent.
 
 ## Failures and gotchas
 
@@ -527,6 +594,20 @@ the native NVFP4 target passed its required gates.
   prompt-depth limit, not its offline/batch recommendation.
 - **TP=2 transport:** TP=2 lacked P2P and used PyNCCL over the socket-backed local path after vLLM
   disabled custom allreduce.
+
+### RTX 5090 NInfer limits
+
+- **C1 admission:** each simultaneous 20-way shared-prefix tool burst completed
+  17/20; three requests received explicit `429 server_overloaded`. The selected
+  recipe is qualified only at concurrency one.
+- **Reserve policy:** MTP3 left 2,354 MiB free, which passes the preregistered
+  1 GiB model-only floor but not the ordinary 3 GiB reserve.
+- **Runtime provenance:** NInfer source and the CUDA base are pinned, and the
+  model SHA is verified, but Ubuntu package resolution is not immutable.
+- **Coverage:** 201,746 API-reported prompt tokens is the deepest measured
+  NInfer request; the nominal 244,480 filler estimate is not an actual-token
+  claim. Routed/client, thinking-enabled, multimodal, broad agentic/SWE, and
+  sustained thermal behavior remain unqualified.
 
 ### SGLang, media, and router integration
 
@@ -577,6 +658,7 @@ the native NVFP4 target passed its required gates.
 
 ## Dated run history
 
+- [2026-09-03 RTX 5090 NInfer NVFP4 no-spec/MTP3 qualification](../../findings/2026-09-03-qwen38-ninfer-nvfp4-rtx5090.md)
 - [2026-08-21 RTX 5090 recipe research and MTP3/ReplaySSM rejection](../../findings/2026-08-21-qwen38-27b-rtx5090-recipe-research.md)
 - [2026-08-21 RTX 5090 DFlash2 compatibility and capacity rejection](../../findings/2026-08-21-qwen38-27b-radixark-nvfp4-dflash2-rtx5090.md)
 - [2026-08-20 RTX 5090 Sharp v22.1 chat-template A/B](../../findings/2026-08-20-qwen38-sharp-template-ab.md)
