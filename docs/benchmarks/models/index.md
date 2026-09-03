@@ -46,7 +46,7 @@ for the maintained cross-model view.
 |---|---|---|
 | [FLUX.2 Klein 4B](flux2-klein.md) | published `available=true`, `promoted=false` workflow decision (2026-08-28) | Text-to-image generation through real Hermes/MCP; fixed 512/768/1024-pixel profiles; 6/8 strict bounded reviews pass with two retained draft failures; exact cold lifecycle pass |
 | [Wan2.2 TI2V 5B](wan22.md) | unavailable candidate, `no-promotion` | Text-to-video generation; functional/decode plus real-Hermes acceptance; one bounded sample failed prompt adherence and spatial quality |
-| [Qwen3.8 27B](qwen38-27b.md) | preferred 5090 `challenger`, `no-promotion` | Computer-use perception, image, OCR, native video, 128K text/tools; eight images / two videos |
+| [Qwen3.8 27B](qwen38-27b.md) | Gittensor target-only preferred TTFT `challenger`, Unsloth Dynamic V3 preferred clean 64K MTP arm, `no-promotion`; GGUF incumbent retained | 50.9 ms warm TTFT/full-context direct text plus 137.7 tok/s clean 64K speculation; separate image/OCR/video and routed evidence |
 | [Nemotron Nano/Omni 30B](nemotron-omni-30b.md) | `current` in 2026-07-28 evidence; retained topology record | Auxiliary text, vision, OCR |
 | [Qwen2.5-Omni 3B](qwen25-omni-3b.md) | `challenger`, `no-promotion` | Co-resident Omni |
 | [Parakeet TDT 0.6B v3](parakeet.md) | `current` in 2026-07-28 evidence | STT |

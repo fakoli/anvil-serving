@@ -1,0 +1,1592 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "qwen38-27b-rtx5090-quant-bakeoff-preload",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 65536,
+    "max": 65536
+  },
+  "physical_available_bytes": {
+    "min": 33750515712,
+    "max": 33750515712
+  },
+  "policy_available_bytes": {
+    "min": 33750515712,
+    "max": 33750515712
+  },
+  "candidates": [
+    {
+      "id": "unsloth-dynamic-v3-native-mtp3",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "pass",
+        "measured_context_evidence_status": "measured",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[0].resident_components.runtime_fixed",
+        "candidates[0].per_token_components.kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.campaign_headroom.variable",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "neroued-ninfer-nospec-mtp3",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "pass",
+        "measured_context_evidence_status": "measured",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[1].resident_components.runtime_fixed",
+        "candidates[1].per_token_components.kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.campaign_headroom.variable",
+        "candidates[1].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "gittensor-sglang-nospec",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[2].measured_max_stable_context_tokens",
+        "candidates[2].resident_components.runtime_fixed",
+        "candidates[2].per_token_components.target_kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.campaign_headroom.variable",
+        "candidates[2].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "gittensor-sglang-dspark",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "pass",
+        "measured_context_evidence_status": "confirmed",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[3].resident_components.runtime_fixed",
+        "candidates[3].per_token_components.target_and_draft_kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.campaign_headroom.variable",
+        "candidates[3].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "quasar-vllm-mtp2",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[4].measured_max_stable_context_tokens",
+        "candidates[4].resident_components.runtime_fixed",
+        "candidates[4].per_token_components.kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.campaign_headroom.variable",
+        "candidates[4].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "redhat-vllm-mtp4",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[5].measured_max_stable_context_tokens",
+        "candidates[5].resident_components.runtime_fixed",
+        "candidates[5].per_token_components.kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.campaign_headroom.variable",
+        "candidates[5].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "cometkim-ninfer-mtp3",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "pass",
+        "measured_context_evidence_status": "confirmed",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[6].resident_components.runtime_fixed",
+        "candidates[6].per_token_components.kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.campaign_headroom.variable",
+        "candidates[6].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "telperion-autoround-vllm-mtp2",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[7].measured_max_stable_context_tokens",
+        "candidates[7].resident_components.runtime_fixed",
+        "candidates[7].per_token_components.kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.campaign_headroom.variable",
+        "candidates[7].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "cdiamond-imatrix-gguf-mtp",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "pass",
+        "measured_context_evidence_status": "confirmed",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[8].resident_components.runtime_fixed",
+        "candidates[8].per_token_components.target_and_draft_kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.campaign_headroom.variable",
+        "candidates[8].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "tracked_variables.runtime_fixed_allocation",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Measured independently for each loaded candidate."
+    },
+    {
+      "path": "tracked_variables.kv_bytes_per_token",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Derived from engine startup telemetry or stable context evidence after load."
+    },
+    {
+      "path": "tracked_variables.concurrency_capacity",
+      "status": "unknown",
+      "unit": "sequences",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Measured only after deterministic single-stream gates pass."
+    },
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 57344,
+      "max": 57344,
+      "source": "minimum advertised candidate window minus output reserve",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "sequences",
+      "min": 1,
+      "max": 1,
+      "source": "first qualification lane",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 34190917632,
+      "max": 34190917632,
+      "source": "RTX 5090 nvidia-smi baseline",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.idle_unavailable.variable",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 440401920,
+      "max": 440401920,
+      "source": "difference between reported total and free VRAM at process-free idle baseline",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.co_resident.variable",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 0,
+      "max": 0,
+      "source": "process-free idle baseline",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.campaign_headroom.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 0,
+      "max": 0,
+      "source": "operator-authorized dedicated-GPU reserve waiver after idle baseline",
+      "observed_at": "2026-09-03",
+      "notes": "Default was 3 GiB. Startup and representative-workload stability telemetry remain mandatory."
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "pinned managed recipe",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].measured_max_stable_context_tokens",
+      "status": "measured",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "retained local qualification",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 17559178144,
+      "max": 17559178144,
+      "source": "pinned Hugging Face artifact",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Captured from the live baseline rather than used for pruning."
+    },
+    {
+      "path": "candidates[0].per_token_components.kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Runtime-specific mixed Q4 target/draft KV."
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "concurrency-one control",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1.0,
+      "max": 1.0,
+      "source": "qualification hard gate",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.max_relative_quality_loss",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.03,
+      "max": 0.03,
+      "source": "campaign intelligence-loss budget",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_warm_e2e_gain",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.1,
+      "max": 0.1,
+      "source": "speculation retention gate",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 252928,
+      "max": 252928,
+      "source": "pinned managed recipe",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].measured_max_stable_context_tokens",
+      "status": "measured",
+      "unit": "tokens",
+      "min": 252928,
+      "max": 252928,
+      "source": "retained local qualification",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 21492695890,
+      "max": 21492695890,
+      "source": "pinned Hugging Face repository total",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Measured NInfer residency is retained separately and will be fed back after the standardized rerun."
+    },
+    {
+      "path": "candidates[1].per_token_components.kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "INT8 group-64 KV density is not inferred from checkpoint bytes."
+    },
+    {
+      "path": "candidates[1].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "concurrency-one control",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "checkpoint-derived native context and publisher full-native-window profile",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "The publisher's 320,960 figure is KV-pool capacity. A local stable occupied-cache proof at the 262,144 native limit is pending."
+    },
+    {
+      "path": "candidates[2].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 17916112584,
+      "max": 17916112584,
+      "source": "Hugging Face API at pinned revision",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "SGLang graphs, GDN state, and workspace are load-bearing and measured at startup."
+    },
+    {
+      "path": "candidates[2].per_token_components.target_kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "FP8 KV plus recurrent state; publisher capacity is a prior, not a local allocation measurement."
+    },
+    {
+      "path": "candidates[2].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "concurrency-one capacity gate",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 165169,
+      "max": 165169,
+      "source": "publisher RTX 5090 SGLang DSpark maximum-context report",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].measured_max_stable_context_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 165169,
+      "max": 165169,
+      "source": "publisher RTX 5090 SGLang DSpark report; local proof pending",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 17916112584,
+      "max": 17916112584,
+      "source": "Hugging Face API at pinned target revision",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].resident_components.draft_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 1399670058,
+      "max": 1399670058,
+      "source": "Hugging Face API at pinned DSpark revision",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Draft graphs, verifier workspace, and recurrent state are measured at startup."
+    },
+    {
+      "path": "candidates[3].per_token_components.target_and_draft_kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Draft KV layout is runtime-specific."
+    },
+    {
+      "path": "candidates[3].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "concurrency-one capacity gate",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[4].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 65536,
+      "max": 65536,
+      "source": "publisher RTX 5090 guidance",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[4].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No local load yet."
+    },
+    {
+      "path": "candidates[4].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 20559281336,
+      "max": 20559281336,
+      "source": "Hugging Face API at d8e6fbfa3e3a78899b440222b827430045a05b44",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[4].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "vLLM runtime residency and MTP allocation pending."
+    },
+    {
+      "path": "candidates[4].per_token_components.kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "KV format and density are measured after load."
+    },
+    {
+      "path": "candidates[4].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "concurrency-one first gate",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[5].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "upstream native context; single-5090 recipe remains a benchmark target",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[5].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No local load of the current revision yet."
+    },
+    {
+      "path": "candidates[5].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 22568192096,
+      "max": 22568192096,
+      "source": "Hugging Face API at 285eba88b22cc7664d2e120eca75ddb7c7dfd6b7",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[5].resident_components.mtp_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 849400392,
+      "max": 849400392,
+      "source": "Hugging Face API at pinned revision",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[5].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Custom-vLLM graphs, XQA, workspace, and KV residency pending."
+    },
+    {
+      "path": "candidates[5].per_token_components.kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "NVFP4 KV/XQA recipe is not assumed from model size."
+    },
+    {
+      "path": "candidates[5].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "concurrency-one first gate",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[6].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "publisher same-GPU profile",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[6].measured_max_stable_context_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "publisher RTX 5090 startup report; local proof pending",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[6].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 18324094014,
+      "max": 18324094014,
+      "source": "Hugging Face API repository total at 4f302e0c324771bbd48c419a8d0319e39334ba23",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[6].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Forked NInfer runtime allocation pending local load."
+    },
+    {
+      "path": "candidates[6].per_token_components.kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "INT8 KV density is measured from the exact fork."
+    },
+    {
+      "path": "candidates[6].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "concurrency-one first gate",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[7].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "upstream native context; publisher did not claim single-5090 capacity",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[7].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Publisher benchmark used two B300 GPUs; local 5090 capacity is unresolved."
+    },
+    {
+      "path": "candidates[7].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 22902605024,
+      "max": 22902605024,
+      "source": "Hugging Face API target shards excluding MTP",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[7].resident_components.mtp_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 849400424,
+      "max": 849400424,
+      "source": "Hugging Face API at 4e81b8843cac2a7f053eda6dfd56d11be3dbafe7",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[7].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "vLLM graphs and workspace pending."
+    },
+    {
+      "path": "candidates[7].per_token_components.kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Publisher provides calibrated FP8 scales but not local allocation."
+    },
+    {
+      "path": "candidates[7].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "concurrency-one first gate",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[8].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "publisher text-only profile",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[8].measured_max_stable_context_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 261756,
+      "max": 261756,
+      "source": "publisher 24 GB Blackwell occupied-cache result: 261,500 input plus 256 output",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[8].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 17125207136,
+      "max": 17125207136,
+      "source": "Hugging Face API at ac343e8f44caef0896f79d372ecc07ef7ab34ec8",
+      "observed_at": "2026-09-03",
+      "notes": null
+    },
+    {
+      "path": "candidates[8].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "llama.cpp graphs and embedded MTP allocation pending local load."
+    },
+    {
+      "path": "candidates[8].per_token_components.target_and_draft_kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Q4 target and F16 draft KV density is measured locally."
+    },
+    {
+      "path": "candidates[8].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "concurrency-one capacity gate",
+      "observed_at": "2026-09-03",
+      "notes": null
+    }
+  ],
+  "unresolved_variables": [
+    "tracked_variables.runtime_fixed_allocation",
+    "tracked_variables.kv_bytes_per_token",
+    "tracked_variables.concurrency_capacity",
+    "candidates[0].resident_components.runtime_fixed",
+    "candidates[0].per_token_components.kv",
+    "candidates[1].resident_components.runtime_fixed",
+    "candidates[1].per_token_components.kv",
+    "candidates[2].measured_max_stable_context_tokens",
+    "candidates[2].resident_components.runtime_fixed",
+    "candidates[2].per_token_components.target_kv",
+    "candidates[3].resident_components.runtime_fixed",
+    "candidates[3].per_token_components.target_and_draft_kv",
+    "candidates[4].measured_max_stable_context_tokens",
+    "candidates[4].resident_components.runtime_fixed",
+    "candidates[4].per_token_components.kv",
+    "candidates[5].measured_max_stable_context_tokens",
+    "candidates[5].resident_components.runtime_fixed",
+    "candidates[5].per_token_components.kv",
+    "candidates[6].resident_components.runtime_fixed",
+    "candidates[6].per_token_components.kv",
+    "candidates[7].measured_max_stable_context_tokens",
+    "candidates[7].resident_components.runtime_fixed",
+    "candidates[7].per_token_components.kv",
+    "candidates[8].resident_components.runtime_fixed",
+    "candidates[8].per_token_components.target_and_draft_kv"
+  ],
+  "promotion_authority": false
+}

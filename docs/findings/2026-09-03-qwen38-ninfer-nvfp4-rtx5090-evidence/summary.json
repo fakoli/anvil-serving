@@ -1,0 +1,72 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-03-qwen38-ninfer-nvfp4-rtx5090",
+  "complete": true,
+  "identity": {
+    "model": "neroued/Qwen3.8-27B-nvfp4-NInfer@204e3d92c30d9d05f3300d2f52e443ad1edf6ddf",
+    "artifact": "qwen3_8_27b_nvfp4.ninfer",
+    "artifact_sha256": "bb3360522a06e136e0367f5703414d26272b7285c8a6ab6194135c17dbd81b32",
+    "runtime": "Neroued/ninfer@e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef",
+    "served_model": "qwen38-27b-ninfer-nvfp4-mtp3-252k"
+  },
+  "workload": {
+    "hardware": "1x NVIDIA GeForce RTX 5090, 32607 MiB, Blackwell sm_120",
+    "selected_context_tokens": 252928,
+    "selected_concurrency": 1,
+    "kv_cache": "INT8",
+    "speculation": "MTP3 with lm-head draft",
+    "thinking_controls": ["disabled"]
+  },
+  "measurement": {
+    "path": "online-direct",
+    "warm_cold_state": "first measured run after each managed load plus immediate repeat; harness reported zero cached prompt tokens in all four capacity runs",
+    "sample_count": 20,
+    "statistics": [
+      "five requests per arm and state at the 4K/C1 point",
+      "no-spec first: TTFT p50/p95 421.114/602.193 ms; E2E p50/p95 1085.403/1226.014 ms; decode p50/p95 75.259/75.342 tok/s",
+      "MTP3 first: TTFT p50/p95 429.601/647.592 ms; E2E p50/p95 719.839/919.335 ms; decode p50/p95 165.862/184.277 tok/s",
+      "no-spec repeat: TTFT p50 435.914 ms; E2E p50 1034.400 ms; decode p50 75.308 tok/s",
+      "MTP3 repeat: TTFT p50 443.999 ms; E2E p50 730.249 ms; decode p50 184.229 tok/s"
+    ]
+  },
+  "gates": [
+    {"name": "matched no-spec and MTP3 capacity", "status": "passed", "detail": "5/5 in each first and immediate-repeat arm at 4K/C1"},
+    {"name": "thinking-disabled smoke and structured JSON", "status": "passed", "detail": "both arms returned the bounded visible answer and parseable declared JSON keys"},
+    {"name": "C1, streaming, and continuation tools", "status": "passed", "detail": "both arms emitted the exact tool call; streaming and tool-result continuation passed"},
+    {"name": "20-way shared-prefix tool burst", "status": "failed", "detail": "17/20 on each arm; three requests per arm received explicit HTTP 429 server_overloaded under the C1 scheduler"},
+    {"name": "large-context output-reserve admission", "status": "passed", "detail": "selected arm returned the exact marker for a 201746-token API-reported prompt while accepting an 8192-token completion cap"},
+    {"name": "bounded repeated quality", "status": "passed", "detail": "coding edit 3/3, timeout triage 3/3, exact tool call 3/3, and 32K context pass on each arm"},
+    {"name": "campaign VRAM floor", "status": "passed", "detail": "MTP3 left 2354 MiB free, above the explicitly preregistered 1 GiB model-only floor"},
+    {"name": "ordinary 3 GiB reserve", "status": "failed", "detail": "MTP3 left 2354 MiB free, so the normal reserve policy was not met"},
+    {"name": "exact restoration", "status": "passed", "detail": "managed GGUF incumbent identity, 262144 context, health, and fresh direct smoke verified"}
+  ],
+  "headline_results": [
+    "MTP3 increased first-run median decode by 120.4 percent, from 75.3 to 165.9 tok/s, versus the exact no-speculation control",
+    "MTP3 reduced first-run median E2E by 33.7 percent, from 1.085 to 0.720 seconds, while median TTFT changed from 0.421 to 0.430 seconds",
+    "The immediate-repeat pair retained the conclusion at 75.3 versus 184.2 tok/s median decode",
+    "The selected arm retrieved the exact marker from a 201746-token API-reported prompt with an 8192-token completion cap in 70.4 seconds",
+    "MTP3 used 29834 MiB and left 2354 MiB free after startup and after the longest request"
+  ],
+  "failures": [
+    "Both 20-way shared-prefix tool bursts completed 17/20 because three requests received explicit C1 queue-overload admissions.",
+    "The selected MTP3 arm did not satisfy the ordinary 3 GiB free-memory reserve.",
+    "The runtime intake source-build resolves Ubuntu packages without immutable package versions or repository snapshots."
+  ],
+  "limitations": [
+    "Qualification is local to one RTX 5090 and direct managed endpoints; no routed or real client path was exercised.",
+    "The nominal 244480-token fixture measured 201746 API-reported prompt tokens; only the measured value is claimed.",
+    "The sample size is five per capacity arm and state, so p95 values are descriptive.",
+    "Thinking-enabled behavior, multimodal support, broad agentic or SWE quality, and sustained thermal endurance were not qualified.",
+    "The explicit 1 GiB model-only floor is narrower than the repository's ordinary 3 GiB reserve policy.",
+    "No prebuilt digest-pinned NInfer runtime image was available for this intake."
+  ],
+  "decision": {
+    "evidence_labels": ["local-functional", "local-capacity", "local-performance", "local-quality", "exact-restoration"],
+    "decision_labels": ["verified", "challenger", "no-promotion"],
+    "promotion_authorized": false,
+    "selected_recipe": "configs/qwen38-27b-ninfer-nvfp4-rtx5090-252k-recipes.toml",
+    "selected_arm": "neroued/Qwen3.8-27B-NInfer-NVFP4-MTP3-252K",
+    "next_gate": "produce a promotion-grade digest-pinned runtime, adjudicate admission and reserve policy, then run routed/client, broader agentic/SWE, multimodal if claimed, and endurance gates before a separate human promotion decision"
+  },
+  "evidence": ["capacity-nospec-4k-c1.json", "capacity-mtp3-4k-c1.json", "capacity-nospec-4k-c1-warm.json", "capacity-mtp3-4k-c1-warm.json", "preflight-mtp3-tools.json", "preflight-mtp3-needle-244k-output-reserve-8192.json", "quality-mtp3.json", "configuration-end.json", "restoration-smoke.json", "restoration.json"]
+}

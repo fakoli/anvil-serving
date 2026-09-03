@@ -1,0 +1,51 @@
+{
+  "schema": "anvil-serving.benchmark-run-plan/v1",
+  "campaign_id": "2026-09-03-qwen38-ninfer-nvfp4-rtx5090",
+  "declared_at": "2026-09-03T12:04:28Z",
+  "arms": [
+    {
+      "order": 1,
+      "id": "nospec",
+      "recipe": "neroued/Qwen3.8-27B-NInfer-NVFP4-NoSpec-252K",
+      "served_model": "qwen38-27b-ninfer-nvfp4-nospec-252k",
+      "speculation": "disabled"
+    },
+    {
+      "order": 2,
+      "id": "mtp3",
+      "recipe": "neroued/Qwen3.8-27B-NInfer-NVFP4-MTP3-252K",
+      "served_model": "qwen38-27b-ninfer-nvfp4-mtp3-252k",
+      "speculation": "MTP3 with optimized proposal head"
+    }
+  ],
+  "held_constant": {
+    "artifact_revision": "204e3d92c30d9d05f3300d2f52e443ad1edf6ddf",
+    "runtime_revision": "e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef",
+    "base_image_digest": "sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca",
+    "context_tokens": 252928,
+    "output_reserve_tokens": 8192,
+    "kv_dtype": "int8",
+    "concurrency": 1,
+    "thinking": "disabled",
+    "prefix_reuse": "enabled by engine default; performance requests must use unique prefixes and retain cache_n"
+  },
+  "gates": [
+    "paper feasibility classification is benchmark-survivor",
+    "complete pinned artifact cache",
+    "managed recipe preview identifies exact artifact/runtime/GPU",
+    "native health and exact /v1/models identity",
+    "smoke before tools or context",
+    "100 percent deterministic tool assertions",
+    "244480-token retrieval with 8192-token output reserve",
+    "MTP3 warm E2E improvement at least 10 percent versus matched no-spec",
+    "no OOM, CUDA error, crash, restart, or unexplained request loss",
+    "exact incumbent restoration and baseline route check"
+  ],
+  "mutation": {
+    "current_candidate_lane_will_be_temporarily_unloaded": true,
+    "route_alias_or_client_catalog_change": false,
+    "candidate_port": 8081,
+    "restore_incumbent_after_run": true,
+    "promotion_authorized": false
+  }
+}
