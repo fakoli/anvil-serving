@@ -1,0 +1,122 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "cometkim/Qwen3.8-27B-NInfer-NVFP4Full-NoSpec-262K"
+status = "candidate"
+source = "2026-08-20 publisher-advertised fuller-NVFP4 RTX 5090 control"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "cometkim/Qwen3.8-27B-nvfp4full-NInfer"
+revision = "4f302e0c324771bbd48c419a8d0319e39334ba23"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+vram_total_gb = 32
+vram_note = "Publisher reports 4.91 GiB free after a 262,144-token INT8-KV startup on one RTX 5090; local residency and stability remain qualification gates."
+
+[recipe.serve]
+engine = "ninfer"
+image = "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca"
+entrypoint = ["/bin/bash", "-lc", 'set -euo pipefail; model_path="$1"; shift; revision="1455676b56ff46c9d8a6ba3b426b142cf093abf4"; artifact_sha="2f59cc27d67cb7acba0ba8a0e0881ac89c1db2b267a60119a696fefa12faf4e7"; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install --yes --no-install-recommends ca-certificates cmake git libavcodec-dev libavformat-dev libavutil-dev libcurl4-openssl-dev libswscale-dev ninja-build pkg-config; if [ ! -d /opt/ninfer-cache/repo/.git ]; then git clone https://github.com/cometkim/ninfer.git /opt/ninfer-cache/repo; fi; git -C /opt/ninfer-cache/repo fetch --depth 1 origin "$revision"; git -C /opt/ninfer-cache/repo checkout --detach "$revision"; test "$(git -C /opt/ninfer-cache/repo rev-parse HEAD)" = "$revision"; if [ ! -x /opt/ninfer-cache/build/apps/ninfer-serve ] || [ ! -f /opt/ninfer-cache/build-revision ] || [ "$(cat /opt/ninfer-cache/build-revision)" != "$revision" ]; then rm -rf /opt/ninfer-cache/build; cmake -S /opt/ninfer-cache/repo -B /opt/ninfer-cache/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNINFER_BUILD_APPS=ON -DBUILD_TESTING=OFF -DNINFER_BUILD_BENCHMARKS=OFF; cmake --build /opt/ninfer-cache/build --parallel --target ninfer ninfer-serve; printf "%s\n" "$revision" > /opt/ninfer-cache/build-revision; fi; test "$(cat /opt/ninfer-cache/build-revision)" = "$revision"; printf "%s  %s\n" "$artifact_sha" "$model_path" | sha256sum --check; exec /opt/ninfer-cache/build/apps/ninfer-serve "$model_path" "$@"', "ninfer-build-run"]
+model_path = "/root/.cache/huggingface/hub/models--cometkim--Qwen3.8-27B-nvfp4full-NInfer/snapshots/4f302e0c324771bbd48c419a8d0319e39334ba23/qwen3_8_27b_nvfp4full.ninfer"
+named_volumes = ["anvil-ninfer-cometkim-1455676-build:/opt/ninfer-cache"]
+quantization = "Fuller NInfer NVFP4 text backbone with W8G32 endpoints and INT8 group-64 KV"
+context_tokens = 262144
+port = 8081
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-27b-cometkim-nvfp4full-nospec-262k"
+flags = [
+  "--host 0.0.0.0",
+  "--port 8081",
+  "--model-id qwen38-27b-cometkim-nvfp4full-nospec-262k",
+  "--max-context 262144",
+  "--kv-capacity auto",
+  "--max-concurrency 1",
+  "--kv-dtype int8",
+  "--default-max-tokens 8192",
+  "--max-request-mib 384",
+  "--no-thinking",
+]
+note = "Matched no-speculation control for the publisher's NInfer fork and artifact. The fork is source-built at an exact commit inside the managed recipe and cached in a revision-specific named volume. Apt packages are not digest-pinned, so this remains qualification evidence rather than a promotion-grade image."
+
+[recipe.fit]
+suited = ["single-gpu", "long-context", "matched-control", "text"]
+not_suited = ["automatic-promotion", "large-scale-continuous-batching", "qualified-multimodal"]
+rationale = "Tests the smaller 17.07 GiB fuller-NVFP4 profile independently of its MTP3 acceleration."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B/tree/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+]
+community = [
+  "https://huggingface.co/cometkim/Qwen3.8-27B-nvfp4full-NInfer/tree/4f302e0c324771bbd48c419a8d0319e39334ba23",
+  "https://github.com/cometkim/ninfer/tree/1455676b56ff46c9d8a6ba3b426b142cf093abf4",
+]
+
+[[recipe]]
+model = "cometkim/Qwen3.8-27B-NInfer-NVFP4Full-MTP3-262K"
+status = "candidate"
+source = "2026-08-20 publisher-advertised fuller-NVFP4 RTX 5090 MTP3 profile"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "cometkim/Qwen3.8-27B-nvfp4full-NInfer"
+revision = "4f302e0c324771bbd48c419a8d0319e39334ba23"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+vram_total_gb = 32
+vram_note = "Publisher reports 4.91 GiB free after a 262,144-token INT8-KV startup and 134.7 decode tok/s with MTP3 on one RTX 5090."
+
+[recipe.serve]
+engine = "ninfer"
+image = "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca"
+entrypoint = ["/bin/bash", "-lc", 'set -euo pipefail; model_path="$1"; shift; revision="1455676b56ff46c9d8a6ba3b426b142cf093abf4"; artifact_sha="2f59cc27d67cb7acba0ba8a0e0881ac89c1db2b267a60119a696fefa12faf4e7"; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install --yes --no-install-recommends ca-certificates cmake git libavcodec-dev libavformat-dev libavutil-dev libcurl4-openssl-dev libswscale-dev ninja-build pkg-config; if [ ! -d /opt/ninfer-cache/repo/.git ]; then git clone https://github.com/cometkim/ninfer.git /opt/ninfer-cache/repo; fi; git -C /opt/ninfer-cache/repo fetch --depth 1 origin "$revision"; git -C /opt/ninfer-cache/repo checkout --detach "$revision"; test "$(git -C /opt/ninfer-cache/repo rev-parse HEAD)" = "$revision"; if [ ! -x /opt/ninfer-cache/build/apps/ninfer-serve ] || [ ! -f /opt/ninfer-cache/build-revision ] || [ "$(cat /opt/ninfer-cache/build-revision)" != "$revision" ]; then rm -rf /opt/ninfer-cache/build; cmake -S /opt/ninfer-cache/repo -B /opt/ninfer-cache/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNINFER_BUILD_APPS=ON -DBUILD_TESTING=OFF -DNINFER_BUILD_BENCHMARKS=OFF; cmake --build /opt/ninfer-cache/build --parallel --target ninfer ninfer-serve; printf "%s\n" "$revision" > /opt/ninfer-cache/build-revision; fi; test "$(cat /opt/ninfer-cache/build-revision)" = "$revision"; printf "%s  %s\n" "$artifact_sha" "$model_path" | sha256sum --check; exec /opt/ninfer-cache/build/apps/ninfer-serve "$model_path" "$@"', "ninfer-build-run"]
+model_path = "/root/.cache/huggingface/hub/models--cometkim--Qwen3.8-27B-nvfp4full-NInfer/snapshots/4f302e0c324771bbd48c419a8d0319e39334ba23/qwen3_8_27b_nvfp4full.ninfer"
+named_volumes = ["anvil-ninfer-cometkim-1455676-build:/opt/ninfer-cache"]
+quantization = "Fuller NInfer NVFP4 text backbone, integrated MTP3 proposal head, W8G32 endpoints, and INT8 group-64 KV"
+context_tokens = 262144
+port = 8081
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-27b-cometkim-nvfp4full-mtp3-262k"
+flags = [
+  "--host 0.0.0.0",
+  "--port 8081",
+  "--model-id qwen38-27b-cometkim-nvfp4full-mtp3-262k",
+  "--max-context 262144",
+  "--kv-capacity auto",
+  "--max-concurrency 1",
+  "--kv-dtype int8",
+  "--default-max-tokens 8192",
+  "--max-request-mib 384",
+  "--spec mtp",
+  "--draft-tokens 3",
+  "--lm-head-draft",
+  "--no-thinking",
+]
+note = "Publisher-advertised MTP3 arm, otherwise matched to the no-speculation control. The exact fork commit is source-built inside the managed recipe. Apt packages are not digest-pinned, so this remains qualification evidence rather than a promotion-grade image."
+
+[recipe.fit]
+suited = ["single-gpu", "long-context", "speculative-decoding", "interactive-text"]
+not_suited = ["automatic-promotion", "large-scale-continuous-batching", "qualified-multimodal"]
+rationale = "Tests whether the smaller fuller-NVFP4 profile improves both resident KV headroom and MTP3 decode on the local RTX 5090."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B/tree/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+]
+community = [
+  "https://huggingface.co/cometkim/Qwen3.8-27B-nvfp4full-NInfer/tree/4f302e0c324771bbd48c419a8d0319e39334ba23",
+  "https://github.com/cometkim/ninfer/tree/1455676b56ff46c9d8a6ba3b426b142cf093abf4",
+]

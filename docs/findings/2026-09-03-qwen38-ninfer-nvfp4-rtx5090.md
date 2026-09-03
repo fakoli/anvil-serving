@@ -59,7 +59,8 @@ remain open. The exact incumbent was restored and passed a fresh smoke check.
 | Runtime source | `Neroued/ninfer@e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef` |
 | CUDA base | `nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca` |
 
-The [managed recipe](../../configs/qwen38-27b-ninfer-nvfp4-rtx5090-252k-recipes.toml)
+The managed recipe at
+`configs/qwen38-27b-ninfer-nvfp4-rtx5090-252k-recipes.toml`
 checks the exact artifact SHA before launch and verifies the runtime checkout.
 The first run source-builds NInfer into a revision-specific named volume. Its
 Ubuntu package resolution is not digest-pinned, so this is an intake recipe,

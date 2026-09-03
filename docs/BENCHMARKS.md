@@ -18,10 +18,13 @@ force. The former 524K EXL3 K3 plus DFlash2 K5 profile is the immediate exact
 rollback. DFlash2 is noncommercial without separate permission.
 RadixArk Qwen3.8 Flash Next NVFP4 remains the immediate retained video-capable
 rollback at TP=2/262,144/c1.
-On one RTX 5090, NInfer NVFP4 MTP3 is now the preferred published direct
-Qwen3.8 27B text/tools performance challenger at 252,928/C1. It remains
+On one RTX 5090, Gittensor's target-only NVFP4/SGLang profile is now the
+preferred published direct Qwen3.8 27B TTFT challenger at 262,144/C2. It
+measured 50.9 ms warm median TTFT and passed a 244,002-token actual prompt.
+NInfer NVFP4 MTP3 remains a retained decode challenger. Both remain
 `no-promotion`; the broader Unsloth GGUF incumbent was restored and no route or
-client catalog changed.
+client catalog changed. The newer Unsloth Dynamic V3.0 NVFP4 MTP3 arm is the
+strongest clean bounded-64K speculative result at 137.7 tok/s with tools 20/20.
 The former DeepSeek V4 Flash 0731 Infernal Invocation r18 1M and r15 393K deployments and
 official-FP8 Qwen3.8 27B SGLang single service and FP8/BF16 vLLM split remain
 retained text/image/OCR/video recipes. Qwen3.5 122B NVFP4 and the Agents-A1
@@ -60,6 +63,40 @@ existing shared pool, but that is planning arithmetic rather than a measured
 result and requires scheduler/graph-state changes plus full requalification.
 See the [cross-run interpretation and artifact links](findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
 
+## Qwen3.8 27B quant/speculation bakeoff on RTX 5090 (2026-09-03)
+
+After the incumbent was unloaded, an idle baseline found no GPU processes,
+0 MiB reported used, and 32,187 MiB free of 32,607 MiB. Only then was the
+additional reserve set to zero for this dedicated campaign; the 420 MiB
+total/free difference remained unavailable. This is not a default-policy
+change.
+
+Eleven fresh target/speculation arms plus the starting incumbent were measured
+on SGLang, llama.cpp, NInfer, and vLLM at advertised 262K or bounded 64K
+profiles. Gittensor's target-only RTX5090 NVFP4/SGLang arm won the declared
+primary metric at **50.9 ms warm median TTFT**, decoded at 79.5 tok/s, returned
+the exact marker from a 244,002-token actual prompt, and completed C2 at 128.7
+aggregate output tok/s. Repeated coding, triage, tools, and 8K/32K context
+checks passed.
+
+The advertised Gittensor DSpark pair failed CUDA-graph capture on incompatible
+target/draft matrix shapes. The target-only runtime also used default 1.0 FP8
+KV scales because calibrated scales were absent. CometKim NInfer MTP3 won
+decode at **228.0 tok/s** but failed strict tools 0/3 by omitting a required
+argument. cdiamond iMatrix GGUF MTP8 was the balanced fresh full-context
+fallback at 223.1 ms TTFT and 96.0 tok/s decode. The exact Unsloth GGUF
+incumbent was restored and passed fresh smoke, JSON, and 20/20 tools.
+
+The final source refresh found Unsloth Dynamic V3.0 NVFP4 and its separate
+MTP head. On pinned stock vLLM 0.27.1 at 64K, MTP3 passed tools 20/20,
+measured 388.7 ms TTFT, 137.7 tok/s short decode, and 127.5 tok/s at a
+53,706-token prompt, with 3,198 MiB free. It is the strongest clean 64K
+speculative arm, but not the TTFT or full-context winner.
+
+Gittensor is therefore the preferred direct TTFT challenger, `no-promotion`.
+See the [dedicated comparison](benchmarks/qwen38-27b-rtx5090-quant-comparison.md)
+and [dated finding](findings/2026-09-03-qwen38-27b-rtx5090-quant-bakeoff.md).
+
 ## Qwen3.8 27B NInfer NVFP4 qualification on RTX 5090 (2026-09-03)
 
 The exact `neroued/Qwen3.8-27B-nvfp4-NInfer@204e3d92` artifact and NInfer
@@ -79,8 +116,9 @@ completed 17/20 because three requests received explicit C1
 `server_overloaded` admissions. MTP3 left 2,354 MiB free, above the campaign's
 explicit 1 GiB model-only floor but below the ordinary 3 GiB reserve.
 
-The result therefore selects NInfer MTP3 only as the preferred measured direct
-text/tools performance challenger. A promotion-grade digest-pinned runtime,
+The result selected NInfer MTP3 at that point as the preferred measured direct
+decode challenger; the later same-day TTFT-first bakeoff selected Gittensor
+target-only for the primary latency role. A promotion-grade digest-pinned runtime,
 admission and reserve decisions, routed/client acceptance, broader agentic/SWE
 coverage, and any claimed multimodal/endurance coverage remain open. Both
 candidate containers were unloaded; the exact GGUF incumbent was restored and

@@ -1,0 +1,18 @@
+{
+  "schema": "anvil-serving.gpu-idle-baseline/v1",
+  "campaign_id": "2026-09-03-qwen38-27b-rtx5090-quant-bakeoff",
+  "observed_at": "2026-09-03T18:41:54Z",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "identity": "GPU UUID redacted from public evidence",
+  "memory": {
+    "total_mib": 32607,
+    "used_mib": 0,
+    "free_mib": 32187,
+    "unavailable_difference_mib": 420
+  },
+  "utilization": {"gpu_percent": 0, "memory_percent": 1, "performance_state": "P8"},
+  "processes": [],
+  "managed_recipe_containers": [],
+  "manifest_serve_owners": [],
+  "conclusion": "No application was running on the RTX 5090 at baseline. The 420 MiB total/free difference remains excluded from available physical capacity. The additional campaign policy reserve is explicitly 0 MiB, subject to per-candidate stability telemetry."
+}

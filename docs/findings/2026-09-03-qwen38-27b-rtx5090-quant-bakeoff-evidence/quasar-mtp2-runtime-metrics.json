@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.speculative-runtime-metrics/v1",
+  "observed_at": "2026-09-03T19:36:00Z",
+  "model": "qwen38-27b-quasar-nvfp4-mtp2-64k",
+  "engine": "vllm-0.27.1",
+  "drafts": 494,
+  "draft_tokens": 988,
+  "accepted_tokens": 785,
+  "accepted_tokens_by_position": {
+    "0": 432,
+    "1": 353
+  },
+  "token_acceptance_rate": 0.7945344129554656,
+  "kv_cache_tokens": 69857,
+  "kv_cache_max_full_length_concurrency": 1.065934065934066,
+  "kv_cache_dtype": "auto",
+  "gpu_memory_utilization": 0.85,
+  "note": "Counters were read from the loopback-only vLLM metrics endpoint after preflight, C1/C2/C4 timing, and the 57,344-token nominal capacity run. High aggregate acceptance did not prevent MTP2 from falling behind target-only decode at the deep-context point."
+}
