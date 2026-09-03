@@ -1,0 +1,122 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "neroued/Qwen3.8-27B-NInfer-NVFP4-NoSpec-252K"
+status = "candidate"
+source = "NInfer-published Qwen3.8-27B NVFP4 matched no-speculation control staged on 2026-09-03"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "neroued/Qwen3.8-27B-nvfp4-NInfer"
+revision = "204e3d92c30d9d05f3300d2f52e443ad1edf6ddf"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+gpu_uuid = "GPU-REPLACE-WITH-HOST-DISCOVERED-UUID"
+vram_total_gb = 32
+vram_note = "Paper-feasible at 252,928 tokens/C1 from exact upstream same-GPU evidence; local residency and stability remain qualification gates."
+
+[recipe.serve]
+engine = "ninfer"
+image = "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca"
+entrypoint = ["/bin/bash", "-lc", 'set -euo pipefail; model_path="$1"; shift; revision="e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef"; artifact_sha="bb3360522a06e136e0367f5703414d26272b7285c8a6ab6194135c17dbd81b32"; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install --yes --no-install-recommends ca-certificates cmake git libavcodec-dev libavformat-dev libavutil-dev libcurl4-openssl-dev libswscale-dev ninja-build pkg-config; if [ ! -d /opt/ninfer-cache/repo/.git ]; then git clone https://github.com/Neroued/ninfer.git /opt/ninfer-cache/repo; fi; git -C /opt/ninfer-cache/repo fetch --depth 1 origin "$revision"; git -C /opt/ninfer-cache/repo checkout --detach "$revision"; test "$(git -C /opt/ninfer-cache/repo rev-parse HEAD)" = "$revision"; if [ ! -x /opt/ninfer-cache/build/apps/ninfer-serve ]; then cmake -S /opt/ninfer-cache/repo -B /opt/ninfer-cache/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNINFER_BUILD_APPS=ON -DBUILD_TESTING=OFF -DNINFER_BUILD_BENCHMARKS=OFF; cmake --build /opt/ninfer-cache/build --parallel --target ninfer ninfer-serve; printf "%s\n" "$revision" > /opt/ninfer-cache/build-revision; fi; test "$(cat /opt/ninfer-cache/build-revision)" = "$revision"; printf "%s  %s\n" "$artifact_sha" "$model_path" | sha256sum --check; exec /opt/ninfer-cache/build/apps/ninfer-serve "$model_path" "$@"', "ninfer-build-run"]
+model_path = "/root/.cache/huggingface/hub/models--neroued--Qwen3.8-27B-nvfp4-NInfer/snapshots/204e3d92c30d9d05f3300d2f52e443ad1edf6ddf/qwen3_8_27b_nvfp4.ninfer"
+named_volumes = ["anvil-ninfer-e3aeaf8c-build:/opt/ninfer-cache"]
+quantization = "NInfer NVFP4/row-scaled-FP8 mixed target with INT8 group-64 KV"
+context_tokens = 252928
+port = 8081
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-27b-ninfer-nvfp4-nospec-252k"
+flags = [
+  "--host 0.0.0.0",
+  "--port 8081",
+  "--model-id qwen38-27b-ninfer-nvfp4-nospec-252k",
+  "--max-context 252928",
+  "--kv-capacity auto",
+  "--max-concurrency 1",
+  "--kv-dtype int8",
+  "--default-max-tokens 8192",
+  "--max-request-mib 384",
+  "--no-thinking",
+]
+note = "Matched no-speculation control. NInfer is source-built inside the managed recipe container from exact revision e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef and cached in a revision-specific named volume. The apt package resolution is not digest-pinned, so this recipe is a challenger intake path rather than a promotion-grade baked image."
+
+[recipe.fit]
+suited = ["interactive-tools", "coding", "long-context", "matched-control"]
+not_suited = ["automatic-promotion", "large-scale-continuous-batching", "qualified-multimodal"]
+rationale = "Control arm for measuring whether MTP3 improves end-to-end behavior on the exact same artifact, runtime revision, context, KV dtype, and hardware."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/neroued/Qwen3.8-27B-nvfp4-NInfer/tree/204e3d92c30d9d05f3300d2f52e443ad1edf6ddf",
+  "https://github.com/Neroued/ninfer/tree/e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef",
+  "https://huggingface.co/Qwen/Qwen3.8-27B/tree/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "https://huggingface.co/unsloth/Qwen3.8-27B-NVFP4/tree/60e813d4dbbdc5d64cf3f5a8caf2897bedf03679",
+]
+
+[[recipe]]
+model = "neroued/Qwen3.8-27B-NInfer-NVFP4-MTP3-252K"
+status = "candidate"
+source = "NInfer-published Qwen3.8-27B NVFP4 MTP3 balanced challenger staged on 2026-09-03"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "neroued/Qwen3.8-27B-nvfp4-NInfer"
+revision = "204e3d92c30d9d05f3300d2f52e443ad1edf6ddf"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+gpu_uuid = "GPU-REPLACE-WITH-HOST-DISCOVERED-UUID"
+vram_total_gb = 32
+vram_note = "Paper-feasible at 252,928 tokens/C1 from exact upstream same-GPU evidence; local residency and stability remain qualification gates."
+
+[recipe.serve]
+engine = "ninfer"
+image = "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca"
+entrypoint = ["/bin/bash", "-lc", 'set -euo pipefail; model_path="$1"; shift; revision="e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef"; artifact_sha="bb3360522a06e136e0367f5703414d26272b7285c8a6ab6194135c17dbd81b32"; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install --yes --no-install-recommends ca-certificates cmake git libavcodec-dev libavformat-dev libavutil-dev libcurl4-openssl-dev libswscale-dev ninja-build pkg-config; if [ ! -d /opt/ninfer-cache/repo/.git ]; then git clone https://github.com/Neroued/ninfer.git /opt/ninfer-cache/repo; fi; git -C /opt/ninfer-cache/repo fetch --depth 1 origin "$revision"; git -C /opt/ninfer-cache/repo checkout --detach "$revision"; test "$(git -C /opt/ninfer-cache/repo rev-parse HEAD)" = "$revision"; if [ ! -x /opt/ninfer-cache/build/apps/ninfer-serve ]; then cmake -S /opt/ninfer-cache/repo -B /opt/ninfer-cache/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNINFER_BUILD_APPS=ON -DBUILD_TESTING=OFF -DNINFER_BUILD_BENCHMARKS=OFF; cmake --build /opt/ninfer-cache/build --parallel --target ninfer ninfer-serve; printf "%s\n" "$revision" > /opt/ninfer-cache/build-revision; fi; test "$(cat /opt/ninfer-cache/build-revision)" = "$revision"; printf "%s  %s\n" "$artifact_sha" "$model_path" | sha256sum --check; exec /opt/ninfer-cache/build/apps/ninfer-serve "$model_path" "$@"', "ninfer-build-run"]
+model_path = "/root/.cache/huggingface/hub/models--neroued--Qwen3.8-27B-nvfp4-NInfer/snapshots/204e3d92c30d9d05f3300d2f52e443ad1edf6ddf/qwen3_8_27b_nvfp4.ninfer"
+named_volumes = ["anvil-ninfer-e3aeaf8c-build:/opt/ninfer-cache"]
+quantization = "NInfer NVFP4/row-scaled-FP8 mixed target, integrated MTP3 proposal head, INT8 group-64 KV"
+context_tokens = 252928
+port = 8081
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-27b-ninfer-nvfp4-mtp3-252k"
+flags = [
+  "--host 0.0.0.0",
+  "--port 8081",
+  "--model-id qwen38-27b-ninfer-nvfp4-mtp3-252k",
+  "--max-context 252928",
+  "--kv-capacity auto",
+  "--max-concurrency 1",
+  "--kv-dtype int8",
+  "--default-max-tokens 8192",
+  "--max-request-mib 384",
+  "--spec mtp",
+  "--draft-tokens 3",
+  "--lm-head-draft",
+  "--no-thinking",
+]
+note = "Balanced challenger arm. NInfer is source-built inside the managed recipe container from exact revision e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef and cached in a revision-specific named volume. The apt package resolution is not digest-pinned, so this recipe is a challenger intake path rather than a promotion-grade baked image."
+
+[recipe.fit]
+suited = ["fast-tier", "interactive-tools", "coding", "long-context", "speculative-decoding"]
+not_suited = ["automatic-promotion", "large-scale-continuous-batching", "qualified-multimodal"]
+rationale = "Current NInfer-published profile with stronger published Qwen3.8 quality and performance than its older groupwise-int peer; local matched no-speculation evidence is required before retaining the speed claim."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/neroued/Qwen3.8-27B-nvfp4-NInfer/tree/204e3d92c30d9d05f3300d2f52e443ad1edf6ddf",
+  "https://github.com/Neroued/ninfer/tree/e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef",
+  "https://huggingface.co/Qwen/Qwen3.8-27B/tree/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "https://huggingface.co/unsloth/Qwen3.8-27B-NVFP4/tree/60e813d4dbbdc5d64cf3f5a8caf2897bedf03679",
+]

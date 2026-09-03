@@ -1,0 +1,29 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-03-qwen38-ninfer-nvfp4-rtx5090",
+  "status": "verified",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": ["configuration-start.json", "managed recipe inventory captured before mutation"]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": ["configuration-end.json", "restoration-smoke.json"]
+  },
+  "differences": [
+    "candidate artifact cache retained",
+    "revision-specific NInfer build cache retained"
+  ],
+  "post_run_checks": [
+    "both candidate containers absent",
+    "managed incumbent container running and healthy",
+    "exact incumbent image digest and model revision restored",
+    "exact served model qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-262k returned",
+    "exact 262144-token incumbent context returned",
+    "fresh thinking-disabled direct smoke passed",
+    "no router alias, client catalog, or persistent serving assignment changed"
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

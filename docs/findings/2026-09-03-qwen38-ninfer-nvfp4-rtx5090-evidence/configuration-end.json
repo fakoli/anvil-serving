@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.benchmark-configuration/v1",
+  "captured_at": "2026-09-03T12:38:41Z",
+  "campaign_id": "2026-09-03-qwen38-ninfer-nvfp4-rtx5090",
+  "candidate_final_state": {
+    "nospec_container_present": false,
+    "mtp3_container_present": false,
+    "artifact_cache_retained": true,
+    "revision_specific_build_cache_retained": true
+  },
+  "restored_serve": {
+    "managed": true,
+    "model": "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K",
+    "container": "anvil-qwen38-27b-ud-q4xl-native-mtp3",
+    "state": "running",
+    "health": "healthy",
+    "image_digest": "sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
+    "model_revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "served_model_name": "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-262k",
+    "context_tokens": 262144,
+    "concurrency": 1,
+    "direct_smoke": "passed"
+  },
+  "hardware_after_restoration": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "memory_total_mib": 32607,
+    "memory_used_mib": 25980,
+    "memory_free_mib": 6208
+  },
+  "persistent_route_or_client_changes": false,
+  "promotion_performed": false
+}
