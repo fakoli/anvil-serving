@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 from types import SimpleNamespace
@@ -8,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 from anvil_serving.benchmarking.harnesses import HARNESS_ASSETS_SCHEMA
-from anvil_serving.benchmarking.jobs import BenchmarkJobError
+from anvil_serving.benchmarking.jobs import BenchmarkJobError, canonical_json_bytes
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking.swe import (
     SWE_DATASET,
@@ -20,6 +22,7 @@ from anvil_serving.benchmarking.swe import (
 
 
 INSTANCE = "astropy__astropy-12907"
+SCOUT_INSTANCES = [f"project__case-{index}" for index in range(5)]
 
 
 def manifest(profile):
@@ -34,19 +37,42 @@ def manifest(profile):
             }
         else:
             assets[name] = dict(adapter)
+    packages = ["mini-swe-agent==2.4.6", "swebench==4.2.0", "typer==0.21.0"]
     return {
         "schema": HARNESS_ASSETS_SCHEMA,
         "profile_sha256": profile["content_sha256"],
         "suite": "swe",
         "assets": assets,
+        "python_environment": {
+            "schema": "anvil-serving.swe-python-environment/v1",
+            "python": {"implementation": "CPython", "version": "3.12.0"},
+            "platform": "test",
+            "architecture": "test",
+            "cache_key": "swe-python-environments/test-environment",
+            "executable": "Scripts/python.exe" if os.name == "nt" else "bin/python",
+            "resolved_packages": packages,
+            "resolved_packages_sha256": hashlib.sha256(
+                canonical_json_bytes(packages)
+            ).hexdigest(),
+            "reused": True,
+        },
     }
 
 
 def plan(tmp_path, *, request_controls=None):
     profile = load_profile("smoke")
+    environment = manifest(profile)["python_environment"]
+    executable = (
+        tmp_path / "cache" / environment["cache_key"] / environment["executable"]
+    )
+    executable.parent.mkdir(parents=True, exist_ok=True)
+    if os.name == "nt":
+        executable.touch()
+    else:
+        executable.symlink_to(os.sys.executable)
     return build_swe_run_plan(
         profile,
-        manifest(profile),
+        {**manifest(profile), "python_environment": environment},
         endpoint={
             "base_url": "http://100.64.0.10:8000/v1",
             "model": "deepseek-challenger",
@@ -61,6 +87,33 @@ def plan(tmp_path, *, request_controls=None):
     )
 
 
+def scout_plan(tmp_path):
+    profile = load_profile("scout")
+    environment = manifest(profile)["python_environment"]
+    executable = (
+        tmp_path / "cache" / environment["cache_key"] / environment["executable"]
+    )
+    executable.parent.mkdir(parents=True, exist_ok=True)
+    if os.name == "nt":
+        executable.touch()
+    else:
+        executable.symlink_to(os.sys.executable)
+    return build_swe_run_plan(
+        profile,
+        {**manifest(profile), "python_environment": environment},
+        endpoint={
+            "base_url": "http://100.64.0.10:8000/v1",
+            "model": "deepseek-challenger",
+            "auth_env": "ANVIL_ROUTER_TOKEN",
+        },
+        instance_ids=SCOUT_INSTANCES,
+        run_root=str(tmp_path / "runs"),
+        cache_root=str(tmp_path / "cache"),
+        ownership_id="campaign",
+        run_id="scout-one",
+    )
+
+
 def test_plan_pins_selection_router_and_both_harnesses(tmp_path):
     value = plan(tmp_path)
     assert value["dataset"] == SWE_DATASET
@@ -70,6 +123,9 @@ def test_plan_pins_selection_router_and_both_harnesses(tmp_path):
     assert value["commands"]["grader"][-1] == INSTANCE
     assert value["harnesses"]["agent"]["revision"] == load_profile("smoke")["adapters"]["mini-swe-agent"]["revision"]
     assert value["harnesses"]["grader"]["revision"] == load_profile("smoke")["adapters"]["swe-bench"]["revision"]
+    assert value["commands"]["agent"][0] != os.sys.executable
+    assert value["commands"]["agent"][0] == value["commands"]["grader"][0]
+    assert value["harnesses"]["python_environment"]["resolved_packages_sha256"]
     assert "secret" not in value["config_text"].lower()
     assert "http://100.64.0.10:8000/v1" in value["config_text"]
     assert "  executable:" in value["config_text"]
@@ -165,6 +221,10 @@ def test_completed_run_requires_official_grader_and_keeps_instance_evidence(tmp_
     assert instance["request_ids"] == ["req-anvil-1"]
     assert instance["grader"]["resolved"] is True
     assert runner.calls[0][3]["OPENAI_API_KEY"] == "not-recorded"
+    assert runner.calls[0][3]["MSWEA_GLOBAL_CONFIG_DIR"] == value["paths"][
+        "mini_config_home"
+    ]
+    assert runner.calls[0][3]["MSWEA_SILENT_STARTUP"] == "1"
     assert result["promotion"]["authorized"] is False
     serialized = json.dumps(result)
     assert "not-recorded" not in serialized
@@ -189,6 +249,133 @@ def test_agent_completion_without_official_report_is_incomplete(tmp_path):
     assert result["state"] == "incomplete"
     assert result["official_grader_complete"] is False
     assert result["failure"]["stage"] == "official_grader"
+
+
+def test_agent_instance_failure_is_graded_but_remains_an_agent_failure(tmp_path):
+    value = plan(tmp_path)
+    calls = []
+
+    def failed_instance(argv, cwd, timeout, env):
+        calls.append(list(argv))
+        if "swebench.py" in argv[1]:
+            output = Path(value["paths"]["output"])
+            output.mkdir(parents=True, exist_ok=True)
+            (output / "preds.json").write_text(
+                json.dumps(
+                    {
+                        INSTANCE: {
+                            "model_name_or_path": "openai/deepseek-challenger",
+                            "instance_id": INSTANCE,
+                            "model_patch": "",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            return SimpleNamespace(
+                returncode=0,
+                stdout=b"CalledProcessError: docker image could not start",
+                stderr=b"",
+            )
+        report = Path(value["paths"]["grader_work"]) / (
+            f"openai__deepseek-challenger.{value['run_id']}.json"
+        )
+        report.write_text(
+            json.dumps(
+                {
+                    "completed_ids": [INSTANCE],
+                    "resolved_ids": [],
+                    "error_ids": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return SimpleNamespace(returncode=0, stdout=b"graded", stderr=b"")
+
+    result = run_swe_benchmark(
+        value,
+        runner=failed_instance,
+        environ={"ANVIL_ROUTER_TOKEN": "token"},
+    )
+
+    assert len(calls) == 2
+    assert result["state"] == "incomplete"
+    assert result["official_grader_complete"] is True
+    assert result["instances"][0]["grader"]["completed"] is True
+    assert result["failure"] == {
+        "class": "image_failure",
+        "stage": "agent",
+        "code": "missing_swe_trajectory",
+    }
+    assert result["stages"][0]["status"] == "failed"
+
+
+def test_missing_trajectory_preserves_partial_official_grading(tmp_path):
+    value = scout_plan(tmp_path)
+    calls = []
+
+    def partial_instance(argv, cwd, timeout, env):
+        calls.append(list(argv))
+        if "swebench.py" in argv[1]:
+            output = Path(value["paths"]["output"])
+            output.mkdir(parents=True, exist_ok=True)
+            predictions = {}
+            for instance_id in SCOUT_INSTANCES:
+                predictions[instance_id] = {
+                    "model_name_or_path": "openai/deepseek-challenger",
+                    "instance_id": instance_id,
+                    "model_patch": "diff --git a/a.py b/a.py\n",
+                }
+            (output / "preds.json").write_text(
+                json.dumps(predictions), encoding="utf-8"
+            )
+            for instance_id in SCOUT_INSTANCES[:-1]:
+                instance_dir = output / instance_id
+                instance_dir.mkdir(parents=True)
+                (instance_dir / f"{instance_id}.traj.json").write_text(
+                    json.dumps({"info": {"exit_status": "Submitted"}}),
+                    encoding="utf-8",
+                )
+            return SimpleNamespace(returncode=0, stdout=b"agent batch complete", stderr=b"")
+        report = Path(value["paths"]["grader_work"]) / (
+            f"openai__deepseek-challenger.{value['run_id']}.json"
+        )
+        report.write_text(
+            json.dumps(
+                {
+                    "completed_ids": SCOUT_INSTANCES[:-1],
+                    "resolved_ids": SCOUT_INSTANCES[:-1],
+                    "error_ids": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return SimpleNamespace(returncode=0, stdout=b"partial grading complete", stderr=b"")
+
+    result = run_swe_benchmark(
+        value,
+        runner=partial_instance,
+        environ={"ANVIL_ROUTER_TOKEN": "token"},
+    )
+
+    assert len(calls) == 2
+    assert result["state"] == "incomplete"
+    assert result["official_grader_complete"] is False
+    assert result["summary"] == {
+        "attempted": 5,
+        "graded": 4,
+        "resolved": 4,
+        "resolve_rate": 1.0,
+    }
+    assert all(
+        instance["grader"]["completed"] for instance in result["instances"][:-1]
+    )
+    assert result["instances"][-1]["grader"]["completed"] is False
+    assert result["failure"] == {
+        "class": "broken_harness",
+        "stage": "agent",
+        "code": "missing_swe_trajectory",
+    }
 
 
 def test_timeout_and_failures_are_distinct(tmp_path):

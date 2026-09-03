@@ -7,14 +7,19 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
+import sys
 import time
 from typing import Any, Callable, Mapping, Sequence
 
 from ..model_controls import REASONING_EFFORT_CHOICES
 from .artifacts import atomic_write_json, path_is_within, real_path
-from .harnesses import HARNESS_ASSETS_SCHEMA, MAX_HARNESS_OUTPUT_BYTES
+from .harnesses import (
+    HARNESS_ASSETS_SCHEMA,
+    MAX_HARNESS_OUTPUT_BYTES,
+    SWE_PYTHON_ENVIRONMENT_SCHEMA,
+    resolve_container_binary,
+)
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
 from .profiles import validate_profile
 
@@ -131,6 +136,51 @@ def _validate_assets(profile: Mapping[str, Any], manifest: Any) -> dict[str, Any
     return dict(assets)
 
 
+def _python_environment(manifest: Mapping[str, Any], *, cache_root: str) -> tuple[str, dict[str, Any]]:
+    value = manifest.get("python_environment")
+    if (
+        not isinstance(value, Mapping)
+        or value.get("schema") != SWE_PYTHON_ENVIRONMENT_SCHEMA
+        or not isinstance(value.get("cache_key"), str)
+        or not isinstance(value.get("executable"), str)
+        or not isinstance(value.get("resolved_packages"), list)
+        or not isinstance(value.get("resolved_packages_sha256"), str)
+    ):
+        raise BenchmarkJobError(
+            "missing_harness_environment",
+            "SWE assets do not include an isolated Python environment",
+        )
+    packages = value["resolved_packages"]
+    if hashlib.sha256(canonical_json_bytes(packages)).hexdigest() != value[
+        "resolved_packages_sha256"
+    ]:
+        raise BenchmarkJobError(
+            "harness_environment_mismatch", "SWE Python package inventory is invalid"
+        )
+    cache = real_path(cache_root)
+    environment_root = real_path(os.path.join(cache, value["cache_key"]))
+    expected_executable = "Scripts/python.exe" if os.name == "nt" else "bin/python"
+    relative_executable = value["executable"].replace("\\", "/")
+    executable = os.path.abspath(os.path.join(environment_root, relative_executable))
+    same_interpreter = True
+    if os.name != "nt":
+        try:
+            same_interpreter = os.path.samefile(executable, sys.executable)
+        except OSError:
+            same_interpreter = False
+    if (
+        not path_is_within(environment_root, cache)
+        or relative_executable != expected_executable
+        or os.path.commonpath((environment_root, executable)) != environment_root
+        or not os.path.isfile(executable)
+        or not same_interpreter
+    ):
+        raise BenchmarkJobError(
+            "unsafe_cache_path", "SWE Python executable escaped the harness cache"
+        )
+    return executable, dict(value)
+
+
 def _endpoint(value: Any) -> dict[str, str]:
     if not isinstance(value, Mapping):
         raise BenchmarkJobError("bad_endpoint", "SWE endpoint must be an object")
@@ -230,7 +280,6 @@ def build_swe_run_plan(
     cache_root: str,
     ownership_id: str,
     run_id: str,
-    python_executable: str = "python",
     request_controls: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic two-stage execution plan without running a model."""
@@ -245,6 +294,9 @@ def build_swe_run_plan(
         run_root, ownership_id=ownership_id, run_id=run_id, relative="work"
     )
     cache = real_path(cache_root)
+    python_executable, python_environment = _python_environment(
+        assets_manifest, cache_root=cache
+    )
     mini_root = real_path(os.path.join(cache, assets["mini-swe-agent"]["cache_key"]))
     grader_root = real_path(os.path.join(cache, assets["swe-bench"]["cache_key"]))
     if not path_is_within(mini_root, cache) or not path_is_within(grader_root, cache):
@@ -252,6 +304,7 @@ def build_swe_run_plan(
     output = os.path.join(work, "mini-output")
     grader_work = os.path.join(work, "official-grader")
     config_path = os.path.join(work, "anvil-swe-config.yaml")
+    mini_config_home = os.path.join(work, "mini-config")
     predictions_jsonl = os.path.join(work, "predictions.jsonl")
     exact_filter = "^(?:" + "|".join(re.escape(item) for item in selected) + ")$"
     suite = validated["suites"]["swe"]
@@ -300,6 +353,13 @@ def build_swe_run_plan(
         "harnesses": {
             "agent": {"name": "mini-swe-agent", "revision": assets["mini-swe-agent"]["revision"]},
             "grader": {"name": "swe-bench", "revision": assets["swe-bench"]["revision"]},
+            "python_environment": {
+                "schema": python_environment["schema"],
+                "python": python_environment["python"],
+                "platform": python_environment["platform"],
+                "architecture": python_environment["architecture"],
+                "resolved_packages_sha256": python_environment["resolved_packages_sha256"],
+            },
         },
         "paths": {
             "run": run_path,
@@ -307,6 +367,7 @@ def build_swe_run_plan(
             "output": output,
             "grader_work": grader_work,
             "config": config_path,
+            "mini_config_home": mini_config_home,
             "predictions_jsonl": predictions_jsonl,
             "mini_root": mini_root,
             "grader_root": grader_root,
@@ -314,7 +375,7 @@ def build_swe_run_plan(
         },
         "commands": {"agent": mini_command, "grader": grader_command},
         "config_text": _mini_config(
-            target, suite, controls, shutil.which("docker") or "docker"
+            target, suite, controls, resolve_container_binary() or "docker"
         ),
         "timeout_s": suite["timeout_s"],
     }
@@ -451,6 +512,7 @@ def run_swe_benchmark(
     Path(paths["work"]).mkdir(parents=True, exist_ok=True)
     Path(paths["output"]).mkdir(parents=True, exist_ok=True)
     Path(paths["grader_work"]).mkdir(parents=True, exist_ok=True)
+    Path(paths["mini_config_home"]).mkdir(parents=True, exist_ok=True)
     Path(paths["config"]).write_text(plan["config_text"], encoding="utf-8", newline="\n")
     child_env = dict(os.environ if environ is None else environ)
     auth_env = plan["endpoint"].get("auth_env")
@@ -462,6 +524,8 @@ def run_swe_benchmark(
     else:
         child_env.setdefault("OPENAI_API_KEY", "anvil-local")
     child_env["MSWEA_COST_TRACKING"] = "ignore_errors"
+    child_env["MSWEA_GLOBAL_CONFIG_DIR"] = paths["mini_config_home"]
+    child_env["MSWEA_SILENT_STARTUP"] = "1"
     pinned_python_paths = [
         os.path.join(paths["mini_root"], "src"),
         paths["grader_root"],
@@ -543,6 +607,19 @@ def run_swe_benchmark(
             "failure_class": None if trajectory is not None else "broken_harness",
         })
     result["summary"]["attempted"] = len(result["instances"])
+    agent_failure = None
+    if any(instance["failure_class"] for instance in result["instances"]):
+        failure = classify_swe_failure(
+            stage="agent",
+            returncode=1,
+            text=agent_stage["stdout"] + "\n" + agent_stage["stderr"],
+        )
+        agent_stage.update({"status": "failed", "failure_class": failure})
+        agent_failure = {
+            "class": failure,
+            "stage": "agent",
+            "code": "missing_swe_trajectory",
+        }
 
     grader_started = time.monotonic()
     try:
@@ -553,7 +630,10 @@ def run_swe_benchmark(
         stage = _result_record(plan["commands"]["grader"], exc, time.monotonic() - grader_started)
         stage.update({"name": "official_grader", "status": "failed", "failure_class": "timeout"})
         result["stages"].append(stage)
-        result["failure"] = {"class": "timeout", "stage": "official_grader"}
+        result["failure"] = agent_failure or {
+            "class": "timeout",
+            "stage": "official_grader",
+        }
         atomic_write_json(paths["result"], result)
         return result
     grader_stage = _result_record(
@@ -569,31 +649,51 @@ def run_swe_benchmark(
             text=grader_stage["stdout"] + "\n" + grader_stage["stderr"],
         )
         grader_stage.update({"status": "failed", "failure_class": failure})
-        result["failure"] = {"class": failure, "stage": "official_grader"}
+        result["failure"] = agent_failure or {
+            "class": failure,
+            "stage": "official_grader",
+        }
         atomic_write_json(paths["result"], result)
         return result
     report = _read_json(report_path, code="bad_official_grader_report")
     completed_ids = set(report.get("completed_ids", [])) if isinstance(report, Mapping) else set()
     resolved_ids = set(report.get("resolved_ids", [])) if isinstance(report, Mapping) else set()
     error_ids = set(report.get("error_ids", [])) if isinstance(report, Mapping) else set()
-    if not set(selected).issubset(completed_ids) or error_ids.intersection(selected):
-        grader_stage.update({"status": "failed", "failure_class": "test_failure"})
-        result["failure"] = {"class": "test_failure", "stage": "official_grader"}
-        atomic_write_json(paths["result"], result)
-        return result
+    valid_completed_ids = completed_ids.intersection(selected) - error_ids
+    selected_resolved_ids = resolved_ids.intersection(valid_completed_ids)
+    report_sha256 = _sha256_file(report_path)
     for instance in result["instances"]:
+        instance_id = instance["instance_id"]
         instance["grader"].update({
-            "completed": True,
-            "resolved": instance["instance_id"] in resolved_ids,
-            "report_sha256": _sha256_file(report_path),
+            "completed": instance_id in valid_completed_ids,
+            "resolved": instance_id in selected_resolved_ids
+            if instance_id in valid_completed_ids
+            else None,
+            "report_sha256": report_sha256,
         })
-    result["official_grader_complete"] = True
-    result["state"] = "completed"
+    result["official_grader_complete"] = len(valid_completed_ids) == len(selected)
     result["summary"] = {
         "attempted": len(selected),
-        "graded": len(selected),
-        "resolved": len(resolved_ids.intersection(selected)),
-        "resolve_rate": len(resolved_ids.intersection(selected)) / len(selected),
+        "graded": len(valid_completed_ids),
+        "resolved": len(selected_resolved_ids),
+        "resolve_rate": (
+            len(selected_resolved_ids) / len(valid_completed_ids)
+            if valid_completed_ids
+            else None
+        ),
     }
+    if not result["official_grader_complete"]:
+        grader_stage.update({"status": "failed", "failure_class": "test_failure"})
+        result["failure"] = agent_failure or {
+            "class": "test_failure",
+            "stage": "official_grader",
+        }
+        atomic_write_json(paths["result"], result)
+        return result
+    if agent_failure:
+        result["failure"] = agent_failure
+        atomic_write_json(paths["result"], result)
+        return result
+    result["state"] = "completed"
     atomic_write_json(paths["result"], result)
     return result

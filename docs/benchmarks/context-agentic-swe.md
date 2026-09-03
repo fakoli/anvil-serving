@@ -60,11 +60,23 @@ records an absolute container-runtime executable so detached workers do not
 depend on shell `PATH`. Host architecture alone is not proof. An incompatible
 runtime is a preflight failure, not a model failure.
 
-The worker environment must also select its active container context. A stale
-global `DOCKER_HOST` (for example, an absent Colima socket while Docker Desktop
-is active) is a worker configuration failure. Credential values are trimmed
-at the child-process boundary to prevent CRLF or surrounding whitespace from
-changing authentication; values remain secret and never enter artifacts.
+The worker environment must also select its active container context. The
+managed adapter resolves Docker before asset preparation, including standard
+Docker Desktop locations when a macOS launch service has a minimal `PATH`.
+Mini-SWE-agent runs with a run-owned empty global-config directory so a user's
+global `.env` cannot silently inject a stale `DOCKER_HOST`, credential, or
+other ambient setting. Explicit worker-process container settings remain in
+force. Credential values are trimmed at the child-process boundary to prevent
+CRLF or surrounding whitespace from changing authentication; values remain
+secret and never enter artifacts.
+
+Pinned source checkouts are not installed into Anvil Serving's stdlib-only
+runtime. Asset preparation creates a separate Python venv keyed by the exact
+mini-SWE-agent and grader revisions plus platform and interpreter identity. It
+records the full resolved package inventory and verifies that inventory on
+reuse. The immutable run plan accepts only the platform's canonical venv
+executable; on Unix its normal symlink must resolve to the exact interpreter
+that created the environment.
 
 ## Versioned profiles
 

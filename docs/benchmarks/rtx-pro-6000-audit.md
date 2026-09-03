@@ -98,6 +98,7 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-08-31-glm53-xgrammar-524k-qualification-evidence/README.md`;
 `docs/findings/2026-08-31-glm53-xgrammar-524k-qualification-evidence/publication-summary.md`;
 `docs/findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md`;
+`docs/findings/2026-09-02-glm53-sglang-sm120-swe-smoke.md`;
 `docs/findings/2026-09-02-glm53-sglang-sm120-qualification.md`;
 `docs/findings/2026-09-02-glm53-sglang-sm120-qualification-evidence/README.md`;
 `docs/findings/2026-09-02-glm53-sglang-sm120-qualification-evidence/promotion-publication-summary.md`;

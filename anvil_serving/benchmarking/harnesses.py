@@ -9,6 +9,7 @@ from pathlib import Path
 import platform
 import shutil
 import subprocess
+import sys
 import tempfile
 from typing import Any, Callable, Mapping, Sequence
 
@@ -18,9 +19,26 @@ from .profiles import validate_profile
 
 
 HARNESS_ASSETS_SCHEMA = "anvil-serving.benchmark-harness-assets/v1"
+SWE_PYTHON_ENVIRONMENT_SCHEMA = "anvil-serving.swe-python-environment/v1"
 MAX_HARNESS_OUTPUT_BYTES = 64 * 1024
 DEFAULT_HARNESS_COMMAND_TIMEOUT = 1800
 CommandRunner = Callable[[Sequence[str], str | None, float], Any]
+
+
+def resolve_container_binary() -> str | None:
+    """Resolve Docker for detached workers whose service PATH may be minimal."""
+    discovered = shutil.which("docker")
+    if discovered:
+        return discovered
+    if sys.platform == "darwin":
+        for candidate in (
+            "/usr/local/bin/docker",
+            "/opt/homebrew/bin/docker",
+            "/Applications/Docker.app/Contents/Resources/bin/docker",
+        ):
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+    return None
 
 
 def _default_runner(argv: Sequence[str], cwd: str | None, timeout: float):
@@ -112,6 +130,221 @@ def _existing_lock(path: str, expected: Mapping[str, Any]) -> bool:
     return value == dict(expected)
 
 
+def _venv_python(path: str) -> str:
+    relative = ("Scripts", "python.exe") if os.name == "nt" else ("bin", "python")
+    return os.path.join(path, *relative)
+
+
+def _normalized_freeze(value: str, *, cache_root: str) -> list[str]:
+    normalized_root = real_path(cache_root).replace("\\", "/").rstrip("/")
+    packages = []
+    for raw in value.splitlines():
+        line = raw.strip().replace("\\", "/")
+        if not line:
+            continue
+        packages.append(line.replace(normalized_root, "$CACHE_ROOT"))
+    return sorted(packages, key=str.casefold)
+
+
+def _swe_environment_identity(
+    assets: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    required = ("mini-swe-agent", "swe-bench")
+    if any(name not in assets for name in required):
+        raise BenchmarkJobError(
+            "missing_harness_asset", "SWE Python environment requires both source adapters"
+        )
+    return {
+        "schema": SWE_PYTHON_ENVIRONMENT_SCHEMA,
+        "python": {
+            "implementation": platform.python_implementation(),
+            "version": platform.python_version(),
+        },
+        "platform": platform.system().lower(),
+        "architecture": platform.machine().lower(),
+        "sources": {
+            name: {
+                "source": assets[name]["source"],
+                "revision": assets[name]["revision"],
+            }
+            for name in required
+        },
+    }
+
+
+def _reuse_swe_python_environment(
+    *,
+    target: str,
+    cache_root: str,
+    cache_key: str,
+    identity: Mapping[str, Any],
+    runner: CommandRunner,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    lock_path = Path(target) / ".anvil-swe-python-environment.json"
+    try:
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BenchmarkJobError(
+            "harness_environment_mismatch",
+            "cached SWE Python environment has no valid ownership record",
+        ) from exc
+    freeze = _run(
+        runner,
+        (_venv_python(target), "-m", "pip", "freeze", "--all"),
+        cwd=target,
+    )
+    logs = [freeze]
+    observed = _normalized_freeze(freeze["stdout"], cache_root=cache_root)
+    if (
+        freeze["returncode"] != 0
+        or lock.get("identity") != dict(identity)
+        or lock.get("resolved_packages") != observed
+    ):
+        raise BenchmarkJobError(
+            "harness_environment_mismatch",
+            "cached SWE Python environment no longer matches its recorded inventory",
+        )
+    return {
+        **identity,
+        "cache_key": cache_key,
+        "executable": os.path.relpath(_venv_python(target), target).replace("\\", "/"),
+        "resolved_packages": observed,
+        "resolved_packages_sha256": hashlib.sha256(
+            canonical_json_bytes(observed)
+        ).hexdigest(),
+        "reused": True,
+    }, logs
+
+
+def _prepare_swe_python_environment(
+    *,
+    assets: Mapping[str, Mapping[str, Any]],
+    cache_root: str,
+    offline: bool,
+    max_download_bytes: int,
+    runner: CommandRunner,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Install pinned SWE sources into an isolated, inventory-checked venv."""
+    identity = _swe_environment_identity(assets)
+    environment_id = hashlib.sha256(canonical_json_bytes(identity)).hexdigest()
+    target = _cache_path(cache_root, "swe-python-environments", environment_id)
+    cache_key = f"swe-python-environments/{environment_id}"
+    logs: list[dict[str, Any]] = []
+
+    if os.path.isdir(target):
+        return _reuse_swe_python_environment(
+            target=target,
+            cache_root=cache_root,
+            cache_key=cache_key,
+            identity=identity,
+            runner=runner,
+        )
+
+    if offline:
+        raise BenchmarkJobError(
+            "harness_assets_offline",
+            "isolated SWE Python environment is absent from the offline cache",
+        )
+
+    parent = Path(target).parent
+    parent.mkdir(parents=True, exist_ok=True)
+    staging = tempfile.mkdtemp(prefix=".swe-python-", dir=str(parent))
+    try:
+        create = _run(runner, (sys.executable, "-m", "venv", staging))
+        logs.append(create)
+        if create["returncode"] != 0:
+            raise BenchmarkJobError(
+                "harness_environment_failure",
+                "isolated SWE Python environment could not be created",
+                {"step": create},
+            )
+        python = _venv_python(staging)
+        source_paths = [
+            real_path(os.path.join(cache_root, assets[name]["cache_key"]))
+            for name in ("mini-swe-agent", "swe-bench")
+        ]
+        if any(not path_is_within(path, cache_root) for path in source_paths):
+            raise BenchmarkJobError(
+                "unsafe_cache_path", "SWE source path escaped the harness cache"
+            )
+        install = _run(
+            runner,
+            (
+                python,
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "--no-input",
+                *source_paths,
+            ),
+            cwd=staging,
+        )
+        logs.append(install)
+        if install["returncode"] != 0:
+            raise BenchmarkJobError(
+                "harness_environment_failure",
+                "pinned SWE harness dependencies could not be installed",
+                {"step": install},
+            )
+        freeze = _run(
+            runner,
+            (python, "-m", "pip", "freeze", "--all"),
+            cwd=staging,
+        )
+        logs.append(freeze)
+        if freeze["returncode"] != 0:
+            raise BenchmarkJobError(
+                "harness_environment_failure",
+                "installed SWE harness inventory could not be recorded",
+                {"step": freeze},
+            )
+        resolved = _normalized_freeze(freeze["stdout"], cache_root=cache_root)
+        if not resolved:
+            raise BenchmarkJobError(
+                "harness_environment_failure", "installed SWE harness inventory is empty"
+            )
+        cache_bytes = _directory_bytes(staging)
+        if cache_bytes > max_download_bytes:
+            raise BenchmarkJobError(
+                "harness_download_too_large",
+                "isolated SWE Python environment exceeded its download bound",
+                {"cache_bytes": cache_bytes, "max_download_bytes": max_download_bytes},
+            )
+        atomic_write_json(
+            os.path.join(staging, ".anvil-swe-python-environment.json"),
+            {"identity": identity, "resolved_packages": resolved},
+        )
+        try:
+            os.replace(staging, target)
+            staging = ""
+        except OSError:
+            if not os.path.isdir(target):
+                raise
+            winner, winner_logs = _reuse_swe_python_environment(
+                target=target,
+                cache_root=cache_root,
+                cache_key=cache_key,
+                identity=identity,
+                runner=runner,
+            )
+            logs.extend(winner_logs)
+            return winner, logs
+        return {
+            **identity,
+            "cache_key": cache_key,
+            "executable": os.path.relpath(_venv_python(target), target).replace("\\", "/"),
+            "resolved_packages": resolved,
+            "resolved_packages_sha256": hashlib.sha256(
+                canonical_json_bytes(resolved)
+            ).hexdigest(),
+            "reused": False,
+        }, logs
+    finally:
+        if staging and path_is_within(real_path(staging), str(parent.resolve())):
+            shutil.rmtree(staging, ignore_errors=True)
+
+
 def _prepare_repository(
     *,
     name: str,
@@ -200,11 +433,12 @@ def _prepare_image(
     *,
     name: str,
     adapter: Mapping[str, Any],
+    container_binary: str,
     offline: bool,
     runner: CommandRunner,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     image = adapter["image"]
-    inspect = _run(runner, ("docker", "image", "inspect", image))
+    inspect = _run(runner, (container_binary, "image", "inspect", image))
     logs = [inspect]
     reused = inspect["returncode"] == 0
     if not reused:
@@ -212,7 +446,7 @@ def _prepare_image(
             raise BenchmarkJobError(
                 "harness_assets_offline", f"digest-pinned image {name!r} is absent offline"
             )
-        pull = _run(runner, ("docker", "pull", image))
+        pull = _run(runner, (container_binary, "pull", image))
         logs.append(pull)
         if pull["returncode"] != 0:
             raise BenchmarkJobError(
@@ -220,7 +454,7 @@ def _prepare_image(
                 f"digest-pinned image {name!r} could not be prepared",
                 {"step": pull},
             )
-        verify = _run(runner, ("docker", "image", "inspect", image))
+        verify = _run(runner, (container_binary, "image", "inspect", image))
         logs.append(verify)
         if verify["returncode"] != 0:
             raise BenchmarkJobError(
@@ -267,10 +501,30 @@ def prepare_harness_assets(
                 runner=runner,
             )
         else:
+            container_binary = resolve_container_binary()
+            if not container_binary:
+                raise BenchmarkJobError(
+                    "container_capability_absent",
+                    "Docker is required to prepare the digest-pinned harness image",
+                )
             asset, logs = _prepare_image(
-                name=name, adapter=adapter, offline=offline, runner=runner
+                name=name,
+                adapter=adapter,
+                container_binary=container_binary,
+                offline=offline,
+                runner=runner,
             )
         assets[name] = asset
+        command_logs.extend(logs)
+    python_environment = None
+    if suite == "swe":
+        python_environment, logs = _prepare_swe_python_environment(
+            assets=assets,
+            cache_root=cache,
+            offline=offline,
+            max_download_bytes=max_download_bytes,
+            runner=runner,
+        )
         command_logs.extend(logs)
     manifest = {
         "schema": HARNESS_ASSETS_SCHEMA,
@@ -284,10 +538,17 @@ def prepare_harness_assets(
         "architecture": platform.machine().lower(),
         "offline": offline,
         "assets": assets,
+        "python_environment": python_environment,
         "command_logs": command_logs,
     }
     manifest["cache_identity"] = hashlib.sha256(
-        canonical_json_bytes({"profile": manifest["profile_sha256"], "assets": assets})
+        canonical_json_bytes(
+            {
+                "profile": manifest["profile_sha256"],
+                "assets": assets,
+                "python_environment": python_environment,
+            }
+        )
     ).hexdigest()
     atomic_write_json(os.path.join(run_path, "assets.json"), manifest)
     return manifest

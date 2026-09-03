@@ -17,8 +17,9 @@
       Desktop, and WSL2.
     - **Evidence:** complete thinking-off/on, tool, Responses, capacity,
       coding 15/15, media 12/12, endurance 60/60, managed/routed promotion,
-      and real Pi/OpenClaw/Hermes gates; 304,491 actual prompt tokens and
-      112.07 tok/s at 4K.
+      real Pi/OpenClaw/Hermes gates, and a fixed SWE-bench
+      Verified smoke resolved 1/1; 304,491 actual prompt tokens and 112.07 tok/s
+      at 4K.
     - **Decision:** record the 393K/C1 SGLang profile as `current` in the
       published comparison after the human-approved model-only reserve waiver;
       retain the corrected 524K EXL3/DFlash2 K5 profile as immediate rollback.
@@ -70,6 +71,18 @@ managed promotion passed direct, routed, and real Pi/OpenClaw/Hermes gates.
 The exact 524K incumbent remains the immediate rollback. The 245,760/C1 lane
 is a conservative verified fallback; the 499K lanes remain rejected or
 unverified.
+
+#### 2026-09-02 — isolated-worker SWE-bench smoke
+
+An isolated macOS arm64 worker ran the fixed `django__django-11099` smoke
+through the declared routed endpoint with thinking enabled. Mini-SWE-agent made 11 routed model
+requests, submitted a patch, and the pinned official SWE-bench grader resolved
+the instance. The run attempted, graded, and resolved 1/1 in 63.495 seconds of
+worker time. This adds bounded repository-agent evidence but is not a
+representative full-suite score. The campaign also fixed the managed harness's
+isolated Python environment, detached Docker discovery, ambient global config,
+venv validation, and missing-trajectory classification; see the
+[SWE smoke finding](../../findings/2026-09-02-glm53-sglang-sm120-swe-smoke.md).
 
 ## Immutable identity
 
@@ -252,6 +265,7 @@ The 524K EXL3/DFlash2 profile is the immediate same-model rollback, and the
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-09-02 | Isolated-worker SWE-bench Verified smoke and harness fix-forward | Fixed `django__django-11099` attempted 1/1, officially graded 1/1, and resolved 1/1 through 11 routed requests; one-instance smoke only; [finding and sanitized evidence](../../findings/2026-09-02-glm53-sglang-sm120-swe-smoke.md) |
 | 2026-09-02 | Human-approved 393K/C1 reserve reclassification, managed promotion fix-forward, routed gates, and real-client acceptance | Published `current` text/tools/image/OCR profile; 304,491 actual prompt tokens, 112.07/96.17/102.42/99.79 tok/s at 4K/120K/262K/380K targets, direct and routed gates, Pi/OpenClaw/Hermes pass, 2,543 MiB/card after client work, exact 524K rollback retained; [promotion finding](../../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md) |
 | 2026-09-02 | Pinned ormandj SGLang SM120 translation, WSL2 fix-forward, matched adaptive/no-spec A/B, 240K full qualification, larger-envelope feasibility, endurance, and exact incumbent restoration | 245,760/c1 adaptive MTP selected as a verified challenger with no promotion; 108.57/93.35/95.00 tok/s decode at 4K/120K/230K, quality 15/15, media 12/12, endurance 60/60, and 3,487 MiB/card post-workload reserve; [finding and raw artifacts](../../findings/2026-09-02-glm53-sglang-sm120-qualification.md) |
 | 2026-08-31 | xgrammar fix-forward image, matched 524K no-spec/DFlash2 A/B, C2 250K-class gate, rollback drill, router, and real-client forward restore | corrected DFlash2 K5 selected at 524K; 83.08 tok/s at 4K and pooled 69.99 at 240K; C2 2/2; full [finding and raw artifacts](../../findings/2026-08-31-glm53-xgrammar-524k-qualification.md) |
