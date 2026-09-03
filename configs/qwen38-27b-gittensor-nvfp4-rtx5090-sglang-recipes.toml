@@ -1,0 +1,158 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090-SGLang-NoSpec-262K"
+status = "candidate"
+source = "2026-09-03 publisher-advertised RTX 5090 SGLang full-native-context no-speculation profile"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090"
+revision = "b8ca3826548c9a7735642feb05c3c473f1fede1f"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "The campaign's process-free idle baseline reported 0 MiB used and 32,187 MiB free. The operator waived the separate 3 GiB policy reserve for this dedicated-GPU campaign; workload stability remains a hard gate."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang:v0.5.18@sha256:bde16a8447b19e89056b9eea06c72be6c02801dc89d528c9ea90c53368fd74bf"
+entrypoint = ["sglang", "serve"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--gittensor-model-hub--Qwen3.8-27B-NVFP4-RTX5090/snapshots/b8ca3826548c9a7735642feb05c3c473f1fede1f"
+quantization = "ModelOpt NVFP4 target including NVFP4 lm_head, MTP head removed, FP8 E4M3 KV"
+context_tokens = 262144
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-gittensor-nvfp4-nospec-262k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-gittensor-sglang-0518:/root/.cache/sglang"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+  "SGLANG_VIT_ENABLE_CUDA_GRAPH=0",
+  "SGLANG_MM_BUFFER_SIZE_MB=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-gittensor-nvfp4-nospec-262k",
+  "--trust-remote-code",
+  "--tp-size 1",
+  "--context-length 262144",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--mamba-radix-cache-strategy extra_buffer_lazy",
+  "--mamba-ssm-dtype bfloat16",
+  "--mem-fraction-static 0.90",
+  "--max-running-requests 2",
+  "--max-mamba-cache-size 12",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Publisher-advertised full-native-context SGLang control at 262,144 tokens. The publisher separately reports capacity for a 320,960-token KV pool, but the checkpoint declares 262,144 native context and SGLang correctly requires an explicit unsafe override above it. This recipe preserves the native model contract and records spare KV separately. No route or promotion authority."
+
+[recipe.fit]
+suited = ["single-gpu", "long-context", "matched-control", "tool-use"]
+not_suited = ["automatic-promotion", "native-mtp"]
+rationale = "Small target checkpoint with the upstream MTP head removed; intended to maximize usable target KV before the matched DSpark comparison."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://github.com/sgl-project/sglang/tree/v0.5.18",
+]
+community = [
+  "https://huggingface.co/gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090/tree/b8ca3826548c9a7735642feb05c3c473f1fede1f",
+]
+
+[[recipe]]
+model = "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090-SGLang-DSpark-165169"
+status = "rejected"
+source = "2026-09-03 publisher-advertised RTX 5090 SGLang DSpark maximum-context profile"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090"
+revision = "b8ca3826548c9a7735642feb05c3c473f1fede1f"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "The campaign's process-free idle baseline reported 0 MiB used and 32,187 MiB free. The operator waived the separate 3 GiB policy reserve for this dedicated-GPU campaign; workload stability remains a hard gate."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang:v0.5.18@sha256:bde16a8447b19e89056b9eea06c72be6c02801dc89d528c9ea90c53368fd74bf"
+entrypoint = ["sglang", "serve"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--gittensor-model-hub--Qwen3.8-27B-NVFP4-RTX5090/snapshots/b8ca3826548c9a7735642feb05c3c473f1fede1f"
+quantization = "ModelOpt NVFP4 target plus external ModelOpt NVFP4 DSpark v2 drafter and FP8 E4M3 KV"
+context_tokens = 165169
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-gittensor-nvfp4-dspark-165169"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-gittensor-sglang-0518:/root/.cache/sglang"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+  "SGLANG_VIT_ENABLE_CUDA_GRAPH=0",
+  "SGLANG_MM_BUFFER_SIZE_MB=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-gittensor-nvfp4-dspark-165169",
+  "--trust-remote-code",
+  "--tp-size 1",
+  "--context-length 165169",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--mamba-radix-cache-strategy extra_buffer_lazy",
+  "--mamba-ssm-dtype bfloat16",
+  "--mem-fraction-static 0.90",
+  "--max-running-requests 2",
+  "--max-mamba-cache-size 12",
+  "--speculative-algorithm DSPARK",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--gittensor-model-hub--Qwen3.8-27B-DSpark-NVFP4/snapshots/eba1ac5a66c74902eaa95a4000a7c5eda96d8e95",
+  "--speculative-dspark-block-size 7",
+  "--speculative-draft-model-quantization modelopt_fp4",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Rejected by the 2026-09-03 local RTX 5090 load gate. SGLang v0.5.18 loaded the exact target and draft revisions, allocated target and draft KV, and then deterministically failed during DSpark draft CUDA-graph capture with an incompatible 5120-versus-2560 hidden-width matrix multiplication. This is a target/drafter/runtime compatibility failure, not a memory-capacity failure. No route or promotion authority."
+
+[recipe.fit]
+suited = ["single-gpu-research-lead"]
+not_suited = ["current-sglang-v0.5.18-runtime", "automatic-promotion", "full-native-context-with-speculation"]
+rationale = "The publisher reports 161.7 tok/s through SGLang's OpenAI server, but the current pinned target, draft, and SGLang v0.5.18 combination failed the local load gate with a hidden-width shape mismatch before readiness."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://github.com/sgl-project/sglang/tree/v0.5.18",
+]
+community = [
+  "https://huggingface.co/gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090/tree/b8ca3826548c9a7735642feb05c3c473f1fede1f",
+  "https://huggingface.co/gittensor-model-hub/Qwen3.8-27B-DSpark-NVFP4/tree/eba1ac5a66c74902eaa95a4000a7c5eda96d8e95",
+]

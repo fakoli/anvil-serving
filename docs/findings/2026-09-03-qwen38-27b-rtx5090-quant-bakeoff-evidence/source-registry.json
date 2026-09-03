@@ -1,0 +1,137 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-03-qwen38-27b-rtx5090-quant-bakeoff",
+  "observed_at": "2026-09-03T18:37:23Z",
+  "sources": [
+    {
+      "id": "qwen-upstream",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "official-model-card",
+      "hardware_runtime_relevance": "Base architecture, context, and MTP identity; not an RTX 5090 result.",
+      "decision_impact": "Defines the upstream reference and prevents community quants from being mistaken for official releases."
+    },
+    {
+      "id": "unsloth-gguf",
+      "url": "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "publisher-model-card",
+      "hardware_runtime_relevance": "GGUF and native-MTP recipe prior for the incumbent RTX 5090 lane.",
+      "decision_impact": "Retained as the local baseline and restoration target."
+    },
+    {
+      "id": "quasar-nvfp4",
+      "url": "https://huggingface.co/QUASAR-QAT/Qwen3.8-27B-QUASAR-NVFP4",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "publisher-model-card",
+      "hardware_runtime_relevance": "Single-GPU Blackwell quant recipe prior; local RTX 5090 behavior remains unproven.",
+      "decision_impact": "Included as an all-linear NVFP4 quality challenger."
+    },
+    {
+      "id": "redhat-nvfp4",
+      "url": "https://huggingface.co/RedHatAI/Qwen3.8-27B-NVFP4",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "publisher-model-card",
+      "hardware_runtime_relevance": "ModelOpt NVFP4 artifact prior; the local custom-vLLM path requires direct evidence.",
+      "decision_impact": "Included as a higher-fidelity vLLM challenger."
+    },
+    {
+      "id": "gittensor-target",
+      "url": "https://huggingface.co/gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "publisher-model-card",
+      "hardware_runtime_relevance": "Explicit RTX 5090 target with SGLang and SparkInfer priors.",
+      "decision_impact": "Included as the smallest target checkpoint and DSpark candidate."
+    },
+    {
+      "id": "gittensor-dspark",
+      "url": "https://huggingface.co/gittensor-model-hub/Qwen3.8-27B-DSpark-NVFP4",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "publisher-model-card",
+      "hardware_runtime_relevance": "External speculative drafter paired with the Gittensor target.",
+      "decision_impact": "Defines the matched DSpark speculative arm."
+    },
+    {
+      "id": "cometkim-ninfer",
+      "url": "https://huggingface.co/cometkim/Qwen3.8-27B-nvfp4full-NInfer",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "community-model-card",
+      "hardware_runtime_relevance": "NInfer-format RTX 5090 recipe prior with community quality and speed claims.",
+      "decision_impact": "Included to test whether the fuller NVFP4 conversion beats the qualified NInfer control."
+    },
+    {
+      "id": "telperion-autoround",
+      "url": "https://huggingface.co/TelperionAI/Qwen3.8-27B-NVFP4-AWQ-AutoRound-allfp4",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "publisher-model-card",
+      "hardware_runtime_relevance": "AutoRound mixed-format quality prior measured upstream on larger hardware.",
+      "decision_impact": "Included as a quality-oriented challenger; single-5090 capacity is unresolved."
+    },
+    {
+      "id": "cdiamond-gguf",
+      "url": "https://huggingface.co/cdiamond/Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "community-model-card",
+      "hardware_runtime_relevance": "24 GB Blackwell fill prior and embedded-MTP GGUF recipe.",
+      "decision_impact": "Included as the low-residency llama.cpp speed challenger."
+    },
+    {
+      "id": "unsloth-dynamic-v3-nvfp4",
+      "url": "https://huggingface.co/unsloth/Qwen3.8-27B-NVFP4/tree/57926baca9a82b4d6906b43f2750d55315f5b10f",
+      "published_or_observed": "updated 2026-08-29; observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "publisher-model-card-and-immutable-files",
+      "hardware_runtime_relevance": "Current Unsloth Dynamic V3.0 preview NVFP4 target with separate MTP head; model card declares vLLM support but no RTX 5090 context point.",
+      "decision_impact": "Triggered a final managed 64K no-spec/MTP3 pair; MTP3 became the strongest clean 64K speculative arm but did not win TTFT or full-context capacity."
+    },
+    {
+      "id": "vllm-0272-full-model-equivalence-prior",
+      "url": "https://huggingface.co/dbrasdasilva/Qwen3.8-27B-Text-NVFP4-MTP",
+      "published_or_observed": "observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "community-model-card",
+      "hardware_runtime_relevance": "Reports that stripping vision does not change runtime residency and that vLLM 0.27.2 fixes a long-context MTP issue.",
+      "decision_impact": "Kept the local stock-vLLM 0.27.1 result bounded at 64K and prevents transferring newer-runtime context claims."
+    },
+    {
+      "id": "community-vllm-main-recipe",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B/discussions/132",
+      "published_or_observed": "updated 2026-08; observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "community-discussion",
+      "hardware_runtime_relevance": "RTX 5090 vLLM-main and DFlash recipe lead with untransferred custom patches and checkpoints.",
+      "decision_impact": "Retained as a future recipe lead only; not mixed into the pinned-runtime comparison."
+    },
+    {
+      "id": "reddit-nvfp4-gguf-mtp-lead",
+      "url": "https://www.reddit.com/r/LocalLLM/comments/1vpfjzr/qwen3827b_nvfp4_gguf_mtp_on_a_single_rtx_5090_i/",
+      "published_or_observed": "published 2026-08; observed 2026-09-03",
+      "observed_at": "2026-09-03",
+      "age_class": "current",
+      "evidence_type": "community-forum-prior",
+      "hardware_runtime_relevance": "Single-RTX-5090 NVFP4 GGUF/MTP speed and long-document lead.",
+      "decision_impact": "Used only to prioritize local GGUF/MTP measurement; no posted number was transferred."
+    }
+  ]
+}

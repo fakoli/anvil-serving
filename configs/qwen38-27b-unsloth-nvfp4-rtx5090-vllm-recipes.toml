@@ -1,0 +1,150 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "unsloth/Qwen3.8-27B-NVFP4-vLLM-NoSpec-64K"
+status = "candidate"
+source = "2026-08-29 Unsloth Dynamic V3.0 preview NVFP4 release, bounded RTX 5090 control"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "unsloth/Qwen3.8-27B-NVFP4"
+revision = "57926baca9a82b4d6906b43f2750d55315f5b10f"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "The publisher declares native 262,144 context but no 32 GB operating point. The 23.4 GB target plus MTP repository is first qualified at the same bounded 65,536-token FP8-KV profile as other large safetensors challengers."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/57926baca9a82b4d6906b43f2750d55315f5b10f"
+quantization = "Unsloth Dynamic V3.0 preview compressed-tensors NVFP4 target with FP8 lm_head, separate BF16 MTP head, FP8 KV"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-unsloth-nvfp4-nospec-64k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-unsloth-nvfp4-vllm-0271:/root/.cache/vllm"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--served-model-name qwen38-27b-unsloth-nvfp4-nospec-64k",
+  "--trust-remote-code",
+  "--quantization compressed-tensors",
+  "--max-model-len 65536",
+  "--max-num-seqs 2",
+  "--gpu-memory-utilization 0.90",
+  "--kv-cache-dtype fp8",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Matched target-only control for the new Unsloth NVFP4 artifact. The model card says vLLM is supported and SGLang requires main because lm_head is FP8. Stock vLLM 0.27.1 is used here to keep the local comparison digest-pinned; results do not transfer to newer main/nightly kernels."
+
+[recipe.fit]
+suited = ["single-gpu-intake", "matched-control", "64k-context", "developer-role"]
+not_suited = ["automatic-promotion", "full-native-context", "vllm-main-equivalence"]
+rationale = "Tests the newly published Dynamic V3.0 target independently of its separate MTP head on the current pinned runtime."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://huggingface.co/unsloth/Qwen3.8-27B-NVFP4/tree/57926baca9a82b4d6906b43f2750d55315f5b10f",
+  "https://docs.vllm.ai/en/v0.27.1/",
+]
+community = [
+  "https://huggingface.co/dbrasdasilva/Qwen3.8-27B-Text-NVFP4-MTP",
+  "https://huggingface.co/Qwen/Qwen3.8-27B/discussions/132",
+]
+
+[[recipe]]
+model = "unsloth/Qwen3.8-27B-NVFP4-vLLM-MTP3-64K"
+status = "candidate"
+source = "2026-08-29 Unsloth Dynamic V3.0 preview NVFP4 release with publisher-shipped MTP head"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "unsloth/Qwen3.8-27B-NVFP4"
+revision = "57926baca9a82b4d6906b43f2750d55315f5b10f"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "The separate 849 MB MTP artifact and FP8 KV are tested at 65,536 tokens so the exact publisher files can be compared without transferring a community patched-runtime context claim."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/57926baca9a82b4d6906b43f2750d55315f5b10f"
+quantization = "Unsloth Dynamic V3.0 preview compressed-tensors NVFP4 target with FP8 lm_head, separate BF16 MTP head, FP8 KV"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-unsloth-nvfp4-mtp3-64k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-unsloth-nvfp4-vllm-0271:/root/.cache/vllm"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--served-model-name qwen38-27b-unsloth-nvfp4-mtp3-64k",
+  "--trust-remote-code",
+  "--quantization compressed-tensors",
+  "--max-model-len 65536",
+  "--max-num-seqs 2",
+  "--gpu-memory-utilization 0.90",
+  "--kv-cache-dtype fp8",
+  "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":3}'",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Publisher-shipped MTP3 arm, otherwise matched to the target-only control. Community evidence says vLLM 0.27.2 or newer repairs a long-context MTP crash; this pinned 0.27.1 intake must fail closed if the exact arm is incompatible."
+
+[recipe.fit]
+suited = ["single-gpu-intake", "speculative-decoding", "64k-context", "developer-role"]
+not_suited = ["automatic-promotion", "full-native-context", "vllm-main-equivalence"]
+rationale = "Measures whether the newly published official Unsloth MTP files improve the target on the same local runtime and bounded context."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://huggingface.co/unsloth/Qwen3.8-27B-NVFP4/tree/57926baca9a82b4d6906b43f2750d55315f5b10f",
+  "https://docs.vllm.ai/en/v0.27.1/",
+]
+community = [
+  "https://huggingface.co/dbrasdasilva/Qwen3.8-27B-Text-NVFP4-MTP",
+  "https://huggingface.co/Qwen/Qwen3.8-27B/discussions/132",
+]

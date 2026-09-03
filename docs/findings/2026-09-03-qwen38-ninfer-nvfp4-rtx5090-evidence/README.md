@@ -65,7 +65,7 @@ exact incumbent was restored and passed a fresh smoke check.
 
 - [Dated finding](../2026-09-03-qwen38-ninfer-nvfp4-rtx5090.md)
 - [Feasibility record](../2026-09-03-qwen38-ninfer-nvfp4-rtx5090-feasibility.md)
-- [Managed recipe](../../../configs/qwen38-27b-ninfer-nvfp4-rtx5090-252k-recipes.toml)
+- Managed recipe: `configs/qwen38-27b-ninfer-nvfp4-rtx5090-252k-recipes.toml`
 
 The intake source-builds the exact NInfer revision on a digest-pinned CUDA
 base, but Ubuntu package resolution is not immutable. That limitation, the

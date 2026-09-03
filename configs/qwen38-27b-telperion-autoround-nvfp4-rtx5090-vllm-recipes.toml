@@ -1,0 +1,146 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "TelperionAI/Qwen3.8-27B-AutoRound-NVFP4-vLLM-NoSpec-64K"
+status = "candidate"
+source = "2026-09-03 same-day AutoRound NVFP4 release, bounded single-RTX-5090 control"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "TelperionAI/Qwen3.8-27B-NVFP4-AWQ-AutoRound-allfp4"
+revision = "4e81b8843cac2a7f053eda6dfd56d11be3dbafe7"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "Publisher benchmarked TP2 on two B300 GPUs, not this hardware. The 23.8 GB checkpoint is paper-feasible at a bounded 65,536-token FP8-KV profile on one RTX 5090; local load is decisive."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--TelperionAI--Qwen3.8-27B-NVFP4-AWQ-AutoRound-allfp4/snapshots/4e81b8843cac2a7f053eda6dfd56d11be3dbafe7"
+quantization = "AWQ plus AutoRound: all MLP NVFP4, attention and GDN FP8, BF16 lm_head and embeddings; calibrated FP8 KV scales"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-telperion-autoround-nospec-64k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-telperion-vllm-0271:/root/.cache/vllm"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--served-model-name qwen38-27b-telperion-autoround-nospec-64k",
+  "--trust-remote-code",
+  "--quantization compressed-tensors",
+  "--max-model-len 65536",
+  "--max-num-seqs 2",
+  "--gpu-memory-utilization 0.90",
+  "--kv-cache-dtype fp8",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Bounded target-only control. The publisher's fidelity comparison is valuable external evidence, but its TP2 B300 throughput is not transferred to this RTX 5090 result. The included KV scales came from a sibling build and carry a documented 0.88-1.36 tail range."
+
+[recipe.fit]
+suited = ["single-gpu-intake", "quality-challenger", "matched-control", "64k-context"]
+not_suited = ["automatic-promotion", "publisher-throughput-transfer", "full-native-context"]
+rationale = "Auditions the strongest same-size publisher fidelity result under a hardware-local load and timing gate."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://docs.vllm.ai/en/v0.27.1/",
+]
+community = [
+  "https://huggingface.co/TelperionAI/Qwen3.8-27B-NVFP4-AWQ-AutoRound-allfp4/tree/4e81b8843cac2a7f053eda6dfd56d11be3dbafe7",
+]
+
+[[recipe]]
+model = "TelperionAI/Qwen3.8-27B-AutoRound-NVFP4-vLLM-MTP2-64K"
+status = "candidate"
+source = "2026-09-03 same-day AutoRound NVFP4 release, publisher-advertised MTP2 arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "TelperionAI/Qwen3.8-27B-NVFP4-AWQ-AutoRound-allfp4"
+revision = "4e81b8843cac2a7f053eda6dfd56d11be3dbafe7"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "Publisher verified the BF16 MTP head loads and generates but did not publish acceptance. This bounded 65,536-token FP8-KV arm measures it locally."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--TelperionAI--Qwen3.8-27B-NVFP4-AWQ-AutoRound-allfp4/snapshots/4e81b8843cac2a7f053eda6dfd56d11be3dbafe7"
+quantization = "AWQ plus AutoRound mixed NVFP4/FP8 target, BF16 integrated MTP head, calibrated FP8 KV scales"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-telperion-autoround-mtp2-64k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-telperion-vllm-0271:/root/.cache/vllm"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--served-model-name qwen38-27b-telperion-autoround-mtp2-64k",
+  "--trust-remote-code",
+  "--quantization compressed-tensors",
+  "--max-model-len 65536",
+  "--max-num-seqs 2",
+  "--gpu-memory-utilization 0.90",
+  "--kv-cache-dtype fp8",
+  "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":2}'",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 8081",
+]
+note = "Publisher-advertised MTP2 mechanism, otherwise matched to the bounded target-only control. Acceptance and throughput remain unknown until this local arm passes."
+
+[recipe.fit]
+suited = ["single-gpu-intake", "quality-challenger", "speculative-decoding", "64k-context"]
+not_suited = ["automatic-promotion", "publisher-throughput-transfer", "full-native-context"]
+rationale = "Credits the full-precision MTP head only if it improves matched local throughput without a functional regression."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://docs.vllm.ai/en/v0.27.1/",
+]
+community = [
+  "https://huggingface.co/TelperionAI/Qwen3.8-27B-NVFP4-AWQ-AutoRound-allfp4/tree/4e81b8843cac2a7f053eda6dfd56d11be3dbafe7",
+]

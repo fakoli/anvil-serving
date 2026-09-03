@@ -1,0 +1,57 @@
+{
+  "schema": "anvil-serving.benchmark-workload-manifest/v1",
+  "campaign_id": "2026-09-03-qwen38-27b-rtx5090-quant-bakeoff",
+  "reasoning": "disabled for functional and performance comparison",
+  "sampling": {"temperature": 0, "seed": 12345},
+  "output_reserve_tokens": 8192,
+  "workloads": [
+    {
+      "id": "identity-smoke",
+      "type": "deterministic-text",
+      "prompt": "Reply with exactly READY-5090 and no other text.",
+      "assertion": "exact string READY-5090"
+    },
+    {
+      "id": "json-smoke",
+      "type": "deterministic-json",
+      "prompt": "Return only a JSON object with keys alpha=17 and beta as the string qwen38.",
+      "assertion": "valid JSON with exact key/value pairs"
+    },
+    {
+      "id": "tool-smoke",
+      "type": "deterministic-tool-call",
+      "assertion": "one valid call to the supplied add tool with integers 19 and 23"
+    },
+    {
+      "id": "timing-4k",
+      "type": "online-streaming-capacity",
+      "prompt_tokens": 4096,
+      "max_output_tokens": 256,
+      "warm_repetitions": 5,
+      "metrics": ["ttft_seconds", "decode_tokens_per_second", "e2e_seconds"]
+    },
+    {
+      "id": "decode-2k",
+      "type": "online-streaming-capacity",
+      "prompt_tokens": 512,
+      "max_output_tokens": 2048,
+      "warm_repetitions": 3,
+      "metrics": ["decode_tokens_per_second", "mean_inter_token_latency_seconds", "e2e_seconds"]
+    },
+    {
+      "id": "durable-context",
+      "type": "exact-needle-retrieval",
+      "selection_rule": "Place one deterministic alphanumeric needle at 10%, 50%, and 90% of the requested prompt and require all three exact values.",
+      "output_reserve_tokens": 8192
+    },
+    {
+      "id": "concurrency",
+      "type": "parallel-online-requests",
+      "prompt_tokens_per_request": 4096,
+      "max_output_tokens_per_request": 256,
+      "concurrency_points": [1, 2, 4],
+      "assertion": "all responses valid with no unexplained loss or server restart"
+    }
+  ],
+  "quality_boundary": "Deterministic gates are independent and cannot be offset by speed. Broader intelligence benchmarks run only for finalists that pass compatibility and capacity gates."
+}

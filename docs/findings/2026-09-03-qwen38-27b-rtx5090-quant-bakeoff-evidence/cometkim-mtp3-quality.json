@@ -1,0 +1,537 @@
+{
+  "context": {
+    "cap_tokens": 260864,
+    "max_model_len": 262144,
+    "targets": [
+      {
+        "attempted_context_tokens": 8192,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 8192,
+        "content_chunks": 28,
+        "decode_tok_s": 206.32138145960093,
+        "e2e_ms": 1169.1555000143126,
+        "effective_prefill_tok_s": 9489.235981929709,
+        "estimated_prompt_tokens": 8192,
+        "generation_ms": 392.5914000137709,
+        "mean_inter_token_latency_ms": 4.846807407577419,
+        "output_token_source": "usage",
+        "output_tokens": 82,
+        "prompt_tokens": 7369,
+        "reasoning_chunks": 0,
+        "status": "passed",
+        "target_tokens": 8192,
+        "time_to_first_output_ms": 776.5641000005417,
+        "ttft_ms": 776.565300009679,
+        "usage": {
+          "completion_tokens": 82,
+          "prompt_tokens": 7369,
+          "total_tokens": 7451
+        },
+        "visible_generation_ms": 392.5902000046335
+      },
+      {
+        "attempted_context_tokens": 32768,
+        "chars_per_token": 3.335,
+        "clamped_tokens": 32768,
+        "content_chunks": 17,
+        "decode_tok_s": 193.05090668665164,
+        "e2e_ms": 4406.432599993423,
+        "effective_prefill_tok_s": 8379.827543995585,
+        "estimated_prompt_tokens": 32767,
+        "generation_ms": 243.45910002011806,
+        "mean_inter_token_latency_ms": 5.179980851491874,
+        "output_token_source": "usage",
+        "output_tokens": 48,
+        "prompt_tokens": 34885,
+        "reasoning_chunks": 0,
+        "status": "passed",
+        "target_tokens": 32768,
+        "time_to_first_output_ms": 4162.973499973305,
+        "ttft_ms": 4162.978900014423,
+        "usage": {
+          "completion_tokens": 48,
+          "prompt_tokens": 34885,
+          "total_tokens": 34933
+        },
+        "visible_generation_ms": 243.4536999789998
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 0.67,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "missing required string argument: zip",
+      "failure_classes": [
+        "visible_answer_missing"
+      ],
+      "pass_rate": 0.0,
+      "suite": "tool"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:8081/v1",
+    "candidate_id": "cometkim-nvfp4full-mtp3",
+    "config_id": "ninfer-1455676-int8kv-262k",
+    "engine": "ninfer",
+    "gpu": "rtx-5090",
+    "model": "qwen38-27b-cometkim-nvfp4full-mtp3-262k",
+    "started_at": "2026-09-03T20:29:18Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_chars": 94,
+            "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 238.78810001770034,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 45,
+              "prompt_tokens": 51,
+              "total_tokens": 96
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_chars": 94,
+            "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 219.3200000328943,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 45,
+              "prompt_tokens": 51,
+              "total_tokens": 96
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_chars": 94,
+            "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 220.07610002765432,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 45,
+              "prompt_tokens": 51,
+              "total_tokens": 96
+            }
+          }
+        ],
+        "id": "unified_diff_timeout_edit",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 0.67,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "The LLM latency (1800 ms) is the primary bottleneck causing the total pipeline to exceed the 2500 ms budget, so the practical fix is to switch to a faster, smaller LLM model or implement response streaming to reduce time-to-first-token.",
+            "content_chars": 236,
+            "content_excerpt": "The LLM latency (1800 ms) is the primary bottleneck causing the total pipeline to exceed the 2500 ms budget, so the practical fix is to switch to a faster, smaller LLM model or implement response stre",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 286.4422000129707,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 57,
+              "prompt_tokens": 79,
+              "total_tokens": 136
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "The LLM latency (1800 ms) is the primary bottleneck causing the total pipeline to exceed the 2500 ms budget, so the practical fix is to switch to a faster, smaller LLM model or implement response streaming to reduce time-to-first-token.",
+            "content_chars": 236,
+            "content_excerpt": "The LLM latency (1800 ms) is the primary bottleneck causing the total pipeline to exceed the 2500 ms budget, so the practical fix is to switch to a faster, smaller LLM model or implement response stre",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 262.61919998796657,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 57,
+              "prompt_tokens": 79,
+              "total_tokens": 136
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "The LLM latency (1800 ms) is the primary bottleneck causing the total pipeline to exceed the 2500 ms budget, so the practical fix is to switch to a faster, smaller LLM model or implement response streaming to reduce time-to-first-token.",
+            "content_chars": 236,
+            "content_excerpt": "The LLM latency (1800 ms) is the primary bottleneck causing the total pipeline to exceed the 2500 ms budget, so the practical fix is to switch to a faster, smaller LLM model or implement response stre",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 262.67640001606196,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 57,
+              "prompt_tokens": 79,
+              "total_tokens": 136
+            }
+          }
+        ],
+        "id": "parallel_timeout_triage",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 0.67,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260903T202918Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 1169.1555000143126,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "unsupported",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 776.565300009679,
+    "usable_context_tokens": 32768,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      8192,
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "intelligence",
+      "tool",
+      "context"
+    ]
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "configs/qwen38-27b-cometkim-ninfer-nvfp4full-rtx5090-recipes.toml",
+    "serve_command": null
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "unsupported",
+    "control_requested": null,
+    "control_status": "unsupported",
+    "mode": "unsupported",
+    "reasoning_effort": null,
+    "unsupported": true
+  },
+  "timing": {
+    "chat": {
+      "content_chunks": 45,
+      "decode_tok_s_p50": 193.05090668665164,
+      "decode_tok_s_p95": 206.32138145960093,
+      "e2e_p50_ms": 1169.1555000143126,
+      "e2e_p95_ms": 4406.432599993423,
+      "effective_prefill_tok_s_p50": 8379.827543995585,
+      "effective_prefill_tok_s_p95": 9489.235981929709,
+      "generation_p50_ms": 243.45910002011806,
+      "generation_p95_ms": 392.5914000137709,
+      "mean_inter_token_latency_ms_p50": 4.846807407577419,
+      "mean_inter_token_latency_ms_p95": 5.179980851491874,
+      "output_tokens": 130,
+      "prompt_token_samples": 2,
+      "prompt_tokens": 42254,
+      "prompt_tokens_p50": 7369.0,
+      "prompt_tokens_p95": 34885.0,
+      "reasoning_chunks": 0,
+      "time_to_first_output_p50_ms": 776.5641000005417,
+      "time_to_first_output_p95_ms": 4162.973499973305,
+      "ttft_p50_ms": 776.565300009679,
+      "ttft_p95_ms": 4162.978900014423,
+      "ttft_samples": 2
+    },
+    "wall_ms": 7552.153099968564
+  },
+  "tool": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "arguments": null,
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "error": "missing required string argument: zip",
+            "failure_class": "visible_answer_missing",
+            "finish_reason": "tool_calls",
+            "latency_ms": 188.5302000446245,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 292,
+              "total_tokens": 324
+            },
+            "valid_tool_call_count": 0,
+            "validation_errors": [
+              "missing required string argument: zip"
+            ]
+          },
+          {
+            "arguments": null,
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "error": "missing required string argument: zip",
+            "failure_class": "visible_answer_missing",
+            "finish_reason": "tool_calls",
+            "latency_ms": 148.2098000124097,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 292,
+              "total_tokens": 324
+            },
+            "valid_tool_call_count": 0,
+            "validation_errors": [
+              "missing required string argument: zip"
+            ]
+          },
+          {
+            "arguments": null,
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "error": "missing required string argument: zip",
+            "failure_class": "visible_answer_missing",
+            "finish_reason": "tool_calls",
+            "latency_ms": 147.96689996728674,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 292,
+              "total_tokens": 324
+            },
+            "valid_tool_call_count": 0,
+            "validation_errors": [
+              "missing required string argument: zip"
+            ]
+          }
+        ],
+        "error": "missing required string argument: zip",
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "name": "openai_tool_call_smoke",
+        "pass_count": 0,
+        "pass_rate": 0.0,
+        "required_pass_rate": 0.67,
+        "status": "failed"
+      }
+    ],
+    "status": "failed"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

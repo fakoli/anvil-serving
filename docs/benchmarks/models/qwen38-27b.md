@@ -12,25 +12,27 @@
     - **Selected or best-qualified configuration:** the former 96 GB service
       used official FP8 on SGLang, TP=1, 393,216 tokens, concurrency one,
       EAGLE MTP `3/1/4`, and CPU media transport. The preferred measured 32 GB
-      direct text/tools performance challenger is NInfer NVFP4 with integrated
-      MTP3 at 252,928 tokens. Unsloth GGUF Q4_0/MTP3 remains the broader-
-      capability 32 GB incumbent at 262,144 tokens.
+      direct TTFT challenger is Gittensor's RTX5090 target-only NVFP4 on
+      SGLang at 262,144 tokens. Unsloth GGUF Q4_0/MTP3 remains the broader-
+      capability 32 GB incumbent; NInfer MTP3 remains a retained direct decode
+      challenger.
     - **Measured hardware:** one- and two-card RTX PRO 6000 lanes and a
       separate single-RTX-5090 lane; results are not interchangeable across
       those topologies.
     - **Evidence:** functional, capacity, bounded quality, performance,
       multimodal, routed-client, and rejection evidence through 2026-09-03.
-      NInfer MTP3 measured 0.430-second median TTFT and 165.9 tok/s decode at
-      4K/C1, and passed a 201,746-token prompt with an 8,192-token completion
-      cap. GGUF retains deeper 253,822-token, image/OCR, agentic, endurance,
-      and routed-client evidence.
-    - **Decision:** retain NInfer MTP3 as the preferred direct text/tools
-      performance challenger and GGUF as the broader-capability incumbent;
-      both remain `no-promotion`.
-    - **Important limitation:** NInfer completed only 17/20 shared-prefix tool
-      requests, missed the ordinary 3 GiB reserve, and lacks routed/client,
-      multimodal, broad agentic/SWE, endurance, and promotion-grade baked-image
-      evidence. The measured hardware/engine lanes are not interchangeable.
+      Gittensor measured 50.9 ms warm median TTFT, 79.5 tok/s decode, and
+      passed a 244,002-token actual prompt. NInfer MTP3 retains 165.9 tok/s
+      decode evidence. GGUF retains 253,822-token, image/OCR, agentic,
+      endurance, and routed-client evidence.
+    - **Decision:** retain Gittensor target-only SGLang as the preferred direct
+      TTFT challenger and GGUF as the broader-capability incumbent; both remain
+      `no-promotion`.
+    - **Important limitation:** Gittensor's advertised DSpark pair failed on
+      incompatible matrix shapes and its FP8 KV path used default 1.0 scales.
+      It lacks routed/client, multimodal, broad agentic/SWE, endurance, and
+      promotion-grade evidence. The measured hardware/engine lanes are not
+      interchangeable.
     - **Review dates:** Retained evidence cutoff: 2026-09-03. Dossier-format
       review: 2026-09-03.
 
@@ -132,6 +134,30 @@ against the ordinary 3 GiB reserve, and the runtime intake still resolves
 Ubuntu packages without immutable package versions. The GGUF incumbent was
 restored; no route or client catalog changed.
 
+#### 2026-09-03 — RTX 5090 quant and speculation bakeoff
+
+A later same-day managed comparison loaded fresh Gittensor, cdiamond, QUASAR,
+CometKim, Red Hat, and Telperion recipes after measuring a process-free idle
+GPU baseline. Gittensor's target-only NVFP4/SGLang arm won the declared
+primary metric with 50.9 ms warm median TTFT, passed a 244,002-token actual
+prompt, completed C2, and passed repeated bounded coding, triage, tools, and
+8K/32K context checks. It supersedes NInfer only for the TTFT-first direct
+challenger role.
+
+The matching advertised DSpark arm failed CUDA-graph capture on incompatible
+target/draft matrix shapes, and the target-only FP8 KV path used default 1.0
+scales because calibrated scales were absent. CometKim MTP3 won decode at
+228.0 tok/s but failed strict tools 0/3. cdiamond MTP8 is the balanced fresh
+full-context fallback at 223.1 ms TTFT and 96.0 tok/s decode. The exact GGUF
+incumbent was restored; no promotion or route changed. See the
+[dedicated comparison](../qwen38-27b-rtx5090-quant-comparison.md).
+
+The final source refresh added Unsloth Dynamic V3.0 NVFP4 at exact revision
+`57926bac`. Its MTP3 arm passed tools 20/20, measured 388.7 ms TTFT and 137.7
+tok/s warm decode, retained 127.5 tok/s at a 53,706-token prompt, and left
+3,198 MiB free. It is the strongest clean 64K speculative arm in this matrix,
+but does not displace the Gittensor TTFT or cdiamond full-context roles.
+
 ## Immutable identity
 
 - Official BF16 revision:
@@ -172,6 +198,21 @@ restored; no route or client catalog changed.
   `Neroued/ninfer@e3aeaf8c0b6f83ae8f051780f0ad0d995d5a7bef`; digest-pinned
   CUDA 13.1.2 development base
   `sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca`.
+- RTX 5090 TTFT bakeoff winner:
+  `gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090@b8ca3826548c9a7735642feb05c3c473f1fede1f`;
+  SGLang 0.5.18 image digest
+  `sha256:bde16a8447b19e89056b9eea06c72be6c02801dc89d528c9ea90c53368fd74bf`.
+- Full-context balanced fallback:
+  `cdiamond/Qwen3.8-27B-iMatrix-NVFP4-MTP-GGUF@ac343e8f44caef0896f79d372ecc07ef7ab34ec8`.
+- Additional current bakeoff revisions: QUASAR
+  `d8e6fbfa3e3a78899b440222b827430045a05b44`, CometKim
+  `4f302e0c324771bbd48c419a8d0319e39334ba23`, Red Hat
+  `285eba88b22cc7664d2e120eca75ddb7c7dfd6b7`, and Telperion
+  `4e81b8843cac2a7f053eda6dfd56d11be3dbafe7`.
+- Unsloth Dynamic V3.0 NVFP4 revision:
+  `unsloth/Qwen3.8-27B-NVFP4@57926baca9a82b4d6906b43f2750d55315f5b10f`;
+  separate 849 MB MTP head; pinned vLLM 0.27.1 image digest
+  `sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2`.
 
 ## Tested hardware and topology
 
@@ -482,11 +523,18 @@ passed the same surface at 105,649 prompt tokens.
 - **RTX 5090 native-video challenger:** RadixArk NVFP4 remains
   `no-promotion`. Its 131,072-token window is a separate lane from the former
   393K service.
-- **RTX 5090 direct text/tools performance challenger:** NInfer NVFP4 MTP3 is
-  preferred on the measured short-latency/decode and 201,746-token direct
-  surface. It remains `no-promotion` with admission, ordinary reserve,
-  promotion-grade runtime, routed/client, broad agentic/SWE, multimodal, and
-  endurance gates open.
+- **RTX 5090 direct TTFT challenger:** Gittensor target-only NVFP4/SGLang is
+  preferred on the measured TTFT-first direct surface at 50.9 ms median and a
+  244,002-token actual prompt. It remains `no-promotion`; compatible
+  speculation, calibrated FP8 KV validation, routed/client, broad
+  agentic/SWE, multimodal, and endurance gates are open.
+- **RTX 5090 direct decode challenger:** NInfer NVFP4 MTP3 retains its
+  165.9 tok/s decode and 201,746-token direct evidence. It is no longer the
+  TTFT-first selection and retains its admission, reserve, and runtime-image
+  limitations.
+- **RTX 5090 clean 64K speculative challenger:** Unsloth Dynamic V3.0 MTP3
+  passed 20/20 tools and the 53,706-token prompt at 137.7/127.5 tok/s short/
+  long decode. It remains bounded to the tested 64K pinned-runtime profile.
 - **RTX 5090 broader-capability incumbent:** Unsloth GGUF Q4_0/MTP3 retains
   its deeper 253,822-token, tools 20/20, image/OCR, agentic, endurance, and
   routed-client evidence. The exact serve was restored after NInfer testing.
@@ -544,13 +592,15 @@ local result.
 
 #### Excluded or dormant artifacts
 
-Other NVFP4, GGUF, AutoRound, and custom `.ninfer` artifacts remain excluded
-from the active production queue. The exact current NInfer NVFP4 artifact is
-now a qualified direct text/tools performance challenger, not a production
-selection. Inferact NVFP4 remains a `no-promotion` control. RadixArk NVFP4 is a
-qualified RTX 5090 challenger with native-video evidence, while the official-
-FP8 SGLang arm remains the retained former 96 GB-card Qwen profile. Unsloth
-GGUF remains the broader-capability RTX 5090 incumbent.
+The current Gittensor, cdiamond, QUASAR, CometKim, Red Hat, and Telperion
+artifacts have now crossed the local startup/performance intake boundary, but
+none entered the active production queue. Gittensor target-only is the direct
+TTFT challenger; cdiamond MTP8 is the fresh balanced full-context fallback;
+CometKim MTP3 is decode-only research because strict tools failed. Inferact
+NVFP4 remains a `no-promotion` control. RadixArk NVFP4 is the qualified RTX
+5090 native-video challenger, while the official-FP8 SGLang arm remains the
+retained former 96 GB-card Qwen profile. Unsloth GGUF remains the broader-
+capability RTX 5090 incumbent.
 
 ## Failures and gotchas
 
@@ -658,6 +708,7 @@ GGUF remains the broader-capability RTX 5090 incumbent.
 
 ## Dated run history
 
+- [2026-09-03 RTX 5090 quant/speculation bakeoff](../../findings/2026-09-03-qwen38-27b-rtx5090-quant-bakeoff.md)
 - [2026-09-03 RTX 5090 NInfer NVFP4 no-spec/MTP3 qualification](../../findings/2026-09-03-qwen38-ninfer-nvfp4-rtx5090.md)
 - [2026-08-21 RTX 5090 recipe research and MTP3/ReplaySSM rejection](../../findings/2026-08-21-qwen38-27b-rtx5090-recipe-research.md)
 - [2026-08-21 RTX 5090 DFlash2 compatibility and capacity rejection](../../findings/2026-08-21-qwen38-27b-radixark-nvfp4-dflash2-rtx5090.md)

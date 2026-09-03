@@ -1,0 +1,17 @@
+{
+  "schema": "anvil-serving.speculative-runtime-metrics/v1",
+  "campaign_id": "2026-09-03-qwen38-27b-rtx5090-quant-bakeoff",
+  "candidate": "qwen38-27b-unsloth-nvfp4-mtp3-64k",
+  "runtime": "vllm-0.27.1",
+  "draft_tokens_per_step": 3,
+  "observed": {
+    "draft_sequences": 378,
+    "proposed_tokens": 1134,
+    "accepted_tokens": 944,
+    "acceptance_rate": 0.8325,
+    "accepted_by_position": [361, 315, 268],
+    "kv_cache_tokens": 91503,
+    "kv_full_window_concurrency": 1.3962
+  },
+  "source": "bounded vLLM metrics captured after preflight, matched timing, and long-context workloads"
+}

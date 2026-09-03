@@ -1,0 +1,29 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-03-qwen38-27b-rtx5090-quant-bakeoff",
+  "status": "restored",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "candidate": "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K",
+    "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "context_tokens": 262144,
+    "evidence": ["configuration.json#starting_state"]
+  },
+  "ending_state": {
+    "captured": true,
+    "candidate": "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K",
+    "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "context_tokens": 262144,
+    "managed_health": "healthy",
+    "evidence": ["restoration-preflight.json"]
+  },
+  "differences": [],
+  "post_run_checks": [
+    {"name": "thinking-disabled coding smoke", "status": "passed"},
+    {"name": "structured JSON", "status": "passed"},
+    {"name": "shared-prefix tools", "status": "20/20 passed"}
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}
