@@ -13,7 +13,7 @@ passing run never changes a serve or route without a separate human gate.
     the current reference results. It also maps each recipe field to a generic
     container runtime for readers who do not use Anvil Serving.
 
-**Last evidence review: 2026-09-02.**
+**Last evidence review: 2026-09-03.**
 
 ## Start with the numbers
 
@@ -107,6 +107,15 @@ managed direct/routed gates and real Pi/OpenClaw/Hermes acceptance passed;
 as rollback. See the
 [qualification](../findings/2026-09-02-glm53-sglang-sm120-qualification.md)
 and [promotion](../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md).
+
+A 2026-09-03 cross-run review clarifies that the old `maxseq16` setting is a
+scheduler ceiling, not proof of sixteen full-context requests. The current
+SGLang profile remains qualified at C1 with a 393,216-token shared pool. The
+corrected 524K rollback reports 2,493,817 KV tokens and separately proved C2
+at 206,630 prompt tokens/request; the historical BrandonMusic C16 artifacts
+used 4K prompts. The review records bounded C2/C4 planning math for a future
+current-profile experiment without promoting it to measured evidence. See the
+[concurrency and KV-capacity interpretation](../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
 
 On 2026-08-31, the exact GLM-5.3-Flash K3 target plus DFlash2 K5 draft moved to
 a digest-pinned xgrammar-corrected 524K profile after a matched no-speculation

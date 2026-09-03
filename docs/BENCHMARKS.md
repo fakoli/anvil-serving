@@ -35,7 +35,26 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-02**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-03**.
+
+## GLM-5.3-Flash concurrency and KV-capacity interpretation (2026-09-03)
+
+A cross-run review separates configured scheduler concurrency from reported or
+configured KV-token capacity and from measured long-context concurrency. The
+current SGLang profile remains configured and qualified at C1 with a 393,216-
+token shared pool. The immediate corrected 524K EXL3 K3 plus DFlash2 K5
+rollback reports 2,493,817 KV tokens, or 4.76 full configured windows, and
+completed C2 at 206,630 prompt tokens/request. The historical BrandonMusic
+fixed-K5 524K profile's C16 result used 4K prompts; its 565,898-token pool is
+only 1.08 full windows. C16 therefore describes short-request scheduling, not
+sixteen concurrent 524K conversations.
+
+The current profile remains the faster selected interactive lane at 112.07
+tok/s decode at 4K versus 83.08 for the immediate rollback. A future current-
+profile C2 gate can start at 180K prompt + 4,096 output per request inside the
+existing shared pool, but that is planning arithmetic rather than a measured
+result and requires scheduler/graph-state changes plus full requalification.
+See the [cross-run interpretation and artifact links](findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
 
 ## GLM-5.3-Flash SGLang SM120 qualification (2026-09-02)
 
