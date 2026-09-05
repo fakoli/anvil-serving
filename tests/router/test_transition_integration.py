@@ -5,6 +5,7 @@ import json
 import textwrap
 import threading
 import types
+from dataclasses import replace
 
 import pytest
 
@@ -12,6 +13,11 @@ import anvil_serving.router.serve as router_serve
 from anvil_serving.router.availability import AlwaysAvailable, AvailabilityResult
 from anvil_serving.router.config import ConfigError, ReplicaIdentity, ReplicaMember, RouterConfig, Tier
 from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
+from anvil_serving.router.replica_scheduler import (
+    PressureFreshness,
+    PressureSignalState,
+    ReplicaPressure,
+)
 from anvil_serving.router.serve import ReplicaRuntime, RoutingBackend
 
 
@@ -185,6 +191,306 @@ def _replica_config():
     return tier, RouterConfig(
         tiers=(tier,), model_routes={"replica.stream": tier.id}
     )
+
+
+class _ConcurrentReplicaWorkload:
+    def __init__(self, attempts):
+        self.attempts = attempts
+        self.condition = threading.Condition()
+        self.release = threading.Event()
+        self.all_decided = threading.Event()
+        self.entered = 0
+        self.rejected = 0
+        self.active = 0
+        self.maximum = 0
+        self.member_active = {"member-a": 0, "member-b": 0}
+        self.member_maximum = {"member-a": 0, "member-b": 0}
+
+    def _decided_locked(self):
+        if self.entered + self.rejected == self.attempts:
+            self.all_decided.set()
+
+    def enter(self, member_id):
+        with self.condition:
+            self.entered += 1
+            self.active += 1
+            self.member_active[member_id] += 1
+            self.maximum = max(self.maximum, self.active)
+            self.member_maximum[member_id] = max(
+                self.member_maximum[member_id], self.member_active[member_id]
+            )
+            self._decided_locked()
+
+    def reject(self):
+        with self.condition:
+            self.rejected += 1
+            self._decided_locked()
+
+    def leave(self, member_id):
+        with self.condition:
+            self.active -= 1
+            self.member_active[member_id] -= 1
+
+
+class _HeldReplicaMember:
+    def __init__(self, member_id, workload):
+        self.member_id = member_id
+        self.workload = workload
+        self.calls = 0
+
+    def generate(self, _request):
+        self.calls += 1
+        self.workload.enter(self.member_id)
+        try:
+            assert self.workload.release.wait(timeout=5)
+            yield self.member_id
+        finally:
+            self.workload.leave(self.member_id)
+
+
+class _CompletedUnknownPressure:
+    def __init__(self, member_ids):
+        self.member_ids = tuple(member_ids)
+
+    def snapshot(self, _tier_id):
+        return {member_id: ReplicaPressure() for member_id in self.member_ids}
+
+    def close(self):
+        return None
+
+
+class _MutableCompletedPressure:
+    def __init__(self, values):
+        self.values = values
+
+    def snapshot(self, _tier_id):
+        return dict(self.values)
+
+    def close(self):
+        return None
+
+
+def _fresh_pressure(value):
+    return ReplicaPressure(
+        PressureFreshness.FRESH,
+        value,
+        PressureSignalState.VALID,
+        PressureSignalState.MISSING,
+    )
+
+
+def _capacity_routing_for_ordering():
+    tier = replace(
+        _replica_tier(),
+        replica_strategy="capacity",
+        replicas=tuple(
+            replace(member, max_concurrency=2)
+            for member in _replica_tier().replicas
+        ),
+    )
+    members = {"member-a": _TextBackend("member-a"), "member-b": _TextBackend("member-b")}
+    routing = RoutingBackend(
+        RouterConfig(tiers=(tier,), model_routes={"replica.stream": tier.id}),
+        {tier.id: ReplicaRuntime(members)},
+        availability=_ReplicaReadiness(),
+        capacity_metrics=lambda _tier: pytest.fail("no metrics collection"),
+    )
+    routing._replica_pressure.close()
+    pressure = _MutableCompletedPressure({
+        "member-a": ReplicaPressure(), "member-b": ReplicaPressure(),
+    })
+    routing._replica_pressure = pressure
+    return tier, routing, pressure, members
+
+
+def test_capacity_scheduler_integrated_exact_ordering_and_freshness_expiry():
+    tier, routing, pressure, members = _capacity_routing_for_ordering()
+    ready = {
+        member.id: AvailabilityResult(True, "ready", "identity_passed")
+        for member in tier.replicas
+    }
+    seed = routing._admission.acquire_member(
+        tier.id,
+        ready,
+        {"member-a": _fresh_pressure(1_000_000), "member-b": _fresh_pressure(0)},
+    )
+    assert seed is not None and seed.member_id == "member-b"
+    try:
+        pressure.values = {"member-a": ReplicaPressure(), "member-b": _fresh_pressure(0)}
+        assert "".join(routing.generate(_request("replica.stream"))) == "member-a"
+        decision = routing._decision_log.last.replica_scheduler
+        assert decision.selected_member_id == "member-a"
+        assert [
+            (score.member_id, score.local_numerator, score.local_denominator,
+             score.upstream_unknown)
+            for score in decision.scores
+        ] == [
+            ("member-a", 0, 2, True),
+            ("member-b", 1, 2, False),
+        ]
+    finally:
+        seed.release()
+
+    # With equal local ratios, fresh evidence wins over unknown evidence.
+    assert "".join(routing.generate(_request("replica.stream"))) == "member-b"
+    assert routing._decision_log.last.replica_scheduler.selected_member_id == "member-b"
+
+    # With equal local and unknown pressure, the full lexical membership cursor rotates.
+    pressure.values = {"member-a": ReplicaPressure(), "member-b": ReplicaPressure()}
+    assert "".join(routing.generate(_request("replica.stream"))) == "member-a"
+    assert "".join(routing.generate(_request("replica.stream"))) == "member-b"
+    assert members["member-a"].calls == 2
+    assert members["member-b"].calls == 2
+    routing.close()
+
+    # A completed pressure owner may age a sample without collecting. Fresh
+    # pressure is decisive at five seconds; one microsecond later it is stale
+    # and the lexical cursor wins.
+    tier, routing, pressure, _members = _capacity_routing_for_ordering()
+    now = [5.0]
+
+    class ExpiringPressure:
+        def snapshot(self, _tier_id):
+            freshness = (
+                PressureFreshness.FRESH if now[0] <= 5.0 else PressureFreshness.STALE
+            )
+            if freshness is PressureFreshness.FRESH:
+                return {"member-a": _fresh_pressure(900_000), "member-b": _fresh_pressure(100_000)}
+            return {
+                "member-a": ReplicaPressure(freshness),
+                "member-b": ReplicaPressure(freshness),
+            }
+
+        def close(self):
+            return None
+
+    routing._replica_pressure = ExpiringPressure()
+    assert "".join(routing.generate(_request("replica.stream"))) == "member-b"
+    now[0] = 5.000001
+    assert "".join(routing.generate(_request("replica.stream"))) == "member-a"
+    assert routing._decision_log.records[-2].replica_scheduler.scores[0].freshness.value == "fresh"
+    assert routing._decision_log.records[-1].replica_scheduler.scores[0].freshness.value == "stale"
+    routing.close()
+
+
+def test_capacity_scheduler_twenty_way_workload_respects_ceilings_drains_and_restores(
+    tmp_path,
+):
+    attempts = 20
+    tier = replace(
+        _replica_tier(),
+        replica_strategy="capacity",
+        max_concurrency=4,
+        replicas=tuple(
+            replace(member, max_concurrency=2)
+            for member in _replica_tier().replicas
+        ),
+    )
+    config = RouterConfig(tiers=(tier,), model_routes={"replica.stream": tier.id})
+    workload = _ConcurrentReplicaWorkload(attempts)
+    members = {
+        member.id: _HeldReplicaMember(member.id, workload)
+        for member in tier.replicas
+    }
+    routing = RoutingBackend(
+        config,
+        {tier.id: ReplicaRuntime(members)},
+        availability=_ReplicaReadiness(),
+        capacity_metrics=lambda _tier: pytest.fail("no collection in synthetic workload"),
+    )
+    routing._replica_pressure.close()
+    routing._replica_pressure = _CompletedUnknownPressure(members)
+    start = threading.Barrier(attempts)
+    results = []
+    failures = []
+    result_lock = threading.Lock()
+
+    def run_attempt():
+        try:
+            start.wait(timeout=5)
+            value = "".join(routing.generate(_request("replica.stream")))
+            with result_lock:
+                results.append(value)
+        except NoAvailableTierError:
+            workload.reject()
+        except BaseException as exc:
+            with result_lock:
+                failures.append(exc)
+            workload.reject()
+
+    workers = [threading.Thread(target=run_attempt) for _ in range(attempts)]
+    member_drained = []
+    tier_drained = []
+    drain_waits = threading.Event()
+    drain_wait_count = 0
+    condition = routing._admission._conditions[tier.id]
+    original_wait = condition.wait
+
+    def observed_wait(timeout=None):
+        nonlocal drain_wait_count
+        drain_wait_count += 1
+        if drain_wait_count >= 2:
+            drain_waits.set()
+        return original_wait(timeout)
+
+    condition.wait = observed_wait
+    member_drainer = threading.Thread(
+        target=lambda: member_drained.append(
+            routing.drain_tier(tier.id, 5, member_id="member-a")
+        )
+    )
+    tier_drainer = threading.Thread(
+        target=lambda: tier_drained.append(routing.drain_tier(tier.id, 5))
+    )
+    try:
+        for worker in workers:
+            worker.start()
+        assert workload.all_decided.wait(timeout=5)
+        assert workload.entered == 4
+        assert workload.rejected == 16
+        assert workload.maximum == 4
+        assert workload.member_maximum == {"member-a": 2, "member-b": 2}
+        snapshot = routing._admission.snapshot(tier.id)
+        assert snapshot.active_requests == 4
+        assert dict(snapshot.member_active_requests) == {"member-a": 2, "member-b": 2}
+
+        routing.quiesce_tier(tier.id, "maintenance", member_id="member-a")
+        routing.quiesce_tier(tier.id, "maintenance")
+        member_drainer.start()
+        tier_drainer.start()
+        assert drain_waits.wait(timeout=5)
+        assert member_drained == [] and tier_drained == []
+    finally:
+        workload.release.set()
+        for worker in workers:
+            worker.join(timeout=5)
+        member_drainer.join(timeout=5)
+        tier_drainer.join(timeout=5)
+        condition.wait = original_wait
+
+    assert all(not worker.is_alive() for worker in workers)
+    assert not member_drainer.is_alive() and not tier_drainer.is_alive()
+    assert failures == []
+    assert sorted(results) == ["member-a", "member-a", "member-b", "member-b"]
+    assert member_drained[0]["drained"] is True
+    assert tier_drained[0]["drained"] is True
+    snapshot = routing._admission.snapshot(tier.id)
+    assert snapshot.active_requests == 0
+    assert dict(snapshot.member_active_requests) == {"member-a": 0, "member-b": 0}
+
+    path = tmp_path / "synthetic-intent.json"
+    router_serve._write_admission_intent(str(path), routing._admission)
+    restored = router_serve._durable_admission(str(path), config)
+    assert restored.snapshot(tier.id).quiesced
+    assert restored.member_snapshot(tier.id, "member-a").quiesced
+    restored.readmit_member(tier.id, "member-a")
+    assert restored.snapshot(tier.id).quiesced
+    assert not restored.member_snapshot(tier.id, "member-a").quiesced
+    restored.quiesce_member(tier.id, "member-a", "maintenance")
+    restored.readmit(tier.id)
+    assert not restored.snapshot(tier.id).quiesced
+    assert restored.member_snapshot(tier.id, "member-a").quiesced
+    routing.close()
 
 
 def test_member_intent_survives_restart_and_readmission_is_independently_scoped(tmp_path):
