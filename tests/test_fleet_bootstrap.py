@@ -5,6 +5,8 @@ import io
 import json
 import stat
 import struct
+import subprocess
+import sys
 import warnings
 import zipfile
 from dataclasses import replace
@@ -172,6 +174,31 @@ def plan_manifest(*, platform: str = "linux") -> bootstrap.BootstrapManifest:
             else bootstrap.SupervisorAdapter.LINUX_SYSTEMD_USER
         ),
     )
+
+
+def target_config(
+    *, platform: str = "linux", changes: dict | None = None
+) -> bootstrap.BootstrapTargetConfig:
+    plan = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(platform=platform), plan_manifest(platform=platform)
+    )
+    values = {
+        "expected_node": plan.expected_node,
+        "platform": plan.platform,
+        "staging_root": plan.staging_root,
+        "install_root": plan.install_root,
+        "python_executable": plan.python_executable,
+        "receiver_path": plan.receiver_path,
+        "receiver_sha256": plan.receiver_sha256,
+        "install_adapter": plan.install_adapter,
+        "supervisor_adapter": plan.supervisor_adapter,
+        "install_root_class": plan.install_root_class,
+        "supervisor_id": plan.supervisor_id,
+        "bootstrap_enabled": plan.bootstrap_enabled,
+        "bootstrap_authorized": plan.bootstrap_authorized,
+    }
+    values.update(changes or {})
+    return bootstrap.BootstrapTargetConfig(**values)
 
 
 def rewrite_bundle(
@@ -634,6 +661,271 @@ def test_bootstrap_plan_catalog_order_is_equivalent_but_membership_changes_ident
     assert first.topology_sha256 != reordered.topology_sha256
     assert first.plan_sha256 != reordered.plan_sha256
     assert first.plan_sha256 != changed.plan_sha256
+
+
+@pytest.mark.parametrize("platform", ("linux", "windows"))
+def test_target_config_has_exact_canonical_private_identity(platform):
+    plan = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(platform=platform), plan_manifest(platform=platform)
+    )
+    target = bootstrap.BootstrapTargetConfig.from_plan(plan)
+    expected = {
+        "schema": bootstrap.TARGET_CONFIG_SCHEMA,
+        "expected_node": plan.expected_node,
+        "platform": plan.platform.value,
+        "staging_root": plan.staging_root,
+        "install_root": plan.install_root,
+        "python_executable": plan.python_executable,
+        "receiver_path": plan.receiver_path,
+        "receiver_sha256": plan.receiver_sha256,
+        "install_adapter": plan.install_adapter.value,
+        "supervisor_adapter": plan.supervisor_adapter.value,
+        "install_root_class": plan.install_root_class.value,
+        "supervisor_id": plan.supervisor_id,
+        "bootstrap_enabled": True,
+        "bootstrap_authorized": True,
+    }
+    encoded = json.dumps(
+        expected, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode()
+
+    assert target.to_private_bytes() == encoded
+    assert bootstrap.BootstrapTargetConfig.from_bytes(encoded) == target
+    assert target.target_config_sha256 == hashlib.sha256(encoded).hexdigest()
+    assert bootstrap.bootstrap_target_config_sha256(plan) == target.target_config_sha256
+
+
+def test_target_config_false_policy_is_canonical_data_not_authority():
+    target = target_config(
+        changes={"bootstrap_enabled": False, "bootstrap_authorized": False}
+    )
+    payload = json.loads(target.to_private_bytes())
+
+    assert payload["bootstrap_enabled"] is False
+    assert payload["bootstrap_authorized"] is False
+    assert bootstrap.BootstrapTargetConfig.from_bytes(target.to_private_bytes()) == target
+
+
+@pytest.mark.parametrize(
+    "field",
+    (
+        "schema",
+        "expected_node",
+        "platform",
+        "staging_root",
+        "install_root",
+        "python_executable",
+        "receiver_path",
+        "receiver_sha256",
+        "install_adapter",
+        "supervisor_adapter",
+        "install_root_class",
+        "supervisor_id",
+        "bootstrap_enabled",
+        "bootstrap_authorized",
+    ),
+)
+def test_target_config_from_bytes_rejects_every_missing_and_null_field(field):
+    payload = json.loads(target_config().to_private_bytes())
+    for change in (lambda value: value.pop(field), lambda value: value.__setitem__(field, None)):
+        changed = dict(payload)
+        change(changed)
+        raw = json.dumps(changed, sort_keys=True, separators=(",", ":")).encode()
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.BootstrapTargetConfig.from_bytes(raw)
+        assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("schema", False),
+        ("expected_node", False),
+        ("platform", False),
+        ("staging_root", False),
+        ("install_root", False),
+        ("python_executable", False),
+        ("receiver_path", False),
+        ("receiver_sha256", False),
+        ("install_adapter", False),
+        ("supervisor_adapter", False),
+        ("install_root_class", False),
+        ("supervisor_id", False),
+        ("bootstrap_enabled", 1),
+        ("bootstrap_authorized", "false"),
+    ),
+)
+def test_target_config_from_bytes_rejects_every_wrong_primitive_type(field, value):
+    payload = json.loads(target_config().to_private_bytes())
+    payload[field] = value
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapTargetConfig.from_bytes(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+def test_target_config_rejects_unknown_field_and_direct_value_subclasses():
+    payload = json.loads(target_config().to_private_bytes())
+    payload["unknown"] = "value"
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.BootstrapTargetConfig.from_bytes(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        )
+
+    class Text(str):
+        pass
+
+    with pytest.raises(bootstrap.BootstrapContractError):
+        target_config(changes={"expected_node": Text("Node_1")})
+    with pytest.raises(bootstrap.BootstrapContractError):
+        target_config(changes={"platform": "linux"})
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        b"",
+        b"{} ",
+        b'{"schema":"x","schema":"x"}',
+        b"x" * (bootstrap.MAX_TARGET_CONFIG_BYTES + 1),
+    ),
+)
+def test_target_config_from_bytes_rejects_size_duplicate_and_noncanonical_json(raw):
+    if raw == b"{} ":
+        raw = target_config().to_private_bytes() + b" "
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapTargetConfig.from_bytes(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    ("platform", "changes", "code"),
+    (
+        ("linux", {"staging_root": "relative"}, "invalid-contract"),
+        ("linux", {"install_root": "/var/tmp/private-stage/child"}, "invalid-contract"),
+        ("linux", {"python_executable": "C:\\Python\\python.exe"}, "invalid-contract"),
+        ("windows", {"receiver_path": "C:\\NUL\\bootstrap.py"}, "invalid-contract"),
+        ("windows", {"install_root": "c:\\PRIVATE-STAGE\\child"}, "invalid-contract"),
+        (
+            "linux",
+            {"supervisor_adapter": bootstrap.SupervisorAdapter.WINDOWS_SCHEDULED_TASK},
+            "unsupported-platform",
+        ),
+    ),
+)
+def test_target_config_rejects_cross_os_paths_overlap_and_adapter_pairs(
+    platform, changes, code
+):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        target_config(platform=platform, changes=changes)
+    assert caught.value.code == code
+
+
+@pytest.mark.parametrize(
+    "field",
+    (
+        "expected_node",
+        "platform",
+        "staging_root",
+        "install_root",
+        "python_executable",
+        "receiver_path",
+        "receiver_sha256",
+        "install_adapter",
+        "supervisor_adapter",
+        "install_root_class",
+        "supervisor_id",
+        "bootstrap_enabled",
+        "bootstrap_authorized",
+    ),
+)
+def test_target_config_revalidates_every_field_before_bytes_hash_and_repr(field):
+    target = target_config()
+    object.__setattr__(target, field, None)
+    for action in (
+        target.to_private_bytes,
+        lambda: target.target_config_sha256,
+        lambda: repr(target),
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError):
+            action()
+
+
+def test_target_config_digest_binds_target_fields_but_excludes_full_plan_fields():
+    base = target_config()
+    changed = (
+        target_config(changes={"receiver_sha256": SHA_B}),
+        target_config(changes={"bootstrap_enabled": False}),
+        target_config(changes={"supervisor_id": "other-controller"}),
+    )
+    assert all(item.target_config_sha256 != base.target_config_sha256 for item in changed)
+
+    execution = bootstrap_execution()
+    original_plan = bootstrap.build_bootstrap_plan(execution, plan_manifest())
+    artifact_changed = bootstrap.build_bootstrap_plan(
+        execution, replace(plan_manifest(), runtime_sha256=SHA_B)
+    )
+    catalog_changed = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(operations=("other-operation", "controller-bootstrap")),
+        plan_manifest(),
+    )
+    for changed_plan in (artifact_changed, catalog_changed):
+        assert original_plan.plan_sha256 != changed_plan.plan_sha256
+        assert (
+            bootstrap.bootstrap_target_config_sha256(original_plan)
+            == bootstrap.bootstrap_target_config_sha256(changed_plan)
+        )
+
+
+def test_target_config_is_frozen_closed_and_has_safe_repr_errors():
+    target = target_config()
+    with pytest.raises((AttributeError, TypeError)):
+        target.expected_node = "other"  # type: ignore[misc]
+    with pytest.raises(TypeError):
+        bootstrap.BootstrapTargetConfig.from_plan(
+            bootstrap.build_bootstrap_plan(bootstrap_execution(), plan_manifest()),
+            expected_node="other",
+        )
+    with pytest.raises(TypeError):
+        bootstrap.BootstrapTargetConfig(schema="other")
+    assert not hasattr(bootstrap.BootstrapTargetConfig, "to_dict")
+
+    rendered = repr(target)
+    assert "Node_1" in rendered
+    assert target.target_config_sha256 in rendered
+    for private in (
+        target.staging_root,
+        target.install_root,
+        target.python_executable,
+        target.receiver_path,
+        target.supervisor_id,
+    ):
+        assert private not in rendered
+
+    seeded = (
+        "C:\\private-token-path"
+        if target.platform is bootstrap.BootstrapPlatform.WINDOWS
+        else "/private/token/path"
+    )
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        target_config(changes={"receiver_path": seeded + "\x00"})
+    assert seeded not in str(caught.value)
+
+
+def test_target_config_decoder_imports_no_topology_targets_or_controller():
+    raw = target_config().to_private_bytes().hex()
+    code = (
+        "import sys; "
+        "from anvil_serving.fleet_bootstrap import BootstrapTargetConfig; "
+        f"BootstrapTargetConfig.from_bytes(bytes.fromhex('{raw}')); "
+        "blocked=('anvil_serving.topology','anvil_serving.targets','anvil_serving.control_plane'); "
+        "print(','.join(name for name in sys.modules if name.startswith(blocked)))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ""
 
 
 @pytest.mark.parametrize(

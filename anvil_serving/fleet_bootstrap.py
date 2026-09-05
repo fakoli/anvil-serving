@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 MANIFEST_SCHEMA = "anvil-serving.fleet-bootstrap-manifest/v1"
 RECEIPT_SCHEMA = "anvil-serving.fleet-bootstrap-receipt/v1"
 PLAN_SCHEMA = "anvil-serving.fleet-bootstrap-plan/v1"
+TARGET_CONFIG_SCHEMA = "anvil-serving.fleet-bootstrap-target-config/v1"
 CONTROLLER_OPERATION_CATALOG_SCHEMA = (
     "anvil-serving.controller-operation-catalog/v1"
 )
@@ -45,6 +46,7 @@ MAX_ARCHIVE_NAME_BYTES = 1024
 MAX_ARCHIVE_COMPONENT_BYTES = 255
 MAX_RECEIPT_BYTES = 16 * 1024
 MAX_RECEIVER_METADATA_BYTES = 4096
+MAX_TARGET_CONFIG_BYTES = 16 * 1024
 OUTER_BUNDLE_NAMES = ("manifest.json", "runtime.whl", "bootstrap_shim.py")
 
 _DOS_EPOCH = (1980, 1, 1, 0, 0, 0)
@@ -59,6 +61,8 @@ _TIMESTAMP_RE = re.compile(
 _UUID4_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 )
+_SUPERVISOR_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
+_WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:$")
 _WINDOWS_DEVICES = frozenset(
     {"CON", "PRN", "AUX", "NUL"}
     | {f"COM{number}" for number in range(1, 10)}
@@ -67,6 +71,8 @@ _WINDOWS_DEVICES = frozenset(
     | {f"LPT{number}" for number in ("¹", "²", "³")}
 )
 _WINDOWS_FORBIDDEN_CHARACTERS = frozenset('<>:"|?*')
+_MAX_BOOTSTRAP_PATH_BYTES = 1024
+_MAX_BOOTSTRAP_COMPONENT_BYTES = 255
 _FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 _MAX_JSON_DEPTH = 16
 _MAX_JSON_NODES = 128
@@ -125,6 +131,24 @@ _RECEIVER_OPERATION_FIELDS = frozenset(
 )
 _RECEIVER_STAGE_FIELDS = frozenset(
     {*_RECEIVER_OPERATION_FIELDS, "bundle_sha256", "bundle_length"}
+)
+_TARGET_CONFIG_FIELDS = frozenset(
+    {
+        "schema",
+        "expected_node",
+        "platform",
+        "staging_root",
+        "install_root",
+        "python_executable",
+        "receiver_path",
+        "receiver_sha256",
+        "install_adapter",
+        "supervisor_adapter",
+        "install_root_class",
+        "supervisor_id",
+        "bootstrap_enabled",
+        "bootstrap_authorized",
+    }
 )
 
 
@@ -247,6 +271,70 @@ def _required_text(value: Any, pattern: re.Pattern[str], label: str) -> str:
     if type(value) is not str or pattern.fullmatch(value) is None:
         raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, f"{label} is invalid")
     return value
+
+
+def _valid_bootstrap_path(value: str, host_os: str) -> bool:
+    """Validate a declared target path lexically, without host filesystem I/O."""
+    try:
+        encoded = value.encode("utf-8")
+    except (AttributeError, UnicodeError):
+        return False
+    if (
+        not value
+        or len(encoded) > _MAX_BOOTSTRAP_PATH_BYTES
+        or unicodedata.normalize("NFC", value) != value
+        or any(unicodedata.category(character) in {"Cc", "Cs"} for character in value)
+    ):
+        return False
+    if host_os == "linux":
+        if not value.startswith("/") or value.startswith("//") or "\\" in value:
+            return False
+        parts = value[1:].split("/")
+        path = PurePosixPath(value)
+        return (
+            bool(parts)
+            and all(_valid_bootstrap_component(part, windows=False) for part in parts)
+            and path.is_absolute()
+            and str(path) == value
+        )
+    if host_os != "windows" or "/" in value or value.startswith("\\\\"):
+        return False
+    path = PureWindowsPath(value)
+    if _WINDOWS_DRIVE_RE.fullmatch(path.drive) is None or path.root != "\\":
+        return False
+    prefix = f"{path.drive}\\"
+    if not value.startswith(prefix):
+        return False
+    parts = value[len(prefix) :].split("\\")
+    return (
+        bool(parts)
+        and all(_valid_bootstrap_component(part, windows=True) for part in parts)
+        and path.is_absolute()
+        and str(path) == value
+    )
+
+
+def _valid_bootstrap_component(value: str, *, windows: bool) -> bool:
+    if value in {"", ".", ".."} or len(value.encode("utf-8")) > _MAX_BOOTSTRAP_COMPONENT_BYTES:
+        return False
+    if not windows:
+        return True
+    if value.endswith((".", " ")) or any(
+        character in _WINDOWS_FORBIDDEN_CHARACTERS for character in value
+    ):
+        return False
+    return value.split(".", 1)[0].rstrip(" ").upper() not in _WINDOWS_DEVICES
+
+
+def _bootstrap_paths_overlap(first: str, second: str, host_os: str | None) -> bool:
+    path_type = PureWindowsPath if host_os == "windows" else PurePosixPath
+    first_parts = tuple(path_type(first).parts)
+    second_parts = tuple(path_type(second).parts)
+    if host_os == "windows":
+        first_parts = tuple(part.casefold() for part in first_parts)
+        second_parts = tuple(part.casefold() for part in second_parts)
+    shortest = min(len(first_parts), len(second_parts))
+    return first_parts[:shortest] == second_parts[:shortest]
 
 
 def _optional_text(value: Any, pattern: re.Pattern[str], label: str) -> str | None:
@@ -723,12 +811,9 @@ def _bootstrap_plan_values(
     # enums.  The plan boundary must not create a topology/bootstrap import cycle.
     from .targets import CommandSpec, ExecutionPlan
     from .topology import (
-        _SUPERVISOR_ID_RE,
         Host,
         HostBootstrap,
         Runtime,
-        _bootstrap_paths_overlap,
-        _valid_bootstrap_path,
     )
 
     if type(execution) is not ExecutionPlan or type(manifest) is not BootstrapManifest:
@@ -895,6 +980,231 @@ def _validate_platform_pair(
     }[platform]
     if supervisor_adapter is not expected:
         raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "platform adapter pairing is invalid")
+
+
+def _target_config_values(
+    *,
+    expected_node: Any,
+    platform: Any,
+    staging_root: Any,
+    install_root: Any,
+    python_executable: Any,
+    receiver_path: Any,
+    receiver_sha256: Any,
+    install_adapter: Any,
+    supervisor_adapter: Any,
+    install_root_class: Any,
+    supervisor_id: Any,
+    bootstrap_enabled: Any,
+    bootstrap_authorized: Any,
+) -> dict[str, Any]:
+    _required_text(expected_node, _NODE_RE, "expected_node")
+    _required_text(receiver_sha256, _SHA256_RE, "receiver_sha256")
+    _required_text(supervisor_id, _SUPERVISOR_ID_RE, "supervisor_id")
+    if (
+        type(platform) is not BootstrapPlatform
+        or type(install_adapter) is not InstallAdapter
+        or type(supervisor_adapter) is not SupervisorAdapter
+        or type(install_root_class) is not InstallRootClass
+        or install_root_class is not InstallRootClass.USER
+        or type(bootstrap_enabled) is not bool
+        or type(bootstrap_authorized) is not bool
+    ):
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "target configuration is invalid")
+    try:
+        _validate_platform_pair(platform, install_adapter, supervisor_adapter)
+    except BootstrapContractError:
+        raise _refuse(
+            BootstrapErrorCode.UNSUPPORTED_PLATFORM,
+            "target platform adapter pairing is unsupported",
+        ) from None
+    host_os = platform.value
+    paths = (staging_root, install_root, python_executable, receiver_path)
+    if any(type(path) is not str or not _valid_bootstrap_path(path, host_os) for path in paths):
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "target configuration path is invalid")
+    if _bootstrap_paths_overlap(staging_root, install_root, host_os):
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "target configuration roots are invalid")
+    return {
+        "schema": TARGET_CONFIG_SCHEMA,
+        "expected_node": expected_node,
+        "platform": platform.value,
+        "staging_root": staging_root,
+        "install_root": install_root,
+        "python_executable": python_executable,
+        "receiver_path": receiver_path,
+        "receiver_sha256": receiver_sha256,
+        "install_adapter": install_adapter.value,
+        "supervisor_adapter": supervisor_adapter.value,
+        "install_root_class": install_root_class.value,
+        "supervisor_id": supervisor_id,
+        "bootstrap_enabled": bootstrap_enabled,
+        "bootstrap_authorized": bootstrap_authorized,
+    }
+
+
+@dataclass(frozen=True, init=False, repr=False)
+class BootstrapTargetConfig:
+    """Canonical trusted target configuration without operation authority."""
+
+    expected_node: str
+    platform: BootstrapPlatform
+    staging_root: str
+    install_root: str
+    python_executable: str
+    receiver_path: str
+    receiver_sha256: str
+    install_adapter: InstallAdapter
+    supervisor_adapter: SupervisorAdapter
+    install_root_class: InstallRootClass
+    supervisor_id: str
+    bootstrap_enabled: bool
+    bootstrap_authorized: bool
+    schema: str = field(default=TARGET_CONFIG_SCHEMA, init=False)
+
+    def __init__(
+        self,
+        expected_node: str,
+        platform: BootstrapPlatform,
+        staging_root: str,
+        install_root: str,
+        python_executable: str,
+        receiver_path: str,
+        receiver_sha256: str,
+        install_adapter: InstallAdapter,
+        supervisor_adapter: SupervisorAdapter,
+        install_root_class: InstallRootClass,
+        supervisor_id: str,
+        bootstrap_enabled: bool,
+        bootstrap_authorized: bool,
+    ) -> None:
+        _target_config_values(
+            expected_node=expected_node,
+            platform=platform,
+            staging_root=staging_root,
+            install_root=install_root,
+            python_executable=python_executable,
+            receiver_path=receiver_path,
+            receiver_sha256=receiver_sha256,
+            install_adapter=install_adapter,
+            supervisor_adapter=supervisor_adapter,
+            install_root_class=install_root_class,
+            supervisor_id=supervisor_id,
+            bootstrap_enabled=bootstrap_enabled,
+            bootstrap_authorized=bootstrap_authorized,
+        )
+        for name, value in {
+            "expected_node": expected_node,
+            "platform": platform,
+            "staging_root": staging_root,
+            "install_root": install_root,
+            "python_executable": python_executable,
+            "receiver_path": receiver_path,
+            "receiver_sha256": receiver_sha256,
+            "install_adapter": install_adapter,
+            "supervisor_adapter": supervisor_adapter,
+            "install_root_class": install_root_class,
+            "supervisor_id": supervisor_id,
+            "bootstrap_enabled": bootstrap_enabled,
+            "bootstrap_authorized": bootstrap_authorized,
+        }.items():
+            object.__setattr__(self, name, value)
+
+    @classmethod
+    def from_plan(cls, plan: BootstrapPlan) -> BootstrapTargetConfig:
+        if type(plan) is not BootstrapPlan:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "bootstrap plan is invalid")
+        return cls(
+            expected_node=plan.expected_node,
+            platform=plan.platform,
+            staging_root=plan.staging_root,
+            install_root=plan.install_root,
+            python_executable=plan.python_executable,
+            receiver_path=plan.receiver_path,
+            receiver_sha256=plan.receiver_sha256,
+            install_adapter=plan.install_adapter,
+            supervisor_adapter=plan.supervisor_adapter,
+            install_root_class=plan.install_root_class,
+            supervisor_id=plan.supervisor_id,
+            bootstrap_enabled=plan.bootstrap_enabled,
+            bootstrap_authorized=plan.bootstrap_authorized,
+        )
+
+    @classmethod
+    def from_bytes(cls, raw: bytes) -> BootstrapTargetConfig:
+        value = _validate_exact_fields(
+            _decode_json(raw, maximum=MAX_TARGET_CONFIG_BYTES),
+            _TARGET_CONFIG_FIELDS,
+            "target configuration fields are invalid",
+        )
+        if type(value["schema"]) is not str or value["schema"] != TARGET_CONFIG_SCHEMA:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "target configuration schema is invalid")
+        target = cls(
+            expected_node=value["expected_node"],
+            platform=_enum(BootstrapPlatform, value["platform"], "platform"),
+            staging_root=value["staging_root"],
+            install_root=value["install_root"],
+            python_executable=value["python_executable"],
+            receiver_path=value["receiver_path"],
+            receiver_sha256=value["receiver_sha256"],
+            install_adapter=_enum(InstallAdapter, value["install_adapter"], "install_adapter"),
+            supervisor_adapter=_enum(
+                SupervisorAdapter, value["supervisor_adapter"], "supervisor_adapter"
+            ),
+            install_root_class=_enum(
+                InstallRootClass, value["install_root_class"], "install_root_class"
+            ),
+            supervisor_id=value["supervisor_id"],
+            bootstrap_enabled=value["bootstrap_enabled"],
+            bootstrap_authorized=value["bootstrap_authorized"],
+        )
+        if target.to_private_bytes() != raw:
+            raise _refuse(
+                BootstrapErrorCode.INVALID_CONTRACT,
+                "target configuration JSON is not canonical",
+            )
+        return target
+
+    def _private_values(self) -> dict[str, Any]:
+        if (
+            type(self) is not BootstrapTargetConfig
+            or type(self.schema) is not str
+            or self.schema != TARGET_CONFIG_SCHEMA
+        ):
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "target configuration is invalid")
+        return _target_config_values(
+            expected_node=self.expected_node,
+            platform=self.platform,
+            staging_root=self.staging_root,
+            install_root=self.install_root,
+            python_executable=self.python_executable,
+            receiver_path=self.receiver_path,
+            receiver_sha256=self.receiver_sha256,
+            install_adapter=self.install_adapter,
+            supervisor_adapter=self.supervisor_adapter,
+            install_root_class=self.install_root_class,
+            supervisor_id=self.supervisor_id,
+            bootstrap_enabled=self.bootstrap_enabled,
+            bootstrap_authorized=self.bootstrap_authorized,
+        )
+
+    def to_private_bytes(self) -> bytes:
+        return canonical_json_bytes(self._private_values())
+
+    @property
+    def target_config_sha256(self) -> str:
+        return hashlib.sha256(self.to_private_bytes()).hexdigest()
+
+    def __repr__(self) -> str:
+        return (
+            "BootstrapTargetConfig("
+            f"expected_node={self.expected_node!r}, "
+            f"target_config_sha256={self.target_config_sha256!r})"
+        )
+
+
+def bootstrap_target_config_sha256(plan: BootstrapPlan) -> str:
+    """Return the digest of only the trusted target configuration domain."""
+    return BootstrapTargetConfig.from_plan(plan).target_config_sha256
 
 
 @dataclass(frozen=True)
