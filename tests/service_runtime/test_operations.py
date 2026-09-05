@@ -37,7 +37,7 @@ class Supervisor:
     def run(self, argv, **kwargs):
         self.commands.append(argv)
         if argv[-1] in {"up", "restart"}:
-            self.running = True
+            self.running = self.registered = True
         if argv[-1] == "down" and not self.fail_stop:
             self.running, self.registered = False, False
         if argv[-1] in {"enable", "disable"}:
@@ -256,6 +256,33 @@ def test_failed_start_rolls_back_only_new_instances(tmp_path):
         execute("up", "worker", **options)
     assert adapter.running["events"]
     assert ["down", "events"] not in adapter.commands
+
+
+def test_failed_start_of_registered_idle_job_preserves_definition_and_reports_partial_rollback(setup):
+    from anvil_serving.service_runtime.operations import execute
+    from anvil_serving.service_runtime.contracts import ServiceError
+    adapter, options = setup
+    definition = options["manifest"].parent / "events.plist"
+    original = b"pinned installed fixture definition"
+    definition.write_bytes(original)
+    assert adapter.registered and not adapter.running and adapter.enabled
+
+    def failed_readiness(row, **kwargs):
+        raise ServiceError("readiness_failed", "fixture endpoint failed readiness")
+
+    with pytest.raises(ServiceError) as raised:
+        execute("up", "events", confirm=True, dry_run=False, _engine=failed_readiness, **options)
+
+    assert raised.value.code == "readiness_failed"
+    assert raised.value.details["rollback"] == [
+        {"id": "events", "stopped": True, "registration_restored": False},
+    ]
+    assert not adapter.running and not adapter.registered
+    assert adapter.enabled and definition.read_bytes() == original
+    assert adapter.commands == [["fixture-supervisor", "up"], ["fixture-supervisor", "down"]]
+    recovered = execute("up", "events", confirm=True, dry_run=False, **options)
+    assert recovered["services"][0]["after"]["running"]
+    assert recovered["services"][0]["after"]["registered"]
 
 
 def test_planned_bind_conflict_refuses_before_start(tmp_path):
