@@ -15,6 +15,8 @@ from ... import mcp
 from ..authorization import AuthorizationError, AuthorizationPolicy, load_authorization_policy
 from ...graceful import DEFAULT_DRAIN_SECONDS, serve_until_signal
 from ...observability.node_workload_collector import NodeWorkloadCollector
+from ...observability.fleet_workload_collector import FleetWorkloadCollector
+from ...observability.fleet_workload_sources import create_fleet_workload_collector
 from ...observability.workloads import WorkloadQuery
 from .catalog import CallToolFunc, ListToolsFunc
 from .http import (
@@ -92,6 +94,7 @@ def make_server(
     workload_topology: Optional[str] = None,
     workload_router_resource: Optional[str] = None,
     workload_router_auth_env: Optional[str] = None,
+    workload_fleet_topology: Optional[str] = None,
     workload_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     workload_monotonic: Callable[[], object] = time.monotonic,
 ) -> ThreadingHTTPServer:
@@ -145,6 +148,7 @@ def make_server(
             }
         )
     collector: Optional[NodeWorkloadCollector] = None
+    fleet_collector: Optional[FleetWorkloadCollector] = None
     try:
         valid_node = type(node_id) is str and WorkloadQuery(host=node_id).host == node_id
     except Exception:
@@ -165,6 +169,13 @@ def make_server(
         collector = NodeWorkloadCollector(
             node_id, readers, monotonic=workload_monotonic
         )
+    if workload_fleet_topology is not None:
+        try:
+            fleet_collector = create_fleet_workload_collector(
+                workload_fleet_topology, environment=env, monotonic=workload_monotonic
+            )
+        except Exception:
+            fleet_collector = None
     try:
         handler = make_handler(
             list_tools_func=list_tools_func,
@@ -179,23 +190,33 @@ def make_server(
             node_id=node_id,
             authorization_policy=scoped_policy,
             workload_collector=collector,
+            fleet_workload_collector=fleet_collector,
             workload_clock=workload_clock,
         )
         cls = server_class or _server_class_for_host(host)
         httpd = cls((host, port), handler)
     except Exception:
-        if collector is not None:
-            collector.close()
+        for owned in (collector, fleet_collector):
+            if owned is not None:
+                try:
+                    owned.close()
+                except Exception:
+                    pass
         raise
     original_server_close = httpd.server_close
 
     def server_close() -> None:
-        if collector is not None:
-            collector.close()
+        for owned in (collector, fleet_collector):
+            if owned is not None:
+                try:
+                    owned.close()
+                except Exception:
+                    pass
         original_server_close()
 
     httpd.server_close = server_close
     httpd.anvil_workload_collector = collector
+    httpd.anvil_fleet_workload_collector = fleet_collector
     httpd.anvil_controller_bind = assessment
     httpd.anvil_controller_auth_token_env = auth_token_env
     httpd.anvil_controller_auth_enabled = token is not None
@@ -222,6 +243,7 @@ def serve(
     workload_topology: Optional[str] = None,
     workload_router_resource: Optional[str] = None,
     workload_router_auth_env: Optional[str] = None,
+    workload_fleet_topology: Optional[str] = None,
     server_factory: Callable[..., ThreadingHTTPServer] = make_server,
 ) -> int:
     httpd = server_factory(
@@ -242,6 +264,7 @@ def serve(
         workload_topology=workload_topology,
         workload_router_resource=workload_router_resource,
         workload_router_auth_env=workload_router_auth_env,
+        workload_fleet_topology=workload_fleet_topology,
     )
     actual_host, actual_port = httpd.server_address[:2]
     print(
