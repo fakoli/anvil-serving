@@ -88,6 +88,12 @@ class _Response:
         self.closed = True
 
 
+class _ThrowingCloseResponse(_Response):
+    def close(self):
+        self.closed = True
+        raise RuntimeError("private close failure")
+
+
 def _read(payload, *, endpoint="http://127.0.0.1:8765/v1", environment=None, query=None, opened=None):
     response = _Response(payload)
     calls = []
@@ -189,6 +195,23 @@ def test_http_error_is_closed_without_reading_failure_body():
     assert result.error is WorkloadErrorCode.UNAVAILABLE
     assert body.closed
     assert "private" not in repr(result)
+
+
+@pytest.mark.parametrize("payload", (_wire(), b"not-json"), ids=("success", "invalid-wire"))
+def test_response_close_failure_is_fixed_unavailable_without_private_text(payload):
+    response = _ThrowingCloseResponse(payload)
+
+    def opener(request, timeout):
+        return response
+
+    result = read_router_workloads(
+        "http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", HOST, WorkloadQuery(), NOW,
+        environment={"ROUTER_WORKLOAD_TOKEN": TOKEN}, _open=opener,
+    )
+    assert response.closed
+    assert result.status is ResultStatus.UNAVAILABLE
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+    assert "private close failure" not in repr(result)
 
 
 def test_default_opener_uses_the_proxy_free_no_redirect_transport(monkeypatch):

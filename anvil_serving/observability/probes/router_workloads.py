@@ -83,6 +83,14 @@ def _close_http_error(error: urllib.error.HTTPError) -> None:
         pass
 
 
+def _close_response(response: object) -> bool:
+    try:
+        response.close()
+    except Exception:
+        return False
+    return True
+
+
 def _declared_endpoint(value: object) -> str | None:
     if type(value) is not str or not value or len(value) > 2048:
         return None
@@ -166,21 +174,30 @@ def read_router_workloads(
     )
     opener = _urlopen_no_proxy_no_redirect if _open is None else _open
     response = None
+    transport_error: WorkloadErrorCode | None = None
+    payload: bytes | None = None
     try:
         response = opener(request, timeout=_SOCKET_TIMEOUT)
         if response.getcode() != 200:
-            return _unavailable(fallback)
-        payload = response.read(MAX_JSON_BYTES + 1)
-        if type(payload) is not bytes or len(payload) > MAX_JSON_BYTES:
-            return _failed(fallback, WorkloadErrorCode.INVALID)
+            transport_error = WorkloadErrorCode.UNAVAILABLE
+        else:
+            candidate = response.read(MAX_JSON_BYTES + 1)
+            if type(candidate) is not bytes or len(candidate) > MAX_JSON_BYTES:
+                transport_error = WorkloadErrorCode.INVALID
+            else:
+                payload = candidate
     except urllib.error.HTTPError as exc:
         _close_http_error(exc)
-        return _unavailable(fallback)
+        transport_error = WorkloadErrorCode.UNAVAILABLE
     except Exception:
-        return _unavailable(fallback)
+        transport_error = WorkloadErrorCode.UNAVAILABLE
     finally:
-        if response is not None:
-            response.close()
+        if response is not None and not _close_response(response):
+            transport_error = WorkloadErrorCode.UNAVAILABLE
+    if transport_error is not None:
+        return _failed(fallback, transport_error)
+    if payload is None:
+        return _failed(fallback, WorkloadErrorCode.UNAVAILABLE)
     try:
         node = node_result_from_json(payload)
         if node.host != host:
