@@ -27,7 +27,7 @@ Extend the direct-only Anvil Serving chat router so one configured logical tier 
 - R001: Each normalized entry in `[router.model_routes]` must continue to map to exactly one logical tier, and unknown aliases must continue to return the existing not-found response.
 - R002: A chat tier must declare exactly one endpoint shape: the existing direct `base_url` form or a new `replicas` collection containing at least two members; mixed, empty, or singleton replica declarations must fail configuration loading.
 - R003: Each replica member declares a tier-local unique `id`, unique `base_url`, topology `host_id`, unique `resource_id`, and opaque `qualification_ref`. Membership is bounded to 2-16 members; auth, health path, timeout, dialect, model, context, and semantic policy remain shared at tier scope.
-- R004: Before managed rendering or router-config activation, every member resource must resolve in validated topology to the declared host and a non-null endpoint normalized-equal to its URL. All member hosts must match. Validation performs no DNS lookup or address-based ownership inference.
+- R004: Before router-config activation, one immutable, at-most-1-MiB exact-byte configuration snapshot must be parsed and every member resource must resolve in validated topology to the declared host and a non-null endpoint normalized-equal to its URL. All member hosts must match. Validation performs no DNS lookup, address-based ownership inference, rendering, or reserialization.
 - R005: Replica tiers require `metadata_source = "configured"`, `model_identity = true`, one served `model`, and immutable shared `replica_identity` fields `model_revision`, `engine_version`, `image_digest`, and `config_fingerprint`. These are operator-declared deployment provenance; live probes attest only health and served model identity, not revision/image/configuration bytes.
 - R006: A qualification reference is metadata that identifies durable evidence; the router must validate only that it is present and safe to expose, and must not claim that the referenced evidence exists, passed, or authorizes promotion.
 - R007: Independently probe each member through bounded health and `/v1/models` checks. Eligibility requires the expected served model and health plus the declared provenance contract. Cache/backend keys are composite `(tier_id, member_id)`; equal member IDs in different tiers must never share state.
@@ -47,6 +47,7 @@ Extend the direct-only Anvil Serving chat router so one configured logical tier 
 - A selected member that returns 500, times out, disconnects, or emits malformed SSE is attempted exactly once; tests prove the peer member receives no replay.
 - Quiesce and drain tests prove aggregate tier counts equal the sum of member leases and that direct-tier transition behavior remains unchanged.
 - Router metadata and decision-log tests prove member identity is visible but URLs, host addresses, credentials, payloads, and raw errors are absent.
+- A router config changed on disk after managed snapshot capture cannot change the exact bytes validated and installed by that activation.
 - The router-focused and full repository gates pass from a clean public worktree.
 
 ## Risks
@@ -75,9 +76,9 @@ None. The first release uses same-host membership, shared configured policy, dec
 
 **Requirements:** R005, R006, R007
 
-### A003: Managed topology validation is authoritative for same-host ownership.
+### A003: Managed snapshot validation is authoritative for same-host ownership.
 
-**Rationale:** The router should not learn real topology or compare network addresses at request time. Render-time validation can use the declared public/private topology boundary while the runtime receives only a validated member set.
+**Rationale:** The router should not learn real topology or compare network addresses at request time. A bounded pre-activation validator can capture the complete router configuration once, preserve its exact bytes, and use the declared public/private topology boundary while the runtime receives only the validated member set. The snapshot proves declaration consistency, not live deployment identity.
 
 **Requirements:** R003, R004, R012
 
@@ -89,7 +90,7 @@ None. The first release uses same-host membership, shared configured policy, dec
 - Probe/cache/admission keys are composite identities, not concatenated ambiguous strings. Invalidating a logical tier invalidates all its member generations. Stale in-flight probes must not repopulate an invalidated generation; add an event-controlled invalidation race test.
 - Round-robin starts at the lexically smallest eligible member ID, rotates only on successful reservation, and skips unavailable members. Request semantic gates happen before one atomic tier/member lease acquisition. No second backend is invoked after selection, including failures before the first response byte.
 - Observability reports `deployment_identity_source = "declared"` and `runtime_deployment_identity_verified = false`. Never echo an unexpected upstream model string; expose a fixed mismatch code, with observed model populated only when it equals the validated expected model.
-- Managed validation joins resource IDs and normalized endpoint URLs offline. Router lifecycle shortcuts that require one backing serve explicitly refuse replica tiers before mutation; this release does not broaden model lifecycle authority.
+- Managed validation reads at most 1 MiB of router configuration bytes once, parses those exact bytes without a generic serializer, computes their SHA-256, joins resource IDs and normalized endpoint URLs offline, and installs only that validated immutable snapshot. Its fixed error vocabulary is `config_too_large`, `router_config_invalid`, `topology_invalid`, `replica_resource_missing`, `replica_resource_reused`, `replica_host_mismatch`, `replica_endpoint_missing`, `replica_endpoint_mismatch`, and `replica_host_split`; diagnostics expose no path, URL, topology identity, auth metadata, input value, or raw exception. Router lifecycle shortcuts that require one backing serve explicitly refuse replica tiers before mutation; this release does not broaden model lifecycle authority.
 - Negative controls must cover identical member names in two tiers, duplicate endpoints, stale probe publication, missing topology resource, wrong resource endpoint/host, unknown identity fields, quiesce/select races, and closing a stream before its first iteration.
 
 ## Code Map
@@ -99,7 +100,7 @@ None. The first release uses same-host membership, shared configured policy, dec
 - `anvil_serving/router/availability.py::RuntimeModelMetadata`, `AvailabilityResult`, and `HttpHealthAvailability` own bounded health and served-model identity. Introduce member-keyed probes by composition rather than vendor-specific branches.
 - `anvil_serving/router/admission.py::AdmissionSnapshot`, `AdmissionLease`, and `TierAdmission` own quiesce/drain semantics. This PRD needs aggregate member reporting but does not yet replace the tier ceiling with capacity scoring.
 - `anvil_serving/router/model_metadata.py`, `model_capacity.py`, `discovery.py`, and `decision_log.py::DecisionLog` own metadata-only projections. Add safe member IDs and state without endpoint or topology identity.
-- `anvil_serving/deploy.py` owns managed rendering (`serves render` delegates to it), with `tests/test_deploy.py`. `anvil_serving/serves.py` owns router-config activation and transition/promotion checks. Add pure topology validation at those boundaries, never inside request selection.
+- `anvil_serving/router/topology_validation.py` owns the pure topology join and immutable exact-byte validation snapshot. `anvil_serving/router/config.py` owns the bounded bytes parser, with path-based `load` delegating to it; neither module renders or reserializes TOML. `anvil_serving/topology_cli.py` exposes offline validation, while `anvil_serving/router_manage.py` and `anvil_serving/serves.py` own activation and lifecycle refusal. Keep topology validation outside request selection and pass the exact validated bytes into installation.
 - `tests/router/test_config.py`, `tests/router/test_availability.py`, `tests/router/test_backends.py`, `tests/router/test_admission.py`, `tests/router/test_model_routes.py`, `tests/router/test_model_metadata.py`, `tests/router/test_decision_log.py`, `tests/router/test_streaming_relay.py`, and `tests/router/test_transition_integration.py` are the primary regression seams.
 - `docs/adr/0034-fleet-control-plane-and-node-runtime-classes.md`, `docs/adr/0039-capability-meta-router.md`, `docs/ARCHITECTURE.md`, `docs/CONFIGURATION.md`, and `docs/THIN-CAPABILITY-GATEWAY.md` must agree on the bounded same-host exception.
 
@@ -107,7 +108,7 @@ None. The first release uses same-host membership, shared configured policy, dec
 
 ### F001: Closed replica configuration contract
 
-Define an explicit same-host member collection, exact shared identity, and render-time topology validation while preserving direct tiers.
+Define an explicit same-host member collection, exact shared identity, and immutable pre-activation topology validation while preserving direct tiers.
 
 **Requirements:** R001, R002, R003, R004, R005, R006, R010, R014
 
@@ -219,33 +220,21 @@ Add a rotating cursor and member counters scoped to each replica tier. Accept al
 - `python scripts/run_tests.py tests/router/test_admission.py tests/router/test_model_routes.py -x -q`
 - `python scripts/run_tests.py tests/router/test_transition_integration.py -x -q`
 
-### T005: Extend safe model and capacity projections
+### T005: Deliver safe model and capacity projections
 
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** anvil_serving/router/model_metadata.py, anvil_serving/router/model_capacity.py, anvil_serving/router/serve.py, tests/router/test_model_metadata.py, tests/router/test_model_capacity.py
-**Dependencies:** T003, T004
+**Dependencies:** T005.1, T005.2
+**Likely files:** .tickets/2026-09-05-replica-observability-contract.md
 
-Project one logical tier with a bounded ordered member list, declared deployment-identity source, runtime-verification flag, aggregate admission, and per-member readiness. Build allowlisted dictionaries explicitly and keep `base_url`, host address, auth environment/value, request fields, unexpected model strings, and exception text out.
-
-Wire `RoutingBackend.model_capacity()` to pass its actual admission owner to the
-projection. Its default owner must be initialized with configured replica
-membership, while an explicitly injected owner is preserved. No request dispatch
-or member-selection behavior is added in this task. Read the owner only once per
-tier; absent, invalid or inconsistent state is unavailable, never zero load.
-Draining implies quiesced, and aggregate/member counts must be exact integers
-in `0..2^53-1`. Ineligible member readiness must not retain a success reason.
-Do not fetch metrics through the replica-tier empty URL sentinel or infer
-aggregate KV capacity from per-member estimates.
+Retain this stable task as a coordinator integration-verification task after T005.1 and T005.2. Its claim performs no runtime source implementation: the coordinator confirms both child outcomes, runs the combined gates, and updates the ticket with the original projection commit, wiring commit, and exact combined revision/proof package. T005.1 owns pure allowlisted projections, and T005.2 wires the reviewed projection through the authenticated `RoutingBackend` HTTP path. Explicit dependencies, not implicit dotted-ID parentage, establish the ordering.
 
 **Acceptance criteria:**
 
-- Metadata preserves one public alias and one logical tier.
-- Capacity shows aggregate tier admission plus per-member readiness without implying aggregate qualified throughput.
-- A real authenticated HTTP capacity request through `RoutingBackend` shows the same active, quiesced and released member counts as its injected owner; default construction reports complete zero member counts. A missing or forged owner remains unavailable.
-- Declared deployment provenance is clearly separated from live served-model verification.
-- Redaction tests prove prohibited data cannot appear in either projection.
+- T005.1 and T005.2 are both accepted before the coordinator claim begins.
+- The coordinator records both implementation commits and independently reproducible combined proof in the ticket without changing runtime source.
+- The combined result satisfies the original projection, authenticated HTTP wiring, provenance, partiality, and redaction contract without changing request dispatch.
 
 **Verification:**
 
@@ -253,27 +242,75 @@ aggregate KV capacity from per-member estimates.
 - `python scripts/run_tests.py tests/router/test_observability_hardening.py -x -q`
 - `python -m ruff check anvil_serving/router/model_metadata.py anvil_serving/router/model_capacity.py anvil_serving/router/serve.py tests/router/test_model_metadata.py tests/router/test_model_capacity.py`
 
-### T006: Validate replica topology during managed rendering
+### T005.1: Build pure safe model and capacity projections
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** anvil_serving/router/model_metadata.py, anvil_serving/router/model_capacity.py, tests/router/test_model_metadata.py, tests/router/test_model_capacity.py
+**Dependencies:** T003, T004
+
+Project one logical tier with a bounded ordered member list, declared deployment-identity source, runtime-verification flag, aggregate admission, and per-member readiness. Build allowlisted dictionaries explicitly and keep `base_url`, host address, auth environment/value, request fields, unexpected model strings, and exception text out. Read the admission owner once per tier; absent, invalid, or inconsistent state is unavailable, never zero load. Draining implies quiesced, aggregate/member counts are exact integers in `0..2^53-1`, and ineligible member readiness cannot retain a success reason. Do not fetch metrics through the replica-tier empty URL sentinel or infer aggregate KV capacity from per-member estimates. This task is pure projection work and does not modify `router/serve.py` or add HTTP wiring.
+
+**Acceptance criteria:**
+
+- Metadata preserves one public alias and one logical tier.
+- Capacity shows aggregate tier admission plus per-member readiness without implying aggregate qualified throughput.
+- An explicitly valid admission snapshot with zero active requests for every configured member projects complete zero counts, while an absent, forged, or internally inconsistent owner remains unavailable.
+- Declared deployment provenance is clearly separated from live served-model verification.
+- Redaction tests prove prohibited data cannot appear in either projection.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_model_metadata.py tests/router/test_model_capacity.py -x -q`
+- `python scripts/run_tests.py tests/router/test_observability_hardening.py -x -q`
+- `python -m ruff check anvil_serving/router/model_metadata.py anvil_serving/router/model_capacity.py tests/router/test_model_metadata.py tests/router/test_model_capacity.py`
+
+### T005.2: Wire capacity projection through authenticated HTTP
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** anvil_serving/router/serve.py, tests/router/test_model_capacity.py
+**Dependencies:** T005.1
+
+Wire `RoutingBackend.model_capacity()` to pass its actual admission owner to the reviewed T005.1 projection. Initialize the default owner with configured replica membership and preserve an explicitly injected owner. Add no request dispatch or member-selection behavior, and never route metrics through the replica-tier empty URL sentinel.
+
+**Acceptance criteria:**
+
+- A real authenticated HTTP capacity request through `RoutingBackend` shows the same active, quiesced, and released member counts as its injected owner.
+- Default construction reports complete zero member counts; missing, forged, or inconsistent owner state remains unavailable.
+- HTTP output is exactly the reviewed allowlisted T005.1 projection and contains no prohibited field or raw value.
+- Ordinary request dispatch and direct-tier capacity behavior remain compatible.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_model_capacity.py -x -q`
+- `python scripts/run_tests.py tests/router/test_observability_hardening.py -x -q`
+- `python -m ruff check anvil_serving/router/serve.py tests/router/test_model_capacity.py`
+
+### T006: Build an immutable router-config topology validation snapshot
 
 **Feature:** F001
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/deploy.py, tests/test_deploy.py
+**Likely files:** anvil_serving/router/config.py, anvil_serving/router/topology_validation.py, tests/router/test_config.py, tests/router/test_topology_validation.py
 **Dependencies:** T002
 
-Add pure topology/member validation to managed rendering before mutation. Join each member's `resource_id` to validated topology, require exact declared host ownership and normalized endpoint equality, require one shared host, and perform no DNS or address inference. Preserve direct-tier rendering byte-for-byte where feasible.
+Add a bytes-based router-config parser and a pure replica topology validator. Bound the captured configuration to 1 MiB before decoding, read it once, preserve its exact bytes, and compute their SHA-256. Make the existing path-based loader delegate to the same parser. Return one frozen validation snapshot containing the bytes with `repr=False`, digest, parsed `RouterConfig`, validated topology object, and exact tier/member counts. Join each member's `resource_id` to validated topology, require an existing resource, exact declared host ownership, a non-null normalized-equal endpoint, one shared host, and distinct resources. Perform no TOML rendering or reserialization, DNS, socket, Docker, service, GPU, or live identity work. Map malformed input and joins to fixed typed errors without path, URL, topology identity, auth metadata, input value, raw exception, or exception chaining.
 
 **Acceptance criteria:**
 
-- Managed render refuses host-owner mismatches before service mutation.
-- Missing resources, endpoint mismatches, duplicate resources, and cross-host sets fail deterministically.
-- Valid generic replica topology renders one closed router tier without claiming runtime attestation.
-- Direct-tier render tests remain unchanged.
+- A valid direct or replica config is parsed from one at-most-1-MiB byte capture, and the immutable snapshot retains exactly those bytes and their SHA-256.
+- Missing resources, missing endpoints, endpoint mismatches, duplicate resources, host-owner mismatches, and cross-host sets fail deterministically with fixed typed errors.
+- Path-based loading delegates to the bytes parser, and no generic serializer or second file read is introduced.
+- Validation records `deployment_identity_source = "declared"` and `runtime_deployment_identity_verified = false`; it never claims live attestation.
+- Direct-tier configuration behavior remains compatible, and negative controls prove validation performs no DNS, network, Docker, service, or GPU call.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/test_deploy.py -x -q`
-- `python -m ruff check anvil_serving/deploy.py tests/test_deploy.py`
+- `python scripts/run_tests.py tests/router/test_config.py tests/router/test_topology_validation.py -x -q`
+- `python -m ruff check anvil_serving/router/config.py anvil_serving/router/topology_validation.py tests/router/test_config.py tests/router/test_topology_validation.py`
 
 ### T007: Build replica runtime member backends
 
@@ -347,7 +384,7 @@ Carry the selected compound lease through the existing close-aware streaming ite
 **Priority:** medium
 **Type:** modify
 **Likely files:** anvil_serving/router/discovery.py, tests/router/test_discovery.py
-**Dependencies:** T005, T007
+**Dependencies:** T005.2, T007
 
 Expose one logical tier and bounded safe member state through discovery while retaining one public alias. Do not publish member URLs, topology identity, auth references, or synthetic per-member model aliases.
 
@@ -392,12 +429,12 @@ Record the selected safe member ID, bounded pre-dispatch eligibility/identity re
 **Likely files:** anvil_serving/serves.py, tests/test_serves_ensure_router.py, tests/router/test_serve_cli.py
 **Dependencies:** T006, T007, T009
 
-Validate topology before router-config activation. Make `serves up-for`, promote, mode/profile transition, and rollback paths that assume one backing serve refuse replica tiers with typed `replica_lifecycle_unsupported` before mutation. Operators manage declared members explicitly; do not infer a multi-serve lifecycle.
+Make `serves up-for`, promote, resume, mode/profile enter or leave, rollback, and recovery paths that assume one backing serve refuse replica tiers with typed `replica_lifecycle_unsupported` before lifecycle, route, profile, Docker, or router-transition mutation. Apply the shared guard at each entry point rather than relying on a later config-install refusal. Operators manage declared members explicitly; do not infer a multi-serve lifecycle. Router-config snapshot activation is separate T015.
 
 **Acceptance criteria:**
 
-- Router-config activation refuses an invalid resource/host/endpoint join before writing state.
-- Every single-serve lifecycle shortcut refuses replica tiers before lifecycle, route, or profile mutation.
+- Every single-serve lifecycle shortcut, including rollback and recovery branches, refuses replica tiers before lifecycle, route, profile, Docker, or router-transition mutation.
+- Event-controlled spies prove invalid operations make zero mutation calls; guarding only the eventual router-config install is insufficient.
 - Direct-tier lifecycle and activation behavior remain unchanged.
 
 **Verification:**
@@ -410,14 +447,15 @@ Validate topology before router-config activation. Make `serves up-for`, promote
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** docs/CONFIGURATION.md, docs/THIN-CAPABILITY-GATEWAY.md, docs/CLI.md
-**Dependencies:** T005, T009, T010, T011, T012
+**Likely files:** docs/CONFIGURATION.md, docs/THIN-CAPABILITY-GATEWAY.md, docs/cli/control-plane.md, docs/CLI-COMMAND-MANIFEST.json
+**Dependencies:** T005.2, T009, T010, T011, T012, T014, T015
 
-Document a generic two-member loopback configuration, exact declared-versus-live identity boundary, round robin, one-attempt behavior, lifecycle refusal, observability, and the later capacity-scheduler boundary. Update generated documentation only through existing generators, then run the complete repository gates without weakening any earlier acceptance criterion.
+Document a generic two-member loopback configuration, exact declared-versus-live identity boundary, immutable snapshot validation, `anvil-serving topology validate-router-config`, round robin, one-attempt behavior, lifecycle refusal, observability, and the later capacity-scheduler boundary. Regenerate `docs/CLI-COMMAND-MANIFEST.json` only through `anvil_serving.commands.spec.write_manifest`, then run the complete repository gates without weakening any earlier acceptance criterion.
 
 **Acceptance criteria:**
 
 - Documentation agrees on direct compatibility, same-host topology validation, exact declared provenance, live model verification, no replay, and lifecycle limits.
+- CLI documentation and the generated manifest agree on the root `topology validate-router-config` path, options, read-only authority, result schema, and exit contract.
 - No example contains a real address, host identity, credential, or promotion claim.
 - Router, full test, lint, strict-doc, link, and diff gates pass.
 
@@ -428,4 +466,49 @@ Document a generic two-member loopback configuration, exact declared-versus-live
 - `python -m ruff check anvil_serving tests`
 - `python -m mkdocs build --strict`
 - `python scripts/check_markdown_links.py --root .`
+- `python -c "from anvil_serving.commands.spec import write_manifest; write_manifest()"`
 - `git diff --check`
+
+### T014: Expose offline router-config topology validation
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/topology_cli.py, anvil_serving/commands/control_plane.py, tests/test_topology.py
+**Dependencies:** T006
+
+Add the root command `anvil-serving topology validate-router-config --config PATH [--topology PATH] [--topology-overlay PATH] [--json]` to the existing local offline topology family. It must call the T006 snapshot validator without target resolution, transport, confirmation, network, Docker, service, GPU, or mutation behavior. Library code returns a dictionary; only the wrapper prints. Success emits exactly `schema_version`, `valid`, `error_code`, `config_sha256`, `tier_count`, `replica_tier_count`, `replica_member_count`, `deployment_identity_source`, and `runtime_deployment_identity_verified`, with schema literal `replica-topology-validation/v1`, `deployment_identity_source = "declared"`, and `runtime_deployment_identity_verified = false`. Failure uses the same keys, a T006 fixed error code, null counts and provenance, false runtime verification, and a digest only when a complete bounded capture exists. Human output is one bounded line derived only from that dictionary. Exit zero means valid and exit two means refused.
+
+**Acceptance criteria:**
+
+- The exact root CLI path and four options work locally and return the closed success or failure dictionary.
+- JSON and human output derive from the same value and contain no config path, URL, host or resource identity, auth metadata, raw value, or exception text.
+- Invalid config/topology/join input exits two; a valid direct or replica snapshot exits zero without modifying a file or contacting a host.
+- A negative control proves the command invokes the shared T006 validator and cannot pass through an independently shaped fixture.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_topology.py -x -q`
+- `python -m ruff check anvil_serving/topology_cli.py anvil_serving/commands/control_plane.py tests/test_topology.py`
+
+### T015: Activate only the validated exact-byte router snapshot
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/router_manage.py, anvil_serving/serves.py, anvil_serving/commands/router.py, tests/test_router_manage.py
+**Dependencies:** T006, T012
+
+Make managed `router install-config` capture and validate one T006 snapshot before its first status transition or other mutation, then pass the snapshot's exact bytes to the installer. The installer must not reopen the source path, normalize newlines, or serialize the parsed configuration. A path-based internal install remains compatible for direct configurations but rejects any replica-bearing config with `replica_lifecycle_unsupported`; only the managed activation path may install replicas, and only through the validated snapshot. Forward the existing topology and optional overlay selection to local activation without adding DNS, service discovery, raw Docker validation, or live identity claims. A prior standalone T014 success is informational, never an activation token; activation always recaptures and revalidates its own snapshot.
+
+**Acceptance criteria:**
+
+- Invalid resource, host, endpoint, duplicate-resource, or cross-host joins fail before `_transition("status")`, quiesce, drain, file write, restart, or any other mutation.
+- The bytes validated are exactly the bytes supplied to the deployed validator and atomic writer; changing the source path after capture cannot change installed bytes.
+- The installer never reopens or newline-normalizes a validated snapshot, and its fixed failures contain no path, URL, topology identity, auth metadata, input value, or raw exception.
+- Internal path-based lifecycle installs refuse replicas, while direct-tier install behavior remains compatible.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_router_manage.py tests/test_serves_ensure_router.py -x -q`
+- `python -m ruff check anvil_serving/router_manage.py anvil_serving/serves.py anvil_serving/commands/router.py tests/test_router_manage.py`

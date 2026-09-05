@@ -328,7 +328,7 @@ owning runtime, with expected-node identity retained and no SSH fallback.
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Dependencies:** T007
+**Dependencies:** T007, T008
 **Likely files:** docs/CLI-COMMAND-MANIFEST.json, docs/cli/control-plane.md, docs/prds/README.md, .tickets/2026-09-05-controller-deployment-access.md
 
 Generate the manifest with write_manifest, document the metadata-only/unsupported
@@ -348,3 +348,25 @@ Retain only sanitized conclusions in the ticket.
 - `python scripts/check_markdown_links.py --root .`
 - `python -m mkdocs build --strict`
 - `python scripts/run_tests.py tests/ -x -q`
+
+### T008: Preserve integer input grammar through controller CLI dispatch
+
+**Feature:** F002
+**Priority:** high
+**Type:** modify
+**Dependencies:** T004
+**Likely files:** anvil_serving/cli.py, tests/test_cli.py, tests/test_controller_diagnostics.py
+
+Fix `cli.py::_remote_scalar` so schema-declared integer values require an optional ASCII minus sign followed by one or more ASCII digits before conversion. Preserve leading zeros as the existing local parsers do; numeric schema bounds still determine whether negatives or zero are allowed. Reject plus signs, whitespace, underscores, Unicode digits, empty values and invalid forms with a fixed UsageError. Do not change string or floating-point behavior. This closes the confirmed local-versus-controller diagnostic input gap documented in `.tickets/2026-09-05-remote-integer-cli-parity.md`; keep the correction generic rather than hard-coding a diagnostic command name.
+
+**Acceptance criteria:**
+
+- Local and controller diagnostic CLI paths both reject `+1`, `1_0`, leading-space input and Unicode digits before diagnostic or request transport invocation.
+- Real CLI dispatch tests with fake topology/resolution/transport prove default100,1,200 reach the shared library unchanged and refused input sends no operation request.
+- Remote integer options retain signed-negative and leading-zero behavior where their schemas allow it; string and floating-point parsing remain unchanged.
+- Existing remote CLI, MCP and diagnostic regressions pass; errors contain no raw input value.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_cli.py tests/test_controller_diagnostics.py -x -q`
+- `python -m ruff check anvil_serving/cli.py tests/test_cli.py tests/test_controller_diagnostics.py`

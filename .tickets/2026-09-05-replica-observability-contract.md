@@ -20,7 +20,8 @@ endpoint's configured KV estimates for aggregate replica capacity.
   unverified. A qualification reference does not prove evidence passed.
 - Read aggregate/member in-flight counts from one atomic admission-owner snapshot.
   An absent or inconsistent owner is unavailable, not idle. The projection API
-  accepts the owner explicitly; runtime wiring belongs to the later dispatch task.
+  accepts the owner explicitly; HTTP owner wiring is separately required by
+  T005.2 and must pass before coordinator gate T005 completes.
 - Preserve shared per-request limits. Do not fetch metrics using the logical URL
   sentinel, multiply KV estimates, or claim qualified aggregate throughput.
   Replica live metrics explicitly remain unavailable/not aggregated in this slice.
@@ -55,3 +56,10 @@ did not bind its later wiring to an acceptance test. T005 is not accepted while
 that gap remains. Expand the scoped task to include the caller and a real HTTP
 endpoint regression after the overlapping scoped-auth task releases its claim;
 do not call the helper-only tests end-to-end capacity proof.
+
+The approved amendment splits pure projection into T005.1, actual HTTP wiring
+into T005.2, and retains T005 as a coordinator integration/evidence gate with
+explicit dependencies. Dotted task IDs are not assumed to create State parent
+links. Reviewed checkpoint a5a52258 preserves the pure implementation; none of
+these split tasks is accepted yet. Claim-bound tests must be rerun on their
+current upstream-compatible revisions.

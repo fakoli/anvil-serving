@@ -1,6 +1,6 @@
 # Close the replica render and activation coupling before implementation
 
-Status: open design correction
+Status: design correction approved; implementation and activation proof pending
 Priority: P1
 Date: 2026-09-05
 Tasks: qualified-replica-sets:T006, qualified-replica-sets:T012
@@ -28,5 +28,12 @@ The join remains offline and declaration-based: unique member resources,
 existing host/runtime ownership, one shared host, non-null normalized-equal
 endpoints, no DNS, no topology inference and no deployment attestation.
 
-No code or runtime change is represented by this ticket. The task remains
-unclaimed until its executable contract is reviewed.
+Independent review selected exact-byte validate-only snapshots instead of a
+lossy TOML renderer. Approved T006 captures at most 1 MiB once and joins parsed
+members to declared topology offline; T014 exposes the actual root command
+`topology validate-router-config`. T012 refuses single-serve lifecycle paths
+before mutation. T015 validates before the first status transition and passes
+the captured bytes through installation without reopening or normalizing them.
+T013 owns generated manifest/docs and whole-feature gates. Direct rendering
+stays unchanged. Source parsing and explicit dependency checks passed; no
+implementation or deployment is implied by this design approval.
