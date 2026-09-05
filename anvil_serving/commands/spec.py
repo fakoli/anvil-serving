@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 
-MANIFEST_SCHEMA_VERSION = 6
+MANIFEST_SCHEMA_VERSION = 7
 MANIFEST_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "CLI-COMMAND-MANIFEST.json"
 CLI_DOC = "docs/CLI.md"
 _MUTATION_CLASSES = frozenset({"read", "mutate", "process"})
@@ -513,6 +513,7 @@ def manifest_data(tree: CommandTree | None = None) -> dict[str, object]:
     product = catalog_data()
     return {
         "schema_version": MANIFEST_SCHEMA_VERSION,
+        "global_options": [_option_data(option) for option in tree.global_options],
         "umbrella": product["umbrella"],
         "product_families": product["families"],
         "commands": records,

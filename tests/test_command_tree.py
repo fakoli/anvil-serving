@@ -33,7 +33,48 @@ def test_manifest_is_checked_in_and_matches_deterministic_regeneration():
 
 def test_manifest_is_byte_stable():
     assert render_manifest() == render_manifest()
-    assert manifest_data()["schema_version"] == 6
+    data = manifest_data()
+    assert data["schema_version"] == 7
+    assert data["global_options"] == [
+        {
+            "flags": list(option.flags),
+            "summary": option.summary,
+            "value_name": option.value_name,
+            "output_policy": option.output_policy,
+            "requires_confirmation": option.requires_confirmation,
+        }
+        for option in COMMAND_TREE.global_options
+    ]
+
+
+def test_manifest_serializes_empty_and_custom_global_option_declarations():
+    node = CommandNode("synthetic", "Synthetic.", handler=HandlerRef("anvil_serving.init"))
+    empty = CommandTree(nodes=(node,), global_options=())
+    custom = CommandTree(
+        nodes=(node,),
+        global_options=(
+            CommandOption(
+                ("-o", "--output"),
+                "Choose output.",
+                value_name="FORMAT",
+                output_policy="protocol",
+                requires_confirmation=True,
+            ),
+        ),
+    )
+
+    assert manifest_data(empty)["global_options"] == []
+    assert manifest_data(custom)["global_options"] == [
+        {
+            "flags": ["-o", "--output"],
+            "summary": "Choose output.",
+            "value_name": "FORMAT",
+            "output_policy": "protocol",
+            "requires_confirmation": True,
+        }
+    ]
+    assert render_manifest(empty) == render_manifest(empty)
+    assert render_manifest(custom) == render_manifest(custom)
 
 
 @pytest.mark.parametrize("family,connection", [("router", "--router-url"), ("fleet", "--controller-url")])
