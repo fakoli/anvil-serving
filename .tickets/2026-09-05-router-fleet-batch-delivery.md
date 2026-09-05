@@ -92,3 +92,12 @@ changes the inventory inputs, so this task does not overwrite the generated
 inventory. These are historical candidate checkpoints, not proof for the
 current tree. Final formal acceptance, CI, merge, package publication and live
 deployment remain pending.
+
+Whole-PRD source run at `f0a369b2` passed its 219-test focused gate and
+1,133-test router gate, then found 33 manifest-fixture failures (6,974 passed,
+14 skipped). The real file mtimes had passed the test's frozen clock; the
+future-timestamp quarantine was behaving correctly. The separately ticketed
+fixture repair `42d5eb3d` (`EV041BA0C3`) passed 139 focused tests and Ruff,
+and its 30/31-second boundary rejected a deliberately weakened guard. It is
+integrated for a fresh complete source run. The failed run remains recorded;
+neither a focused repair nor local integration supplies formal acceptance.
