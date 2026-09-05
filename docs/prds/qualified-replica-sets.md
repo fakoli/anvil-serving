@@ -653,10 +653,10 @@ regression runs before the remaining narrative documentation task.
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** docs/CONFIGURATION.md, docs/THIN-CAPABILITY-GATEWAY.md, docs/cli/control-plane.md, docs/cli/serves.md, docs/CLI-COMMAND-MANIFEST.json
+**Likely files:** docs/CONFIGURATION.md, docs/THIN-CAPABILITY-GATEWAY.md, docs/cli/control-plane.md, docs/cli/serves.md
 **Dependencies:** T005.2, T009, T010, T011, T012, T013.1, T014, T015
 
-Document a generic two-member loopback configuration, exact declared-versus-live identity boundary, immutable snapshot validation, `anvil-serving topology validate-router-config`, round robin, one-attempt behavior, lifecycle refusal, observability, and the later capacity-scheduler boundary. Regenerate `docs/CLI-COMMAND-MANIFEST.json` only through `anvil_serving.commands.spec.write_manifest`, then run the complete repository gates without weakening any earlier acceptance criterion.
+Document a generic two-member loopback configuration, exact declared-versus-live identity boundary, immutable snapshot validation, `anvil-serving topology validate-router-config`, round robin, one-attempt behavior, lifecycle refusal, observability, and the later capacity-scheduler boundary. T013.1 already owns manifest regeneration; the repeated write_manifest gate here must leave its current artifact unchanged. Run the complete repository gates without weakening any earlier acceptance criterion. This remaining task edits only the four narrative documentation files, not the generated manifest or product behavior.
 
 Document mode/profile's local --config option, operator-home default and parsed
 library requirement for routed transitions, the fixed missing-config refusal,
