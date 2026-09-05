@@ -1766,7 +1766,7 @@ credentials, response bodies or exception text into response/audit data.
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** anvil_serving/control_plane/controller/cli.py, tests/control_plane/test_controller_workload_startup.py
+**Likely files:** anvil_serving/control_plane/controller/cli.py, tests/control_plane/test_controller_workload_cli.py
 **Dependencies:** T014.1
 
 Extend the existing controller serve parser with exactly one optional
@@ -1786,8 +1786,8 @@ probe. Generated manifest/reference synchronization remains T015/T016.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/control_plane/test_controller_workload_startup.py tests/test_controller.py tests/test_cli.py -x -q`
-- `python -m ruff check anvil_serving/control_plane/controller/cli.py tests/control_plane/test_controller_workload_startup.py`
+- `python scripts/run_tests.py tests/control_plane/test_controller_workload_cli.py tests/test_controller.py tests/test_cli.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/controller/cli.py tests/control_plane/test_controller_workload_cli.py`
 - `python -m anvil_serving.cli controller serve --help`
 
 ### T014: Verify the scoped controller MCP workload contract
