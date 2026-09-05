@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -20,6 +21,7 @@ from anvil_serving.observability.workloads import (
     WorkloadOwner,
     WorkloadQuery,
     WorkloadState,
+    source_result_to_json,
     workload_id,
 )
 
@@ -651,3 +653,185 @@ def test_operation_workload_closed_writer_wal_snapshot_is_logically_read_only(tm
         database.name + "-wal",
         database.name + "-shm",
     }
+
+
+def _seed_benchmark_reader(path, rows):
+    with closing(sqlite3.connect(path)) as connection, connection:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("CREATE TABLE benchmark_jobs (state, record)")
+        connection.executemany("INSERT INTO benchmark_jobs VALUES (?, ?)", rows)
+
+
+def _benchmark_reader_row(state, at):
+    return state, json.dumps({"submitted_at": at.isoformat(), "updated_at": at.isoformat(),
+                              "private": "payload-must-not-be-hydrated"})
+
+
+def test_standalone_benchmark_reader_missing_parents_never_constructs_store(tmp_path, monkeypatch):
+    attempted = []
+
+    def forbidden(*args, **kwargs):
+        attempted.append(True)
+        raise AssertionError("writable owner must not be opened")
+
+    monkeypatch.setattr(BenchmarkJobStore, "__init__", forbidden)
+    monkeypatch.setattr(BenchmarkJobStore, "_connection", forbidden)
+    monkeypatch.setattr(BenchmarkJobStore, "_decode_record", forbidden)
+    monkeypatch.setattr(store_module, "resolve_owned_run_path", forbidden)
+    before = tuple(tmp_path.iterdir())
+    result = store_module.read_benchmark_workloads(
+        tmp_path / "missing" / "jobs.sqlite3", "node-a", WorkloadQuery(),
+        datetime(2026, 9, 5, tzinfo=UTC),
+    )
+    assert result.status is ResultStatus.UNAVAILABLE
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+    assert result.records == () and result.truncation.omitted is None
+    assert tuple(tmp_path.iterdir()) == before
+    assert not attempted
+
+
+@pytest.mark.parametrize("path", [None, "", b"database.sqlite3", 7, True])
+def test_standalone_benchmark_reader_invalid_path_is_fixed_unavailable(path, monkeypatch):
+    monkeypatch.setattr(store_module, "_read_snapshot_rows", lambda *a, **k: pytest.fail("read"))
+    result = store_module.read_benchmark_workloads(
+        path, "node-a", WorkloadQuery(), datetime(2026, 9, 5, tzinfo=UTC),
+    )
+    assert result.status is ResultStatus.UNAVAILABLE
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+
+
+def test_standalone_benchmark_reader_validates_before_path_lock_and_sqlite(monkeypatch):
+    touched = []
+
+    class UnreadablePath(os.PathLike):
+        def __fspath__(self):
+            touched.append("path")
+            raise AssertionError("path read")
+
+    class UnreadableLock:
+        def acquire(self, **kwargs):
+            touched.append("lock")
+            raise AssertionError("lock read")
+
+    monkeypatch.setattr(store_module, "_read_snapshot_rows", lambda *a, **k: pytest.fail("SQLite"))
+    now = datetime(2026, 9, 5, tzinfo=UTC)
+    for host, query, at in [
+        ("bad host", WorkloadQuery(), now),
+        ("node-a", object(), now),
+        ("node-a", WorkloadQuery(), now.replace(tzinfo=None)),
+    ]:
+        with pytest.raises(WorkloadError):
+            store_module.read_benchmark_workloads(
+                UnreadablePath(), host, query, at, _lock=UnreadableLock(),
+            )
+    for query in [WorkloadQuery(owner=WorkloadOwner.ROUTER),
+                  WorkloadQuery(kind=WorkloadKind.CONTROLLER_OPERATION),
+                  WorkloadQuery(host="node-b")]:
+        result = store_module.read_benchmark_workloads(
+            UnreadablePath(), "node-a", query, now, _lock=UnreadableLock(),
+        )
+        assert result.status is ResultStatus.COMPLETE and result.records == ()
+    assert not touched
+
+
+@pytest.mark.parametrize("query,count,status,error", [
+    (WorkloadQuery(), 3, ResultStatus.PARTIAL, WorkloadErrorCode.FUTURE),
+    (WorkloadQuery(limit=1), 1, ResultStatus.PARTIAL, None),
+    (WorkloadQuery(state=WorkloadState.TERMINAL), 1, ResultStatus.COMPLETE, None),
+    (WorkloadQuery(state=WorkloadState.UNSUPPORTED), 0, ResultStatus.PARTIAL, WorkloadErrorCode.INVALID),
+])
+def test_standalone_benchmark_reader_real_database_parity_and_literal_results(
+    tmp_path, monkeypatch, query, count, status, error,
+):
+    now = datetime(2026, 9, 5, tzinfo=UTC)
+    store = _store(tmp_path)
+    _seed_benchmark_reader(store.path, [
+        _benchmark_reader_row("queued", now),
+        _benchmark_reader_row("running", now - timedelta(seconds=1)),
+        _benchmark_reader_row("completed", now - timedelta(seconds=2)),
+        ("malformed", "not-json"),
+        _benchmark_reader_row("running", now + timedelta(seconds=31)),
+    ])
+    expected = store.list_workloads("node-a", query, now)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("standalone read constructed or hydrated writable owner")
+
+    monkeypatch.setattr(BenchmarkJobStore, "__init__", forbidden)
+    monkeypatch.setattr(BenchmarkJobStore, "_connection", forbidden)
+    monkeypatch.setattr(BenchmarkJobStore, "_decode_record", forbidden)
+    result = store_module.read_benchmark_workloads(Path(store.path), "node-a", query, now)
+    assert source_result_to_json(result) == source_result_to_json(expected)
+    assert (len(result.records), result.status, result.error) == (count, status, error)
+    assert "payload-must-not-be-hydrated" not in source_result_to_json(result)
+    assert all(record.source_timestamp <= now for record in result.records)
+
+
+def test_standalone_benchmark_reader_observes_live_wal_without_checkpoint(tmp_path):
+    now = datetime(2026, 9, 5, tzinfo=UTC)
+    path = tmp_path / "wal.sqlite3"
+    with closing(sqlite3.connect(path, isolation_level=None)) as writer:
+        writer.execute("PRAGMA journal_mode=WAL")
+        writer.execute("PRAGMA wal_autocheckpoint=0")
+        writer.execute("CREATE TABLE benchmark_jobs (state, record)")
+        before = store_module.read_benchmark_workloads(path, "node-a", WorkloadQuery(), now)
+        assert before.status is ResultStatus.COMPLETE and before.records == ()
+        writer.execute("INSERT INTO benchmark_jobs VALUES (?, ?)", _benchmark_reader_row("queued", now))
+        assert Path(str(path) + "-wal").stat().st_size > 0
+        after = store_module.read_benchmark_workloads(str(path), "node-a", WorkloadQuery(), now)
+        assert after.status is ResultStatus.COMPLETE and len(after.records) == 1
+        record = after.records[0]
+        assert record.state is WorkloadState.QUEUED
+        assert record.source_timestamp == now
+        assert record.id == workload_id("node-a", WorkloadKind.BENCHMARK_JOB,
+                                        WorkloadOwner.BENCHMARK, "benchmark-row:1")
+
+
+def test_benchmark_instance_reader_forwards_exact_owner_path_lock_and_clock(tmp_path, monkeypatch):
+    store = _store(tmp_path)
+    now = datetime(2026, 9, 5, tzinfo=UTC)
+    query = WorkloadQuery(limit=3)
+    calls = []
+    sentinel = object()
+
+    def read(*args, **kwargs):
+        calls.append((args, kwargs))
+        return sentinel
+
+    monkeypatch.setattr(store_module, "read_benchmark_workloads", read)
+    assert store.list_workloads("node-a", query, now) is sentinel
+    assert calls == [((store.path, "node-a", query, now),
+                      {"_lock": store._lock, "_snapshot_clock": store._snapshot_clock})]
+
+
+def test_standalone_benchmark_reader_contended_lock_keeps_one_second_budget(tmp_path):
+    timeouts = []
+
+    class ContendedLock:
+        def acquire(self, *, timeout):
+            timeouts.append(timeout)
+            return False
+
+        def release(self):
+            pytest.fail("unacquired lock released")
+
+    ticks = iter((2.0, 2.25))
+    result = store_module.read_benchmark_workloads(
+        tmp_path / "absent.sqlite3", "node-a", WorkloadQuery(),
+        datetime(2026, 9, 5, tzinfo=UTC), _lock=ContendedLock(),
+        _snapshot_clock=lambda: next(ticks),
+    )
+    assert result.status is ResultStatus.UNAVAILABLE
+    assert timeouts == [0.75]
+
+
+def test_standalone_benchmark_reader_bad_database_is_unavailable_without_mutation(tmp_path):
+    path = tmp_path / "bad.sqlite3"
+    path.write_bytes(b"not-a-database")
+    result = store_module.read_benchmark_workloads(
+        path, "node-a", WorkloadQuery(), datetime(2026, 9, 5, tzinfo=UTC),
+    )
+    assert result.status is ResultStatus.UNAVAILABLE
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+    assert path.read_bytes() == b"not-a-database"
+    assert tuple(tmp_path.iterdir()) == (path,)

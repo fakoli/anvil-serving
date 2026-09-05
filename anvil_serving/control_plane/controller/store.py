@@ -429,6 +429,190 @@ def _read_snapshot_rows(
             connection.close()
 
 
+def read_benchmark_workloads(
+    path: str | os.PathLike[str], host: str, query: WorkloadQuery, now: datetime,
+    *, _snapshot_clock: Clock = time.monotonic, _lock=None,
+) -> SourceResult:
+    """Read existing benchmark metadata without constructing a writable owner.
+
+    Missing sources stay unavailable. This creates no main database, schema,
+    run directory, job or artifact; SQLite may maintain WAL coordination
+    sidecars, as documented by _read_snapshot_rows.
+    """
+    if not isinstance(query, WorkloadQuery):
+        raise WorkloadError(
+            WorkloadErrorCode.INVALID, "workload query has the wrong type",
+        )
+    collected = normalize_workload_timestamp(now)
+    # Canonical identity construction validates the trusted host before storage access.
+    workload_id(
+        host, WorkloadKind.BENCHMARK_JOB, WorkloadOwner.BENCHMARK, "validation",
+    )
+    if (
+        (query.owner is not None and query.owner is not WorkloadOwner.BENCHMARK)
+        or (query.kind is not None and query.kind is not WorkloadKind.BENCHMARK_JOB)
+        or (query.host is not None and query.host != host)
+        or (
+            query.state is not None
+            and query.state not in {
+                WorkloadState.QUEUED,
+                WorkloadState.RUNNING,
+                WorkloadState.TERMINAL,
+                WorkloadState.UNSUPPORTED,
+            }
+        )
+        or (
+            query.active_only
+            and query.state is not None
+            and query.state not in {
+                WorkloadState.QUEUED,
+                WorkloadState.RUNNING,
+            }
+        )
+    ):
+        return _empty_source(WorkloadOwner.BENCHMARK, collected)
+
+    try:
+        future_cutoff = format_workload_timestamp(
+            collected + timedelta(seconds=MAX_FUTURE_SECONDS),
+        )
+        freshness_cutoff = format_workload_timestamp(
+            collected - timedelta(seconds=30),
+        )
+        recent_cutoff = format_workload_timestamp(
+            collected - timedelta(seconds=query.recent_seconds),
+        )
+    except (OverflowError, WorkloadError):
+        raise WorkloadError(
+            WorkloadErrorCode.INVALID,
+            "workload collection time is outside the supported range",
+        ) from None
+    cap = min(query.limit, SOURCE_LIMIT)
+    state_code = _query_benchmark_state(query.state)
+    parameters: tuple[object, ...] = (
+        _UNKNOWN_STATE,
+        MAX_JSON_BYTES,
+        _STORE_TIMESTAMP_BYTES,
+        _STORE_TIMESTAMP_BYTES,
+        _STORE_TIMESTAMP_BYTES,
+        _STORE_TIMESTAMP_BYTES,
+        _UNKNOWN_STATE,
+        future_cutoff,
+        future_cutoff,
+        state_code,
+        state_code,
+        int(query.active_only),
+        freshness_cutoff,
+        int(query.active_only),
+        freshness_cutoff,
+        recent_cutoff,
+        cap + 1,
+    )
+    try:
+        if not isinstance(path, (str, os.PathLike)):
+            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+        raw_path = os.fspath(path)
+        if not isinstance(raw_path, str) or not raw_path:
+            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+        source_path = str(Path(raw_path).expanduser().absolute())
+        lock = threading.RLock() if _lock is None else _lock
+        deadline = _snapshot_clock() + _STORE_SNAPSHOT_SECONDS
+    except Exception:
+        return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+    remaining = _remaining(deadline, _snapshot_clock)
+    if remaining <= 0:
+        return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+    try:
+        acquired = lock.acquire(timeout=remaining)
+    except Exception:
+        acquired = False
+    if not acquired:
+        return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+    try:
+        rows = _read_snapshot_rows(
+            source_path,
+            sql=_BENCHMARK_WORKLOAD_SQL,
+            parameters=parameters,
+            deadline=deadline,
+            monotonic=_snapshot_clock,
+            functions=(
+                ("anvil_store_timestamp", 1, _canonical_store_timestamp),
+                (
+                    "anvil_benchmark_digest",
+                    1,
+                    lambda rowid: _benchmark_digest(host, rowid),
+                ),
+            ),
+        )
+    except Exception:
+        return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+    finally:
+        lock.release()
+
+    extra = len(rows) > cap
+    records: list[WorkloadRecord] = []
+    error: WorkloadErrorCode | None = None
+    for row in rows[:cap]:
+        invalid_code = row["invalid_code"]
+        if invalid_code:
+            code = (
+                WorkloadErrorCode.FUTURE
+                if invalid_code == 2
+                else WorkloadErrorCode.INVALID
+            )
+            if error is not WorkloadErrorCode.FUTURE:
+                error = code
+            continue
+        try:
+            state, phase, outcome = map_store_state(
+                WorkloadOwner.BENCHMARK, row["state_code"],
+            )
+            record = WorkloadRecord(
+                id=row["workload_digest"],
+                kind=WorkloadKind.BENCHMARK_JOB,
+                owner=WorkloadOwner.BENCHMARK,
+                host=host,
+                state=state,
+                phase=phase,
+                outcome=outcome,
+                created_at=parse_workload_timestamp(row["created_at"]),
+                updated_at=parse_workload_timestamp(row["updated_at"]),
+                source_timestamp=parse_workload_timestamp(row["updated_at"]),
+                source_authority=SourceAuthority.BENCHMARK_STORE,
+                observation_quality=ObservationQuality.RECORDED,
+            )
+            validate_source_records(
+                (record,),
+                owner=WorkloadOwner.BENCHMARK,
+                host=host,
+                collection_timestamp=collected,
+            )
+        except WorkloadError as exc:
+            if error is not WorkloadErrorCode.FUTURE:
+                error = exc.code
+            continue
+        records.append(record)
+
+    try:
+        canonical_records, canonical_truncation = select_records(
+            tuple(records), query, now=collected,
+        )
+    except Exception:
+        return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+    if canonical_records != tuple(records) or canonical_truncation.omitted != 0:
+        return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+
+    partial = extra or error is not None
+    return SourceResult(
+        owner=WorkloadOwner.BENCHMARK,
+        status=ResultStatus.PARTIAL if partial else ResultStatus.COMPLETE,
+        collection_timestamp=collected,
+        records=canonical_records,
+        truncation=Truncation(len(records), None if partial else 0),
+        error=error,
+    )
+
+
 class BenchmarkJobStore:
     """Durable suite-neutral benchmark jobs with bounded logs and artifacts."""
 
@@ -459,171 +643,10 @@ class BenchmarkJobStore:
     def list_workloads(
         self, host: str, query: WorkloadQuery, now: datetime,
     ) -> SourceResult:
-        """Return one bounded read-only benchmark workload snapshot."""
-        if not isinstance(query, WorkloadQuery):
-            raise WorkloadError(
-                WorkloadErrorCode.INVALID, "workload query has the wrong type",
-            )
-        collected = normalize_workload_timestamp(now)
-        # Canonical identity construction validates the trusted host before storage access.
-        workload_id(
-            host, WorkloadKind.BENCHMARK_JOB, WorkloadOwner.BENCHMARK, "validation",
-        )
-        if (
-            (query.owner is not None and query.owner is not WorkloadOwner.BENCHMARK)
-            or (query.kind is not None and query.kind is not WorkloadKind.BENCHMARK_JOB)
-            or (query.host is not None and query.host != host)
-            or (
-                query.state is not None
-                and query.state not in {
-                    WorkloadState.QUEUED,
-                    WorkloadState.RUNNING,
-                    WorkloadState.TERMINAL,
-                    WorkloadState.UNSUPPORTED,
-                }
-            )
-            or (
-                query.active_only
-                and query.state is not None
-                and query.state not in {
-                    WorkloadState.QUEUED,
-                    WorkloadState.RUNNING,
-                }
-            )
-        ):
-            return _empty_source(WorkloadOwner.BENCHMARK, collected)
-
-        try:
-            future_cutoff = format_workload_timestamp(
-                collected + timedelta(seconds=MAX_FUTURE_SECONDS),
-            )
-            freshness_cutoff = format_workload_timestamp(
-                collected - timedelta(seconds=30),
-            )
-            recent_cutoff = format_workload_timestamp(
-                collected - timedelta(seconds=query.recent_seconds),
-            )
-        except (OverflowError, WorkloadError):
-            raise WorkloadError(
-                WorkloadErrorCode.INVALID,
-                "workload collection time is outside the supported range",
-            ) from None
-        cap = min(query.limit, SOURCE_LIMIT)
-        state_code = _query_benchmark_state(query.state)
-        parameters: tuple[object, ...] = (
-            _UNKNOWN_STATE,
-            MAX_JSON_BYTES,
-            _STORE_TIMESTAMP_BYTES,
-            _STORE_TIMESTAMP_BYTES,
-            _STORE_TIMESTAMP_BYTES,
-            _STORE_TIMESTAMP_BYTES,
-            _UNKNOWN_STATE,
-            future_cutoff,
-            future_cutoff,
-            state_code,
-            state_code,
-            int(query.active_only),
-            freshness_cutoff,
-            int(query.active_only),
-            freshness_cutoff,
-            recent_cutoff,
-            cap + 1,
-        )
-        try:
-            deadline = self._snapshot_clock() + _STORE_SNAPSHOT_SECONDS
-        except Exception:
-            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
-        remaining = _remaining(deadline, self._snapshot_clock)
-        if remaining <= 0:
-            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
-        try:
-            acquired = self._lock.acquire(timeout=remaining)
-        except Exception:
-            acquired = False
-        if not acquired:
-            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
-        try:
-            rows = _read_snapshot_rows(
-                self.path,
-                sql=_BENCHMARK_WORKLOAD_SQL,
-                parameters=parameters,
-                deadline=deadline,
-                monotonic=self._snapshot_clock,
-                functions=(
-                    ("anvil_store_timestamp", 1, _canonical_store_timestamp),
-                    (
-                        "anvil_benchmark_digest",
-                        1,
-                        lambda rowid: _benchmark_digest(host, rowid),
-                    ),
-                ),
-            )
-        except Exception:
-            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
-        finally:
-            self._lock.release()
-
-        extra = len(rows) > cap
-        records: list[WorkloadRecord] = []
-        error: WorkloadErrorCode | None = None
-        for row in rows[:cap]:
-            invalid_code = row["invalid_code"]
-            if invalid_code:
-                code = (
-                    WorkloadErrorCode.FUTURE
-                    if invalid_code == 2
-                    else WorkloadErrorCode.INVALID
-                )
-                if error is not WorkloadErrorCode.FUTURE:
-                    error = code
-                continue
-            try:
-                state, phase, outcome = map_store_state(
-                    WorkloadOwner.BENCHMARK, row["state_code"],
-                )
-                record = WorkloadRecord(
-                    id=row["workload_digest"],
-                    kind=WorkloadKind.BENCHMARK_JOB,
-                    owner=WorkloadOwner.BENCHMARK,
-                    host=host,
-                    state=state,
-                    phase=phase,
-                    outcome=outcome,
-                    created_at=parse_workload_timestamp(row["created_at"]),
-                    updated_at=parse_workload_timestamp(row["updated_at"]),
-                    source_timestamp=parse_workload_timestamp(row["updated_at"]),
-                    source_authority=SourceAuthority.BENCHMARK_STORE,
-                    observation_quality=ObservationQuality.RECORDED,
-                )
-                validate_source_records(
-                    (record,),
-                    owner=WorkloadOwner.BENCHMARK,
-                    host=host,
-                    collection_timestamp=collected,
-                )
-            except WorkloadError as exc:
-                if error is not WorkloadErrorCode.FUTURE:
-                    error = exc.code
-                continue
-            records.append(record)
-
-        try:
-            canonical_records, canonical_truncation = select_records(
-                tuple(records), query, now=collected,
-            )
-        except Exception:
-            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
-        if canonical_records != tuple(records) or canonical_truncation.omitted != 0:
-            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
-
-        partial = extra or error is not None
-        return SourceResult(
-            owner=WorkloadOwner.BENCHMARK,
-            status=ResultStatus.PARTIAL if partial else ResultStatus.COMPLETE,
-            collection_timestamp=collected,
-            records=canonical_records,
-            truncation=Truncation(len(records), None if partial else 0),
-            error=error,
+        """Return a read-only snapshot using this owner's exact lock and clock."""
+        return read_benchmark_workloads(
+            self.path, host, query, now,
+            _snapshot_clock=self._snapshot_clock, _lock=self._lock,
         )
 
     def submit(self, spec: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
