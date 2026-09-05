@@ -1,6 +1,6 @@
 # Construct replica backends without an empty endpoint
 
-Status: open; qualified-replica-sets:T007 owns construction, T008 owns dispatch.
+Status: resolved in source; qualified-replica-sets:T007 accepted, T008 owns dispatch.
 
 A bounded offline probe of the accepted configuration and current backend
 builder confirmed that a replica tier constructs one RelayBackend whose
@@ -28,3 +28,10 @@ appears to succeed. Tests cover both the aggregate and its concurrency wrapper.
 This ticket is source implementation work only. A built aggregate is neither
 live qualification nor a deployed route. T008 and streaming acceptance remain
 separate gates, as do model promotion and coordinated release verification.
+
+Accepted revision `694976de4ce483bc676a4e37a407fa96d4bc7c57` passed 32
+post-commit focused tests and Ruff. Independent review verified copied member
+ownership, the shared semaphore, fixed refusals and structured-result
+delegation. Removing delegation in memory caused the selected regression to
+fail. Anvil evidence `EVFDF516AE` and proof `qualified-replica-sets-T007-E000585`
+record source acceptance; no live route changed.
