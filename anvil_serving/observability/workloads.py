@@ -614,6 +614,42 @@ def map_unknown_owner_state(owner: WorkloadOwner | None = None) -> tuple[Workloa
     return WorkloadState.UNSUPPORTED, WorkloadPhase.UNSUPPORTED, WorkloadOutcome.UNKNOWN
 
 
+def map_store_state(
+    owner: WorkloadOwner, value: object,
+) -> tuple[WorkloadState, WorkloadPhase, WorkloadOutcome | None]:
+    """Map a persisted controller or benchmark state without retaining raw text."""
+    if owner is WorkloadOwner.CONTROLLER:
+        mapping = {
+            "running": (WorkloadState.RUNNING, WorkloadPhase.RUNNING, None),
+            "succeeded": (
+                WorkloadState.TERMINAL, WorkloadPhase.COMPLETED, WorkloadOutcome.SUCCESS,
+            ),
+            "failed": (
+                WorkloadState.TERMINAL, WorkloadPhase.FAILED, WorkloadOutcome.ERROR,
+            ),
+        }
+    elif owner is WorkloadOwner.BENCHMARK:
+        mapping = {
+            "queued": (WorkloadState.QUEUED, WorkloadPhase.QUEUED, None),
+            "running": (WorkloadState.RUNNING, WorkloadPhase.RUNNING, None),
+            "completed": (
+                WorkloadState.TERMINAL, WorkloadPhase.COMPLETED, WorkloadOutcome.SUCCESS,
+            ),
+            "failed": (
+                WorkloadState.TERMINAL, WorkloadPhase.FAILED, WorkloadOutcome.ERROR,
+            ),
+            "cancelled": (
+                WorkloadState.TERMINAL, WorkloadPhase.CANCELLED,
+                WorkloadOutcome.CANCELLED,
+            ),
+        }
+    else:
+        raise _invalid("store workload owner is invalid")
+    if not isinstance(value, str):
+        raise _invalid("store workload state must be a string")
+    return mapping.get(value, map_unknown_owner_state(owner))
+
+
 def select_records(
     records: Sequence[WorkloadRecord], query: WorkloadQuery, *, now: datetime,
     aggregate: bool = False,

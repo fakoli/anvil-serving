@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 import hashlib
 import os
 from pathlib import Path
@@ -28,6 +29,30 @@ from ...benchmarking.jobs import (
     validate_job_record,
     validate_job_spec,
 )
+from ...observability.workloads import (
+    MAX_FUTURE_SECONDS,
+    MAX_JSON_BYTES,
+    SOURCE_LIMIT,
+    ObservationQuality,
+    ResultStatus,
+    SourceAuthority,
+    SourceResult,
+    Truncation,
+    WorkloadError,
+    WorkloadErrorCode,
+    WorkloadKind,
+    WorkloadOwner,
+    WorkloadQuery,
+    WorkloadRecord,
+    WorkloadState,
+    format_workload_timestamp,
+    map_store_state,
+    normalize_workload_timestamp,
+    parse_workload_timestamp,
+    select_records,
+    validate_source_records,
+    workload_id,
+)
 from .errors import ControllerError
 from .security import _json_dumps, _sanitize_persisted_value, _strict_json_loads
 
@@ -52,6 +77,216 @@ DEFAULT_BENCHMARK_RUN_ROOT = os.path.join(
 Clock = Callable[[], float]
 BenchmarkCleanup = Callable[[str], None]
 
+_STORE_SNAPSHOT_SECONDS = 1.0
+_STORE_PROGRESS_INSTRUCTIONS = 1000
+_STORE_TIMESTAMP_BYTES = 65
+_UNKNOWN_STATE = "__unknown__"
+
+_BENCHMARK_WORKLOAD_SQL = """
+WITH extracted AS (
+    SELECT
+        rowid AS native_rowid,
+        CASE
+            WHEN typeof(state) <> 'text' THEN NULL
+            WHEN state IN ('queued', 'running', 'completed', 'failed', 'cancelled')
+                THEN state
+            ELSE ?
+        END AS state_code,
+        CASE
+            WHEN typeof(record) = 'text'
+                 AND length(CAST(record AS BLOB)) <= ?
+            THEN CASE WHEN json_valid(record) THEN record ELSE NULL END
+            ELSE NULL
+        END AS safe_record
+    FROM benchmark_jobs
+), stamped AS (
+    SELECT
+        native_rowid,
+        state_code,
+        anvil_benchmark_digest(native_rowid) AS workload_digest,
+        CASE
+            WHEN safe_record IS NOT NULL
+                 AND json_type(safe_record, '$.submitted_at') = 'text'
+                 AND length(CAST(json_extract(safe_record, '$.submitted_at') AS BLOB))
+                     BETWEEN 1 AND ?
+            THEN anvil_store_timestamp(
+                CAST(substr(
+                    CAST(json_extract(safe_record, '$.submitted_at') AS BLOB), 1, ?
+                ) AS TEXT)
+            )
+            ELSE NULL
+        END AS created_at,
+        CASE
+            WHEN safe_record IS NOT NULL
+                 AND json_type(safe_record, '$.updated_at') = 'text'
+                 AND length(CAST(json_extract(safe_record, '$.updated_at') AS BLOB))
+                     BETWEEN 1 AND ?
+            THEN anvil_store_timestamp(
+                CAST(substr(
+                    CAST(json_extract(safe_record, '$.updated_at') AS BLOB), 1, ?
+                ) AS TEXT)
+            )
+            ELSE NULL
+        END AS updated_at
+    FROM extracted
+), classified AS (
+    SELECT
+        workload_digest,
+        state_code,
+        CASE
+            WHEN state_code = 'queued' THEN 'queued'
+            WHEN state_code = 'running' THEN 'running'
+            WHEN state_code IN ('completed', 'failed', 'cancelled') THEN 'terminal'
+            WHEN state_code = ? THEN 'unsupported'
+            ELSE NULL
+        END AS mapped_state,
+        created_at,
+        updated_at,
+        CASE
+            WHEN workload_digest IS NULL OR state_code IS NULL
+                 OR created_at IS NULL OR updated_at IS NULL OR created_at > updated_at
+                THEN 1
+            WHEN created_at > ? OR updated_at > ? THEN 2
+            ELSE 0
+        END AS invalid_code
+    FROM stamped
+), selected AS (
+    SELECT workload_digest, state_code, created_at, updated_at, invalid_code
+    FROM classified
+    WHERE
+        (? IS NULL OR mapped_state = ? OR mapped_state IS NULL)
+        AND (
+            mapped_state IS NULL
+            OR (
+                ? = 1
+                AND mapped_state IN ('queued', 'running')
+                AND (updated_at IS NULL OR updated_at >= ?)
+            )
+            OR (
+                ? = 0
+                AND (
+                    (mapped_state IN ('queued', 'running')
+                        AND (updated_at IS NULL OR updated_at >= ?))
+                    OR mapped_state = 'unsupported'
+                    OR (mapped_state = 'terminal'
+                        AND (updated_at IS NULL OR updated_at >= ?))
+                )
+            )
+        )
+)
+SELECT workload_digest, state_code, created_at, updated_at, invalid_code
+FROM selected
+ORDER BY (invalid_code <> 0) ASC, updated_at DESC, workload_digest ASC
+LIMIT ?
+"""
+
+
+def _unavailable_source(owner: WorkloadOwner, collected: datetime) -> SourceResult:
+    return SourceResult(
+        owner=owner,
+        status=ResultStatus.UNAVAILABLE,
+        collection_timestamp=collected,
+        records=(),
+        truncation=Truncation(0, None),
+        error=WorkloadErrorCode.UNAVAILABLE,
+    )
+
+
+def _empty_source(owner: WorkloadOwner, collected: datetime) -> SourceResult:
+    return SourceResult(
+        owner=owner,
+        status=ResultStatus.COMPLETE,
+        collection_timestamp=collected,
+        records=(),
+        truncation=Truncation(0, 0),
+    )
+
+
+def _canonical_store_timestamp(value: object) -> str | None:
+    """Canonicalize one already-bounded timestamp scalar for SQLite ordering."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        if len(value.encode("utf-8")) > _STORE_TIMESTAMP_BYTES:
+            return None
+        suffix_normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+        parsed = datetime.fromisoformat(suffix_normalized)
+        return format_workload_timestamp(parsed)
+    except (OverflowError, TypeError, ValueError, WorkloadError):
+        return None
+
+
+def _benchmark_digest(host: str, rowid: object) -> str | None:
+    if isinstance(rowid, bool) or not isinstance(rowid, int) or rowid < 1:
+        return None
+    try:
+        return workload_id(
+            host,
+            WorkloadKind.BENCHMARK_JOB,
+            WorkloadOwner.BENCHMARK,
+            f"benchmark-row:{rowid}",
+        )
+    except WorkloadError:
+        return None
+
+
+def _query_benchmark_state(state: WorkloadState | None) -> str | None:
+    return None if state is None else state.value
+
+
+def _remaining(deadline: float, monotonic: Clock) -> float:
+    try:
+        return max(0.0, deadline - monotonic())
+    except Exception:
+        return 0.0
+
+
+def _read_snapshot_rows(
+    path: str,
+    *,
+    sql: str,
+    parameters: tuple[object, ...],
+    deadline: float,
+    monotonic: Clock,
+    functions: tuple[tuple[str, int, Callable[..., object]], ...],
+) -> tuple[sqlite3.Row, ...]:
+    """Execute one bounded, logically read-only snapshot before a shared deadline.
+
+    Existing WAL databases may cause SQLite itself to create or recreate ``-wal``
+    and ``-shm`` coordination sidecars. This helper never creates a main database,
+    schema, journal mode, or product-owned content.
+    """
+    remaining = _remaining(deadline, monotonic)
+    if remaining <= 0:
+        raise TimeoutError("store workload snapshot deadline expired")
+    uri = Path(path).absolute().as_uri() + "?mode=ro"
+    connection = sqlite3.connect(
+        uri, uri=True, timeout=remaining, isolation_level=None,
+    )
+    try:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA query_only = ON")
+        for name, count, function in functions:
+            connection.create_function(name, count, function, deterministic=True)
+
+        def interrupted() -> int:
+            return int(_remaining(deadline, monotonic) <= 0)
+
+        connection.set_progress_handler(interrupted, _STORE_PROGRESS_INSTRUCTIONS)
+        if _remaining(deadline, monotonic) <= 0:
+            raise TimeoutError("store workload snapshot deadline expired")
+        connection.execute("BEGIN")
+        rows = tuple(connection.execute(sql, parameters).fetchall())
+        if _remaining(deadline, monotonic) <= 0:
+            raise TimeoutError("store workload snapshot deadline expired")
+        connection.rollback()
+        return rows
+    finally:
+        try:
+            connection.set_progress_handler(None, 0)
+        finally:
+            connection.close()
+
 
 class BenchmarkJobStore:
     """Durable suite-neutral benchmark jobs with bounded logs and artifacts."""
@@ -61,11 +296,14 @@ class BenchmarkJobStore:
         path: str = DEFAULT_BENCHMARK_JOB_DB_PATH,
         *,
         run_root: str = DEFAULT_BENCHMARK_RUN_ROOT,
+        _snapshot_clock: Clock = time.monotonic,
     ) -> None:
         if not isinstance(path, str) or not path:
             raise ValueError("benchmark job database path must be a non-empty string")
         if not isinstance(run_root, str) or not run_root:
             raise ValueError("benchmark run root must be a non-empty string")
+        if not callable(_snapshot_clock):
+            raise ValueError("benchmark snapshot clock must be callable")
         self.path = path
         self.run_root = os.path.realpath(os.path.abspath(os.path.expanduser(run_root)))
         Path(self.run_root).mkdir(parents=True, exist_ok=True)
@@ -75,6 +313,177 @@ class BenchmarkJobStore:
             run_id="validation",
         )
         self._lock = threading.RLock()
+        self._snapshot_clock = _snapshot_clock
+
+    def list_workloads(
+        self, host: str, query: WorkloadQuery, now: datetime,
+    ) -> SourceResult:
+        """Return one bounded read-only benchmark workload snapshot."""
+        if not isinstance(query, WorkloadQuery):
+            raise WorkloadError(
+                WorkloadErrorCode.INVALID, "workload query has the wrong type",
+            )
+        collected = normalize_workload_timestamp(now)
+        # Canonical identity construction validates the trusted host before storage access.
+        workload_id(
+            host, WorkloadKind.BENCHMARK_JOB, WorkloadOwner.BENCHMARK, "validation",
+        )
+        if (
+            (query.owner is not None and query.owner is not WorkloadOwner.BENCHMARK)
+            or (query.kind is not None and query.kind is not WorkloadKind.BENCHMARK_JOB)
+            or (query.host is not None and query.host != host)
+            or (
+                query.state is not None
+                and query.state not in {
+                    WorkloadState.QUEUED,
+                    WorkloadState.RUNNING,
+                    WorkloadState.TERMINAL,
+                    WorkloadState.UNSUPPORTED,
+                }
+            )
+            or (
+                query.active_only
+                and query.state is not None
+                and query.state not in {
+                    WorkloadState.QUEUED,
+                    WorkloadState.RUNNING,
+                }
+            )
+        ):
+            return _empty_source(WorkloadOwner.BENCHMARK, collected)
+
+        try:
+            future_cutoff = format_workload_timestamp(
+                collected + timedelta(seconds=MAX_FUTURE_SECONDS),
+            )
+            freshness_cutoff = format_workload_timestamp(
+                collected - timedelta(seconds=30),
+            )
+            recent_cutoff = format_workload_timestamp(
+                collected - timedelta(seconds=query.recent_seconds),
+            )
+        except (OverflowError, WorkloadError):
+            raise WorkloadError(
+                WorkloadErrorCode.INVALID,
+                "workload collection time is outside the supported range",
+            ) from None
+        cap = min(query.limit, SOURCE_LIMIT)
+        state_code = _query_benchmark_state(query.state)
+        parameters: tuple[object, ...] = (
+            _UNKNOWN_STATE,
+            MAX_JSON_BYTES,
+            _STORE_TIMESTAMP_BYTES,
+            _STORE_TIMESTAMP_BYTES,
+            _STORE_TIMESTAMP_BYTES,
+            _STORE_TIMESTAMP_BYTES,
+            _UNKNOWN_STATE,
+            future_cutoff,
+            future_cutoff,
+            state_code,
+            state_code,
+            int(query.active_only),
+            freshness_cutoff,
+            int(query.active_only),
+            freshness_cutoff,
+            recent_cutoff,
+            cap + 1,
+        )
+        try:
+            deadline = self._snapshot_clock() + _STORE_SNAPSHOT_SECONDS
+        except Exception:
+            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+        remaining = _remaining(deadline, self._snapshot_clock)
+        if remaining <= 0:
+            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+        try:
+            acquired = self._lock.acquire(timeout=remaining)
+        except Exception:
+            acquired = False
+        if not acquired:
+            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+        try:
+            rows = _read_snapshot_rows(
+                self.path,
+                sql=_BENCHMARK_WORKLOAD_SQL,
+                parameters=parameters,
+                deadline=deadline,
+                monotonic=self._snapshot_clock,
+                functions=(
+                    ("anvil_store_timestamp", 1, _canonical_store_timestamp),
+                    (
+                        "anvil_benchmark_digest",
+                        1,
+                        lambda rowid: _benchmark_digest(host, rowid),
+                    ),
+                ),
+            )
+        except Exception:
+            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+        finally:
+            self._lock.release()
+
+        extra = len(rows) > cap
+        records: list[WorkloadRecord] = []
+        error: WorkloadErrorCode | None = None
+        for row in rows[:cap]:
+            invalid_code = row["invalid_code"]
+            if invalid_code:
+                code = (
+                    WorkloadErrorCode.FUTURE
+                    if invalid_code == 2
+                    else WorkloadErrorCode.INVALID
+                )
+                if error is not WorkloadErrorCode.FUTURE:
+                    error = code
+                continue
+            try:
+                state, phase, outcome = map_store_state(
+                    WorkloadOwner.BENCHMARK, row["state_code"],
+                )
+                record = WorkloadRecord(
+                    id=row["workload_digest"],
+                    kind=WorkloadKind.BENCHMARK_JOB,
+                    owner=WorkloadOwner.BENCHMARK,
+                    host=host,
+                    state=state,
+                    phase=phase,
+                    outcome=outcome,
+                    created_at=parse_workload_timestamp(row["created_at"]),
+                    updated_at=parse_workload_timestamp(row["updated_at"]),
+                    source_timestamp=parse_workload_timestamp(row["updated_at"]),
+                    source_authority=SourceAuthority.BENCHMARK_STORE,
+                    observation_quality=ObservationQuality.RECORDED,
+                )
+                validate_source_records(
+                    (record,),
+                    owner=WorkloadOwner.BENCHMARK,
+                    host=host,
+                    collection_timestamp=collected,
+                )
+            except WorkloadError as exc:
+                if error is not WorkloadErrorCode.FUTURE:
+                    error = exc.code
+                continue
+            records.append(record)
+
+        try:
+            canonical_records, canonical_truncation = select_records(
+                tuple(records), query, now=collected,
+            )
+        except Exception:
+            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+        if canonical_records != tuple(records) or canonical_truncation.omitted != 0:
+            return _unavailable_source(WorkloadOwner.BENCHMARK, collected)
+
+        partial = extra or error is not None
+        return SourceResult(
+            owner=WorkloadOwner.BENCHMARK,
+            status=ResultStatus.PARTIAL if partial else ResultStatus.COMPLETE,
+            collection_timestamp=collected,
+            records=canonical_records,
+            truncation=Truncation(len(records), None if partial else 0),
+            error=error,
+        )
 
     def submit(self, spec: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
         """Create a queued job, or return the identical existing run."""
