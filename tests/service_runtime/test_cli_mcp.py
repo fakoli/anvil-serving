@@ -20,6 +20,7 @@ def _service_tools_module():
 
 def test_cli_adopt_forwards_a_launchd_binding_to_the_shared_executor(monkeypatch, capsys, tmp_path):
     cli = _cli_module()
+    monkeypatch.setattr(os, "getuid", lambda: 501, raising=False)
     seen = {}
 
     def execute(action, service=None, **kwargs):
@@ -97,6 +98,27 @@ def test_cli_reports_structured_service_errors_without_a_traceback(monkeypatch, 
         "code": "service_not_found",
         "message": "declared service was not found",
     }
+
+
+def test_windows_launchd_adoption_returns_structured_errors(monkeypatch, capsys):
+    from types import SimpleNamespace
+    cli = _cli_module()
+    services = _service_tools_module()
+    errors = importlib.import_module("anvil_serving.control_plane.mcp.errors")
+    monkeypatch.setattr(cli, "os", SimpleNamespace())
+    monkeypatch.setattr(services, "os", SimpleNamespace())
+
+    assert cli.main([
+        "adopt", "voice-stt", "--manager", "launchd", "--resource", "voice",
+        "--engine", "mlx-lm", "--service-label", "org.example.voice-stt",
+    ]) == 2
+    assert json.loads(capsys.readouterr().err)["code"] == "unsupported_platform"
+    with pytest.raises(errors.ToolError) as raised:
+        services.tool_host_services_manage({
+            "action": "adopt", "service": "voice-stt", "manager": "launchd",
+            "resource": "voice", "engine": "mlx-lm", "service_label": "org.example.voice-stt",
+        })
+    assert raised.value.code == "unsupported_platform"
 
 
 def test_cli_adoption_rejects_disabled_startup_policy(monkeypatch):

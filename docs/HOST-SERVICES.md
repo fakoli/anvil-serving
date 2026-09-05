@@ -62,7 +62,13 @@ model, or chooses a replacement model.
 | macOS | `launchd`, `docker` | `mlx-lm`, `mlx-vlm` | Docker-supported declared adapters; MLX is not a Docker engine | TBD |
 | Windows | `docker` | None | Docker-supported declared adapters | TBD |
 | Linux | `docker` | None | Docker-supported declared adapters | TBD |
-| Cloud or NeoCloud provider | No provider adapter yet | N/A | N/A | TBD |
+| NeoCloud: Vast.ai, Runpod | No provider adapter yet | N/A | N/A | TBD |
+| Cloud: AWS, Azure | No provider adapter yet | N/A | N/A | TBD |
+
+This is the implemented platform contract. An isolated live macOS LaunchAgent
+smoke covers install, start, status, logs, restart, enable, disable, and stop.
+Docker adapters have simulated supervisor tests; live Docker lifecycle
+qualification on Windows, macOS, and Linux remains pending.
 
 An existing macOS LaunchAgent for Parakeet or Kokoro may be adopted only as
 `support = "legacy"`. That records its supervised identity and bounded state;

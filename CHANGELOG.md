@@ -8,6 +8,13 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Portable `host services` CLI and typed MCP tools for supervisor discovery,
+  adoption, status, bounded logs, installation, and confirmed lifecycle actions.
+  The platform contract supports Docker on Windows and Linux, and native MLX
+  through launchd or Docker on macOS; provider lifecycle remains TBD.
+- Native serve, recipe, and voice lifecycle bindings, including adoption of
+  existing Parakeet.cpp and Kokoro LaunchAgents as legacy services. Adoption
+  records pinned identities without migrating or restarting the service.
 - Published the GLM 5.3 524K xgrammar qualification with pinned structured-
   speculative runtime and routed-client evidence.
 

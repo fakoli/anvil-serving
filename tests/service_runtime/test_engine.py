@@ -1,7 +1,6 @@
 """Running HTTP servers do not imply resident models."""
 import io
 import json
-import pytest
 
 
 def responses(mapping):

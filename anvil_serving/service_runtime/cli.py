@@ -63,6 +63,8 @@ def _binding(args: argparse.Namespace) -> dict | None:
         "support": args.support,
     }
     if args.manager == "launchd":
+        if not hasattr(os, "getuid"):
+            raise ServiceError("unsupported_platform", "launchd requires the owning macOS host")
         if not args.service_label:
             raise ServiceError("bad_argument", "launchd adoption requires --service-label")
         binding.update(

@@ -14,6 +14,9 @@ from anvil_serving.service_runtime.launchd import Adapter
 
 LABEL = "com.example.anvil.voice"
 
+if not hasattr(os, "getuid"):
+    pytest.skip("launchd ownership and permissions require POSIX", allow_module_level=True)
+
 
 def _write_plist(
     path: Path,
