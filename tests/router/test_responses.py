@@ -10,6 +10,16 @@ from contextlib import contextmanager
 import pytest
 
 from tests.router.helpers import StaticBackend
+from tests.router.test_streaming_relay import (
+    FakeStreamResponse,
+    _ReplicaReadiness,
+    _ReplicaStreamTransport,
+    _assert_replica_idle,
+    _count_real_member_releases,
+    _openai_sse,
+    _ready,
+    replica_routing as replica_routing,
+)
 from anvil_serving.router.dialects.responses import ResponsesDialect
 from anvil_serving.router.internal import DialectError
 from anvil_serving.router.front_door import make_server
@@ -244,3 +254,38 @@ def test_responses_preserves_safe_correlation_in_the_internal_request_only():
     assert correlation["task_id"] == "task_48"
     assert correlation["request_id"] == "req_91ce"
     assert re.fullmatch(r"req_[0-9a-f]{32}", correlation["gateway_request_id"])
+
+
+@pytest.mark.parametrize("streaming", (False, True))
+def test_responses_real_replica_relay_preserves_compound_lease(
+    monkeypatch, replica_routing, streaming,
+):
+    response = (
+        FakeStreamResponse(_openai_sse(
+            {"choices": [{"index": 0, "delta": {"content": "ok"}}]},
+            {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]},
+        ))
+        if streaming else b'{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}'
+    )
+    transport = _ReplicaStreamTransport({"member-a": response, "member-b": b"unused"})
+    tier, routing = replica_routing(
+        transport, _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()}),
+        buffered=not streaming,
+    )
+    releases = _count_real_member_releases(monkeypatch, routing)
+    with running_server(routing) as (host, port):
+        status, _headers, raw = post(host, port, {
+            "model": "replica.stream", "input": "hi", "stream": streaming,
+        })
+    assert status == 200
+    if streaming:
+        events = parse_named_events(raw)
+        assert events[-1][0] == "response.completed"
+        completed = events[-1][1]["response"]
+        assert response.closed
+    else:
+        completed = json.loads(raw)
+    assert completed["output"][0]["content"][0]["text"] == "ok"
+    _assert_replica_idle(routing, tier)
+    assert transport.calls == ["member-a"]
+    assert releases == ["member-a"]
