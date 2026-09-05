@@ -197,10 +197,10 @@ The generated CLI index currently infers global options by intersecting every vi
 **Feature:** F001
 **Priority:** medium
 **Type:** bugfix
-**Likely files:** scripts/audit_cli_references.py, tests/test_cli_reference_audit.py, docs/CLI.md, .tickets/2026-09-05-workload-wire-contract-repairs.md
+**Likely files:** scripts/audit_cli_references.py, tests/test_cli_reference_audit.py, tests/test_cli.py, docs/CLI.md, .tickets/2026-09-05-workload-wire-contract-repairs.md
 **Dependencies:** T007
 
-Use the manifest's explicit global_options flag tuples in render_manifest_index, never an intersection or hardcoded flag list. Require a well-formed global_options array with the existing nonempty-string flag shape; malformed or missing metadata fails closed with a bounded ValueError before generation. Preserve command-local options even if every command happens to share them. No legacy-schema fallback is needed: the checked-in generator and schema ship together. Regenerate CLI.md through the existing update path; the inventory should remain byte-identical because this task adds no files or command examples. If regeneration changes other artifacts, report the discrepancy before widening this task. Record the defect and candidate-only fix in the existing repair ticket.
+Use the manifest's explicit global_options flag tuples in render_manifest_index, never an intersection or hardcoded flag list. Require a well-formed global_options array with the existing nonempty-string flag shape; malformed or missing metadata fails closed with a bounded ValueError before generation. Preserve command-local options even if every command happens to share them. No legacy-schema fallback is needed: the checked-in generator and schema ship together. Regenerate CLI.md through the existing update path; the inventory should remain byte-identical because this task adds no files or command examples. If regeneration changes other artifacts, report the discrepancy before widening this task. Record the defect and candidate-only fix in the existing repair ticket. Synchronize the reproduced schema-6 assertion in tests/test_cli.py::test_cli_tree_command_emits_manifest to schema 7 and check actual global_options output. Do not change CLI behavior.
 
 **Acceptance criteria:**
 
@@ -213,6 +213,7 @@ Use the manifest's explicit global_options flag tuples in render_manifest_index,
 
 - `python scripts/audit_cli_references.py --check --scope full`
 - `python scripts/run_tests.py tests/test_cli_reference_audit.py tests/test_docs_command_invocations.py -x -q`
-- `python -m ruff check scripts/audit_cli_references.py tests/test_cli_reference_audit.py`
+- `python scripts/run_tests.py tests/test_cli.py -x -q`
+- `python -m ruff check scripts/audit_cli_references.py tests/test_cli_reference_audit.py tests/test_cli.py`
 - `git diff --check`
 
