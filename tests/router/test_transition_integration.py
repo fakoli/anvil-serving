@@ -9,9 +9,9 @@ import types
 import pytest
 
 from anvil_serving.router.availability import AlwaysAvailable, AvailabilityResult
-from anvil_serving.router.config import RouterConfig, Tier
+from anvil_serving.router.config import ReplicaIdentity, ReplicaMember, RouterConfig, Tier
 from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
-from anvil_serving.router.serve import RoutingBackend
+from anvil_serving.router.serve import ReplicaRuntime, RoutingBackend
 
 
 class _TextBackend:
@@ -117,6 +117,96 @@ def test_unadvanced_direct_stream_close_releases_admission_lease():
     assert routing._admission.snapshot("primary-local").active_requests == 1
     stream.close()
     assert routing._admission.snapshot("primary-local").active_requests == 0
+
+
+# --------------------------------------------------------------------------- #
+# Qualified replica sets T009 — compound member lease drains on stream end
+# --------------------------------------------------------------------------- #
+class _ReplicaReadiness:
+    def check_member(self, _tier, _member_id):
+        return AvailabilityResult(True, "ready", "identity_passed")
+
+
+def _replica_stream_routing(blocking, peer):
+    tier = Tier(
+        id="replica-primary",
+        base_url="",
+        model="replica-model",
+        dialect="openai",
+        context_limit=131072,
+        privacy="local",
+        tool_support=True,
+        auth_env="ANVIL_TEST_KEY",
+        health_path="/health",
+        model_identity=True,
+        replicas=(
+            ReplicaMember(
+                "member-a", "http://127.0.0.1:33001/v1", "node-a",
+                "resource-a", "qualification:a",
+            ),
+            ReplicaMember(
+                "member-b", "http://127.0.0.1:33002/v1", "node-a",
+                "resource-b", "qualification:b",
+            ),
+        ),
+        replica_identity=ReplicaIdentity(
+            model_revision="revision-1",
+            engine_version="engine-1",
+            image_digest="sha256:" + "1" * 64,
+            config_fingerprint="sha256:" + "2" * 64,
+        ),
+    )
+    return tier, RoutingBackend(
+        RouterConfig(tiers=(tier,), model_routes={"replica.stream": tier.id}),
+        {tier.id: ReplicaRuntime({"member-a": blocking, "member-b": peer})},
+        availability=_ReplicaReadiness(),
+    )
+
+
+def test_replica_stream_drain_waits_for_compound_lease_then_releases_both_counts():
+    selected = _BlockingBackend()
+    peer = _TextBackend("must-not-run")
+    tier, routing = _replica_stream_routing(selected, peer)
+    completed = []
+    worker = threading.Thread(target=lambda: completed.append(
+        "".join(routing.generate(_request("replica.stream")))
+    ))
+    worker.start()
+    assert selected.entered.wait(timeout=5)
+    snapshot = routing._admission.snapshot(tier.id)
+    assert snapshot.active_requests == 1
+    assert snapshot.member_active_requests == (("member-a", 1), ("member-b", 0))
+
+    routing.quiesce_tier(tier.id)
+    timed_out = routing.drain_tier(tier.id, 0.001)
+    assert timed_out["drained"] is False
+    assert timed_out["timed_out"] is True
+    assert routing._admission.snapshot(tier.id).active_requests == 1
+    drain_started = threading.Event()
+    drained = []
+
+    def wait_for_drain() -> None:
+        drain_started.set()
+        drained.append(routing.drain_tier(tier.id, 5))
+
+    drainer = threading.Thread(target=wait_for_drain)
+    try:
+        drainer.start()
+        assert drain_started.wait(timeout=5)
+        assert routing._admission.snapshot(tier.id).active_requests == 1
+    finally:
+        selected.release.set()
+        worker.join(timeout=5)
+        drainer.join(timeout=5)
+
+    assert not worker.is_alive() and not drainer.is_alive()
+    assert completed == ["HEAVY"]
+    assert drained[0]["drained"] is True
+    assert drained[0]["timed_out"] is False
+    snapshot = routing._admission.snapshot(tier.id)
+    assert snapshot.active_requests == 0
+    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
+    assert peer.calls == 0
 
 
 def test_guarded_readmit_requires_identity_readiness_configuration():
