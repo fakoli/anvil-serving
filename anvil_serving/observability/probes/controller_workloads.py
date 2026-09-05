@@ -211,7 +211,7 @@ def _credential(
 
 
 def _arguments(query: WorkloadQuery) -> dict[str, object]:
-    return {
+    values = {
         "owner": None if query.owner is None else query.owner.value,
         "kind": None if query.kind is None else query.kind.value,
         "state": None if query.state is None else query.state.value,
@@ -220,6 +220,9 @@ def _arguments(query: WorkloadQuery) -> dict[str, object]:
         "recent_seconds": query.recent_seconds,
         "limit": query.limit,
     }
+    # Optional filters are omitted on the wire, never encoded as explicit null.
+    # The shared controller parser deliberately refuses null query operands.
+    return {key: value for key, value in values.items() if value is not None}
 
 
 def _node_from_transport(result: object) -> NodeResult:

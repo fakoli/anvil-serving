@@ -189,10 +189,6 @@ def test_expected_node_transport_uses_health_then_exact_workload_operation() -> 
     assert json.loads(requests[1][0].data) == {
         "name": "node_workloads",
         "arguments": {
-            "owner": None,
-            "kind": None,
-            "state": None,
-            "host": None,
             "active_only": False,
             "recent_seconds": 3600,
             "limit": 200,
@@ -361,9 +357,6 @@ def test_fleet_reader_uses_expected_aggregator_and_exact_operation() -> None:
     assert json.loads(requests[1][0].data) == {
         "name": "fleet_workloads",
         "arguments": {
-            "owner": None,
-            "kind": None,
-            "state": None,
             "host": "worker-a",
             "active_only": True,
             "recent_seconds": 42,
@@ -761,3 +754,60 @@ def test_fleet_http_and_cleanup_failures_are_fixed() -> None:
             ]
         )
     assert raised.value.code is WorkloadErrorCode.UNAVAILABLE
+
+
+@pytest.mark.parametrize("mask", range(16))
+def test_optional_query_subsets_round_trip_through_real_parser(mask):
+    from anvil_serving.observability.probes.controller_workloads import _arguments
+    from anvil_serving.observability.workload_tools import parse_node_workload_query
+
+    optional = {
+        "owner": "controller", "kind": "controller-operation",
+        "state": "running", "host": HOST,
+    }
+    arguments = {key: value for index, (key, value) in enumerate(optional.items()) if mask & (1 << index)}
+    arguments.update(active_only=True, recent_seconds=42, limit=17)
+    query = parse_node_workload_query(arguments)
+    wire = json.loads(json.dumps(_arguments(query)))
+    assert wire == arguments
+    assert parse_node_workload_query(wire) == query
+    for key in optional:
+        with pytest.raises(WorkloadError):
+            parse_node_workload_query({**wire, key: None})
+
+
+@pytest.mark.parametrize("surface", ("node", "fleet"))
+@pytest.mark.parametrize("arguments", ({}, {"owner": "controller", "host": HOST, "limit": 1}))
+def test_real_scoped_controller_reads_accept_omitted_filters(tmp_path, monkeypatch, surface, arguments):
+    from anvil_serving.control_plane.controller import server as controller_server
+    from anvil_serving.observability.workload_tools import parse_node_workload_query
+    from anvil_serving.transports import _urlopen_no_proxy_no_redirect
+    from tests.control_plane.test_controller_fleet_workloads import SCOPED, _server
+
+    seen = []
+
+    def source(host, query, now):
+        assert host == HOST
+        return SourceResult(WorkloadOwner.CONTROLLER, ResultStatus.COMPLETE, now, (), Truncation(0, 0))
+
+    monkeypatch.setattr(controller_server, "build_workload_readers", lambda *_a, **_kw: {WorkloadOwner.CONTROLLER: source})
+
+    def opener(request, timeout):
+        seen.append((request.get_method(), json.loads(request.data) if request.data else None))
+        return _urlopen_no_proxy_no_redirect(request, timeout=timeout)
+
+    query = parse_node_workload_query(arguments)
+    with _server(tmp_path, monkeypatch) as (server, collector, _):
+        endpoint = f"http://127.0.0.1:{server.server_address[1]}"
+        reader = read_controller_workloads if surface == "node" else read_controller_fleet_workloads
+        result = reader(endpoint, "TEST_WORKLOAD_TOKEN", HOST, query, NOW,
+                        environment={"TEST_WORKLOAD_TOKEN": SCOPED}, _open=opener)
+        if surface == "node":
+            assert _controller_source(result).status is ResultStatus.COMPLETE
+        else:
+            assert collector.calls == [(query, NOW)]
+            assert result == build_fleet_workloads((HOST,), query, NOW, {})
+    assert [method for method, _ in seen] == ["GET", "POST"]
+    assert seen[1][1] == {"name": surface + "_workloads", "arguments": {
+        "active_only": False, "recent_seconds": 3600, "limit": 200, **arguments,
+    }}
