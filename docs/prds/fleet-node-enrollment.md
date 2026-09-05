@@ -354,6 +354,18 @@ remaining T004 implementation is dispatched; T004.1 depends only on the fully
 specified pure request contract above. They remain implementation prerequisites,
 not evidence of installed receiver availability.
 
+### Deterministic receiver packaging contract
+
+T004.5 builds inert receiver bytes before the filesystem/permission runtime.
+It does not provision a receiver or claim an executable enrollment path.
+
+- Add `control_plane/bootstrap_package.py::build_receiver_zipapp(validator_source: bytes, receiver_source: bytes) -> bytes`. These are trusted release-source inputs, not request/frame fields. Each must be exact nonempty bytes, at most 256 KiB, valid UTF-8 Python source without NUL, and syntactically valid under the building interpreter. Validate syntax without executing it and retain byte-exact source, including its existing newlines. Reject all input/encoding/syntax/size failures as fixed input-free BootstrapContractError invalid-contract. Do not scan imports or claim syntax checks authenticate code.
+- The returned artifact is a ZIP application with exactly five regular entries in this order: `__main__.py`, `anvil_serving/__init__.py`, `anvil_serving/fleet_bootstrap.py`, `anvil_serving/control_plane/__init__.py`, `anvil_serving/control_plane/bootstrap_shim.py`. Both initializer files are empty; validator and shim entries contain the exact respective supplied bytes. Main is exactly `from anvil_serving.control_plane.bootstrap_shim import main\nraise SystemExit(main())\n` encoded as UTF-8. No candidate package initializer is copied.
+- Mirror the deterministic bundle ZIP metadata: ZIP_STORED, DOS timestamp 1980-01-01 00:00:00, Unix regular mode 0600, empty comments/extras, ASCII entry names and no ZIP64. The complete returned artifact must not exceed 1 MiB. No source path, host identity, timestamp of build, local configuration, credentials or environment value is added. The caller hashes the complete bytes with SHA-256; the artifact must not contain its own digest.
+- This pure builder performs no file read/write, environment access, subprocess or network call. Future release tooling supplies exact source from the selected checkout/package; receiver preprovisioning remains separately gated. The forced-command launcher uses the declared trusted Python executable with fixed `-I -S` flags and the pinned receiver artifact, no caller-controlled argv. This isolates package lookup from the working directory, user site and Python environment overrides.
+- The trusted local target config is named exactly `bootstrap-target.json` beside the receiver artifact. Later runtime code derives this sibling from the verified receiver file identity, never from cwd, environment, frame or bundle. T004.5 does not load it. Its contents, permissions and measured digest remain governed by the target-config and identity contracts above.
+- Tests build twice and compare exact bytes/digests, inspect all entry names/order/metadata/content, mutate one source byte and observe changed artifact identity, reject wrong types/empty/oversized/invalid UTF-8/NUL/syntax inputs without executing them, and run a temporary fixture receiver with the real embedded validator through `python -I -S <artifact>`. A poisoned working-directory/PYTHONPATH package must not load; the emitted frame must decode with the canonical result parser. Packaging that omits the validator or executes a copied package initializer must fail this isolated subprocess test. No installation, permission measurement, staging or supervisor action occurs.
+
 ## Code Map
 
 - `anvil_serving/topology.py::Host`, `Transport`, `Topology`, `validate_topology`, `load_topology`, and `topology_snapshot_identity` own declared host identity, transport policy, and stable drift detection.
@@ -640,13 +652,34 @@ Implement only the closed immutable result variants, canonical bounded codec and
 - `python scripts/run_tests.py tests/test_fleet_bootstrap.py -x -q`
 - `python -m ruff check anvil_serving/fleet_bootstrap.py tests/test_fleet_bootstrap.py`
 
+### T004.5: Build deterministic self-contained receiver artifacts
+
+**Feature:** F002
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/control_plane/bootstrap_package.py, tests/test_bootstrap_package.py, .tickets/2026-09-05-bootstrap-receiver-ownership-contract.md
+**Dependencies:** T002, T004.3
+
+Implement the pure packaging contract above using the existing deterministic ZIP idiom and canonical fixed error type. Accept trusted source bytes, not source paths; preserve them exactly and never execute validation inputs. Test an actual isolated subprocess with the real validator source and a minimal fixture receiver that emits a canonical protocol-error result. Record source evidence in the existing receiver-ownership ticket while leaving permission, durable staging, activation and deployment pending.
+
+**Acceptance criteria:**
+
+- Equal source inputs yield identical bounded ZIP bytes with the exact closed five-entry layout and metadata.
+- Invalid source inputs fail with fixed safe errors and no side effects.
+- An isolated Python subprocess runs only the embedded receiver/validator despite poisoned cwd and PYTHONPATH.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_bootstrap_package.py tests/test_fleet_bootstrap.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/bootstrap_package.py tests/test_bootstrap_package.py`
+
 ### T004: Implement the fixed receiver protocol and target validation
 
 **Feature:** F002
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/fleet_bootstrap.py, anvil_serving/control_plane/bootstrap_shim.py, tests/test_fleet_bootstrap.py
-**Dependencies:** T008, T011, T004.1, T004.2, T004.3, T004.4
+**Dependencies:** T008, T011, T004.1, T004.2, T004.3, T004.4, T004.5
 
 Implement the stdlib-only pinned receiver and fixed `identity|stage|activate|status|rollback` protocol. Every operation accepts only the closed framed metadata for operation ID, plan digest, and expected node; stage additionally binds the bundle digest/length and exact ZIP bytes. Install only after canonical manifest/archive/path/digest validation. This slice contains no network subprocess or controller endpoint wiring.
 
