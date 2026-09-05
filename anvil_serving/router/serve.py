@@ -18,6 +18,7 @@ import time
 from dataclasses import replace
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 from .admission import AdmissionLease, TierAdmission
@@ -212,6 +213,52 @@ def build_backend_for_tier(
     return RelayBackend(tier, env=env, transport=transport, timeout=timeout)
 
 
+class ReplicaRuntime:
+    """Existing relay adapters for one explicitly selected replica tier."""
+
+    def __init__(self, members: Mapping[str, Backend]) -> None:
+        copied = dict(members)
+        self._members: Mapping[str, Backend] = MappingProxyType(copied)
+        self._member_ids = tuple(copied)
+        self._thread_local = threading.local()
+
+    @property
+    def member_ids(self) -> tuple[str, ...]:
+        """Return the exact declared member IDs in configuration order."""
+        return self._member_ids
+
+    def member_backend(self, member_id: str) -> Backend:
+        """Return one declared adapter without exposing the rejected operand."""
+        if type(member_id) is not str or member_id not in self._members:
+            raise ValueError("replica member is not declared")
+        return self._members[member_id]
+
+    def generate(self, request: InternalRequest) -> Iterator[str]:
+        """Refuse implicit member selection; T008 owns that decision."""
+        self._thread_local.selected_backend = None
+        raise RuntimeError("replica member selection is required")
+
+    def generate_member(
+        self, member_id: str, request: InternalRequest
+    ) -> Iterator[str]:
+        """Invoke exactly one declared member and retain its side-channel owner."""
+        self._thread_local.selected_backend = None
+        backend = self.member_backend(member_id)
+        try:
+            iterator = iter(backend.generate(request))
+        except BaseException:
+            self._thread_local.selected_backend = None
+            raise
+        self._thread_local.selected_backend = backend
+        return iterator
+
+    def get_last_structured(self) -> Optional[StructuredResult]:
+        """Delegate to the member successfully invoked by this thread."""
+        backend = getattr(self._thread_local, "selected_backend", None)
+        fn = getattr(backend, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+
 def build_backends(
     config: RouterConfig,
     *,
@@ -227,13 +274,26 @@ def build_backends(
     backends: Dict[str, Backend] = {}
     for tier in config.tiers:
         timeout = tier.timeout if tier.timeout is not None else config.relay_timeout
-        backends[tier.id] = build_backend_for_tier(
-            tier,
-            env=env,
-            transport=transport,
-            timeout=timeout,
-            model_discovery_transport=model_discovery_transport,
-        )
+        if tier.replicas:
+            members = {
+                member.id: build_backend_for_tier(
+                    replace(tier, base_url=member.base_url, replicas=()),
+                    env=env,
+                    transport=transport,
+                    timeout=timeout,
+                    model_discovery_transport=model_discovery_transport,
+                )
+                for member in tier.replicas
+            }
+            backends[tier.id] = ReplicaRuntime(members)
+        else:
+            backends[tier.id] = build_backend_for_tier(
+                tier,
+                env=env,
+                transport=transport,
+                timeout=timeout,
+                model_discovery_transport=model_discovery_transport,
+            )
     return backends, []
 
 
@@ -245,9 +305,21 @@ class _ConcurrencyLimitedBackend:
         self._sem = threading.BoundedSemaphore(max_concurrency)
 
     def generate(self, request: InternalRequest) -> Iterator[str]:
+        return self._generate(self._inner.generate, request)
+
+    def generate_member(
+        self, member_id: str, request: InternalRequest
+    ) -> Iterator[str]:
+        """Apply this logical tier's one ceiling to any selected member."""
+        generate_member = getattr(self._inner, "generate_member", None)
+        if not callable(generate_member):
+            raise RuntimeError("replica member selection is required")
+        return self._generate(generate_member, member_id, request)
+
+    def _generate(self, generate: Callable[..., Iterator[str]], *args: object) -> Iterator[str]:
         self._sem.acquire()
         try:
-            inner = iter(self._inner.generate(request))
+            inner = iter(generate(*args))
         except BaseException:
             self._sem.release()
             raise
