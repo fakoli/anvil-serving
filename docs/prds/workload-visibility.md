@@ -283,7 +283,19 @@ Harden the registry/`DecisionLog` integration against finish, delivery, close, t
 **Likely files:** anvil_serving/control_plane/controller/store.py, anvil_serving/observability/workloads.py, tests/test_benchmark_jobs.py, tests/control_plane/test_benchmark_jobs.py
 **Dependencies:** T001
 
-Add explicit `list_workloads`-style methods to controller operation and benchmark stores using their existing locks/connections and lifecycle fields. Cap rows in one owner query, copy immutable values inside the transaction/lock, and map only the fixed controller/benchmark states. Media follows in T010.
+Add `BenchmarkJobStore.list_workloads(host, query, now) -> SourceResult` and the same method on `OperationStore`. Both classes live in `control_plane/controller/store.py`. Validate trusted host, canonical query and collection datetime first; provable owner/kind/host exclusions return complete empty without touching storage. Media follows in T010. The source finding is `.tickets/2026-09-05-store-workload-read-boundaries.md`.
+
+Use the existing owner RLock with a bounded acquire and a new SQLite `mode=ro`, query-only connection. Never call either existing `_connection()` helper: both create directories/tables and change journal mode. Never call `status`, `lookup`, `_record`, expiry or recovery. Begin one read transaction, issue one SELECT, copy primitive values, close before record construction, and leave all lifecycle writes unchanged. A single one-second monotonic deadline covers lock acquisition, SQLite busy timeout and execution; check it with a progress handler every 1000 VM instructions, clear the handler and close in finally. Missing database/table (including `operation_leases`), absent JSON support, busy/interruption or query failure returns fixed UNAVAILABLE with unknown omission and creates nothing. The deadline/clock seam is injectable for tests, not a new CLI option.
+
+Use fixed parameterized SQL CTEs to extract bounded metadata, normalize it, apply canonical state/freshness/recent predicates and order before `LIMIT min(query.limit, 200)+1`. Valid matching rows sort before malformed potential matches, then by canonical updated timestamp descending and workload digest ascending. This is lifecycle updated time, not lease heartbeat time. Unknown textual owner states map to unsupported without retaining raw text; non-text state remains invalid. An explicit state mismatch may exclude a row; otherwise malformed potential matches remain bounded sentinels after healthy rows. Process at most cap+1 candidates, validate every constructed candidate with `validate_source_records`, keep healthy survivors and fixed INVALID/FUTURE partial errors. An extra candidate means omitted=null, never an unbounded count or an invented exact remainder; without an extra or rejected row omission is zero. Use canonical selection for the bounded returned candidates with the effective source cap.
+
+SQL window semantics must match `select_records`: active-only includes only active states with source age at most 30 seconds; default includes fresh active states, current configured/absent/unavailable/unsupported states regardless age, and terminal rows updated within the recent window. Exactly 30 seconds of age or future skew is allowed; one microsecond beyond is not. Validate future timestamps and created/updated/source ordering before admitting a row as valid. A bad row never makes the final SourceResult reject a healthy peer.
+
+Register small deterministic scalar functions only on this read connection for canonical UTC microsecond-Z timestamps and `workload_id`. Benchmark extraction must guard TEXT storage, at most 8 MiB of JSON bytes, JSON validity and exact text timestamp fields before passing at most 65 characters to a scalar function. Do not select the full record or send it into Python, even on an error fallback. Extract only owner row identity, fixed mapped state and submitted/updated timestamps. Operations select only row identity, fixed mapped status and numeric created/updated/lease times; never select key, request ID, fingerprint, response, result or error. Reject NULL, text/blob, nonfinite or out-of-range epochs; stored REAL zero/one are epochs because SQLite has already erased any original boolean provenance.
+
+For benchmarks use submitted time as created, and updated time as both updated and source observation. For running operations use the validated maximum of record update and matching lease heartbeat as source observation while preserving lifecycle updated time; terminal operations ignore lease time. A missing matching lease in an existing table is valid and allows old running work to become stale; a missing lease table is unavailable. Add `map_store_state(owner, state)` in the canonical schema module for controller/benchmark owners only, preserving the fixed mapping table and mapping unknown text (including benchmark cancelling) to unsupported. Wrong types fail with fixed invalid data.
+
+Native workload identity is `benchmark-row:<rowid>` or `operation-row:<rowid>:<canonical-created-at>`, passed only to `workload_id`, never serialized. Caller run IDs, request IDs and idempotency keys are not owner-generated and must not enter identity construction. These digests identify current store rows through ordinary updates/restarts, not durable benchmark evidence. Operation creation time fences normal rowid reuse after expiry; neither identity promises continuity across VACUUM, rebuild or restore/import. No schema migration or new persistent identity is introduced in this slice.
 
 **Acceptance criteria:**
 
@@ -291,10 +303,17 @@ Add explicit `list_workloads`-style methods to controller operation and benchmar
 - Unknown future owner states remain visible as unsupported rather than being mislabeled.
 - Readers never observe partially updated rows during concurrent state transitions.
 - Existing controller and benchmark lifecycle tests remain unchanged.
+- Missing storage remains absent; traces and failing lookup/expiry/recovery spies prove no writes. Missing lease table is unavailable, while a missing lease row is a valid stale observation.
+- More than 200 shuffled, unrelated or stale rows cannot hide the newest matching row or a fresh lease-backed operation. Equal timestamps use canonical digest order; the extra matching candidate reports unknown omission.
+- Malformed and future metadata quarantine only affected rows; exact age/recent/skew boundaries and fresh versus absent lease timestamps are covered.
+- Bounded SQL-function spies see no full JSON, caller IDs, specs, logs, responses or errors. Oversized JSON and invalid numeric epochs fail safely with no seeded private values in output or errors.
+- A contended owner lock, forced SQL progress interruption and busy/query failure return fixed unavailable within the shared deadline; resource cleanup and lifecycle state remain unchanged.
+- Removing pre-limit ordering or moving state/window filtering after the limit makes the beyond-first-200 regression fail. Removing per-row source validation makes the malformed/future-peer regression fail.
 
 **Verification:**
 
 - `python scripts/run_tests.py tests/test_benchmark_jobs.py tests/control_plane/test_benchmark_jobs.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/controller/store.py anvil_serving/observability/workloads.py tests/test_benchmark_jobs.py tests/control_plane/test_benchmark_jobs.py`
 
 ### T010: Add the bounded media-store workload projection
 
