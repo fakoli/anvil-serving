@@ -3,8 +3,12 @@ from __future__ import annotations
 
 import json
 import threading
+from dataclasses import replace
 
-from anvil_serving.router.availability import AlwaysAvailable
+import pytest
+
+from anvil_serving.router.admission import AdmissionSnapshot, TierAdmission
+from anvil_serving.router.availability import AlwaysAvailable, AvailabilityResult
 from anvil_serving.router.config import RouterConfig, Tier
 from anvil_serving.router.front_door import MODEL_CAPACITY_ENDPOINT, make_server
 from anvil_serving.router.model_capacity import (
@@ -16,6 +20,7 @@ from anvil_serving.router.serve import RoutingBackend
 from tests.router.helpers import StaticBackend
 from tests.router.helpers import http_get as _http_get
 from tests.router.helpers import server_context
+from tests.router.test_model_metadata import _MemberAvailability, _replica_config
 
 TOKEN = "router-test-token"
 
@@ -340,3 +345,139 @@ vllm:kv_cache_usage_perc{model_name="qwen35-122b-a10b-nvfp4"} 0.5
         "authorization": "Bearer upstream-secret",
         "timeout": 0.5,
     }
+
+
+def test_replica_capacity_reads_one_atomic_admission_snapshot_and_no_sentinel_metrics():
+    config = _replica_config()
+    tier = config.tiers[0]
+    admission = TierAdmission([tier.id], replica_members={tier.id: [member.id for member in tier.replicas]})
+    ready = {member.id: AvailabilityResult(True, "ready", "identity_passed") for member in tier.replicas}
+    lease = admission.acquire_member(tier.id, ready)
+    assert lease is not None
+    calls = []
+
+    def forbidden_metrics(tier):
+        calls.append(tier)
+        raise AssertionError("logical replica tier is not a metrics endpoint")
+
+    try:
+        (row,) = build_model_capacity(config, _MemberAvailability(), forbidden_metrics, {}, admission=admission)["data"]
+        assert row["aliases"] == ["llm.primary"]
+        assert row["loaded"] is True
+        assert row["admission"] == {
+            "status": "available", "state": "admitting", "active_requests": 1,
+            "draining": False, "member_active_requests": {"member-a": 1, "member-b": 0},
+        }
+        assert row["live"]["status"] == "unavailable"
+        assert row["live"]["reason"] == "replica_metrics_not_aggregated"
+        assert row["capacity"]["context_limit_tokens"] == tier.context_limit
+        assert row["capacity"]["kv_cache_capacity_tokens"] is None
+        assert row["capacity"]["full_context_concurrency"] is None
+        assert row["runtime_deployment_identity_verified"] is False
+        assert calls == []
+        admission.quiesce(tier.id, reason="private_operator_reason")
+        quiesced = build_model_capacity(config, _MemberAvailability(), forbidden_metrics, {}, admission=admission)["data"][0]
+        assert quiesced["admission"]["state"] == "quiesced"
+        assert quiesced["admission"]["active_requests"] == 1
+        assert "private_operator_reason" not in json.dumps(quiesced)
+    finally:
+        lease.release()
+    assert build_model_capacity(config, _MemberAvailability(), forbidden_metrics, {}, admission=admission)["data"][0]["admission"]["active_requests"] == 0
+
+
+def test_replica_capacity_absent_or_inconsistent_admission_is_not_idle():
+    config = _replica_config()
+    cases = [None]
+    for snapshot in (
+        AdmissionSnapshot("wrong", "admitting", "secret", 0),
+        AdmissionSnapshot("primary-local", "admitting", "secret", 4, member_active_requests=(("member-a", 1), ("member-b", 2))),
+        AdmissionSnapshot("primary-local", "admitting", "secret", True, member_active_requests=(("member-a", 1), ("member-b", 0))),
+        AdmissionSnapshot("primary-local", "secret", "secret", 0, member_active_requests=(("member-a", 0), ("member-b", 0))),
+        AdmissionSnapshot("primary-local", "admitting", "secret", 0, member_active_requests=(("member-a", 0), ("secret-member", 0))),
+        AdmissionSnapshot("primary-local", "admitting", "secret", 0, True, member_active_requests=(("member-a", 0), ("member-b", 0))),
+    ):
+        class Source:
+            def __init__(self, value):
+                self.value = value
+
+            def snapshot(self, tier):
+                return self.value
+        cases.append(Source(snapshot))
+    for source in cases:
+        row = build_model_capacity(config, _MemberAvailability(), _live, {}, admission=source)["data"][0]
+        assert row["admission"]["status"] == "unavailable"
+        assert row["admission"]["active_requests"] is None
+        assert "secret" not in json.dumps(row)
+
+
+@pytest.mark.parametrize(
+    "count,available", [((1 << 53) - 1, True), (1 << 53, False), (10**5000, False)],
+    ids=["maximum-safe", "overflow", "serialization-overflow"],
+)
+def test_replica_admission_counts_are_bounded_exact_json_integers(count, available):
+    class Source:
+        def snapshot(self, tier):
+            return AdmissionSnapshot(
+                tier, "quiesced", "private reason", count, True,
+                member_active_requests=(("member-a", count), ("member-b", 0)),
+            )
+
+    row = build_model_capacity(_replica_config(), _MemberAvailability(), _live, {}, admission=Source())["data"][0]
+    assert row["admission"]["status"] == ("available" if available else "unavailable")
+    assert row["admission"]["active_requests"] == (count if available else None)
+    assert json.loads(json.dumps(row)) == row
+
+
+@pytest.mark.parametrize("available,state", [(False, "ready"), (True, "unavailable")])
+def test_replica_readiness_cannot_publish_success_for_inconsistent_result(available, state):
+    class Source:
+        def check_member(self, tier, member):
+            return AvailabilityResult(available, state, "identity_passed", tier.model, tier.model)
+
+    row = build_model_capacity(_replica_config(), Source(), _live, {})["data"][0]
+    assert row["loaded"] is False
+    for member in row["members"]:
+        assert member["readiness"] == {"loaded": False, "state": "unavailable", "reason": "unavailable"}
+
+
+def test_replica_capacity_redacts_all_untrusted_member_fields_and_exceptions():
+    config = _replica_config()
+
+    class Broken:
+        def check_member(self, tier, member):
+            if member == "member-a":
+                raise RuntimeError("raw-private-error http://127.0.0.1/private")
+            return AvailabilityResult(False, "private_state", "credential_like_ascii", "private-expected", "private-observed")
+
+    row = build_model_capacity(config, Broken(), _live, {})["data"][0]
+    assert row["loaded"] is False
+    assert row["members"][0]["readiness"]["reason"] == "availability_member_check_failed"
+    assert row["members"][1]["readiness"]["reason"] == "unavailable"
+    text = json.dumps(row)
+    for forbidden in ("127.0.0.1", "private", "credential_like_ascii", "node-a", "resource-a", "auth_env", "base_url"):
+        assert forbidden not in text
+
+
+@pytest.mark.parametrize("size", [0, 1, 17])
+def test_replica_projection_refuses_invalid_member_bounds(size):
+    # Empty tuple denotes a direct tier by contract, so exercise the pure
+    # replica projection boundary itself rather than pretending it is parsed.
+    from anvil_serving.router.model_capacity import replica_metadata
+    config = _replica_config()
+    tier = replace(config.tiers[0], replicas=config.tiers[0].replicas[:1] * size)
+    with pytest.raises(ValueError, match="invalid replica projection"):
+        replica_metadata(tier, _MemberAvailability())
+
+
+def test_replica_projection_rejects_unsafe_declared_metadata_before_probing():
+    from anvil_serving.router.model_capacity import replica_metadata
+    tier = _replica_config().tiers[0]
+    source = _MemberAvailability()
+    for member in (
+        replace(tier.replicas[0], id="http://private"),
+        replace(tier.replicas[0], qualification_ref="C:/private/path"),
+        replace(tier.replicas[0], id=tier.replicas[1].id),
+    ):
+        with pytest.raises(ValueError, match="invalid replica projection"):
+            replica_metadata(replace(tier, replicas=(member, tier.replicas[1])), source)
+    assert source.calls == []
