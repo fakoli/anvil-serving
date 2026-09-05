@@ -1341,13 +1341,168 @@ levels. Return new canonical detached objects, no cached input references.
 - `python scripts/run_tests.py tests/observability/test_fleet_workload_collection.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
 - `python -m ruff check anvil_serving/observability/fleet_workload_collection.py tests/observability/test_fleet_workload_collection.py`
 
+### T013.2: Read canonical workloads through expected-node controller transport
+
+**Feature:** F003
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/observability/probes/controller_workloads.py, tests/observability/test_controller_workload_source.py
+**Dependencies:** T012, T013.1
+
+Add read_controller_workloads(endpoint, auth_env, host, query, now, *,
+environment=None, monotonic=time.monotonic, _open=None), returning a canonical
+NodeResult. Use ControllerTransport, not another HTTP operation protocol,
+telemetry detail serializer, SSH fallback or raw controller dictionary.
+Validate host/query/time through the existing empty node builder before
+configuration, environment, clock or network access. A provably excluded
+query.host returns the canonical COMPLETE empty filtered node without those
+accesses; other invalid canonical arguments raise fixed WorkloadError.
+
+Configuration is explicit. endpoint is an exact bounded ASCII string of at
+most2048 characters with no surrounding whitespace or controls; reuse the
+ControllerTransport endpoint and literal private/loopback/tailnet safety
+checks before any network operation. auth_env is an exact uppercase ASCII
+environment name matching the existing transport grammar, capped at256.
+environment=None reads only that key from os.environ; an injected Mapping
+is hermetic. Capture and normalize that one credential using the established
+authorization normalizer, require16..4096 ASCII characters after normalization,
+and pass a new single-value mapping to ControllerTransport. No dotenv, whole
+environment copy, inbound policy lookup, endpoint discovery or loopback alias
+rewriting. Bad/missing config or credential returns fixed UNAVAILABLE.
+
+Construct a fresh ControllerTransport for this one node call, with exact
+expected_node=host, allowed_operations=(node-workloads,), two-second socket
+budget and existing MAX_RESPONSE_BYTES ceiling. Call Operation(node-workloads,
+canonical seven-field query arguments, tool_name=node_workloads), never with
+idempotency or transport context. Expected-node GET /health must precede the
+workload POST every time; do not cache identity across queries or transport
+instances. Use the shared no-proxy/no-redirect opener unless a test opener
+was explicitly supplied. No lifecycle, health-of-model, retry or other call.
+
+Wrap only this transport's opener with one two-second absolute budget measured
+from the first validated monotonic value. Before each open and bounded read,
+and after it returns, require an exact finite nonnegative int/float clock that
+has not regressed or reached the deadline. Pass each open the lesser of its
+requested timeout and the remaining budget, so a slow health check cannot
+grant the POST a fresh two seconds. No request starts after the deadline.
+The wrapper owns response cleanup; guard close failures and close HTTPError
+responses without reading their failure bodies. All such failures map to
+fixed UNAVAILABLE, with no raw transport details. Do not alter the generic
+transport or unrelated telemetry behavior. A socket timeout is not a thread
+cancellation guarantee: the later persistent fleet coordinator enforces the
+two-second result deadline even for a blocked/dripping test opener and never
+spawns replacement workers for those calls. This synchronous reader creates
+no thread, timer, queue or executor itself.
+
+After transport success require exactly ok:true and data in its application
+envelope; reject additional outer fields, raw context or malformed shapes.
+Decode data only through node_result_from_dict, then normalize through
+normalize_node_workloads(host,query,now,node). The expected host must match
+even with no records. Preserve canonical partiality, source errors, source
+times and omissions; malformed node wire data is a fixed INVALID node,
+unsupported schema a fixed UNSUPPORTED node and future timestamps a fixed
+FUTURE node. A transport/auth/cleanup/clock failure is UNAVAILABLE. Every
+failure node contains exactly the six fixed empty owner results and unknown
+omissions; never copy exception messages, endpoint/auth references, response
+headers, health data, request IDs or raw response material into it. Expose
+only read_controller_workloads publicly.
+
+**Acceptance criteria:**
+
+- A fake opener observes exact authenticated health-then-node_workloads requests, declared expected node, canonical query fields and no idempotency/context; a wrong health identity prevents the POST.
+- One shared deadline shrinks the POST timeout after health, refuses expired/regressed/nonfinite clocks and rejects late reads without starting replacement work or reading HTTP failure bodies.
+- Missing, malformed or excluded configuration/query inputs stop before their specified environment/clock/network boundary, including a hermetic empty environment.
+- Canonical complete/partial/unavailable nodes round-trip with original times and omissions; wrong empty-node host, extra envelope fields, malformed/unsupported/future data and throwing cleanup have fixed privacy-safe outcomes.
+- No raw transport detail, seeded credential/private value, telemetry serializer, SSH fallback, discovery, generic transport mutation or per-call thread is introduced.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_controller_workload_source.py tests/observability/test_fleet_workload_collection.py tests/observability/test_remote_controller.py -x -q`
+- `python -m ruff check anvil_serving/observability/probes/controller_workloads.py tests/observability/test_controller_workload_source.py`
+
+### T013.3: Bound persistent fleet workload collection
+
+**Feature:** F003
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/observability/fleet_workload_collector.py, tests/observability/test_fleet_workload_collector.py
+**Dependencies:** T013.1
+
+Add FleetWorkloadCollector(readers, *, monotonic=time.monotonic), with
+collect(query,now) and idempotent nonblocking close(). readers is an exact dict
+of at most MAX_NODES unique canonical host strings to trusted
+(host,query,now)->NodeResult callbacks or None; copy it at construction and
+perform no source reads, topology/config discovery or worker start then.
+Use build_fleet_workloads for argument validation and fixed fallback before
+reading clocks or starting workers. No generic plug-in registry, persistent
+workload store, result cache, automatic recovery or topology reload.
+
+Own at most four lazily started persistent daemon workers for the collector's
+lifetime, not four new threads per request. Only one collect call may be active;
+a concurrent or closed collect immediately returns canonical unavailable node
+summaries (with provable host-filter exclusions complete/empty). Keep one
+active bounded host tuple/index, at most four claimed jobs and four completion
+slots, and one bounded canonical accumulated result. No queue or results for
+abandoned collection IDs. A worker that remains blocked keeps its slot; never
+replace it or accumulate per-node workers. A host already running for an old
+collection is unavailable in a new collection and is not invoked concurrently.
+Callbacks for None or provably excluded hosts are never scheduled.
+
+The aggregate observation deadline is five seconds after valid monotonic start;
+each job's result deadline is the earlier of that and two seconds after the
+worker claims the job. Assign sorted eligible hosts to available workers.
+Check active generation, close state and deadline before starting a callback.
+Run all callbacks, canonical validation/merge and injected clock functions
+outside the coordination lock. Catch a throwing reader as fixed unavailable;
+normalize its returned node before retaining it. Accept only results completed
+before both deadlines, not merely requests started on time. Drop late results.
+A completed late call may free its existing worker for another eligible host
+while the current aggregate deadline still permits it; never retry its host.
+Every unstarted, skipped-busy, missing, timed-out or throwing node remains an
+explicit canonical unavailable summary. Sleeping hosts are not awakened.
+
+Collection consumes bounded completion slots and folds each timely node into
+the canonical accumulator with build_fleet_workloads over only processed host
+summaries. Previous source omissions remain attached, so incremental eviction
+counts each removed record once. Retain at most the global1000 records in
+accumulated summaries, plus four bounded worker completions and the one current
+merge input; never retain all full node results for the final merge. At return,
+compose all configured hosts once, filling unobserved hosts with None. Stable
+global ordering, node/source times, source-local partiality and omissions are
+owned by T013.1, not reconstructed by this coordinator.
+
+The waiter never joins workers and never waits beyond its remaining aggregate
+budget. Stop scheduling at expiry and perform only the bounded canonical
+finalization; tests allow ordinary local scheduling/serialization overhead,
+not an extra socket timeout or executor shutdown. Require exact finite
+nonnegative monotonic values with no observed regression; clock/start failures
+abandon this collection with fixed unavailable output and clear its queued
+work/completion tracking. A late worker must not recreate abandoned metadata.
+Do not hold a lock across clock calls or merge. close abandons pending jobs,
+clears retained results, wakes waiters, and returns without waiting for blocked
+callbacks; once closed, no queued callback may begin. Preserve healthy-node
+progress when a different host is slow in a later collection.
+
+**Acceptance criteria:**
+
+- Construction is inert; sequential/repeated/concurrent reads create at most four persistent workers and retain no unbounded job, result or generation history.
+- Event-controlled blocked readers cannot exceed concurrency, cause a same-host overlap, block healthy later reads, extend the aggregate wait through executor shutdown or run queued callbacks after close/deadline.
+- Two-second per-node result expiry and five-second aggregate expiry are independent; late results are discarded and every unstarted node is explicit, including fleets larger than concurrency.
+- Canonical partiality, order, original timestamps and exact/unknown omission accounting survive incremental accumulation and global record eviction without storing all full node results.
+- Throwing/invalid clocks, failed worker start, invalid queries, source failures and cleanup preserve fixed no-echo results and bounded metadata; ordinary tests use synthetic readers only.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_fleet_workload_collector.py tests/observability/test_fleet_workload_collection.py -x -q`
+- `python -m ruff check anvil_serving/observability/fleet_workload_collector.py tests/observability/test_fleet_workload_collector.py`
+
 ### T013: Add bounded expected-node fleet fan-out
 
 **Feature:** F003
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/transports.py, anvil_serving/observability/workloads.py, tests/observability/test_remote_controller.py, tests/observability/test_workloads.py
-**Dependencies:** T012, T013.1
+**Dependencies:** T012, T013.1, T013.2, T013.3
 
 Collect only declared expected-node controller workload operations with at most four concurrent calls, a two-second per-node deadline, a five-second collection deadline, and a visible result for every declared node. Do not queue unbounded work or retry via SSH.
 
