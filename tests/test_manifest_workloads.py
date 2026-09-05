@@ -42,10 +42,25 @@ def _clock():
     return datetime(2026, 9, 5, 23, tzinfo=timezone.utc)
 
 
-def _manifest(tmp_path, text):
-    path = tmp_path / "serves.toml"
+def _write_manifest(path, text):
     path.write_text(text, encoding="utf-8")
+    # The observer reads real filesystem mtimes alongside its injected clock.
+    timestamp = (_clock() - timedelta(hours=1)).timestamp()
+    os.utime(path, (timestamp, timestamp))
     return path
+
+
+def _manifest(tmp_path, text):
+    return _write_manifest(tmp_path / "serves.toml", text)
+
+
+def test_manifest_fixture_mtime_is_fixed_independently_of_wall_clock(tmp_path):
+    for path in (
+        _manifest(tmp_path, ""),
+        _write_manifest(tmp_path / "serves-sibling.toml", ""),
+    ):
+        measured = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+        assert measured == datetime(2026, 9, 5, 22, tzinfo=timezone.utc)
 
 
 def _row(name="slot-a", container="container-a", *, status="running", running=True):
@@ -250,13 +265,13 @@ def test_regular_serves_siblings_are_lexically_ordered_and_bad_peer_is_partial(t
 name = "z-slot"
 runtime = "native"
 ''')
-    (tmp_path / "serves-a.toml").write_text('''
+    _write_manifest(tmp_path / "serves-a.toml", '''
 [[serve]]
 name = "a-slot"
 runtime = "native"
-''', encoding="utf-8")
-    (tmp_path / "not-serves.toml").write_text("not = [valid", encoding="utf-8")
-    (tmp_path / "serves-b.toml").write_text("not = [valid", encoding="utf-8")
+''')
+    _write_manifest(tmp_path / "not-serves.toml", "not = [valid")
+    _write_manifest(tmp_path / "serves-b.toml", "not = [valid")
     snapshot = capture_manifest_workload_snapshot(str(explicit), clock=_clock)
     assert snapshot.configuration.status is ResultStatus.PARTIAL
     assert len(snapshot.configuration.records) == 2
@@ -567,17 +582,39 @@ name = "future"
 runtime = "native"
 ''')
     sibling = tmp_path / "serves-valid.toml"
-    sibling.write_text('''
+    _write_manifest(sibling, '''
 [[serve]]
 name = "valid"
 runtime = "native"
-''', encoding="utf-8")
+''')
     os.utime(future, (1924992000, 1924992000))  # 2031-01-01 UTC
     snapshot = capture_manifest_workload_snapshot(
         str(future), clock=lambda: datetime(2030, 1, 1, tzinfo=timezone.utc),
     )
     assert snapshot.configuration.error.value == "future-workload-timestamp"
     assert len(snapshot.configuration.records) == 1
+
+
+@pytest.mark.parametrize("seconds,expected_count,error", [
+    (30, 2, None),
+    (31, 1, WorkloadErrorCode.FUTURE),
+])
+def test_configuration_future_mtime_boundary_preserves_valid_sibling(
+    tmp_path, seconds, expected_count, error,
+):
+    selected = _manifest(tmp_path, "[[serve]]\nname='selected'\nruntime='native'\n")
+    sibling = _write_manifest(
+        tmp_path / "serves-valid.toml", "[[serve]]\nname='valid'\nruntime='native'\n",
+    )
+    timestamp = (_clock() + timedelta(seconds=seconds)).timestamp()
+    os.utime(selected, (timestamp, timestamp))
+    snapshot = capture_manifest_workload_snapshot(str(selected), clock=_clock)
+    expected_status = ResultStatus.COMPLETE if error is None else ResultStatus.PARTIAL
+    assert snapshot.configuration.status is expected_status
+    assert snapshot.configuration.error is error
+    assert len(snapshot.configuration.records) == expected_count
+    sibling_time = datetime.fromtimestamp(sibling.stat().st_mtime, timezone.utc)
+    assert any(row.configured_at == sibling_time for row in snapshot.configuration.records)
 
 
 @pytest.mark.parametrize("runtime", ["native", "docker"])
