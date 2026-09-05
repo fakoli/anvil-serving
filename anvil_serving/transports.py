@@ -107,6 +107,8 @@ _MAX_KNOWN_HOSTS_BYTES = 4 * 1024 * 1024
 _MAX_KNOWN_HOST_LINE_BYTES = 16 * 1024
 _MAX_IDENTITY_BYTES = 1024 * 1024
 _PIPE_CLOSE_SECONDS = 1.0
+_NODE_HEALTH_MAX_RESPONSE_BYTES = 64 * 1024
+_NODE_HEALTH_FIELDS = frozenset({"status", "service", "request_id", "node"})
 
 
 class _ProcessOutputOverflow(Exception):
@@ -134,7 +136,19 @@ def _strict_json_loads(value: str) -> Any:
     def reject_constant(constant: str) -> None:
         raise ValueError("non-finite JSON number: " + constant)
 
-    return json.loads(value, parse_constant=reject_constant)
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, item in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON object key")
+            result[key] = item
+        return result
+
+    return json.loads(
+        value,
+        parse_constant=reject_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
 
 class TransportError(RuntimeError):
@@ -176,6 +190,33 @@ class TransportError(RuntimeError):
             "may_have_executed": self.may_have_executed,
             "details": dict(self.details),
         }
+
+
+def _controller_node_mismatch() -> TransportError:
+    return TransportError(
+        "controller_node_mismatch",
+        "controller did not assert the expected node identity",
+        execution_state="not_started",
+    )
+
+
+def _controller_connect_failed() -> TransportError:
+    return TransportError(
+        "controller_connect_failed",
+        "controller connection failed before dispatch",
+    )
+
+
+def _is_expected_controller_health(payload: object, expected_node: str) -> bool:
+    return (
+        type(payload) is dict
+        and set(payload) == _NODE_HEALTH_FIELDS
+        and payload.get("status") == "ok"
+        and payload.get("service") == "anvil-serving-controller"
+        and type(payload.get("request_id")) is str
+        and _REQUEST_ID_RE.fullmatch(payload["request_id"]) is not None
+        and payload.get("node") == expected_node
+    )
 
 
 @dataclass(frozen=True)
@@ -577,31 +618,19 @@ class ControllerTransport:
         )
         try:
             with self._opener(request, timeout=timeout) as response:
-                raw = _read_bounded(response, 64 * 1024)
+                raw = response.read(_NODE_HEALTH_MAX_RESPONSE_BYTES + 1)
         except urllib.error.HTTPError as exc:
-            raise _http_error(exc, token, 64 * 1024) from None
-        except (urllib.error.URLError, ConnectionRefusedError, socket.gaierror) as exc:
-            raise TransportError(
-                "controller_connect_failed",
-                "controller connection failed before dispatch",
-                details={"endpoint": self.endpoint, "error": redact(str(exc), token)},
-            ) from None
+            raise _http_error(exc, token, _NODE_HEALTH_MAX_RESPONSE_BYTES) from None
+        except (urllib.error.URLError, ConnectionRefusedError, socket.gaierror):
+            raise _controller_connect_failed() from None
+        if not isinstance(raw, bytes) or len(raw) > _NODE_HEALTH_MAX_RESPONSE_BYTES:
+            raise _controller_node_mismatch()
         try:
-            payload = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, ValueError):
-            payload = None
-        observed = payload.get("node") if isinstance(payload, dict) else None
-        if observed != self.expected_node:
-            raise TransportError(
-                "controller_node_mismatch",
-                "controller did not assert the expected node identity",
-                execution_state="not_started",
-                details={
-                    "endpoint": self.endpoint,
-                    "expected_node": self.expected_node,
-                    "observed_node": observed if isinstance(observed, str) else None,
-                },
-            )
+            payload = _strict_json_loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError, RecursionError):
+            raise _controller_node_mismatch() from None
+        if not _is_expected_controller_health(payload, self.expected_node):
+            raise _controller_node_mismatch()
         self._node_verified = True
 
     def _token(self) -> str:
