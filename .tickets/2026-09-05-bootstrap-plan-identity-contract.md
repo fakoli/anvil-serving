@@ -1,6 +1,6 @@
 # Bootstrap plan identity contract
 
-Status: specified; implementation and consolidated acceptance pending.
+Status: implemented candidate; post-commit regression fix and consolidated acceptance pending.
 
 Fleet enrollment T011 requires a closed distinction between its private plan
 hash and safe public output. An implementation that hashed only the public
@@ -17,3 +17,10 @@ identity only after validating the installed command catalog.
 Implementation: T011, with exact target resolution fixtures, drift/shape/privacy
 tests and existing bootstrap regressions. No live installation is authorized
 by a plan, a source commit, or this ticket.
+
+The exact-SHA gate at 140c1a3a failed in
+test_bootstrap_plan_from_resolved_topology_has_canonical_private_identity:
+BootstrapPlatform reached the strict canonical JSON helper as an enum instead
+of an exact string. The hash projection must convert typed enums to their wire
+values without relaxing the generic encoder. Keep this regression in the
+required bootstrap test command and rerun after the fix-forward commit.
