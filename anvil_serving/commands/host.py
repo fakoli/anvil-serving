@@ -192,6 +192,50 @@ def commands() -> tuple[CommandNode, ...]:
                     ),
                     docs_anchor="docs/cli/host.md#repair-the-host",
                 ),
+                _node(
+                    "docker-image",
+                    "Audit and remove one exact immutable Docker image.",
+                    children=(
+                        _resource_node(
+                            "remove",
+                            "Remove one unreferenced full image ID or digest.",
+                            "anvil_serving.host",
+                            role="host",
+                            argv_prefix=("docker-image-remove",),
+                            options=CONFIRM_OPTIONS
+                            + (
+                                _option(
+                                    "--config-home",
+                                    summary="Operator configuration home to audit.",
+                                    value_name="PATH",
+                                ),
+                            ),
+                            mutation="mutate",
+                            execution_runtime_roles=("native",),
+                            docs_anchor="docs/cli/host.md#exact-docker-image-removal",
+                        ),
+                    ),
+                    docs_anchor="docs/cli/host.md#exact-docker-image-removal",
+                ),
+                _node(
+                    "docker-disk",
+                    "Inspect and compact the Docker Desktop data disk.",
+                    children=(
+                        _resource_node(
+                            "compact",
+                            "Stop Docker Desktop and compact one exact data VHDX.",
+                            "anvil_serving.host",
+                            role="host",
+                            argv_prefix=("docker-disk-compact",),
+                            options=CONFIRM_OPTIONS,
+                            mutation="mutate",
+                            execution_runtime_roles=("native",),
+                            execution_host_os=("windows",),
+                            docs_anchor="docs/cli/host.md#docker-data-vhdx-compaction",
+                        ),
+                    ),
+                    docs_anchor="docs/cli/host.md#docker-data-vhdx-compaction",
+                ),
                 _resource_node(
                     "wsl-config",
                     "Render or update WSL configuration.",
