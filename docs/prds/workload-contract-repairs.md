@@ -45,6 +45,27 @@ Repair request omission and identifier validation with independent producer/cons
 
 ## Tasks
 
+### T013: Pin manifest fixture timestamps to the injected clock
+
+**Feature:** F001
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** tests/test_manifest_workloads.py, .tickets/2026-09-05-manifest-fixture-clock.md
+
+Full source verification at f0a369b2 reproduced 33 manifest-workload failures after the real clock passed the fixtures' frozen 2026-09-05 23:00 UTC clock. The production future-mtime guard is correct. Add a test-only file helper that writes manifest text and pins its mtime with os.utime to a fixed instant before _clock; use it for the main _manifest helper and regular sibling fixtures that are observed against a frozen clock. Preserve intentionally future mtimes as explicit overrides, existing budget-file timestamps, native filesystem reads, drift tests and all runtime timestamp assertions. Do not move the fixed clock into the future, use wall-clock now, monkeypatch production stat/time checks or weaken MAX_FUTURE_SECONDS. Add a literal mtime assertion for the helper and a boundary matrix with real fixture mtimes at observed+30 seconds (allowed) and observed+31 seconds (quarantined), retaining a valid sibling. That matrix must fail if the production future check is removed, without changing production code.
+
+**Acceptance criteria:**
+
+- All manifest fixtures observed against frozen clocks have explicit file timestamps, including regular valid siblings.
+- Existing runtime/future/drift tests retain their intended independent failure causes.
+- Literal fixture-mtime and future-boundary tests pass with actual temporary files; production behavior is unchanged.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_manifest_workloads.py -x -q`
+- `python -m ruff check tests/test_manifest_workloads.py`
+- `git diff --check`
+
 ### T001: Omit absent optional controller workload query fields
 
 **Feature:** F001
