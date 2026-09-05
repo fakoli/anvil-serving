@@ -1501,22 +1501,76 @@ progress when a different host is slow in a later collection.
 **Feature:** F003
 **Priority:** high
 **Type:** feature
-**Likely files:** anvil_serving/transports.py, anvil_serving/observability/workloads.py, tests/observability/test_remote_controller.py, tests/observability/test_workloads.py
+**Likely files:** anvil_serving/observability/fleet_workload_sources.py, tests/observability/test_fleet_workload_sources.py
 **Dependencies:** T012, T013.1, T013.2, T013.3
 
-Collect only declared expected-node controller workload operations with at most four concurrent calls, a two-second per-node deadline, a five-second collection deadline, and a visible result for every declared node. Do not queue unbounded work or retry via SSH.
+Bind the preceding pure composer, expected-node reader and persistent
+coordinator through two explicit entrypoints in a new sibling module:
+build_fleet_workload_readers(topology, *, environment=None,
+monotonic=time.monotonic) and create_fleet_workload_collector(topology_path,
+*, environment=None, monotonic=time.monotonic). No CLI/controller/MCP/dashboard
+registration occurs here. Consumers own one collector for their process/server
+lifetime and must close it; a one-shot CLI may construct/use/close one once.
+
+The builder accepts only an exact Topology with exact tuple hosts, runtimes
+and transports. Validate zero to MAX_NODES exact Host objects with unique
+canonical host IDs, and at most4*MAX_NODES exact Runtime and Transport objects
+with unique canonical IDs, before reading the environment. Invalid structure
+raises fixed ValueError with no input material. Other topology collections
+are not workload routing inputs. Emit one mapping entry for every declared
+host, not just reachable hosts or hosts with qualifying transports. This is
+declared inventory, not discovery, hostname detection or physical-health proof.
+
+A host is readable only when exactly one of its declared kind=controller
+transports explicitly allows the normalized node-workloads operation. Require
+transport.expected_node == transport.host == that host ID, a declared runtime
+whose host matches, and explicit endpoint/auth_env. A missing, ambiguous,
+wrong-identity or incomplete binding maps only that host to None; never pick
+the first transport, borrow another runtime/token, infer an expected node,
+use an SSH transport, skip a sleeping host or fall back to another endpoint.
+Other declared operations do not grant workload access. Permit the existing
+hyphen/underscore operation spelling normalization, never arbitrary aliases.
+
+Capture only each selected transport's auth_env value at construction.
+environment=None uses os.environ; injected Mapping is hermetic. Invalid or
+throwing references disable only that host and cannot make the builder copy
+the whole environment or resolve dotenv. Each callback retains a new
+single-value mapping, the exact endpoint/reference and configured host, not
+a mutable topology or environment object. It validates incoming canonical
+query/time and exact host equality before delegating to T013.2; a provable
+host exclusion performs no network/clock read. Source exceptions become the
+fixed canonical unavailable node. No network, owner construction, workers,
+file reads or lifecycle action occurs while building callbacks.
+
+The factory accepts an explicit exact nonempty string path of at most4096
+characters, without controls, surrounding whitespace or leading tilde. Pin
+os.path.abspath once at construction, then use load_topology on only that
+path and the builder above. No config_home/default path search, overlay
+discovery, environment-derived topology path or cwd probing. Invalid/missing
+configuration raises a fixed workload-source-unavailable WorkloadError; do
+not return an empty COMPLETE fleet when declared inventory could not be read.
+Instantiate FleetWorkloadCollector with those exact captured callbacks and
+the supplied monotonic seam. Startup is inert apart from this explicit
+topology read and bounded environment capture. The factory exposes no raw
+topology, address, path, credential or transport object in public results.
+
+Use real parsed generic topology fixtures and an injected controller opener
+at the owner-reader seam to prove integrated expected-node reads and healthy
+peer survival. T013.2/T013.3 own the per-node/aggregate deadlines and worker
+caps; do not reimplement transport, scheduler, serializer or selection here.
 
 **Acceptance criteria:**
 
-- Wrong-node, timeout, sleeping, unreachable, incompatible-schema, malformed-record, and future-clock nodes remain explicit entries.
-- Healthy node records survive other-node/source failures and aggregate completeness/truncation are correct.
-- Collection returns by the aggregate deadline even when node count exceeds concurrency; every omitted/unstarted node is explicit.
-- No address, token, raw response, transport dictionary, or exception crosses the canonical envelope.
+- Every declared host appears, including no-transport, sleeping and ambiguous bindings; only an exact same-host/runtime expected-node controller operation is callable and no first-match or SSH fallback exists.
+- Builder construction reads no files or network and starts no workers; factory reads only its explicit once-pinned topology path and missing inventory is unavailable rather than an empty complete fleet.
+- Captured topology and credentials are isolated from later mutation, injected environments are hermetic, and malformed host/runtime/transport shapes fail before environment access without echo.
+- Integrated synthetic controller reads preserve healthy peers and canonical partiality, source times, omissions and fixed wrong-node/schema/future/timeout failures through the bounded coordinator.
+- Repeated reads reuse the owned collector and its worker cap; no raw address, token, response, path, transport dictionary, exception or mutation authority crosses the canonical envelope.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/observability/test_remote_controller.py tests/observability/test_workloads.py -x -q`
-- `python -m ruff check anvil_serving/transports.py anvil_serving/observability/workloads.py tests/observability/test_remote_controller.py`
+- `python scripts/run_tests.py tests/observability/test_fleet_workload_sources.py tests/observability/test_controller_workload_source.py tests/observability/test_fleet_workload_collector.py -x -q`
+- `python -m ruff check anvil_serving/observability/fleet_workload_sources.py tests/observability/test_fleet_workload_sources.py`
 
 ### T006: Register router and fleet workload CLI commands
 
