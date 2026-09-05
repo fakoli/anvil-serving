@@ -5173,6 +5173,15 @@
         },
         {
           "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Active router config TOML (local only).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--restore-group"
           ],
           "output_policy": null,
@@ -5349,6 +5358,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Active router config TOML (local only).",
+          "value_name": "PATH"
         },
         {
           "flags": [
@@ -5560,6 +5578,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Active router config TOML (local only).",
+          "value_name": "PATH"
         },
         {
           "flags": [
@@ -6009,6 +6036,15 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Active router config TOML (local only).",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -6162,6 +6198,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Active router config TOML (local only).",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -8526,7 +8571,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Complete direct router config.",
+          "summary": "Complete router config to validate and install.",
           "value_name": "PATH"
         },
         {
