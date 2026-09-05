@@ -350,7 +350,7 @@ required operands, choices, and defaults.
 | `collectors capabilities` | Report configured adapter capabilities offline. | `read` / `bounded` | - |
 | `collectors inspect` | Perform one bounded read-only adapter inspection. | `read` / `bounded` | - |
 | `dashboard` | Serve the read-only system observability dashboard. | `read` / `bounded` | - |
-| `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | - |
+| `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-env`<br>`--workload-controller-url`<br>`--workload-expected-node`<br>`--workload-authorization-policy` |
 | `edge` | Own the Tailscale tailnet edge in front of the unchanged router. | `read` / `bounded` | - |
 | `edge bundle` | Plan a portable tailnet model endpoint offline. | `read` / `bounded` | - |
 | `edge bundle validate` | Validate a portable endpoint manifest offline. | `read` / `bounded` | `--manifest` |
