@@ -7,6 +7,23 @@ completion evidence for an agent starting without the original conversation.
 
 ## Router and fleet delivery order
 
+### Source-only merge checkpoint
+
+The 2026-09-05 implementation batch contains qualified replica sets,
+capacity-aware member scheduling and lifecycle controls, bounded workload
+visibility and dashboard, scoped read authorization, and controller diagnostics.
+The batch is undergoing consolidated acceptance and CI; these source changes
+are not package publication, model qualification, or live deployment evidence.
+
+Fleet enrollment is only partially implemented: contracts, packaging, and
+trusted-file/permission primitives exist. Trusted configuration composition,
+receiver dispatch, durable staging, transactional activation/rollback,
+transports, CLI orchestration, and exact live node acceptance remain unfinished.
+The operator's current stop point is PR creation and merge, then a summary.
+Do not start those remaining features or deployment as part of this checkpoint.
+
+### Original delivery plan
+
 **Reviewed:** 2026-09-05. **Anvil baseline:**
 `76137fa292951a4e9495447346c74d190cec63c2`.
 
