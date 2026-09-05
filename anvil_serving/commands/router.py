@@ -12,6 +12,25 @@ def commands() -> CommandNode:
         "Manage the deployed router and its lifecycle.",
         children=(
             _node(
+                "workloads",
+                "Read a bounded canonical workload snapshot from one router.",
+                handler=_handler(
+                    "anvil_serving.cli", attribute="_workload_command", argv_prefix=("router",)
+                ),
+                options=(
+                    _option("--router-url", summary="Explicit loopback router /v1 URL (required).", value_name="URL"),
+                    _option("--auth-env", summary="Environment variable containing the router credential (required).", value_name="NAME"),
+                    _option("--expected-node", summary="Expected router node identity (required).", value_name="NODE"),
+                    _option("--owner", summary="Filter by workload owner.", value_name="OWNER"),
+                    _option("--kind", summary="Filter by workload kind.", value_name="KIND"),
+                    _option("--state", summary="Filter by workload state.", value_name="STATE"),
+                    _option("--host", summary="Filter records by observed host.", value_name="HOST"),
+                    _option("--active-only", summary="Return only active workloads."),
+                    _option("--recent-seconds", summary="Recent-workload window in seconds.", value_name="SECONDS"),
+                    _option("--limit", summary="Maximum returned workloads.", value_name="COUNT"),
+                ),
+            ),
+            _node(
                 "diagnose",
                 "Explain one request from bounded router evidence without replaying it.",
                 handler=_handler("anvil_serving.router_diagnostics", attribute="dispatch", argv_prefix=()),
