@@ -1,6 +1,6 @@
 # Contain malformed duplicate leases in workload snapshots
 
-Status: open; workload-visibility:T003.2 fix-forward.
+Status: implemented candidate; workload-visibility:T003.2 pending consolidated acceptance.
 
 A synthetic malformed operation_leases table with two rows matching one
 operation record made list_workloads raise WorkloadError for duplicate workload
@@ -14,3 +14,8 @@ Complete the existing task's focused contention/deadline, coherent writer,
 WAL read-only, lease-boundary, terminal malformed-lease and stale-prefix/fresh-
 lease regressions. These are implementation requirements, not a new per-task
 adversarial acceptance pass. Formal acceptance is deferred to the final batch.
+
+Candidate c768e6aa groups matching leases before the operation join, marks
+duplicate lease metadata invalid only for its owner, and contains final source
+validation. Its claim-bound focused gate passed 107 tests and Ruff. This is
+source verification, not a live deployment or final acceptance claim.
