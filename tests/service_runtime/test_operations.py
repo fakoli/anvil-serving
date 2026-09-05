@@ -175,6 +175,9 @@ def test_start_polls_endpoint_until_ready(setup):
     from anvil_serving.service_runtime.operations import execute
     from anvil_serving.service_runtime.manifest import load_manifest, digest
     adapter, options = setup
+    # The real loopback bind probe can consume its 200 ms socket timeout on
+    # Windows before the mocked engine readiness polling starts.
+    options["timeout_seconds"] = 5
     path = options["manifest"]
     rows = load_manifest(path)
     rows["events"]["endpoint"] = "http://127.0.0.1:65534"
