@@ -2,7 +2,7 @@
 
 By default, Anvil Serving reads live operator-owned TOML files from the
 configuration home. `router.toml` defines Capability Gateway routes and policy;
-`serves*.toml`, `voice.toml`, `host.toml`, `events.toml`, and
+`serves*.toml`, `services.toml`, `voice.toml`, `host.toml`, `events.toml`, and
 `operator-topology.toml` remain owned by the product family that operates each
 domain. Configuration stores environment-variable names for credentials, never
 credential literals.
@@ -34,13 +34,19 @@ and operator recipes there. Keep
 credentials outside Git in environment variables or file-backed secret stores.
 See [Public product and private operator state](OPERATOR-PRIVACY.md).
 
-The operator files include `router.toml`, `serves*.toml`,
+The operator files include `router.toml`, `serves*.toml`, `services.toml`,
 `serve-recipes.toml`, `voice.toml`, `host.toml`, `events.toml`,
 `operator-topology.toml`, Compose files, and `.env.example`. Each existing file
 is backed up beside the target as a numbered `.anvil.bak.N` file before `init`
 replaces it.
 Content-identical files are left untouched, so repeated runs do not create
 redundant backups, including for `.env.example`.
+
+`services.toml` is the operator-owned inventory for portable launchd and Docker
+service bindings. It records only pinned supervisor facts and dependency paths;
+it does not become a model recipe or a raw process-command registry. See
+[Host-supervised services](HOST-SERVICES.md) for its schema, staged-definition
+installation, state contract, and model-admission boundary.
 
 ## Lifecycle events (`events.toml`)
 

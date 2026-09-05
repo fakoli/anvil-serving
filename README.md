@@ -198,6 +198,7 @@ controller, and ordinary CLI remain stdlib-only.
 - [Capability meta-router](docs/META-ROUTER.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Configuration](docs/CONFIGURATION.md)
+- [Host-supervised services](docs/HOST-SERVICES.md)
 - [Public product and private operator state](docs/OPERATOR-PRIVACY.md)
 - [Meta-router request path](docs/THIN-CAPABILITY-GATEWAY.md)
 - [CLI reference](docs/CLI.md)

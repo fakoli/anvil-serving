@@ -77,6 +77,8 @@ from . import guard
 from . import host as host_ops
 from . import reservations
 from . import serve_recipes
+from .service_runtime.operations import execute as _service_execute
+from .service_runtime.contracts import ServiceError, identifier as service_identifier
 import sys
 import urllib.request
 import urllib.error
@@ -158,7 +160,7 @@ _ENGINE_ALIASES = {
 # it exposes an OpenAI-compatible chat surface but is not vLLM/llama.cpp.
 _ENGINES = {
     "vllm", "sglang", "llamacpp", "q36",
-    "audio", "embedding", "reranker", "image",
+    "audio", "embedding", "reranker", "image", "mlx-lm", "mlx-vlm",
 }
 # ADR-0017 GPU residency reservations: the residency vocabulary for a serve's
 # declared VRAM reservation. "resident" is never evicted, "evictable" may be
@@ -637,17 +639,6 @@ def _normalize_reservation(s, raw):
 _SERVE_RUNTIMES = ("docker", "native")
 
 
-class NativeRuntimeNotSupported(ValueError):
-    """A `runtime = "native"` serve was declared before native lifecycle exists.
-
-    ADR-0034 makes `runtime` an explicit discriminator so a non-container serve
-    is expressible. The native lifecycle itself is not implemented: every serve
-    path here resolves a container, so accepting a native entry would surface as
-    a `KeyError` deep inside an unrelated command. Failing at manifest load
-    keeps the schema honest and the failure legible.
-    """
-
-
 def _normalize_serve_runtime(s, raw):
     """Validate one serve entry's runtime discriminator (ADR-0034).
 
@@ -678,10 +669,52 @@ def _normalize_serve_runtime(s, raw):
             'serve entry with runtime "native" must not declare container: %r'
             % (raw,)
         )
-    raise NativeRuntimeNotSupported(
-        'serve entry %r declares runtime "native", which is not implemented '
-        "yet; only \"docker\" serves can be loaded" % s["name"]
+    try:
+        s["service"] = service_identifier(s.get("service"), "service")
+    except ServiceError as exc:
+        raise ValueError(
+            'serve entry with runtime "native" requires a declared service: %r'
+            % (raw,)
+        ) from exc
+    if s.get("up"):
+        raise ValueError(
+            'serve entry with runtime "native" must not declare up; its '
+            "declared service owns lifecycle: %r" % (raw,)
+        )
+    if "services_manifest" in s:
+        value = s["services_manifest"]
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(
+                'serve entry with runtime "native" services_manifest must be '
+                "a non-empty path: %r" % (raw,)
+            )
+        s["services_manifest"] = value.strip()
+
+
+def _validate_native_service_binding(s, raw, manifest_dir):
+    """Reject Docker reservation and promotion controls for a native service."""
+    if s["runtime"] != "native":
+        return
+    if "engine" not in raw:
+        raise ValueError(
+            "native service-bound serve requires an explicit engine: %r" % (raw,)
+        )
+    forbidden = (
+        "gpu_inference", "native_kv_offload", "gpu_role", "gpu_roles",
+        "vram_mib", "residency", "operating_mode", "tensor_parallel_size",
+        "router_tier", "router_config", "rollback_router_config",
     )
+    declared = [field for field in forbidden if field in s]
+    if declared:
+        raise ValueError(
+            'native service-bound serve must not declare GPU reservation or '
+            "exclusive-mode fields (%s): %r" % (", ".join(declared), raw)
+        )
+    if "services_manifest" in s:
+        value = s["services_manifest"].replace("{dir}", manifest_dir)
+        s["services_manifest"] = os.path.abspath(
+            value if os.path.isabs(value) else os.path.join(manifest_dir, value)
+        )
 
 
 def _normalize_mode_router_configs(s, raw, manifest_dir):
@@ -845,6 +878,7 @@ def load_manifest(path):
                     f"{expected_project!r}, but up declares {explicit_project!r}: {raw!r}"
                 )
         s["engine"] = _normalize_engine(s, up)
+        _validate_native_service_binding(s, raw, mdir)
         _normalize_reservation(s, raw)
         _normalize_mode_router_configs(s, raw, mdir)
         declared_roles = [
@@ -2538,7 +2572,62 @@ def _select(serves, names):
     if not names:
         return list(serves)
     want = set(names)
-    return [s for s in serves if s["name"] in want or s["container"] in want]
+    return [
+        s for s in serves
+        if s["name"] in want or (s.get("container") in want if s.get("runtime", "docker") == "docker" else False)
+    ]
+
+
+def _native_service_manifest(serve):
+    """Return the one declared services manifest for a native serve binding."""
+    return serve.get("services_manifest") or config_path("services.toml")
+
+
+def _execute_native_service(serve, action, *, dry_run=True, confirm=False, tail=100,
+                            topology=None, command_host=None, command_runtime=None,
+                            target=None, transport="local", topology_overlay=None,
+                            timeout_seconds=30):
+    """Delegate one native serve lifecycle action to its declared supervisor."""
+    try:
+        return _service_execute(
+            action,
+            serve["service"],
+            manifest=_native_service_manifest(serve),
+            topology=topology,
+            topology_overlay=topology_overlay,
+            command_host=command_host,
+            command_runtime=command_runtime,
+            target=target,
+            transport="local" if transport == "auto" else transport,
+            dry_run=dry_run,
+            confirm=confirm or guard.confirmation_authorized(),
+            tail=tail,
+            timeout_seconds=timeout_seconds,
+            binding=None,
+            remote=False,
+            expected_model=serve["model"],
+            expected_engine=serve.get("engine"),
+        )
+    except ServiceError as exc:
+        print("service %s %s refused (%s): %s" % (serve["service"], action, exc.code, exc), file=sys.stderr)
+        return None
+
+
+def _print_native_service_result(result):
+    """Render bounded dispatcher output without manufacturing container state."""
+    if result is None:
+        return 1
+    lines = result.get("lines")
+    if isinstance(lines, list):
+        for line in lines:
+            print(line)
+    else:
+        print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+def _native_subset(serves):
+    return [serve for serve in serves if serve.get("runtime", "docker") == "native"]
 
 
 def _serving_path_scope(serves, selected=()):
@@ -2550,10 +2639,10 @@ def _serving_path_scope(serves, selected=()):
     poll them. Explicitly selected rows are appended in manifest order without
     duplicating a serving-path entry.
     """
-    selected_containers = {s["container"] for s in selected}
+    selected_names = {s["name"] for s in selected}
     return [
         s for s in serves
-        if s.get("groups") or s["container"] in selected_containers
+        if s.get("groups") or s["name"] in selected_names
     ]
 
 
@@ -2885,6 +2974,13 @@ def status_summary(
     _run=subprocess.run,
     _open=urllib.request.urlopen,
     _recipe_ownership=None,
+    topology=None,
+    topology_overlay=None,
+    command_host=None,
+    command_runtime=None,
+    target=None,
+    transport="local",
+    timeout_seconds=30,
 ):
     """Machine-readable serve status for MCP/automation.
 
@@ -2892,6 +2988,8 @@ def status_summary(
     simple and stable so agent tools do not scrape the human table.
     """
     selected = _select(serves, names) if names else _serving_path_scope(serves)
+    native = _native_subset(selected)
+    selected = [serve for serve in selected if serve.get("runtime", "docker") == "docker"]
     status_scope = _serving_path_scope(serves, selected)
     rows = []
     states = {}
@@ -2902,7 +3000,7 @@ def status_summary(
         return states[container]
 
     occupants = _docker_port_occupants((s["port"] for s in selected), _run=_run)
-    declared = _declared_port_containers(serves)
+    declared = _declared_port_containers([s for s in serves if s.get("runtime", "docker") == "docker"])
     for s in selected:
         st = state_of(s["container"])
         health = _health(s["port"], s.get("health", "/health"), _open=_open) if st == "running" else None
@@ -2935,6 +3033,25 @@ def status_summary(
             ),
             "port_conflicts": conflicts,
         })
+    for s in native:
+        result = _execute_native_service(
+            s, "status", dry_run=True, topology=topology,
+            topology_overlay=topology_overlay,
+            command_host=command_host, command_runtime=command_runtime,
+            target=target, transport=transport, timeout_seconds=timeout_seconds,
+        )
+        supervisor = (result or {}).get("services", [{}])[0].get("supervisor")
+        rows.append({
+            "name": s["name"],
+            "service": s["service"],
+            "port": s["port"],
+            "runtime": "native",
+            "supervisor": supervisor,
+            "running": supervisor.get("running") if isinstance(supervisor, dict) else None,
+            "model": s.get("model"),
+            "engine": s.get("engine"),
+            "stack": s.get("stack", DEFAULT_STACK),
+        })
     recipe_ownership = _recipe_ownership or _unmanaged_recipe_ownership(
         serves, _run=_run
     )
@@ -2949,7 +3066,7 @@ def status_summary(
             status_scope, _run=_run, _states=states
         ),
         "operating_mode": operating_mode_summary(
-            serves, state_of, recipe_ownership
+            [s for s in serves if s.get("runtime", "docker") == "docker"], state_of, recipe_ownership
         ),
         "recipe_ownership": recipe_ownership,
     }
@@ -2962,6 +3079,13 @@ def cmd_status(
     _open=urllib.request.urlopen,
     ledger_serves=None,
     _recipe_ownership=None,
+    topology=None,
+    topology_overlay=None,
+    command_host=None,
+    command_runtime=None,
+    target=None,
+    transport="local",
+    timeout_seconds=30,
 ):
     # `names` (from positional selectors and/or --group) filters WHICH rows are
     # printed; the reservation ledger below still spans the WHOLE `serves` list,
@@ -2975,6 +3099,35 @@ def cmd_status(
         if names is None
         else (_select(serves, names) if names else [])
     )
+    native = _native_subset(selected)
+    if native:
+        rc = 0
+        for serve in native:
+            rc |= _print_native_service_result(
+                _execute_native_service(
+                    serve, "status", dry_run=True, topology=topology,
+                    topology_overlay=topology_overlay,
+                    command_host=command_host, command_runtime=command_runtime,
+                    target=target, transport=transport, timeout_seconds=timeout_seconds,
+                )
+            )
+        docker_serves = [serve for serve in serves if serve.get("runtime", "docker") == "docker"]
+        docker_selected = [serve for serve in selected if serve.get("runtime", "docker") == "docker"]
+        if not docker_selected:
+            return rc
+        docker_ledger = [
+            serve for serve in (ledger_serves if ledger_serves is not None else serves)
+            if serve.get("runtime", "docker") == "docker"
+        ]
+        return rc or cmd_status(
+            docker_serves, names=[serve["name"] for serve in docker_selected],
+            _run=_run, _open=_open, ledger_serves=docker_ledger,
+            _recipe_ownership=_recipe_ownership,
+            topology=topology, command_host=command_host,
+            topology_overlay=topology_overlay,
+            command_runtime=command_runtime, target=target,
+            transport=transport, timeout_seconds=timeout_seconds,
+        )
     selected_containers = {s["container"] for s in selected}
     states = {}
     occupants = _docker_port_occupants((s["port"] for s in selected), _run=_run)
@@ -3732,6 +3885,14 @@ def cmd_down(
     keep_container=False,
     force_remove=False,
     _run=subprocess.run,
+    confirm=False,
+    topology=None,
+    topology_overlay=None,
+    command_host=None,
+    command_runtime=None,
+    target=None,
+    transport="local",
+    timeout_seconds=30,
 ):
     """Stop selected serves and remove their containers by default.
 
@@ -3746,6 +3907,32 @@ def cmd_down(
     if not targets:
         print("no matching serves in manifest")
         return 1
+    native = _native_subset(targets)
+    if native:
+        if keep_container or force_remove:
+            print("native service-bound serves do not support container retention or removal", file=sys.stderr)
+            return 2
+        rc = 0
+        for serve in native:
+            rc |= _print_native_service_result(_execute_native_service(
+                serve, "down", dry_run=dry_run, confirm=confirm,
+                topology=topology, command_host=command_host,
+                topology_overlay=topology_overlay,
+                command_runtime=command_runtime, target=target,
+                transport=transport, timeout_seconds=timeout_seconds,
+            ))
+        docker_targets = [serve for serve in targets if serve.get("runtime", "docker") == "docker"]
+        if not docker_targets:
+            return rc
+        docker_serves = [serve for serve in serves if serve.get("runtime", "docker") == "docker"]
+        return rc or cmd_down(
+            docker_serves, [serve["name"] for serve in docker_targets],
+            dry_run=dry_run, keep_container=keep_container, force_remove=force_remove,
+            _run=_run, confirm=confirm, topology=topology,
+            topology_overlay=topology_overlay,
+            command_host=command_host, command_runtime=command_runtime,
+            target=target, transport=transport, timeout_seconds=timeout_seconds,
+        )
     rc = 0
     for s in targets:
         st = docker_state(s["container"], _run=_run)
@@ -4376,11 +4563,48 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
            readiness_timeout=LIFECYCLE_READINESS_TIMEOUT_SECONDS,
            readiness_poll=LIFECYCLE_READINESS_POLL_SECONDS, ledger_serves=None,
            _open=urllib.request.urlopen, _sleep=time.sleep,
-           _allow_exclusive_target=False):
+           _allow_exclusive_target=False, confirm=False, topology=None,
+           topology_overlay=None,
+           command_host=None, command_runtime=None, target=None, transport="local",
+           timeout_seconds=30):
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
         return 1
+    native = _native_subset(targets)
+    if native:
+        if recreate or evict or _allow_exclusive_target:
+            print("native service-bound serves do not support Docker recreate, eviction, or exclusive transitions", file=sys.stderr)
+            return 2
+        rc = 0
+        for serve in native:
+            rc |= _print_native_service_result(_execute_native_service(
+                serve, "up", dry_run=dry_run, confirm=confirm,
+                topology=topology, command_host=command_host,
+                topology_overlay=topology_overlay,
+                command_runtime=command_runtime, target=target,
+                transport=transport, timeout_seconds=timeout_seconds,
+            ))
+        docker_targets = [serve for serve in targets if serve.get("runtime", "docker") == "docker"]
+        if not docker_targets:
+            return rc
+        docker_serves = [serve for serve in serves if serve.get("runtime", "docker") == "docker"]
+        docker_ledger = [
+            serve for serve in (ledger_serves if ledger_serves is not None else serves)
+            if serve.get("runtime", "docker") == "docker"
+        ]
+        return rc or cmd_up(
+            docker_serves, [serve["name"] for serve in docker_targets],
+            dry_run=dry_run, recreate=recreate, _run=_run, evict=evict,
+            drain_timeout=drain_timeout, router_url=router_url, _transition=_transition,
+            wait_for_readiness=wait_for_readiness, readiness_timeout=readiness_timeout,
+            readiness_poll=readiness_poll, ledger_serves=docker_ledger,
+            _open=_open, _sleep=_sleep, _allow_exclusive_target=_allow_exclusive_target,
+            confirm=confirm, topology=topology, command_host=command_host,
+            topology_overlay=topology_overlay,
+            command_runtime=command_runtime, target=target, transport=transport,
+            timeout_seconds=timeout_seconds,
+        )
     if evict and (
         isinstance(drain_timeout, bool)
         or not isinstance(drain_timeout, numbers.Real)
@@ -5390,7 +5614,9 @@ def _write_console_safe(stream, value):
     stream.write(safe)
 
 
-def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subprocess.run):
+def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subprocess.run,
+             topology=None, command_host=None, command_runtime=None, target=None,
+             transport="local", topology_overlay=None, timeout_seconds=30):
     """`docker logs` for ONE model serve's container (resolved from its manifest name), so
     diagnosing a serve doesn't mean reaching for raw docker. `--follow` streams to the terminal."""
     # `logs` targets ONE serve, so a name is REQUIRED — don't inherit `_select`'s empty-means-all
@@ -5406,7 +5632,24 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
         print("`logs` needs ONE serve; matched %d: %s -- name just one."
               % (len(targets), ", ".join(s["name"] for s in targets)), file=sys.stderr)
         return 2
-    container = targets[0]["container"]
+    serve = targets[0]
+    if serve.get("runtime", "docker") == "native":
+        if since or follow:
+            print("native service-bound logs support --tail only", file=sys.stderr)
+            return 2
+        try:
+            bounded_tail = int(tail)
+        except (TypeError, ValueError):
+            print("native service-bound logs require an integer --tail", file=sys.stderr)
+            return 2
+        return _print_native_service_result(_execute_native_service(
+            serve, "logs", dry_run=True, tail=bounded_tail,
+            topology=topology, command_host=command_host,
+            topology_overlay=topology_overlay,
+            command_runtime=command_runtime, target=target,
+            transport=transport, timeout_seconds=timeout_seconds,
+        ))
+    container = serve["container"]
     st = docker_state(container, _run=_run)
     if st == "error":
         print("cannot read logs: docker not available / daemon down / permission?", file=sys.stderr)
@@ -5751,6 +5994,18 @@ def _build_action_parser(action):
                        help="serve names/containers to act on (default: all in the manifest).")
     p.add_argument("--manifest",
                    help="path to the serves manifest TOML (default: config home, then ./serves.toml).")
+    if action in {"up", "down", "status", "logs"}:
+        p.add_argument("--topology", help="topology declaration for a native service binding")
+        p.add_argument("--topology-overlay", help="topology overlay for a native service binding")
+        p.add_argument("--command-host", help="declared command host for a native service binding")
+        p.add_argument("--command-runtime", help="declared command runtime for a native service binding")
+        p.add_argument("--target", help="declared target for a native service binding")
+        p.add_argument("--transport", choices=("auto", "local"), default="local")
+        p.add_argument("--operation-timeout", type=int, default=30,
+                       help="native service operation deadline in seconds")
+    else:
+        p.set_defaults(topology=None, topology_overlay=None, command_host=None, command_runtime=None,
+                       target=None, transport="local", operation_timeout=30)
     if action in _GROUP_ACTIONS:
         p.add_argument("--group", action="append", metavar="NAME", dest="groups",
                        help="act on every serve tagged NAME across the manifest set "
@@ -5768,6 +6023,9 @@ def _build_action_parser(action):
                        help="print what would run without touching any container.")
     else:
         p.set_defaults(dry_run=False)
+    if action in {"up", "down"}:
+        p.add_argument("--confirm", action="store_true",
+                       help="apply one declared native service lifecycle operation")
     if action in {"rm", "adopt"}:
         p.add_argument("--yes", action="store_true",
                        help="skip the confirmation prompt (these actions docker rm -f containers).")
@@ -6100,20 +6358,6 @@ def main(argv=None):
                 print("  " + line)
             return 1
 
-    # `serves up` ensures the DEPLOYED router is healthy FIRST — on hosts whose
-    # operator topology owns one (a topology that assigns the router elsewhere
-    # skips the step entirely). Reuses the `router` verb's own status/up code
-    # paths; idempotent (a healthy router is not restarted), honors --dry-run,
-    # and --no-router skips it. Placed before BOTH up paths (ad-hoc --compose
-    # and manifest) so either form gets the ensure. A non-zero return means the
-    # topology declares this host the router owner and its bring-up failed:
-    # that gates the serves (--no-router is the explicit override); any other
-    # failure is reported but non-gating.
-    if a.action == "up":
-        router_rc = ensure_router_healthy(no_router=a.no_router, dry_run=a.dry_run)
-        if router_rc:
-            return router_rc
-
     # `up --compose <file>`: ad-hoc/experiment serve from a compose file that is NOT in the
     # manifest — independent of serves.toml, so we neither require nor load a manifest here.
     if a.action == "up" and a.compose:
@@ -6129,6 +6373,9 @@ def main(argv=None):
             print("--evict has no meaning with --compose (an ad-hoc compose serve declares "
                   "no reservation; the ledger only admits manifest serves)", file=sys.stderr)
             return 2
+        router_rc = ensure_router_healthy(no_router=a.no_router, dry_run=a.dry_run)
+        if router_rc:
+            return router_rc
         return cmd_up_compose(a.compose, a.names, dry_run=a.dry_run)
     if a.compose:
         print("--compose is only valid with `up`", file=sys.stderr)
@@ -6397,7 +6644,7 @@ def main(argv=None):
             name
             for name in a.names
             if not any(
-                serve["name"] == name or serve["container"] == name
+                serve["name"] == name or serve.get("container") == name
                 for serve in selected
             )
         ]
@@ -6411,9 +6658,22 @@ def main(argv=None):
             serves,
             names=status_names,
             ledger_serves=_serving_path_scope(ledger_serves, selected),
+            topology=a.topology,
+            topology_overlay=a.topology_overlay,
+            command_host=a.command_host,
+            command_runtime=a.command_runtime,
+            target=a.target,
+            transport=a.transport,
+            timeout_seconds=a.operation_timeout,
         )
     if a.action == "logs":
-        return cmd_logs(serves, a.names, tail=a.tail, since=a.since, follow=a.follow)
+        return cmd_logs(
+            serves, a.names, tail=a.tail, since=a.since, follow=a.follow,
+            topology=a.topology, command_host=a.command_host,
+            topology_overlay=a.topology_overlay,
+            command_runtime=a.command_runtime, target=a.target,
+            transport=a.transport, timeout_seconds=a.operation_timeout,
+        )
     if a.action == "probe":
         return cmd_probe(
             serves,
@@ -6424,16 +6684,38 @@ def main(argv=None):
         )
     if a.action == "down":
         return cmd_down(serves, group_names if group_names is not None else a.names,
-                        dry_run=a.dry_run, keep_container=a.keep_container)
+                        dry_run=a.dry_run, keep_container=a.keep_container,
+                        confirm=a.confirm, topology=a.topology,
+                        topology_overlay=a.topology_overlay,
+                        command_host=a.command_host,
+                        command_runtime=a.command_runtime, target=a.target,
+                        transport=a.transport, timeout_seconds=a.operation_timeout)
     if a.action == "up":
         target_names = group_names if group_names is not None else a.names
+        selected_targets = _select(serves, target_names)
+        has_docker_targets = any(
+            serve.get("runtime", "docker") == "docker" for serve in selected_targets
+        )
+        if has_docker_targets:
+            router_rc = ensure_router_healthy(no_router=a.no_router, dry_run=a.dry_run)
+            if router_rc:
+                return router_rc
+        else:
+            # Cache reclaim and router management belong to Docker serve lifecycle;
+            # a native service binding has its own supervisor-owned postconditions.
+            cache_policy = None
+            cache_operation = None
         rc = cmd_up(serves, target_names, dry_run=a.dry_run, recreate=a.recreate,
                     evict=a.evict, drain_timeout=a.drain_timeout,
                     router_url=a.router_url, wait_for_readiness=not a.dry_run,
-                    ledger_serves=ledger_serves)
+                    ledger_serves=ledger_serves, confirm=a.confirm,
+                    topology=a.topology, command_host=a.command_host,
+                    topology_overlay=a.topology_overlay,
+                    command_runtime=a.command_runtime, target=a.target,
+                    transport=a.transport, timeout_seconds=a.operation_timeout)
         return _finish_cache_reclaim(
             rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,
-            readiness_targets=_select(serves, target_names),
+            readiness_targets=selected_targets,
         )
     if a.action == "rm":
         return cmd_rm(serves, a.names, dry_run=a.dry_run, assume_yes=a.yes)

@@ -30,6 +30,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "serves_manage", fixed=(("action", "up"),), positionals=("names",)
                 ),
+                forward_resolution_options=True,
             ),
             _resource_node(
                 "up-for",
@@ -74,6 +75,7 @@ def commands() -> CommandNode:
                     allowed=("keep_container", "dry_run"),
                     positionals=("names",),
                 ),
+                forward_resolution_options=True,
             ),
             _resource_node(
                 "rm",
@@ -301,6 +303,7 @@ def commands() -> CommandNode:
                 role="model-serve",
                 gpu=True,
                 remote_operation=_remote("serves_status", positionals=("names",)),
+                forward_resolution_options=True,
             ),
             _resource_node(
                 "probe",
@@ -340,6 +343,7 @@ def commands() -> CommandNode:
                 ),
                 gpu=True,
                 remote_operation=_remote("serves_logs", positionals=("names",)),
+                forward_resolution_options=True,
             ),
             _resource_node(
                 "multiplex",

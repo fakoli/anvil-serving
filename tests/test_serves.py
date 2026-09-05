@@ -154,14 +154,13 @@ def test_load_manifest_normalizes_runtime_like_residency(tmp_path, declared):
     assert s["runtime"] == "docker"
 
 
-def test_load_manifest_normalizes_native_runtime_before_rejecting(tmp_path):
-    # Normalization must happen before the not-implemented guard, or a
-    # differently-cased native entry would fall through to the unknown-value
-    # error and misreport why it was refused.
+def test_load_manifest_normalizes_native_runtime_before_service_validation(tmp_path):
+    # Normalization happens before binding validation, so a differently-cased
+    # native entry gets the useful missing-service error.
     path = _runtime_entry(tmp_path, (
         'name = "x"\nruntime = " NATIVE "\nport = 1\nmodel = "m"\n'
     ))
-    with pytest.raises(serves.NativeRuntimeNotSupported, match="not implemented"):
+    with pytest.raises(ValueError, match="requires a declared service"):
         serves.load_manifest(path)
 
 
@@ -191,14 +190,13 @@ def test_load_manifest_rejects_native_runtime_declaring_container(tmp_path):
         serves.load_manifest(path)
 
 
-def test_load_manifest_rejects_native_runtime_as_unimplemented(tmp_path):
-    # ADR-0034 defines the discriminator; the native lifecycle is not built.
-    # Failing at load keeps the schema honest instead of surfacing a KeyError
-    # from one of the ~85 places that resolve serve["container"].
+def test_load_manifest_rejects_native_runtime_without_service(tmp_path):
+    # Native entries are usable only when a declared supervised service owns
+    # the lifecycle.
     path = _runtime_entry(tmp_path, (
         'name = "mlx-primary"\nruntime = "native"\nport = 1\nmodel = "m"\n'
     ))
-    with pytest.raises(serves.NativeRuntimeNotSupported, match="not implemented"):
+    with pytest.raises(ValueError, match="requires a declared service"):
         serves.load_manifest(path)
 
 

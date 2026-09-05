@@ -57,7 +57,10 @@ from anvil_serving.benchmarking.artifacts import (
     BenchmarkArtifactError,
     resolve_benchmark_artifact_path,
 )
-from anvil_serving.paths import default_topology_path, resolve_topology_path
+from anvil_serving.guard import confirmation_authorized
+from anvil_serving.paths import config_path, default_topology_path, resolve_topology_path
+from anvil_serving.service_runtime.operations import execute as _service_execute
+from anvil_serving.service_runtime.contracts import ServiceError
 from anvil_serving.targets import TargetResolutionError
 from anvil_serving.topology import TopologyValidationError, load_topology
 
@@ -99,6 +102,51 @@ _AUDIO_SERVES = (
     ("tts", tts_serve.TTSServeConfig, tts_serve.TTSServe),
 )
 _MAX_AUDIO_LOG_BYTES = 1024 * 1024
+
+
+def _service_manifest_path(table: dict, data: dict) -> str:
+    """Resolve the private shared-service binding manifest for one component."""
+    configured = table.get("services_manifest")
+    if not configured:
+        return config_path("services.toml")
+    return _resolve_manifest_reference(str(configured), data.get("_manifest_dir"))
+
+
+def _execute_service_lifecycle(
+    table: dict,
+    data: dict,
+    action: str,
+    *,
+    topology: str | None,
+    topology_overlay: str | None = None,
+    command_host: str | None,
+    command_runtime: str | None,
+    target: str | None,
+    transport: str,
+    dry_run: bool,
+    confirm: bool,
+    tail: int = 100,
+    timeout_seconds: float | None = None,
+) -> dict:
+    """Delegate a topology-resolved voice component to the shared dispatcher."""
+    return _service_execute(
+        action,
+        table["service"],
+        manifest=_service_manifest_path(table, data),
+        topology=topology,
+        topology_overlay=topology_overlay,
+        command_host=command_host,
+        command_runtime=command_runtime,
+        target=target,
+        transport="local" if transport == "auto" else transport,
+        dry_run=dry_run,
+        confirm=confirm or confirmation_authorized(),
+        tail=tail,
+        timeout_seconds=30 if timeout_seconds is None else timeout_seconds,
+        binding=None,
+        remote=False,
+        expected_model=table["model"] if "model" in table else None,
+    )
 
 
 def _resolve_manifest_reference(path: str, manifest_dir: str | None) -> str:
@@ -291,6 +339,13 @@ def execute_audio_lifecycle(
     dry_run: bool = False,
     targets: voice_config.ResolvedAudioTargets | None = None,
     timeout_seconds: float | None = None,
+    topology: str | None = None,
+    topology_overlay: str | None = None,
+    command_host: str | None = None,
+    command_runtime: str | None = None,
+    target: str | None = None,
+    transport: str = "local",
+    confirm: bool = False,
 ) -> dict:
     """Execute one already-authorized local audio lifecycle and return typed data."""
     if action not in {"up", "down"}:
@@ -312,6 +367,34 @@ def execute_audio_lifecycle(
         item = {"kind": kind, "lifecycle": lifecycle, "state": "pending"}
         if lifecycle == "external":
             item["state"] = "external"
+            results.append(item)
+            continue
+        if lifecycle == "service":
+            try:
+                service_result = _execute_service_lifecycle(
+                    table,
+                    data,
+                    action,
+                    topology=topology,
+                    topology_overlay=topology_overlay,
+                    command_host=command_host,
+                    command_runtime=command_runtime,
+                    target=target,
+        transport="local" if transport == "auto" else transport,
+                    dry_run=dry_run,
+                    confirm=confirm,
+                    timeout_seconds=(
+                        max(0.1, deadline - time.monotonic())
+                        if deadline is not None else None
+                    ),
+                )
+                rc = int(service_result.get("returncode", 0))
+                item.update({"state": "completed", "returncode": rc, "result": service_result})
+                if rc != 0:
+                    exit_code = 1
+            except ServiceError as exc:
+                item.update({"state": "failed", "error": str(exc), "returncode": 1})
+                exit_code = 1
             results.append(item)
             continue
         if lifecycle == "native":
@@ -365,9 +448,15 @@ def _print_audio_lifecycle(result: dict) -> None:
             ))
         elif item["lifecycle"] == "native" and item["state"] == "completed":
             _print_native_result(prefix, kind, item["result"])
+        elif item["lifecycle"] == "service" and item["state"] == "completed":
+            print("%s: %s service lifecycle %s" % (
+                prefix, kind, json.dumps(item["result"], sort_keys=True),
+            ))
         elif item["state"] == "failed":
             print(
-                "%s: %s native lifecycle failed -- %s" % (prefix, kind, item["error"]),
+                "%s: %s %s lifecycle failed -- %s" % (
+                    prefix, kind, item["lifecycle"], item["error"],
+                ),
                 file=sys.stderr,
             )
         elif item["state"] == "not_configured":
@@ -617,6 +706,13 @@ def cmd_up(args):
         dry_run=getattr(args, "dry_run", False),
         targets=targets,
         timeout_seconds=args.timeout_seconds,
+        topology=getattr(args, "topology", None),
+        topology_overlay=getattr(args, "topology_overlay", None),
+        command_host=getattr(args, "command_host", None),
+        command_runtime=getattr(args, "command_runtime", None),
+        target=getattr(args, "target", None),
+        transport=getattr(args, "transport", "local"),
+        confirm=getattr(args, "confirm", False),
     )
     _print_audio_lifecycle(result)
     return result["returncode"]
@@ -640,6 +736,13 @@ def cmd_down(args):
         dry_run=getattr(args, "dry_run", False),
         targets=targets,
         timeout_seconds=args.timeout_seconds,
+        topology=getattr(args, "topology", None),
+        topology_overlay=getattr(args, "topology_overlay", None),
+        command_host=getattr(args, "command_host", None),
+        command_runtime=getattr(args, "command_runtime", None),
+        target=getattr(args, "target", None),
+        transport=getattr(args, "transport", "local"),
+        confirm=getattr(args, "confirm", False),
     )
     _print_audio_lifecycle(result)
     return result["returncode"]
@@ -663,6 +766,30 @@ def cmd_audio_status(args):
     for kind, lifecycle, table, serve in _audio_serves(
         data, targets, subprocess_deadline=deadline
     ):
+        if lifecycle == "service":
+            try:
+                result = _execute_service_lifecycle(
+                    table,
+                    data,
+                    "status",
+                    topology=getattr(args, "topology", None),
+                    topology_overlay=getattr(args, "topology_overlay", None),
+                    command_host=getattr(args, "command_host", None),
+                    command_runtime=getattr(args, "command_runtime", None),
+                    target=getattr(args, "target", None),
+                    transport=getattr(args, "transport", "local"),
+                    dry_run=True,
+                    confirm=False,
+                    timeout_seconds=getattr(args, "operation_timeout", None),
+                )
+            except ServiceError as exc:
+                print("voice audio status: %s service status failed -- %s" % (kind, exc), file=sys.stderr)
+                exit_code = 1
+                continue
+            print("voice audio status: %s service %s" % (kind, json.dumps(result, sort_keys=True)))
+            if int(result.get("returncode", 0)) != 0:
+                exit_code = 1
+            continue
         if lifecycle == "native":
             status = native_serve.NativeServe(
                 native_serve.NativeServeConfig.from_table(kind, table)
@@ -716,6 +843,34 @@ def cmd_audio_logs(args):
     ):
         if lifecycle == "external":
             print("voice audio logs: %s lifecycle is external; no owned logs" % kind)
+            continue
+        if lifecycle == "service":
+            try:
+                result = _execute_service_lifecycle(
+                    table,
+                    data,
+                    "logs",
+                    topology=getattr(args, "topology", None),
+                    topology_overlay=getattr(args, "topology_overlay", None),
+                    command_host=getattr(args, "command_host", None),
+                    command_runtime=getattr(args, "command_runtime", None),
+                    target=getattr(args, "target", None),
+                    transport=getattr(args, "transport", "local"),
+                    dry_run=True,
+                    confirm=False,
+                    tail=args.tail,
+                    timeout_seconds=getattr(args, "operation_timeout", None),
+                )
+            except ServiceError as exc:
+                print("voice audio logs: %s service log read failed -- %s" % (kind, exc), file=sys.stderr)
+                exit_code = 1
+                continue
+            for line in result.get("lines", []):
+                print(line)
+            if not result.get("lines"):
+                print("voice audio logs: %s service %s" % (kind, json.dumps(result, sort_keys=True)))
+            if int(result.get("returncode", 0)) != 0:
+                exit_code = 1
             continue
         if lifecycle == "native":
             native = native_serve.NativeServe(
@@ -959,6 +1114,52 @@ def _execute_proxy_managed_lifecycle(
     }
 
 
+def _execute_proxy_service_lifecycle(args, action: str) -> dict:
+    """Resolve the proxy owner before delegating its declared service binding."""
+    data, targets, resolved, error, error_code = _resolve_proxy_operation(args, action)
+    if error:
+        return {
+            "action": action,
+            "lifecycle": "service",
+            "returncode": error_code,
+            "state": "refused",
+            "detail": error,
+        }
+    assert data is not None and targets is not None and resolved is not None
+    table = resolved.data.get("voice", {}).get("proxy", {})
+    try:
+        result = _execute_service_lifecycle(
+            table,
+            resolved.data,
+            action,
+            topology=getattr(args, "topology", None),
+            topology_overlay=getattr(args, "topology_overlay", None),
+            command_host=getattr(args, "command_host", None),
+            command_runtime=getattr(args, "command_runtime", None),
+            target=getattr(args, "target", None),
+            transport=getattr(args, "transport", "local"),
+            dry_run=getattr(args, "dry_run", False),
+            confirm=getattr(args, "confirm", False),
+            tail=getattr(args, "tail", 100),
+            timeout_seconds=getattr(args, "operation_timeout", None),
+        )
+    except ServiceError as exc:
+        return {
+            "action": action,
+            "lifecycle": "service",
+            "returncode": 1,
+            "state": "failed",
+            "detail": str(exc),
+        }
+    return {
+        "action": action,
+        "lifecycle": "service",
+        "returncode": int(result.get("returncode", 0)),
+        "service": table["service"],
+        "result": result,
+    }
+
+
 def _cmd_proxy_managed_lifecycle(args, action: str, resolved) -> int:
     """Print the existing proxy CLI envelope around the structured executor."""
     voice = resolved.data.get("voice", {})
@@ -1136,8 +1337,11 @@ def cmd_proxy_lifecycle(args):
         print("voice proxy %s: %s" % (action, err), file=sys.stderr)
         return 2
     assert resolved is not None
-    if _proxy_lifecycle_mode(resolved.data.get("voice", {})) == "managed":
+    mode = _proxy_lifecycle_mode(resolved.data.get("voice", {}))
+    if mode == "managed":
         return _cmd_proxy_managed_lifecycle(args, action, resolved)
+    if mode == "service":
+        return _print_proxy_process_result(_execute_proxy_service_lifecycle(args, action))
     data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, action)
     if err:
         print("voice proxy %s: %s" % (action, err), file=sys.stderr)
@@ -1155,7 +1359,8 @@ def cmd_proxy_status(args):
         print("voice proxy status: %s" % err, file=sys.stderr)
         return 2
     assert resolved is not None
-    if _proxy_lifecycle_mode(resolved.data.get("voice", {})) == "managed":
+    mode = _proxy_lifecycle_mode(resolved.data.get("voice", {}))
+    if mode == "managed":
         voice = resolved.data.get("voice", {})
         serve = _proxy_serve_from_config(args, voice, resolved.data.get("_manifest_dir"))
         try:
@@ -1173,6 +1378,8 @@ def cmd_proxy_status(args):
             "endpoint": serve.realtime_url,
             "returncode": 0 if readiness.ready else 1,
         })
+    if mode == "service":
+        return _print_proxy_process_result(_execute_proxy_service_lifecycle(args, "status"))
     data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, "status")
     if err:
         print("voice proxy status: %s" % err, file=sys.stderr)
@@ -1188,7 +1395,8 @@ def cmd_proxy_logs(args):
         print("voice proxy logs: %s" % err, file=sys.stderr)
         return 2
     assert resolved is not None
-    if _proxy_lifecycle_mode(resolved.data.get("voice", {})) == "managed":
+    mode = _proxy_lifecycle_mode(resolved.data.get("voice", {}))
+    if mode == "managed":
         voice = resolved.data.get("voice", {})
         serve = _proxy_serve_from_config(args, voice, resolved.data.get("_manifest_dir"))
         try:
@@ -1200,6 +1408,8 @@ def cmd_proxy_logs(args):
             print("voice proxy logs: managed log read failed -- %s" % exc, file=sys.stderr)
             return 1
         return int(rc)
+    if mode == "service":
+        return _print_proxy_process_result(_execute_proxy_service_lifecycle(args, "logs"))
     data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, "logs")
     if err:
         print("voice proxy logs: %s" % err, file=sys.stderr)
