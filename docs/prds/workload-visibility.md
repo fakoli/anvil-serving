@@ -104,6 +104,53 @@ None. The first release is read-only, bounded, metadata-only, controller-collect
 - Canonical record bytes are shared across surfaces. Envelopes add node/source status, collection time, completeness, and truncation; never pass generic command/transport context through them. Whole-envelope adversarial tests seed credentials, user paths, tool payloads, URLs, private addresses and raw exceptions.
 - Every node envelope includes per-source `complete|partial|unavailable` status. A malformed/future received router source becomes unavailable without discarding healthy store/serve sources; any surviving source makes node status partial, and only all-source failure makes it unavailable. A valid locally produced partial router source retains its safe surviving records and partial status. Fleet retains that node status.
 
+### Router workload endpoint ownership and wire contract
+
+T005 closes the startup ownership seam as part of the endpoint, not as a
+caller-supplied query override.
+
+- Add optional ServerConfig.workload_host, configured only by
+  [server].workload_host. Require an exact string matching the canonical
+  workload host grammar [A-Za-z][A-Za-z0-9_-]{0,63}; malformed declarations
+  fail with fixed ConfigError prose and no input echo. Absent remains None
+  and leaves ordinary routing/authentication unchanged. Do not infer a host
+  from bind address, OS hostname, environment, topology discovery or request.
+- build_server forwards that host and the existing exact shared registry to
+  make_server/_make_handler through workload_host/workload_registry keywords.
+  Forward its injected workload_clock as the collection clock too, defaulting
+  to UTC now. No second registry, new command-line host flag or new state owner.
+- Reserve exact GET /v1/workloads as a built-in workloads:read OperatorRoute.
+  The injected route registry cannot replace this path. Reuse the existing
+  scope-before-body/query/callback gate, bodyless framing, bounded operator
+  semaphore and no-store response. Missing host/registry is a fixed HTTP503
+  workload_source_unavailable after authorization, without reading the registry.
+- Decode at most8192 ASCII query bytes and seven pairs with strict percent
+  escapes, strict UTF-8, keep_blank_values=True and max_num_fields=7; reject
+  duplicate/unknown keys. Convert only active_only=true|false to bool and
+  limit/recent_seconds ASCII decimal strings to exact ints (maximum5 digits),
+  then call parse_workload_query for the shared bounds/enums. No timestamp
+  query or alternate spelling is added. Invalid queries return HTTP400 with
+  fixed invalid_workload_query and input-free prose before source reads.
+- Call registry.source_result(configured_host, query, collection_time) once
+  after authorization/validation. Return node_result_to_json for one NodeResult
+  naming that host and containing exactly its router SourceResult. This
+  identity envelope is necessary even when no records exist. Preserve complete,
+  partial and unavailable source states; canonical bytes carry
+  anvil-workloads/v1, collection time and truncation without generic context.
+- Unexpected clock/registry/serialization errors return fixed HTTP503
+  workload_source_unavailable; never return a raw exception. Ordinary injected
+  operator callback errors keep their existing behavior. T012 must validate
+  the received one-router-source NodeResult against its expected local node,
+  then retain the router SourceResult; an empty response never bypasses host
+  verification.
+- Add actual build_server HTTP tests for configured host identity, empty and
+  populated canonical bytes, shared registry, disabled observation/missing
+  host, filtering/limits/truncation, malformed/repeated query fields and
+  seeded private data. Authorization tests prove missing/legacy/media-only/
+  wrong-scope clients cannot touch registry or DecisionLog. Existing ordinary
+  operator route, auth and config tests stay green. Final T016 documents the
+  new optional server field and endpoint; no live configuration is changed.
+
 ### Fixed owner mappings
 
 The table is the complete phase vocabulary. State vocabulary is the union of
@@ -432,23 +479,26 @@ Build the read-only manifest-managed adapter from existing serve status results 
 **Feature:** F003
 **Priority:** high
 **Type:** feature
-**Likely files:** anvil_serving/router/front_door.py, anvil_serving/observability/workloads.py, tests/router/test_operational_endpoints.py, tests/router/test_front_door_auth.py
+**Likely files:** anvil_serving/router/config.py, anvil_serving/router/serve.py, anvil_serving/router/front_door.py, tests/router/test_operational_endpoints.py, tests/router/test_front_door_auth.py
 **Dependencies:** T009
 
 **External prerequisites:** fleet-node-enrollment:T008, fleet-node-enrollment:T009, and fleet-node-enrollment:T010 must each be `done` before this task is claimed. Anvil's PRD parser supports local dependency IDs only; the coordinator must run `anvil show fleet-node-enrollment:T008 --prd fleet-node-enrollment --json`, `anvil show fleet-node-enrollment:T009 --prd fleet-node-enrollment --json`, and `anvil show fleet-node-enrollment:T010 --prd fleet-node-enrollment --json`, require `.data.task.status == "done"` for every result, and retain all results in the dispatch packet. A missing task is an unmet prerequisite, not permission to proceed.
 
-Expose authenticated `GET /v1/workloads` on the router using the canonical query/serializer, the registry already created by `build_server`, and the dedicated `workloads:read` gate. Inject the trusted configured host identifier into `source_result(host, query, now)` for canonical ID construction; never infer it from bind address, machine hostname, or caller input and never construct a second registry. This slice is router-local only; node aggregation and fleet fan-out follow.
+Implement the Router workload endpoint ownership and wire contract above. Expose authenticated GET /v1/workloads using the canonical query/NodeResult serializer, the registry already created by build_server and the dedicated workloads:read gate. Parse the optional trusted server workload_host and forward it at startup; never infer it or accept a caller override. This slice is router-local only; node aggregation and fleet fan-out follow.
 
 **Acceptance criteria:**
 
 - Data-plane, legacy, media-only, missing-policy, and wrong-scope credentials are denied before registry/DecisionLog reads.
 - Unknown/repeated scalar filters, out-of-range windows/limits, malformed times, and unsupported kinds/states fail with fixed safe errors.
 - Valid queries return exact `anvil-workloads/v1` canonical bytes and explicit truncation metadata.
+- The canonical one-source node envelope identifies the configured host even with zero records; missing host/registry refuses after authorization without source reads.
+- Actual build_server tests prove parser-to-handler host/registry wiring and fixed query/source failures without changing ordinary config/auth behavior.
 - Endpoint success and errors contain no request content, route endpoint, token, raw response, or exception.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_operational_endpoints.py tests/router/test_front_door_auth.py tests/router/test_workloads.py -x -q`
+- `python scripts/run_tests.py tests/router/test_operational_endpoints.py tests/router/test_front_door_auth.py tests/router/test_workloads.py tests/router/test_config.py tests/router/test_serve_cli.py -x -q`
+- `python -m ruff check anvil_serving/router/config.py anvil_serving/router/serve.py anvil_serving/router/front_door.py tests/router/test_operational_endpoints.py tests/router/test_front_door_auth.py`
 
 ### T012: Aggregate node-local workload sources
 
