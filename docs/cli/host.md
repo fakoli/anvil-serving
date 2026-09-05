@@ -17,6 +17,8 @@ Focused `--help` is the complete flag reference for every command below.
 | Change the WSL memory cap safely | `host doctor` | Preview `host wsl-config`, apply it, then restart Docker Desktop. |
 | Recover a wedged WSL backend | `host reset-wsl --dry-run` | Apply only after reviewing the process and container disruption. |
 | Diagnose vLLM native-offload tmpfs pressure | `host shared-memory status` | Reclaim only when every file is verified orphaned. |
+| Remove one unused Docker image | `host docker-image remove IMAGE --dry-run` | Apply only when the audit finds no container, configuration, rollback, or child-image reference. |
+| Compact Docker Desktop storage | `host docker-disk compact ABSOLUTE_VHDX_PATH --dry-run` | Apply after exact object cleanup; Docker Desktop is stopped and left stopped. |
 | Check GPU partitioning prerequisites | `host gpu-sharing inspect` | Run the confirmation-gated probe only when static evidence is insufficient. |
 | Upgrade the installed CLI | `upgrade --dry-run` | Apply through the detected package owner with `--confirm`. |
 
@@ -51,6 +53,8 @@ Focused `--help` is the complete flag reference for every command below.
 | `host reset-wsl` | Reset a wedged Windows WSL backend, then restart Docker Desktop. |
 | `host reclaim` | Drop clean WSL page cache once or run a foreground watchdog. |
 | `host shared-memory reclaim` | Remove only twice-verified orphan vLLM native-offload mmap files. |
+| `host docker-image remove` | Audit and remove one exact immutable Docker image ID or digest. |
+| `host docker-disk compact` | Stop Docker Desktop and compact one exact data VHDX. |
 
 ### Inspect GPU-sharing prerequisites
 
@@ -254,6 +258,10 @@ anvil-serving host reclaim --confirm
 anvil-serving host shared-memory status
 anvil-serving host shared-memory reclaim
 anvil-serving host shared-memory reclaim --confirm
+anvil-serving host docker-image remove sha256:FULL_64_CHARACTER_IMAGE_ID --dry-run
+anvil-serving host docker-image remove sha256:FULL_64_CHARACTER_IMAGE_ID --confirm
+anvil-serving host docker-disk compact C:\absolute\Docker\wsl\disk\docker_data.vhdx --dry-run
+anvil-serving host docker-disk compact C:\absolute\Docker\wsl\disk\docker_data.vhdx --confirm
 ```
 
 `host wsl-config` changes only `memory` and `swap`, preserves other sections,
@@ -303,6 +311,79 @@ closed when ownership is uncertain. Recipe unload and manifest-owned teardown
 run it after the owner stops, including when a stopped failure container is
 preserved for logs. The read-only controller tool is `host_shared_memory`; the
 confirm-gated `host_manage` action is `reclaim-shared-memory`.
+
+### Exact Docker image removal
+
+`host docker-image remove` is the bounded alternative to a broad Docker prune.
+It accepts exactly one full 64-character `sha256:` image ID or one
+repository-qualified `@sha256:` digest. Tags, abbreviated IDs, prune filters,
+forced deletion, volumes, containers, and build cache are outside the command.
+
+The dry run resolves the immutable identity, reports Docker's unique-size
+reclaim estimate, and audits running and stopped containers, the operator
+configuration home, rollback declarations, and dependent child images. An
+unreadable or invalid operator configuration file fails the audit closed.
+
+```bash
+anvil-serving host docker-image remove \
+  sha256:0000000000000000000000000000000000000000000000000000000000000000 \
+  --dry-run
+```
+
+Apply repeats the complete audit and requires an identical image fingerprint
+before invoking exact-ID removal with parent pruning disabled. It then verifies
+that Docker no longer resolves that ID:
+
+```bash
+anvil-serving host docker-image remove \
+  sha256:0000000000000000000000000000000000000000000000000000000000000000 \
+  --confirm
+```
+
+Use `--config-home PATH` only when auditing an explicit operator home. Recovery
+is not automatic: rebuild or pull the same immutable image again. A removed
+image's shared layers may remain while another image or build cache references
+them; this command never removes either of those owners.
+
+### Docker data VHDX compaction
+
+Deleting Docker objects releases space inside Docker Desktop's dynamic data
+disk, but the Windows VHDX file may remain at its previous physical size.
+`host docker-disk compact` performs the separate offline allocation cleanup.
+Run it only after exact image and model-cache removal:
+
+```powershell
+anvil-serving host docker-disk compact `
+  C:\absolute\Docker\wsl\disk\docker_data.vhdx `
+  --dry-run
+```
+
+The command accepts an explicit absolute path matching either the current
+`...\Docker\wsl\disk\docker_data.vhdx` layout or the legacy
+`...\Docker\wsl\disk\docker\_data.vhdx` layout. It refuses links, reparse
+points, fixed disks, non-VHDX files, and compressed, encrypted, or sparse
+files. Preview reports whether Docker Desktop must be stopped and the current
+file and virtual sizes.
+
+Confirmed apply stops Docker Desktop, proves the disk detached, rechecks the
+file identity, mounts the same VHDX read-only, and invokes Hyper-V
+`Optimize-VHD -Mode Full`. It always attempts to detach the read-only mount.
+When Windows denies that mount because the current shell lacks the virtual-disk
+privilege, the command uses Hyper-V's less effective but still exact detached
+`Prezeroed` mode; it does not request elevation or open a UAC prompt. The result
+records which mode ran, leaves Docker Desktop stopped, and reports exact
+before/after byte counts:
+
+```powershell
+anvil-serving host docker-disk compact `
+  C:\absolute\Docker\wsl\disk\docker_data.vhdx `
+  --confirm
+```
+
+Compaction does not delete Docker objects or reduce the VHDX's virtual maximum
+capacity. It can reclaim only blocks already released by the guest, so a
+successful run may reclaim zero bytes. Restart Docker Desktop normally to
+remount the same data disk.
 
 ## Automatic reclaim after model lifecycle operations
 
