@@ -388,6 +388,40 @@ and token-user data through [GetTokenInformation](https://learn.microsoft.com/en
 The conservative trust/mask rules above are Anvil policy, not a claim that these
 APIs solve path races.
 
+### Durable operation record and retry contract
+
+T004.7 closes the pure persisted record before T004 opens operation directories.
+It is not a durable store, permission proof, activation engine or acceptance gate.
+
+- Add frozen BootstrapOperationRecord in fleet_bootstrap.py. Exact fields are schema (fixed anvil-serving.fleet-bootstrap-operation/v1), expected_node, operation_id, plan_sha256, target_config_sha256, bundle_sha256, bundle_length, manifest_sha256, phase, error_code and trigger_error_code. Reuse exact node/UUID/digest/int/enum validation. Its phase/error consistency is exactly the existing bound STATUS receiver result; derive outcome from that existing phase contract rather than introducing a new state vocabulary. No paths, timestamps, prior generation or caller prose belong here; activation's journal owns its additional transaction metadata.
+- to_dict and to_json_bytes emit only that allowlist. from_json_bytes accepts exact nonempty bytes of at most 4096 bytes, canonical duplicate-free JSON and the exact key set. Revalidate before serialization, repr and every helper, including tampered frozen instances and subclasses. All errors are fixed input-free BootstrapContractError values. The record is metadata-only, but never call it durable until the later store has flushed it.
+- BootstrapOperationRecord.from_stage(frame, payload) accepts only an exact STAGE BootstrapReceiverFrame and exact payload bytes. Reuse encode_receiver_frame for exact payload length/hash/type enforcement and validate_bundle as the sole archive validator. Require bundle manifest expected_node equal the frame node; disagreement is receiver-mismatch. Construct initial STAGED with no errors from the actual validated bundle manifest digest. A valid record proves only the supplied bytes and identity relationship, not target authorization, target-config measurement, filesystem writes or running state.
+- match_operation_record(frame, record) revalidates both exact values, rejects IDENTITY as invalid-contract, and compares expected_node, UUID, plan and target-config digests for every operation. STAGE additionally compares bundle digest and length. ROLLBACK additionally compares an already recorded original failure (error_code, or trigger_error_code for cleanup-failed) when present; an unchanged UUID with a different trigger is receiver-mismatch. It returns the unchanged validated record; a first rollback with no recorded failure still needs the separate lifecycle authorization/transition gate. Never disclose conflicting stored fields in an error.
+- record.transition(phase, *, error_code=None) returns a new record; it never mutates the original or performs I/O. Legal forward edges are staged->verified->installed->activated->restarted. Any ordinary phase may enter rollback-started with an explicit exact non-cleanup BootstrapErrorCode. rollback-started may enter rolled-back or manual-recovery, preserving its original error without a new argument. Those two terminal rollback states may enter cleanup-failed, preserving the original as trigger_error_code and setting error_code=cleanup-failed. No other edge is legal. An identical phase call without a new error is an idempotent read, not a repeated action; passing the identical original error on rollback-started is also idempotent. Changed errors, regression, skipped ordinary phases, accepted/refused/planned, and cleanup-failed as an initiating cause refuse with precondition-failed (bad primitive types still invalid-contract). There is no automatic transition, retry action or installation claim.
+- record.to_receiver_result(frame) first matches the binding, then returns the existing exact BootstrapReceiverOperationResult for that operation with bound=true and phase-derived outcome. If the stored phase is not legal for that response operation, refuse with precondition-failed rather than inventing progress. Thus ACTIVATE against staged/verified and ROLLBACK before rollback-started cannot manufacture a successful result. The dispatcher must complete and durably record the appropriate transition before constructing that response.
+- Tests use a real minimal canonical bundle, literal record JSON, every binding field mismatch, exact phase edge/rejection matrices, original-failure retention, same-UUID changed rollback triggers, stage retry after progress/rollback, canonical/duplicate/type/bounds/subclass/tampering failures and safe repr/errors. Negative tests must fail if a binding comparison is removed or a skipped phase is allowed. No filesystem, environment, subprocess, permission, supervisor, network or live deployment operation occurs.
+
+### Anchored receiver file-read contract
+
+T004.8 and T004.9 complete read-only prerequisites without creating a receiver
+dispatcher or authorizing installation. The standalone five-entry receiver
+package remains unchanged.
+
+- T004.8 adds the exact Windows TrustedInstaller service SID S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464 to trusted owners/grantees only when ancestor=true. All ordinary file/directory inspection retains the three existing trusted principals. Do not trust arbitrary service SIDs, resolve account names, skip root checks or alter ACLs. Preserve owner-write classification and every mutation/unknown-ACE rule. Pure tests cover exact SID versus one-component changes, ancestor versus ordinary inspection, and unrelated untrusted mutation grants even with a trusted owner.
+- T004.9 exports open_trusted_file(path: str, *, max_bytes: int, require_readonly: bool) as a context manager in bootstrap_shim.py. Accept only an exact canonical absolute path under the existing native-platform _valid_bootstrap_path grammar, at most 64 non-root components, an exact integer cap in 1..MAX_BUNDLE_BYTES and exact bool. Unsupported OS refuses before I/O. It opens only existing files, never creates directories/files, follows links, changes permissions, starts processes or consults environment/cwd for a target.
+- Yield a private opened-file object with read_verified() -> bytes. Keep all opened ancestor/file descriptors owned by the context until exit; release every handle on every failure in reverse order and never leak native/path-bearing errors. Its repr is fixed state-only metadata, not a path, descriptor, content or raw native identity. Reads after context exit refuse. The returned bytes are private input to later parsers, never public identity output.
+- On Linux, open the filesystem root and each directory using O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC, then open each next component relative to that retained parent descriptor. The final open uses O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK so a malicious FIFO cannot block before type inspection. No fallback is allowed if required descriptor-relative/no-follow capabilities are unavailable. Require regular final file with st_nlink=1; all ancestors are directories. Inspect each retained descriptor's permissions with ancestor=true for directories; accept only owner-readonly/owner-writable there. For the file accept owner-readonly, plus owner-writable only when require_readonly=false.
+- On Windows, use pointer-width-safe CreateFileW OPEN_EXISTING on every absolute path prefix, starting at the drive root. Directories request GENERIC_READ with FILE_SHARE_READ|FILE_SHARE_WRITE but never FILE_SHARE_DELETE, and FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT. Final file requests GENERIC_READ, FILE_SHARE_READ only, and FILE_FLAG_OPEN_REPARSE_POINT. No privileges are enabled and handles are noninheritable. Reject non-disk, wrong object type, reparse objects and final nNumberOfLinks!=1. Convert owned handles to CRT descriptors with msvcrt.open_osfhandle for the existing permission primitive/read loop, transferring ownership once; close native handles if conversion fails. Retained prefix locks prevent rename/delete while each child is opened and used. Do not import operator_config.py into the standalone receiver.
+- Capture native file identity at entry. Linux identity includes device, inode, size, mtime_ns and ctime_ns. Windows identity includes volume serial, full file index, size, LastWriteTime and ChangeTime from handle APIs, not path stat/creation-time substitutes. Before and after each read, recheck final regular/non-link/single-link status, exact initial identity and required permission verdict. Also recheck every retained ancestor's stable object identity and permitted ownership/writes. On Linux re-stat each component without following links relative to its retained parent and require it still names the opened object; do not silently read from a renamed-away directory.
+- read_verified seeks its own descriptor to offset zero and reads in at most 64 KiB chunks with an overall cap+1 sentinel. Check initial/current size against the cap before reading; reject overflow, short content versus measured size and identity/permission changes. Empty regular files may return b"" for the caller's parser to reject if inappropriate. Repeated reads are allowed only while the captured identity remains unchanged. This is a held read boundary, not reusable authority after close or a proof of deployment.
+- Bad primitive types use invalid-contract; invalid lexical paths, links/reparse objects, wrong object type and multiple hardlinks use unsafe-path; unavailable native APIs, untrusted/indeterminate permissions, size/read failure and identity drift use precondition-failed; unsupported OS uses unsupported-platform. Every BootstrapContractError message is fixed and input-free with no native exception chaining. Private file bytes and paths never enter repr/errors.
+- Tests exercise actual platform temporary files, repeated/empty/cap-boundary reads, descriptor cleanup, closed objects, malformed paths and types, leaf/ancestor symlink or reparse refusal, hardlinks and FIFO/nonregular refusal. Linux tests inject a rename/content change at read boundaries and prove fixed refusal; Windows tests prove open handles prevent file write/rename and ancestor rename while open, and release those restrictions after exit. Use literal fault injection for unavailable native APIs, permission drift and partial-open cleanup; no repository or operator ACL mutation. Native tests skip only when for the other OS, and any unavailable link-creation privilege is labeled separately rather than reported as passed. This primitive requires cross-platform CI before final acceptance.
+
+API references: [CreateFileW](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew)
+defines share/delete and reparse-open behavior; [Python os.open](https://docs.python.org/3/library/os.html#os.open)
+defines descriptor-relative operations. Anvil's retained-prefix and permission
+policy is an explicit design, not a claim that a path preflight alone is safe.
+
 ## Code Map
 
 - `anvil_serving/topology.py::Host`, `Transport`, `Topology`, `validate_topology`, `load_topology`, and `topology_snapshot_identity` own declared host identity, transport policy, and stable drift detection.
@@ -717,13 +751,77 @@ Implement the open-handle permission contract above with Linux and Windows adapt
 - `python scripts/run_tests.py tests/test_bootstrap_permissions.py tests/test_bootstrap_package.py tests/test_fleet_bootstrap.py -x -q`
 - `python -m ruff check anvil_serving/control_plane/bootstrap_shim.py tests/test_bootstrap_permissions.py`
 
+### T004.7: Define operation records and exact retry identity
+
+**Feature:** F002
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/fleet_bootstrap.py, tests/test_bootstrap_operation_record.py, .tickets/2026-09-05-bootstrap-receiver-ownership-contract.md
+**Dependencies:** T002, T004.1, T004.3, T004.4
+
+Implement the durable operation record and retry contract above as pure immutable values, using the existing receiver result consistency and sole bundle validator. Bind actual canonical stage bytes before creating a record. Preserve original rollback failures and never infer authorization or durable storage from an object. This is the value contract consumed by the later anchored store and dispatcher.
+
+**Acceptance criteria:**
+
+- Canonical record bytes bind one exact operation, plan, config, node, bundle and manifest; changed retry identity refuses.
+- Explicit phase transitions preserve failure provenance and disallow skipped, regressed or invented progress.
+- Response projection preserves existing receiver wire contracts and never reports bound state for a mismatched request.
+- No filesystem, network, environment, installation or acceptance authority is introduced.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_bootstrap_operation_record.py tests/test_fleet_bootstrap.py -x -q`
+- `python -m ruff check anvil_serving/fleet_bootstrap.py tests/test_bootstrap_operation_record.py`
+
+### T004.8: Recognize the exact OS-owned Windows ancestor
+
+**Feature:** F002
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** anvil_serving/control_plane/bootstrap_shim.py, tests/test_bootstrap_permissions.py, .tickets/2026-09-05-bootstrap-opened-file-boundary.md
+**Dependencies:** T004.6
+
+Implement only the ancestor-specific TrustedInstaller correction in the anchored file-read contract. It is a pure classification fix; preserve ordinary file trust and do not open a path or change any permissions. Record source evidence in the existing boundary ticket.
+
+**Acceptance criteria:**
+
+- Exact TrustedInstaller SID is trusted only for ancestor inspection; similar service SIDs remain untrusted.
+- Ordinary receiver/config file policy, unknown ACL refusal and independent untrusted-grant rejection remain unchanged.
+- Native and pure permission regressions pass without modifying operator or repository ACLs.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_bootstrap_permissions.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/bootstrap_shim.py tests/test_bootstrap_permissions.py`
+
+### T004.9: Hold anchored files through bounded verified reads
+
+**Feature:** F002
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/control_plane/bootstrap_shim.py, tests/test_bootstrap_opened_file.py, .tickets/2026-09-05-bootstrap-opened-file-boundary.md
+**Dependencies:** T004.8
+
+Implement open_trusted_file and its held read-only object exactly as the anchored file-read contract specifies. Reuse the opened-permission primitive and existing lexical grammar; mirror operator_config.py's native handle APIs without importing its package-dependent module or path-bearing errors. Keep caller bytes private and no receiver dispatcher, target-config loader, durable store or installation in this slice.
+
+**Acceptance criteria:**
+
+- Retained native ancestor/file handles and no-follow operations prevent reading through swapped, linked or untrusted paths.
+- Exact same-handle size/identity/permissions are verified around bounded reads; drift and closed objects refuse.
+- Every owned descriptor is released on success/failure, native failures are fixed metadata-only errors, and no filesystem mutation occurs.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_bootstrap_opened_file.py tests/test_bootstrap_permissions.py tests/test_bootstrap_package.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/bootstrap_shim.py tests/test_bootstrap_opened_file.py`
+
 ### T004: Implement the fixed receiver protocol and target validation
 
 **Feature:** F002
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/fleet_bootstrap.py, anvil_serving/control_plane/bootstrap_shim.py, tests/test_fleet_bootstrap.py
-**Dependencies:** T008, T011, T004.1, T004.2, T004.3, T004.4, T004.5, T004.6
+**Dependencies:** T008, T011, T004.1, T004.2, T004.3, T004.4, T004.5, T004.6, T004.7, T004.8, T004.9
 
 Implement the stdlib-only pinned receiver and fixed `identity|stage|activate|status|rollback` protocol. Every operation accepts only the closed framed metadata for operation ID, plan digest, and expected node; stage additionally binds the bundle digest/length and exact ZIP bytes. Install only after canonical manifest/archive/path/digest validation. This slice contains no network subprocess or controller endpoint wiring.
 

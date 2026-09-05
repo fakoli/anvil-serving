@@ -337,6 +337,44 @@ def commands() -> tuple[CommandNode, ...]:
                     "Serve the packaged local dashboard.",
                     "anvil_serving.observability.dashboard.app",
                     role="host",
+                    options=(
+                        _option(
+                            "--host",
+                            summary="Explicit bind IP (default: 127.0.0.1).",
+                            value_name="IP",
+                        ),
+                        _option(
+                            "--port",
+                            summary="Bind port (default: 8766).",
+                            value_name="PORT",
+                        ),
+                        _option(
+                            "--auth-env",
+                            summary=(
+                                "Bearer-token environment variable; required for "
+                                "non-loopback binds."
+                            ),
+                            value_name="ENV",
+                        ),
+                        _option(
+                            "--workload-controller-url",
+                            summary="Explicit controller URL for scoped workload reads.",
+                            value_name="URL",
+                        ),
+                        _option(
+                            "--workload-expected-node",
+                            summary="Expected controller node identity for workload reads.",
+                            value_name="NODE",
+                        ),
+                        _option(
+                            "--workload-authorization-policy",
+                            summary=(
+                                "Absolute LOCAL authorization-policy file for workload "
+                                "reads."
+                            ),
+                            value_name="PATH",
+                        ),
+                    ),
                     mutation="process",
                     argv_prefix=(),
                     output_policy="foreground",

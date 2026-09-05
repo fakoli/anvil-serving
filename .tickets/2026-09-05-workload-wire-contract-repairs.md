@@ -56,6 +56,17 @@ intersection fallback. T009 owns regeneration of CLI.md and reference
 inventories. This remains candidate source pending consolidated acceptance and
 deployment.
 
+## Dashboard startup manifest parity
+
+The schema-7 `dashboard serve` manifest record omitted all six options accepted
+by `observability.dashboard.app.build_parser`: host, port, dashboard auth and
+the three singular workload startup options. The T010 candidate declares those
+existing options with the parser's summaries and explicit value placeholders,
+then regenerates only the command manifest. It does not alter parsing, server
+startup, authentication, ownership or remote authority. Generated CLI reference
+tables and inventories remain T011 work; this candidate is not formal
+acceptance or deployment evidence.
+
 ## Source evidence
 
 - T001: 1005be17, EV9C6C5074; 66 controller-source tests and Ruff passed.
