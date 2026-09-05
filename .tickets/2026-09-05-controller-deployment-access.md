@@ -56,17 +56,18 @@ inventory has no corresponding published mapping. Thus the observed 401/403
 responses come from another listener, not the owning controller; the precise
 forwarding/publication failure and its durable correction remain unresolved.
 
-Pending: managed diagnostic surface, forwarding/publication root cause,
-durable correction, regression results, and successful identity-checked
-status/deployment verification. Do not stop or reconfigure the unrelated
+The managed diagnostic source surface is now implemented and accepted. Pending:
+forwarding/publication root cause, durable correction, recovery regression
+results, and successful identity-checked status/deployment verification. Do not stop or reconfigure the unrelated
 Windows listener merely to reclaim a port. No live route, model serve,
 controller, or private configuration has been changed for this investigation.
 
 ## Diagnostic implementation review
 
 The approved [bounded diagnostics PRD](../docs/prds/controller-diagnostics.md)
-has seven tasks covering capture, projection, CLI/MCP, both server and client
-permissions, scaffold parity, documentation and actual local diagnostic proof.
+has ten tasks covering capture, projection, CLI/MCP, both server and client
+permissions, scaffold parity, protected envelopes, workbench skill catalogs,
+documentation and actual local diagnostic proof.
 Its capture foundation is accepted in
 `b64687aae2c809633a1196534466c73e0abf75b4` after independent review and
 10 passing post-commit tests plus Ruff. Corrections cover child/reader cleanup,
@@ -127,6 +128,12 @@ the any-token help bypass; the dedicated regressions failed in both cases,
 including the human literal-separator operand leak, before the guards were
 restored. These are source acceptance checkpoints, not live publication or
 deployment evidence.
+
+Both public Workbench skill catalogs register the exact diagnostic MCP tools
+and their unreachable-controller local fallback at accepted checkpoint
+`c9c8a3f4`. The fallback stays on the verified owning host, grants no SSH or
+lifecycle authority, and does not turn diagnostic success into deployment
+proof.
 
 The earlier capture negative control raised the shared byte cap by one and made
 the 262145-byte overflow regression fail. The projection negative control

@@ -32,8 +32,9 @@ The four router/fleet PRDs above remain partial delivery programs; an accepted
 task or source checkpoint does not mark an entire PRD deployed. The separate
 [bounded controller diagnostics](controller-diagnostics.md) source contract is
 implemented and independently accepted through its local core, MCP/HTTP
-authorization, client ownership, and protected CLI envelope. Its generated
-command reference and documentation are synchronized here. A sanitized managed
+authorization, client ownership, protected CLI envelope, and Workbench skill
+catalogs. Its generated command reference and documentation are synchronized
+here. A sanitized managed
 read confirmed the diagnostic surface works, but the observed controller still
 had no published binding. Endpoint identity/version parity, durable publication
 recovery, and deployment acceptance remain open operator gates.
