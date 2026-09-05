@@ -581,6 +581,105 @@ allowed_operations = ["{operation}"]
     return topology
 
 
+def _write_remote_controller_topology(tmp_path: Path, operation: str) -> Path:
+    topology = _write_remote_router_topology(tmp_path, operation)
+    text = topology.read_text(encoding="utf-8")
+    text = text.replace('roles = ["router"]', 'roles = ["controller"]')
+    text = text.replace('role = "router"', 'role = "controller"')
+    topology.write_text(text, encoding="utf-8")
+    return topology
+
+
+def test_remote_integer_scalar_requires_ascii_grammar_and_preserves_other_types():
+    integer_schema = {"type": "integer", "minimum": -10, "maximum": 10}
+    assert cli._remote_scalar("--value", "0001", integer_schema) == 1
+    assert cli._remote_scalar("--value", "-07", integer_schema) == -7
+    assert cli._remote_scalar("--name", " 1", {"type": "string"}) == " 1"
+    assert cli._remote_scalar("--ratio", "+1", {"type": "number"}) == 1.0
+    for raw in ("+1", "1_0", " 1", "\u0661"):
+        with pytest.raises(cli.UsageError, match="requires a numeric value"):
+            cli._remote_scalar("--value", raw, integer_schema)
+
+
+@pytest.mark.parametrize(
+    ("tail", "expected_arguments"),
+    [
+        (None, {"container": "controller_1"}),
+        ("1", {"container": "controller_1", "tail": 1}),
+        ("200", {"container": "controller_1", "tail": 200}),
+    ],
+)
+def test_cli_remote_controller_logs_dispatches_only_valid_tails(
+    tmp_path, monkeypatch, tail, expected_arguments
+):
+    topology = _write_remote_controller_topology(tmp_path, "controller-logs")
+    seen = {}
+
+    def fake_execute(plan, operation, **_kwargs):
+        seen["plan"] = plan
+        seen["operation"] = operation
+        return cli.TransportResult(operation.name, "controller", {"ok": True})
+
+    monkeypatch.setattr(cli, "execute_plan", fake_execute)
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail("remote diagnostic dispatch imported the local handler"),
+    )
+    argv = [
+        "controller",
+        "logs",
+        "--topology",
+        str(topology),
+        "--container",
+        "controller_1",
+    ]
+    if tail is not None:
+        argv.extend(("--tail", tail))
+
+    assert cli.main(argv) == 0
+    assert seen["plan"].transport == "controller"
+    assert seen["operation"].name == "controller-logs"
+    assert seen["operation"].tool_name == "controller_logs"
+    assert dict(seen["operation"].arguments) == expected_arguments
+
+
+@pytest.mark.parametrize("raw_tail", ("+1", "1_0", " 1", "\u0661", "0", "201"))
+def test_cli_remote_controller_logs_rejects_invalid_tails_before_transport(
+    tmp_path, monkeypatch, capsys, raw_tail
+):
+    topology = _write_remote_controller_topology(tmp_path, "controller-logs")
+    monkeypatch.setattr(
+        cli,
+        "execute_plan",
+        lambda *_args, **_kwargs: pytest.fail("invalid tail reached controller transport"),
+    )
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail("invalid tail imported the local diagnostic handler"),
+    )
+
+    assert (
+        cli.main(
+            [
+                "controller",
+                "logs",
+                "--topology",
+                str(topology),
+                "--container",
+                "controller_1",
+                "--tail",
+                raw_tail,
+            ]
+        )
+        == 2
+    )
+    error = capsys.readouterr().err
+    assert error
+    assert raw_tail not in error
+
+
 def test_cli_remote_router_restart_dispatches_typed_operation(tmp_path, monkeypatch, capsys):
     topology = _write_remote_router_topology(tmp_path, "router-restart")
     seen = {}
