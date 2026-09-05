@@ -127,7 +127,7 @@ def test_workload_panel_markup_has_closed_accessible_controls() -> None:
     assert parser.by_id["workload-status"][1]["role"] == "status"
     assert parser.by_id["workload-status"][1]["aria-live"] == "polite"
     assert parser.by_id["workload-results"][1]["aria-label"] == "Workload observations"
-    assert parser.by_id["workload-host"][1]["maxlength"] == "1024"
+    assert parser.by_id["workload-host"][1]["maxlength"] == "64"
     assert parser.by_id["workload-recent"][1]["value"] == "3600"
     assert parser.by_id["workload-recent"][1]["max"] == "86400"
     assert parser.by_id["workload-limit"][1]["value"] == "200"

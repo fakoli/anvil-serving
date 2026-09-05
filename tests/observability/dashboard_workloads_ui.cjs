@@ -11,6 +11,11 @@ if (process.argv[3] === 'negative-generation-guard') {
   assert.ok(source.includes(guard));
   source = source.split(guard).join('');
 }
+if (process.argv[3] === 'negative-host-bound') {
+  const bound = '{0,63}';
+  assert.ok(source.includes(bound));
+  source = source.replace(bound, '*');
+}
 const TOKEN_A = 'fixture-workload-token-a';
 const TOKEN_B = 'fixture-workload-token-b';
 const TIME = '2026-09-05T12:00:00.000001Z';
@@ -519,6 +524,41 @@ async function testNeutralGpuGrouping() {
   assert.doesNotMatch(summary, /unified/i);
 }
 
+async function testHostIdentifierBoundaries() {
+  const html = fs.readFileSync(path.join(path.dirname(process.argv[2]), 'index.html'), 'utf8');
+  assert.match(html, /id="workload-host" maxlength="64"/);
+  const valid = 'n'.repeat(64);
+  const h = harness({hidden: false});
+  h.elements.get('workload-host').value = valid;
+  await connect(h);
+  assert.equal(new URLSearchParams(h.calls[0].url.split('?')[1]).get('host'), valid);
+  const body = snapshot();
+  body.data.nodes[0].host = valid;
+  body.data.nodes[0].sources[0].records[0].host = valid;
+  await settle(h, 0, body);
+  assert.match(allText(h), /Fleet complete/);
+  assert.ok(allText(h).includes(valid));
+
+  for (const bad of ['n'.repeat(65), 'node-a\n', 'node-a\r', 'node-a\r\n', 'node a', 'nödé', '9node', '<img-private-host>']) {
+    const invalidQuery = harness({hidden: false});
+    invalidQuery.elements.get('workload-host').value = bad;
+    await connect(invalidQuery);
+    assert.equal(invalidQuery.calls.length, 0, 'invalid host dispatched a request');
+    assert.match(allText(invalidQuery), /Invalid workload filters/);
+    for (const field of ['node', 'record']) {
+      const invalidResponse = harness({hidden: false});
+      await connect(invalidResponse);
+      const responseBody = snapshot();
+      if (field === 'node') responseBody.data.nodes[0].host = bad;
+      responseBody.data.nodes[0].sources[0].records[0].host = bad;
+      await settle(invalidResponse, 0, responseBody);
+      assert.equal(invalidResponse.elements.get('workload-results').children.length, 0);
+      assert.match(allText(invalidResponse), /Workload evidence unavailable/);
+      assert.ok(!allText(invalidResponse).includes(bad));
+    }
+  }
+}
+
 const tests = [
   testHiddenAndCanonicalRendering,
   testStatusesAndOmissions,
@@ -532,6 +572,7 @@ const tests = [
 
 (async () => {
   await testNeutralGpuGrouping();
+  await testHostIdentifierBoundaries();
   for (const test of tests) await test();
   process.stdout.write(JSON.stringify({ok: true, scenarios: tests.map(test => test.name)}) + '\n');
 })().catch(error => {
