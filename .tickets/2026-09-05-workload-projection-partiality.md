@@ -1,6 +1,6 @@
 # Preserve honest partial router workload results
 
-Status: open; workload-visibility:T002 correction before runtime wiring.
+Status: resolved in source; workload-visibility:T002 accepted before runtime wiring.
 
 Independent tests reproduced two source-projection defects. A canonical
 terminal record with a timestamp 31 seconds ahead of collection caused final
@@ -25,3 +25,10 @@ Regression gates include exact future-skew boundaries, healthy peers, stale
 saturation, blocked and failing sinks, provable filter exclusions and cleanup.
 This correction is observational only; runtime integration and live deployment
 remain separate tasks.
+
+Accepted revision `ec843eb6333ca6188b218c70a08b4e04c72171bf` includes the
+reviewed correction `95505cca` and the retained unaccepted implementation
+checkpoint. The post-commit gate passed 76 tests and Ruff. An independent
+in-memory removal of per-record source validation failed both future-skew
+regressions as expected. Anvil evidence `EV2830AB39` and acceptance proof
+`workload-visibility-T002-E000583` record this source-only disposition.

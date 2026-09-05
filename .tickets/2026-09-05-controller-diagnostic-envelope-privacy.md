@@ -25,3 +25,14 @@ No rejected argument may invoke diagnostics or a request transport.
 Keep this gate independent of healthy container state and actual deployment.
 The reproduced request used only a synthetic selector and malformed integer;
 no child or live endpoint was required to establish the wrapper gap.
+
+Independent T009 review found three additional regressions before acceptance:
+the validator admitted common-only success objects without inspect/log fields;
+comparisons before exact type checks allowed user-defined equality methods to
+raise raw exception text, and non-ok counters accepted booleans/floats; a help
+token after a literal argument separator bypassed captured parser refusal and
+echoed an operand in human stderr. These were reproduced through the validator
+and actual root CLI. Require complete kind-specific schemas, types checked
+before operations, and fixed parser refusals on both human and JSON surfaces.
+The existing green focused suite did not prove these boundaries; add explicit
+regressions and rerun independent review before disposition.

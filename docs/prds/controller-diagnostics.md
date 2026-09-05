@@ -378,7 +378,7 @@ Fix `cli.py::_remote_scalar` so schema-declared integer values require an option
 **Priority:** high
 **Type:** modify
 **Dependencies:** T007, T008
-**Likely files:** anvil_serving/controller_diagnostics.py, anvil_serving/commands/control_plane.py, anvil_serving/cli.py, tests/test_cli.py
+**Likely files:** anvil_serving/controller_diagnostics.py, anvil_serving/commands/control_plane.py, anvil_serving/cli.py, tests/test_cli.py, tests/test_controller_diagnostics.py
 
 Close `.tickets/2026-09-05-controller-diagnostic-envelope-privacy.md` through the actual root CLI, not only the diagnostic core. Add `controller_diagnostics.validate_public_result(value, *, expected_kind)` that returns a fresh allowlisted dictionary or raises a fixed input-free ValueError. Require exact built-in dictionary/list/scalar types in the core result, exact top-level keys, the existing v1 schema/state/error/truncation invariants, bounded hexadecimal container IDs, exact inspection binding rows and strict port ranges/classes. Validate log event keys/enums, finite elapsed values, collection bounds, strict counters, returned-events equality, and empty/null/zero failure forms. Reject the entire malformed response rather than retaining nested unknown values. Reuse the existing constants and public result contract; do not invent a second diagnostic schema.
 
@@ -389,6 +389,8 @@ In `cli.py`, recognize only the exact `controller inspect` and `controller logs`
 For remote diagnostics, `TransportResult.data` is the transport-owned read-only mapping containing the HTTP envelope, not the core result. Require exactly `ok` and `data`, with `ok is True`, before validating its core dictionary. The outer mapping proxy may be copied to inspect these two keys; nested input must still pass the strict validator. Never expose `TransportResult.as_dict`, transport metadata, or an execution plan. Malformed outer/core results yield fixed `controller_diagnostic_response_invalid`, null data and exit four. Transport failures yield fixed `controller_diagnostic_transport_failed`, null data and exit four without exception strings/details, reconciliation, retries or SSH fallback. JSON and human error paths must use the same bounded contract; no validated typed result means no captured text may become data.
 
 The implementation gate deliberately excludes generated-manifest equality: T006 owns deterministic regeneration, command-tree/full-suite checks and final documentation after all diagnostic nodes are complete. This dependency is not permission to weaken those final gates.
+
+Update the old root-dispatch fixture in `tests/test_controller_diagnostics.py` to a complete kind-specific public result. The internal common `safe_result` builder remains valid for its direct callers, but its six-key base alone is not a complete inspect/log response at the external CLI validator. Do not weaken validation to preserve that incomplete test stub. Check types before comparisons or hashing, including non-ok forms; capture every parser refusal, including help-like tokens after a literal separator.
 
 **Acceptance criteria:**
 
@@ -401,5 +403,5 @@ The implementation gate deliberately excludes generated-manifest equality: T006 
 **Verification:**
 
 - `python scripts/run_tests.py tests/test_cli.py tests/test_controller_diagnostics.py -x -q`
-- `python -m ruff check anvil_serving/cli.py anvil_serving/controller_diagnostics.py anvil_serving/commands/control_plane.py tests/test_cli.py`
+- `python -m ruff check anvil_serving/cli.py anvil_serving/controller_diagnostics.py anvil_serving/commands/control_plane.py tests/test_cli.py tests/test_controller_diagnostics.py`
 - `git diff --check`
