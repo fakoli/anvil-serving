@@ -14,6 +14,13 @@ from http.server import BaseHTTPRequestHandler
 from typing import Any, Callable, Optional, Sequence
 
 from ... import mcp
+from ..authorization import (
+    ALLOWED_SCOPES,
+    NODE_ADMIN_BOOTSTRAP,
+    WORKLOADS_READ,
+    AuthorizationPolicy,
+    check_scope,
+)
 from ..mcp import protocol as mcp_protocol
 from .catalog import (
     CallToolFunc,
@@ -43,6 +50,9 @@ from .store import (
 
 DEFAULT_MAX_BODY_BYTES = 1024 * 1024
 DEFAULT_READ_TIMEOUT_SECONDS = 30.0
+
+_LEGACY_TOOL_SCOPES = frozenset((None, "media:read", "media:submit", "media:cancel"))
+_UNDECLARED_SCOPE = object()
 
 _MAX_BODY_BYTES = int(
     os.environ.get("ANVIL_CONTROLLER_MAX_BODY_BYTES", str(DEFAULT_MAX_BODY_BYTES))
@@ -269,6 +279,7 @@ def make_handler(
     allowed_operations: Optional[Sequence[str]] = None,
     json_loads_func: JsonLoadsFunc = _strict_json_loads,
     node_id: Optional[str] = None,
+    authorization_policy: Optional[AuthorizationPolicy] = None,
 ):
     """Build a request handler class for controller tests or ``make_server``."""
 
@@ -277,6 +288,13 @@ def make_handler(
     declared_tools, declared_name_by_normalized = _validated_tool_catalog(
         list_tools_func, allowed_operations
     )
+    tool_scope_by_normalized: dict[str, str | None | object] = {}
+    for declaration in declared_tools:
+        name = declaration.get("name") if isinstance(declaration, dict) else None
+        metadata = declaration.get("_meta") if isinstance(declaration, dict) else None
+        scope = metadata.get("anvil/requiredScope") if isinstance(metadata, dict) else None
+        if isinstance(name, str):
+            tool_scope_by_normalized[_mcp_tool_name(name)] = scope
     store = operation_store or OperationStore()
 
     class ControllerHandler(BaseHTTPRequestHandler):
@@ -299,12 +317,75 @@ def make_handler(
                 return ""
 
         def _authenticated(self) -> bool:
+            self._principal_kind = None
+            self._presented_token = None
             if auth_token is None:
+                self._principal_kind = "legacy"
                 return True
             supplied = _extract_request_token(self.headers)
             if supplied is None:
                 return False
-            return hmac.compare_digest(supplied.encode("utf-8"), auth_token.encode("utf-8"))
+            try:
+                legacy_match = hmac.compare_digest(
+                    supplied.encode("utf-8"), auth_token.encode("utf-8")
+                )
+            except UnicodeEncodeError:
+                return False
+            if legacy_match:
+                self._principal_kind = "legacy"
+                return True
+            workload = check_scope(authorization_policy, supplied, WORKLOADS_READ)
+            bootstrap = check_scope(authorization_policy, supplied, NODE_ADMIN_BOOTSTRAP)
+            if workload.allowed or bootstrap.allowed:
+                self._principal_kind = "scoped"
+                self._presented_token = supplied
+                return True
+            return False
+
+        def _tool_scope(self, normalized_name: str) -> str | None | object:
+            return tool_scope_by_normalized.get(normalized_name, _UNDECLARED_SCOPE)
+
+        def _authorize_scope(self, scope: str | None | object) -> None:
+            if isinstance(scope, str) and scope in ALLOWED_SCOPES:
+                decision = check_scope(authorization_policy, self._presented_token, scope)
+                if decision.allowed:
+                    return
+            elif scope is None or (
+                isinstance(scope, str)
+                and scope in _LEGACY_TOOL_SCOPES
+                and self._principal_kind == "legacy"
+            ):
+                if self._principal_kind == "legacy":
+                    return
+            raise ControllerError(
+                "authorization_scope_denied",
+                "authorization scope is denied",
+                status=403,
+            )
+
+        def _authorize_tool(self, tool_name: str) -> None:
+            normalized_name = _mcp_tool_name(tool_name)
+            scope = self._tool_scope(normalized_name)
+            if scope is _UNDECLARED_SCOPE and self._principal_kind == "legacy":
+                return
+            self._authorize_scope(scope)
+
+        def _visible_tools(self) -> list[dict]:
+            visible: list[dict] = []
+            for declaration in declared_tools:
+                name = declaration.get("name") if isinstance(declaration, dict) else None
+                if not isinstance(name, str):
+                    continue
+                try:
+                    self._authorize_scope(self._tool_scope(_mcp_tool_name(name)))
+                except ControllerError:
+                    continue
+                visible.append(declaration)
+            return visible
+
+        def _sanitize_response(self, value: Any) -> Any:
+            value = _sanitize_persisted_value(value, auth_token)
+            return _sanitize_persisted_value(value, self._presented_token)
 
         def _send_json(
             self,
@@ -314,7 +395,9 @@ def make_handler(
             request_id: str,
             extra_headers: Optional[dict[str, str]] = None,
         ) -> None:
-            payload = _json_dumps(_redact_secret(obj, auth_token)).encode("utf-8")
+            payload = _json_dumps(
+                _redact_secret(_redact_secret(obj, auth_token), self._presented_token)
+            ).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(payload)))
@@ -503,6 +586,7 @@ def make_handler(
             idempotency_key: Optional[str],
             idempotency_context: Any = None,
         ) -> tuple[dict[str, Any], int]:
+            self._authorize_tool(tool_name)
             if (
                 arguments.get("confirm") is True
                 and arguments.get("dry_run") is not True
@@ -514,8 +598,8 @@ def make_handler(
                     status=409,
                 )
             if idempotency_key is None:
-                return _response_with_request_id(
-                    call_tool_func(tool_name, arguments), request_id, auth_token
+                return self._sanitize_response(
+                    _response_with_request_id(call_tool_func(tool_name, arguments), request_id, auth_token)
                 ), 200
 
             context = _idempotency_context(idempotency_context)
@@ -569,13 +653,13 @@ def make_handler(
                 try:
                     if is_confirmed_mutation(arguments):
                         with controller_operation_context(idempotency_key, context):
-                            envelope = _response_with_request_id(
+                            envelope = self._sanitize_response(_response_with_request_id(
                                 call_tool_func(tool_name, arguments), request_id, auth_token
-                            )
+                            ))
                     else:
-                        envelope = _response_with_request_id(
+                        envelope = self._sanitize_response(_response_with_request_id(
                             call_tool_func(tool_name, arguments), request_id, auth_token
-                        )
+                        ))
                     if not isinstance(envelope, dict):
                         raise TypeError("MCP tool result must be an object")
                 except Exception:
@@ -626,7 +710,7 @@ def make_handler(
                 )
             elif method == "tools/list":
                 result = mcp_protocol.complete_result(
-                    {"tools": declared_tools},
+                    {"tools": self._visible_tools()},
                     server_info=mcp.SERVER_INFO,
                     cacheable=True,
                 )
@@ -703,6 +787,30 @@ def make_handler(
             )
             return False
 
+        def _authorize_mcp_headers_before_body(self) -> None:
+            methods = self.headers.get_all("Mcp-Method") or []
+            if len(methods) != 1:
+                if any(method == "tools/call" for method in methods):
+                    raise ControllerError("header_mismatch", "MCP request headers are invalid", status=400)
+                return
+            if not isinstance(methods[0], str):
+                raise ControllerError("header_mismatch", "MCP request headers are invalid", status=400)
+            if methods[0] != "tools/call":
+                return
+            names = self.headers.get_all("Mcp-Name") or []
+            if len(names) == 0:
+                return
+            if len(names) != 1 or not isinstance(names[0], str):
+                raise ControllerError("header_mismatch", "MCP request headers are invalid", status=400)
+            try:
+                raw_name = _decode_mcp_header(names[0])
+            except ControllerError:
+                raise ControllerError("header_mismatch", "MCP request headers are invalid", status=400) from None
+            normalized_name = _mcp_tool_name(raw_name)
+            if normalized_name not in declared_name_by_normalized and self._principal_kind == "legacy":
+                return
+            self._authorize_scope(self._tool_scope(normalized_name))
+
         def do_GET(self) -> None:
             request_id = _safe_request_id(self.headers.get(_REQUEST_ID_HEADER))
             started = time.perf_counter()
@@ -740,11 +848,17 @@ def make_handler(
                     ok = True
                     self._send_json(
                         status,
-                        {"tools": declared_tools, "request_id": request_id},
+                        {"tools": self._visible_tools(), "request_id": request_id},
                         request_id=request_id,
                     )
                     return
                 if route.startswith("/operations/"):
+                    if self._principal_kind != "legacy":
+                        raise ControllerError(
+                            "authorization_scope_denied",
+                            "authorization scope is denied",
+                            status=403,
+                        )
                     key = _operation_status_key(route[len("/operations/") :])
                     record = store.lookup(key)
                     status = 200
@@ -841,11 +955,18 @@ def make_handler(
                     ok = True
                     self._send_json(
                         status,
-                        {"tools": declared_tools, "request_id": request_id},
+                        {"tools": self._visible_tools(), "request_id": request_id},
                         request_id=request_id,
                     )
                     return
                 if route == "/mcp":
+                    try:
+                        self._authorize_mcp_headers_before_body()
+                    except ControllerError:
+                        # The declared body has deliberately not been read;
+                        # avoid parsing it as a second request on keepalive.
+                        self.close_connection = True
+                        raise
                     body = self._read_json_body(request_id=request_id)
                     origin = self.headers.get("Origin")
                     if origin is not None and not _mcp_origin_allowed(origin):
@@ -1001,6 +1122,8 @@ def make_handler(
                         status=400,
                     )
                 if tool is None:
+                    if self._principal_kind == "scoped":
+                        self._authorize_scope(_UNDECLARED_SCOPE)
                     tool = normalized_name
                 if isinstance(raw_arguments.get("dry_run"), bool):
                     dry_run = raw_arguments["dry_run"]

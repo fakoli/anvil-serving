@@ -20,6 +20,7 @@ import re
 import sys
 import tomllib
 import urllib.parse
+import unicodedata
 from dataclasses import dataclass, field
 from functools import cached_property
 from types import MappingProxyType
@@ -101,7 +102,6 @@ _MAX_AUDIO_GATEWAY_BYTES = 32 * 1024 * 1024
 
 _REQUIRED_TIER_KEYS = (
     "id",
-    "base_url",
     "dialect",
     "privacy",
     "tool_support",
@@ -109,6 +109,7 @@ _REQUIRED_TIER_KEYS = (
 )
 _TIER_KEYS = frozenset({
     *_REQUIRED_TIER_KEYS,
+    "base_url",
     "context_limit",
     "model",
     "extra_body",
@@ -123,6 +124,8 @@ _TIER_KEYS = frozenset({
     "model_identity",
     "metadata_source",
     "context_admission",
+    "replicas",
+    "replica_identity",
 })
 _ROUTER_KEYS = frozenset({
     "tiers",
@@ -163,6 +166,39 @@ def normalize_model_alias(value: str) -> str:
 
 class ConfigError(ValueError):
     """Raised for any router-config validation failure."""
+
+
+_REPLICA_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
+_QUALIFICATION_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
+_REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
+_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+_REPLICA_MEMBER_KEYS = frozenset(
+    {"id", "base_url", "host_id", "resource_id", "qualification_ref"}
+)
+_REPLICA_IDENTITY_KEYS = frozenset(
+    {"model_revision", "engine_version", "image_digest", "config_fingerprint"}
+)
+
+
+@dataclass(frozen=True)
+class ReplicaMember:
+    """One explicit, same-host endpoint in a logical replica tier."""
+
+    id: str
+    base_url: str
+    host_id: str
+    resource_id: str
+    qualification_ref: str
+
+
+@dataclass(frozen=True)
+class ReplicaIdentity:
+    """Shared declared deployment provenance for an equivalent replica set."""
+
+    model_revision: str
+    engine_version: str
+    image_digest: str
+    config_fingerprint: str
 
 
 @dataclass(frozen=True)
@@ -248,6 +284,11 @@ class Tier:
     # Opt-in exact identity readiness for promotion-managed local tiers.  The
     # expected name is the existing ``model`` field, keeping one source of truth.
     model_identity: bool = False
+    # Direct tiers keep their configured base URL. Replica tiers use the empty
+    # internal sentinel; later runtime construction must derive a member view
+    # before any URL builder sees the tier.
+    replicas: tuple[ReplicaMember, ...] = ()
+    replica_identity: Optional[ReplicaIdentity] = None
 
 
 @dataclass(frozen=True)
@@ -473,6 +514,197 @@ def load_server_config(path: str) -> ServerConfig:
     )
 
 
+def _normalized_replica_endpoint(value: object, label: str) -> tuple[str, str, int, str]:
+    """Validate a replica endpoint without resolving its hostname.
+
+    The result is only an offline duplicate-detection key.  Topology ownership
+    and endpoint equality are validated later by the managed render boundary.
+    """
+    if not isinstance(value, str):
+        raise ConfigError(f"{label} must be a string http(s) URL")
+    if any(
+        char.isspace() or unicodedata.category(char).startswith("C")
+        for char in value
+    ):
+        raise ConfigError(
+            f"{label} must not contain whitespace or control characters"
+        )
+    if "?" in value or "#" in value:
+        raise ConfigError(
+            f"{label} must be an http(s) URL without credentials, query, or fragment"
+        )
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        raise ConfigError(f"{label} must be an http(s) URL") from None
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ConfigError(
+            f"{label} must be an http(s) URL without credentials, query, or fragment"
+        )
+    if hostname.rstrip(".").lower() == "localhost":
+        raise ConfigError(f"{label} must never use localhost; use 127.0.0.1")
+    if port is not None and not 1 <= port <= 65535:
+        raise ConfigError(f"{label} port must be from 1 through 65535")
+    normalized_port = port if port is not None else (80 if parsed.scheme == "http" else 443)
+    normalized_path = parsed.path.rstrip("/")
+    try:
+        normalized_host = str(ipaddress.ip_address(hostname))
+    except ValueError:
+        normalized_host = _normalized_replica_hostname(hostname, label)
+    if normalized_host == "localhost":
+        raise ConfigError(f"{label} must never use localhost; use 127.0.0.1")
+    return (parsed.scheme.lower(), normalized_host, normalized_port, normalized_path)
+
+
+def _normalized_replica_hostname(hostname: str, label: str) -> str:
+    """Return a normalized DNS hostname without performing a DNS lookup."""
+    trailing_dot = hostname.endswith(".")
+    host = hostname[:-1] if trailing_dot else hostname
+    if not host or (trailing_dot and hostname.endswith("..")):
+        raise ConfigError(f"{label} host is invalid")
+    try:
+        normalized = host.encode("idna").decode("ascii").lower()
+    except UnicodeError:
+        raise ConfigError(f"{label} host is invalid") from None
+    if len(normalized) > 253 or re.fullmatch(r"[0-9.]+", normalized):
+        raise ConfigError(f"{label} host is invalid")
+    labels = normalized.split(".")
+    if any(
+        not dns_label
+        or len(dns_label) > 63
+        or dns_label.startswith("-")
+        or dns_label.endswith("-")
+        or not re.fullmatch(r"[a-z0-9-]+", dns_label)
+        for dns_label in labels
+    ):
+        raise ConfigError(f"{label} host is invalid")
+    return normalized
+
+
+@dataclass(frozen=True)
+class _ReplicaMemberParseResult:
+    """Validated member components kept separate for aggregate diagnostics."""
+
+    member: Optional[ReplicaMember]
+    member_id: Optional[str]
+    host_id: Optional[str]
+    resource_id: Optional[str]
+    endpoint: Optional[tuple[str, str, int, str]]
+
+
+def _parse_replica_member(
+    raw: object,
+    tier_id: str,
+    member_number: int,
+    errors: list[str],
+) -> _ReplicaMemberParseResult:
+    label = f"tier {tier_id!r}: replica member"
+    if not isinstance(raw, dict):
+        errors.append(f"{label} {member_number} must be a table")
+        return _ReplicaMemberParseResult(None, None, None, None, None)
+    if set(raw) - _REPLICA_MEMBER_KEYS:
+        errors.append(f"{label} contains unknown field(s) (member {member_number})")
+    member_fields = ("id", "base_url", "host_id", "resource_id", "qualification_ref")
+    missing = [field for field in member_fields if field not in raw]
+    if missing:
+        errors.append(
+            f"{label} missing required keys: {', '.join(missing)} "
+            f"(member {member_number})"
+        )
+    values: dict[str, str] = {}
+    for key in ("id", "host_id", "resource_id"):
+        value = raw.get(key)
+        if not isinstance(value, str) or not _REPLICA_ID_RE.fullmatch(value):
+            errors.append(
+                f"tier {tier_id!r}: replica {key} must match "
+                "[A-Za-z][A-Za-z0-9_-]{0,63}"
+            )
+        else:
+            values[key] = value
+    qualification_ref = raw.get("qualification_ref")
+    invalid_qualification_ref = (
+        not isinstance(qualification_ref, str)
+        or _QUALIFICATION_REF_RE.fullmatch(qualification_ref) is None
+    )
+    if invalid_qualification_ref:
+        errors.append(
+            f"tier {tier_id!r}: replica qualification_ref must match "
+            "[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}"
+        )
+    endpoint: Optional[tuple[str, str, int, str]] = None
+    try:
+        endpoint = _normalized_replica_endpoint(
+            raw.get("base_url"), f"tier {tier_id!r}: replica base_url"
+        )
+    except ConfigError as exc:
+        errors.append(str(exc))
+    member: Optional[ReplicaMember] = None
+    if len(values) == 3 and not invalid_qualification_ref and endpoint is not None:
+        member = ReplicaMember(
+            id=values["id"],
+            base_url=raw["base_url"],
+            host_id=values["host_id"],
+            resource_id=values["resource_id"],
+            qualification_ref=qualification_ref,
+        )
+    return _ReplicaMemberParseResult(
+        member=member,
+        member_id=values.get("id"),
+        host_id=values.get("host_id"),
+        resource_id=values.get("resource_id"),
+        endpoint=endpoint,
+    )
+
+
+def _parse_replica_identity(
+    raw: object, tier_id: str, errors: list[str]
+) -> Optional[ReplicaIdentity]:
+    label = f"tier {tier_id!r}: replica_identity"
+    if not isinstance(raw, dict):
+        errors.append(f"{label} must be a table")
+        return None
+    if set(raw) - _REPLICA_IDENTITY_KEYS:
+        errors.append(f"{label} contains unknown field(s)")
+    identity_fields = (
+        "model_revision", "engine_version", "image_digest", "config_fingerprint"
+    )
+    missing = [field for field in identity_fields if field not in raw]
+    if missing:
+        errors.append(f"{label} missing required keys: {', '.join(missing)}")
+    revision_values: dict[str, str] = {}
+    for key in ("model_revision", "engine_version"):
+        value = raw.get(key)
+        if not isinstance(value, str) or not _REVISION_RE.fullmatch(value):
+            errors.append(
+                f"{label} {key} must match "
+                "[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}"
+            )
+        else:
+            revision_values[key] = value
+    digest_values: dict[str, str] = {}
+    for key in ("image_digest", "config_fingerprint"):
+        value = raw.get(key)
+        if not isinstance(value, str) or not _DIGEST_RE.fullmatch(value):
+            errors.append(
+                f"{label} {key} must be sha256: plus "
+                "64 lowercase hexadecimal characters"
+            )
+        else:
+            digest_values[key] = value
+    if len(revision_values) != 2 or len(digest_values) != 2:
+        return None
+    return ReplicaIdentity(**revision_values, **digest_values)
+
+
 def _parse_tier(raw: object) -> Tier:
     if not isinstance(raw, dict):
         raise ConfigError(f"tier entry must be a table, got {type(raw).__name__}")
@@ -499,7 +731,13 @@ def _parse_tier(raw: object) -> Tier:
             f"tier {tid!r}: privacy {privacy!r} not in {sorted(VALID_PRIVACY)}"
         )
 
+    has_replicas = "replicas" in raw
     metadata_source = raw.get("metadata_source", METADATA_CONFIGURED)
+    if not isinstance(metadata_source, str):
+        raise ConfigError(
+            f"tier {tid!r}: metadata_source must be a string in "
+            f"{sorted(VALID_METADATA_SOURCES)}"
+        )
     if metadata_source not in VALID_METADATA_SOURCES:
         raise ConfigError(
             f"tier {tid!r}: metadata_source {metadata_source!r} not in "
@@ -507,7 +745,7 @@ def _parse_tier(raw: object) -> Tier:
         )
 
     raw_context_limit = raw.get("context_limit")
-    if metadata_source == METADATA_UPSTREAM:
+    if metadata_source == METADATA_UPSTREAM and not has_replicas:
         if "context_limit" in raw:
             raise ConfigError(
                 f"tier {tid!r}: metadata_source='upstream' forbids "
@@ -533,15 +771,24 @@ def _parse_tier(raw: object) -> Tier:
             f"tier {tid!r}: tool_support must be a bool, got {tool_support!r}"
         )
 
-    base_url = raw["base_url"]
-    if not isinstance(base_url, str) or not base_url.lower().startswith(
-        ("http://", "https://")
-    ):
+    has_base_url = "base_url" in raw
+    if has_base_url == has_replicas:
         raise ConfigError(
-            f"tier {tid!r}: base_url must be an http:// or https:// URL "
-            f"(got {base_url!r}); file://, ftp://, and other schemes are "
-            f"rejected to prevent SSRF and local-file access"
+            f"tier {tid!r}: declare exactly one endpoint shape: base_url or replicas"
         )
+    base_url = ""
+    if has_base_url:
+        # Preserve the legacy direct-tier URL validation exactly.  Replica URLs
+        # have their own closed validation below.
+        base_url = raw["base_url"]
+        if not isinstance(base_url, str) or not base_url.lower().startswith(
+            ("http://", "https://")
+        ):
+            raise ConfigError(
+                f"tier {tid!r}: base_url must be an http:// or https:// URL "
+                f"(got {base_url!r}); file://, ftp://, and other schemes are "
+                f"rejected to prevent SSRF and local-file access"
+            )
 
     auth_env = raw["auth_env"]
     _validate_auth_env(auth_env, f"tier {tid!r}: auth_env")
@@ -554,7 +801,11 @@ def _parse_tier(raw: object) -> Tier:
             f"tier {tid!r}: model must be a string or absent, got {tier_model!r}"
         )
 
-    if metadata_source == METADATA_UPSTREAM and tier_model is not None:
+    if (
+        metadata_source == METADATA_UPSTREAM
+        and tier_model is not None
+        and not has_replicas
+    ):
         raise ConfigError(
             f"tier {tid!r}: metadata_source='upstream' forbids model; the "
             "inference service is authoritative"
@@ -733,15 +984,18 @@ def _parse_tier(raw: object) -> Tier:
             raise ConfigError(
                 f"tier {tid!r}: model_identity is supported only for local tiers"
             )
-        if not isinstance(tier_model, str) or not tier_model.strip():
+        if (
+            not has_replicas
+            and (not isinstance(tier_model, str) or not tier_model.strip())
+        ):
             raise ConfigError(
                 f"tier {tid!r}: model_identity requires a non-empty model"
             )
-        if health_path is None:
+        if not has_replicas and health_path is None:
             raise ConfigError(
                 f"tier {tid!r}: model_identity requires health_path"
             )
-    if metadata_source == METADATA_UPSTREAM:
+    if metadata_source == METADATA_UPSTREAM and not has_replicas:
         if dialect != DIALECT_OPENAI:
             raise ConfigError(
                 f"tier {tid!r}: metadata_source='upstream' currently requires "
@@ -760,20 +1014,100 @@ def _parse_tier(raw: object) -> Tier:
     context_admission = raw.get(
         "context_admission", CONTEXT_ADMISSION_ESTIMATE
     )
+    if not isinstance(context_admission, str):
+        raise ConfigError(
+            f"tier {tid!r}: context_admission must be a string in "
+            f"{sorted(VALID_CONTEXT_ADMISSION)}"
+        )
     if context_admission not in VALID_CONTEXT_ADMISSION:
         raise ConfigError(
-            f"tier {tid!r}: context_admission {context_admission!r} not in "
+            f"tier {tid!r}: context_admission not in "
             f"{sorted(VALID_CONTEXT_ADMISSION)}"
         )
     if (
         context_admission == CONTEXT_ADMISSION_UPSTREAM
         and metadata_source != METADATA_UPSTREAM
         and not raw_model_identity
+        and not has_replicas
     ):
         raise ConfigError(
             f"tier {tid!r}: context_admission='upstream' requires either "
             "metadata_source='upstream' or model_identity=true"
         )
+
+    replicas: tuple[ReplicaMember, ...] = ()
+    replica_identity: Optional[ReplicaIdentity] = None
+    if has_replicas:
+        raw_replicas = raw["replicas"]
+        if not isinstance(raw_replicas, list) or not 2 <= len(raw_replicas) <= 16:
+            raise ConfigError(
+                f"tier {tid!r}: replicas must contain from 2 through 16 member tables"
+            )
+        errors: list[str] = []
+        members: list[ReplicaMember] = []
+        seen_member_ids: set[str] = set()
+        seen_resource_ids: set[str] = set()
+        seen_endpoints: set[tuple[str, str, int, str]] = set()
+        host_id: Optional[str] = None
+        for member_number, raw_member in enumerate(raw_replicas[:16], start=1):
+            parsed_member = _parse_replica_member(
+                raw_member, tid, member_number, errors
+            )
+            if (
+                parsed_member.member_id is not None
+                and parsed_member.member_id in seen_member_ids
+            ):
+                errors.append(f"tier {tid!r}: duplicate replica id")
+            if (
+                parsed_member.resource_id is not None
+                and parsed_member.resource_id in seen_resource_ids
+            ):
+                errors.append(f"tier {tid!r}: duplicate replica resource_id")
+            if (
+                parsed_member.endpoint is not None
+                and parsed_member.endpoint in seen_endpoints
+            ):
+                errors.append(f"tier {tid!r}: duplicate replica base_url after normalization")
+            if host_id is None and parsed_member.host_id is not None:
+                host_id = parsed_member.host_id
+            elif (
+                parsed_member.host_id is not None
+                and parsed_member.host_id != host_id
+            ):
+                errors.append(f"tier {tid!r}: replica members must share one host_id")
+            if parsed_member.member_id is not None:
+                seen_member_ids.add(parsed_member.member_id)
+            if parsed_member.resource_id is not None:
+                seen_resource_ids.add(parsed_member.resource_id)
+            if parsed_member.endpoint is not None:
+                seen_endpoints.add(parsed_member.endpoint)
+            if parsed_member.member is not None:
+                members.append(parsed_member.member)
+        if metadata_source != METADATA_CONFIGURED:
+            errors.append(f"tier {tid!r}: replicas require metadata_source='configured'")
+        if not raw_model_identity:
+            errors.append(f"tier {tid!r}: replicas require model_identity=true")
+        if not isinstance(tier_model, str) or not tier_model.strip():
+            errors.append(f"tier {tid!r}: replicas require a non-empty model")
+        if health_path is None:
+            errors.append(f"tier {tid!r}: replicas require health_path")
+        if (
+            context_admission == CONTEXT_ADMISSION_UPSTREAM
+            and metadata_source != METADATA_UPSTREAM
+            and not raw_model_identity
+        ):
+            errors.append(
+                f"tier {tid!r}: context_admission='upstream' requires either "
+                "metadata_source='upstream' or model_identity=true"
+            )
+        replica_identity = _parse_replica_identity(
+            raw.get("replica_identity"), tid, errors
+        )
+        if errors:
+            raise ConfigError("; ".join(errors))
+        replicas = tuple(members)
+    elif "replica_identity" in raw:
+        raise ConfigError(f"tier {tid!r}: replica_identity is valid only with replicas")
 
     return Tier(
         id=tid,
@@ -796,6 +1130,8 @@ def _parse_tier(raw: object) -> Tier:
         max_output_tokens=tier_max_output_tokens,
         health_path=health_path,
         model_identity=raw_model_identity,
+        replicas=replicas,
+        replica_identity=replica_identity,
     )
 
 
