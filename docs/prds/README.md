@@ -24,9 +24,10 @@ Approval and planning are not implementation, qualification, or deployment evide
 | 4 | [Managed fleet node enrollment](fleet-node-enrollment.md) | Previewable, transactional bootstrap for one declared node with exact acceptance and rollback. | Terra high for transport/path security; medium for CLI/docs | Independent; credentials and machine prerequisites stay separate |
 
 PRD 1 is the narrow routing foundation and PRD 2 is its explicit follow-on.
-PRDs 3 and 4 can otherwise proceed independently. Execute one task at a time and keep
-each implementation PR-sized; do not combine all four contracts into a router
-or control-plane rewrite.
+PRDs 3 and 4 can otherwise proceed independently. Keep each executor on one
+bounded task in its isolated worktree, and integrate source-ready tasks in
+batches. Consolidated review and acceptance follow the completed implementation
+batch; do not combine all four contracts into an unbounded rewrite.
 
 The four router/fleet PRDs above remain partial delivery programs; an accepted
 task or source checkpoint does not mark an entire PRD deployed. The separate
@@ -69,8 +70,9 @@ timeline must not depend on installing Harbor.
    were inspected; proposed files and commands are explicitly marked. A future
    implementation may already satisfy a requirement. Preserve that behavior
    and record the evidence rather than recreating it.
-3. Work on an isolated branch from current `origin/main`. Execute one task at
-   a time and preserve unrelated changes. Task dependencies are local to a PRD;
+3. Start the delivery integration branch from current `origin/main`; isolate
+   each task from the required source-ready integration checkpoint and preserve
+   unrelated changes. Task dependencies are local to a PRD;
    IDs such as T001 are not globally unique across these documents.
 4. Read the full files you will edit. Start with the named failing/negative
    scenario, then make the smallest implementation change that passes it.
@@ -194,8 +196,9 @@ updated delivery instruction is to implement in batches, retain focused tests
 and claim-bound evidence, then perform one consolidated review and acceptance
 pass after implementation. Local candidate integration is not acceptance or
 deployment; source-ready dependencies may be used while their formal acceptance
-is pending. Apply only complete evidence in that final pass. See the
-[batch-delivery ticket](../../.tickets/2026-09-05-router-fleet-batch-delivery.md).
+is pending. Apply only complete evidence in that final pass. The repository
+ticket is `.tickets/2026-09-05-router-fleet-batch-delivery.md` (outside the
+published documentation tree).
 The four Miles-informed files remain repository drafts;
 they have not been imported into Anvil State, approved as State partitions, or
 submitted as GitHub issues.

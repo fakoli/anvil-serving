@@ -15,3 +15,9 @@ history. Newly reproduced defects are fixed forward with tickets during the
 build; deliberate per-task adversarial passes are deferred to the final review.
 The final pass includes complete source/docs/package gates, PR review/merge,
 managed deployment, rollback readiness and real endpoint/client acceptance.
+
+Documentation correction: the PRD index's relative link into .tickets was a
+strict MkDocs warning because tickets are outside the published docs tree.
+Keep the exact repository path as a code reference and synchronize the index's
+older one-task wording with isolated executors and batch integration. This
+does not relax focused testing, evidence capture or final acceptance.

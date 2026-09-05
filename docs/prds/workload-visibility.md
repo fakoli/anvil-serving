@@ -775,13 +775,85 @@ Do not use immutable=1: live WAL commits must remain visible.
 - `python scripts/run_tests.py tests/media/test_jobs.py -x -q`
 - `python -m ruff check anvil_serving/media/jobs.py tests/media/test_jobs.py`
 
+### T012.3: Compose bounded canonical node results
+
+**Feature:** F003
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/observability/workload_collection.py, tests/observability/test_workload_collection.py
+**Dependencies:** T001
+
+Add the pure owner-independent function build_node_workloads(host, query, now,
+sources) in the new sibling module workload_collection.py. It consumes
+already-collected SourceResult values; it never invokes a reader, constructs a
+store, loads configuration, reads a clock, submits work, or performs I/O.
+sources must be an exact dict of at most six exact WorkloadOwner keys to
+SourceResult or None. Reject a malformed outer mapping with fixed WorkloadError
+before traversing values. Validate canonical host/query/time first, including
+an exact WorkloadQuery and canonical timestamp/host validators. Always return
+the six owners in lexicographic owner.value order; missing/None owners become
+fixed UNAVAILABLE sources collected at now, with no records and omitted=None.
+
+Each present source is a separate failure boundary. Require its exact
+SourceResult type, matching owner, exact tuple of at most200 exact
+WorkloadRecord values and exact Truncation. Reconstruct records (and optional
+exact Progress) through canonical constructors before serialization,
+then reconstruct SourceResult with a fresh tuple and truncation. Do not
+serialize an unbounded or arbitrary object first. Use existing validators,
+not an alternate record schema or recursive asdict. A malformed source becomes
+fixed invalid-workload for only that owner; too-far-future source/record time
+becomes future-workload-timestamp. Preserve valid peer sources.
+
+Use validate_source_records with the expected host and the source's original
+collection timestamp, then ensure its collection time is not over30 seconds
+ahead of node now. Preserve original source and lifecycle timestamps. The
+collector calls each source with this same query; verify returned records
+equal select_records(records, query, now=now)'s ordered result, with no
+discarded record. A source violating query/filter/order/limit is invalid,
+rather than allowing a remote producer to bypass the requested view. An empty
+source still has its owner and collection-time checks. Freshness remains
+source-derived; do not restamp old observations as fresh.
+
+The six individually valid sources can total1200 records, so do not pass
+that unbounded-for-the-API tuple into select_records(aggregate=True), whose
+input contract caps at1000. Flatten at most1200 validated records with their
+source/index identity; use two stable sorts (ID ascending, then updated_at
+descending), retaining the first min(query.limit,1000). Equal timestamp/ID
+ties retain canonical owner order. Redistribute selected entries to their
+original sources in the same order, without deduplicating by digest across
+owners or erasing empty source summaries. This is a bounded merge of already
+filtered records, not a second filtering policy.
+
+For each source, add only global-cap removals to a known omitted count;
+unknown omissions stay None and count overflow past MAX_COUNT becomes None.
+Do not call filtered-out records omissions. Preserve existing error codes.
+A COMPLETE source reduced by the aggregate cap becomes PARTIAL with no
+invented error; existing PARTIAL/UNAVAILABLE states remain honest. Recompute
+node status by the canonical all-unavailable/any-non-complete/otherwise-complete
+rule and construct NodeResult. Original input objects remain unchanged.
+No source payload, path, URL, credential, raw exception, callable, or generic
+transport context may be returned.
+
+**Acceptance criteria:**
+
+- Literal canonical node fixtures cover all-complete, complete-empty, one surviving source, all-unavailable, explicit PARTIAL errors, absent owners, and stable six-owner order.
+- Wrong owner/host, forged malformed records, oversized tuple and arbitrary/subclass source values fail only their source without traversal or leaking seeded private values; bad outer mappings and invalid query/host/time fail before processing sources.
+- Source time exactly30 seconds ahead remains allowed; greater skew fails that source; old source timestamps and lifecycle times are preserved and never refreshed by aggregation.
+- A six-by-200 fixture is reduced to the exact newest1000 (or lower query limit) with literal boundary IDs and honest per-source omissions/status; known and unknown omissions, overflow, ties and unchanged inputs are covered.
+- Source records that violate the requested filter, stable ordering or limit are quarantined; canonical round-trip succeeds and no clock, store, filesystem, subprocess, network, or reader callback is invoked.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/observability/workload_collection.py tests/observability/test_workload_collection.py`
+
 ### T012: Aggregate node-local workload sources
 
 **Feature:** F003
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/control_plane/controller/server.py, anvil_serving/observability/probes/remote_controller.py, tests/test_controller.py, tests/observability/test_remote_controller.py
-**Dependencies:** T003, T004, T004.2, T005, T010, T011, T011.2, T012.1, T012.2
+**Dependencies:** T003, T004, T004.2, T005, T010, T011, T011.2, T012.1, T012.2, T012.3
 
 Add the controller workload operation that projects its own controller/benchmark/media/managed-status sources and fetches router work only through the topology-declared authenticated loopback resource. Enforce `workloads:read` before any source read and keep a status for every source.
 
