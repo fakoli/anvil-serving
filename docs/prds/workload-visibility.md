@@ -697,13 +697,103 @@ Implement the Router workload endpoint ownership and wire contract above. Expose
 - `python scripts/run_tests.py tests/router/test_operational_endpoints.py tests/router/test_front_door_auth.py tests/router/test_workloads.py tests/router/test_config.py tests/router/test_serve_cli.py -x -q`
 - `python -m ruff check anvil_serving/router/config.py anvil_serving/router/serve.py anvil_serving/router/front_door.py tests/router/test_operational_endpoints.py tests/router/test_front_door_auth.py`
 
+### T012.1: Read benchmark workloads without constructing a writable store
+
+**Feature:** F003
+**Priority:** high
+**Type:** refactor
+**Likely files:** anvil_serving/control_plane/controller/store.py, tests/control_plane/test_benchmark_jobs.py
+**Dependencies:** T003
+
+BenchmarkJobStore.__init__ creates its run root. Node visibility must not call
+that constructor merely to read an existing database. Add the owner-module
+function read_benchmark_workloads(path, host, query, now, *,
+_snapshot_clock=time.monotonic, _lock=None). Factor the existing bounded
+list_workloads projection into this one implementation; the instance method
+delegates with its exact path, snapshot clock, and owner lock. With no injected
+lock the function uses a fresh in-memory RLock. Do not instantiate a store,
+bypass __init__ with __new__, accept a run root, hydrate jobs, or add new SQL
+projections outside the owning module.
+
+Validate query, trusted host, and collection time before filesystem or SQLite
+access. Resolve a non-empty string or PathLike database path only on the read
+path; invalid/missing/unreadable source paths produce the existing fixed
+UNAVAILABLE source, never create parents, a database, or a run directory.
+Retain mode=ro, query-only transactions, the shared one-second lock/SQLite/scan
+deadline, metadata-only projection, filtering, truncation, and fixed errors.
+The current constructor and all writable lifecycle APIs keep their behavior.
+Normal SQLite read coordination is not a workload lifecycle action; do not use
+immutable=1, which would discard live WAL visibility.
+
+**Acceptance criteria:**
+
+- Module-level and instance readers produce literal canonical-equivalent
+  output for the same real existing database and clock, including fresh WAL
+  commits, filters, empty results, corrupt/future rows, and truncation.
+- A missing database under missing parents returns UNAVAILABLE and leaves the
+  directory tree unchanged; no run-root, initialization, recovery, writable
+  connection, job hydration, or writable store constructor is called.
+- Invalid query/host/time fails before path access, lock acquisition, or reads.
+  Excluded owner/kind/host queries retain the existing no-read COMPLETE result.
+- Instance delegation preserves the actual owner lock and snapshot clock;
+  lock contention still terminates within the existing bounded deadline.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/control_plane/test_benchmark_jobs.py tests/test_benchmark_jobs.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/controller/store.py tests/control_plane/test_benchmark_jobs.py`
+
+### T012.2: Read media workloads without initializing a database
+
+**Feature:** F003
+**Priority:** high
+**Type:** refactor
+**Likely files:** anvil_serving/media/jobs.py, tests/media/test_jobs.py
+**Dependencies:** T010
+
+MediaJobStore.__init__ initializes schema and WAL state. Add the owner-module
+function read_media_workloads(path, host, query, now, *,
+_monotonic=time.monotonic, _lock=None), factoring the existing list_workloads
+projection into one implementation. Its instance method delegates with the
+exact path, owner lock, and supplied monotonic clock; the standalone function
+uses a fresh in-memory RLock when no lock is supplied. Keep writable store
+construction and lifecycle behavior unchanged. Do not construct a store,
+bypass initialization via __new__, add a second SQL owner, or call a lifecycle
+factory merely to observe an existing source.
+
+Validate the canonical query, trusted host, and collection time before path
+or database access. Resolve only a non-empty string or PathLike path on the
+read path. Invalid/missing/unreadable paths yield the existing fixed
+UNAVAILABLE source without creating directories or a database. Retain the
+read-only/query-only SQLite transaction, bounded streaming heap, one-second
+lock/SQLite/scan deadline, current filtering and invalid-row isolation.
+Do not use immutable=1: live WAL commits must remain visible.
+
+**Acceptance criteria:**
+
+- Standalone and instance reads are canonical-equivalent against one real
+  database, including live WAL commits, empty/filter/truncation cases and
+  corrupt/future records.
+- Missing parents/database remain absent after collection; no schema
+  initialization, writable connection, lifecycle construction, job/event/
+  artifact hydration, recovery, or mutation method is called.
+- Invalid query/host/time fails before path/lock/SQLite access. Existing
+  excluded-source no-read behavior remains unchanged.
+- The instance forwards its actual owner lock and monotonic clock, retaining
+  the existing bounded contention behavior and fixed safe errors.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/media/test_jobs.py -x -q`
+- `python -m ruff check anvil_serving/media/jobs.py tests/media/test_jobs.py`
+
 ### T012: Aggregate node-local workload sources
 
 **Feature:** F003
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/control_plane/controller/server.py, anvil_serving/observability/probes/remote_controller.py, tests/test_controller.py, tests/observability/test_remote_controller.py
-**Dependencies:** T003, T004, T004.2, T005, T010, T011, T011.2
+**Dependencies:** T003, T004, T004.2, T005, T010, T011, T011.2, T012.1, T012.2
 
 Add the controller workload operation that projects its own controller/benchmark/media/managed-status sources and fetches router work only through the topology-declared authenticated loopback resource. Enforce `workloads:read` before any source read and keep a status for every source.
 
