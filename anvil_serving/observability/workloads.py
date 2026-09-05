@@ -32,7 +32,7 @@ MAX_TEXT_LENGTH = 1024
 _MAX_JSON_DEPTH = 32
 _TIMESTAMP_RE = re.compile(r"\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\Z")
 # Same identifier grammar as topology._ID_RE, without importing topology I/O.
-_HOST_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]*", re.ASCII)
+_HOST_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}", re.ASCII)
 _DIGEST_RE = re.compile(r"[0-9a-f]{64}", re.ASCII)
 
 
