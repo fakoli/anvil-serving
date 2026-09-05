@@ -13,6 +13,10 @@ from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import ConfigError, load
 from anvil_serving.router.internal import InternalRequest, Message
 from anvil_serving.router.serve import build_server
+from anvil_serving.router.replica_scheduler import normalize_replica_pressure
+from anvil_serving.router import serve as serve_module
+from tests.router.test_backends import _CompletedPressure, _MemberBackend, _ReplicaAvailability, _ready
+from tests.router.test_config import _REPLICA_TIER
 
 
 _CONFIG = """\
@@ -188,3 +192,64 @@ def test_direct_backend_error_is_logged_without_an_alternate_attempt(config_path
     assert record is not None
     assert record.served_tier is None
     assert record.attempts[0].reason == "backend_error_RuntimeError"
+
+
+@pytest.mark.parametrize("durable", [False, True])
+def test_server_wires_capacity_strategy_ceilings_and_cache_close(tmp_path, monkeypatch, durable):
+    monkeypatch.setattr(serve_module, "ReplicaPressureCache", _CompletedPressure)
+    body = _REPLICA_TIER.replace(
+        "model_identity = true", 'model_identity = true\nreplica_strategy = "capacity"\nmax_concurrency = 1',
+    ).replace('qualification_ref = "qualification:primary-a"',
+              'qualification_ref = "qualification:primary-a", max_concurrency = 2').replace(
+        'qualification_ref = "qualification:primary-b"',
+        'qualification_ref = "qualification:primary-b", max_concurrency = 3',
+    )
+    if durable:
+        body += "\n[server]\nadmission_state_path = " + json.dumps(str(tmp_path / "intent.json")) + "\n"
+    path = tmp_path / "capacity.toml"
+    path.write_text(body, encoding="utf-8")
+    members = {"member-a": _MemberBackend("a"), "member-b": _MemberBackend("b")}
+    availability = _ReplicaAvailability({("primary", key): _ready() for key in members})
+    server = build_server(
+        str(path), host="127.0.0.1", port=0,
+        backends={"primary": serve_module.ReplicaRuntime(members)}, availability=availability,
+    )
+    routing = server.anvil_routing
+    cache = routing._replica_pressure
+    # A strategy actually passed to the shared owner chooses B on a fresh tie;
+    # an accidentally default round-robin owner would choose A.
+    cache.values["primary"]["member-b"] = normalize_replica_pressure(
+        observed_at=1, now_monotonic=1, successful=True,
+        requests_running=0, requests_waiting=0, scheduler_capacity=3,
+    )
+    iterator = None
+    try:
+        snapshot = routing._admission.snapshot("primary")
+        assert snapshot.max_concurrency == 1
+        assert tuple(member.max_concurrency for member in snapshot.members) == (2, 3)
+        iterator = routing.generate(InternalRequest(model="llm.primary", messages=[Message("user", "hi")]))
+        assert next(iterator) == "b"
+        assert members["member-a"].calls == 0
+        assert cache.calls == ["primary"]
+    finally:
+        if iterator is not None:
+            iterator.close()
+        server.server_close()
+        server.server_close()
+    assert cache.closed == 1
+    assert server.socket.fileno() == -1
+    if durable:
+        assert json.loads((tmp_path / "intent.json").read_text(encoding="utf-8"))["tiers"] == {}
+
+
+def test_server_close_releases_socket_even_if_pressure_owner_close_fails(config_path, monkeypatch):
+    server = _server(config_path, CountingBackend(["ok"]))
+
+    def broken_close():
+        raise RuntimeError("close failure")
+
+    monkeypatch.setattr(server.anvil_routing._replica_pressure, "close", broken_close)
+    with pytest.raises(RuntimeError, match="close failure"):
+        server.server_close()
+    assert server.socket.fileno() == -1
+    server.server_close()

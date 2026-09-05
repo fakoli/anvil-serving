@@ -60,6 +60,7 @@ from .internal import Backend, InternalRequest, NoAvailableTierError, Structured
 from .media_admission import evaluate_media_admission
 from .model_capacity import (
     MetricsProvider,
+    ReplicaPressureCache,
     build_model_capacity,
     fetch_vllm_metrics,
 )
@@ -417,6 +418,30 @@ def _configured_replica_members(config: RouterConfig) -> dict[str, tuple[str, ..
     }
 
 
+def _configured_admission(
+    config: RouterConfig, *, on_state_change: Optional[Callable[[str], None]] = None,
+) -> TierAdmission:
+    """Share the exact replica reservation contract across both startup paths."""
+    replicas = tuple(tier for tier in config.tiers if tier.replicas)
+    return TierAdmission(
+        (tier.id for tier in config.tiers),
+        replica_members=_configured_replica_members(config),
+        tier_max_concurrency={
+            tier.id: tier.max_concurrency for tier in replicas
+            if tier.max_concurrency is not None
+        },
+        member_max_concurrency={
+            tier.id: {
+                member.id: member.max_concurrency for member in tier.replicas
+                if member.max_concurrency is not None
+            }
+            for tier in replicas
+        },
+        replica_strategies={tier.id: tier.replica_strategy for tier in replicas},
+        on_state_change=on_state_change,
+    )
+
+
 class RoutingBackend:
     """Resolve one configured capability alias and relay to its one tier."""
 
@@ -435,22 +460,28 @@ class RoutingBackend:
             tier_id: (
                 _ConcurrencyLimitedBackend(backend, config.tier(tier_id).max_concurrency)
                 if config.tier(tier_id).max_concurrency is not None
+                and not config.tier(tier_id).replicas
                 else backend
             )
             for tier_id, backend in backends.items()
         }
         self._availability = availability if availability is not None else AlwaysAvailable()
-        self._admission = admission if admission is not None else TierAdmission(
-            (tier.id for tier in config.tiers),
-            replica_members=_configured_replica_members(config),
+        self._admission = admission if admission is not None else _configured_admission(config)
+        self._capacity_metrics = fetch_vllm_metrics if capacity_metrics is None else capacity_metrics
+        self._replica_pressure = ReplicaPressureCache(
+            tuple(tier for tier in config.tiers if tier.replicas and tier.replica_strategy == "capacity"),
+            metrics_provider=self._capacity_metrics,
         )
-        self._capacity_metrics = capacity_metrics or fetch_vllm_metrics
         self._started_at = time.time()
         # `is None`, not truthiness: DecisionLog defines __len__, so an empty
         # (sink-enabled) log is falsy and `or` would silently replace it.
         self._decision_log = DecisionLog() if decision_log is None else decision_log
         self._thread_local: threading.local = threading.local()
         self._workload_registry: Optional[RouterWorkloadRegistry] = None
+
+    def close(self) -> None:
+        """Stop this owner's bounded telemetry refreshes without waiting on I/O."""
+        self._replica_pressure.close()
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         return getattr(self._thread_local, "last_result", None)
@@ -758,14 +789,26 @@ class RoutingBackend:
             # admission cursor then makes the selection atomically without a
             # second provider read or an implicit retry/fallback path.
             check_started = time.monotonic()
+            bound_members = backend.member_ids if isinstance(backend, ReplicaRuntime) else ()
             member_readiness = {
-                member.id: safe_check_member(self._availability, tier, member.id)
+                member.id: (
+                    safe_check_member(self._availability, tier, member.id)
+                    if member.id in bound_members
+                    else AvailabilityResult(False, "unavailable", "replica_member_unbound")
+                )
                 for member in tier.replicas
             }
             readiness_check_ms = max(
                 0, int((time.monotonic() - check_started) * 1000)
             )
-            lease = self._admission.acquire_member(tier.id, member_readiness)
+            # The cache returns only completed immutable observations and never
+            # waits for metrics. Admission then ranks and reserves under its one
+            # condition, with no callbacks or I/O inside that critical section.
+            if tier.replica_strategy == "capacity":
+                pressure = self._replica_pressure.snapshot(tier.id)
+                lease = self._admission.acquire_member(tier.id, member_readiness, pressure)
+            else:
+                lease = self._admission.acquire_member(tier.id, member_readiness)
             if lease is None:
                 record(
                     request, tier, served=False, reason="unavailable", outcome="skipped",
@@ -1194,10 +1237,7 @@ def _durable_admission(path: str, config: RouterConfig) -> TierAdmission:
                 flush=True,
             )
 
-    admission = TierAdmission(
-        tier_ids, replica_members=_configured_replica_members(config),
-        on_state_change=_persist,
-    )
+    admission = _configured_admission(config, on_state_change=_persist)
     holder["admission"] = admission
     for tier_id, reason in intent.items():
         try:
@@ -1469,22 +1509,32 @@ def build_server(
     httpd.anvil_audio = audio  # type: ignore[attr-defined]
     httpd.anvil_gateway = gateway  # type: ignore[attr-defined]
     httpd.anvil_media_worker = media_worker  # type: ignore[attr-defined]
+    original_server_close = httpd.server_close
+    close_lock = threading.Lock()
+    closed = False
+
+    def close_router_server() -> None:
+        nonlocal closed
+        with close_lock:
+            if closed:
+                return
+            closed = True
+        try:
+            if media_worker is not None:
+                media_worker.stop()
+        finally:
+            try:
+                routing.close()
+            finally:
+                original_server_close()
+
+    httpd.server_close = close_router_server  # type: ignore[method-assign]
     if media_worker is not None:
-        original_server_close = httpd.server_close
-        close_lock = threading.Lock()
-        closed = False
-
-        def close_media_server() -> None:
-            nonlocal closed
-            with close_lock:
-                if closed:
-                    return
-                closed = True
-            media_worker.stop()
-            original_server_close()
-
-        httpd.server_close = close_media_server  # type: ignore[method-assign]
-        media_worker.start()
+        try:
+            media_worker.start()
+        except BaseException:
+            httpd.server_close()
+            raise
     return httpd
 
 
