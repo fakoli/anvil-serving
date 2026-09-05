@@ -437,6 +437,7 @@ def _capture_fixed_child(
     argv: tuple[str, ...],
     *,
     merged: bool,
+    retain_stdout_on_error: bool = False,
     process_factory: ProcessFactory = subprocess.Popen,
     monotonic: Clock = time.monotonic,
     environment: Optional[Mapping[str, str]] = None,
@@ -566,10 +567,26 @@ def _capture_fixed_child(
             state = "unavailable"
         else:
             state = "ok" if exit_code == 0 else "unavailable"
+    retain_stdout = (
+        retain_stdout_on_error
+        and state == "unavailable"
+        and not timed_out
+        and not overflow
+        and not read_error
+        and cleanup_ok
+        and type(exit_code) is int
+        and exit_code != 0
+    )
     if state != "ok":
+        retained_stdout = bytes(buffers["stdout"]) if retain_stdout else b""
         buffers["stdout"].clear()
         buffers["stderr"].clear()
-        return ChildCapture(state, b"", b"", state in {"timeout", "output-limit"})
+        return ChildCapture(
+            state,
+            retained_stdout,
+            b"",
+            state in {"timeout", "output-limit"},
+        )
     return ChildCapture("ok", bytes(buffers["stdout"]), bytes(buffers["stderr"]), False)
 
 

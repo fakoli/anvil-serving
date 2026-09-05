@@ -94,13 +94,20 @@ def test_missing_executable_timeout_and_nonzero_are_fixed_states(monkeypatch):
         == "unavailable"
     )
     timeout = diagnostics._capture_fixed_child(
-        _child("import time;time.sleep(1)"), merged=False, monotonic=iter((0.0, 11.0)).__next__
+        _child("import time;time.sleep(1)"), merged=False,
+        monotonic=iter((0.0, 11.0)).__next__, retain_stdout_on_error=True,
     )
-    assert timeout.state == "timeout" and timeout.truncated is True
+    assert timeout.state == "timeout" and timeout.truncated is True and timeout.stdout == timeout.stderr == b""
     assert (
         diagnostics._capture_fixed_child(_child("import sys;sys.exit(3)"), merged=False).state
         == "unavailable"
     )
+    retained = diagnostics._capture_fixed_child(
+        _child("import sys;sys.stdout.write('bounded-row\\n');sys.stderr.write('private') ;sys.exit(3)"),
+        merged=False, retain_stdout_on_error=True,
+    )
+    assert retained.state == "unavailable" and retained.stdout.replace(b"\r\n", b"\n") == b"bounded-row\n"
+    assert retained.stderr == b""
 
 
 def test_exact_default_capture_ceiling_and_one_byte_overflow():
@@ -109,7 +116,8 @@ def test_exact_default_capture_ceiling_and_one_byte_overflow():
     )
     assert exact.state == "ok" and len(exact.stdout) == diagnostics.MAX_CAPTURE_BYTES
     over = diagnostics._capture_fixed_child(
-        _child("import sys;sys.stdout.write('x'*262145)"), merged=False
+        _child("import sys;sys.stdout.write('x'*262145)"), merged=False,
+        retain_stdout_on_error=True,
     )
     assert over.state == "output-limit" and over.stdout == over.stderr == b""
 
@@ -188,6 +196,12 @@ def test_cleanup_uses_kill_after_terminate_failure_and_cleanup_failure_is_unavai
         monotonic=iter((0.0, 11.0)).__next__,
     )
     assert capture.state == "unavailable"
+    retained = diagnostics._capture_fixed_child(
+        ("fixed",), merged=False, retain_stdout_on_error=True,
+        process_factory=lambda *args, **kwargs: failed,
+        monotonic=iter((0.0, 11.0)).__next__,
+    )
+    assert retained.stdout == retained.stderr == b""
 
 
 def test_injected_factory_clock_and_reader_failures_are_fixed_non_ok():
@@ -199,6 +213,29 @@ def test_injected_factory_clock_and_reader_failures_are_fixed_non_ok():
         ).state
         == "unavailable"
     )
+
+    class ReadFailurePipe:
+        def __init__(self):
+            self.calls = 0
+
+        def read(self, _size):
+            self.calls += 1
+            if self.calls == 1:
+                return b"partial-private-stdout"
+            raise OSError("synthetic read failure")
+
+        def close(self):
+            pass
+
+    process = _FakeProcess(exited=True)
+    process.stdout = ReadFailurePipe()
+    process.stderr = io.BytesIO()
+    capture = diagnostics._capture_fixed_child(
+        ("fixed",), merged=False, retain_stdout_on_error=True,
+        process_factory=lambda *args, **kwargs: process,
+    )
+    assert capture.state == "malformed"
+    assert capture.stdout == capture.stderr == b""
 
 
 def test_hostile_post_spawn_proxies_are_fixed_and_reaped():
