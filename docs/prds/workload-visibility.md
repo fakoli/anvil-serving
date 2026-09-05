@@ -1266,13 +1266,87 @@ reads no credential or source, and changes no live configuration.
 - `python -m ruff check anvil_serving/control_plane/controller/cli.py tests/control_plane/test_controller_workload_cli.py`
 - `python -m anvil_serving.cli controller serve --help`
 
+### T013.1: Compose bounded canonical fleet workload results
+
+**Feature:** F003
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/observability/fleet_workload_collection.py, tests/observability/test_fleet_workload_collection.py
+**Dependencies:** T012.3, T012.3.1
+
+Add pure normalize_node_workloads(host, query, now, node) and
+build_fleet_workloads(hosts, query, now, nodes) in a bounded sibling module.
+No I/O, clock reads, transport, workers, topology, storage or callbacks.
+hosts is an exact tuple of zero to MAX_NODES unique canonical exact-string
+host IDs; nodes is an exact dict with only declared exact-string keys and
+NodeResult-or-None values. Reject invalid outer input with fixed WorkloadError
+before inspecting node values. Validate query and now through the existing
+empty build_node_workloads seam, including the empty-fleet case. Sort node
+summaries by host ID, retaining every declared node even without any records.
+
+normalize_node_workloads first validates canonical host/query/time. None means
+the existing six-source unavailable fallback. An exact NodeResult must have
+the expected host, exact ResultStatus/datetime/tuple header fields, one to six
+exact SourceResult entries, and unique exact WorkloadOwner keys. Reject a bad
+header, wrong host, duplicate owner or oversized shape as one six-source
+INVALID unavailable node; a node timestamp more than30 seconds in the future
+is a six-source FUTURE unavailable node. Missing owners remain unavailable.
+Use build_node_workloads for strict detached source validation, original
+query matching, source-local INVALID/FUTURE isolation and node record cap;
+do not duplicate its record/progress/enum validation. Preserve the original
+valid node collection timestamp and every unchanged source collection time.
+For a source rejected by the builder, construct its fixed empty failure at
+the validated original node collection time so a stale node does not become
+invalid merely because its new failure envelope would otherwise use now.
+Do not relabel old valid records or source observations as fresh. Require the
+supplied node status to match the supplied source statuses before source-local
+normalization; a forged status is an invalid node header. No serializer may
+see unchecked arbitrary input, raw dictionaries or subclass objects.
+
+For a provably excluded query.host, return six COMPLETE empty sources at the
+collection time for that declared host, without inspecting its supplied value.
+This means complete coverage of the empty filtered query, not observed idle
+or healthy; later collection short-circuits that node before transport.
+Other unavailable nodes use six fixed unavailable sources and unknown
+omissions. Invalid/future node fallback error codes are fixed canonical enums;
+no raw exception, object repr, endpoint or arbitrary metadata enters results.
+
+Merge normalized node records in one global newest updated_at descending,
+record ID ascending order, retaining at most min(query.limit,AGGREGATE_LIMIT).
+Use incremental bounded selection: at most one current node's records plus
+the current global selection are candidates, and retained records across
+stored node summaries never exceed the aggregate cap. Do not create a list
+of MAX_NODES times AGGREGATE_LIMIT records. Preserve each source's original
+relative record order, timestamps and error. Each removed record increments
+that source's omission exactly once; unknown omissions remain unknown and
+MAX_COUNT overflow becomes unknown. A previously COMPLETE source losing a
+record becomes PARTIAL, never UNAVAILABLE. Recompute node and fleet status
+from the resulting source statuses. Fleet truncation.returned is the actual
+retained count; omitted sums final source omissions across all nodes, or is
+null if any is unknown or the sum exceeds MAX_COUNT. Empty fleet is COMPLETE
+with returned0/omitted0. Do not count source omission both at node and fleet
+levels. Return new canonical detached objects, no cached input references.
+
+**Acceptance criteria:**
+
+- Two individually valid full nodes compose without exceeding the aggregate record cap; deterministic global ties, per-source ordering and omission reconciliation hold across input insertion orders.
+- Every declared host survives as a sorted summary; empty fleet, host exclusions, missing/invalid/wrong-host nodes and future headers have exact fixed outcomes without reading excluded values.
+- Source-local malformed/future data preserves healthy peers; original stale node/source times remain intact, including safe fixed failures within a stale node.
+- Known, unknown and overflow omissions are correct after multiple incremental evictions; result status and canonical serialization round-trip exactly without private or arbitrary fields.
+- Forged types, duplicate owners/hosts, malformed mappings and oversized shapes fail safely; no list of all fleet records, I/O, clock read, worker, topology or transport is introduced.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_fleet_workload_collection.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/observability/fleet_workload_collection.py tests/observability/test_fleet_workload_collection.py`
+
 ### T013: Add bounded expected-node fleet fan-out
 
 **Feature:** F003
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/transports.py, anvil_serving/observability/workloads.py, tests/observability/test_remote_controller.py, tests/observability/test_workloads.py
-**Dependencies:** T012
+**Dependencies:** T012, T013.1
 
 Collect only declared expected-node controller workload operations with at most four concurrent calls, a two-second per-node deadline, a five-second collection deadline, and a visible result for every declared node. Do not queue unbounded work or retry via SSH.
 
