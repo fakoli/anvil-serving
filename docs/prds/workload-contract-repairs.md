@@ -129,3 +129,24 @@ The integrated full suite reproduced a stale assertion in test_supported_dashboa
 - `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py tests/observability/test_milestone3_dashboard.py -x -q`
 - `python -m ruff check tests/observability/test_milestone3_dashboard.py`
 
+### T005: Synchronize the dashboard transport omission regression
+
+**Feature:** F001
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** tests/observability/test_workload_http.py, .tickets/2026-09-05-workload-wire-contract-repairs.md
+**Dependencies:** T001, T004
+
+The integrated full suite at 0a2e0c69 fails test_default_reader_is_hermetic_and_uses_same_caller_credential because its opener still expects null optional filters. Update that literal expectation to omitted fields, retain default booleans and numeric limits, and validate actual arguments with the independent canonical parser. Preserve the forbidden ambient-environment spy and exact forwarded caller credential checks. Record all five repair candidates and their real test evidence in the existing ticket; keep consolidated acceptance and deployment explicitly pending.
+
+**Acceptance criteria:**
+
+- The actual service-to-controller query matches the strict parser without optional null fields.
+- No ambient credentials are read and the caller credential is forwarded unchanged.
+- Workload service and transport regression suites pass together.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_workload_http.py tests/observability/test_controller_workload_source.py -x -q`
+- `python -m ruff check tests/observability/test_workload_http.py`
+
