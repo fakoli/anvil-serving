@@ -427,6 +427,105 @@ def test_clock_and_log_failures_disable_observation_and_cleanup() -> None:
     assert token.finish()
 
 
+def test_finalization_clock_failure_preserves_legacy_decision_and_releases() -> None:
+    log = DecisionLog()
+    clock = _Clock()
+    registry = RouterWorkloadRegistry(log, clock=clock)
+    token = _activated(registry)
+    original = dataclasses.replace(_decision(1), gateway_request_id="caller-private-id")
+    assert token.propose_terminal(original, WorkloadOutcome.ERROR)
+    clock.error = RuntimeError("private finalization clock detail")
+
+    assert token.finish()
+    assert registry.active_count == registry.unrepresented_count == 0
+    assert len(log) == 1
+    assert log.last is not None
+    assert log.last.gateway_request_id == "caller-private-id"
+    assert log.last.workload_created_at is None
+    assert log.last.workload_updated_at is None
+    assert log.last.workload_outcome is None
+
+
+def test_terminal_timestamp_and_delivery_outcome_are_fixed_from_lifecycle_clock() -> None:
+    clock = _Clock(NOW)
+    log = DecisionLog()
+    registry = RouterWorkloadRegistry(log, clock=clock)
+    token = _activated(registry)
+    assert token.advance(WorkloadState.ADMITTED)
+    assert token.propose_terminal(_decision(1), WorkloadOutcome.SUCCESS)
+
+    assert token.finish(WorkloadOutcome.DISCONNECTED)
+    assert log.last is not None
+    assert log.last.gateway_request_id == _gateway(1)
+    assert log.last.workload_created_at == format_workload_timestamp(
+        NOW + timedelta(microseconds=1)
+    )
+    assert log.last.workload_updated_at == format_workload_timestamp(
+        NOW + timedelta(microseconds=3)
+    )
+    assert log.last.workload_outcome == WorkloadOutcome.DISCONNECTED.value
+
+
+def test_registry_cap_and_concurrent_recent_reads_remain_bounded() -> None:
+    log = DecisionLog(max_records=None)
+    registry = RouterWorkloadRegistry(log, clock=_Clock())
+    tokens = [_activated(registry, index) for index in range(1, 1026)]
+    assert registry.active_count == 1024
+    assert registry.unrepresented_count == 1
+    for index in range(600):
+        encoded = format_workload_timestamp(NOW)
+        log.record(dataclasses.replace(
+            _decision(index + 2000),
+            workload_created_at=encoded,
+            workload_updated_at=encoded,
+            workload_outcome=WorkloadOutcome.SUCCESS.value,
+        ))
+
+    start = threading.Barrier(3)
+    failures: list[BaseException] = []
+
+    def read() -> None:
+        try:
+            start.wait()
+            for _ in range(20):
+                result = registry.source_result(
+                    "node-a", WorkloadQuery(), NOW + timedelta(seconds=1)
+                )
+                assert len(result.records) <= 200
+                assert len(log.recent()) == 512
+        except BaseException as exc:
+            failures.append(exc)
+
+    readers = [threading.Thread(target=read) for _ in range(2)]
+    for reader in readers:
+        reader.start()
+    start.wait()
+    for reader in readers:
+        reader.join(timeout=5)
+        assert not reader.is_alive()
+    assert failures == []
+    for token in tokens:
+        token.finish()
+    assert registry.active_count == registry.unrepresented_count == 0
+
+
+def test_terminal_replaces_caller_identity_before_memory_and_jsonl_sink(tmp_path) -> None:
+    path = tmp_path / "decisions.jsonl"
+    log = DecisionLog(sink=DecisionLogWriter(path))
+    registry = RouterWorkloadRegistry(log, clock=_Clock())
+    token = _activated(registry, 9)
+    caller_marker = "caller-request-private-marker"
+    decision = dataclasses.replace(_decision(9), gateway_request_id=caller_marker)
+    assert token.propose_terminal(decision, WorkloadOutcome.REJECTED)
+    assert token.finish()
+
+    assert log.last is not None
+    rendered = repr(log.last) + path.read_text(encoding="utf-8")
+    assert caller_marker not in rendered
+    assert log.last.gateway_request_id == _gateway(9)
+    assert log.last.workload_outcome == WorkloadOutcome.REJECTED.value
+
+
 def test_recent_is_bounded_without_changing_full_snapshot() -> None:
     log = DecisionLog(max_records=None)
     for index in range(600):
