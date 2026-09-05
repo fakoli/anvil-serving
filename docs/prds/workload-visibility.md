@@ -44,7 +44,7 @@ Add one versioned, metadata-only workload projection that lets operators answer 
 - Each fixture record has byte-identical canonical serialization through CLI, endpoint, MCP/controller, fleet, and dashboard. Envelopes may add collection timestamps, node status, and truncation metadata; those wrappers are not claimed byte-identical.
 - Router tests cover ordinary success, rejection before admission, eager backend failure, upstream HTTP error, timeout, cancellation, disconnect, normal SSE completion, malformed SSE, close-before-first-iteration, buffered and streaming socket-write failure, and final-flush failure. Active records always return to zero and exactly one safe terminal projection remains where policy allows; the actual `build_server` path uses the same registry and `DecisionLog` as `RoutingBackend`.
 - Controller operation, benchmark, and media stores return deterministic bounded snapshots without direct cross-module SQL access; concurrent writer/reader tests never expose partial rows.
-- Recipe projections distinguish configured, observed-running, healthy-identity, stale, absent, and inspection-error states without claiming deployment or qualification.
+- Managed-serve projections distinguish configured, observed-running, stale, absent, unsupported and inspection-error states without claiming deployment or qualification; the recipe source never emits healthy-identity, while the later manifest source may do so only from exact live identity evidence.
 - A fleet query with one healthy node, one wrong-identity node, and one unreachable/sleeping node returns the healthy records plus explicit error rows and overall `partial` status.
 - Redaction/adversarial tests seed every prohibited field and prove none appear in JSON, text, logs, endpoint errors, or dashboard bootstrap data.
 - Every query surface enforces filters, stable ordering, freshness, per-source/aggregate limits, and truncation metadata.
@@ -103,6 +103,20 @@ None. The first release is read-only, bounded, metadata-only, controller-collect
 - All unified reads require a per-client `workloads:read` operator grant. Router data-plane bearer tokens and media-only principals are not implicitly workload operators. The shared authorization prerequisite is fleet-node-enrollment:T008; denial occurs before collection, including router/controller/MCP/dashboard.
 - Canonical record bytes are shared across surfaces. Envelopes add node/source status, collection time, completeness, and truncation; never pass generic command/transport context through them. Whole-envelope adversarial tests seed credentials, user paths, tool payloads, URLs, private addresses and raw exceptions.
 - Every node envelope includes per-source `complete|partial|unavailable` status. A malformed/future received router source becomes unavailable without discarding healthy store/serve sources; any surviving source makes node status partial, and only all-source failure makes it unavailable. A valid locally produced partial router source retains its safe surviving records and partial status. Fleet retains that node status.
+
+### Recipe workload observation and projection contract
+
+T004.1 owns a bounded metadata-only producer; T004 consumes that producer and never invokes Docker, reads a registry, or invents health/identity evidence itself.
+
+- Add frozen `RecipeConfiguredObservation(recipe_digest: str, configured_at: datetime, observed_at: datetime)`, `RecipeContainerObservation(container_id: str, recipe_digest: str | None, state: WorkloadState, created_at: datetime, updated_at: datetime, observed_at: datetime)`, `RecipeComponentResult(status: ResultStatus, observed_at: datetime | None, records: tuple[RecipeConfiguredObservation | RecipeContainerObservation, ...], omitted: int | None, error: WorkloadErrorCode | None)`, and `RecipeWorkloadSnapshot(configuration: RecipeComponentResult, runtime: RecipeComponentResult)`. Error values are absent or exactly `invalid-workload|future-workload-timestamp|workload-source-unavailable`; omitted is nonnegative or null when matching completeness is unknowable. Complete requires error absent and omitted zero; unavailable requires no records and a fixed error.
+- `capture_recipe_workload_snapshot(registry_path, *, clock, _capture=None)` is the sole T004.1 producer. It reads the configured registry path without mutation, uses `fstat` on the open handle before and after the read, reads at most 8 MiB plus one sentinel byte before TOML materialization, and preserves legacy `load_registry` and `discover_recipe_containers` return contracts unchanged.
+- Runtime observation uses an owner-controlled private seam that lazily reuses `controller_diagnostics._capture_fixed_child` with its fixed local-Docker environment, 256-KiB capture ceiling and ten-second deadline. The two fixed commands list at most 256 managed IDs and inspect them through a Go template containing only full container ID, the exact recipe-management and recipe-digest labels, `Created`, and `State.Status|Running|StartedAt|FinishedAt`. It never captures Args, Cmd, Env, mounts, URLs, ports, health or served-model arguments and is not an adapter-level raw-Docker fallback.
+- Capture `observed_at` immediately after each successful component read. Registry `mtime_ns`, converted with integer microseconds, is configuration evidence only and supplies configured `created_at == updated_at`; source freshness uses the distinct component `observed_at`. Docker UTC RFC3339Nano values are validated exactly and sub-microsecond digits are floored deterministically into canonical UTC microseconds. Running uses Docker `Created` and `StartedAt`; absent uses `Created` and the latest valid nonzero `StartedAt|FinishedAt`, falling back to `Created`; neither lifecycle timestamp becomes source observation time.
+- Require exact booleans and coherent fixed states: `Running is True` with `Status == running` is observed running; `Running is False` with `created|exited|dead` is absent; another exact state is unsupported with inspection-error quality; a wrong type or inconsistent pair is malformed. Health and configured served identity are ignored, so the recipe source can never emit `healthy-identity`.
+- Each component retains at most 256 observations. Overflow, malformed members, timestamp violations, timeout and capture/read failure affect only that component and preserve trustworthy peers. Configuration and runtime failures remain separate in the snapshot; raw exceptions, paths, labels and rejected values are never retained.
+- `list_recipe_workloads(registry_path, host, query, now, *, snapshot_reader=capture_recipe_workload_snapshot) -> SourceResult` is the T004 adapter. Config identity is native `recipe-config:<semantic recipe digest>`; observed identity is native `recipe-container:<validated full container ID>`; pass those exact owner-generated values only to canonical `workload_id`.
+- An observed row suppresses a configured row only when its exact recipe digest matches; every real matching container remains a distinct observed row, and a missing or unknown digest suppresses nothing. Map configured to `configured/configured/configured`, running to `running/running/observed-running`, stopped to `absent/absent/absent`, and unknown to `unsupported/unsupported/unknown/inspection-error`. When source age exceeds the canonical threshold, retain the supported state with stale quality; active-only excludes it.
+- Add one canonical `select_managed_records` helper bounded to 512 recipe/manifest candidates that applies all canonical filters and stable ordering before the source cap of `min(query.limit, 200)`; T011 reuses it. Validate each candidate independently with `validate_source_records` before selection, quarantine invalid/future peers, then validate the final source. Complete producer data reports exact query omissions; any producer overflow/malformed/failure reports omitted null. Fixed final error precedence is `invalid-workload`, then `future-workload-timestamp`, then `workload-source-unavailable`; one surviving component yields partial, and both failed with no trustworthy records yields unavailable. Empty successful components are complete, never inferred idle or failure.
 
 ### Router workload endpoint ownership and wire contract
 
@@ -432,21 +446,44 @@ Add a safe bounded list projection to `MediaJobStore` using its existing lock an
 - `python scripts/run_tests.py tests/media/test_jobs.py tests/observability/test_workloads.py -x -q`
 - `python -m ruff check anvil_serving/media/jobs.py anvil_serving/observability/workloads.py tests/media/test_jobs.py`
 
+### T004.1: Produce bounded recipe workload observations
+
+**Feature:** F003
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/serve_recipes.py, tests/test_recipe_container_discovery.py, tests/test_serve_recipes.py
+**Dependencies:** T001
+
+Implement only the bounded recipe workload producer from the closed recipe observation contract. Preserve existing recipe lifecycle and inventory APIs; add the immutable two-component snapshot, bounded registry read and fixed metadata-only managed-container capture. Do not construct canonical workload records, add a health/model probe, mutate lifecycle, or expose raw capture data.
+
+**Acceptance criteria:**
+
+- Registry reads enforce the 8-MiB pre-materialization ceiling and stable open-handle metadata while runtime reads use only the fixed metadata template, 256-KiB capture ceiling, ten-second deadline and maximum 256 managed IDs.
+- Configuration and runtime components retain distinct canonical status/error/omission metadata, timestamp successful reads immediately, preserve trustworthy peers after malformed/overflow/future input, and never retain raw exceptions or rejected values.
+- Exact boolean/state and RFC3339Nano-to-UTC-microsecond rules preserve configured, observed-running, absent and unsupported evidence without producing health-plus-identity.
+- Legacy load_registry and discover_recipe_containers behavior and existing recipe lifecycle callers remain unchanged.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_recipe_container_discovery.py tests/test_serve_recipes.py -x -q`
+- `python -m ruff check anvil_serving/serve_recipes.py tests/test_recipe_container_discovery.py tests/test_serve_recipes.py`
+
 ### T004: Project recipe-managed serve workloads
 
 **Feature:** F003
 **Priority:** high
 **Type:** modify
 **Likely files:** anvil_serving/serve_recipes.py, anvil_serving/observability/workloads.py, tests/test_serve_recipes.py, tests/observability/test_workloads.py
-**Dependencies:** T001
+**Dependencies:** T001, T004.1
 
-Build the read-only recipe-managed adapter from existing status results, retaining separate configuration, observation, health-plus-identity, and freshness provenance. Call existing status functions only; do not invoke Docker directly or mutate lifecycle. Manifest-managed serves follow in T011.
+Build the read-only recipe-managed adapter only from the T004.1 `RecipeWorkloadSnapshot`, retaining separate configuration, observation and freshness provenance. Use canonical `workload_id`, per-record validation and `select_managed_records`; do not invoke Docker, read the registry, mutate lifecycle or infer health-plus-identity. Manifest-managed serves follow in T011.
 
 **Acceptance criteria:**
 
-- Recipe workload IDs are stable and safe without exposing container IDs, commands, mounts, URLs, host paths, or recipe paths.
-- Configured-only, running-observed, healthy-identity, stale, absent, and inspection-error cases project distinctly.
-- Projection performs no lifecycle mutation and uses no raw Docker fallback.
+- Recipe workload IDs use only the exact recipe-config semantic digest or validated full container ID native namespace and are stable and safe without exposing either native value, commands, mounts, URLs, host paths or recipe paths.
+- Exact digest reconciliation suppresses only the matching configured row, retains multiple real containers, and projects configured, observed-running, stale, absent, unsupported and component inspection-error evidence distinctly without ever emitting healthy-identity.
+- Canonical filtering and newest-updated/ID ordering occur before the 200-record source cap; complete input reports exact omissions while producer partiality reports unknown omissions and preserves trustworthy peers.
+- Projection performs no lifecycle mutation, registry read, Docker call, raw-status fallback, health probe or identity probe.
 
 **Verification:**
 
