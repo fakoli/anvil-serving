@@ -391,6 +391,19 @@ def commands() -> CommandNode:
                         docs_anchor="docs/cli/eval.md#benchmark-evidence",
                     ),
                     _node(
+                        "report",
+                        "Generate or check an offline recipe report from retained artifacts.",
+                        handler=_handler("anvil_serving.benchmarking.report", argv_prefix=(), forward_confirm_flag=True),
+                        options=(
+                            _option("--format", summary="Output format: markdown or json.", value_name="FORMAT"),
+                            _option("--root", summary="Root containing the catalog and retained evidence.", value_name="PATH"),
+                            _option("--output", summary="Generated report destination; writes require --confirm.", value_name="PATH"),
+                            _option("--check", summary="Check existing generated output without writing."),
+                            _option("--confirm", summary="Confirm writing the named generated report."),
+                        ),
+                        docs_anchor="docs/cli/eval.md#benchmark-recipe-report",
+                    ),
+                    _node(
                         "external",
                         "Manage external benchmark evidence.",
                         children=(

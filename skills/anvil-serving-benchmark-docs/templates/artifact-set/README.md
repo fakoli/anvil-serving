@@ -26,6 +26,18 @@ consistent campaign-level index.
 - [`restoration.json`](restoration.json) - starting/ending state and post-run
   verification, or the reason restoration was not applicable
 
+## Working campaign controls
+
+- [`campaign-state.json`](campaign-state.json) - compact resumable stage,
+  launcher, assignment, completed-cell, and next-action ledger
+- [`dispatch-packet.md`](dispatch-packet.md) - bounded task packet for a
+  delegated campaign stage
+- [`coverage-and-gaps.md`](coverage-and-gaps.md) - request-to-evidence matrix
+  that keeps partial, rejected, and missing outcomes visible
+
+These controls organize execution. They become evidence only when the final
+artifact manifest retains them under an applicable role.
+
 ## Workload and plan
 
 Link the retained native corpus or workload manifest, benchmark plan,

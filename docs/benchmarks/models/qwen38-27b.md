@@ -9,32 +9,38 @@
     - **Product role:** former human-approved 96 GB single-service profile;
       retained as reproducible evidence, not the current Primary or immediate
       text rollback.
-    - **Selected or best-qualified configuration:** the former 96 GB service
-      used official FP8 on SGLang, TP=1, 393,216 tokens, concurrency one,
-      EAGLE MTP `3/1/4`, and CPU media transport. The preferred measured 32 GB
-      direct TTFT challenger is Gittensor's RTX5090 target-only NVFP4 on
-      SGLang at 262,144 tokens. Unsloth GGUF Q4_0/MTP3 remains the broader-
-      capability 32 GB incumbent; NInfer MTP3 remains a retained direct decode
-      challenger.
+    - **Selected or best-qualified configuration:** for the new PRO 6000
+      throughput workload, two independent SGLang Inferact NVFP4 plus DFlash2
+      K12/chunk1K TP1 replicas are the bounded winner; one TP1 is the selected
+      single-card sustained-output arm, and RadixArk K8 is the lower-TTFT
+      tradeoff. Historical production and RTX 5090 roles remain unchanged.
     - **Measured hardware:** one- and two-card RTX PRO 6000 lanes and a
       separate single-RTX-5090 lane; results are not interchangeable across
       those topologies.
     - **Evidence:** functional, capacity, bounded quality, performance,
-      multimodal, routed-client, and rejection evidence through 2026-09-03.
+      multimodal, routed-client, and rejection evidence through 2026-09-05
+      UTC. The new matched sustained-output lane measured 1,401.8–1,423.4 aggregate
+      tok/s for two TP1 replicas, 764.3 for one TP1, and 587.9 for TP2, with
+      mean/p50/p95/p99 TTFT, prefill, decode, TPOT/ITL, and E2E retained.
       Gittensor measured 50.9 ms warm median TTFT, 79.5 tok/s decode, and
       passed a 244,002-token actual prompt. NInfer MTP3 retains 165.9 tok/s
       decode evidence. GGUF retains 253,822-token, image/OCR, agentic,
       endurance, and routed-client evidence.
-    - **Decision:** retain Gittensor target-only SGLang as the preferred direct
-      TTFT challenger and GGUF as the broader-capability incumbent; both remain
-      `no-promotion`.
-    - **Important limitation:** Gittensor's advertised DSpark pair failed on
+    - **Decision:** retain DP2 as the bounded dual-PRO aggregate-throughput
+      winner, one optimized TP1 as the single-card sustained-output selection,
+      RadixArk K8 as its TTFT tradeoff, and kelnei/vLLM MTP2 as an alternate-
+      runtime gain over no-spec. Reject TP2; all remain `no-promotion`.
+    - **Important limitation:** TP2 failed strict JSON twice; unique-prefix
+      82K/C8 remained unsuitable for interactive use; DP2 lacks a qualified
+      balancing/failover/client path; and broad quality plus complete power and
+      energy telemetry were not run. Gittensor's
+      advertised DSpark pair failed on
       incompatible matrix shapes and its FP8 KV path used default 1.0 scales.
       It lacks routed/client, multimodal, broad agentic/SWE, endurance, and
       promotion-grade evidence. The measured hardware/engine lanes are not
       interchangeable.
-    - **Review dates:** Retained evidence cutoff: 2026-09-03. Dossier-format
-      review: 2026-09-03.
+    - **Review dates:** Retained evidence cutoff: 2026-09-05 UTC.
+      Dossier-format review: 2026-09-04 local campaign date.
 
 [Open the exact retained container configurations](../configurations.md#qwen38-27b-official-fp8)
 or jump to the [decision](#decision-and-promotion-state),
@@ -158,6 +164,23 @@ tok/s warm decode, retained 127.5 tok/s at a 53,706-token prompt, and left
 3,198 MiB free. It is the strongest clean 64K speculative arm in this matrix,
 but does not displace the Gittensor TTFT or cdiamond full-context roles.
 
+#### 2026-09-04 — RTX PRO 6000 current-runtime DFlash2 matrix
+
+The Helix same-card report seeded a complete local optimization funnel rather
+than a one-number reproduction. After target-only/DFlash2 controls, K12 beat
+K4/K8/K16, 1K chunks beat 2K/8K, compile regressed, and ordinary
+`extra_buffer` with 96 state slots became the finalist. Its matched sustained-
+output result was 764.3 aggregate tok/s at 4K/C8 with 100/100 unique canaries.
+
+Topology was decisive: TP2 reached only 587.9 tok/s and failed strict JSON in
+the full preflight and isolated repeat; two synchronized TP1 replicas reached
+1,401.8–1,423.4 tok/s at aggregate C16 with 100/100 canaries and near-TP1 per-request
+latency. RadixArk K8 traded 46.9% lower median TTFT for lower decode and 6.8%
+higher median E2E. kelnei/vLLM MTP2 improved 59.7% over its exact no-spec
+control but did not beat SGLang. Unique 82K/C8 remained non-interactive across
+all arms. The exact GLM service and authenticated route were restored; no
+promotion occurred.
+
 ## Immutable identity
 
 - Official BF16 revision:
@@ -178,6 +201,17 @@ but does not displace the Gittensor TTFT or cdiamond full-context roles.
   `peculiar-ragdoll/Qwen-Sharp-Chat-Templates@3dc34df52c63dd22ada21f96435e069deaa8d7da`.
 - DFlash2 draft qualification revision:
   `incoai/Qwen3.8-27B-DFlash2@dedf8df68adfb1afeaf7b7480c0a0243108177b4`.
+- Current PRO 6000 DFlash2 runtime:
+  `lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe`;
+  image-label source revision
+  `5f55db35e926d50676f75b812640ea2410b0fe0e`.
+- Current PRO 6000 RadixArk FP4-LM-head target:
+  `RadixArk/Qwen3.8-27B-NVFP4@319f741cce68d7914884900c138a1fbb70a42f30`;
+  measured with target-only, DFlash2 K8, and DFlash2 K12/chunk1K arms.
+- Current PRO 6000 kelnei/vLLM target:
+  `kelnei/Qwen3.8-27B-NVFP4@29099dc7004e5731173af5c5fb5253466aee219c`;
+  vLLM 0.27.1 digest
+  `sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2`.
 - DFlash2 runtime image:
   `lmsysorg/sglang:dev@sha256:8acc563e39f4e79118cc3c11cb5a8893ca8da140b2280cdd24a9f3bfe38835a0`;
   image-label source revision
@@ -224,6 +258,11 @@ and the TP=2 runtime could not enable GPU P2P.
 The 2026-08-17 and 2026-09-03 challengers used one 32 GB RTX 5090 at TP=1.
 They are distinct hardware, engine, quantization, and context lanes and are not
 directly comparable to the 96 GB-card 393K production history.
+The 2026-09-04 campaign measured both equal 96 GB cards: one-card TP1 arms,
+one TP2 service across both cards, and two synchronized independent TP1
+replicas. The DP2 measurement is direct-to-replica evidence, not a qualified
+load balancer. The existing TP2 baseline was intentionally interrupted and
+then restored.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
@@ -298,6 +337,26 @@ It builds the exact NInfer source revision on a digest-pinned CUDA base and
 verifies the model artifact SHA, but apt package resolution is not immutable;
 the recipe is not promotion-grade runtime provenance.
 
+### RTX PRO 6000 current-runtime DFlash2 lane
+
+The campaign used Inferact NVFP4 at revision `6128240e`, current SGLang source
+`5f55db35`, 262,144 configured tokens, FP8 target KV, BF16 Mamba state,
+thinking disabled, and C8. The first 16-slot target-only profile admitted only
+C3 because each request consumed five state slots. The optimization funnel
+selected DFlash2 K12, 1K chunks, ordinary `extra_buffer`, and 96 slots after
+K4/K8/K12/K16, 1K/2K/8K chunks, compile, lazy state, and 40/96-slot screens.
+
+The topology round compared that exact TP1 arm with a TP2 arm using
+conservative WSL2 NCCL controls and two independent TP1 replicas. The RadixArk
+target and kelnei/vLLM 0.27.1 MTP2/no-spec arms then used the same headline
+workload. Exact recipes are linked from the dated finding.
+
+The public managed registry is
+`configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dflash2-matrix-recipes.toml`.
+The graph renderer in the benchmark-doc skill consumes a manifest of exact
+native artifacts and reproduces the dashboard and provenance JSON without
+plotting dependencies.
+
 ### Rejected DFlash2 diagnostic lanes
 
 The rejected DFlash2 arm kept the same target snapshot and stable served name,
@@ -316,6 +375,34 @@ fraction 0.945. It allocated 70,262 KV tokens; its reproducible recipe is
 Each subsection answers a different reuse question. Performance numbers are
 valid only for the named checkpoint, runtime, hardware, topology, context, and
 concurrency; a passing container or health check is not benchmark evidence.
+
+### RTX PRO 6000 current-runtime DFlash2 qualification
+
+**Status:** bounded throughput winner, TP2 rejected, no promotion.
+
+**Measured:** the optimized Inferact K12/chunk1K TP1 arm reached 764.3
+aggregate tok/s on the 100-request sustained-output C8 workload. Its
+mean/p50/p95/p99 TTFT was 2.416/2.331/5.339/5.513 seconds, decode
+201.5/182.5/298.4/306.0 tok/s, TPOT/mean-ITL
+5.49/5.43/8.17/8.33 ms/token, and E2E 5.223/4.856/9.579/9.758 seconds.
+Two independent TP1 replicas reached 1,401.8–1,423.4 aggregate tok/s at C16 with
+100/100 canaries. Matched TP2 reached 587.9 tok/s, 23.1% below TP1, and failed
+strict JSON twice.
+
+RadixArk K8 reached 746.7 tok/s while cutting median TTFT 46.9% against
+Inferact, but lower decode raised median E2E 6.8%. kelnei/vLLM MTP2 reached
+503.4 tok/s versus 315.2 no-spec (+59.7%); active counters reported 40,608 of
+43,244 drafted tokens accepted. Unique 82K/C8 completed across the finalists
+but median E2E remained 93.7-137.6 seconds.
+
+**Limits:** DP2 has no qualified balancing/failover/client path. TP2 used a
+patched conservative WSL2 NCCL path on PCIe without NVLink. Broad quality,
+agentic/SWE, multimodal, routed/client, and complete power/energy telemetry
+were not run. Natural-completion screens are not numerically comparable with
+the forced sustained-output headline workload.
+
+**Evidence:** see the
+[dated finding and raw artifact map](../../findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md).
 
 ### RTX 5090 GGUF qualification
 
@@ -513,6 +600,15 @@ passed the same surface at 105,649 prompt tokens.
 
 ### Retained
 
+- **RTX PRO 6000 aggregate-throughput winner:** two independent current-
+  SGLang Inferact NVFP4 plus DFlash2 K12/chunk1K TP1 replicas are retained at
+  1,401.8–1,423.4 aggregate tok/s for the matched sustained-output C16 workload. One
+  TP1 is the 764.3 tok/s single-card selection; RadixArk K8 is the lower-TTFT
+  tradeoff. All remain `no-promotion` pending broader quality and a qualified
+  balancing/client path.
+- **RTX PRO 6000 alternate runtime:** kelnei/vLLM 0.27.1 MTP2 is retained as a
+  verified +59.7% gain over its exact no-spec control, not as the SGLang or
+  topology winner.
 - **Former 96 GB service:** official FP8 on SGLang with MTP `3/1/4` served
   Primary, general vision, OCR, and video at 393,216 tokens on one card while
   the other card was dormant. Video passed 14/14 direct and 28/28 through the
@@ -706,8 +802,35 @@ capability RTX 5090 incumbent.
 - **Evidence limit:** no controlled throughput, quality, routed, or multimodal claim is retained.
   Logged DFlash acceptance and throughput values remain diagnostic samples.
 
+### RTX PRO 6000 current-runtime DFlash2 limits
+
+- **State-slot admission:** 16 configured state slots admitted only three
+  simultaneous requests because each request consumed five. The Mamba96 recipe
+  is required for the measured C8 result.
+- **Unique long concurrency:** unique-prefix 82K/C8 finished but had 79.1-second
+  DFlash2 median E2E and severe per-request spread; it is negative capacity
+  evidence, not an interactive C8 contract.
+- **TP2 correctness:** full preflight and an isolated repeat emitted duplicate
+  structured JSON around a literal closing think delimiter. TP2 is rejected.
+- **Isolation coverage:** headline performance passed 100/100 unique request
+  canaries. That is response-marker isolation, not broad quality or a full
+  mixed-schema concurrency suite.
+- **Topology scope:** DP2 directly addressed two replicas; no load balancer,
+  health-aware failover, coordinated admission, routed alias, or client path
+  was qualified. TP2 used PCIe without NVLink and conservative patched WSL2
+  NCCL, so the result does not predict native Linux.
+- **Scope:** draft depth, chunk size, compile, Mamba allocation, RadixArk, TP2,
+  DP2, and kelnei/vLLM MTP2/no-spec were measured. Broad quality, multimodal,
+  agentic/SWE, endurance, routing/clients, and complete power/energy telemetry
+  remain open.
+- **Restoration:** a preserved-container restart failed a non-idempotent startup
+  patch checksum, and an unauthenticated router readmission failed 401. Both are
+  retained; exact authenticated mode entry ultimately restored service, route,
+  GPU ownership, and clean shared memory.
+
 ## Dated run history
 
+- [2026-09-04 RTX PRO 6000 current-runtime DFlash2 matrix](../../findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md)
 - [2026-09-03 RTX 5090 quant/speculation bakeoff](../../findings/2026-09-03-qwen38-27b-rtx5090-quant-bakeoff.md)
 - [2026-09-03 RTX 5090 NInfer NVFP4 no-spec/MTP3 qualification](../../findings/2026-09-03-qwen38-ninfer-nvfp4-rtx5090.md)
 - [2026-08-21 RTX 5090 recipe research and MTP3/ReplaySSM rejection](../../findings/2026-08-21-qwen38-27b-rtx5090-recipe-research.md)

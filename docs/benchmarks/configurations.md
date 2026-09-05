@@ -1,4 +1,4 @@
-# Container configurations
+# Measured recipe library
 
 These are the exact container contracts behind the most useful retained
 benchmark results: pinned model revisions, image identities, cache mounts,
@@ -15,10 +15,15 @@ recipe files, so this page changes when the source recipe changes.
     authentication, and resource isolation; reproducing a container does not
     reproduce a benchmark result or authorize a route change.
 
+For a decision-first view, open **[Find a measured recipe](recipe-results.md)**.
+It reads metrics from the native artifact, keeps strengths beside limitations,
+and links back to the exact TOML, dated finding, dossier, and raw evidence.
+
 ## Configuration index
 
 | Configuration family | Recorded hardware and runtime | Served envelope | Exact source |
 |---|---|---|---|
+| Qwen3.8 27B September 2026 PRO 6000 optimization family: Inferact finalist/TP2 control, RadixArk TTFT tradeoff, and kelnei vLLM MTP2/control | 1–2× RTX PRO 6000 Blackwell Max-Q, WSL2; digest-pinned SGLang and vLLM 0.27.1 | 262,144 tokens; C8 per service; matched 4K/C8 sustained-output evidence | [Open family](#qwen38-pro6000-current) |
 | GLM-5.3-Flash EXL3 K3 + DFlash2 K5 and matched no-spec control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, vLLM-derived local image, TP=2/DCP=2 | 524,288 tokens, max 16 sequences, up to 16 images, no video | [Open pair](#glm53-524k) |
 | GLM-5.3-Flash ormandj W4A16/NVFP4 SGLang adaptive MTP and control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, digest-pinned SGLang rc14, TP=2 | current 393,216-token C1 lane; 245,760-token fallback, 131K A/B, and 499K negative controls retained | [Open family](#glm53-sglang-sm120) |
 | Qwen3.8 Flash Next RadixArk NVFP4 MTP3 and matched no-spec control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, digest-pinned SGLang with hash-gated SM120 patching, TP=2 | 262,144 tokens, one running request | [Open pair](#qwen38-flash-next) |
@@ -148,6 +153,52 @@ their contents; the pinned model snapshot may not.
 The public recipes intentionally omit physical GPU UUIDs, private host
 addresses, credentials, and active route assignments. Supply those locally;
 do not add them to a public reproduction report.
+
+## Qwen3.8 27B September 2026 RTX PRO 6000 family { #qwen38-pro6000-current }
+
+This family records the September 4–5 decision funnel on one or two 96 GB RTX
+PRO 6000 Blackwell Max-Q cards under Docker Desktop/WSL2. The selected one-card
+SGLang arm uses Inferact NVFP4, DFlash2 K12, 1,024-token prefill chunks, FP8
+target KV, BF16 Mamba state, ordinary `extra_buffer`, 96 state slots, 262,144
+configured tokens, and C8. The matched TP2 arm is retained as a rejected
+correctness and topology control. RadixArk K8 is the lower-TTFT tradeoff;
+kelnei/vLLM MTP2 is an alternate-runtime gain over its exact no-spec control.
+
+Use the [measured recipe cards](recipe-results.md) for values read from each
+native JSON artifact, or the
+[full finding](../findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md)
+for the optimization funnel, workload boundary, correctness failure, and
+restoration proof. None of these recipes is promoted.
+
+??? example "Inferact SGLang optimization family — finalist and rejected TP2 control"
+
+    ```toml
+    --8<-- "configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml"
+    ```
+
+??? example "RadixArk SGLang K8 lower-TTFT tradeoff"
+
+    ```toml
+    --8<-- "configs/qwen38-27b-radixark-nvfp4-sglang-pro6000-c8-dflash2-recipe.toml"
+    ```
+
+??? example "kelnei vLLM MTP2"
+
+    ```toml
+    --8<-- "configs/qwen38-27b-kelnei-nvfp4-vllm0271-pro6000-mtp2-recipe.toml"
+    ```
+
+??? example "kelnei vLLM matched no-speculation control"
+
+    ```toml
+    --8<-- "configs/qwen38-27b-kelnei-nvfp4-vllm0271-pro6000-nospec-recipe.toml"
+    ```
+
+??? example "Second independent TP1 replica for the measured DP2 topology"
+
+    ```toml
+    --8<-- "configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dp2-replica-b-recipe.toml"
+    ```
 
 ## GLM-5.3-Flash 524K DFlash2 K5 and control { #glm53-524k }
 

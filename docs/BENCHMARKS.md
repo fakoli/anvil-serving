@@ -18,6 +18,14 @@ force. The former 524K EXL3 K3 plus DFlash2 K5 profile is the immediate exact
 rollback. DFlash2 is noncommercial without separate permission.
 RadixArk Qwen3.8 Flash Next NVFP4 remains the immediate retained video-capable
 rollback at TP=2/262,144/c1.
+On the dual RTX PRO 6000 host, two independent current-SGLang Inferact
+Qwen3.8 27B NVFP4 plus DFlash2 K12/chunk1K TP1 replicas are the bounded
+aggregate-throughput winner. A matched 100-request sustained-output workload
+measured 1,401.8–1,423.4 aggregate tok/s at C16, versus 764.3 on one TP1 service and
+587.9 on one TP2 service. TP2 also failed strict JSON twice and is rejected.
+RadixArk K8 is the lower-TTFT tradeoff; kelnei/vLLM MTP2 beat its exact no-spec
+control but not SGLang. Broad quality and a managed balancing/client path remain
+open; the exact GLM service and route were restored and no promotion occurred.
 On one RTX 5090, Gittensor's target-only NVFP4/SGLang profile is now the
 preferred published direct Qwen3.8 27B TTFT challenger at 262,144/C2. It
 measured 50.9 ms warm median TTFT and passed a 244,002-token actual prompt.
@@ -42,7 +50,44 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-03**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-04**.
+
+## Qwen3.8 27B comprehensive optimization on RTX PRO 6000 (2026-09-04)
+
+The campaign translated the Helix tuning report into a local search rather
+than treating its 454 tok/s number as a reproduction contract. Current SGLang
+tests covered target-only versus DFlash2, K4/K8/K12/K16, 1K/2K/8K prefill
+chunks, compile, Mamba strategy and slots, TP1/TP2/DP2, Inferact/RadixArk
+targets, context through unique 82K/C8, and a matched kelnei/vLLM MTP2/no-spec
+pair. Every headline cell used 100 unique-canary 4K requests, 256 requested
+words, a 512-token ceiling, and C8 per service.
+
+The selected one-card recipe is Inferact NVFP4 plus DFlash2 K12 with 1K chunks,
+FP8 KV, BF16 Mamba state, `extra_buffer`, 96 slots, and 262,144 context. It
+measured **764.3 aggregate output tok/s** with TTFT mean/p50/p95/p99 of
+2.416/2.331/5.339/5.513 seconds, decode 201.5/182.5/298.4/306.0 tok/s,
+TPOT/mean-ITL 5.49/5.43/8.17/8.33 ms/token, and E2E
+5.223/4.856/9.579/9.758 seconds.
+
+Matched topology decided the campaign. TP2 fell to **587.9 tok/s**, 23.1%
+below TP1, and strict JSON failed twice with a duplicated object around a
+literal closing think delimiter. Two independent TP1 replicas delivered
+**1,401.8–1,423.4 tok/s at aggregate C16**, 100/100 canaries, and median E2E 4.865
+seconds. That is 83.4–86.2% above one TP1 and 138.4–142.1% above TP2, but it is direct-to-
+replica evidence rather than a qualified load balancer or route.
+
+RadixArk K8 reached 746.7 tok/s and cut median TTFT 46.9% versus Inferact, but
+its lower decode raised median E2E 6.8%; it is a latency tradeoff. On vLLM
+0.27.1, kelnei integrated MTP2 reached 503.4 tok/s versus 315.2 no-spec
+(+59.7%) with a 93.9% accepted-draft-token fraction, but remained behind the
+SGLang finalist. Unique 82K/C8 completed on all retained arms but median E2E
+remained 93.7-137.6 seconds, so it is negative interactive-latency evidence.
+
+Broad quality, agentic/SWE, multimodal, routed/client, DP2 balancing/failover,
+and complete power/energy telemetry remain open. The original GLM mode, serve,
+route, GPU ownership, and clean shared memory were restored. No route, client,
+or promotion changed. See the
+[finding and raw artifacts](findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md).
 
 ## GLM-5.3-Flash concurrency and KV-capacity interpretation (2026-09-03)
 

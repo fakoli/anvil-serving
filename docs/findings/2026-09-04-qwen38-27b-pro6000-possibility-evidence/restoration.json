@@ -1,0 +1,51 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-04-qwen38-27b-pro6000-possibility",
+  "status": "restored",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "mode": "dual-gpu-exclusive",
+    "owner": "tp2-glm53-ormandj-sglang-sm120-393k-c1",
+    "served_name": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+    "model_revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+    "gpu_count": 2,
+    "public_summary": "healthy exclusive TP2 service on both equal cards with clean shared memory",
+    "evidence": ["paired private operator evidence"]
+  },
+  "ending_state": {
+    "captured": true,
+    "mode": "dual-gpu-exclusive",
+    "owner": "tp2-glm53-ormandj-sglang-sm120-393k-c1",
+    "served_name": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+    "model_revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+    "managed_health": "healthy",
+    "router_tier": "ready and admitting",
+    "gpu_count": 2,
+    "gpu_memory_used_mib_each": 94078,
+    "shared_memory_files": 0,
+    "evidence": ["restoration-smoke.json", "restoration-router-smoke.json"]
+  },
+  "attempts": [
+    {"attempt": 1, "status": "failed", "class": "restart-idempotency", "detail": "the preserved container's startup patch checksum failed when restarted"},
+    {"attempt": 2, "status": "failed", "class": "router-authentication", "detail": "clean service recreation reached health but router readmission returned HTTP 401 because the declared credential was not loaded"},
+    {"attempt": 3, "status": "partial", "class": "router-identity", "detail": "direct managed recipe recovery restored the service but left the router expecting the rollback identity"},
+    {"attempt": 4, "status": "failed", "class": "unrelated-promotion-output-validation", "detail": "managed mode entry stopped before mutation because two adjacent, unrelated promotion records referenced missing output directories"},
+    {"attempt": 5, "status": "passed", "class": "exact-mode-entry", "detail": "after creating only the two expected empty evidence directories, authenticated managed mode entry reconciled the exact original service, mode ledger, and router tier"}
+  ],
+  "differences": [],
+  "post_run_checks": [
+    {"name": "exact starting serve identity", "status": "passed"},
+    {"name": "direct health and model listing", "status": "passed"},
+    {"name": "authenticated router model listing", "status": "passed", "detail": "the restored llm.primary alias was advertised by the router"},
+    {"name": "fresh direct smoke and structured JSON", "status": "passed", "evidence": "restoration-smoke.json"},
+    {"name": "authenticated routed smoke and structured JSON", "status": "passed", "evidence": "restoration-router-smoke.json", "note": "the known baseline length finish reason was explicitly allowed for the short smoke"},
+    {"name": "exact exclusive mode ownership", "status": "passed"},
+    {"name": "both GPU residencies", "status": "passed"},
+    {"name": "shared-memory status", "status": "passed", "detail": "zero files and zero reclaimable bytes"}
+  ],
+  "verified": true,
+  "not_applicable_reason": null,
+  "cache_or_volume_removed": false,
+  "promotion_authorized": false
+}

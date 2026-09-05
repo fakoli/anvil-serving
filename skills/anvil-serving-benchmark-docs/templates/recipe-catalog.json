@@ -1,0 +1,42 @@
+{
+  "schema": "anvil-serving.benchmark-recipe-catalog/v1",
+  "title": "Find a measured recipe",
+  "reviewed_at": "YYYY-MM-DD",
+  "source_base_url": "https://github.com/OWNER/REPOSITORY/blob/REPLACE_WITH_40_CHARACTER_COMMIT/",
+  "entries": [
+    {
+      "id": "model-hardware-configuration",
+      "title": "MODEL and measured configuration",
+      "model": "OWNER/MODEL@EXACT_REVISION",
+      "hardware": "MEASURED_GPU_COUNT_PRODUCT_MEMORY",
+      "topology": "TP_DP_INTERCONNECT",
+      "workload": "ACTUAL_WORKLOAD_CACHE_STATE_REASONING_AND_SAMPLE",
+      "decision": "no-promotion",
+      "strengths": ["BOUNDED_EVIDENCE_BACKED_STRENGTH"],
+      "limitations": ["FAILURE_OR_UNTESTED_BOUNDARY"],
+      "recipe": {"path": "configs/MODEL-recipe.toml", "selector": "OWNER/MODEL-SERVE-SELECTOR", "label": "Exact recipe"},
+      "finding": {"path": "docs/findings/YYYY-MM-DD-MODEL.md", "label": "Full finding"},
+      "dossier": {"path": "docs/benchmarks/models/MODEL.md", "label": "Model dossier"},
+      "artifact": "docs/findings/YYYY-MM-DD-MODEL-evidence/capacity.json",
+      "expected": {
+        "model": "EXACT_SERVED_MODEL",
+        "engine": "EXACT_RECORDED_ENGINE",
+        "gpu": "EXACT_PUBLIC_HARDWARE_LABEL",
+        "measurement_protocol": "capacity-v3",
+        "concurrency": 8,
+        "context_tokens": 4096,
+        "max_tokens": 512,
+        "prompt_cache_mode": "unique",
+        "request_canaries": true,
+        "response_words": 256,
+        "controlled_output_policy": "strict",
+        "shared_prefix_tokens": 0
+      },
+      "metrics": [
+        {"label": "TTFT P50", "path": "metrics.ttft_p50_ms", "unit": "ms", "precision": 1},
+        {"label": "E2E P99", "path": "metrics.e2e_p99_ms", "unit": "ms", "precision": 1},
+        {"label": "Aggregate output", "path": "metrics.throughput_tok_s", "unit": "tok/s", "precision": 1}
+      ]
+    }
+  ]
+}

@@ -568,3 +568,297 @@ body:has(.anvil-home) .md-content__button {
     transform: translateY(-0.08rem);
   }
 }
+
+/* Benchmark decision and recipe surfaces. */
+.bench-paths {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.bench-path {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--anvil-border);
+  border-radius: var(--anvil-radius);
+  background: var(--anvil-surface);
+}
+
+.bench-path > :first-child {
+  margin-top: 0;
+}
+
+.bench-path > :last-child {
+  margin-bottom: 0;
+}
+
+.bench-path strong:first-child {
+  color: var(--anvil-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.bench-history {
+  margin: 1rem 0 1.5rem;
+  border: 1px solid var(--anvil-border);
+  border-radius: var(--anvil-radius);
+  background: var(--anvil-surface);
+}
+
+.bench-history > summary {
+  min-height: 2.75rem;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  color: var(--anvil-text);
+  font-weight: 700;
+}
+
+.bench-history > summary:focus-visible,
+.bench-recipe a:focus-visible {
+  outline: 0.16rem solid var(--anvil-amber);
+  outline-offset: 0.15rem;
+}
+
+.bench-history > div {
+  padding: 0 1rem 1rem;
+}
+
+.bench-recipes {
+  display: grid;
+  gap: 0.85rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.bench-recipe {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--anvil-border);
+  border-radius: var(--anvil-radius);
+  background: var(--anvil-surface);
+}
+
+.bench-recipe:target,
+.bench-recipe:focus-within {
+  border-color: var(--md-accent-fg-color);
+}
+
+.bench-recipe__eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.35rem;
+  color: var(--anvil-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.bench-recipe__title {
+  margin: 0 0 0.35rem;
+  color: var(--anvil-text);
+  font-size: 1.04rem;
+  line-height: 1.25;
+}
+
+.bench-recipe > p:not(.bench-recipe__eyebrow):not(.bench-recipe__meta) {
+  margin: 0.2rem 0;
+}
+
+.bench-recipe__meta {
+  margin: 0.35rem 0 0;
+  color: var(--anvil-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.bench-recipe__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.75rem, 1fr));
+  gap: 0.4rem;
+  margin: 0.75rem 0 0.65rem;
+}
+
+.bench-recipe__metric {
+  min-width: 0;
+  margin: 0;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--anvil-border);
+  border-radius: var(--anvil-radius);
+  background: var(--anvil-surface-raised);
+}
+
+.bench-recipe__metric dt {
+  margin: 0 0 0.2rem;
+  color: var(--anvil-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.bench-recipe__metric dd {
+  margin: 0 !important;
+  color: var(--anvil-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.86rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bench-recipe__strengths,
+.bench-recipe__limitations {
+  margin-block: 0.65rem 0;
+}
+
+.bench-recipe__strengths h3,
+.bench-recipe__limitations h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.bench-recipe__strengths h3 {
+  color: var(--md-typeset-a-color);
+}
+
+.bench-recipe__limitations h3 {
+  color: var(--anvil-amber);
+}
+
+.bench-recipe__strengths ul,
+.bench-recipe__limitations ul {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.bench-recipe__strengths li,
+.bench-recipe__limitations li {
+  margin-bottom: 0.15rem;
+}
+
+.bench-recipe__actions {
+  padding-top: 0.75rem;
+}
+
+.bench-recipe__actions > p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.bench-recipe__actions a {
+  display: inline-flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--anvil-border);
+  border-radius: var(--anvil-radius);
+  font-size: 0.82rem;
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.bench-recipe details > summary {
+  min-height: 2.5rem;
+  padding-block: 0.55rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.bench-recipe details > summary:focus-visible {
+  outline: 0.16rem solid var(--anvil-amber);
+  outline-offset: 0.15rem;
+}
+
+.bench-status--current,
+.bench-status--rollback,
+.bench-status--challenger,
+.bench-status--no-promotion,
+.bench-status--rejected {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: none;
+}
+
+.bench-status--current {
+  color: var(--md-typeset-a-color);
+}
+
+.bench-status--rollback,
+.bench-status--no-promotion {
+  color: var(--anvil-amber);
+}
+
+.bench-status--challenger {
+  color: var(--anvil-cyan-strong);
+}
+
+[data-md-color-scheme="default"] .bench-status--challenger {
+  color: #007f8e;
+}
+
+.bench-status--rejected {
+  color: #e2606f;
+}
+
+[data-md-color-scheme="default"] .bench-status--rejected {
+  color: #a42232;
+}
+
+.md-typeset__table {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-gutter: stable;
+}
+
+@media screen and (max-width: 60rem) {
+  .bench-paths {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media screen and (max-width: 37.5rem) {
+  .bench-paths {
+    grid-template-columns: 1fr;
+  }
+
+  .bench-recipe__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bench-recipe,
+  .bench-path {
+    padding: 0.9rem;
+  }
+
+  .bench-recipe__actions > p {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bench-recipe__actions a {
+    min-width: 0;
+    text-align: center;
+  }
+}
+
+@media screen and (max-width: 23rem) {
+  .bench-recipe__metrics,
+  .bench-recipe__actions > p {
+    grid-template-columns: 1fr;
+  }
+}
