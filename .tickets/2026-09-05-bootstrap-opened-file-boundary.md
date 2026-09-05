@@ -38,3 +38,8 @@ tests keep ordinary file trust unchanged, reject one-component SID changes,
 and retain independent rejection of unrelated mutation grants and malformed
 ACLs. No native permissions or paths were modified. This is candidate source
 pending consolidated acceptance; the anchored file reader remains separate.
+
+T004.9 adds the read-only held-file primitive only. It retains opened ancestor
+and final descriptors while verifying permissions, identity and bounded bytes;
+it does not load target configuration, dispatch a receiver request, persist a
+record, stage an artifact, activate a generation or alter permissions.
