@@ -150,3 +150,24 @@ The integrated full suite at 0a2e0c69 fails test_default_reader_is_hermetic_and_
 - `python scripts/run_tests.py tests/observability/test_workload_http.py tests/observability/test_controller_workload_source.py -x -q`
 - `python -m ruff check tests/observability/test_workload_http.py`
 
+### T006: Permit the packaged workload script through the dashboard CSP
+
+**Feature:** F001
+**Priority:** high
+**Type:** bugfix
+**Likely files:** anvil_serving/observability/api.py, tests/observability/test_workload_content_security_policy.py, .tickets/2026-09-05-dashboard-workload-csp.md
+**Dependencies:** T005
+
+A real headless Edge smoke at the integrated candidate found script-src 'unsafe-inline' blocks the newly packaged same-origin /workloads.js, leaving the panel disconnected and making zero requests. Add only 'self' to the existing script-src policy. Preserve every other CSP directive, no-store, nosniff, frame denial and authentication boundary. Add actual HTTP tests for the served document/script, parse the CSP directives into exact token sets, and assert the same-origin script is permitted while arbitrary external/eval/data/blob script sources remain absent. Record the reproduced console message and browser retest distinction in a new ticket. No inline-script removal or broader CSP redesign belongs in this repair.
+
+**Acceptance criteria:**
+
+- The actual served document permits its same-origin workloads.js without permitting arbitrary external script origins.
+- Existing inline dashboard behavior, frame/object restrictions and response security headers are unchanged.
+- Dashboard, API and new CSP tests pass; the root repeats the synthetic browser connect/filter/disconnect flow.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_workload_content_security_policy.py tests/observability/test_api.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py -x -q`
+- `python -m ruff check anvil_serving/observability/api.py tests/observability/test_workload_content_security_policy.py`
+
