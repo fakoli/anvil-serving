@@ -383,6 +383,37 @@ the real ephemeral front door and controller adapter in
 - `python scripts/run_tests.py tests/test_router_manage.py tests/test_cli_contract.py tests/test_router_transition_contract.py tests/test_command_tree.py -x -q`
 - `python -m ruff check anvil_serving/router_manage.py anvil_serving/commands/router.py anvil_serving/control_plane/mcp/tools/router.py tests/test_router_manage.py tests/test_cli_contract.py tests/test_router_transition_contract.py`
 
+### T009.1: Pin the member-aware MCP catalog compatibility delta
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Likely files:** tests/test_mcp_foundations.py
+**Dependencies:** T009
+
+Correct the stale public catalog digest identified by the integrated suite.
+Characterize the exact router_transition member schema (bounded ASCII ID),
+unchanged required action and closed property set, and unchanged handler map.
+The only intentional public catalog changes from the previous snapshot are
+the member property, derived maxProperties increment from six to seven, and
+the description's declared-member wording. Restore those three fields in a
+deep copy and require the previous catalog digest, proving no unrelated schema,
+metadata, ordering or description change is silently accepted. Then pin the
+new digest. Keep runtime code untouched and preserve the existing exact catalog
+and handler compatibility tests. The source ticket is
+.tickets/2026-09-05-member-mcp-catalog-contract.md.
+
+**Acceptance criteria:**
+
+- The current catalog hash is pinned and the exact intentional delta reconstructs the previous catalog hash.
+- The member property is optional, bounded and safe; required fields and handler-map identity remain unchanged.
+- The foundation, transition and command-contract suites pass without runtime or transport changes.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_mcp_foundations.py tests/test_router_transition_contract.py tests/test_command_tree.py -x -q`
+- `python -m ruff check tests/test_mcp_foundations.py`
+
 ### T010: Persist and restore member quiesce intent
 
 **Feature:** F001
