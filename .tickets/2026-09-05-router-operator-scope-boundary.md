@@ -1,6 +1,6 @@
 # Keep scoped operator routes separate from the router data plane
 
-Status: implementation under independent review
+Status: source prerequisite accepted; integrated and live gates remain
 Priority: P1
 Date: 2026-09-05
 Task: fleet-node-enrollment:T010
@@ -39,4 +39,8 @@ four-slot lease through response headers, body delivery and flush. Raw header
 permutations, four blocked deliveries versus a fifth client, and write-failure
 recovery now pass. Initial and corrective reviews cover all eight angles;
 77 auth/CLI/core tests, 36 streaming/front-door regressions and Ruff passed.
-Post-commit proof and acceptance are the remaining task gate, not live enablement.
+Source 3b08566fa00ff570c7415ee13974a8937330b391 is accepted with 77
+post-commit tests and Ruff. Concurrent upstream PR #470 produced a stale-base
+warning at source acceptance; the separate
+[integration ticket](2026-09-05-router-fleet-upstream-integration.md) requires
+combined-source review and regression evidence. This is not live enablement.

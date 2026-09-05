@@ -81,3 +81,14 @@ Ruff. Configured versus observed bindings stay separate, log reads use only the
 verified immutable controller ID, and raw content is discarded. CLI/MCP wiring
 and actual local-daemon validation remain pending; this does not resolve
 deployment access. No raw diagnostic output or credentials are added here.
+
+The local CLI slice is accepted at upstream-compatible checkpoint
+`cd28f53970c514019cf262fff11fa0647a98c4f0` (implementation `38af3615`). Independent
+review found permissive numeric spellings and a nonexistent command layer in
+help. Strict ASCII decimal validation now refuses malformed tails before any
+diagnostic call, and help names the actual `controller inspect/logs` commands.
+An unnecessary serializer fallback that hid invalid values as null was removed.
+All 24 post-commit tests and Ruff pass. An initial evidence submission omitted
+the exact required test flag; it was rejected, then the precise commands were
+rerun under a new claim with complete proofs. No evidence gate was weakened.
+MCP parity, permissions, managed live diagnosis and deployment remain pending.

@@ -1,9 +1,9 @@
 """Safe, bounded operational views over the router decision-log snapshot.
 
 This module deliberately has no server, clock, or persistence dependency.  A
-``DecisionLog`` is an in-memory ring buffer without record timestamps, so these
-functions report the current buffer/session snapshot only.  They must not be
-presented as a historical time window or as monotonic counters.
+``DecisionLog`` is an in-memory ring buffer. Its optional record timestamps do
+not make this retained snapshot a historical time window, so these functions
+must not be presented as time-window statistics or monotonic counters.
 """
 from __future__ import annotations
 
@@ -11,11 +11,13 @@ import math
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, Optional
 
-from .decision_log import safe_correlation, summarize_decisions
+from .decision_log import safe_correlation, safe_gateway_request_id, summarize_decisions
 
 DEFAULT_STATS_LIMIT = 100
 MAX_STATS_LIMIT = 10_000
 _SCOPE = "current_decision_log_buffer"
+_MAX_MEASUREMENT = 1_000_000_000_000_000
+_FINISH_REASONS = ("stop", "length", "tool_calls", "content_filter", "unknown")
 
 
 def _query_values(query: Mapping[str, Sequence[str]], name: str) -> list[str]:
@@ -87,13 +89,43 @@ def _percentile(values: Iterable[int], percentile: float) -> Optional[int]:
     return ordered[index]
 
 
+def _nullable_duration(value: Any) -> Optional[int]:
+    """Keep unknown phase measurements absent instead of converting them to zero."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if 0 <= value <= _MAX_MEASUREMENT else None
+
+
+def _duration_summary(values: list[int]) -> dict[str, Any]:
+    """Summarize observed nonnegative durations; zero is a real observation."""
+    if not values:
+        return {"samples": 0, "average": None, "p50": None, "p95": None}
+    ordered = sorted(values)
+    def percentile(percent: float) -> int:
+        return ordered[max(math.ceil(percent * len(ordered)) - 1, 0)]
+    return {
+        "samples": len(ordered),
+        "average": sum(ordered) / len(ordered),
+        "p50": percentile(0.50),
+        "p95": percentile(0.95),
+    }
+
+
 def _empty_aggregate() -> dict[str, Any]:
     return {
         "requests": {"total": 0, "succeeded": 0, "failed": 0},
         "tokens": {"prompt": 0, "completion": 0, "total": 0},
+        "usage_sources": {
+            field: {source: 0 for source in ("upstream", "estimated", "unknown")}
+            for field in ("prompt", "completion")
+        },
         "bytes": {"request": 0, "response": 0, "total": 0},
         "latency_ms": {"samples": 0, "average": None, "p50": None, "p95": None},
+        "finish_reason_counts": {reason: 0 for reason in _FINISH_REASONS},
         "_latencies": [],
+        "_readiness_checks": [],
+        "_upstream_durations": [],
+        "_first_content": [],
     }
 
 
@@ -110,6 +142,12 @@ def _add_record(aggregate: dict[str, Any], record: Mapping[str, Any]) -> None:
     aggregate["tokens"]["prompt"] += prompt
     aggregate["tokens"]["completion"] += completion
     aggregate["tokens"]["total"] += prompt + completion
+    usage = record.get("usage")
+    for field in ("prompt", "completion"):
+        source = usage.get(f"{field}_source") if isinstance(usage, Mapping) else None
+        if source not in ("upstream", "estimated"):
+            source = "unknown"
+        aggregate["usage_sources"][field][source] += 1
 
     request_bytes = _int(record["request_bytes"])
     response_bytes = _int(record["response_bytes"])
@@ -120,6 +158,21 @@ def _add_record(aggregate: dict[str, Any], record: Mapping[str, Any]) -> None:
     latency = _int(record["latency_ms"])
     if latency:
         aggregate["_latencies"].append(latency)
+    measurements = record.get("measurements", {})
+    if not isinstance(measurements, Mapping):
+        measurements = {}
+    finish_reason = measurements.get("finish_reason")
+    if not isinstance(finish_reason, str) or finish_reason not in _FINISH_REASONS:
+        finish_reason = "unknown"
+    aggregate["finish_reason_counts"][finish_reason] += 1
+    for field, bucket in (
+        ("readiness_check_ms", "_readiness_checks"),
+        ("upstream_duration_ms", "_upstream_durations"),
+        ("time_to_first_content_ms", "_first_content"),
+    ):
+        observed = _nullable_duration(measurements.get(field))
+        if observed is not None:
+            aggregate[bucket].append(observed)
 
 
 def _finish_aggregate(aggregate: dict[str, Any]) -> dict[str, Any]:
@@ -130,6 +183,15 @@ def _finish_aggregate(aggregate: dict[str, Any]) -> dict[str, Any]:
         latency["average"] = sum(latencies) / len(latencies)
         latency["p50"] = _percentile(latencies, 0.50)
         latency["p95"] = _percentile(latencies, 0.95)
+    aggregate["readiness_check_ms"] = _duration_summary(
+        aggregate.pop("_readiness_checks")
+    )
+    aggregate["upstream_duration_ms"] = _duration_summary(
+        aggregate.pop("_upstream_durations")
+    )
+    aggregate["time_to_first_content_ms"] = _duration_summary(
+        aggregate.pop("_first_content")
+    )
     return aggregate
 
 
@@ -139,9 +201,8 @@ def aggregate_stats(
     """Build safe aggregate statistics for a bounded decision-log snapshot.
 
     ``model`` filters the public route alias and ``limit`` retains the most
-    recent matching records.  No timestamp exists in a decision record; the
-    returned ``scope`` is therefore the current in-memory buffer/session, not a
-    requested time range.
+    recent matching records. The returned ``scope`` is the current buffer, not a
+    requested time range even when retained records carry creation timestamps.
     """
     model, limit = _parse_query(query)
     all_records = list(records)
@@ -184,6 +245,20 @@ def find_request(records: Iterable[Any], request_id: str) -> dict[str, Any]:
     if candidate is None:
         raise KeyError(request_id)
     snapshot = list(records)
+    # The gateway-generated id is authoritative. Search it before accepting a
+    # legacy caller id so an inbound correlation value cannot shadow a record.
+    gateway_id = safe_gateway_request_id(candidate)
+    if gateway_id is not None:
+        for record in reversed(snapshot):
+            if safe_gateway_request_id(_record_value(record, "gateway_request_id")) == gateway_id:
+                return {
+                    "object": "router_request",
+                    "scope": _SCOPE,
+                    "record": summarize_decisions((record,), limit=1)["records"][0],
+                }
+        # Reserve the generated namespace: a caller cannot impersonate an
+        # absent/evicted gateway record by supplying its id as legacy lineage.
+        raise KeyError(candidate)
     for record in reversed(snapshot):
         if safe_correlation(_record_value(record, "request_id")) == candidate:
             return {
@@ -239,6 +314,18 @@ def render_prometheus(
         ("anvil_router_decision_buffer_latency_ms_p50", "Current buffer exact p50 positive latency milliseconds", "latency_ms.p50"),
         ("anvil_router_decision_buffer_latency_ms_p95", "Current buffer exact p95 positive latency milliseconds", "latency_ms.p95"),
         ("anvil_router_decision_buffer_latency_samples", "Current buffer positive latency sample count", "latency_ms.samples"),
+        ("anvil_router_decision_buffer_readiness_check_ms_average", "Current buffer average readiness check milliseconds", "readiness_check_ms.average"),
+        ("anvil_router_decision_buffer_readiness_check_ms_p50", "Current buffer exact p50 readiness check milliseconds", "readiness_check_ms.p50"),
+        ("anvil_router_decision_buffer_readiness_check_ms_p95", "Current buffer exact p95 readiness check milliseconds", "readiness_check_ms.p95"),
+        ("anvil_router_decision_buffer_readiness_check_samples", "Current buffer readiness check sample count", "readiness_check_ms.samples"),
+        ("anvil_router_decision_buffer_upstream_duration_ms_average", "Current buffer average upstream duration milliseconds", "upstream_duration_ms.average"),
+        ("anvil_router_decision_buffer_upstream_duration_ms_p50", "Current buffer exact p50 upstream duration milliseconds", "upstream_duration_ms.p50"),
+        ("anvil_router_decision_buffer_upstream_duration_ms_p95", "Current buffer exact p95 upstream duration milliseconds", "upstream_duration_ms.p95"),
+        ("anvil_router_decision_buffer_upstream_duration_samples", "Current buffer upstream duration sample count", "upstream_duration_ms.samples"),
+        ("anvil_router_decision_buffer_time_to_first_content_ms_average", "Current buffer average first content delta milliseconds", "time_to_first_content_ms.average"),
+        ("anvil_router_decision_buffer_time_to_first_content_ms_p50", "Current buffer exact p50 first content delta milliseconds", "time_to_first_content_ms.p50"),
+        ("anvil_router_decision_buffer_time_to_first_content_ms_p95", "Current buffer exact p95 first content delta milliseconds", "time_to_first_content_ms.p95"),
+        ("anvil_router_decision_buffer_time_to_first_content_samples", "Current buffer first content delta sample count", "time_to_first_content_ms.samples"),
     )
     lines = _request_metric_lines(rows)
     for name, help_text, path in metrics:

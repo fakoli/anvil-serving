@@ -30,7 +30,7 @@ from .availability import (
     safe_check,
 )
 from .backends import RelayBackend
-from .backends.relay import DiscoveryTransport, Transport, discover_single_model
+from .backends.relay import _ClosingIterator, DiscoveryTransport, Transport, discover_single_model
 from .config import (
     ConfigError,
     CONTEXT_ADMISSION_UPSTREAM,
@@ -110,14 +110,17 @@ class _AdmissionIterator:
         lease: AdmissionLease,
         on_complete: Callable[[], None],
         *,
+        on_cancel: Optional[Callable[[], None]] = None,
         resources: Tuple[object, ...] = (),
     ) -> None:
         self._factory = factory
         self._lease = lease
         self._on_complete = on_complete
+        self._on_cancel = on_cancel
         self._resources = resources
         self._inner: Optional[Iterator[str]] = None
         self._closed = False
+        self._completed = False
 
     def __iter__(self) -> "_AdmissionIterator":
         return self
@@ -131,6 +134,7 @@ class _AdmissionIterator:
             return next(self._inner)
         except StopIteration:
             try:
+                self._completed = True
                 self._on_complete()
             finally:
                 self.close()
@@ -144,6 +148,11 @@ class _AdmissionIterator:
             return
         self._closed = True
         try:
+            # A front door can close a returned iterator before its first
+            # ``next``. Previously that released admission but lost the one
+            # terminal decision record for the accepted request.
+            if self._inner is None and not self._completed and self._on_cancel is not None:
+                self._on_cancel()
             closer = getattr(self._inner, "close", None)
             if callable(closer):
                 closer()
@@ -238,18 +247,14 @@ class _ConcurrencyLimitedBackend:
     def generate(self, request: InternalRequest) -> Iterator[str]:
         self._sem.acquire()
         try:
-            inner = self._inner.generate(request)
+            inner = iter(self._inner.generate(request))
         except BaseException:
             self._sem.release()
             raise
 
-        def guarded() -> Iterator[str]:
-            try:
-                yield from inner
-            finally:
-                self._sem.release()
-
-        return guarded()
+        # A generator's finally block never runs when it is closed before its
+        # first next(). The explicit owner also closes eager upstream resources.
+        return _ClosingIterator(inner, self._sem.release)
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         fn = getattr(self._inner, "get_last_structured", None)
@@ -310,8 +315,17 @@ class RoutingBackend:
         completion_tokens: int = 0,
         outcome: str = "error",
         latency_ms: int = 0,
+        readiness_check_ms: Optional[int] = None,
+        upstream_duration_ms: Optional[int] = None,
+        time_to_first_content_ms: Optional[int] = None,
+        finish_reason: Optional[str] = None,
+        prompt_tokens: Optional[int] = None,
+        prompt_tokens_source: str = "estimated",
+        completion_tokens_source: str = "unknown",
     ) -> None:
-        prompt_tokens = self._prompt_tokens(request)
+        if prompt_tokens is None:
+            prompt_tokens = self._prompt_tokens(request)
+        output_limit = self._output_limit(request, tier)
         self._decision_log.record(DecisionRecord(
             kind="chat",
             requested_tier=tier.id,
@@ -323,8 +337,61 @@ class RoutingBackend:
             total_completion_tokens=completion_tokens,
             route=normalize_model_alias(request.model),
             latency_ms=max(0, int(latency_ms)),
+            readiness_check_ms=readiness_check_ms,
+            upstream_duration_ms=upstream_duration_ms,
+            time_to_first_content_ms=time_to_first_content_ms,
+            finish_reason=finish_reason,
+            prompt_tokens_source=prompt_tokens_source,
+            completion_tokens_source=completion_tokens_source,
+            output_limit_requested=output_limit["requested"],
+            output_limit_applied=output_limit["applied"],
+            output_limit_clamped=output_limit["clamped"],
             **request_correlation(request),
         ))
+
+    @staticmethod
+    def _token_count(value: Any) -> Optional[int]:
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not 0 <= value <= 1_000_000_000_000_000
+        ):
+            return None
+        return value
+
+    @classmethod
+    def _output_limit(cls, request: InternalRequest, tier: Tier) -> dict[str, Optional[int] | Optional[bool]]:
+        """Return the observable requested/effective output ceiling, if known."""
+        clamp = request.raw.get("_anvil_output_clamp")
+        if isinstance(clamp, Mapping):
+            requested = cls._token_count(clamp.get("requested"))
+            applied = cls._token_count(clamp.get("applied"))
+            if requested is not None and applied is not None:
+                return {"requested": requested, "applied": applied, "clamped": True}
+        applied = cls._token_count(request.max_tokens)
+        if applied is None:
+            return {"requested": None, "applied": None, "clamped": None}
+        # A tier cap can supply a default even when the caller omitted its
+        # request budget. That is an applied limit, not a client clamp.
+        requested = None if tier.max_output_tokens == applied and request.raw.get("_anvil_output_clamp") is None and not any(
+            key in request.raw for key in ("max_tokens", "max_completion_tokens", "max_output_tokens")
+        ) else applied
+        return {"requested": requested, "applied": applied, "clamped": False}
+
+    @staticmethod
+    def _normalize_finish_reason(value: Any) -> Optional[str]:
+        if not isinstance(value, str):
+            return None
+        normalized = value.strip().lower()
+        if normalized in {"stop", "end_turn", "stop_sequence"}:
+            return "stop"
+        if normalized in {"length", "max_tokens"}:
+            return "length"
+        if normalized in {"tool_calls", "tool_use"}:
+            return "tool_calls"
+        if normalized == "content_filter":
+            return "content_filter"
+        return None
 
     @staticmethod
     def _apply_output_cap(request: InternalRequest, tier: Tier) -> None:
@@ -359,12 +426,32 @@ class RoutingBackend:
 
     def generate(self, request: InternalRequest) -> Iterator[str]:
         """Resolve once, check local constraints, then relay with no fallback."""
+        # JSON/raw is caller input. Only this invocation may create this marker.
+        request.raw.pop("_anvil_output_clamp", None)
         self._thread_local.last_result = None
         self._thread_local.last_served_tier = None
         started = time.monotonic()
+        readiness_check_ms: Optional[int] = None
+        upstream_call_started: Optional[float] = None
+        upstream_dispatched = False
+        first_content_at: Optional[float] = None
 
         def _elapsed_ms() -> int:
             return max(0, int((time.monotonic() - started) * 1000))
+
+        def _upstream_elapsed_ms() -> Optional[int]:
+            if upstream_call_started is None or not upstream_dispatched:
+                return None
+            return max(0, int((time.monotonic() - upstream_call_started) * 1000))
+
+        def _readiness_for(candidate: Tier) -> AvailabilityResult:
+            nonlocal readiness_check_ms
+            check_started = time.monotonic()
+            result = self._availability_for(candidate)
+            readiness_check_ms = max(
+                0, int((time.monotonic() - check_started) * 1000)
+            )
+            return result
 
         configured_tier = self._config.route_tier(request.model)
         if configured_tier is None:
@@ -373,7 +460,7 @@ class RoutingBackend:
         tier = configured_tier
         readiness: Optional[AvailabilityResult] = None
         if tier.metadata_source == METADATA_UPSTREAM:
-            readiness = self._availability_for(tier)
+            readiness = _readiness_for(tier)
             effective_tier = resolve_runtime_tier(tier, readiness)
             if effective_tier is None:
                 self._record(
@@ -382,6 +469,8 @@ class RoutingBackend:
                     served=False,
                     reason="upstream_metadata_unavailable",
                     outcome="skipped",
+                    latency_ms=_elapsed_ms(),
+                    readiness_check_ms=readiness_check_ms,
                 )
                 raise NoAvailableTierError(
                     request.model, (tier.id,), kind="unavailable"
@@ -394,7 +483,10 @@ class RoutingBackend:
             tier.context_admission != CONTEXT_ADMISSION_UPSTREAM
             and self._prompt_tokens(request) > tier.context_limit
         ):
-            self._record(request, tier, served=False, reason="over_context", outcome="skipped")
+            self._record(
+                request, tier, served=False, reason="over_context", outcome="skipped",
+                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+            )
             raise NoAvailableTierError(request.model, (tier.id,), kind="over_context")
         media = evaluate_media_admission(
             tier.params,
@@ -409,23 +501,38 @@ class RoutingBackend:
                 else "media_admission_%s" % media.reason
             )
             kind = "over_context" if media.reason == "context_limit" else "media_limit"
-            self._record(request, tier, served=False, reason=reason, outcome="skipped")
+            self._record(
+                request, tier, served=False, reason=reason, outcome="skipped",
+                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+            )
             raise NoAvailableTierError(request.model, (tier.id,), kind=kind)
         if has_tool_artifacts(request.raw) and not tier.tool_support:
-            self._record(request, tier, served=False, reason="tools_unsupported", outcome="skipped")
+            self._record(
+                request, tier, served=False, reason="tools_unsupported", outcome="skipped",
+                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+            )
             raise NoAvailableTierError(request.model, (tier.id,), kind="unsupported_tools")
         backend = self._backends.get(tier.id)
         if backend is None:
-            self._record(request, tier, served=False, reason="backend_unbound")
+            self._record(
+                request, tier, served=False, reason="backend_unbound",
+                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+            )
             raise NoAvailableTierError(request.model, (tier.id,))
         if readiness is None:
-            readiness = self._availability_for(tier)
+            readiness = _readiness_for(tier)
         if not readiness.available:
-            self._record(request, tier, served=False, reason="unavailable", outcome="skipped")
+            self._record(
+                request, tier, served=False, reason="unavailable", outcome="skipped",
+                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+            )
             raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
         lease = self._admission.acquire(tier.id)
         if lease is None:
-            self._record(request, tier, served=False, reason="quiesced", outcome="skipped")
+            self._record(
+                request, tier, served=False, reason="quiesced", outcome="skipped",
+                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+            )
             raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
 
         relay_request = request
@@ -435,6 +542,7 @@ class RoutingBackend:
             # the inference service's currently observed model id.
             relay_request = replace(request, model=tier.model)
         try:
+            upstream_call_started = time.monotonic()
             upstream = backend.generate(relay_request)
         except BaseException as exc:
             self._record(
@@ -443,22 +551,37 @@ class RoutingBackend:
                 served=False,
                 reason=f"backend_error_{type(exc).__name__}",
                 latency_ms=_elapsed_ms(),
+                readiness_check_ms=readiness_check_ms,
+                upstream_duration_ms=(
+                    max(0, int((time.monotonic() - upstream_call_started) * 1000))
+                    if upstream_call_started is not None else None
+                ),
             )
             lease.release()
             raise
 
         fragments: List[str] = []
 
-        def on_complete() -> None:
+        def complete_metadata() -> None:
             structured_fn = getattr(backend, "get_last_structured", None)
             structured = structured_fn() if callable(structured_fn) else None
             self._thread_local.last_result = structured
             self._thread_local.last_served_tier = tier.id
             text = "".join(fragments)
             usage = getattr(structured, "usage", None) if structured is not None else None
+            upstream_prompt = (
+                self._token_count(usage.get("input_tokens"))
+                if isinstance(usage, Mapping) else None
+            )
+            upstream_completion = (
+                self._token_count(usage.get("output_tokens"))
+                if isinstance(usage, Mapping) else None
+            )
+            prompt_tokens = (
+                upstream_prompt if upstream_prompt is not None else self._prompt_tokens(request)
+            )
             completion_tokens = (
-                int(usage.get("output_tokens", 0))
-                if isinstance(usage, Mapping) else estimate_tokens([text])
+                upstream_completion if upstream_completion is not None else estimate_tokens([text])
             )
             self._record(
                 request,
@@ -471,28 +594,97 @@ class RoutingBackend:
                 ),
                 completion_tokens=completion_tokens, outcome="served",
                 latency_ms=_elapsed_ms(),
+                readiness_check_ms=readiness_check_ms,
+                upstream_duration_ms=_upstream_elapsed_ms(),
+                time_to_first_content_ms=(
+                    max(0, int((first_content_at - started) * 1000))
+                    if first_content_at is not None else None
+                ),
+                finish_reason=self._normalize_finish_reason(
+                    getattr(structured, "finish_reason", None)
+                ),
+                prompt_tokens=prompt_tokens,
+                prompt_tokens_source=(
+                    "upstream" if upstream_prompt is not None else "estimated"
+                ),
+                completion_tokens_source=(
+                    "upstream" if upstream_completion is not None else "estimated"
+                ),
+            )
+
+        def on_complete() -> None:
+            try:
+                complete_metadata()
+            except BaseException as exc:
+                self._thread_local.last_result = None
+                self._thread_local.last_served_tier = None
+                self._record(
+                    request, tier, served=False,
+                    reason=f"completion_error_{type(exc).__name__}",
+                    completion_tokens=estimate_tokens(fragments),
+                    completion_tokens_source="estimated" if any(fragments) else "unknown",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                    upstream_duration_ms=_upstream_elapsed_ms(),
+                    time_to_first_content_ms=(
+                        max(0, int((first_content_at - started) * 1000))
+                        if first_content_at is not None else None
+                    ),
+                )
+                raise
+
+        def on_cancel() -> None:
+            self._record(
+                request, tier, served=False, reason="client_disconnected",
+                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                upstream_duration_ms=_upstream_elapsed_ms(),
             )
 
         def relay() -> Iterator[str]:
+            nonlocal first_content_at, upstream_dispatched
             try:
+                # Backend ``generate`` commonly returns a lazy iterator; only
+                # this first iteration can establish that the upstream stream
+                # began. Its duration starts before ``generate`` so eager setup
+                # is included; a close before first iteration stays unknown.
+                upstream_dispatched = True
                 for delta in upstream:
+                    if not isinstance(delta, str):
+                        raise TypeError("backend must yield text fragments")
                     fragments.append(delta)
+                    if first_content_at is None and isinstance(delta, str) and delta:
+                        first_content_at = time.monotonic()
                     yield delta
             except GeneratorExit:
                 self._record(
                     request, tier, served=False, reason="client_disconnected",
-                    latency_ms=_elapsed_ms(),
+                    completion_tokens=estimate_tokens(fragments),
+                    completion_tokens_source="estimated" if any(fragments) else "unknown",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                    upstream_duration_ms=_upstream_elapsed_ms(),
+                    time_to_first_content_ms=(
+                        max(0, int((first_content_at - started) * 1000))
+                        if first_content_at is not None else None
+                    ),
                 )
                 raise
             except BaseException as exc:
                 self._record(
                     request, tier, served=False,
                     reason=f"backend_error_{type(exc).__name__}",
-                    latency_ms=_elapsed_ms(),
+                    completion_tokens=estimate_tokens(fragments),
+                    completion_tokens_source="estimated" if any(fragments) else "unknown",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                    upstream_duration_ms=_upstream_elapsed_ms(),
+                    time_to_first_content_ms=(
+                        max(0, int((first_content_at - started) * 1000))
+                        if first_content_at is not None else None
+                    ),
                 )
                 raise
 
-        return _AdmissionIterator(relay, lease, on_complete, resources=(upstream,))
+        return _AdmissionIterator(
+            relay, lease, on_complete, on_cancel=on_cancel, resources=(upstream,)
+        )
 
     def tier_health(self) -> dict:
         return build_tier_health(self._config, self._availability)
