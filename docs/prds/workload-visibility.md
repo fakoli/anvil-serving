@@ -474,17 +474,44 @@ Build the read-only manifest-managed adapter from existing serve status results 
 - `python scripts/run_tests.py tests/test_serves.py tests/observability/test_workloads.py -x -q`
 - `python -m ruff check anvil_serving/serves.py anvil_serving/observability/workloads.py tests/test_serves.py`
 
+### T005.1: Declare the router workload host identity at startup
+
+**Feature:** F003
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/router/config.py, tests/router/test_config.py
+**Dependencies:** T009
+
+Implement only the optional ServerConfig.workload_host parser field from the
+closed endpoint contract. This is operator-supplied canonical host identity,
+never an inference from a URL, environment, OS or request. Leave endpoint and
+server forwarding to T005.
+
+**Acceptance criteria:**
+
+- Absent workload_host is None and existing server fields retain their behavior.
+- Exact canonical IDs parse unchanged; wrong types, empty/oversized values,
+  whitespace, non-ASCII, punctuation and injected paths/URLs fail with fixed
+  ConfigError prose that never echoes input.
+- Tests call load_server_config on actual temporary TOML; no identity discovery
+  or environment lookup is performed.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_config.py tests/router/test_front_door_auth.py -x -q`
+- `python -m ruff check anvil_serving/router/config.py tests/router/test_config.py`
+
 ### T005: Add the authenticated router workload endpoint
 
 **Feature:** F003
 **Priority:** high
 **Type:** feature
-**Likely files:** anvil_serving/router/config.py, anvil_serving/router/serve.py, anvil_serving/router/front_door.py, tests/router/test_operational_endpoints.py, tests/router/test_front_door_auth.py
-**Dependencies:** T009
+**Likely files:** anvil_serving/router/serve.py, anvil_serving/router/front_door.py, tests/router/test_operational_endpoints.py, tests/router/test_front_door_auth.py
+**Dependencies:** T009, T005.1
 
 **External prerequisites:** fleet-node-enrollment:T008, fleet-node-enrollment:T009, and fleet-node-enrollment:T010 must each be `done` before this task is claimed. Anvil's PRD parser supports local dependency IDs only; the coordinator must run `anvil show fleet-node-enrollment:T008 --prd fleet-node-enrollment --json`, `anvil show fleet-node-enrollment:T009 --prd fleet-node-enrollment --json`, and `anvil show fleet-node-enrollment:T010 --prd fleet-node-enrollment --json`, require `.data.task.status == "done"` for every result, and retain all results in the dispatch packet. A missing task is an unmet prerequisite, not permission to proceed.
 
-Implement the Router workload endpoint ownership and wire contract above. Expose authenticated GET /v1/workloads using the canonical query/NodeResult serializer, the registry already created by build_server and the dedicated workloads:read gate. Parse the optional trusted server workload_host and forward it at startup; never infer it or accept a caller override. This slice is router-local only; node aggregation and fleet fan-out follow.
+Implement the Router workload endpoint ownership and wire contract above. Expose authenticated GET /v1/workloads using the canonical query/NodeResult serializer, the registry already created by build_server and the dedicated workloads:read gate. Forward the trusted server workload_host parsed by T005.1 at startup; never infer it or accept a caller override. This slice is router-local only; node aggregation and fleet fan-out follow.
 
 **Acceptance criteria:**
 
