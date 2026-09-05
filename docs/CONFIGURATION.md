@@ -309,7 +309,7 @@ in tracked files (ADR-0032).
 
 | Key | Default | Meaning |
 |---|---:|---|
-| `admission_state_path` | unset | Opt-in persisted tier-quiesce intent. Quiesced tiers (except promotion-owned quiescence) are restored quiesced at boot; readmission still requires the health+identity gate. A corrupt file refuses to serve. |
+| `admission_state_path` | unset | Opt-in persisted tier and member quiesce intent. Quiesced tiers (except promotion-owned quiescence) and declared member intent are restored at boot; tier and member readmission remain independent, and readmission still requires the applicable health+identity gate. A corrupt file refuses to serve. |
 | `decision_log_path` | unset | Opt-in append-only, metadata-only JSONL of decision records (timestamped), size-capped with one rotated generation. |
 
 Both point at writable paths on the router state volume in containerized
@@ -358,6 +358,68 @@ trail. Tiers without this field preserve caller and upstream behavior.
 
 The tier's `model` is the upstream served model name. It is not the public
 capability name.
+
+### Qualified same-host replicas
+
+A replica tier has no direct `base_url`; it declares 2–16 members on one
+`host_id`. The alias still maps to the logical tier exactly once. A member is
+selected only after its independent readiness and tier/member admission pass;
+the router does not use replica membership as an alias fallback or model/runtime
+substitution mechanism.
+
+```toml
+[[router.tiers]]
+id = "primary-replicas"
+model = "primary-model"
+dialect = "openai"
+context_limit = 4096
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_PRIMARY_KEY"
+health_path = "/health"
+model_identity = true
+replica_strategy = "capacity"
+max_concurrency = 3 # aggregate tier ceiling; never multiplied by members
+replicas = [
+  { id = "member-a", base_url = "http://127.0.0.1:30000/v1", host_id = "host-a", resource_id = "gpu-a", qualification_ref = "qualification:primary-a", max_concurrency = 1 },
+  { id = "member-b", base_url = "http://127.0.0.1:30001/v1", host_id = "host-a", resource_id = "gpu-b", qualification_ref = "qualification:primary-b", max_concurrency = 2 },
+]
+replica_identity = { model_revision = "revision-1", engine_version = "engine-1.0", image_digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", config_fingerprint = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+
+[router.model_routes]
+llm.primary = "primary-replicas"
+```
+
+`replica_strategy` defaults to `round_robin`; an explicit strategy is invalid
+on a direct tier. In capacity mode every member requires an integer
+`max_concurrency` from 1 through 100000. A configured member ceiling is still
+an admission limit in round-robin mode. Tier `max_concurrency` is the aggregate
+limit; when omitted in capacity mode, the aggregate is the sum of member
+ceilings.
+
+Capacity selection uses exact local reservation ratios, then conservative
+bounded upstream pressure, then a rotating member-ID tie. Fresh pressure is no
+older than five seconds; stale, failed, missing, or malformed samples rank as
+unknown rather than zero. The bounded cache has at most two workers and a
+capacity read does not cause a refresh. These observations help order already
+eligible members; they do not prove qualification, deployment, or model
+identity.
+
+Member controls require both tier and member IDs and remain scoped: `quiesce`,
+`drain`, `readmit`, and `transition-status` accept `--member` with `--tier`.
+Member drain waits only for that member and never cancels in-flight work. Tier
+readmission does not clear member intent; member readmission checks only that
+member's readiness. Persisted `admission_state_path` state may include a
+`members` mapping alongside tier intent, so declared member quiesce survives a
+restart without changing tier scope. These are explicit operator controls, not
+automatic lifecycle recovery.
+
+Each accepted request reserves one tier/member lease and makes one upstream
+attempt. Backend errors, timeout, cancellation, disconnect, and SSE closure do
+not retry another member; they retain the lease through terminal closure before
+releasing it. DecisionLog scheduler scores are pre-reservation historical
+selection evidence, not current counts; current capacity gauges are not a
+qualification result.
 
 ### Capacity metadata
 

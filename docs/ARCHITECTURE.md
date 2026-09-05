@@ -45,18 +45,31 @@ the request and tools for the selected upstream dialect, enforces the selected
 tier's context/tool/readiness/admission constraints, then relays ordinary or
 SSE responses. There is exactly one selected tier per accepted chat request.
 
-**Pending design — bounded same-host replicas.** A future explicit 2–16-member
-equivalent set may add one internal member-admission/selection step after this
-singular alias-to-tier decision. All members must be on the declared host and
-share served model, declared revision, engine version, image/configuration
-digests, dialect, and context/output/tool/media contract; each is independently
-health-checked and live-verified for its model name. The initial strategy is
-deterministic round robin among eligible member IDs. It is not a cross-host
-scheduler, hidden substitution, lifecycle authority, or replay mechanism:
-after selection, a failure returns without another member attempt. Declared
-deployment provenance is not runtime attestation, and readiness is distinct
-from qualification and promotion. Until implementation ships, each tier has
-one endpoint. See [ADR-0039](adr/0039-capability-meta-router.md) and
+**Qualified same-host replicas.** A declared 2–16-member equivalent set adds
+one internal member-admission/selection step only after the singular
+alias-to-tier decision. Members share one declared host and compatible served
+model, declared revision, engine/image/configuration provenance, dialect, and
+context/output/tool/media contract; each member has independent readiness.
+Declared provenance is not runtime attestation, and readiness is distinct from
+qualification and promotion.
+
+`round_robin` is the default member strategy. Opt-in `capacity` scheduling
+orders eligible members by local reservations divided by their declared
+ceiling, conservative normalized upstream pressure, and rotating stable ID.
+Tier admission owns the atomic selection and compound lease; aggregate tier
+capacity is an explicit tier ceiling or the sum of member ceilings, never a
+per-member multiplier. The pressure cache is bounded to configured members and
+two workers, runs outside admission locks, and treats absent, stale, failed, or
+malformed observations as unknown for ranking. It is scheduling evidence, not
+qualification or a live deployment measurement.
+
+One selected member receives one dispatch attempt. No member failure, changed
+readiness, metric change, or stream terminal path can reselect a peer. The same
+compound lease remains held until buffered or SSE terminal closure and is then
+released once. Current capacity projections do not start a refresh; historical
+DecisionLog scheduler values are pre-reservation selection evidence, not live
+gauges. See [Configuration](CONFIGURATION.md#qualified-same-host-replicas),
+[ADR-0039](adr/0039-capability-meta-router.md), and
 [ADR-0034](adr/0034-fleet-control-plane-and-node-runtime-classes.md).
 
 The front door also has deterministic purpose-model endpoints for embeddings
