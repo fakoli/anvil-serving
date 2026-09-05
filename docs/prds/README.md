@@ -27,8 +27,9 @@ the timeline must not depend on installing Harbor.
 ## Instructions for an implementing agent
 
 1. Read the selected PRD, the current `AGENTS.md`, `README.md`, and
-   `CLAUDE.md`. Resolve the public/private workspace using the installed
-   workspace resolver before choosing an operator or product path.
+   `CLAUDE.md`. Use the installed **`resolve-anvil-serving-workspace`** skill
+   before choosing an operator or product path. Follow the invocation and
+   fail-closed result checks in [Workspace resolution](#workspace-resolution).
 2. Reconcile the listed baseline with current source. Symbols and tests below
    were inspected; proposed files and commands are explicitly marked. A future
    implementation may already satisfy a requirement. Preserve that behavior
@@ -52,6 +53,33 @@ the timeline must not depend on installing Harbor.
 8. Report changes, tests actually run, incomplete requirements, and any
    remaining compatibility gate. Do not equate passing mocks with a working
    external harness or a model qualification.
+
+## Workspace resolution
+
+`resolve-anvil-serving-workspace` is an installed agent skill, not an
+`anvil-serving` CLI subcommand and not a module shipped by this public repo.
+Locate that exact skill in the current agent's available-skills catalog, read
+its `SKILL.md`, and use the directory containing that file as `resolverSkillRoot`.
+Do not infer its installation directory or the paired private repository from
+this checkout's parent directory. On PowerShell, the invocation is:
+
+```powershell
+# Set this to the actual directory reported by the installed skill catalog.
+$resolverSkillRoot = '<resolved directory containing the skill SKILL.md>'
+$resolverScript = Join-Path $resolverSkillRoot 'scripts/resolve_workspace.py'
+python $resolverScript --cwd (Get-Location).Path --json
+```
+
+The angle-bracket value is a substitution instruction, not a runnable default.
+Require exit 0 and JSON `ok: true`; use returned `product_root` for public code
+and docs, and `operator_root` / `operator_home` only for private operator work.
+Check the returned public and private repository identities against the
+[public/private ownership policy](../OPERATOR-PRIVACY.md). Never publish the
+machine-local values returned by the resolver. A missing skill, script, registry,
+or unsuccessful resolution is a stop condition: ask the operator to provide or
+repair the installed skill/registry; do not guess a sibling checkout, bootstrap
+private state, or silently substitute an unrelated tool. These four PRDs describe
+public product changes, not changes to active private assignments.
 
 ## Shared verification and completion contract
 
