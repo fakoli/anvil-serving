@@ -285,10 +285,10 @@ Document configuration, exact score order, freshness boundaries, aggregate and m
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router/backends/relay.py, anvil_serving/router/backends/sse.py, tests/router/test_streaming_relay.py, tests/router/test_responses.py
+**Likely files:** tests/router/test_streaming_relay.py, tests/router/test_responses.py
 **Dependencies:** T004
 
-Attach the chosen compound lease to the complete ordinary-response and streaming lifecycle using the existing close-aware iterator idiom. Release exactly once on success, HTTP error, timeout, cancellation, disconnect, malformed SSE, normal stream end, explicit close, and close-before-first-iteration. A terminal failure must never trigger another selection.
+Exercise the compound lease already owned by RoutingBackend and its close-aware _AdmissionIterator through real RelayBackend ordinary/SSE parsing and the Responses front door. Do not introduce a second lease owner in relay.py or sse.py. Parameterize the existing qualified-replica terminal fixtures across round_robin and capacity, supplying explicit member ceilings and injected completed pressure so no collector/network service is needed. Count real lease release calls without replacing admission counters. Cover success, HTTP error, timeout, cancellation, disconnect, malformed SSE, normal stream end, explicit close and close-before-first-iteration; assert tier/member reconciliation and exactly one selected transport attempt. Exercise both chat-completion and Responses disconnect paths, plus Responses ordinary/streaming success. A terminal failure must never trigger another selection. Record any discovered production defect as a separate scoped fix before proceeding; this task is the terminal regression matrix, not a new ownership layer.
 
 **Acceptance criteria:**
 
