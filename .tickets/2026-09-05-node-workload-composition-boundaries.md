@@ -1,6 +1,6 @@
 # Close node workload composition before adding collection endpoints
 
-Status: T012.3 source candidate integrated; T012.4 bounded coordinator in progress;
+Status: T012.3/T012.4 source candidates integrated; router reader in progress;
 runtime source binding and endpoint composition pending.
 
 The six owner projections can each return200 records, while NodeResult and
@@ -53,3 +53,22 @@ integer even when absent. Preserve canonical unknown totals while continuing
 to reject bool/subclass/invalid numeric values and forged Progress objects.
 Add known/unknown/zero-total round-trip cases and malformed-total controls.
 This is a narrow projection correction, not a schema or source lifecycle change.
+
+Correction candidate21f5345657ec41d4013fad10ea3fe1eccbc43961 reproduced the
+unknown-total test failure before its guard change, then passed79 tests and
+Ruff after commit (EVA438E045). Coordinator candidate
+63de243d82201202192693b3d1f581f463632278 passed31 tests and Ruff
+(EVFD01E028), including queued disposal and failed-worker-start recovery.
+Both remain candidates for the final batch acceptance.
+
+## Explicit source binding
+
+T012.5 closes the authenticated router wire reader. T012.6 binds six owner
+readers to explicit startup paths and the exact server-owned operation store,
+without writable constructors or ambient path discovery. Router visibility
+uses an explicitly selected router-workloads/workloads-v1 service resource
+and a separate outbound credential environment reference. Existing generic
+Resource fields suffice; do not add a second role=router resource, which would
+make legacy resource_owner(router) resolution ambiguous. Controller startup
+will supply the reference explicitly rather than extending topology with
+an unrelated credential schema. No private configuration was changed.

@@ -1023,6 +1023,93 @@ response, endpoint, reference, alias, address or credential escapes.
 - `python scripts/run_tests.py tests/observability/test_router_workload_source.py tests/observability/test_workload_collection.py -x -q`
 - `python -m ruff check anvil_serving/observability/probes/router_workloads.py tests/observability/test_router_workload_source.py`
 
+### T012.6: Bind explicit node workload readers without discovery
+
+**Feature:** F003
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/control_plane/controller/workload_sources.py, tests/control_plane/test_workload_sources.py
+**Dependencies:** T012.1, T012.2, T012.5
+
+Add build_workload_readers(host, operation_store, *, benchmark_db=None,
+media_db=None, recipe_registry=None, manifest=None, router_topology=None,
+router_resource=None, router_auth_env=None, environment=None) in a new
+controller sibling module. Return an exact six-owner dictionary of trusted
+(host,query,now) callbacks or None for NodeWorkloadCollector. This is binding
+only: no server, CLI, HTTP, scheduler, new persistent store or generic plugin
+registry. Validate the configured exact canonical host before configuration.
+The operation_store argument is the exact existing server-owned OperationStore
+or None; reject another type with fixed ValueError. Never instantiate a store
+or run recovery. Callback use of an injected/subclass owner is not supported.
+
+Optional paths are explicit exact strings, nonempty, at most4096 characters,
+without surrounding whitespace, controls or a leading tilde. Normalize them
+to absolute paths once against the startup cwd using os.path.abspath; this
+does not discover/open any file. Missing or malformed optional values disable
+only that source. Never call config_home, default path resolvers, cwd search,
+dotenv, init, exists/stat, store constructors or lifecycle factories to fill
+missing values. A configuration/query cannot open a source that was absent
+at construction. Return callbacks, not a printable dataclass containing
+private paths, endpoints or environment references.
+
+Bind CONTROLLER to this exact owner's list_workloads; BENCHMARK to the owner
+module read_benchmark_workloads; MEDIA to read_media_workloads; RECIPE to
+list_recipe_workloads; MANIFEST to list_manifest_workloads, each with only
+the captured explicit path plus trusted host/query/time. No cross-module SQL,
+payload hydration, raw subprocess/Docker call, lifecycle mutation, model
+health/identity probe, or second source implementation. Existing managed
+projection owns its bounded capture and source-observation clock.
+
+Every returned callback first validates canonical query/time via the empty
+node builder and requires its host argument to equal the configured host.
+Provable owner/kind/host exclusions return a canonical COMPLETE empty source
+without owner/file/environment/network access. Other filters go unchanged
+to the authoritative reader; do not pre-limit or reinterpret rows. Missing
+configuration remains None/unavailable, not a fabricated empty source.
+
+Router registration requires all three explicit router_topology,
+router_resource and router_auth_env values. Resource ID uses the existing
+canonical safe ID grammar and the outbound environment name uses the exact
+T012.5 grammar. Partial or invalid triples disable only ROUTER. Capture only
+the declared outbound environment value and the existing loopback-alias
+control; environment=None reads os.environ, while an injected Mapping is
+hermetic. Do not copy the whole process environment, resolve dotenv or inspect
+an inbound authorization policy. Missing/invalid credential stays unavailable
+through T012.5. Registration performs no topology or source I/O.
+
+The authenticated router callback loads only the captured topology path
+through load_topology, selects topology.resource(exact_id), and requires
+resource.role == router-workloads, endpoint_kind == workloads-v1,
+resource.host == configured host, resource.workload == service, and a declared
+runtime whose host matches. This uses existing generic Resource fields; add
+no schema field or second role=router owner that would make legacy
+resource_owner(router) ambiguous. A dedicated observation resource can
+coexist with the ordinary data-plane router resource unchanged. T012.5
+validates the exact loopback endpoint before any socket. Pass the explicit
+auth reference and captured two-value environment to read_router_workloads.
+Never choose a first matching resource, infer a port or hostname, or issue SSH.
+
+Catch source-binding/configuration failures into a fixed UNAVAILABLE source
+without error text; preserve a SourceResult returned by its authoritative
+owner and let NodeWorkloadCollector's canonical builder validate/detach it.
+Invalid canonical arguments still raise before reads. Source isolation means
+a bad router topology cannot remove the controller/media peers. Expose only
+build_workload_readers publicly. Server lifecycle ownership and startup flags
+follow in T012; this slice performs no actual live collection.
+
+**Acceptance criteria:**
+
+- Construction opens no files, reads no stores, starts no workers and invokes no lifecycle/discovery helper; optional missing sources are None and the exact server OperationStore is retained without recovery.
+- Each registered callback forwards only its exact path/host/query/time to the existing owner reader; explicit filters exclude unnecessary managed captures before I/O.
+- Relative explicit paths bind once to startup cwd; missing/malformed/tilde paths never trigger ambient operator-home or cwd file discovery, including an injected empty environment.
+- Router selection requires the exact dedicated resource and same host/runtime, retains ordinary router ownership, and passes only its explicit loopback endpoint/auth reference and two-value environment.
+- Wrong host, invalid query/time, partial configuration, bad topology/resource/runtime and throwing owners return the specified fixed results without leaking paths, credentials, raw error or transport metadata.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/control_plane/test_workload_sources.py tests/observability/test_router_workload_source.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/controller/workload_sources.py tests/control_plane/test_workload_sources.py`
+
 ### T012: Aggregate node-local workload sources
 
 **Feature:** F003
