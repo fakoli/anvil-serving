@@ -413,6 +413,9 @@ class ServerConfig:
     durability sinks: persisted tier-quiesce intent restored at boot, and an
     append-only metadata-only JSONL of decision records. Both absent -> no
     file I/O, identical to the pre-ADR-0033 router.
+
+    ``workload_host`` is an explicit canonical host ID for operator workload
+    snapshots. Absence disables that source; it never triggers host discovery.
     """
 
     auth_env: Optional[str] = None
@@ -421,6 +424,7 @@ class ServerConfig:
     media_principal: Optional[str] = None
     media_scopes: tuple[str, ...] = ()
     media_public_origin: Optional[str] = None
+    workload_host: Optional[str] = None
 
 
 _SERVER_KEYS = frozenset({
@@ -430,7 +434,9 @@ _SERVER_KEYS = frozenset({
     "media_principal",
     "media_scopes",
     "media_public_origin",
+    "workload_host",
 })
+_WORKLOAD_HOST_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 _MEDIA_SCOPES = frozenset(
     {"media:read", "media:submit", "media:cancel", "media:cross-principal", "operator:media"}
 )
@@ -463,6 +469,15 @@ def load_server_config(path: str) -> ServerConfig:
     auth_env = server.get("auth_env")
     if auth_env is not None:
         _validate_auth_env(auth_env, "[server].auth_env")
+
+    workload_host = server.get("workload_host")
+    if "workload_host" in server and (
+        not isinstance(workload_host, str)
+        or _WORKLOAD_HOST_RE.fullmatch(workload_host) is None
+    ):
+        raise ConfigError(
+            "[server].workload_host must match [A-Za-z][A-Za-z0-9_-]{0,63}"
+        )
 
     media_principal = server.get("media_principal")
     raw_media_scopes = server.get("media_scopes")
@@ -516,6 +531,7 @@ def load_server_config(path: str) -> ServerConfig:
         media_principal=media_principal,
         media_scopes=tuple(raw_media_scopes),
         media_public_origin=media_public_origin,
+        workload_host=workload_host,
     )
 
 
