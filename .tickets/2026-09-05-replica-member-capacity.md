@@ -13,6 +13,29 @@ release. Direct-tier admission and its five-field public snapshot stay intact.
 The caller must pass replica-only ceiling mappings; routing construction and
 capacity ranking follow in T002-T004, so this is not an enabled scheduler claim.
 
+The scheduler boundary is now closed without a second state owner. T002 adds
+only immutable scheduler values, a pure pressure normalizer/rank function, and
+their integration into the existing `TierAdmission` condition and cursor. A
+capacity lease carries its immutable decision; legacy round robin carries no
+decision. Readiness and pressure inputs are copied and validated before the
+condition, and selection, count increments, and cursor advancement remain one
+atomic admission operation with no I/O or caller callback under the lock.
+
+Normalized request pressure uses ceiling parts per million for
+`(running + waiting) / configured_member_ceiling` and deliberately remains
+above one when backlog exceeds capacity, up to 2000000000000000 ppm. KV
+pressure is bounded to 0-1000000 ppm. T003 must attach monotonic observation
+time to its existing running/waiting/KV snapshot; no engine-specific capacity
+metric is inferred. T004 must pass strategies and ceilings through both
+admission construction sites and must not wrap replica members in the separate
+backend concurrency limiter. These are pending implementation contracts, not
+claims that capacity scheduling is routed or deployed.
+
+Freshness evidence remains four-state: fresh, stale, failed, or unknown. Every
+non-fresh state is equally conservative in ranking, but the selected score
+retains the source class so the later capacity projection can distinguish
+expiry, collection failure, and malformed or absent evidence.
+
 Implementation 4180f1bb passed 163 focused config/admission tests and Ruff after
 commit, recorded as EV91B9A27F. Twenty concurrent attempts are bounded with and
 without an aggregate ceiling; event-driven tests cover member/tier drains and

@@ -30,7 +30,7 @@ Replace simple round robin inside an already selected, qualified same-host repli
 - R004: Candidate snapshot, deterministic selection, rotating tie-break advancement, and member lease reservation must occur atomically under one bounded tier scheduler lock so concurrent requests cannot all observe the same stale local count.
 - R005: Local pressure must include active router reservations divided by the member concurrency ceiling, with the ceiling validated as a positive integer and never inferred from an engine name or metrics endpoint.
 - R006: When available, upstream pressure may include normalized running requests, waiting requests, scheduler capacity, and KV-cache utilization produced by the existing metrics adapter; raw vendor labels must not enter the scoring function.
-- R007: Every upstream pressure sample must carry observed time, success state, and freshness; missing, failed, non-finite, negative, or stale values must become an explicit unknown state that cannot rank ahead of a fresh low-pressure member solely because data is absent.
+- R007: Every upstream pressure sample must carry observed time, success state, and freshness; fresh, stale, failed, and unknown provenance must remain explicit, and every non-fresh class must rank as upstream unknown so absent or unusable data cannot beat a fresh low-pressure member at equal local load.
 - R008: The first scheduler must use a documented lexicographic score: eligibility, conservative local pressure, conservative normalized upstream pressure, then a rotating stable member-ID tie break; floating weights, adaptive learning, and prompt-derived costs are prohibited.
 - R009: Metrics collection must be time-bounded, cached per member, single-flight under concurrency, and outside the selection lock; request handling may use the latest bounded snapshot but must never wait indefinitely for metrics.
 - R010: Once a member lease is reserved and its backend is invoked, no readiness or pressure change may cause a second selection for that request; all terminal success, error, timeout, cancellation, disconnect, and streaming-close paths must release the same lease exactly once.
@@ -87,11 +87,13 @@ None. The first release uses lexicographic conservative scoring, cached normaliz
 
 - Add tier `replica_strategy`: `round_robin` by default, or explicit `capacity`; reject it on direct tiers. Add optional positive integer member `max_concurrency` (1-100000), mandatory for every member in capacity mode. A configured member ceiling is enforced in either mode.
 - Tier `max_concurrency` is the aggregate ceiling, never multiplied by member count. If absent, capacity mode is bounded by the sum of member ceilings. Compound admission replaces the independent blocking backend semaphore on replica paths; exhausted capacity returns the existing unavailable response without waiting or reserving another tier.
-- Under one tier-owned condition: recheck quiesce and ceilings, combine already-completed readiness/telemetry snapshots with current local counts, choose, advance the cursor, and increment tier/member counts. No I/O or user callback runs under that condition.
-- Filter ineligible members, then rank by `(local_ratio, upstream_unknown, upstream_pressure, rotating_rank)`. Compare local ratios exactly (integer cross-products or `fractions.Fraction`). Upstream unknown is 1, fresh is 0; therefore unknown loses to fresh only at equal local ratio. Local reservations remain authoritative.
-- Fresh upstream pressure is the maximum of valid available signals: `(running + waiting) / scheduler_capacity` when all three are valid, and KV utilization as a 0-1 fraction when valid. No valid signal means unknown. Missing optional signals are not zero. Negative, non-finite, failed, future, or stale samples are unknown. Capacity is positive; counts are nonnegative; no vendor label enters this function.
-- Sampling uses composite member identity, an injected monotonic clock, a 1-second refresh interval, 5-second stale boundary, 1-second transport timeout, and the existing bounded body reader. One refresh per member is in flight; other callers use the completed cache or unknown without waiting for it. No unbounded executor queue or thread-per-request creation is allowed.
-- Ties rotate over sorted safe member IDs and advance only after a successful reservation. Pressure evidence is a bounded list of at most 16 normalized candidate rows; it carries no raw metric text or URL.
+- Under one tier-owned condition: recheck quiesce and ceilings, combine already-completed immutable readiness/pressure snapshots with current local counts, call the fixed built-in pure rank function, and increment tier/member counts. `TierAdmission` remains the only lock, cursor, and reservation owner; no scheduler object, I/O, caller callback, mutable caller mapping, or clock access runs under that condition.
+- `PressureFreshness` is `fresh|stale|failed|unknown`; `PressureSignalState` is `valid|missing|invalid`. Frozen `ReplicaPressure`, `ReplicaCandidate`, `ReplicaScore`, and `ReplicaDecision` values accept only their closed exact field types and bounds. A candidate has safe member ID, exact Boolean eligibility, active reservations 0-1000000000, member capacity 1-100000, and validated immutable pressure. Each score copies freshness from its pressure; every non-fresh class ranks as upstream unknown. Ranking accepts an exact tuple of 2-16 unique candidates and an exact integer cursor from zero through `N-1`; invalid inputs raise fixed `ValueError`, while an empty eligible set is an ordinary decision with `selected_member_id=None` and reason `no-eligible-member`.
+- Filter members that are not eligible or whose active reservations meet their ceiling, then rank by `(local_ratio, upstream_unknown, upstream_pressure_ppm, rotating_rank)`. Compare local ratios exactly with integer cross-products, never rounded parts per million. Fresh upstream pressure is the maximum of valid request pressure and valid KV pressure: request pressure is `ceil((running + waiting) * 1000000 / scheduler_capacity)` in the range 0-2000000000000000 ppm without clamping at 1000000, and KV pressure is `ceil(kv_cache_usage_fraction * 1000000)` in the range 0-1000000 ppm. All serialized evidence remains below `2^53`.
+- `normalize_replica_pressure(*, observed_at, now_monotonic, successful, requests_running=None, requests_waiting=None, scheduler_capacity=None, kv_cache_usage_fraction=None)` is pure, never retains raw values or errors, and imports no metrics adapter. It accepts only exact built-in `int`/`float` numeric telemetry, never Boolean: integral request counts are 0-1000000000, scheduler capacity is an exact integer 1-100000, and KV utilization is finite and 0-1. `None` means missing; an incomplete request tuple is missing rather than zero; any supplied malformed optional signal makes the whole pressure unknown and wins over missing. Valid KV alone may produce fresh pressure when the request tuple is missing. Unknown pressure has `pressure_ppm=None` plus fixed request/KV signal states.
+- Pressure is fresh only when `successful is True`, both monotonic clock values are finite and nonnegative, age is from zero through 5 seconds inclusive, and at least one signal is valid. `successful is False` produces `failed`; a successful otherwise-valid sample older than 5 seconds produces `stale`; missing or invalid signals, future or invalid clocks, and malformed inputs produce `unknown`. All non-fresh states have `pressure_ppm=None` and rank identically as upstream unknown while retaining their freshness class for T011 evidence. T003 adds observation time to its composite-identity cache and passes the existing raw metrics fields `requests_running`, `requests_waiting`, and `kv_cache_usage_fraction` plus the configured member ceiling as `scheduler_capacity`; no engine-specific capacity series is invented.
+- Rank returns score rows in winning order and eligible IDs in sorted member-ID order, with reason `selected` or `no-eligible-member`. Rotating rank and the admission cursor always use the full sorted configured membership, independent of candidate input order; the cursor advances only after a successful reservation. `MemberAdmissionLease.selection` is the immutable `ReplicaDecision` for capacity selections and `None` for legacy round robin. Pressure evidence is capped at 16 rows and carries no raw metric text or URL.
+- `TierAdmission` accepts copied and validated replica strategy and capacity mappings only for configured replica tiers; capacity strategy requires ceilings for every member. `acquire_member` copies and validates the complete readiness and pressure mappings before entering the condition; absent pressure means unknown, while incomplete, duplicate, unknown-member, or malformed mappings refuse without changing the cursor or counts.
 - Existing router `transition-status|quiesce|drain|readmit` verbs gain optional `--member <id>` with required `--tier`; the authenticated transition endpoint uses optional `member_id`. Omission preserves tier behavior. Unknown members/direct tiers refuse before mutation. Member readmission verifies only that member's served-model readiness and never readmits the tier; tier readmission never clears member quiesce. Drain requires quiesce of its scope and cannot cancel in-flight leases.
 - Persist member quiesce intent in an optional `members` mapping of tier ID to member ID/reason alongside existing tier intent. Restore only configured IDs, reject malformed state, and retain member intent across restart. Extend `router_manage.py`, front-door transition handlers, command spec/manifest and focused endpoint tests in T004/T006.
 - Require event/barrier tests for oversubscription, quiesce versus acquire, single-flight collection, stream close before iteration, collector failure and expiry. Include the decisive counterexample: unknown 0/2 local beats fresh 1/2 local; fresh wins when both local counts are 0/2.
@@ -161,22 +163,23 @@ First implement `replica_strategy` and member `max_concurrency` parsing under th
 **Feature:** F002
 **Priority:** high
 **Type:** feature
-**Likely files:** anvil_serving/router/replica_scheduler.py, tests/router/test_replica_scheduler.py
+**Likely files:** anvil_serving/router/replica_scheduler.py, tests/router/test_replica_scheduler.py, anvil_serving/router/admission.py, tests/router/test_admission.py
 **Dependencies:** T001
 
-Create immutable candidate, pressure, score, and decision value objects plus a pure ranking function. Put only lock/cursor orchestration in a small scheduler class. Define freshness classes and conservative unknown ordering as named constants or enums, not magic numbers. Executor guidance: start with table-driven tests covering every score dimension and permutation; member IDs are tie-break data only and must not influence eligibility or pressure.
+Create the closed immutable pressure, candidate, score, and decision values, pure normalizer, and pure fixed rank function. Do not add a scheduler class, lock, or cursor: extend `TierAdmission` to validate and copy replica strategies/capacities and completed pressure mappings outside its existing condition, then call the fixed rank function and reserve atomically under that condition. Preserve the direct API and legacy round robin; capacity selections attach the immutable decision to the compound lease. Executor guidance: start with table-driven tests covering every score dimension, exact ppm ceiling, signal state, freshness edge, and input permutation.
 
 **Acceptance criteria:**
 
-- Ranking exactly implements the documented lexicographic order.
-- Permuting candidate input does not change the chosen member for the same cursor state.
-- Equal candidates rotate fairly and deterministically.
-- NaN, infinity, negative values, absent data, and stale data normalize to explicit unknown without exceptions.
+- Ranking exactly implements the documented lexicographic order, exact local-ratio comparison, unbounded-at-one request ppm, and winning-order score rows.
+- Permuting candidate input does not change the decision for the same full-membership cursor, and eligible IDs remain sorted.
+- Equal candidates rotate fairly and deterministically, and the admission cursor advances only after a successful reservation.
+- Missing and invalid signals retain typed signal state; successful samples older than five seconds become stale, unsuccessful samples become failed, and future clocks or malformed telemetry become unknown without retaining raw values or exceptions.
+- Admission validates completed pressure outside its condition, enforces member and tier ceilings atomically, and refuses malformed mappings without changing counts or cursor.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_replica_scheduler.py -x -q`
-- `python -m ruff check anvil_serving/router/replica_scheduler.py tests/router/test_replica_scheduler.py`
+- `python scripts/run_tests.py tests/router/test_replica_scheduler.py tests/router/test_admission.py -x -q`
+- `python -m ruff check anvil_serving/router/replica_scheduler.py tests/router/test_replica_scheduler.py anvil_serving/router/admission.py tests/router/test_admission.py`
 
 ### T003: Add cached single-flight normalized member pressure
 
@@ -186,13 +189,13 @@ Create immutable candidate, pressure, score, and decision value objects plus a p
 **Likely files:** anvil_serving/router/model_capacity.py, tests/router/test_model_capacity.py, tests/router/test_replica_scheduler.py
 **Dependencies:** T002
 
-Wrap the existing bounded metrics fetch with a per-member cache and single-flight refresh using injected monotonic time. Produce only the normalized snapshot consumed by the scheduler. Do not hold the scheduler/admission lock while fetching and do not surface raw metrics. Executor guidance: follow existing bounded-body, finite-number, and timeout patterns; use fake clocks and blocking test collectors controlled by events.
+Wrap the existing bounded metrics fetch with a per-member cache and single-flight refresh using injected monotonic time. Cache the observation time with the existing raw `requests_running`, `requests_waiting`, and `kv_cache_usage_fraction` fields, then call the T002 normalizer with the configured member ceiling as `scheduler_capacity`; do not invent an engine-specific capacity metric or import `model_capacity` from `replica_scheduler`. Produce only the completed normalized snapshot consumed by admission, perform no fetch under the admission condition, and surface no raw metrics. Executor guidance: follow existing bounded-body, finite-number, and timeout patterns; use fake clocks and blocking test collectors controlled by events.
 
 **Acceptance criteria:**
 
 - Concurrent refreshes for one member cause one metrics request.
 - Fresh cache hits perform no I/O; expiry produces one new bounded refresh.
-- Timeout, parse failure, missing series, and non-finite values become typed unknown snapshots.
+- Timeout and collection failure become typed failed snapshots; parse failure, missing series, and non-finite values become typed unknown snapshots.
 - Members have independent caches and one slow member does not block another.
 
 **Verification:**
@@ -207,7 +210,7 @@ Wrap the existing bounded metrics fetch with a per-member cache and single-fligh
 **Likely files:** anvil_serving/router/serve.py, tests/router/test_model_routes.py, tests/router/test_backends.py
 **Dependencies:** T001, T002, T003
 
-Construct the candidate snapshot after all request-wide gates, combine the completed readiness and pressure snapshots with current local counts under the admission condition, acquire the selected compound lease, and invoke exactly that backend. Keep I/O outside the condition and never loop around backend invocation. Make backend fakes count calls and cover capacity exhaustion and unknown-versus-fresh counterexamples.
+Construct completed readiness and pressure snapshots after all request-wide gates, pass them once to admission, acquire the selected compound lease, and invoke exactly that backend. Pass replica strategies and member ceilings at both `RoutingBackend`'s fallback admission construction and `build_server`'s shared admission construction; replica members must not also receive `_ConcurrencyLimitedBackend`, because compound admission owns their ceilings. Keep I/O outside the condition and never loop around backend invocation. Make backend fakes count calls and cover capacity exhaustion and unknown-versus-fresh counterexamples.
 
 **Acceptance criteria:**
 
