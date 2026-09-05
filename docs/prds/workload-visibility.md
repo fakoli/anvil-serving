@@ -1662,15 +1662,124 @@ caps; do not reimplement transport, scheduler, serializer or selection here.
 - `python scripts/run_tests.py tests/observability/test_fleet_workload_sources.py tests/observability/test_controller_workload_source.py tests/observability/test_fleet_workload_collector.py -x -q`
 - `python -m ruff check anvil_serving/observability/fleet_workload_sources.py tests/observability/test_fleet_workload_sources.py`
 
+### T006.1: Preserve canonical HTTP workload snapshots for clients
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/observability/probes/router_workloads.py, anvil_serving/observability/probes/controller_workloads.py, tests/observability/test_router_workload_source.py, tests/observability/test_controller_workload_source.py
+**Dependencies:** T012.5, T013, T014.1
+
+Add read_router_node_workloads(endpoint, auth_env, expected_node, query, now,
+*, environment=None, _open=None) returning NodeResult, and
+read_controller_fleet_workloads(endpoint, auth_env, expected_node, query, now,
+*, environment=None, monotonic=time.monotonic, _open=None) returning
+FleetResult. Refactor the existing router SourceResult reader over the new
+node reader without changing its public API or fixed source-failure behavior.
+The new client readers raise only fixed WorkloadError failures when the
+remote snapshot cannot be established; they never invent a complete-empty
+fleet inventory. Canonical partial/unavailable observations are valid data.
+
+Validate exact canonical expected-node/query/time before config, environment
+or network. Router uses the existing exact loopback /v1 endpoint grammar,
+one named normalized credential, no proxy/redirect/retry and exact response
+node equality. The injected mapping stays hermetic; the existing owner
+reader's deliberate loopback-alias behavior remains compatible, while CLI
+callers pass only a single credential mapping. A provable router host-filter
+exclusion is an empty COMPLETE single-router-source node without reading
+environment or HTTP. Fleet expected_node identifies the aggregator controller,
+not a workload filter: never skip its call merely because query.host differs.
+
+Fleet uses a fresh ControllerTransport with explicit expected_node,
+allowed_operations=(fleet-workloads,), Operation name fleet-workloads and
+tool_name fleet_workloads, canonical seven arguments, MAX_JSON_BYTES response
+bound, no context or idempotency. Parameterize the existing private _Budget
+duration: existing node reads retain exactly two seconds; fleet has one
+seven-second monotonic budget across health, POST, body and cleanup, outside
+the server's five-second aggregation budget. Reuse guarded no-proxy/no-redirect
+opener and cleanup seams. Socket timeout is at most remaining budget; do not
+add retries, reader threads, generic transport changes or shutdown waits.
+As with the node reader, this synchronous budget cannot preempt an injected
+blocking opener; do not claim hard cancellation of uncooperative I/O.
+
+Require exact TransportResult operation/transport identity, exact outer
+ok/data keys with ok true, and exact built-in dictionary data. Decode with
+the canonical fleet codec. Reject a collection timestamp more than30 seconds
+ahead of trusted receipt now. Normalize supplied nodes and global selection
+with build_fleet_workloads using receipt now, NEVER the remote fleet clock
+as recency/skew authority. Reconstruct only the comparison wrapper with the
+original fleet collection timestamp, then require equality to the decoded
+remote snapshot. A changed source failure, query mismatch, cap, order,
+omission or status means invalid remote data, not silent client repair.
+Return the original canonical snapshot on equality, preserving all valid
+outer/node/source timestamps. Apply the equivalent one-router-source
+normalization/equality check for router snapshots, preserving its outer time.
+
+Failures are fixed INVALID, UNSUPPORTED, FUTURE or UNAVAILABLE WorkloadError
+codes/messages with no endpoint, environment reference/value, body, path,
+transport dictionary or chained exception. Unsupported schema and future
+timestamps retain their typed classification. Known application access or
+transport failures are UNAVAILABLE. Test cleanup failure and shared-deadline
+expiry without seeded private values escaping any message.
+
+**Acceptance criteria:**
+
+- Existing node/source reader contracts and two-second node budget remain compatible; new client readers preserve canonical record and provenance bytes rather than refreshing stale observations.
+- Router enforces one exact expected node and single router source; fleet authenticates aggregator identity separately from query.host and accepts valid partial/unavailable declared snapshots.
+- Receipt-relative skew, recency, ordering, status and omission validation refuses malformed or altered snapshots with fixed failures and never fabricates empty fleet success.
+- One seven-second fleet budget covers identity plus query/cleanup, no proxy/redirect/retry/idempotency/context occurs, and hermetic mappings never read unrelated environment values.
+- Tests demonstrate invalid arguments before I/O, exact operation/body limits, wrong identity, unsupported/future data, query mismatch, safe cleanup and unchanged legacy owner projections.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_router_workload_source.py tests/observability/test_controller_workload_source.py tests/observability/test_fleet_workload_collection.py -x -q`
+- `python -m ruff check anvil_serving/observability/probes/router_workloads.py anvil_serving/observability/probes/controller_workloads.py tests/observability/test_router_workload_source.py tests/observability/test_controller_workload_source.py`
+
 ### T006: Register router and fleet workload CLI commands
 
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
 **Likely files:** anvil_serving/cli.py, anvil_serving/commands/router.py, anvil_serving/commands/fleet.py, tests/test_cli.py
-**Dependencies:** T013
+**Dependencies:** T006.1
 
-Register `router workloads` and `fleet workloads` CLI parsers and dispatch backed by the canonical router/fleet query APIs. Keep identical filters, return structured dictionaries below the wrapper, and derive JSON/text from the same result. Controller/MCP and generated manifest work follow.
+Declare ordinary read-only _node leaves, not resource-owner commands:
+router workloads --router-url URL --auth-env NAME --expected-node NODE and
+fleet workloads --controller-url URL --auth-env NAME --expected-node NODE.
+All three connection options are required and unique; there is no default
+endpoint, environment lookup chain, topology, target, transport or SSH path.
+Add one internal cli.py handler used by both declarations. Support exactly
+seven unique filters --owner, --kind, --state, --host, --active-only,
+--recent-seconds and --limit, translated to the canonical query parser.
+--active-only is a no-value flag producing true; its absence uses false.
+Reject repeated flags including connection options, positionals, unknown
+options, missing values, abbreviations and unsafe scalar values before clock,
+environment or reader access. Support both --flag=value and separate values
+for value-taking options; no equals-value form for --active-only.
+
+Validate connection scalars against their existing reader contracts before
+UTC/environment access. Read UTC once and capture only the declared
+credential into a fresh one-key mapping, then call the T006.1 reader. Thus
+CLI router calls cannot pick up the owner-reader loopback alias accidentally.
+Expected-node authenticates serving identity; --host is only a query filter.
+No direct local fleet collection or unauthenticated static MCP call is used.
+
+Intercept both exact leaves in _dispatch after help handling but before
+confirmation, resolution-option extraction or _resolve_dispatch_plan.
+Resolution-like options are fixed invalid workload arguments, never acted
+upon. Protect both exact leaves in _json_envelope with operand-free canonical
+command, literal null context, empty warnings and canonical structured data.
+On failure emit fixed workload usage/source errors with data null; do not
+copy argparse text, raw argv, captured stdout or generic exception details.
+Protect global-option failures for an exact selected workload leaf before
+_json_envelope as well. Preserve unrelated CLI behavior and focused help.
+
+Return CommandResult and derive human text only from the same canonical
+node/fleet dictionary. Show statuses, node/source collection times, counts,
+omissions and bounded safe record fields without another serializer.
+Canonical partial/unavailable observations return success with their status;
+invalid usage is exit2, failed HTTP snapshot is exit4. Generated manifests
+and reference updates remain T015/T016, not hand edits in this slice.
 
 **Acceptance criteria:**
 
@@ -1681,17 +1790,49 @@ Register `router workloads` and `fleet workloads` CLI parsers and dispatch backe
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/test_cli.py -x -q`
+- `python scripts/run_tests.py tests/test_cli.py tests/observability/test_router_workload_source.py tests/observability/test_controller_workload_source.py -x -q`
+- `python -m ruff check anvil_serving/cli.py anvil_serving/commands/router.py anvil_serving/commands/fleet.py tests/test_cli.py`
 - `python -m anvil_serving.cli router workloads --help`
 - `python -m anvil_serving.cli fleet workloads --help`
+
+### T014.1.1: Share closed node and fleet tool declarations
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/observability/workload_tools.py, tests/control_plane/test_controller_workloads.py
+**Dependencies:** T012
+
+Add FLEET_WORKLOADS_TOOL_NAME, fleet_workloads_declaration and an exact
+fleet-declaration predicate beside the node equivalents. Share one fresh
+seven-field schema with required=[], additionalProperties=false and
+maxProperties=7; preserve existing enums, host grammar, numeric defaults and
+bounds. Update the exact node fixture and test declaration independence.
+Reuse parse_node_workload_query for both names without API renaming. Extend
+workload_success only to exact NodeResult or exact FleetResult and their
+canonical serializers; all other types retain fixed unavailable failure.
+Keep fixed failure codes/messages and scope metadata workloads:read. Test
+canonical fleet round-trip, forged/unsupported object refusal, fresh nested
+declarations, and the exact schema. This pure metadata change performs no
+I/O and registers no HTTP, CLI or standalone MCP operation.
+
+**Acceptance criteria:**
+
+- Fresh node/fleet declarations share exactly seven bounded canonical query fields, explicit empty required list, maxProperties=7 and workloads:read metadata without mutation/context fields.
+- Canonical node/fleet success serialization and fixed unsupported-object failure are tested; existing node-controller fixtures remain compatible.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/control_plane/test_controller_workloads.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/observability/workload_tools.py tests/control_plane/test_controller_workloads.py`
 
 ### T014.1: Seal the fleet controller workload operation
 
 **Feature:** F004
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/observability/workload_tools.py, anvil_serving/control_plane/controller/server.py, anvil_serving/control_plane/controller/http.py, tests/control_plane/test_controller_workloads.py, tests/control_plane/test_controller_fleet_workloads.py
-**Dependencies:** T012, T013
+**Likely files:** anvil_serving/control_plane/controller/server.py, anvil_serving/control_plane/controller/http.py, tests/control_plane/test_controller_fleet_workloads.py
+**Dependencies:** T012, T013, T014.1.1
 
 Extend the existing sealed node-workload path to exactly two reserved names,
 node_workloads and fleet_workloads. Do not register either in the standalone
@@ -1701,16 +1842,9 @@ is the controller's authenticated /mcp endpoint and the modern bridge that
 dynamically consumes that controller's tools/list and tools/call. The legacy
 Python proxy is not a workload surface in v1; leave unrelated tools intact.
 
-In workload_tools.py add FLEET_WORKLOADS_TOOL_NAME, a fresh
-fleet_workloads_declaration and an exact-declaration predicate beside the
-node equivalents. Share one canonical seven-field schema: required is an
-empty list, additionalProperties is false, maxProperties is 7, and the
-existing enums, host grammar, numeric bounds and defaults remain unchanged.
-Update the node declaration's exact-schema fixture accordingly. Reuse
-parse_node_workload_query for both names; its name is compatibility, not a
-second query contract. Extend workload_success to exact NodeResult or exact
-FleetResult and their canonical serializers. Keep the fixed failure codes;
-do not serialize arbitrary duck-typed objects or exception details.
+Use the shared fresh declarations, predicates, query parser and exact typed
+node/fleet success serializers delivered by T014.1.1. Do not duplicate or
+edit that pure contract in this HTTP/lifecycle slice.
 
 Add optional workload_fleet_topology to make_server and serve, default None.
 It is separate from workload_topology, which binds a node's router source.
