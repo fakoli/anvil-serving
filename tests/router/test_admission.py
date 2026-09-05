@@ -9,6 +9,7 @@ import pytest
 
 from anvil_serving.router.admission import TierAdmission
 from anvil_serving.router.availability import AvailabilityResult
+from anvil_serving.router.replica_scheduler import ReplicaPressure, normalize_replica_pressure
 
 
 def _ready(value=True):
@@ -583,3 +584,125 @@ def test_member_quiesce_and_acquire_race_has_one_atomic_outcome():
             leases[0].release()
         final = admission.snapshot("replica")
         assert final.active_requests == sum(dict(final.member_active_requests).values()) == 0
+
+
+def _capacity_admission(*, tier_cap=None, on_state_change=None):
+    return TierAdmission(
+        ["replica"], replica_members={"replica": ["a", "b"]},
+        member_max_concurrency={"replica": {"a": 2, "b": 2}},
+        tier_max_concurrency={} if tier_cap is None else {"replica": tier_cap},
+        replica_strategies={"replica": "capacity"}, on_state_change=on_state_change,
+    )
+
+
+def test_capacity_admission_prefers_exact_local_then_fresh_pressure_and_exposes_decision():
+    admission = _capacity_admission()
+    ready = {"a": _ready(), "b": _ready()}
+    pressures = {"a": ReplicaPressure(), "b": normalize_replica_pressure(
+        observed_at=0, now_monotonic=0, successful=True, kv_cache_usage_fraction=0,
+    )}
+    first = admission.acquire_member("replica", ready, pressures)
+    assert first.member_id == "b"  # Fresh wins only at equal local pressure.
+    assert first.selection.selected_member_id == "b"
+    second = admission.acquire_member("replica", ready, pressures)
+    assert second.member_id == "a"  # Unknown zero local beats fresh one local.
+    assert second.selection.scores[0].local_numerator == 0
+    assert first.selection.scores[0].local_numerator == 0  # Immutable pre-reservation evidence.
+    first.release()
+    second.release()
+
+
+def test_capacity_equal_ties_rotate_and_refusal_keeps_cursor():
+    admission = _capacity_admission(tier_cap=1)
+    ready = {"a": _ready(), "b": _ready()}
+    selected = []
+    for _ in range(6):
+        lease = admission.acquire_member("replica", ready)
+        selected.append(lease.member_id)
+        assert admission.acquire_member("replica", ready) is None
+        lease.release()
+    assert selected == ["a", "b"] * 3
+    assert admission.snapshot("replica").active_requests == 0
+
+
+@pytest.mark.parametrize("pressure", [
+    {}, {"a": ReplicaPressure()}, {"a": ReplicaPressure(), "unknown": ReplicaPressure()},
+    {"a": object(), "b": ReplicaPressure()}, [],
+])
+def test_capacity_refuses_bad_pressure_mapping_without_reservation(pressure):
+    admission = _capacity_admission()
+    ready = {"a": _ready(), "b": _ready()}
+    before = admission.snapshot("replica")
+    assert admission.acquire_member("replica", ready, pressure) is None
+    assert admission.snapshot("replica") == before
+    lease = admission.acquire_member("replica", ready)
+    assert lease.member_id == "a"
+    lease.release()
+
+
+def test_pressure_mapping_is_read_only_outside_condition_and_copied_before_reservation():
+    admission = _capacity_admission()
+    condition = admission._conditions["replica"] = threading.Condition(threading.Lock())
+    ready = {"a": _ready(), "b": _ready()}
+
+    class CheckingMapping(dict):
+        def items(self):
+            assert condition.acquire(blocking=False), "provider mapping touched under lock"
+            condition.release()
+            return super().items()
+
+    pressures = CheckingMapping(a=ReplicaPressure(), b=ReplicaPressure())
+    lease = admission.acquire_member("replica", CheckingMapping(ready), pressures)
+    pressures["a"] = object()
+    assert lease.selection.selected_member_id == "a"
+    assert lease.selection.scores[0].upstream_pressure_ppm is None
+    lease.release()
+
+
+@pytest.mark.parametrize("strategies", [[], {"unknown": "capacity"}, {"replica": "random"}, {"replica": True}])
+def test_admission_rejects_invalid_strategy_configuration(strategies):
+    with pytest.raises(ValueError):
+        TierAdmission(["replica"], replica_members={"replica": ["a", "b"]}, replica_strategies=strategies)
+
+
+def test_capacity_requires_all_caps_and_round_robin_keeps_legacy_lease():
+    with pytest.raises(ValueError, match="ceiling for every"):
+        TierAdmission(["replica"], replica_members={"replica": ["a", "b"]},
+                      replica_strategies={"replica": "capacity"}, member_max_concurrency={"replica": {"a": 2}})
+    with pytest.raises(ValueError, match="replica strategies"):
+        TierAdmission(["direct"], replica_strategies={"direct": "round_robin"})
+    admission = TierAdmission(["replica"], replica_members={"replica": ["a", "b"]})
+    lease = admission.acquire_member("replica", {"a": _ready(), "b": _ready()})
+    assert lease.selection is None
+    lease.release()
+
+
+def test_twenty_capacity_rankings_reserve_current_counts_atomically():
+    admission = _capacity_admission(tier_cap=3)
+    barrier = threading.Barrier(21)
+    leases = []
+    lock = threading.Lock()
+
+    def acquire():
+        barrier.wait(timeout=2)
+        lease = admission.acquire_member("replica", {"a": _ready(), "b": _ready()})
+        with lock:
+            leases.append(lease)
+
+    threads = [threading.Thread(target=acquire) for _ in range(20)]
+    for thread in threads:
+        thread.start()
+    barrier.wait(timeout=2)
+    for thread in threads:
+        thread.join(2)
+        assert not thread.is_alive()
+    granted = [lease for lease in leases if lease is not None]
+    assert len(granted) == 3
+    snapshot = admission.snapshot("replica")
+    assert snapshot.active_requests == sum(dict(snapshot.member_active_requests).values()) == 3
+    assert dict(snapshot.member_active_requests) == {"a": 2, "b": 1}
+    for lease in granted:
+        assert lease.selection is not None
+        lease.release()
+        lease.release()
+    assert admission.snapshot("replica").active_requests == 0
