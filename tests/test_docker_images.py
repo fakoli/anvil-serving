@@ -19,11 +19,15 @@ def _completed(argv, *, returncode=0, stdout="", stderr=""):
 
 
 class DockerFixture:
-    def __init__(self, *, container_state=None, configured_tags=None, child=False, drift=False):
+    def __init__(
+        self, *, container_state=None, configured_tags=None, child=False, drift=False,
+        post_remove_inspect_error=None,
+    ):
         self.container_state = container_state
         self.configured_tags = configured_tags or ["repo/app:old"]
         self.child = child
         self.drift = drift
+        self.post_remove_inspect_error = post_remove_inspect_error
         self.removed = False
         self.calls = []
         self.target_single_inspections = 0
@@ -57,7 +61,11 @@ class DockerFixture:
             if len(refs) == 1 and refs[0] in {TARGET_ID, TARGET_HEX, TARGET_DIGEST}:
                 self.target_single_inspections += 1
                 if self.removed:
-                    return _completed(argv, returncode=1, stderr="No such image")
+                    return _completed(
+                        argv,
+                        returncode=1,
+                        stderr=self.post_remove_inspect_error or "No such image",
+                    )
                 drifted = self.drift and self.target_single_inspections >= 2
                 return _completed(argv, stdout=json.dumps([self._target(drifted=drifted)]))
             rows = []
@@ -177,6 +185,52 @@ def test_declared_rollback_reference_blocks_exact_image_removal(tmp_path):
     assert configured[0]["field"] == "rollback.image"
 
 
+def test_yaml_sequence_image_reference_blocks_exact_image_removal(tmp_path):
+    (tmp_path / "compose.yaml").write_text(
+        "candidates:\n  - image: %s\n" % TARGET_DIGEST,
+        encoding="utf-8",
+    )
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    configured = result["inspection"]["references"]["configured"]
+    assert result["outcome"] == "blocked"
+    assert configured == [{
+        "path": "compose.yaml",
+        "field": "line:2",
+        "value": TARGET_DIGEST,
+    }]
+    assert not any(call[1:3] == ["image", "rm"] for call in fixture.calls)
+
+
+def test_symlinked_config_directory_fails_closed(tmp_path, monkeypatch):
+    recipes = tmp_path / "recipes"
+    recipes.mkdir()
+    (recipes / "image.toml").write_text(
+        'image = "%s"\n' % TARGET_DIGEST,
+        encoding="utf-8",
+    )
+    original = docker_images._path_is_link_like
+    monkeypatch.setattr(
+        docker_images,
+        "_path_is_link_like",
+        lambda path: path == recipes or original(path),
+    )
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    errors = result["inspection"]["references"]["config_audit_errors"]
+    assert result["outcome"] == "blocked"
+    assert errors == ["recipes: symlinked directory is not audited"]
+    assert not any(call[1:3] == ["image", "rm"] for call in fixture.calls)
+
+
 def test_dependent_child_image_blocks_exact_image_removal(tmp_path):
     fixture = DockerFixture(configured_tags=[], child=True)
 
@@ -199,3 +253,19 @@ def test_identity_drift_between_inspection_and_removal_fails_closed(tmp_path):
 
     assert result["outcome"] == "identity-drift"
     assert not any(call[1:3] == ["image", "rm"] for call in fixture.calls)
+
+
+def test_post_removal_inspect_error_is_not_accepted_as_absence(tmp_path):
+    fixture = DockerFixture(
+        configured_tags=[],
+        post_remove_inspect_error="permission denied while connecting to Docker",
+    )
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    assert result["outcome"] == "failed"
+    assert result["applied"] is False
+    assert result["removal_attempted"] is True
+    assert "permission denied" in result["error"]

@@ -69,7 +69,9 @@ refuses drift, removes with parent pruning disabled, and verifies absence.
 
 Hermetic coverage exercises tags and abbreviated-ID refusal, live and stopped
 container blockers, recipe and rollback blockers, child blockers, identity
-drift, dry-run, confirmed removal, and postcondition failure. The live campaign
+drift, YAML sequence declarations, linked-directory audit refusal, dry-run,
+confirmed removal, explicit absence, and ambiguous post-removal inspection
+failure. The live campaign
 then proved both sides of the gate: parent images were refused while a child
 remained, became removable only after a fresh audit, and 47 exact unused image
 IDs were confirmed and verified absent. Current container-backed and declared
