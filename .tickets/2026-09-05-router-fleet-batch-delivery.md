@@ -58,3 +58,11 @@ All passed scoped Ruff and remain pending consolidated acceptance.
 Full-suite baseline `b3cb658c` passed 6,640 tests with 10 skips in 269.90s.
 It predates those further candidates; it is not proof for their integrated
 behavior. The fleet client and MCP regressions continue in isolated worktrees.
+
+Full-suite baseline `81b43ff6` passed 6,709 tests with 10 skips in 273.73s.
+This includes the explicit fleet bindings, schema, router client, fleet HTTP,
+startup and controller response-cap candidates. It predates the canonical fleet
+client `30d054c1` (`EVE1C7C31B`, 95 focused tests) and dedicated MCP/chaining
+candidate `0398c5a9` (105 focused tests). Those two source branches were integrated
+only after the full baseline completed. CLI implementation continues separately;
+dashboard slice details are published but not yet re-parsed while its claim is active.
