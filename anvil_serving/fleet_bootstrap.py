@@ -35,6 +35,7 @@ PLAN_SCHEMA = "anvil-serving.fleet-bootstrap-plan/v1"
 CONTROLLER_OPERATION_CATALOG_SCHEMA = (
     "anvil-serving.controller-operation-catalog/v1"
 )
+RECEIVER_FRAME_SCHEMA = "anvil-serving.fleet-bootstrap-receiver-frame/v1"
 MAX_BUNDLE_BYTES = 16 * 1024 * 1024
 MAX_MANIFEST_BYTES = 16 * 1024
 MAX_SHIM_BYTES = 256 * 1024
@@ -43,6 +44,7 @@ MAX_WHEEL_ENTRIES = 4096
 MAX_ARCHIVE_NAME_BYTES = 1024
 MAX_ARCHIVE_COMPONENT_BYTES = 255
 MAX_RECEIPT_BYTES = 16 * 1024
+MAX_RECEIVER_METADATA_BYTES = 4096
 OUTER_BUNDLE_NAMES = ("manifest.json", "runtime.whl", "bootstrap_shim.py")
 
 _DOS_EPOCH = (1980, 1, 1, 0, 0, 0)
@@ -110,6 +112,20 @@ _RECEIPT_FIELDS = frozenset(
         "trigger_error_code",
     }
 )
+_RECEIVER_IDENTITY_FIELDS = frozenset({"schema", "operation", "expected_node"})
+_RECEIVER_OPERATION_FIELDS = frozenset(
+    {
+        "schema",
+        "operation",
+        "expected_node",
+        "operation_id",
+        "plan_sha256",
+        "target_config_sha256",
+    }
+)
+_RECEIVER_STAGE_FIELDS = frozenset(
+    {*_RECEIVER_OPERATION_FIELDS, "bundle_sha256", "bundle_length"}
+)
 
 
 class BootstrapContractError(ValueError):
@@ -148,6 +164,14 @@ class SupervisorAdapter(str, Enum):
 
 class InstallRootClass(str, Enum):
     USER = "user"
+
+
+class ReceiverOperation(str, Enum):
+    IDENTITY = "identity"
+    STAGE = "stage"
+    ACTIVATE = "activate"
+    STATUS = "status"
+    ROLLBACK = "rollback"
 
 
 class BootstrapPhase(str, Enum):
@@ -373,6 +397,166 @@ def _decode_json(raw: bytes, *, maximum: int) -> Any:
         raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "JSON bytes are invalid") from None
     _json_value(value)
     return value
+
+
+@dataclass(frozen=True)
+class BootstrapReceiverFrame:
+    operation: ReceiverOperation
+    expected_node: str
+    operation_id: str | None = None
+    plan_sha256: str | None = None
+    target_config_sha256: str | None = None
+    bundle_sha256: str | None = None
+    bundle_length: int | None = None
+    schema: str = field(default=RECEIVER_FRAME_SCHEMA, init=False)
+
+    def __post_init__(self) -> None:
+        if type(self.operation) is not ReceiverOperation:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver operation is invalid")
+        _required_text(self.expected_node, _NODE_RE, "expected_node")
+        operational = self.operation is not ReceiverOperation.IDENTITY
+        if operational:
+            if self.operation_id is None:
+                raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
+            _operation_id(self.operation_id)
+            _required_text(self.plan_sha256, _SHA256_RE, "plan_sha256")
+            _required_text(
+                self.target_config_sha256,
+                _SHA256_RE,
+                "target_config_sha256",
+            )
+        elif any(
+            value is not None
+            for value in (
+                self.operation_id,
+                self.plan_sha256,
+                self.target_config_sha256,
+                self.bundle_sha256,
+                self.bundle_length,
+            )
+        ):
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
+        if self.operation is ReceiverOperation.STAGE:
+            _required_text(self.bundle_sha256, _SHA256_RE, "bundle_sha256")
+            if (
+                type(self.bundle_length) is not int
+                or not 1 <= self.bundle_length <= MAX_BUNDLE_BYTES
+            ):
+                raise _refuse(
+                    BootstrapErrorCode.INVALID_CONTRACT,
+                    "receiver bundle length is invalid",
+                )
+        elif self.bundle_sha256 is not None or self.bundle_length is not None:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
+
+    def to_dict(self) -> dict[str, Any]:
+        value: dict[str, Any] = {
+            "schema": self.schema,
+            "operation": self.operation.value,
+            "expected_node": self.expected_node,
+        }
+        if self.operation is not ReceiverOperation.IDENTITY:
+            value.update(
+                {
+                    "operation_id": self.operation_id,
+                    "plan_sha256": self.plan_sha256,
+                    "target_config_sha256": self.target_config_sha256,
+                }
+            )
+        if self.operation is ReceiverOperation.STAGE:
+            value.update(
+                {
+                    "bundle_sha256": self.bundle_sha256,
+                    "bundle_length": self.bundle_length,
+                }
+            )
+        return value
+
+    @classmethod
+    def from_dict(cls, raw: Any) -> BootstrapReceiverFrame:
+        if type(raw) is not dict:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
+        keys = tuple(raw)
+        if any(type(key) is not str for key in keys):
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
+        schema = raw.get("schema")
+        operation_value = raw.get("operation")
+        if type(schema) is not str or schema != RECEIVER_FRAME_SCHEMA:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame schema is invalid")
+        operation = _enum(ReceiverOperation, operation_value, "receiver operation")
+        fields = (
+            _RECEIVER_IDENTITY_FIELDS
+            if operation is ReceiverOperation.IDENTITY
+            else _RECEIVER_STAGE_FIELDS
+            if operation is ReceiverOperation.STAGE
+            else _RECEIVER_OPERATION_FIELDS
+        )
+        raw = _validate_exact_fields(raw, fields, "receiver frame fields are invalid")
+        return cls(
+            operation=operation,
+            expected_node=raw["expected_node"],
+            operation_id=raw.get("operation_id"),
+            plan_sha256=raw.get("plan_sha256"),
+            target_config_sha256=raw.get("target_config_sha256"),
+            bundle_sha256=raw.get("bundle_sha256"),
+            bundle_length=raw.get("bundle_length"),
+        )
+
+
+def _receiver_payload(frame: BootstrapReceiverFrame, payload: bytes) -> None:
+    if frame.operation is ReceiverOperation.STAGE:
+        if len(payload) != frame.bundle_length:
+            raise _refuse(
+                BootstrapErrorCode.INVALID_CONTRACT,
+                "receiver payload length is invalid",
+            )
+        if hashlib.sha256(payload).hexdigest() != frame.bundle_sha256:
+            raise _refuse(
+                BootstrapErrorCode.DIGEST_MISMATCH,
+                "receiver payload digest does not match",
+            )
+    elif payload:
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver trailing bytes are invalid")
+
+
+def encode_receiver_frame(
+    frame: BootstrapReceiverFrame, payload: bytes = b""
+) -> bytes:
+    """Encode one exact canonical receiver request without performing I/O."""
+    if type(frame) is not BootstrapReceiverFrame or type(payload) is not bytes:
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
+    _receiver_payload(frame, payload)
+    metadata = canonical_json_bytes(frame.to_dict())
+    if not 1 <= len(metadata) <= MAX_RECEIVER_METADATA_BYTES:
+        raise _refuse(
+            BootstrapErrorCode.INVALID_CONTRACT,
+            "receiver metadata length is invalid",
+        )
+    return struct.pack(">I", len(metadata)) + metadata + payload
+
+
+def decode_receiver_frame(raw: bytes) -> tuple[BootstrapReceiverFrame, bytes]:
+    """Decode one complete bounded receiver request without performing I/O."""
+    maximum = 4 + MAX_RECEIVER_METADATA_BYTES + MAX_BUNDLE_BYTES
+    if type(raw) is not bytes or len(raw) < 5 or len(raw) > maximum:
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame bytes are invalid")
+    metadata_length = struct.unpack(">I", raw[:4])[0]
+    if not 1 <= metadata_length <= MAX_RECEIVER_METADATA_BYTES:
+        raise _refuse(
+            BootstrapErrorCode.INVALID_CONTRACT,
+            "receiver metadata length is invalid",
+        )
+    metadata_end = 4 + metadata_length
+    if metadata_end > len(raw):
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver metadata is truncated")
+    metadata = raw[4:metadata_end]
+    value = _decode_json(metadata, maximum=MAX_RECEIVER_METADATA_BYTES)
+    frame = BootstrapReceiverFrame.from_dict(value)
+    if canonical_json_bytes(frame.to_dict()) != metadata:
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver JSON is not canonical")
+    payload = raw[metadata_end:]
+    _receiver_payload(frame, payload)
+    return frame, payload
 
 
 @dataclass(frozen=True)
@@ -1336,6 +1520,7 @@ __all__ = [
     "BootstrapPhase",
     "BootstrapPlatform",
     "BootstrapReceipt",
+    "BootstrapReceiverFrame",
     "InstallAdapter",
     "InstallRootClass",
     "MANIFEST_SCHEMA",
@@ -1344,16 +1529,21 @@ __all__ = [
     "MAX_BUNDLE_BYTES",
     "MAX_MANIFEST_BYTES",
     "MAX_RECEIPT_BYTES",
+    "MAX_RECEIVER_METADATA_BYTES",
     "MAX_SHIM_BYTES",
     "MAX_WHEEL_ENTRIES",
     "MAX_WHEEL_EXPANDED_BYTES",
     "OUTER_BUNDLE_NAMES",
     "RECEIPT_SCHEMA",
+    "RECEIVER_FRAME_SCHEMA",
+    "ReceiverOperation",
     "RollbackStatus",
     "SupervisorAdapter",
     "ValidatedBootstrapBundle",
     "build_bundle",
     "canonical_json_bytes",
+    "decode_receiver_frame",
+    "encode_receiver_frame",
     "preflight_contained_path",
     "validate_archive_path",
     "validate_bundle",
