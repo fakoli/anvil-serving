@@ -11,6 +11,7 @@ from anvil_serving.observability.workload_collection import build_node_workloads
 from anvil_serving.observability.workloads import (
     AGGREGATE_LIMIT,
     MAX_COUNT,
+    MAX_NODES,
     FleetResult,
     NodeResult,
     ObservationQuality,
@@ -258,3 +259,59 @@ def test_unchanged_unavailable_source_keeps_its_original_timestamp():
     result = normalize_node_workloads("node-a", WorkloadQuery(), NOW, node)
     assert next(item for item in result.sources if item.owner is WorkloadOwner.MEDIA) == source
     assert all(item.collection_timestamp == node_time for item in result.sources if item.owner is not WorkloadOwner.MEDIA)
+
+
+def test_empty_fleet_constructs_source_summaries_linearly(monkeypatch):
+    constructions = 0
+    original = SourceResult.__post_init__
+
+    def counted(source):
+        nonlocal constructions
+        constructions += 1
+        original(source)
+
+    monkeypatch.setattr(SourceResult, "__post_init__", counted)
+    hosts = tuple(f"node-{index}" for index in range(MAX_NODES))
+    result = build_fleet_workloads(hosts, WorkloadQuery(), NOW, {})
+    assert len(result.nodes) == MAX_NODES
+    assert result.truncation == Truncation(0, None)
+    assert constructions <= 64 * MAX_NODES
+
+
+def test_repeated_heap_evictions_count_only_losing_source_records():
+    nodes = {}
+    for host_index in range(8):
+        host = f"node-{host_index}"
+        sources = {owner: _source(owner) for owner in OWNERS}
+        sources[WorkloadOwner.CONTROLLER] = _source(
+            WorkloadOwner.CONTROLLER,
+            tuple(_record(host, WorkloadOwner.CONTROLLER, index,
+                          updated=NOW - timedelta(seconds=8 - host_index, microseconds=index))
+                  for index in range(3)),
+        )
+        nodes[host] = _node(host, sources)
+    result = build_fleet_workloads(tuple(reversed(nodes)), WorkloadQuery(limit=3), NOW, nodes)
+    assert result.truncation == Truncation(3, 21)
+    for node in result.nodes:
+        for source in node.sources:
+            if source.owner is not WorkloadOwner.CONTROLLER:
+                assert source.status is ResultStatus.COMPLETE
+                assert source.truncation == Truncation(0, 0)
+            elif node.host == "node-7":
+                assert source.records == nodes[node.host].sources[1].records
+                assert source.status is ResultStatus.COMPLETE
+                assert source.truncation == Truncation(3, 0)
+            else:
+                assert source.status is ResultStatus.PARTIAL
+                assert source.truncation == Truncation(0, 3)
+
+
+def test_identical_cross_host_record_ids_keep_sorted_host_tie_break():
+    first = _record("node-a", WorkloadOwner.CONTROLLER, 1)
+    second = replace(_record("node-b", WorkloadOwner.CONTROLLER, 1), id=first.id)
+    nodes = {
+        "node-a": _node("node-a", {WorkloadOwner.CONTROLLER: _source(WorkloadOwner.CONTROLLER, (first,))}),
+        "node-b": _node("node-b", {WorkloadOwner.CONTROLLER: _source(WorkloadOwner.CONTROLLER, (second,))}),
+    }
+    result = build_fleet_workloads(("node-b", "node-a"), WorkloadQuery(limit=1), NOW, nodes)
+    assert [record.host for node in result.nodes for source in node.sources for record in source.records] == ["node-a"]
