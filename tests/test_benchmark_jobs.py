@@ -316,6 +316,45 @@ def test_benchmark_workload_existing_db_without_table_is_unavailable(tmp_path):
     assert Path(store.path).read_bytes() == before
 
 
+def test_benchmark_workload_closed_writer_wal_snapshot_is_logically_read_only(
+    tmp_path,
+):
+    store = _workload_store(tmp_path)
+    now = datetime(2026, 8, 3, 8, tzinfo=UTC)
+    _seed_workloads(store, [("running", _workload_payload(now))])
+    database = Path(store.path)
+    uri = database.absolute().as_uri() + "?mode=ro"
+
+    def contents():
+        with closing(sqlite3.connect(uri, uri=True)) as connection:
+            journal_mode = connection.execute("PRAGMA journal_mode").fetchone()[0]
+            schema = tuple(connection.execute(
+                "SELECT type, name, sql FROM sqlite_master ORDER BY type, name"
+            ))
+            rows = tuple(connection.execute(
+                "SELECT rowid, state, revision, record FROM benchmark_jobs ORDER BY rowid"
+            ))
+        return journal_mode, schema, rows
+
+    before_bytes = database.read_bytes()
+    before_mode, before_schema, before_rows = contents()
+
+    result = store.list_workloads("node-a", WorkloadQuery(), now)
+
+    after_mode, after_schema, after_rows = contents()
+    assert result.status is ResultStatus.COMPLETE
+    assert before_mode == after_mode == "wal"
+    assert database.read_bytes() == before_bytes
+    assert after_schema == before_schema
+    assert after_rows == before_rows
+    database_files = {path.name for path in database.parent.iterdir() if path.is_file()}
+    assert database_files <= {
+        database.name,
+        database.name + "-wal",
+        database.name + "-shm",
+    }
+
+
 def test_benchmark_workloads_map_states_without_caller_identity(tmp_path):
     store = _workload_store(tmp_path)
     now = datetime(2026, 8, 3, 8, tzinfo=UTC)

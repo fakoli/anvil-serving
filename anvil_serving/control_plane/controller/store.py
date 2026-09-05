@@ -250,7 +250,12 @@ def _read_snapshot_rows(
     monotonic: Clock,
     functions: tuple[tuple[str, int, Callable[..., object]], ...],
 ) -> tuple[sqlite3.Row, ...]:
-    """Execute one bounded, read-only SQLite snapshot before a shared deadline."""
+    """Execute one bounded, logically read-only snapshot before a shared deadline.
+
+    Existing WAL databases may cause SQLite itself to create or recreate ``-wal``
+    and ``-shm`` coordination sidecars. This helper never creates a main database,
+    schema, journal mode, or product-owned content.
+    """
     remaining = _remaining(deadline, monotonic)
     if remaining <= 0:
         raise TimeoutError("store workload snapshot deadline expired")
