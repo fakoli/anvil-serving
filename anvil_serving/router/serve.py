@@ -13,6 +13,7 @@ import ipaddress
 import json
 import os
 import sys
+import tempfile
 import threading
 import time
 from dataclasses import replace
@@ -22,7 +23,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
-from .admission import AdmissionLease, TierAdmission
+from .admission import AdmissionLease, TierAdmission, _member_id, _reason_code
 from .audio import AudioGateway
 from .availability import (
     AlwaysAvailable,
@@ -1241,7 +1242,21 @@ class RoutingBackend:
         }
 
 
-def _load_admission_intent(path: str, tier_ids: tuple[str, ...]) -> dict[str, str]:
+_MAX_ADMISSION_INTENT_BYTES = 1024 * 1024
+
+
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    value: dict[str, object] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("duplicate admission intent field")
+        value[key] = item
+    return value
+
+
+def _load_admission_intent(
+    path: str, tier_ids: tuple[str, ...]
+) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
     """Read persisted quiesce intent: ``{tier_id: reason_code}`` (ADR-0033).
 
     A missing file means no intent. A corrupt file refuses to serve — silently
@@ -1250,13 +1265,27 @@ def _load_admission_intent(path: str, tier_ids: tuple[str, ...]) -> dict[str, st
     a removed tier is meaningless after a topology change.
     """
     try:
-        with open(path, "r", encoding="utf-8") as handle:
-            raw = json.load(handle)
+        with open(path, "rb") as handle:
+            encoded = handle.read(_MAX_ADMISSION_INTENT_BYTES + 1)
     except FileNotFoundError:
-        return {}
-    except (OSError, ValueError) as exc:
+        return {}, {}
+    except OSError as exc:
         raise ConfigError(
-            f"admission intent file {path!r} is unreadable or corrupt ({exc}); "
+            f"admission intent file {path!r} is unreadable or corrupt; "
+            f"fix or delete it before starting the router"
+        ) from exc
+    if len(encoded) > _MAX_ADMISSION_INTENT_BYTES:
+        raise ConfigError(
+            f"admission intent file {path!r} is unreadable or corrupt; "
+            f"fix or delete it before starting the router"
+        )
+    try:
+        raw = json.loads(
+            encoded.decode("utf-8"), object_pairs_hook=_unique_json_object
+        )
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+        raise ConfigError(
+            f"admission intent file {path!r} is unreadable or corrupt; "
             f"fix or delete it before starting the router"
         ) from exc
     tiers = raw.get("tiers") if isinstance(raw, dict) else None
@@ -1290,45 +1319,94 @@ def _load_admission_intent(path: str, tier_ids: tuple[str, ...]) -> dict[str, st
                 flush=True,
             )
             continue
+        # Keep the legacy tier fallback: older writers did not constrain the
+        # reason, and admission itself safely converts it to ``restored``.
         intent[tier_id] = reason if isinstance(reason, str) and reason else "restored"
-    return intent
+    members_raw = raw.get("members", {})
+    if type(members_raw) is not dict:
+        raise ConfigError("admission intent contains an invalid members object")
+    members: dict[str, dict[str, str]] = {}
+    for tier_id, entries in members_raw.items():
+        if type(tier_id) is not str or not tier_id or type(entries) is not dict:
+            raise ConfigError("admission intent contains invalid members")
+        parsed: dict[str, str] = {}
+        for member_id, reason in entries.items():
+            try:
+                validated_member = _member_id(member_id)
+                validated_reason = _reason_code(reason)
+            except ValueError:
+                raise ConfigError("admission intent contains invalid members")
+            parsed[validated_member] = validated_reason
+        if tier_id in tier_ids:
+            members[tier_id] = parsed
+    return intent, members
 
 
-def _write_admission_intent(path: str, admission: TierAdmission) -> None:
+def _write_admission_intent(
+    path: str, admission: TierAdmission, *, write_lock: Optional[threading.Lock] = None
+) -> None:
     """Atomically persist the quiesced side of the admission state (ADR-0033).
 
     Only quiesced tiers are recorded; reasons are the bounded content-free
     codes admission already enforces. The file never records "admit" — after a
     restart, readmission always re-passes the health+identity gate.
     """
-    payload = {
-        "version": 1,
-        "tiers": {
-            snapshot.tier_id: {"state": "quiesced", "reason": snapshot.reason}
-            for snapshot in admission.snapshots()
-            if snapshot.quiesced
-        },
-    }
-    tmp_path = path + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, sort_keys=True, separators=(",", ":"))
-        handle.flush()
-        os.fsync(handle.fileno())
-    os.replace(tmp_path, path)
+    lock = write_lock if write_lock is not None else threading.Lock()
+    with lock:
+        snapshots = admission.snapshots()
+        members = {
+            snapshot.tier_id: {
+                member.member_id: member.reason
+                for member in snapshot.members
+                if member.quiesced
+            }
+            for snapshot in snapshots
+            if any(member.quiesced for member in snapshot.members)
+        }
+        payload = {
+            "version": 1,
+            "tiers": {
+                snapshot.tier_id: {"state": "quiesced", "reason": snapshot.reason}
+                for snapshot in snapshots
+                if snapshot.quiesced
+            },
+        }
+        if members:
+            payload["members"] = members
+
+        target = Path(path)
+        descriptor, tmp_path = tempfile.mkstemp(
+            prefix=f".{target.name}.", suffix=".tmp", dir=str(target.parent)
+        )
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+                descriptor = -1
+                json.dump(payload, handle, sort_keys=True, separators=(",", ":"))
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(tmp_path, path)
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
+            try:
+                os.unlink(tmp_path)
+            except FileNotFoundError:
+                pass
 
 
 def _durable_admission(path: str, config: RouterConfig) -> TierAdmission:
     """Build a TierAdmission that restores and persists quiesce intent."""
     tier_ids = tuple(tier.id for tier in config.tiers)
-    intent = _load_admission_intent(path, tier_ids)
+    intent, member_intent = _load_admission_intent(path, tier_ids)
     holder: dict[str, TierAdmission] = {}
+    write_lock = threading.Lock()
 
     def _persist(_tier_id: str) -> None:
         admission = holder.get("admission")
         if admission is None:
             return
         try:
-            _write_admission_intent(path, admission)
+            _write_admission_intent(path, admission, write_lock=write_lock)
         except OSError as exc:
             print(
                 "[anvil] warning admission intent write failed: %s" % type(exc).__name__,
@@ -1337,16 +1415,22 @@ def _durable_admission(path: str, config: RouterConfig) -> TierAdmission:
             )
 
     admission = _configured_admission(config, on_state_change=_persist)
-    holder["admission"] = admission
     for tier_id, reason in intent.items():
         try:
             admission.quiesce(tier_id, reason)
         except ValueError:
             admission.quiesce(tier_id, "restored")
+    for tier_id, entries in member_intent.items():
+        for member_id, reason in entries.items():
+            try:
+                admission.quiesce_member(tier_id, member_id, reason)
+            except (KeyError, ValueError):
+                continue
+    holder["admission"] = admission
     # Probe writability now: a configured intent path that cannot be written
     # is a boot error, not a silent downgrade.
     try:
-        _write_admission_intent(path, admission)
+        _write_admission_intent(path, admission, write_lock=write_lock)
     except OSError as exc:
         raise ConfigError(
             f"admission intent path {path!r} is not writable: {exc}"

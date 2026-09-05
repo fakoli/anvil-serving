@@ -8,8 +8,9 @@ import types
 
 import pytest
 
+import anvil_serving.router.serve as router_serve
 from anvil_serving.router.availability import AlwaysAvailable, AvailabilityResult
-from anvil_serving.router.config import ReplicaIdentity, ReplicaMember, RouterConfig, Tier
+from anvil_serving.router.config import ConfigError, ReplicaIdentity, ReplicaMember, RouterConfig, Tier
 from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
 from anvil_serving.router.serve import ReplicaRuntime, RoutingBackend
 
@@ -139,8 +140,8 @@ class _ReplicaReadiness:
         return AvailabilityResult(True, "ready", "identity_passed", tier.model, tier.model)
 
 
-def _replica_stream_routing(blocking, peer):
-    tier = Tier(
+def _replica_tier():
+    return Tier(
         id="replica-primary",
         base_url="",
         model="replica-model",
@@ -168,11 +169,250 @@ def _replica_stream_routing(blocking, peer):
             config_fingerprint="sha256:" + "2" * 64,
         ),
     )
+
+
+def _replica_stream_routing(blocking, peer):
+    tier = _replica_tier()
     return tier, RoutingBackend(
         RouterConfig(tiers=(tier,), model_routes={"replica.stream": tier.id}),
         {tier.id: ReplicaRuntime({"member-a": blocking, "member-b": peer})},
         availability=_ReplicaReadiness(),
     )
+
+
+def _replica_config():
+    tier = _replica_tier()
+    return tier, RouterConfig(
+        tiers=(tier,), model_routes={"replica.stream": tier.id}
+    )
+
+
+def test_member_intent_survives_restart_and_readmission_is_independently_scoped(tmp_path):
+    path = tmp_path / "intent.json"
+    tier, config = _replica_config()
+    admission = router_serve._durable_admission(str(path), config)
+    admission.quiesce(tier.id, "maintenance")
+    admission.quiesce_member(tier.id, "member-a", "promotion")
+    admission.quiesce_member(tier.id, "member-b", "maintenance")
+
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "version": 1,
+        "tiers": {tier.id: {"state": "quiesced", "reason": "maintenance"}},
+        "members": {
+            tier.id: {"member-a": "promotion", "member-b": "maintenance"}
+        },
+    }
+
+    restored = router_serve._durable_admission(str(path), config)
+    assert restored.snapshot(tier.id).quiesced
+    assert restored.member_snapshot(tier.id, "member-a").reason == "promotion"
+    assert restored.member_snapshot(tier.id, "member-b").quiesced
+
+    restored.readmit(tier.id)
+    persisted = json.loads(path.read_text(encoding="utf-8"))
+    assert persisted["tiers"] == {}
+    assert set(persisted["members"][tier.id]) == {"member-a", "member-b"}
+    restored.readmit_member(tier.id, "member-a")
+    persisted = json.loads(path.read_text(encoding="utf-8"))
+    assert persisted["members"] == {tier.id: {"member-b": "maintenance"}}
+
+
+def test_tier_promotion_is_not_restored_but_member_promotion_is(tmp_path):
+    path = tmp_path / "intent.json"
+    tier, config = _replica_config()
+    path.write_text(json.dumps({
+        "version": 1,
+        "tiers": {tier.id: {"state": "quiesced", "reason": "promotion"}},
+        "members": {tier.id: {"member-a": "promotion"}},
+    }), encoding="utf-8")
+
+    admission = router_serve._durable_admission(str(path), config)
+
+    assert not admission.snapshot(tier.id).quiesced
+    assert admission.member_snapshot(tier.id, "member-a").quiesced
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "version": 1,
+        "tiers": {},
+        "members": {tier.id: {"member-a": "promotion"}},
+    }
+
+
+def test_legacy_tier_fallback_and_byte_shape_remain_compatible(tmp_path):
+    path = tmp_path / "intent.json"
+    tier, config = _replica_config()
+    path.write_text(json.dumps({
+        "version": 1,
+        "tiers": {tier.id: {"state": "quiesced", "reason": None}},
+    }), encoding="utf-8")
+
+    admission = router_serve._durable_admission(str(path), config)
+
+    assert admission.snapshot(tier.id).reason == "restored"
+    assert path.read_text(encoding="utf-8") == (
+        '{"tiers":{"replica-primary":{"reason":"restored",'
+        '"state":"quiesced"}},"version":1}'
+    )
+
+
+@pytest.mark.parametrize("raw", [
+    b'{"version":1,"tiers":{},"members":null}',
+    b'{"version":1,"tiers":{},"members":[]}',
+    b'{"version":1,"tiers":{},"members":{"":{"member-a":"maintenance"}}}',
+    b'{"version":1,"tiers":{},"members":{"retired":{"bad/id":"maintenance"}}}',
+    b'{"version":1,"tiers":{},"members":{"retired":{"member-a":{}}}}',
+    b'{"version":1,"tiers":{},"members":{"retired":{"member-a":"bad reason"}}}',
+    b'{"version":1,"tiers":{},"members":{"retired":{"member-a":"a","member-a":"b"}}}',
+])
+def test_malformed_member_intent_refuses_before_any_restore_or_rewrite(tmp_path, raw):
+    path = tmp_path / "intent.json"
+    tier, config = _replica_config()
+    document = raw.replace(b'"tiers":{}', (
+        b'"tiers":{"' + tier.id.encode("ascii")
+        + b'":{"state":"quiesced","reason":"maintenance"}}'
+    ))
+    path.write_bytes(document)
+
+    with pytest.raises(ConfigError, match="admission intent"):
+        router_serve._durable_admission(str(path), config)
+
+    assert path.read_bytes() == document
+
+
+def test_oversized_or_duplicate_intent_refuses_with_fixed_safe_error(tmp_path):
+    path = tmp_path / "intent.json"
+    _, config = _replica_config()
+    payloads = [
+        b'{"version":1,"tiers":{},"tiers":{}}',
+        b'{"version":1,"tiers":{},"members":{}}' + b" " * (1024 * 1024),
+    ]
+    for payload in payloads:
+        path.write_bytes(payload)
+        with pytest.raises(ConfigError) as exc_info:
+            router_serve._durable_admission(str(path), config)
+        assert "fix or delete" in str(exc_info.value)
+        assert payload[:24].decode("ascii") not in str(exc_info.value)
+
+
+def test_valid_removed_member_intent_is_ignored_after_full_validation(tmp_path):
+    path = tmp_path / "intent.json"
+    tier, config = _replica_config()
+    path.write_text(json.dumps({
+        "version": 1,
+        "tiers": {},
+        "members": {
+            "retired-tier": {"retired-member": "maintenance"},
+            tier.id: {"retired-member": "promotion"},
+        },
+    }), encoding="utf-8")
+
+    admission = router_serve._durable_admission(str(path), config)
+
+    assert all(not member.quiesced for member in admission.snapshot(tier.id).members)
+    assert path.read_text(encoding="utf-8") == '{"tiers":{},"version":1}'
+
+
+def test_restore_suppresses_callbacks_until_combined_state_is_complete(tmp_path, monkeypatch):
+    path = tmp_path / "intent.json"
+    tier, config = _replica_config()
+    path.write_text(json.dumps({
+        "version": 1,
+        "tiers": {tier.id: {"state": "quiesced", "reason": "maintenance"}},
+        "members": {tier.id: {"member-a": "promotion"}},
+    }), encoding="utf-8")
+    writes = []
+    original = router_serve._write_admission_intent
+
+    def observe(path, admission, *, write_lock=None):
+        snapshot = admission.snapshot(tier.id)
+        writes.append((snapshot.quiesced, snapshot.members[0].quiesced))
+        return original(path, admission, write_lock=write_lock)
+
+    monkeypatch.setattr(router_serve, "_write_admission_intent", observe)
+
+    router_serve._durable_admission(str(path), config)
+
+    assert writes == [(True, True)]
+
+
+def test_failed_replace_preserves_old_file_and_cleans_only_own_temp(tmp_path, monkeypatch):
+    path = tmp_path / "intent.json"
+    path.write_bytes(b"old-intent")
+    unrelated = tmp_path / ".intent.json.unrelated.tmp"
+    unrelated.write_bytes(b"keep")
+    tier, config = _replica_config()
+    admission = router_serve._configured_admission(config)
+    admission.quiesce_member(tier.id, "member-a", "maintenance")
+    sources = []
+    snapshot_calls = 0
+    original_snapshots = admission.snapshots
+
+    def counted_snapshots():
+        nonlocal snapshot_calls
+        snapshot_calls += 1
+        return original_snapshots()
+
+    def fail_replace(source, target):
+        sources.append(source)
+        raise OSError("synthetic replace failure")
+
+    monkeypatch.setattr(router_serve.os, "replace", fail_replace)
+    monkeypatch.setattr(admission, "snapshots", counted_snapshots)
+    with pytest.raises(OSError, match="synthetic replace failure"):
+        router_serve._write_admission_intent(str(path), admission)
+
+    assert path.read_bytes() == b"old-intent"
+    assert snapshot_calls == 1
+    assert unrelated.read_bytes() == b"keep"
+    assert len(sources) == 1 and sources[0] != str(path) + ".tmp"
+    assert sorted(tmp_path.iterdir()) == [unrelated, path]
+
+
+def test_concurrent_member_callbacks_serialize_snapshot_and_atomic_write(tmp_path, monkeypatch):
+    path = tmp_path / "intent.json"
+    tier, config = _replica_config()
+    admission = router_serve._durable_admission(str(path), config)
+    first_replace = threading.Event()
+    release_first = threading.Event()
+    second_callback = threading.Event()
+    original_replace = router_serve.os.replace
+    original_callback = admission._on_state_change
+    replace_count = 0
+
+    def blocked_replace(source, target):
+        nonlocal replace_count
+        replace_count += 1
+        if replace_count == 1:
+            first_replace.set()
+            assert release_first.wait(timeout=5)
+        original_replace(source, target)
+
+    def observed_callback(tier_id):
+        if admission.member_snapshot(tier.id, "member-b").quiesced:
+            second_callback.set()
+        original_callback(tier_id)
+
+    monkeypatch.setattr(router_serve.os, "replace", blocked_replace)
+    admission._on_state_change = observed_callback
+    first = threading.Thread(target=lambda: admission.quiesce_member(
+        tier.id, "member-a", "maintenance"
+    ))
+    second = threading.Thread(target=lambda: admission.quiesce_member(
+        tier.id, "member-b", "promotion"
+    ))
+    try:
+        first.start()
+        assert first_replace.wait(timeout=5)
+        second.start()
+        assert second_callback.wait(timeout=5)
+    finally:
+        release_first.set()
+        first.join(timeout=5)
+        second.join(timeout=5)
+
+    assert not first.is_alive() and not second.is_alive()
+    assert json.loads(path.read_text(encoding="utf-8"))["members"] == {
+        tier.id: {"member-a": "maintenance", "member-b": "promotion"}
+    }
 
 
 def test_replica_stream_drain_waits_for_compound_lease_then_releases_both_counts():
