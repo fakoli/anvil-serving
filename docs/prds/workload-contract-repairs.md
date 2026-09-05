@@ -90,12 +90,12 @@ Resolve the host-bound defect in the same ticket. Tighten the shared _host valid
 **Feature:** F001
 **Priority:** medium
 **Type:** bugfix
-**Likely files:** anvil_serving/observability/dashboard/static/index.html, anvil_serving/observability/dashboard/static/workloads.js, tests/observability/dashboard_workloads_ui.cjs, tests/observability/test_dashboard_workloads_ui.py, tests/observability/test_milestone3_dashboard.py
+**Likely files:** anvil_serving/observability/dashboard/static/index.html, anvil_serving/observability/dashboard/static/workloads.js, tests/observability/dashboard_workloads_ui.cjs, tests/observability/test_dashboard_workloads_ui.py
 **Dependencies:** T002
 
 After the workload-visibility GPU-label task releases its overlapping asset, set the host input maxlength to 64 and enforce the exact canonical ASCII grammar in both query validation and node/record host validation. Keep non-host display strings safely rendered as text with their existing independent bounds. Empty host input still means no filter. Malformed or oversized response host identities fail the closed response without showing data. Add executed DOM/fetch tests for 64/65-character inputs and response identities; adapt old unsafe-host display fixtures so malformed host is rejected while valid-host label text remains inert. Preserve credential isolation, no-storage behavior, cancellation, generation fencing, single-flight and polling deadlines.
 
-Synchronize the existing Python markup maxlength assertion. Replace the historical milestone test's total-button-count assumption with explicit allowed read-only navigation/connect/disconnect controls; retain its operational mutation exclusions. This tests the intended read-only contract rather than freezing the former tab count.
+Synchronize the existing Python markup maxlength assertion.
 
 **Acceptance criteria:**
 
@@ -105,6 +105,27 @@ Synchronize the existing Python markup maxlength assertion. Replace the historic
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py tests/observability/test_milestone3_dashboard.py -x -q`
+- `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py -x -q`
 - `git diff --check`
+
+### T004: Preserve the historical read-only dashboard regression contract
+
+**Feature:** F001
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** tests/observability/test_milestone3_dashboard.py
+**Dependencies:** T003
+
+The integrated full suite reproduced a stale assertion in test_supported_dashboard_serves_current_history_and_interpretation_read_only: the dashboard now has workload navigation and isolated connect/disconnect controls, so its old total of three buttons is obsolete. Assert the explicit allowed read-only button labels instead of freezing the previous tab count. Retain existing start, stop and restart exclusions and the actual HTTP-backed history/interpretation assertions. No dashboard product behavior changes belong in this task.
+
+**Acceptance criteria:**
+
+- The HTTP-served dashboard exposes only the declared overview, probes, workloads and connection controls.
+- Lifecycle mutation exclusions and history/interpretation checks remain intact.
+- Historical and current dashboard regressions pass together.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py tests/observability/test_milestone3_dashboard.py -x -q`
+- `python -m ruff check tests/observability/test_milestone3_dashboard.py`
 
