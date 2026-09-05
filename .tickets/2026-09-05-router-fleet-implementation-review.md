@@ -22,6 +22,12 @@ changes live routing by itself.
   rejection, and post-IDNA loopback-name rejection. Unicode category-C and
   whitespace input cannot survive normalization. Required parser tests: 49 passed;
   parser plus dynamic metadata regression tests: 66 passed; Ruff passed.
+- Replica readiness, resolved in `19e3bae76f3b03fcfb59b031ab3f3b1e1119c495`:
+  isolate member cache/locks and fence invalidation generations; require valid
+  declared provenance before network I/O, and bound untrusted HTTP error codes.
+  Twelve correction regressions failed before the fix; final availability tests:
+  35 passed, dynamic metadata: 17 passed, Ruff passed. Independent review and
+  strict task application passed. This does not yet wire member dispatch.
 - Scoped authorization core, resolved in
   `7f4c71e6505ea7076efe1507d22bc8786158a4ef`: bounded secret loading and fixed safe
   errors, immutable public metadata without serializable credential material,
