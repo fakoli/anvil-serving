@@ -4,6 +4,7 @@ import os
 import sys
 import threading
 import io
+import json
 
 import pytest
 
@@ -271,3 +272,271 @@ def test_deadline_precedes_synchronous_eof_completion_and_thread_start_failure_r
         ).state
         != "ok"
     )
+
+
+_CONTAINER_ID = "a" * 64
+
+
+def _inspect_document(**overrides):
+    document = {
+        "container_id": _CONTAINER_ID,
+        "running": True,
+        "exit_code": 0,
+        "health": "healthy",
+        "compose_service": "controller",
+        "configured_bindings": {
+            "8000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "39077"}],
+        },
+        "observed_bindings": {"8000/tcp": None},
+    }
+    document.update(overrides)
+    return document
+
+
+def _capture_bytes(value, *, state="ok", truncated=False, stderr=b""):
+    if not isinstance(value, bytes):
+        value = json.dumps(value, separators=(",", ":")).encode("utf-8")
+    return diagnostics.ChildCapture(state, value, stderr, truncated)
+
+
+class _CaptureSpy:
+    def __init__(self, *results):
+        self.results = list(results)
+        self.calls = []
+
+    def __call__(self, argv, **kwargs):
+        self.calls.append((tuple(argv), dict(kwargs)))
+        return self.results.pop(0)
+
+
+def test_inspect_uses_fixed_template_and_keeps_configured_observed_separate():
+    capture = _CaptureSpy(_capture_bytes(_inspect_document()))
+    result = diagnostics.inspect_controller("controller-1", platform="linux", _capture=capture)
+
+    assert result == {
+        "schema_version": "controller-diagnostics/v1",
+        "kind": "inspect",
+        "state": "ok",
+        "error_code": None,
+        "container_id": _CONTAINER_ID,
+        "truncated": False,
+        "running": True,
+        "exit_code": 0,
+        "health": "healthy",
+        "configured_bindings": [
+            {"container_port": 8000, "host_port": 39077, "bind_class": "loopback"},
+        ],
+        "observed_bindings": [],
+    }
+    argv, kwargs = capture.calls[0]
+    assert argv[:3] == ("docker", "--host", "unix:///var/run/docker.sock")
+    assert argv[3:5] == ("inspect", "--format") and argv[-1] == "controller-1"
+    template = argv[-2]
+    assert all(value not in template for value in (".Config.Env", ".Config.Cmd", ".Mounts", ".State.Health.Log"))
+    assert kwargs["merged"] is False
+
+
+def test_inspect_argument_platform_capture_and_identity_failures_are_fixed():
+    capture = _CaptureSpy(_capture_bytes(_inspect_document()))
+    assert diagnostics.inspect_controller("-bad", platform="linux", _capture=capture)["state"] == "malformed"
+    assert capture.calls == []
+    assert diagnostics.inspect_controller("controller", platform="darwin", _capture=capture)["state"] == "unsupported"
+    assert capture.calls == []
+
+    failed = _CaptureSpy(diagnostics.ChildCapture("timeout", b"secret", b"raw", True))
+    result = diagnostics.inspect_controller("controller", platform="linux", _capture=failed)
+    assert result["state"] == "timeout" and result["truncated"] is True
+    assert result["running"] is None and result["configured_bindings"] == []
+    assert "secret" not in json.dumps(result)
+
+    malformed = _inspect_document(container_id="A" * 64)
+    result = diagnostics.inspect_controller(
+        "controller", platform="linux", _capture=_CaptureSpy(_capture_bytes(malformed))
+    )
+    assert result["state"] == "malformed" and result["container_id"] is None
+
+
+def test_binding_projection_uses_explicit_address_classes_and_never_returns_addresses():
+    addresses = [
+        "",
+        "0.0.0.0",
+        "127.2.3.4",
+        "10.0.0.1",
+        "100.64.0.1",
+        "169.254.1.1",
+        "192.0.2.1",
+        "8.8.8.8",
+        "::",
+        "::1",
+        "fc00::1",
+        "2001:db8::1",
+        "2606:4700:4700::1111",
+        "::ffff:8.8.8.8",
+    ]
+    bindings = [
+        {"HostIp": address, "HostPort": str(30000 + index)}
+        for index, address in enumerate(addresses)
+    ]
+    document = _inspect_document(
+        configured_bindings={"8000/tcp": bindings},
+        observed_bindings={},
+    )
+    result = diagnostics.inspect_controller(
+        "controller", platform="linux", _capture=_CaptureSpy(_capture_bytes(document))
+    )
+    assert [row["bind_class"] for row in result["configured_bindings"]] == [
+        "wildcard",
+        "wildcard",
+        "loopback",
+        "private",
+        "private",
+        "unknown",
+        "unknown",
+        "public",
+        "wildcard",
+        "loopback",
+        "private",
+        "unknown",
+        "public",
+        "unknown",
+    ]
+    rendered = json.dumps(result)
+    assert all(address not in rendered for address in addresses if address)
+
+
+def test_inspect_rejects_bad_shapes_ports_and_binding_overflow_without_partial_rows():
+    bad_documents = [
+        {**_inspect_document(), "unexpected": "secret"},
+        _inspect_document(running=1),
+        _inspect_document(exit_code=True),
+        _inspect_document(health="unknown"),
+        _inspect_document(configured_bindings={"8000/udp": []}),
+        _inspect_document(
+            configured_bindings={"8000/tcp": [{"HostIp": "bad host", "HostPort": "1"}]}
+        ),
+        _inspect_document(
+            configured_bindings={"8000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "0"}]}
+        ),
+    ]
+    for document in bad_documents:
+        result = diagnostics.inspect_controller(
+            "controller", platform="linux", _capture=_CaptureSpy(_capture_bytes(document))
+        )
+        assert result["state"] == "malformed"
+        assert result["configured_bindings"] == result["observed_bindings"] == []
+
+    too_many = _inspect_document(
+        configured_bindings={
+            "8000/tcp": [
+                {"HostIp": "127.0.0.1", "HostPort": str(1000 + index)}
+                for index in range(65)
+            ]
+        }
+    )
+    result = diagnostics.inspect_controller(
+        "controller", platform="linux", _capture=_CaptureSpy(_capture_bytes(too_many))
+    )
+    assert result["state"] == "output-limit" and result["truncated"] is True
+    assert result["configured_bindings"] == []
+
+
+def test_logs_requires_controller_label_then_uses_only_immutable_id():
+    unsupported = _CaptureSpy(_capture_bytes(_inspect_document(compose_service="other")))
+    result = diagnostics.controller_logs("mutable-name", platform="linux", _capture=unsupported)
+    assert result["state"] == "unsupported" and len(unsupported.calls) == 1
+
+    capture = _CaptureSpy(
+        _capture_bytes(_inspect_document()),
+        _capture_bytes(b'{"operation":"health","status":200}\n'),
+    )
+    result = diagnostics.controller_logs(
+        "mutable-name", 17, platform="linux", _capture=capture
+    )
+    assert result["state"] == "ok" and result["returned_events"] == 1
+    log_argv, log_kwargs = capture.calls[1]
+    assert log_argv == (
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "logs",
+        "--tail",
+        "17",
+        _CONTAINER_ID,
+    )
+    assert "mutable-name" not in log_argv and log_kwargs["merged"] is True
+
+
+def test_logs_project_allowlist_counts_unknowns_and_rejects_hostile_lines():
+    oversized = b"x" * (16 * 1024 + 1)
+    lines = [
+        b'{"operation":"health","status":200,"elapsed_ms":1.5,"secret":"credential-value"}',
+        b'{"operation":"evil","event":"evil","error_code":"evil"}',
+        b'{"operation":"health","status":true,"ignored":"secret-2"}',
+        b'{"operation":"health","status":200,"status":201}',
+        b'{"operation":"health","elapsed_ms":NaN}',
+        b'{"error_code":"internal_error"}',
+        b'\xff',
+        oversized,
+        b'{"event":"audit_file_write_failed","error_code":"internal_error"}',
+    ]
+    raw = b"\n".join(lines)
+    capture = _CaptureSpy(_capture_bytes(_inspect_document()), _capture_bytes(raw))
+    result = diagnostics.controller_logs("controller", platform="linux", _capture=capture)
+
+    assert result["state"] == "ok"
+    assert result["line_count"] == 9
+    assert result["returned_events"] == 2
+    assert result["rejected_lines"] == 7
+    assert result["unknown_fields"] == 2
+    assert result["unknown_codes"] == 3
+    assert result["events"] == [
+        {"operation": "health", "status": 200, "elapsed_ms": 1.5},
+        {"event": "audit_file_write_failed", "error_code": "internal_error"},
+    ]
+    rendered = json.dumps(result)
+    assert "credential-value" not in rendered and "secret" not in rendered and "evil" not in rendered
+
+
+def test_logs_caps_events_preserves_final_partial_and_clears_capture_failures():
+    raw = b"\n".join(b'{"operation":"mcp"}' for _ in range(201))
+    capture = _CaptureSpy(_capture_bytes(_inspect_document()), _capture_bytes(raw))
+    result = diagnostics.controller_logs("controller", platform="linux", _capture=capture)
+    assert result["line_count"] == 201 and result["returned_events"] == 200
+    assert result["truncated"] is True and result["counters_saturated"] is False
+
+    failure = _CaptureSpy(
+        _capture_bytes(_inspect_document()),
+        diagnostics.ChildCapture("output-limit", b"partial-secret", b"", True),
+    )
+    result = diagnostics.controller_logs("controller", platform="linux", _capture=failure)
+    assert result["state"] == "output-limit" and result["events"] == []
+    assert result["line_count"] == result["unknown_fields"] == result["unknown_codes"] == 0
+    assert "partial-secret" not in json.dumps(result)
+
+
+def test_logs_invalid_arguments_execute_no_child_and_all_rejected_or_empty_remain_ok():
+    capture = _CaptureSpy(_capture_bytes(_inspect_document()))
+    for container, tail in (("-bad", 100), ("controller", True), ("controller", 201)):
+        result = diagnostics.controller_logs(container, tail, platform="linux", _capture=capture)
+        assert result["state"] == "malformed"
+    assert capture.calls == []
+
+    for raw, expected_lines in ((b"", 0), (b"not-json", 1)):
+        calls = _CaptureSpy(_capture_bytes(_inspect_document()), _capture_bytes(raw))
+        result = diagnostics.controller_logs("controller", platform="linux", _capture=calls)
+        assert result["state"] == "ok" and result["line_count"] == expected_lines
+        assert result["returned_events"] == 0
+
+
+def test_log_counters_saturate_without_changing_safe_event_projection(monkeypatch):
+    monkeypatch.setattr(diagnostics, "_MAX_COUNTER", 1)
+    raw = (
+        b'{"operation":"health","first":"secret-1"}\n'
+        b'{"operation":"health","second":"secret-2"}'
+    )
+    capture = _CaptureSpy(_capture_bytes(_inspect_document()), _capture_bytes(raw))
+    result = diagnostics.controller_logs("controller", platform="linux", _capture=capture)
+    assert result["state"] == "ok" and result["returned_events"] == 2
+    assert result["line_count"] == result["unknown_fields"] == 1
+    assert result["counters_saturated"] is True
+    assert "secret" not in json.dumps(result)
