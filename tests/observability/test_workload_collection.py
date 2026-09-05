@@ -24,7 +24,10 @@ from anvil_serving.observability.workloads import (
     WorkloadRecord,
     WorkloadState,
     node_result_from_dict,
+    node_result_from_json,
     node_result_to_dict,
+    node_result_to_json,
+    workload_record_to_json,
     workload_id,
 )
 
@@ -344,6 +347,44 @@ def test_forged_progress_is_reconstructed() -> None:
     invalid = next(item for item in result.sources if item.owner is source.owner)
 
     assert invalid.error is WorkloadErrorCode.INVALID
+
+
+@pytest.mark.parametrize("completed,total", [(1, None), (1, 2), (0, 0)])
+def test_canonical_progress_totals_survive_composition(completed, total) -> None:
+    record = replace(_record(WorkloadOwner.ROUTER, 0), progress=Progress(completed, total))
+    source = _source(record.owner, (record,))
+    before = workload_record_to_json(record)
+
+    result = build_node_workloads(HOST, WorkloadQuery(), NOW, {source.owner: source})
+    observed = next(item for item in result.sources if item.owner is source.owner)
+
+    assert observed == source
+    assert observed.records[0] is not record
+    assert observed.records[0].progress is not record.progress
+    assert workload_record_to_json(observed.records[0]) == before
+    assert node_result_from_json(node_result_to_json(result)) == result
+    assert workload_record_to_json(record) == before
+
+
+class _ProgressInt(int):
+    pass
+
+
+@pytest.mark.parametrize("total", [True, _ProgressInt(2), -1, MAX_COUNT + 1, 0, "private-total"])
+def test_invalid_progress_total_is_owner_local(total) -> None:
+    progress = Progress(1, 2)
+    object.__setattr__(progress, "total", total)
+    record = replace(_record(WorkloadOwner.ROUTER, 0), progress=progress)
+    bad = _source(record.owner, (record,))
+    good = _source(WorkloadOwner.MEDIA, (_record(WorkloadOwner.MEDIA, 0),))
+
+    result = build_node_workloads(HOST, WorkloadQuery(), NOW, {bad.owner: bad, good.owner: good})
+    by_owner = {source.owner: source for source in result.sources}
+
+    assert by_owner[bad.owner].status is ResultStatus.UNAVAILABLE
+    assert by_owner[bad.owner].error is WorkloadErrorCode.INVALID
+    assert by_owner[good.owner] == good
+    assert "private-total" not in node_result_to_json(result)
 
 
 def test_oversized_source_is_rejected_before_record_traversal() -> None:
