@@ -393,6 +393,35 @@ the real ephemeral front door and controller adapter in
 
 Extend the admission-intent document with the optional closed `members` mapping of tier ID to member ID/reason. Atomically persist member quiesce changes, restore only configured member IDs, reject malformed state, and retain tier and member intent independently across restart. Preserve current handling of tier promotion-owned intent.
 
+The optional member document is exactly `members: {tier_id: {member_id:
+reason_code}}`; absence is the legacy form. Validate the entire new mapping
+before restoring anything, including entries for removed tiers/members: exact
+dictionaries, nonempty string tier IDs, the existing safe member-ID grammar,
+and exact nonempty string reasons accepted by admission's bounded reason-code
+validator. Reject null, lists, nested state objects, duplicate JSON keys and
+malformed reasons with fixed `ConfigError` text. Then ignore valid entries
+outside the configured replica membership. Restore every retained member
+reason, including `promotion`; the existing promotion exception remains
+tier-only. Keep legacy tier filtering and fallback behavior unchanged.
+
+Read the intent file once with a 1 MiB plus one sentinel bound. Return tier
+and member intent from that same parsed document; do not reread per scope.
+During restore, suppress persistence callbacks until all tier/member intent
+is applied, then perform the existing boot writability check. Build both
+serialized mappings from one `admission.snapshots()` result. Omit `members`
+when empty, so existing tier-only bytes retain their shape. Serialize writes
+with one owner-local lock outside admission conditions and use an exclusive
+same-directory temporary file, flush/fsync and atomic replacement, cleaning
+up only that operation's temporary file on failure. Keep current callback
+write-error reporting and startup failure behavior; do not add a new state
+owner or change active leases.
+
+Tests use literal legacy/new documents and the existing real replica routing
+fixture. Prove restart restoration, independent tier/member readmission,
+member promotion persistence, removed IDs, malformed/duplicate/oversized
+inputs, no partial rewrite during restore, exactly scoped cleanup on failed
+replace, and event-driven concurrent changes without sleeps or live services.
+
 **Acceptance criteria:**
 
 - Member quiesce survives restart without changing tier quiesce state.

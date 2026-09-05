@@ -1,6 +1,6 @@
 # Bind manifest workload projection to bounded source observations
 
-Status: source contract closed as workload-visibility:T011.1; implementation pending.
+Status: source producer locally integrated; projection and batch acceptance pending.
 
 serves.py::status_summary reports configured model and container names plus
 Docker state and health, but no source observation or lifecycle timestamps and
@@ -36,3 +36,12 @@ bounded stdout only for fully completed nonzero children, with unavailable
 status and no stderr. Timeout/overflow/read/cleanup failure and default callers
 remain unchanged. The producer validates each row independently and never
 turns missing/error output into absence. No live Docker was run for diagnosis.
+
+Candidate b1796b3d passed 114 focused tests and Ruff after commit, recorded as
+EV20DD09A1. Configuration and runtime remain distinct immutable observations;
+Compose ownership uses the parsed service, not the display slot name. The
+aggregate file budget includes failed reads and one sentinel, stops later
+opens after exhaustion, and retains validated peers. Literal runtime fixtures
+cover lifecycle timestamps and future-time partiality; pure import tests keep
+the diagnostic capture dependency lazy. These are hermetic source gates, not
+proof of live runtime identity, workload projection or deployment.
