@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import os
 import urllib.parse
 from collections.abc import Mapping
@@ -9,6 +11,7 @@ from types import MappingProxyType
 
 import pytest
 
+from anvil_serving import cli, topology_cli
 import anvil_serving.topology as topology_module
 from anvil_serving.targets import resolve_resource_target
 from anvil_serving.topology import (
@@ -2073,3 +2076,291 @@ def test_topology_drift_reports_metadata_only_differences(tmp_path):
     )
     assert report["in_sync"] is True
     assert report["differences"] == []
+
+
+_VALIDATION_CONFIG = """\
+[router]
+
+[[router.tiers]]
+id = "primary"
+model = "primary-model"
+dialect = "openai"
+context_limit = 8192
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_PRIMARY_KEY"
+health_path = "/health"
+model_identity = true
+replicas = [
+  { id = "member-a", base_url = "http://replica-a.example/v1", host_id = "host-a", resource_id = "resource-a", qualification_ref = "qualification:primary-a" },
+  { id = "member-b", base_url = "http://replica-b.example/v1", host_id = "host-a", resource_id = "resource-b", qualification_ref = "qualification:primary-b" },
+]
+replica_identity = { model_revision = "revision-1", engine_version = "engine-1", image_digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", config_fingerprint = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+
+[router.model_routes]
+llm.primary = "primary"
+"""
+
+
+_VALIDATION_DIRECT_CONFIG = """\
+[router]
+
+[[router.tiers]]
+id = "direct"
+base_url = "http://replica-a.example/v1"
+model = "direct-model"
+dialect = "openai"
+context_limit = 8192
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_DIRECT_KEY"
+
+[router.model_routes]
+llm.direct = "direct"
+"""
+
+
+_VALIDATION_TOPOLOGY = """\
+schema_version = 1
+id = "synthetic"
+
+[[capacity_policies]]
+id = "model-capable"
+allow_model_workloads = true
+
+[[hosts]]
+id = "host-a"
+roles = ["serve"]
+capacity_policy = "model-capable"
+
+[[runtimes]]
+id = "runtime-a"
+host = "host-a"
+role = "native"
+
+[[resources]]
+id = "resource-a"
+role = "model-serve-a"
+host = "host-a"
+runtime = "runtime-a"
+endpoint = "http://replica-a.example/v1"
+
+[[resources]]
+id = "resource-b"
+role = "model-serve-b"
+host = "host-a"
+runtime = "runtime-a"
+endpoint = "http://replica-b.example/v1"
+"""
+
+
+def _validation_paths(tmp_path):
+    config = tmp_path / "router.toml"
+    topology = tmp_path / "topology.toml"
+    config.write_text(_VALIDATION_CONFIG, encoding="utf-8")
+    topology.write_text(_VALIDATION_TOPOLOGY, encoding="utf-8")
+    return config, topology
+
+
+def test_root_router_config_validation_uses_snapshot_once_and_closed_envelope(
+    tmp_path, monkeypatch, capsys
+):
+    config, topology = _validation_paths(tmp_path)
+    overlay = tmp_path / "overlay.toml"
+    overlay.write_text('id = "synthetic"\n', encoding="utf-8")
+    calls = []
+    real_validator = topology_cli.load_validated_router_snapshot
+
+    def tracked_validator(*args):
+        calls.append(args)
+        return real_validator(*args)
+
+    monkeypatch.setattr(topology_cli, "load_validated_router_snapshot", tracked_validator)
+    monkeypatch.setattr(
+        cli, "_resolve_dispatch_plan", lambda *_args: pytest.fail("resolved a target")
+    )
+    monkeypatch.setattr(
+        cli, "execute_plan", lambda *_args, **_kwargs: pytest.fail("dispatched a transport")
+    )
+
+    assert cli.main(["--json", "topology", "validate-router-config", "--config", str(config), "--topology", str(topology), "--topology-overlay", str(overlay)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert payload["command"] == "topology validate-router-config"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert set(payload["data"]) == {
+        "schema_version", "valid", "error_code", "config_sha256", "tier_count",
+        "replica_tier_count", "replica_member_count", "deployment_identity_source",
+        "runtime_deployment_identity_verified",
+    }
+    assert payload["data"]["valid"] is True
+    assert payload["data"]["replica_member_count"] == 2
+    assert calls == [(str(config), str(topology), str(overlay))]
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ["--topology", "private-topology-marker"],
+        ["--config", "private-config-marker", "--unknown", "private-unknown-marker"],
+        ["--config", "private-first-marker", "--config", "private-second-marker"],
+        ["--config", "private-config-marker", "--topology"],
+    ),
+)
+def test_root_router_config_validation_refuses_safely_without_paths_or_dispatch(
+    tmp_path, monkeypatch, capsys, arguments
+):
+    config, topology = _validation_paths(tmp_path)
+    calls = []
+    monkeypatch.setattr(
+        topology_cli,
+        "load_validated_router_snapshot",
+        lambda *_args: calls.append(True) or pytest.fail("validator called"),
+    )
+    monkeypatch.setattr(
+        cli, "_resolve_dispatch_plan", lambda *_args: pytest.fail("resolved a target")
+    )
+
+    assert cli.main(["--json", "topology", "validate-router-config", *arguments]) == 2
+    rendered = capsys.readouterr()
+    for marker in ("private-topology-marker", "private-config-marker", "private-unknown-marker", "private-first-marker", "private-second-marker"):
+        assert marker not in rendered.out + rendered.err
+    payload = json.loads(rendered.out)
+    assert payload["command"] == "topology validate-router-config"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] == {
+        "schema_version": "replica-topology-validation/v1",
+        "valid": False,
+        "error_code": "router_config_invalid",
+        "config_sha256": None,
+        "tier_count": None,
+        "replica_tier_count": None,
+        "replica_member_count": None,
+        "deployment_identity_source": None,
+        "runtime_deployment_identity_verified": False,
+    }
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ["--config="],
+        ["--config", "safe-config", "--topology="],
+        ["--config", "safe-config", "--topology-overlay="],
+    ),
+)
+def test_root_router_config_validation_refuses_empty_operands_before_validator(
+    monkeypatch, capsys, arguments
+):
+    calls = []
+    monkeypatch.setattr(
+        topology_cli,
+        "load_validated_router_snapshot",
+        lambda *_args: calls.append(True) or pytest.fail("validator called"),
+    )
+
+    assert cli.main(["--json", "topology", "validate-router-config", *arguments]) == 2
+    rendered = capsys.readouterr()
+    payload = json.loads(rendered.out)
+    assert rendered.err == ""
+    assert calls == []
+    assert payload["command"] == "topology validate-router-config"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] == {
+        "schema_version": "replica-topology-validation/v1",
+        "valid": False,
+        "error_code": "router_config_invalid",
+        "config_sha256": None,
+        "tier_count": None,
+        "replica_tier_count": None,
+        "replica_member_count": None,
+        "deployment_identity_source": None,
+        "runtime_deployment_identity_verified": False,
+    }
+
+
+def test_root_router_config_validation_direct_snapshot_preserves_source_bytes(
+    tmp_path, capsys
+):
+    config, topology = _validation_paths(tmp_path)
+    config.write_text(_VALIDATION_DIRECT_CONFIG, encoding="utf-8")
+    config_before = config.read_bytes()
+    topology_before = topology.read_bytes()
+
+    assert cli.main([
+        "--json",
+        "topology",
+        "validate-router-config",
+        "--config",
+        str(config),
+        "--topology",
+        str(topology),
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert config.read_bytes() == config_before
+    assert topology.read_bytes() == topology_before
+    assert payload["data"]["config_sha256"] == hashlib.sha256(config_before).hexdigest()
+    assert payload["data"]["tier_count"] == 1
+    assert payload["data"]["replica_tier_count"] == 0
+    assert payload["data"]["replica_member_count"] == 0
+
+
+def test_root_router_config_validation_help_is_static_and_does_not_validate(monkeypatch, capsys):
+    monkeypatch.setattr(
+        topology_cli,
+        "load_validated_router_snapshot",
+        lambda *_args: pytest.fail("help invoked the validator"),
+    )
+
+    assert cli.main(["topology", "validate-router-config", "--help"]) == 0
+    help_text = capsys.readouterr().out
+    assert "--config PATH" in help_text
+    assert "--topology PATH" in help_text
+    assert "--topology-overlay PATH" in help_text
+
+
+def test_router_config_validation_human_and_module_paths_are_bounded(tmp_path, capsys):
+    config, topology = _validation_paths(tmp_path)
+    assert topology_cli.main(["validate-router-config", "--config", str(config), "--topology", str(topology)]) == 0
+    assert capsys.readouterr().out == "router config topology valid: tiers=1 replica_tiers=1 replica_members=2\n"
+
+    broken = topology.read_text(encoding="utf-8").replace('id = "resource-b"', 'id = "missing"')
+    topology.write_text(broken, encoding="utf-8")
+    assert cli.main(["topology", "validate-router-config", "--config", str(config), "--topology", str(topology)]) == 2
+    assert capsys.readouterr().err == "router config topology refused: replica_resource_missing\n"
+
+
+@pytest.mark.parametrize(
+    ("config_text", "topology_text", "code"),
+    (
+        (
+            _VALIDATION_CONFIG,
+            _VALIDATION_TOPOLOGY.replace('id = "resource-b"', 'id = "missing-resource"'),
+            "replica_resource_missing",
+        ),
+        (
+            _VALIDATION_CONFIG.replace('host_id = "host-a"', 'host_id = "host-b"'),
+            _VALIDATION_TOPOLOGY,
+            "replica_host_mismatch",
+        ),
+        (
+            _VALIDATION_CONFIG,
+            _VALIDATION_TOPOLOGY.replace("http://replica-b.example/v1", "http://other.example/v1"),
+            "replica_endpoint_mismatch",
+        ),
+    ),
+)
+def test_root_router_config_validation_returns_fixed_join_refusals(
+    tmp_path, capsys, config_text, topology_text, code
+):
+    config, topology = _validation_paths(tmp_path)
+    config.write_text(config_text, encoding="utf-8")
+    topology.write_text(topology_text, encoding="utf-8")
+
+    assert cli.main(["topology", "validate-router-config", "--json", "--config", str(config), "--topology", str(topology)]) == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["data"]["error_code"] == code
+    assert payload["data"]["config_sha256"] is None
+    assert payload["context"] is None and payload["warnings"] == []
