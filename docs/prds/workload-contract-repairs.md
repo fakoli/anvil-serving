@@ -108,6 +108,29 @@ Synchronize the existing Python markup maxlength assertion.
 - `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py -x -q`
 - `git diff --check`
 
+### T012: Repair rendered methodology links and reconcile CSP evidence
+
+**Feature:** F001
+**Priority:** low
+**Type:** modify
+**Likely files:** docs/benchmarks/methodology.md, .tickets/2026-09-05-dashboard-workload-csp.md, .tickets/2026-09-05-scheduler-methodology-links.md
+**Dependencies:** T006
+
+Rendered HTML at the replica documentation checkpoint shows literal [tier transition] because its Markdown destination is separated by a newline. Keep that label/destination contiguous and point campaign artifact set to the published repeatable-campaigns guide instead of the findings index. Do not change qualification thresholds, promotion authority or claim a live benchmark. Track the concrete rendered defect in the new ticket. Update the CSP ticket's stale running/pending wording: its postcommit candidate 781708d5 / EV321129F4 passed 27 focused tests and Ruff; twenty consecutive repeats of the four framing cases passed (80 cases), but the original WinError 10053 cause remains unproven and no masking patch was made. Formal consolidated acceptance and deployment remain pending.
+
+**Acceptance criteria:**
+
+- Rendered methodology contains working tier-transition and repeatable-campaign links, not a literal Markdown label.
+- CSP record distinguishes completed source tests, unreproduced transport interruption and pending formal/deployment gates.
+- No source runtime or qualification policy changes.
+
+**Verification:**
+
+- `python -m mkdocs build --strict`
+- `python scripts/check_markdown_links.py --root .`
+- `python -c "from pathlib import Path; h=Path('site/benchmarks/methodology/index.html').read_text(encoding='utf-8'); assert '../../cli/router/#tier-transitions' in h; assert '../repeatable-campaigns/' in h; assert '[tier transition]' not in h"`
+- `git diff --check`
+
 ### T010: Declare the dashboard's actual startup options
 
 **Feature:** F001
