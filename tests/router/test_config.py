@@ -6,7 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from anvil_serving.router.config import ConfigError, PRIVACY_LOCAL, load
+from anvil_serving.router.config import (
+    MAX_ROUTER_CONFIG_BYTES,
+    ConfigError,
+    PRIVACY_LOCAL,
+    load,
+    load_bytes,
+)
 
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -54,6 +60,37 @@ replica_identity = { model_revision = "revision-1", engine_version = "engine-1.0
 [router.model_routes]
 llm.primary = "primary"
 """
+
+
+def test_load_bytes_preserves_crlf_and_matches_path_loading(tmp_path):
+    raw = _ONE_TIER.replace("\n", "\r\n").encode("utf-8")
+    path = tmp_path / "router.toml"
+    path.write_bytes(raw)
+
+    assert load_bytes(raw) == load(path)
+    assert path.read_bytes() == raw
+
+
+def test_load_bytes_requires_exact_bytes_without_echoing_input():
+    with pytest.raises(ConfigError, match="exact bytes") as excinfo:
+        load_bytes(bytearray(b"synthetic-private-marker"))
+
+    assert "synthetic-private-marker" not in str(excinfo.value)
+
+
+def test_router_config_bytes_accept_exact_limit_and_reject_overflow():
+    base = _ONE_TIER.encode("utf-8")
+    exact = base + b"#" + b"x" * (MAX_ROUTER_CONFIG_BYTES - len(base) - 1)
+
+    assert load_bytes(exact).tier("primary").id == "primary"
+    with pytest.raises(ConfigError, match="maximum byte size"):
+        load_bytes(exact + b"x")
+
+
+@pytest.mark.parametrize("raw", [b"\xff", b"[router\nsynthetic-private-marker"])
+def test_load_bytes_wraps_decode_and_toml_failures(raw):
+    with pytest.raises(ConfigError, match="invalid TOML"):
+        load_bytes(raw)
 
 
 def test_example_declares_a_complete_local_direct_route_table():
