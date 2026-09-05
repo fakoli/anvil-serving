@@ -350,10 +350,25 @@ Extend transition status, quiesce, drain, and readmit to accept an optional vali
 **Feature:** F001
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router_manage.py, anvil_serving/commands/router.py, tests/test_router_manage.py, tests/test_cli_contract.py
+**Likely files:** anvil_serving/router_manage.py, anvil_serving/commands/router.py, anvil_serving/control_plane/mcp/tools/router.py, tests/test_router_manage.py, tests/test_cli_contract.py, tests/test_router_transition_contract.py, docs/CLI-COMMAND-MANIFEST.json
 **Dependencies:** T008
 
 Add optional `--member <id>` to `transition-status`, `quiesce`, `drain`, and `readmit`, retaining required `--tier` and existing confirmation rules. Send the validated member ID through the authenticated transition request and render bounded structured results without endpoint or auth data. Update the command specification/manifest contract rather than creating an alternate CLI.
+
+The existing remote command adapter is part of this same boundary: extend
+`router_transition` in `control_plane/mcp/tools/router.py`, its closed input
+schema, and all four command declarations' allowed arguments with `member`.
+Missing/unsafe member scope must refuse before transport; explicit null or an
+empty member is not omission. A member requires a tier even for status.
+Omitted-member local preview and all-tier status remain unchanged. A member
+quiesce/readmit preview uses the authenticated endpoint with `dry_run=true`
+and cannot mutate, so it can reject unknown/direct-tier members without loading
+a separate possibly stale config. The new member preview never echoes the
+router endpoint or credential. Controller and CLI callers use one request
+function, preserve confirmation semantics, and treat fixed HTTP refusals as
+failures. Regenerate the command manifest after staging source changes; test
+the real ephemeral front door and controller adapter in
+`tests/test_router_transition_contract.py` rather than duplicating their logic.
 
 **Acceptance criteria:**
 
@@ -361,11 +376,12 @@ Add optional `--member <id>` to `transition-status`, `quiesce`, `drain`, and `re
 - Missing tier, unsafe member ID, unknown member, and direct-tier member use fail deterministically.
 - Confirmation and dry-run behavior remains unchanged for mutating verbs.
 - CLI help and machine-readable command contracts agree.
+- Local and controller-forwarded member requests preserve the same exact scope and fail before mutation on invalid targets.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/test_router_manage.py tests/test_cli_contract.py -x -q`
-- `python -m ruff check anvil_serving/router_manage.py anvil_serving/commands/router.py tests/test_router_manage.py tests/test_cli_contract.py`
+- `python scripts/run_tests.py tests/test_router_manage.py tests/test_cli_contract.py tests/test_router_transition_contract.py tests/test_command_tree.py -x -q`
+- `python -m ruff check anvil_serving/router_manage.py anvil_serving/commands/router.py anvil_serving/control_plane/mcp/tools/router.py tests/test_router_manage.py tests/test_cli_contract.py tests/test_router_transition_contract.py`
 
 ### T010: Persist and restore member quiesce intent
 
