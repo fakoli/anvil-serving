@@ -46,3 +46,15 @@ The combined controller/startup/source gate at 72d0cd8f passed 140 tests.
 These exact baselines are recorded so the older full-suite result is not
 misrepresented as proof for later source. Generated CLI-reference inventories
 remain stale and are owned by the final workload surface/docs tasks.
+
+Further integrated candidates: explicit fleet bindings (`9f0a82ed`,
+`EV50E9FE25`, 37 tests), canonical tool declarations (`6ccf10f2`,
+`EV217C4A50`, 79 tests), canonical router client (`ffb42d90`,
+`EV575BBDF1`, 62 tests), sealed fleet HTTP (`3a0840c0`, `EV40834EDE`,
+130 tests), explicit fleet startup (`5002dce6`, `EV98A232A8`, 452 tests),
+and explicit controller response cap (`759659fa`, `EVE1309262`, 123 tests).
+All passed scoped Ruff and remain pending consolidated acceptance.
+
+Full-suite baseline `b3cb658c` passed 6,640 tests with 10 skips in 269.90s.
+It predates those further candidates; it is not proof for their integrated
+behavior. The fleet client and MCP regressions continue in isolated worktrees.

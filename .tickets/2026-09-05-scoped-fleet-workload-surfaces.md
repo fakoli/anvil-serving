@@ -1,6 +1,6 @@
 # Keep fleet workload surfaces behind scoped controller authority
 
-Status: implementation contract closed; source work pending.
+Status: controller/schema source candidates integrated; client/acceptance work pending.
 
 The workload PRD requires workloads:read for unified operator surfaces.
 The existing local static MCP catalog has no authenticated caller boundary:
@@ -25,3 +25,8 @@ update the exact node fixture rather than silently forking declarations.
 
 No live credential, endpoint, deployment or approval is implied by this
 contract. Consolidated acceptance and real client evidence remain pending.
+
+Source candidates: shared declarations `6ccf10f2` (`EV217C4A50`, 79 tests),
+sealed fleet REST/MCP `3a0840c0` (`EV40834EDE`, 130 tests), and separate
+startup option `5002dce6` (`EV98A232A8`, 452 tests). The static MCP catalog
+was not expanded. Client and dedicated chaining regressions remain in flight.
