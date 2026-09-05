@@ -183,6 +183,79 @@ they do not introduce alternate receipt fields or serialization.
   T002 performs no extraction, install, transport, topology mutation or
   operation-ID generation.
 
+### Host-owned bootstrap topology and resolution contract
+
+T003 owns this closed declaration and pure resolution seam. T002's local
+filesystem containment checks remain separate; never inspect remote paths with
+the caller's filesystem during topology parsing.
+
+- Add frozen HostBootstrap and optional Host.bootstrap, default None. The
+  bootstrap table accepts exactly enabled and bootstrap_authorized (exact
+  booleans, default false), execution_runtime (required declared runtime ID),
+  staging_root, install_root, python_executable, receiver_path, receiver_sha256,
+  install_adapter, supervisor_adapter and supervisor_id. All except the two
+  flags are required; unknown keys refuse. Host.os is the only OS authority and
+  must be windows/linux. Receiver SHA-256 is exactly64 lowercase hex characters.
+  Adapter values are the canonical T002 enums; supervisor_id matches
+  [A-Za-z][A-Za-z0-9_.-]{0,63}.
+- execution_runtime names exactly one declared runtime on the same host with
+  role native. The name is not fixed: node-native is only a synthetic example.
+  Reject missing, cross-host or non-native references. Existing Docker/WSL
+  resource runtimes do not become bootstrap runtimes implicitly.
+- All four paths are NFC-normalized strings of at most1024 UTF-8 bytes, with
+  at most255 UTF-8 bytes per component, already canonical and absolute for the
+  declared host OS. Use PureWindowsPath/PurePosixPath and explicit lexical
+  checks, never resolve/exists/stat, environment expansion or remote I/O.
+  Reject root-only paths, relative/root-relative paths, empty/dot/dot-dot
+  components, controls/surrogates and mixed separators. Windows additionally
+  rejects UNC/device paths, alternate data streams, reserved device components
+  and trailing dots/spaces; require a drive-rooted path with backslashes.
+  Linux requires a single leading slash and forbids backslashes.
+  Staging and install roots must be distinct and non-nested (case-insensitive
+  on Windows). Exact executable/receiver paths are separately validated;
+  later create/open/replace operations still perform their own containment
+  and link/reparse checks.
+- Add CommandSpec.execution_policy host-bootstrap, restricted to the exact
+  command name controller-bootstrap, resource_role=None, runtime roles
+  (native,), transports (controller, ssh), recovery_capable=True,
+  gpu_role_required=False and host OSes (windows, linux). Mutation class is
+  write. Other specifications cannot adopt this policy. This is a typed
+  resolution declaration, not registration of a new remotely callable tool.
+- resolve_execution_plan branches before resource-owner preflight and accepts
+  only an explicit host:<id> using the bounded canonical node-ID grammar.
+  No host-role selector, inferred target, synthetic resource, capacity/GPU
+  lookup, direct local execution or caller-selected SSH is allowed. The host
+  declaration must be enabled and bootstrap_authorized. Auto and controller
+  both select the declared controller even when the target is the caller.
+- Require exactly one controller transport on that host/runtime allowing
+  controller-bootstrap, with expected_node equal to the host ID, a declared
+  auth reference and no unauthenticated-loopback exemption. Permit zero or one
+  same-host/runtime SSH transport allowing that operation; ambiguity refuses.
+  SSH remains an internal recovery candidate, never selected here. Receiver,
+  credential and forced-command checks remain T013/T015 gates.
+- Reuse ExecutionPlan with resource_host/runtime/resource/endpoint, gpu_role and
+  capacity all None; add an internal frozen host_bootstrap field. Preserve
+  validated command identity using the existing resolver, but translate its
+  errors to fixed bootstrap-command-identity-invalid prose/code. For this
+  policy only, as_dict allowlists command, topology, topology_snapshot,
+  command_host/runtime, execution_host/runtime, target, transport,
+  transport_id, recovery_transport_id and expected_node. No overlay payload,
+  root, executable, receiver, address, endpoint, auth reference, fingerprint,
+  known-host path or raw declaration is emitted.
+- Resolution uses TargetResolutionError with details.reason_code and fixed
+  prose: bootstrap-target-required, bootstrap-host-missing,
+  bootstrap-contract-missing, bootstrap-disabled,
+  bootstrap-authorization-denied, bootstrap-runtime-invalid,
+  bootstrap-controller-missing, bootstrap-controller-ambiguous,
+  bootstrap-controller-identity-invalid, bootstrap-recovery-ambiguous,
+  bootstrap-transport-invalid and bootstrap-command-identity-invalid.
+  Invalid command declarations remain CommandSpecError. No input interpolation
+  or raw topology exception appears in bootstrap refusals.
+- Preserve the exact pre-feature topology snapshot digest for absent bootstrap:
+  remove only the new None host field from the asdict hash input. Every
+  declared bootstrap field participates in the fingerprint. T011 later hashes
+  the full private plan domain; never hash only its public projection.
+
 ## Code Map
 
 - `anvil_serving/topology.py::Host`, `Transport`, `Topology`, `validate_topology`, `load_topology`, and `topology_snapshot_identity` own declared host identity, transport policy, and stable drift detection.
@@ -338,10 +411,10 @@ Create immutable stdlib-only value objects and closed enums for phases/adapters.
 **Feature:** F001
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/topology.py, anvil_serving/targets.py, tests/test_topology.py, tests/test_topology_defaults.py
+**Likely files:** anvil_serving/topology.py, anvil_serving/targets.py, tests/test_topology.py, tests/test_targets.py
 **Dependencies:** T002
 
-Add the closed host bootstrap declaration and a typed bootstrap remote operation to `resolve_execution_plan`. Resolve only from validated topology objects and preserve existing default behavior when bootstrap is absent. This slice owns topology parsing, host capability, and target selection; bundle/plan hashing follows in T011.
+Implement the Host-owned bootstrap topology and resolution contract above. Add the closed host declaration and typed host-bootstrap execution policy to resolve_execution_plan. Resolve only from validated topology objects; preserve exact legacy snapshot identity and output when bootstrap is absent. This slice owns pure topology parsing, host capability and controller-first target selection; bundle/plan hashing follows in T011. No filesystem inspection, transport request, CLI registration or installation belongs here.
 
 **Acceptance criteria:**
 
@@ -349,10 +422,13 @@ Add the closed host bootstrap declaration and a typed bootstrap remote operation
 - Missing, ambiguous, incompatible, or policy-disallowed targets return typed precondition failures.
 - Bootstrap declarations reject unsafe roots, mismatched platform/supervisor pairs, unbounded identifiers, and missing pinned receiver identity.
 - Existing topologies without bootstrap declarations parse byte-for-behavior compatibly.
+- Pure cross-OS path tests reject unsafe inputs without filesystem or environment access; every declared bootstrap field changes topology identity while absence preserves the exact legacy digest.
+- Resolver tests cover every fixed refusal code, explicit host-only targeting, same-host controller-first behavior, optional recovery ambiguity, mandatory authenticated expected-node binding, and seeded private-value exclusion from whole output.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/test_topology.py tests/test_topology_defaults.py -x -q`
+- `python scripts/run_tests.py tests/test_topology.py tests/test_targets.py tests/test_topology_defaults.py -x -q`
+- `python -m ruff check anvil_serving/topology.py anvil_serving/targets.py tests/test_topology.py tests/test_targets.py`
 
 ### T011: Bind bootstrap plans to topology and artifact identity
 
