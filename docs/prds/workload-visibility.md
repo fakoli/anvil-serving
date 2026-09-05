@@ -2058,9 +2058,11 @@ Implement the closed service in
 dashboard wiring. WorkloadHTTPService(endpoint, expected_node, policy, *,
 clock=None, monotonic=time.monotonic, reader=read_controller_fleet_workloads)
 owns only one explicit controller binding and four non-waiting upstream slots.
-Validate endpoint through the existing controller-reader _endpoint helper and
-expected_node through canonical host validation at construction, without network,
-environment discovery or a collection clock. A missing/invalid policy has no
+Validate endpoint through the existing controller-reader _endpoint helper plus
+transports._controller_endpoint and _validate_controller_endpoint_host; the first
+helper only bounds text and is not URL or literal-host validation. Validate
+expected_node through parse_workload_query with its host field at construction,
+without network, environment discovery or a collection clock. A missing/invalid policy has no
 authority. Do not import dashboard or router runtime modules here.
 
 read(raw_query, headers) returns exactly (HTTP integer status, UTF-8 JSON bytes).
