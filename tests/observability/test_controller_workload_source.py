@@ -70,6 +70,20 @@ class _Response:
             raise RuntimeError("private-close-detail")
 
 
+def _health_response(node: str = HOST) -> _Response:
+    return _Response(
+        json.dumps(
+            {
+                "status": "ok",
+                "service": "anvil-serving-controller",
+                "request_id": "health-request-1",
+                "node": node,
+            },
+            separators=(",", ":"),
+        ).encode("ascii")
+    )
+
+
 def _node():
     source = SourceResult(
         WorkloadOwner.CONTROLLER, ResultStatus.COMPLETE, NOW, (), Truncation(0, 0)
@@ -86,7 +100,7 @@ def _payload(*, node=None, extra: bool = False) -> bytes:
 
 def _read(*, responses=None, **kwargs):
     requests: list[tuple[object, float]] = []
-    values = list(responses or [_Response(b'{"node":"node-a"}'), _Response(_payload())])
+    values = list(responses or [_health_response(), _Response(_payload())])
 
     def opener(request, timeout):
         requests.append((request, timeout))
@@ -155,7 +169,7 @@ def _read_fleet(
 ):
     selected_query = WorkloadQuery() if query is None else query
     value = _fleet(query=selected_query) if fleet is None else fleet
-    values = list(responses or [_Response(b'{"node":"node-a"}'), _Response(_fleet_payload(value))])
+    values = list(responses or [_health_response(), _Response(_fleet_payload(value))])
     requests: list[tuple[object, float]] = []
 
     def opener(request, timeout):
@@ -198,7 +212,7 @@ def test_expected_node_transport_uses_health_then_exact_workload_operation() -> 
 
 
 def test_wrong_health_identity_stops_before_workload_post() -> None:
-    result, requests = _read(responses=[_Response(b'{"node":"other"}')])
+    result, requests = _read(responses=[_health_response("other")])
     assert _controller_source(result).error is WorkloadErrorCode.UNAVAILABLE
     assert len(requests) == 1
 
@@ -263,7 +277,7 @@ def test_shared_deadline_prevents_post_after_health() -> None:
     clocks = iter((0.0, 0.0, 0.0, 0.0, 0.0, 2.0))
     result, requests = _read(
         monotonic=lambda: next(clocks),
-        responses=[_Response(b'{"node":"node-a"}')],
+        responses=[_health_response()],
     )
     assert _controller_source(result).error is WorkloadErrorCode.UNAVAILABLE
     assert len(requests) == 1
@@ -292,7 +306,7 @@ def test_node_final_response_cleanup_obeys_total_budget(finished_at, accepted) -
     final = _Response(_payload(), on_close=lambda: setattr(clock, "value", finished_at))
     result, _ = _read(
         monotonic=clock,
-        responses=[_Response(b'{"node":"node-a"}'), final],
+        responses=[_health_response(), final],
     )
     assert final.close_calls == 1
     if accepted:
@@ -312,7 +326,7 @@ def test_node_final_response_cleanup_obeys_total_budget(finished_at, accepted) -
     ],
 )
 def test_closed_application_envelope_is_projected_to_fixed_error(payload, code) -> None:
-    result, _ = _read(responses=[_Response(b'{"node":"node-a"}'), _Response(payload)])
+    result, _ = _read(responses=[_health_response(), _Response(payload)])
     assert _controller_source(result).error is code
 
 
@@ -325,7 +339,7 @@ def test_http_error_and_close_failure_do_not_expose_raw_detail() -> None:
     assert "private" not in json.dumps(node_result_to_dict(result))
 
     result, _ = _read(
-        responses=[_Response(b'{"node":"node-a"}'), _Response(_payload(), close_raises=True)]
+        responses=[_health_response(), _Response(_payload(), close_raises=True)]
     )
     assert _controller_source(result).error is WorkloadErrorCode.UNAVAILABLE
 
@@ -333,12 +347,12 @@ def test_http_error_and_close_failure_do_not_expose_raw_detail() -> None:
 def test_wrong_host_and_future_wire_are_fixed_without_raw_payload() -> None:
     wrong = _node()
     object.__setattr__(wrong, "host", "other")
-    result, _ = _read(responses=[_Response(b'{"node":"node-a"}'), _Response(_payload(node=wrong))])
+    result, _ = _read(responses=[_health_response(), _Response(_payload(node=wrong))])
     assert _controller_source(result).error is WorkloadErrorCode.INVALID
 
     future = _node()
     object.__setattr__(future, "collection_timestamp", NOW.replace(second=31))
-    result, _ = _read(responses=[_Response(b'{"node":"node-a"}'), _Response(_payload(node=future))])
+    result, _ = _read(responses=[_health_response(), _Response(_payload(node=future))])
     assert _controller_source(result).error is WorkloadErrorCode.FUTURE
 
 
@@ -374,7 +388,7 @@ def test_fleet_reader_decodes_literal_canonical_wire() -> None:
     )
     result, _ = _read_fleet(
         fleet=build_fleet_workloads((), WorkloadQuery(), NOW, {}),
-        responses=[_Response(b'{"node":"node-a"}'), _Response(payload)],
+        responses=[_health_response(), _Response(payload)],
     )
     assert result == FleetResult(
         ResultStatus.COMPLETE,
@@ -475,7 +489,7 @@ def test_fleet_credential_capture_is_single_value_and_hermetic() -> None:
             raise AssertionError("environment iterated")
 
     fleet = _fleet()
-    responses = iter((_Response(b'{"node":"node-a"}'), _Response(_fleet_payload(fleet))))
+    responses = iter((_health_response(), _Response(_fleet_payload(fleet))))
     result = read_controller_fleet_workloads(
         ENDPOINT,
         "CONTROLLER_TOKEN",
@@ -501,7 +515,7 @@ def test_fleet_shared_budget_shrinks_and_expires_before_post() -> None:
     with pytest.raises(WorkloadError) as raised:
         _read_fleet(
             monotonic=lambda: next(expired),
-            responses=[_Response(b'{"node":"node-a"}')],
+            responses=[_health_response()],
         )
     assert raised.value.code is WorkloadErrorCode.UNAVAILABLE
 
@@ -509,7 +523,7 @@ def test_fleet_shared_budget_shrinks_and_expires_before_post() -> None:
     with pytest.raises(WorkloadError) as raised:
         _read_fleet(
             monotonic=lambda: next(regressed),
-            responses=[_Response(b'{"node":"node-a"}')],
+            responses=[_health_response()],
         )
     assert raised.value.code is WorkloadErrorCode.UNAVAILABLE
 
@@ -534,7 +548,7 @@ def test_fleet_final_response_cleanup_obeys_total_budget(finished_at, accepted) 
         assert (
             _read_fleet(
                 monotonic=clock,
-                responses=[_Response(b'{"node":"node-a"}'), final],
+                responses=[_health_response(), final],
             )[0]
             == _fleet()
         )
@@ -542,7 +556,7 @@ def test_fleet_final_response_cleanup_obeys_total_budget(finished_at, accepted) 
         with pytest.raises(WorkloadError) as raised:
             _read_fleet(
                 monotonic=clock,
-                responses=[_Response(b'{"node":"node-a"}'), final],
+                responses=[_health_response(), final],
             )
         assert raised.value.code is WorkloadErrorCode.UNAVAILABLE
         assert "private" not in str(raised.value)
@@ -573,7 +587,7 @@ def test_post_close_clock_failures_are_fixed_and_close_once(failure) -> None:
     final = _Response(_payload(), on_close=fail_after_close)
     result, _ = _read(
         monotonic=clock,
-        responses=[_Response(b'{"node":"node-a"}'), final],
+        responses=[_health_response(), final],
     )
     assert final.close_calls == 1
     assert _controller_source(result).error is WorkloadErrorCode.UNAVAILABLE
@@ -598,7 +612,7 @@ def test_fleet_accepts_canonical_response_above_the_generic_transport_cap() -> N
 
     returned, requests = _read_fleet(
         fleet=remote,
-        responses=[_Response(b'{"node":"node-a"}'), _Response(payload)],
+        responses=[_health_response(), _Response(payload)],
     )
     assert returned == remote
     assert len(requests) == 2
@@ -655,7 +669,7 @@ def test_fleet_rejects_wrong_transport_result_identity(
 
 def test_fleet_wrong_expected_identity_stops_before_post() -> None:
     with pytest.raises(WorkloadError) as raised:
-        _read_fleet(responses=[_Response(b'{"node":"other"}')])
+        _read_fleet(responses=[_health_response("other")])
     assert raised.value.code is WorkloadErrorCode.UNAVAILABLE
 
 
@@ -718,7 +732,7 @@ def test_fleet_receipt_future_boundary(microseconds, accepted) -> None:
 )
 def test_fleet_application_failures_are_fixed_and_private(payload, code) -> None:
     with pytest.raises(WorkloadError) as raised:
-        _read_fleet(responses=[_Response(b'{"node":"node-a"}'), _Response(payload)])
+        _read_fleet(responses=[_health_response(), _Response(payload)])
     assert raised.value.code is code
     assert "private-marker" not in str(raised.value)
     assert raised.value.__cause__ is None
@@ -732,7 +746,7 @@ def test_fleet_duplicate_nodes_are_invalid() -> None:
     )
     with pytest.raises(WorkloadError) as raised:
         _read_fleet(
-            responses=[_Response(b'{"node":"node-a"}'), _Response(payload)]
+            responses=[_health_response(), _Response(payload)]
         )
     assert raised.value.code is WorkloadErrorCode.INVALID
 
@@ -749,7 +763,7 @@ def test_fleet_http_and_cleanup_failures_are_fixed() -> None:
     with pytest.raises(WorkloadError) as raised:
         _read_fleet(
             responses=[
-                _Response(b'{"node":"node-a"}'),
+                _health_response(),
                 _Response(_fleet_payload(_fleet()), close_raises=True),
             ]
         )

@@ -17,7 +17,7 @@ import time
 
 import pytest
 
-from anvil_serving import cli, controller, controller_diagnostics, mcp
+from anvil_serving import cli, controller, controller_diagnostics, mcp, transports
 from anvil_serving.control_plane.controller import cli as controller_cli
 from anvil_serving.control_plane.mcp import protocol as mcp_protocol
 
@@ -1837,6 +1837,41 @@ def test_controller_health_asserts_node_identity_when_declared():
         status, _, body, _ = _request(host, port, "GET", "/health")
     assert status == 200
     assert "node" not in body
+
+
+def test_expected_node_transport_accepts_actual_loopback_controller_health():
+    calls = []
+    audits = []
+
+    def fake_call_tool(name, arguments=None):
+        calls.append((name, arguments))
+        return {"ok": True, "data": {"observed": True}}
+
+    with running_controller(
+        auth_token_env="ANVIL_CONTROLLER_TOKEN",
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        allow_unauthenticated_loopback=False,
+        node_id="fakoli-dark",
+        call_tool_func=fake_call_tool,
+        audit_logger=audits.append,
+    ) as (host, port):
+        transport = transports.ControllerTransport(
+            "http://%s:%s" % (host, port),
+            auth_env="ANVIL_CONTROLLER_TOKEN",
+            allowed_operations=("router-status",),
+            environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+            expected_node="fakoli-dark",
+        )
+        first = transport.execute(transports.Operation("router-status", {}))
+        second = transport.execute(transports.Operation("router-status", {}))
+
+    for result in (first, second):
+        assert result.data["ok"] is True
+        assert result.data["data"] == {"observed": True}
+        assert transports._REQUEST_ID_RE.fullmatch(result.data["request_id"])
+    assert calls == [("router_status", {}), ("router_status", {})]
+    assert [record["operation"] for record in audits].count("health") == 1
+    assert [record["operation"] for record in audits].count("tools/call") == 2
 
 
 def _scoped_tools():

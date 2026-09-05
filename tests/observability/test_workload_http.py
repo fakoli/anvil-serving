@@ -295,7 +295,10 @@ def test_default_reader_is_hermetic_and_uses_same_caller_credential(policy, monk
         assert timeout == 7.0
         calls.append(request)
         if len(calls) == 1:
-            return io.BytesIO(b'{"node":"aggregator-a"}')
+            return io.BytesIO(
+                b'{"status":"ok","service":"anvil-serving-controller",'
+                b'"request_id":"health-request-1","node":"aggregator-a"}'
+            )
         sent = json.loads(request.data)
         assert sent == {"name": "fleet_workloads", "arguments": {
             "active_only": False, "recent_seconds": 3600, "limit": 200,
