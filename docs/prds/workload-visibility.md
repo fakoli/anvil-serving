@@ -2045,26 +2045,248 @@ Declare the workload commands/operations and regenerate the command manifest thr
 - `python scripts/run_tests.py tests/test_command_tree.py tests/router/test_operational_endpoints.py -x -q`
 - `git diff --check`
 
+### T007.1: Add the scoped canonical workload HTTP service
+
+**Feature:** F004
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/observability/workload_http.py, tests/observability/test_workload_http.py
+**Dependencies:** T006.1, fleet-node-enrollment:T008
+
+Implement the closed service in
+`.tickets/2026-09-05-dashboard-workload-authority.md`, without server or
+dashboard wiring. WorkloadHTTPService(endpoint, expected_node, policy, *,
+clock=None, monotonic=time.monotonic, reader=read_controller_fleet_workloads)
+owns only one explicit controller binding and four non-waiting upstream slots.
+Validate endpoint through the existing controller-reader _endpoint helper and
+expected_node through canonical host validation at construction, without network,
+environment discovery or a collection clock. A missing/invalid policy has no
+authority. Do not import dashboard or router runtime modules here.
+
+read(raw_query, headers) returns exactly (HTTP integer status, UTF-8 JSON bytes).
+Accept exactly one bounded Authorization header with the case-sensitive Bearer
+prefix; reject alternate X-Api-Key presence and malformed/duplicate headers.
+Use check_scope(policy, presented, WORKLOADS_READ) before query, clock, slot or
+reader. Missing/malformed authentication yields fixed401 authentication_error;
+well-formed credentials lacking authority yield fixed403 authorization_scope_denied.
+Never serialize principal, policy, header or exception data.
+
+Parse at most8192 ASCII query bytes and seven fields. Mirror the existing
+front_door _workload_query wire grammar: validate every percent escape, strict
+UTF-8 decode, keep blank values, preserve pairs so duplicates are rejected,
+active_only is exactly true/false, limit/recent_seconds use one-to-five ASCII
+digits before canonical range checks. Empty query uses canonical defaults.
+Unknown fields, duplicates, invalid encoding or scalars yield fixed400
+invalid_workload_query without clock/network. Other request headers never become
+application arguments, idempotency or controller context.
+
+After auth and query validation acquire a slot with blocking=False; exhaustion
+returns fixed503 workload_source_unavailable without clock/network. Call the
+injected UTC clock once and the canonical fleet reader once, forwarding only the
+authorized presented credential in a fresh one-entry mapping under a fixed
+internal reference. Do not read an operator environment variable for that
+reference. Pass exact endpoint, expected_node, query, now and monotonic; the
+reader owns its existing seven-second health/POST/read/cleanup budget. Always
+release the slot in finally, including clock, transport, codec and serialization
+failures. Do not queue, retry, spawn threads, cache snapshots or retain credentials
+beyond policy/request ownership.
+
+Require exact FleetResult, serialize and validate using canonical fleet codecs,
+wrap only ok/data, and enforce MAX_JSON_BYTES on the complete UTF-8 envelope.
+Partial/unavailable canonical fleet data is successful200. Wrong result types,
+malformed data, failed reader/clock, oversize and unexpected failures return
+fixed503 workload_source_unavailable. Error bodies contain only ok:false and
+fixed error.code/message; no data, labels, arguments or chained exception text.
+
+**Acceptance criteria:**
+
+- Denial and malformed queries stop before clock, concurrency slot and reader; well-formed scoped requests forward only their own credential through the expected-node fleet reader.
+- Canonical complete, partial and unavailable fleet results preserve original source/node/fleet times, records, statuses and omissions exactly; forged or oversized results fail fixed.
+- Four blocked reads occupy all slots and a fifth fails immediately; every success/failure releases capacity without replacement workers or queues.
+- Repeated headers, alternate auth, malformed escapes/UTF-8, unknown/repeated filters, strict bool/integer bounds and seeded private exceptions have fixed no-echo results.
+- The service never constructs local collectors, mutates workloads, discovers endpoints or lends a server-owned credential.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_workload_http.py tests/observability/test_controller_workload_source.py -x -q`
+- `python -m ruff check anvil_serving/observability/workload_http.py tests/observability/test_workload_http.py`
+
+### T007.2: Seal the observability workload HTTP route
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/observability/api.py, tests/observability/test_api.py
+**Dependencies:** T007.1
+
+Add optional workload_service=None to create_server. Only an exact
+WorkloadHTTPService is accepted when supplied; a different object is fixed
+configuration refusal before bind. Reserve the exact origin-form /v1/workloads
+GET path, with optional query, before public assets, legacy telemetry auth,
+generic JSON routes or query callbacks. Call the dedicated service with the raw
+query and HTTP headers and write its status/bytes through _bytes, never _json
+or telemetry redaction. Missing service yields fixed403
+authorization_scope_denied; unexpected service failures yield fixed503
+workload_source_unavailable. No configured asset/generic callback may shadow the
+reserved path. Preserve no-store, nosniff, CSP and no CORS response behavior.
+
+POST to that path is fixed405 read_only_workload_api and never invokes a service,
+telemetry callback or local collector. Reject a GET carrying Transfer-Encoding,
+duplicate/nonzero/invalid Content-Length, or any idempotency-header presence
+with a fixed400 invalid_workload_request, closing that connection rather than
+leaving unread bytes for a following request. These malformed requests never
+invoke the service; do not copy header values into failures. Missing/invalid
+query data is handled by the service after its auth gate. Do not change ordinary
+telemetry or static asset authorization, serialization or query semantics.
+
+**Acceptance criteria:**
+
+- Real loopback HTTP requests prove workload authority is independent of absent/valid/invalid legacy telemetry credentials and cannot be replaced by static or generic route registration.
+- Canonical workload bytes bypass telemetry redaction and retain security headers; service absence/failure has only fixed error fields.
+- POST, bodies, idempotency and conflicting headers refuse before invocation and close unsafe persistent connections.
+- Existing telemetry, dashboard shell, health, static and query tests remain compatible; seeded callback/private data cannot enter workload responses or logs.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_api.py tests/observability/test_workload_http.py tests/observability/test_dashboard.py -x -q`
+- `python -m ruff check anvil_serving/observability/api.py tests/observability/test_api.py`
+
 ### T007: Add the canonical workload dashboard panel
 
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** anvil_serving/observability/dashboard/app.py, anvil_serving/observability/dashboard/static/index.html, tests/observability/test_dashboard.py, tests/observability/test_status_redaction.py
-**Dependencies:** T013
+**Likely files:** anvil_serving/observability/dashboard/static/index.html, anvil_serving/observability/dashboard/static/workloads.js, tests/observability/test_dashboard_workloads_ui.py, tests/observability/dashboard_workloads_ui.cjs
+**Dependencies:** T007.2
 
-Render active/recent work grouped by node and kind with clear stale, partial, unavailable, and truncated states. Consume only the canonical node/fleet API schema. Preserve existing no-build dashboard idioms, escape all labels, avoid client-generated HTML, and test expected safe fields plus prohibited seeded values.
+Add a Workloads tab and separate readable packaged workloads.js using existing
+no-build dashboard styling. The later T007.3 wires its same-origin asset route
+and package metadata. Keep existing telemetry behavior intact; workload rendering
+uses textContent/createElement/replaceChildren only, not data-derived innerHTML.
+Do not infer records, authority or freshness from telemetry or DOM state.
+
+A separate password form holds its workload token only in module memory after
+Connect; clear the input and never read/write it via session/local storage,
+cookies, URLs, telemetry authToken or HTML bootstrap. Disconnect clears memory,
+aborts the current call and removes records. Use fetch only at the fixed
+same-origin /v1/workloads path, with Authorization, no-store, credentials omit,
+redirect error and AbortController. No mutation method or action is added.
+Seven controls map to canonical owner/kind/state/host/active_only/recent_seconds/
+limit; only bounded reviewed values enter URLSearchParams.
+
+Poll no faster than once per five seconds after a request completes, only while
+the tab and document are visible and a credential is connected. At most one
+request is in flight. Abort at eight seconds and on disconnect, filter change
+or tab/document hiding. Increment a request generation on those changes and
+discard every superseded completion, even if its fake fetch ignores abort.
+Clear rows on error, disconnect or changed filters and show a fixed status rather
+than remote exception/body text. No old snapshot may look current.
+
+Render allowlisted canonical fields grouped by node and kind, with source and
+collection timestamps, node/source completeness, fixed source errors, record
+state/phase/outcome/provenance and progress, and exact versus unknown omission.
+Do not mutate/re-sort the source data to repair it or recompute source freshness.
+Show active, terminal, stale, partial, unavailable and truncated states in text.
+Use No matching workloads only for a complete empty selection, never idle for an
+unavailable or partial node. Bound rows to canonical node/record limits.
+Missing or malformed response shape is a fixed display failure.
+
+Add a stdlib pytest wrapper around an executable Node test harness, using node:vm,
+assert, a small instrumented fake DOM and controlled fetch/timers. Do not add npm
+dependencies or skip when Node is missing; report the required development runtime.
+Tests execute the real packaged script, not a copied rendering implementation.
+A real browser render/smoke remains part of final consolidated acceptance.
 
 **Acceptance criteria:**
 
-- Dashboard makes idle, unavailable, stale, partial, active, terminal, and truncated states visually distinct in accessible text.
-- UI data and node/fleet API data are schema-equivalent.
-- Seeded markup, credentials, paths, URLs, private addresses, payloads, and raw exceptions are absent or escaped in rendered HTML and logs.
-- Dashboard failure does not alter collection, routing, admission, or workload lifecycle.
+- Executed JavaScript renders literal canonical complete/partial/unavailable fixtures with safe fields and visible source times/omissions, without mutating input or treating unknown fleet state as idle.
+- Fake storage throws on workload credential access; seeded markup becomes text, and no credential appears in URLs, HTML, logs, error text or telemetry requests.
+- Controlled timers/fetch prove one in-flight request, five-second cadence, eight-second abort, visibility pause and suppression of stale completions after disconnect/filter/auth changes.
+- Keyboard/tab/form labels and textual statuses remain accessible; workload controls contain no lifecycle actions.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_status_redaction.py tests/observability/test_workloads.py -x -q`
+- `python scripts/run_tests.py tests/observability/test_dashboard_workloads_ui.py tests/observability/test_dashboard.py -x -q`
+- `python -m ruff check tests/observability/test_dashboard_workloads_ui.py`
+
+### T007.3: Wire explicit dashboard workload startup and packaged assets
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** anvil_serving/observability/dashboard/app.py, pyproject.toml, tests/observability/test_dashboard.py, .github/workflows/ci.yml
+**Dependencies:** T007
+
+Extend create_dashboard_server and build_parser with optional explicit
+workload_controller_url, workload_expected_node and workload_authorization_policy,
+default None; CLI spellings are --workload-controller-url,
+--workload-expected-node and --workload-authorization-policy. All three are
+required to enable the workload service. Forward them from main without affecting
+sampler or ordinary telemetry options. No defaults, topology search or credential
+chain is introduced. Reuse the exact environment mapping selected by the server.
+
+Load one immutable policy with load_authorization_policy, passing the configured
+legacy telemetry token for duplicate-material refusal. This policy resolves only
+its declared references. Create one WorkloadHTTPService and pass it to create_server.
+Missing/invalid explicit workload configuration or policy leaves service None
+and ordinary telemetry available. Catch only at this workload startup boundary
+with no raw path, credential or exception logging. No per-request policy reload.
+Local and controller policy must independently authorize the same presented
+per-client credential; there is no server-owned outbound credential option.
+
+Serve the exact packaged workloads.js at /workloads.js with JavaScript content
+type, alongside existing public shell assets, through the same no-store/CSP route.
+No settings or secrets are embedded. Include *.js alongside *.html in the existing
+dashboard static package-data entry. The source file is delivered by T007; never
+create a second/generated script. Verify importlib.resources bytes and HTTP bytes
+match. Add an explicit node --version preflight before the existing CI test command
+so the executable UI suite cannot silently skip on either OS. Node is a development
+test runtime, not a Python package or router runtime dependency.
+
+**Acceptance criteria:**
+
+- Absent, incomplete, invalid and legacy-colliding workload configuration cannot authorize reads, does not leak operands and leaves legacy dashboard startup compatible.
+- Valid explicit configuration constructs one immutable service; request credentials are checked locally and forwarded as the same client to scoped controller authority.
+- Parser/help/main forwarding cover all three options with no inferred values or outbound credential option.
+- HTML and JavaScript are served with matching packaged bytes and security headers; package-data includes the new script and both CI OS lanes explicitly check Node.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_api.py tests/observability/test_dashboard_workloads_ui.py -x -q`
+- `python -m ruff check anvil_serving/observability/dashboard/app.py tests/observability/test_dashboard.py`
+- `python -m anvil_serving.cli dashboard serve --help`
+- `node --version`
+
+### T007.4: Replace inferred physical GPU tier labels with observed identities
+
+**Feature:** F004
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** anvil_serving/observability/dashboard/static/index.html, tests/observability/test_dashboard.py, tests/observability/dashboard_workloads_ui.cjs
+**Dependencies:** T007.3
+
+Resolve `.tickets/2026-09-05-dashboard-inferred-gpu-roles.md`.
+Remove resolveGpuRoles name-substring and memory-size inference. Group dedicated
+GPU series by existing host/card identity; observed model labels may describe a
+card but cannot assign Fast/Heavy, routing, promotion or qualification roles.
+Use a neutral Graphics card label when identity is absent, without silently
+combining distinct declared host/card keys. Keep shared graphics memory separate.
+Any memory sum is explicitly Aggregate GPU memory, not unified device capacity.
+Preserve other chart groups, telemetry calls and safe HTML escaping.
+Update existing tests that enshrine obsolete Fast/Heavy labels and extend the
+executable Node harness with equal-card, cross-host, missing-label and misleading
+container-name fixtures. No collector, model, route or fleet change is permitted.
+
+**Acceptance criteria:**
+
+- Equal-capacity cards, repeated indices on distinct hosts and misleading container names never imply a tier or collapse separate observed cards.
+- Dedicated per-card and shared graphics memory stay distinct; aggregate labels do not claim unified capacity.
+- Existing dashboard/workload behavior remains intact and executable tests fail when the old inference is restored.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py -x -q`
+- `python -m ruff check tests/observability/test_dashboard.py`
 
 ### T016: Document workload visibility and run whole-PRD gates
 
@@ -2072,7 +2294,7 @@ Render active/recent work grouped by node and kind with clear stale, partial, un
 **Priority:** medium
 **Type:** modify
 **Likely files:** docs/CLI.md, docs/ARCHITECTURE.md, tests/test_cli_reference_audit.py, tests/test_docs_command_invocations.py
-**Dependencies:** T007, T015
+**Dependencies:** T007.4, T015
 
 Document the canonical schema, authorization, ownership, provenance, filters, partiality, freshness, caps, exclusions, and troubleshooting. Add final documentation/command invocation regressions and run the whole-PRD release gates; do not claim completion from focused slices alone.
 
