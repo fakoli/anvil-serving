@@ -15,7 +15,11 @@ from anvil_serving.router.admission import (
 from anvil_serving.router.availability import AlwaysAvailable, AvailabilityResult
 from anvil_serving.router.config import RouterConfig, ServerConfig, Tier
 from anvil_serving.router import serve as serve_module
-from anvil_serving.router.front_door import MODEL_CAPACITY_ENDPOINT, make_server
+from anvil_serving.router.front_door import (
+    MODEL_CAPACITY_ENDPOINT,
+    PROMETHEUS_ENDPOINT,
+    make_server,
+)
 from anvil_serving.router.model_capacity import (
     MetricsSnapshot,
     ReplicaPressureCache,
@@ -810,3 +814,157 @@ def test_capacity_pressure_bad_envelope_makes_every_member_unknown():
     assert [(member["id"], member["freshness"], member["pressure_ppm"]) for member in members] == [
         ("member-a", "unknown", None), ("member-b", "unknown", None),
     ]
+
+
+def test_build_server_capacity_and_metrics_use_existing_owners_without_side_effects(
+    monkeypatch,
+):
+    config = _capacity_replica_config()
+    tier = config.tiers[0]
+
+    class Owner(TierAdmission):
+        reads = 0
+
+        def snapshot(self, tier_id):
+            self.reads += 1
+            return super().snapshot(tier_id)
+
+    owner = Owner(
+        [tier.id],
+        replica_members={tier.id: tuple(member.id for member in tier.replicas)},
+        tier_max_concurrency={tier.id: tier.max_concurrency},
+        member_max_concurrency={
+            tier.id: {member.id: member.max_concurrency for member in tier.replicas}
+        },
+        replica_strategies={tier.id: "capacity"},
+    )
+    ready = {
+        member.id: AvailabilityResult(True, "ready", "identity_passed")
+        for member in tier.replicas
+    }
+    lease = owner.acquire_member(
+        tier.id, ready,
+        pressure={member.id: ReplicaPressure() for member in tier.replicas},
+    )
+    assert lease is not None
+    owner.quiesce(tier.id, reason="private-maintenance")
+
+    fresh_zero = ReplicaPressure(
+        PressureFreshness.FRESH,
+        0,
+        PressureSignalState.MISSING,
+        PressureSignalState.VALID,
+    )
+
+    class PressureOwner:
+        def __init__(self):
+            self.peek_calls = 0
+            self.closed = False
+
+        def peek(self, tier_id):
+            self.peek_calls += 1
+            assert tier_id == tier.id
+            return {"member-a": fresh_zero, "member-b": ReplicaPressure()}
+
+        def snapshot(self, *_args):
+            raise AssertionError("visibility must not schedule a pressure snapshot")
+
+        def close(self):
+            self.closed = True
+
+    pressure = PressureOwner()
+
+    def forbidden_metrics(_tier):
+        raise AssertionError("visibility must not fetch replica metrics")
+
+    monkeypatch.setattr(serve_module, "load", lambda _path: config)
+    monkeypatch.setattr(
+        serve_module,
+        "load_server_config",
+        lambda _path: ServerConfig(auth_env="ANVIL_TEST_KEY"),
+    )
+    httpd = serve_module.build_server(
+        "synthetic-config.toml",
+        host="127.0.0.1",
+        port=0,
+        backends={tier.id: StaticBackend(["must-not-dispatch"])},
+        availability=_MemberAvailability(),
+        admission=owner,
+        capacity_metrics=forbidden_metrics,
+        env={"ANVIL_TEST_KEY": TOKEN},
+    )
+    routing = httpd.anvil_routing
+    routing._replica_pressure.close()
+    routing._replica_pressure = pressure
+    cursor_before = owner._tiers[tier.id].cursor
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        host, port = httpd.server_address[:2]
+        assert _get(host, port, MODEL_CAPACITY_ENDPOINT, token=None)[0] == 401
+        assert _get(host, port, PROMETHEUS_ENDPOINT, token=None)[0] == 401
+        assert owner.reads == 0
+        assert pressure.peek_calls == 0
+
+        status, headers, raw = _get(host, port, MODEL_CAPACITY_ENDPOINT)
+        assert status == 200
+        assert headers["Cache-Control"] == "no-store"
+        row = json.loads(raw)["data"][0]
+        assert row["admission"] == {
+            "status": "available", "state": "quiesced", "active_requests": 1,
+            "draining": False,
+            "member_active_requests": {"member-a": 1, "member-b": 0},
+            "max_concurrency": 6,
+            "members": [
+                {"id": "member-a", "state": "admitting", "active_requests": 1,
+                 "max_concurrency": 4, "draining": False},
+                {"id": "member-b", "state": "admitting", "active_requests": 0,
+                 "max_concurrency": 3, "draining": False},
+            ],
+        }
+        assert [
+            (member["id"], member["freshness"], member["pressure_ppm"])
+            for member in row["members"]
+        ] == [("member-a", "fresh", 0), ("member-b", "unknown", None)]
+        assert owner.reads == 1
+        assert pressure.peek_calls == 1
+
+        metrics_status, _, metrics = _get(host, port, PROMETHEUS_ENDPOINT)
+        assert metrics_status == 200
+        rendered = metrics.decode()
+        assert 'anvil_router_replica_tier_active_requests{tier="primary-local"} 1' in rendered
+        assert (
+            'anvil_router_replica_member_pressure_ppm{tier="primary-local",member="member-a"} 0'
+            in rendered
+        )
+        assert (
+            'anvil_router_replica_member_pressure_freshness{tier="primary-local",member="member-b",freshness="unknown"} 1'
+            in rendered
+        )
+        assert owner.reads == 2
+        assert pressure.peek_calls == 2
+        assert owner._tiers[tier.id].cursor == cursor_before
+        assert owner.snapshot(tier.id).active_requests == 1
+        assert owner.snapshot(tier.id).state == "quiesced"
+
+        class UnavailableOwner:
+            def snapshot(self, _tier_id):
+                raise RuntimeError("private-owner-error")
+
+        routing._admission = UnavailableOwner()
+        failed_status, _, failed_raw = _get(host, port, MODEL_CAPACITY_ENDPOINT)
+        assert failed_status == 200
+        failed = json.loads(failed_raw)["data"][0]["admission"]
+        assert failed == {
+            "status": "unavailable", "state": None, "active_requests": None,
+            "draining": None, "member_active_requests": None,
+            "max_concurrency": None, "members": None,
+        }
+        assert "private-owner-error" not in failed_raw.decode()
+    finally:
+        lease.release()
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+    assert not thread.is_alive()
+    assert pressure.closed is True

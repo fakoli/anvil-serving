@@ -1043,6 +1043,7 @@ class RoutingBackend:
             self._capacity_metrics,
             query,
             admission=self._admission,
+            replica_pressure=self._replica_pressure,
         )
 
     def model_discovery(self) -> dict:
