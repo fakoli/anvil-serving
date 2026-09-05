@@ -256,6 +256,25 @@ the caller's filesystem during topology parsing.
   declared bootstrap field participates in the fingerprint. T011 later hashes
   the full private plan domain; never hash only its public projection.
 
+### Bootstrap plan identity contract
+
+T011 owns one frozen BootstrapPlan produced by
+build_bootstrap_plan(execution: ExecutionPlan, manifest: BootstrapManifest).
+Neither the builder nor the value constructor accepts individual field overrides;
+a custom frozen-value constructor may accept only these two resolved inputs.
+There is no public from_dict or private-canonical serializer. A safe fixed repr
+must not expose internal paths or resolved transport values.
+
+- Plan schema is anvil-serving.fleet-bootstrap-plan/v1. The private hash domain has exactly schema, host, execution_runtime, topology_sha256, manifest_sha256, expected_node, platform, staging_root, install_root, python_executable, receiver_path, receiver_sha256, install_adapter, supervisor_adapter, install_root_class, supervisor_id, bootstrap_enabled, bootstrap_authorized, expected_protocol_version and expected_catalog_sha256. No stored plan_sha256 is hashed into itself. Exclude operation UUIDs, timestamps, bundle digest, receipt state, endpoint/auth/SSH values, command identity and raw topology dictionaries. The topology digest transitively binds those declared transport values; manifest identity binds the exact artifact and compatibility contract.
+- Canonicalize the private plan with the existing canonical_json_bytes and hash SHA-256. Public to_dict has exactly schema, host, topology_sha256, plan_sha256, manifest_sha256, expected_node, platform, install_adapter, supervisor_adapter, expected_protocol_version and expected_catalog_sha256. Never compute plan identity from this public projection.
+- Construction requires exact ExecutionPlan and BootstrapManifest values, the host-bootstrap command policy, controller transport and complete mutually consistent execution_host, native execution_runtime, host_bootstrap, selected host:<id> and transport_expected_node. Require resource_host, resource_runtime, resource, resource_endpoint, gpu_role and capacity all None. Require enabled and bootstrap_authorized true, an authenticated controller binding, and matching host/runtime/bootstrap references. Recheck pure declared HostBootstrap paths and identifiers without local filesystem, environment or network access; convert their validation failures to fixed bootstrap errors.
+- Manifest expected_node/platform/install_adapter/supervisor_adapter must equal resolved topology values and install_root_class must be user. Reuse T002 bounded ID/digest/platform grammars; no implicit platform, path or identity conversion is permitted.
+- expected_protocol_version comes from control_plane.mcp.protocol.PROTOCOL_VERSION, must be a canonical valid date within the inclusive manifest protocol range and equal controller_protocol_max for v1. Import runtime seams lazily where necessary: topology already imports bootstrap adapter enums, so a module-level reverse import would create a cycle.
+- expected_catalog_sha256 is the configured per-node operation-allowlist identity, not the full tool-schema catalog. Export controller_operation_catalog_sha256(operations) for T014 reuse after that controller's existing catalog validation. Accept only an exact tuple of 1..256 unique exact strings matching [A-Za-z][A-Za-z0-9_-]{0,63}, including controller-bootstrap. Sort lexically, then SHA-256 the canonical UTF-8 JSON object with exactly schema=anvil-serving.controller-operation-catalog/v1 and operations=the sorted list. Do not silently normalize hyphen/underscore spellings. Use the same JSON encoding rules as canonical_json_bytes; this fixed, already bounded list may exceed the generic JSON helper's 128-node ceiling, so encode the closed validated catalog directly without weakening manifest/receipt decoding limits.
+- The builder obtains the allowlist only from execution.transport_allowed_operations. No protocol/catalog override exists. T014 computes the same identity after its installed catalog validates every declared operation; unknown operations must never be advertised as accepted merely because their strings hash.
+- Shape/digest/identifier failures use invalid-contract; false policy flags use authorization-denied; unsupported platform/supervisor pairing uses unsupported-platform; target/runtime/node/adapter/protocol/catalog inconsistency uses precondition-failed. All messages are fixed and input-free. A later apply comparison uses topology-drift for changed topology, receiver-mismatch for changed receiver, digest-mismatch for changed artifact and precondition-failed for other plan drift, before any staging. T011 itself performs no apply, staging, identity probe or filesystem mutation.
+- Tests construct real parsed synthetic Windows/Linux topologies and resolve them through resolve_execution_plan before building. Prove equivalent inputs have identical plan hashes; each private target/root/receiver/artifact/policy/protocol/catalog change either changes identity or refuses; catalog order is canonical, duplicates/malformed IDs/missing bootstrap/257 entries refuse, and 256 valid entries succeed. Check constructor/builder reject individual override keywords, public dict and repr omit seeded private values, and existing manifest/bundle/receipt tests retain their behavior.
+
 ## Code Map
 
 - `anvil_serving/topology.py::Host`, `Transport`, `Topology`, `validate_topology`, `load_topology`, and `topology_snapshot_identity` own declared host identity, transport policy, and stable drift detection.
@@ -438,7 +457,7 @@ Implement the Host-owned bootstrap topology and resolution contract above. Add t
 **Likely files:** anvil_serving/fleet_bootstrap.py, tests/test_fleet_bootstrap.py
 **Dependencies:** T002, T003
 
-Construct the immutable execution plan from the resolved bootstrap target and hash only the canonical target/topology/artifact/adapter domain. Bind expected node, topology snapshot, manifest digest, receiver identity, policy state, and protocol/catalog expectations; exclude operation UUIDs and timestamps.
+Implement the Bootstrap plan identity contract above using only the two resolved builder inputs. Bind the entire private plan domain and expose only the exact public projection. Keep per-node allowlist hashing distinct from generic JSON decoding bounds and preserve lazy imports at the topology/bootstrap seam. This task is pure planning; later apply owns fresh re-resolution and pre-stage comparison.
 
 **Acceptance criteria:**
 
