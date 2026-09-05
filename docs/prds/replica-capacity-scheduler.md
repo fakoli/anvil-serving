@@ -25,8 +25,8 @@ Replace simple round robin inside an already selected, qualified same-host repli
 ## Requirements
 
 - R001: Capacity-aware scheduling must run only after one alias has resolved to one replica-enabled logical tier whose members passed the qualified-replica configuration and readiness contracts.
-- R002: A member is eligible only when its backend exists, exact runtime identity is ready, tier and member admission are not quiesced, and its local active reservation count is below its declared member ceiling.
-- R003: Request-wide context, tool, media, output, authentication, and tier admission checks must complete before member selection, and failed checks must create no member reservation.
+- R002: A member is eligible only when its backend exists, served-model readiness and declared replica provenance pass, tier/member admission is not quiesced, and active reservations are below its positive member ceiling.
+- R003: Complete request-wide context, tool, media, output, and authentication gates first. Then atomically check tier/member quiesce and ceilings, select, and acquire one compound tier/member lease; failed checks create neither reservation.
 - R004: Candidate snapshot, deterministic selection, rotating tie-break advancement, and member lease reservation must occur atomically under one bounded tier scheduler lock so concurrent requests cannot all observe the same stale local count.
 - R005: Local pressure must include active router reservations divided by the member concurrency ceiling, with the ceiling validated as a positive integer and never inferred from an engine name or metrics endpoint.
 - R006: When available, upstream pressure may include normalized running requests, waiting requests, scheduler capacity, and KV-cache utilization produced by the existing metrics adapter; raw vendor labels must not enter the scoring function.
@@ -43,7 +43,7 @@ Replace simple round robin inside an already selected, qualified same-host repli
 
 - Two fresh, ready members with local loads 0/2 and 1/2 deterministically select the first; after its atomic reservation produces equal load, the rotating tie break distributes the next selection fairly.
 - Twenty concurrent selection attempts never exceed either member's declared ceiling and tier active count always equals the sum of member active counts.
-- A stale, failed, malformed, or missing metrics snapshot is represented as unknown and cannot beat a fresh zero-pressure member; if all members have unknown upstream metrics, deterministic local-pressure scheduling still proceeds.
+- At equal local pressure, unknown upstream telemetry cannot beat fresh zero pressure. A lower local-pressure member still wins when its telemetry is unknown. If all upstream samples are unknown, local pressure and rotating ties decide.
 - A metrics fetch is single-flight and time-bounded; tests with an injected slow collector prove the selection lock is not held during I/O.
 - Success, HTTP error, timeout, cancellation, client disconnect, normal SSE end, and malformed SSE each release the chosen member lease exactly once and never invoke a peer backend.
 - Member and tier drain semantics are independently proven without cancelling in-flight requests.
@@ -82,6 +82,19 @@ None. The first release uses lexicographic conservative scoring, cached normaliz
 **Rationale:** Existing `model_capacity.py` already distinguishes declared capacity from observed metrics. The scheduler may use fresh signals to choose among already eligible peers without turning metrics into a promotion gate.
 
 **Requirements:** R006, R007, R008, R012
+
+## Closed v1 implementation contract
+
+- Add tier `replica_strategy`: `round_robin` by default, or explicit `capacity`; reject it on direct tiers. Add optional positive integer member `max_concurrency` (1-100000), mandatory for every member in capacity mode. A configured member ceiling is enforced in either mode.
+- Tier `max_concurrency` is the aggregate ceiling, never multiplied by member count. If absent, capacity mode is bounded by the sum of member ceilings. Compound admission replaces the independent blocking backend semaphore on replica paths; exhausted capacity returns the existing unavailable response without waiting or reserving another tier.
+- Under one tier-owned condition: recheck quiesce and ceilings, combine already-completed readiness/telemetry snapshots with current local counts, choose, advance the cursor, and increment tier/member counts. No I/O or user callback runs under that condition.
+- Filter ineligible members, then rank by `(local_ratio, upstream_unknown, upstream_pressure, rotating_rank)`. Compare local ratios exactly (integer cross-products or `fractions.Fraction`). Upstream unknown is 1, fresh is 0; therefore unknown loses to fresh only at equal local ratio. Local reservations remain authoritative.
+- Fresh upstream pressure is the maximum of valid available signals: `(running + waiting) / scheduler_capacity` when all three are valid, and KV utilization as a 0-1 fraction when valid. No valid signal means unknown. Missing optional signals are not zero. Negative, non-finite, failed, future, or stale samples are unknown. Capacity is positive; counts are nonnegative; no vendor label enters this function.
+- Sampling uses composite member identity, an injected monotonic clock, a 1-second refresh interval, 5-second stale boundary, 1-second transport timeout, and the existing bounded body reader. One refresh per member is in flight; other callers use the completed cache or unknown without waiting for it. No unbounded executor queue or thread-per-request creation is allowed.
+- Ties rotate over sorted safe member IDs and advance only after a successful reservation. Pressure evidence is a bounded list of at most 16 normalized candidate rows; it carries no raw metric text or URL.
+- Existing router `transition-status|quiesce|drain|readmit` verbs gain optional `--member <id>` with required `--tier`; the authenticated transition endpoint uses optional `member_id`. Omission preserves tier behavior. Unknown members/direct tiers refuse before mutation. Member readmission verifies only that member's served-model readiness and never readmits the tier; tier readmission never clears member quiesce. Drain requires quiesce of its scope and cannot cancel in-flight leases.
+- Persist member quiesce intent in an optional `members` mapping of tier ID to member ID/reason alongside existing tier intent. Restore only configured IDs, reject malformed state, and retain member intent across restart. Extend `router_manage.py`, front-door transition handlers, command spec/manifest and focused endpoint tests in T004/T006.
+- Require event/barrier tests for oversubscription, quiesce versus acquire, single-flight collection, stream close before iteration, collector failure and expiry. Include the decisive counterexample: unknown 0/2 local beats fresh 1/2 local; fresh wins when both local counts are 0/2.
 
 ## Code Map
 
@@ -127,9 +140,9 @@ Project safe score components and prove distribution, ceilings, lease release, a
 **Feature:** F001
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router/admission.py, tests/router/test_admission.py
+**Likely files:** anvil_serving/router/config.py, anvil_serving/router/admission.py, tests/router/test_config.py, tests/router/test_admission.py
 
-Add immutable member snapshots and exactly-once member leases under one tier-owned condition/lock. Preserve the existing tier API for direct routes. Acquire tier and member capacity in one critical section, and notify both member and tier drain waiters on release. Executor guidance: mirror `AdmissionLease` context-manager and idempotent-release behavior; inject no I/O; write race tests with barriers/events instead of sleeps.
+First implement `replica_strategy` and member `max_concurrency` parsing under the closed contract below. Add immutable snapshots and compound exactly-once leases under one tier-owned condition. Preserve the direct-tier API and avoid the independent backend semaphore on replica paths. Acquire tier/member capacity together and notify drain waiters on release. Test races with barriers/events, not sleeps.
 
 **Acceptance criteria:**
 
@@ -140,8 +153,8 @@ Add immutable member snapshots and exactly-once member leases under one tier-own
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_admission.py -x -q`
-- `python -m ruff check anvil_serving/router/admission.py tests/router/test_admission.py`
+- `python scripts/run_tests.py tests/router/test_config.py tests/router/test_admission.py -x -q`
+- `python -m ruff check anvil_serving/router/config.py anvil_serving/router/admission.py tests/router/test_config.py tests/router/test_admission.py`
 
 ### T002: Implement a pure deterministic replica scheduler
 
@@ -191,58 +204,215 @@ Wrap the existing bounded metrics fetch with a per-member cache and single-fligh
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router/serve.py, anvil_serving/router/backends/relay.py, anvil_serving/router/backends/sse.py, anvil_serving/router/front_door.py, tests/router/test_model_routes.py, tests/router/test_backends.py, tests/router/test_streaming_relay.py
+**Likely files:** anvil_serving/router/serve.py, tests/router/test_model_routes.py, tests/router/test_backends.py
 **Dependencies:** T001, T002, T003
 
-Construct the candidate snapshot after all request-wide gates, acquire the selected member lease atomically, and invoke exactly that backend. Attach lease release to every ordinary-response and streaming terminal path with `try/finally` or the existing close callback idiom. Executor guidance: do not loop around backend invocation; make backend fakes count calls; test cancellation and disconnect explicitly because normal status-code tests do not cover lease lifetime.
+Construct the candidate snapshot after all request-wide gates, combine the completed readiness and pressure snapshots with current local counts under the admission condition, acquire the selected compound lease, and invoke exactly that backend. Keep I/O outside the condition and never loop around backend invocation. Make backend fakes count calls and cover capacity exhaustion and unknown-versus-fresh counterexamples.
 
 **Acceptance criteria:**
 
 - Selection occurs once per admitted request and only eligible members are callable.
-- All terminal paths release one lease exactly once.
-- No upstream failure invokes a second member.
+- The decisive local-pressure and unknown-telemetry cases select exactly as specified.
+- Capacity exhaustion creates no reservation and invokes no backend.
+- No ordinary-response failure invokes a second member.
 - Direct and scheduler-disabled replica routes retain their existing behavior.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_model_routes.py tests/router/test_backends.py tests/router/test_streaming_relay.py -x -q`
-- `python scripts/run_tests.py tests/router/test_front_door.py tests/router/test_responses.py -x -q`
+- `python scripts/run_tests.py tests/router/test_model_routes.py tests/router/test_backends.py -x -q`
+- `python -m ruff check anvil_serving/router/serve.py tests/router/test_model_routes.py tests/router/test_backends.py`
 
-### T005: Expose bounded scheduler decisions and capacity state
+### T005: Expose bounded scheduler decisions
 
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** anvil_serving/router/decision_log.py, anvil_serving/router/model_capacity.py, anvil_serving/router/router_telemetry.py, tests/router/test_decision_log.py, tests/router/test_model_capacity.py, tests/router/test_observability_hardening.py
+**Likely files:** anvil_serving/router/decision_log.py, tests/router/test_decision_log.py, tests/router/test_observability_hardening.py
 **Dependencies:** T004
 
-Add allowlisted member score, freshness, reservation, and one-attempt fields to existing metadata projections. Keep diagnostics bounded and preserve ring-buffer cardinality. Executor guidance: serialize from typed snapshots rather than object `__dict__`; add explicit negative assertions for URL, address, token, prompt, response, raw metric, and exception substrings.
+Add allowlisted member score, freshness, reservation, eligibility-set, and one-attempt fields to the existing decision record. Keep diagnostics and candidate rows bounded and preserve ring-buffer cardinality. Serialize from typed snapshots rather than object `__dict__`; add explicit negative assertions for URL, address, token, prompt, response, raw metric, and exception substrings.
 
 **Acceptance criteria:**
 
 - One decision record explains which eligible member won and why using normalized fields.
-- Capacity snapshots reconcile tier/member reservations and classify telemetry freshness.
-- No sensitive or high-cardinality values enter router logs, telemetry, or error bodies.
+- Exhaustion and upstream failure retain the one-selection/one-attempt boundary.
+- No sensitive or high-cardinality values enter decision logs or error bodies.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_decision_log.py tests/router/test_model_capacity.py tests/router/test_observability_hardening.py -x -q`
+- `python scripts/run_tests.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py -x -q`
+- `python -m ruff check anvil_serving/router/decision_log.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py`
 
-### T006: Document and qualify the capacity-scheduling contract
+### T006: Document the capacity-scheduling contract
 
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** docs/THIN-CAPABILITY-GATEWAY.md, docs/ARCHITECTURE.md, docs/CONFIGURATION.md, docs/benchmarks/methodology.md, tests/router/test_transition_integration.py
-**Dependencies:** T004, T005
+**Likely files:** docs/THIN-CAPABILITY-GATEWAY.md, docs/ARCHITECTURE.md, docs/CONFIGURATION.md
+**Dependencies:** T005, T009, T010, T011
 
-Document configuration, score order, freshness, admission, no-replay behavior, and evidence limits. Add a deterministic synthetic routed workload that asserts distribution, member ceilings, errors, and decision records. Define the separately authorized real qualification: managed recipe load, exact identities, matched direct-versus-routed workload, sustained concurrency, failure injection, recorded artifacts, restoration, and human promotion gate. Executor guidance: do not claim the existing direct-to-replica throughput finding proves routed behavior.
+Document configuration, exact score order, freshness boundaries, aggregate and member admission, member/tier lifecycle controls, persisted intent, no-replay behavior, and evidence limits. Keep alias resolution, eligibility, scheduling, runtime metrics, qualification, and promotion as distinct concepts. Do not claim the existing direct-to-replica throughput finding proves routed behavior.
 
 **Acceptance criteria:**
 
 - Documentation distinguishes alias resolution, eligibility, scheduling, runtime metrics, qualification, and promotion.
-- Synthetic integration tests prove the scheduler contract without hardware or sleeps.
-- The real-hardware procedure is reproducible but remains inert until explicitly authorized.
+- Member and tier transition syntax, independent readmission, and persisted quiesce semantics are explicit.
+- Configuration documents round-robin compatibility and every capacity-mode validation rule.
+- No operational or benchmark claim exceeds the synthetic evidence.
+
+**Verification:**
+
+- `python -m mkdocs build --strict`
+- `python scripts/check_markdown_links.py --root .`
+- `git diff --check`
+
+### T007: Preserve leases across ordinary and SSE terminal paths
+
+**Feature:** F002
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/router/backends/relay.py, anvil_serving/router/backends/sse.py, tests/router/test_streaming_relay.py, tests/router/test_responses.py
+**Dependencies:** T004
+
+Attach the chosen compound lease to the complete ordinary-response and streaming lifecycle using the existing close-aware iterator idiom. Release exactly once on success, HTTP error, timeout, cancellation, disconnect, malformed SSE, normal stream end, explicit close, and close-before-first-iteration. A terminal failure must never trigger another selection.
+
+**Acceptance criteria:**
+
+- Every response and streaming terminal path releases the selected lease exactly once.
+- Close-before-first-iteration releases capacity without invoking a peer backend.
+- Cancellation, disconnect, timeout, and malformed SSE do not leak capacity.
+- No terminal path retries, replays, or selects a second member.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_streaming_relay.py tests/router/test_responses.py -x -q`
+- `python -m ruff check anvil_serving/router/backends/relay.py anvil_serving/router/backends/sse.py tests/router/test_streaming_relay.py tests/router/test_responses.py`
+
+### T008: Add member-scoped transition backend and endpoint controls
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/router/serve.py, anvil_serving/router/front_door.py, tests/router/test_transition_integration.py, tests/router/test_front_door_auth.py
+**Dependencies:** T001, T004
+
+Extend transition status, quiesce, drain, and readmit to accept an optional validated member ID while preserving omitted-member tier behavior. Refuse unknown members and direct-tier member operations before mutation. Member readmission probes only that member and never clears tier quiesce; tier readmission never clears member quiesce. Drain requires its scope to be quiesced and cannot cancel in-flight leases.
+
+**Acceptance criteria:**
+
+- Authenticated transition endpoints implement the exact tier/member interaction matrix.
+- Unknown members and direct-tier member requests fail before state mutation.
+- Member and tier drains wait only for their documented scopes.
+- Existing tier-only endpoint behavior and authentication remain compatible.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_transition_integration.py tests/router/test_front_door_auth.py -x -q`
+- `python -m ruff check anvil_serving/router/serve.py anvil_serving/router/front_door.py tests/router/test_transition_integration.py tests/router/test_front_door_auth.py`
+
+### T009: Add member addressing to router transition CLI contracts
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/router_manage.py, anvil_serving/commands/router.py, tests/test_router_manage.py, tests/test_cli_contract.py
+**Dependencies:** T008
+
+Add optional `--member <id>` to `transition-status`, `quiesce`, `drain`, and `readmit`, retaining required `--tier` and existing confirmation rules. Send the validated member ID through the authenticated transition request and render bounded structured results without endpoint or auth data. Update the command specification/manifest contract rather than creating an alternate CLI.
+
+**Acceptance criteria:**
+
+- All four existing verbs accept member addressing and preserve omitted-member tier behavior.
+- Missing tier, unsafe member ID, unknown member, and direct-tier member use fail deterministically.
+- Confirmation and dry-run behavior remains unchanged for mutating verbs.
+- CLI help and machine-readable command contracts agree.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_router_manage.py tests/test_cli_contract.py -x -q`
+- `python -m ruff check anvil_serving/router_manage.py anvil_serving/commands/router.py tests/test_router_manage.py tests/test_cli_contract.py`
+
+### T010: Persist and restore member quiesce intent
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/router/serve.py, tests/router/test_transition_integration.py, tests/router/test_serve_cli.py
+**Dependencies:** T008, T009
+
+Extend the admission-intent document with the optional closed `members` mapping of tier ID to member ID/reason. Atomically persist member quiesce changes, restore only configured member IDs, reject malformed state, and retain tier and member intent independently across restart. Preserve current handling of tier promotion-owned intent.
+
+**Acceptance criteria:**
+
+- Member quiesce survives restart without changing tier quiesce state.
+- Tier readmission does not remove persisted member intent, and member readmission removes only its own intent.
+- Malformed member state refuses startup; removed/unconfigured members are not restored.
+- Existing tier-only intent documents remain compatible.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_transition_integration.py tests/router/test_serve_cli.py -x -q`
+- `python -m ruff check anvil_serving/router/serve.py tests/router/test_transition_integration.py tests/router/test_serve_cli.py`
+
+### T011: Expose bounded capacity and telemetry state
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** anvil_serving/router/model_capacity.py, anvil_serving/router/router_telemetry.py, tests/router/test_model_capacity.py, tests/router/test_router_telemetry.py
+**Dependencies:** T003, T004
+
+Project normalized freshness, bounded score components, tier/member reservation counts, ceilings, and aggregate reconciliation through the existing capacity and telemetry surfaces. Consume typed snapshots and exclude raw metric labels/text, endpoint identity, and unbounded member data.
+
+**Acceptance criteria:**
+
+- Capacity output reconciles tier active leases with the sum of member active leases.
+- Fresh, stale, failed, and unknown telemetry are explicitly classified.
+- Candidate evidence is ordered and capped at the configured 16-member bound.
+- Existing direct-tier capacity and telemetry output remains compatible.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_model_capacity.py tests/router/test_router_telemetry.py -x -q`
+- `python -m ruff check anvil_serving/router/model_capacity.py anvil_serving/router/router_telemetry.py tests/router/test_model_capacity.py tests/router/test_router_telemetry.py`
+
+### T012: Prove the integrated scheduler with a synthetic workload
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** tests/router/test_transition_integration.py, tests/router/test_model_routes.py, tests/router/test_observability_hardening.py
+**Dependencies:** T005, T007, T010, T011
+
+Add one hermetic event-driven workload that exercises deterministic distribution, concurrent tier/member ceilings, member and tier drains, telemetry freshness, upstream errors, decision evidence, and the one-attempt boundary. Use injected clocks, barriers, and fake backends; use no hardware, network service, or sleeps.
+
+**Acceptance criteria:**
+
+- Twenty concurrent attempts never exceed either member or aggregate tier ceilings.
+- Distribution follows exact local/upstream/tie ordering, including both decisive unknown cases.
+- Member/tier drain and restart-restored intent retain their independent scopes.
+- Error and stream-close cases release capacity once, record bounded evidence, and invoke no peer.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_transition_integration.py tests/router/test_model_routes.py tests/router/test_observability_hardening.py -x -q`
+- `python -m ruff check tests/router/test_transition_integration.py tests/router/test_model_routes.py tests/router/test_observability_hardening.py`
+
+### T013: Define qualification and run integrated release gates
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** docs/benchmarks/methodology.md
+**Dependencies:** T006, T012
+
+Define the separately authorized real qualification: managed recipe load, exact served identities and declared provenance, matched direct-versus-routed workload, sustained concurrency, failure injection, recorded artifacts, restoration, and human promotion gate. Keep the procedure inert in this project, then run every focused, full-suite, lint, strict-doc, link, and diff gate without weakening earlier acceptance criteria.
+
+**Acceptance criteria:**
+
+- The real-hardware procedure is reproducible but performs no live operation without separate authority.
+- Existing direct-to-replica evidence is not represented as routed-scheduler proof.
+- Synthetic results and real qualification/promotion status remain explicitly distinct.
 - Router, full test, lint, strict-doc, link, and diff gates pass.
 
 **Verification:**
