@@ -406,16 +406,42 @@ class RoutingBackend:
         prompt_tokens: Optional[int] = None,
         prompt_tokens_source: str = "estimated",
         completion_tokens_source: str = "unknown",
+        replica_member_id: Optional[str] = None,
+        replica_selection: Optional[str] = None,
     ) -> None:
         if prompt_tokens is None:
             prompt_tokens = self._prompt_tokens(request)
         output_limit = self._output_limit(request, tier)
+        attempts = (AttemptRecord(
+            tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
+        ),)
+        if tier.replicas:
+            # The configured tier, not caller metadata, owns member identity.
+            if type(replica_member_id) is str and any(
+                member.id == replica_member_id for member in tier.replicas
+            ):
+                replica_selection = "identity_passed"
+                if reason not in {
+                    "served", "served_output_clamped", "client_disconnected",
+                    "backend_error", "completion_error",
+                }:
+                    reason = "backend_error"
+                attempts = (AttemptRecord(
+                    tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
+                ),)
+            else:
+                replica_member_id = None
+                replica_selection = (
+                    "not_admitted" if replica_selection == "not_admitted"
+                    else "request_rejected"
+                )
+                attempts = ()
+        else:
+            replica_member_id = replica_selection = None
         self._decision_log.record(DecisionRecord(
             kind="chat",
             requested_tier=tier.id,
-            attempts=(AttemptRecord(
-                tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
-            ),),
+            attempts=attempts,
             served_tier=tier.id if served else None,
             total_prompt_tokens=prompt_tokens,
             total_completion_tokens=completion_tokens,
@@ -430,6 +456,8 @@ class RoutingBackend:
             output_limit_requested=output_limit["requested"],
             output_limit_applied=output_limit["applied"],
             output_limit_clamped=output_limit["clamped"],
+            replica_member_id=replica_member_id,
+            replica_selection=replica_selection,
             **request_correlation(request),
         ))
 
@@ -620,6 +648,7 @@ class RoutingBackend:
             if lease is None:
                 self._record(
                     request, tier, served=False, reason="unavailable", outcome="skipped",
+                    replica_selection="not_admitted",
                     latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
                 )
                 raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
@@ -660,7 +689,8 @@ class RoutingBackend:
                     request,
                     tier,
                     served=False,
-                    reason=f"backend_error_{type(exc).__name__}",
+                    reason="backend_error" if selected_member is not None else f"backend_error_{type(exc).__name__}",
+                    replica_member_id=selected_member,
                     latency_ms=_elapsed_ms(),
                     readiness_check_ms=readiness_check_ms,
                     upstream_duration_ms=(
@@ -702,6 +732,7 @@ class RoutingBackend:
                 request,
                 tier,
                 served=True,
+                replica_member_id=selected_member,
                 reason=(
                     "served_output_clamped"
                     if "_anvil_output_clamp" in request.raw
@@ -735,7 +766,8 @@ class RoutingBackend:
                 self._thread_local.last_served_tier = None
                 self._record(
                     request, tier, served=False,
-                    reason=f"completion_error_{type(exc).__name__}",
+                    reason="completion_error" if selected_member is not None else f"completion_error_{type(exc).__name__}",
+                    replica_member_id=selected_member,
                     completion_tokens=estimate_tokens(fragments),
                     completion_tokens_source="estimated" if any(fragments) else "unknown",
                     latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
@@ -750,6 +782,7 @@ class RoutingBackend:
         def on_cancel() -> None:
             self._record(
                 request, tier, served=False, reason="client_disconnected",
+                replica_member_id=selected_member,
                 latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
                 upstream_duration_ms=_upstream_elapsed_ms(),
             )
@@ -772,6 +805,7 @@ class RoutingBackend:
             except GeneratorExit:
                 self._record(
                     request, tier, served=False, reason="client_disconnected",
+                    replica_member_id=selected_member,
                     completion_tokens=estimate_tokens(fragments),
                     completion_tokens_source="estimated" if any(fragments) else "unknown",
                     latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
@@ -785,7 +819,8 @@ class RoutingBackend:
             except BaseException as exc:
                 self._record(
                     request, tier, served=False,
-                    reason=f"backend_error_{type(exc).__name__}",
+                    reason="backend_error" if selected_member is not None else f"backend_error_{type(exc).__name__}",
+                    replica_member_id=selected_member,
                     completion_tokens=estimate_tokens(fragments),
                     completion_tokens_source="estimated" if any(fragments) else "unknown",
                     latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,

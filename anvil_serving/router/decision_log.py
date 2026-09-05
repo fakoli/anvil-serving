@@ -37,6 +37,7 @@ _WORKLOAD_OUTCOMES = {
     "success", "error", "cancelled", "timeout", "rejected", "disconnected",
 }
 _MAX_MEASUREMENT = 1_000_000_000_000_000
+_REPLICA_MEMBER_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 
 
 @dataclass(frozen=True)
@@ -107,6 +108,9 @@ class DecisionRecord:
     workload_created_at: Optional[str] = field(default=None, repr=False)
     workload_updated_at: Optional[str] = field(default=None, repr=False)
     workload_outcome: Optional[str] = field(default=None, repr=False)
+    # Selection identifies a configured member, not successful generation.
+    replica_member_id: Optional[str] = None
+    replica_selection: Optional[str] = None
 
 
 def safe_correlation(value: Any) -> Optional[str]:
@@ -204,6 +208,8 @@ tier=<t|-> prompt=<n> completion=<n>
     gateway_request_id = safe_gateway_request_id(record.gateway_request_id)
     if gateway_request_id is not None:
         line += f" gateway_request_id={gateway_request_id}"
+    for name, value in _replica_metadata(record).items():
+        line += f" {name}={value}"
     return line
 
 
@@ -211,6 +217,32 @@ def _field(record: Any, name: str, default: Any = None) -> Any:
     if isinstance(record, Mapping):
         return record.get(name, default)
     return getattr(record, name, default)
+
+
+def _replica_metadata(record: Any) -> dict[str, str]:
+    """Bounded optional pair projection shared by every audit surface."""
+    member = _field(record, "replica_member_id")
+    selection = _field(record, "replica_selection")
+    if type(selection) is not str or len(selection) > 16:
+        return {}
+    if selection == "identity_passed":
+        if (
+            type(member) is str
+            and 1 <= len(member) <= 64
+            and _REPLICA_MEMBER_RE.fullmatch(member) is not None
+        ):
+            return {"replica_member_id": member, "replica_selection": selection}
+    elif selection in {"not_admitted", "request_rejected"} and member is None:
+        return {"replica_selection": selection}
+    return {}
+
+
+def _sanitize_replica_metadata(record: DecisionRecord) -> DecisionRecord:
+    if record.replica_member_id is None and record.replica_selection is None:
+        return record
+    if _replica_metadata(record):
+        return record
+    return dataclasses.replace(record, replica_member_id=None, replica_selection=None)
 
 
 def _int_field(record: Any, name: str) -> int:
@@ -340,6 +372,7 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
             ),
             "workbench_run_id": _summary_safe(safe_correlation(_field(record, "workbench_run_id"))),
             "task_id": _summary_safe(safe_correlation(_field(record, "task_id"))),
+            **_replica_metadata(record),
         })
     return {
         "count": len(items),
@@ -405,7 +438,7 @@ class DecisionLog:
 
     def record(self, record: DecisionRecord) -> None:
         """Append ``record`` to the log, stamping ``unix_ts`` (thread-safe)."""
-        record = _sanitize_workload_metadata(record)
+        record = _sanitize_replica_metadata(_sanitize_workload_metadata(record))
         if not record.unix_ts:
             record = dataclasses.replace(record, unix_ts=time.time())
         with self._lock:
@@ -488,8 +521,31 @@ class DecisionLogWriter:
             pass
 
     def __call__(self, record: DecisionRecord) -> None:
-        record = _sanitize_workload_metadata(record)
-        payload = dataclasses.asdict(record)
+        record = _sanitize_replica_metadata(_sanitize_workload_metadata(record))
+        # Explicit schema: future dataclass fields (including subclasses) must
+        # never silently become durable audit payloads through asdict recursion.
+        payload = {
+            name: getattr(record, name)
+            for name in (
+                "kind", "requested_tier", "served_tier", "total_prompt_tokens",
+                "total_completion_tokens", "route", "request_id",
+                "gateway_request_id", "workbench_run_id", "task_id",
+                "request_bytes", "response_bytes", "latency_ms",
+                "readiness_check_ms", "upstream_duration_ms",
+                "time_to_first_content_ms", "finish_reason", "prompt_tokens_source",
+                "completion_tokens_source", "output_limit_requested",
+                "output_limit_applied", "output_limit_clamped", "unix_ts",
+                "workload_created_at", "workload_updated_at", "workload_outcome",
+            )
+        }
+        payload["attempts"] = [
+            {name: getattr(attempt, name) for name in (
+                "tier_id", "succeeded", "reason", "prompt_tokens",
+                "completion_tokens", "outcome",
+            )}
+            for attempt in record.attempts
+        ]
+        payload.update(_replica_metadata(record))
         for field_name in (
             "workload_created_at", "workload_updated_at", "workload_outcome",
         ):
