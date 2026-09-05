@@ -197,23 +197,44 @@ The generated CLI index currently infers global options by intersecting every vi
 **Feature:** F001
 **Priority:** medium
 **Type:** bugfix
-**Likely files:** scripts/audit_cli_references.py, tests/test_cli_reference_audit.py, tests/test_cli.py, docs/CLI.md, .tickets/2026-09-05-workload-wire-contract-repairs.md
+**Likely files:** scripts/audit_cli_references.py, tests/test_cli_reference_audit.py, tests/test_cli.py, .tickets/2026-09-05-workload-wire-contract-repairs.md
 **Dependencies:** T007
 
-Use the manifest's explicit global_options flag tuples in render_manifest_index, never an intersection or hardcoded flag list. Require a well-formed global_options array with the existing nonempty-string flag shape; malformed or missing metadata fails closed with a bounded ValueError before generation. Preserve command-local options even if every command happens to share them. No legacy-schema fallback is needed: the checked-in generator and schema ship together. Regenerate CLI.md through the existing update path; the inventory should remain byte-identical because this task adds no files or command examples. If regeneration changes other artifacts, report the discrepancy before widening this task. Record the defect and candidate-only fix in the existing repair ticket. Synchronize the reproduced schema-6 assertion in tests/test_cli.py::test_cli_tree_command_emits_manifest to schema 7 and check actual global_options output. Do not change CLI behavior.
+Use the manifest's explicit global_options flag tuples in render_manifest_index, never an intersection or hardcoded flag list. Require a well-formed global_options array with the existing nonempty-string flag shape; malformed or missing metadata fails closed with a bounded ValueError before generation. Preserve command-local options even if every command happens to share them. No legacy-schema fallback is needed: the checked-in generator and schema ship together. Record the defect and candidate-only fix in the existing repair ticket. Synchronize the reproduced schema-6 assertion in tests/test_cli.py::test_command_manifest_is_terminal_and_machine_readable to schema 7 and check actual global_options output. Do not change CLI behavior. Generated artifacts are owned separately by T009; this task tests rendering and validation in memory and existing fixture scope.
 
 **Acceptance criteria:**
 
 - Adding a sealed command that omits resolution globals does not change unrelated rendered option rows.
 - A shared non-global command flag remains visible; an empty global declaration hides nothing.
 - Missing/malformed global metadata refuses; real workload rows retain exact explicit endpoint/query options and no resolution globals.
-- Generated reference and inventory checks pass without hand-edited generated blocks.
+- Actual terminal CLI manifest emits schema 7 with explicit globals; no CLI behavior changes.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_cli_reference_audit.py tests/test_docs_command_invocations.py -x -q`
+- `python scripts/run_tests.py tests/test_cli.py -x -q`
+- `python -m ruff check scripts/audit_cli_references.py tests/test_cli_reference_audit.py tests/test_cli.py`
+- `git diff --check`
+
+### T009: Regenerate explicit-global references and current inventories
+
+**Feature:** F001
+**Priority:** medium
+**Type:** modify
+**Likely files:** docs/CLI.md, docs/CLI-REFERENCE-AUDIT.json, tests/fixtures/cli_reference_audit/expected.json
+**Dependencies:** T008
+
+After T008 is integrated, run the existing audit_cli_references.py --update --scope full. Keep generated blocks and inventories generator-owned. The full inventory must include newly tracked receiver packaging files; the fixture inventory remains unchanged when its inputs do. Do not infer that unchanged command syntax implies unchanged tracked file counts. Retain exact explicit workload options and concise unrelated rows.
+
+**Acceptance criteria:**
+
+- Generated command references and full inventory match the current indexed checkpoint.
+- Fixture inventory changes only when its tracked inputs change.
+- Full and fixture checks plus documentation invocation regressions pass.
 
 **Verification:**
 
 - `python scripts/audit_cli_references.py --check --scope full`
 - `python scripts/run_tests.py tests/test_cli_reference_audit.py tests/test_docs_command_invocations.py -x -q`
-- `python scripts/run_tests.py tests/test_cli.py -x -q`
-- `python -m ruff check scripts/audit_cli_references.py tests/test_cli_reference_audit.py tests/test_cli.py`
 - `git diff --check`
 
