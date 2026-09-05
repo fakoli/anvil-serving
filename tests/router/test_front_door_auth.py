@@ -409,6 +409,144 @@ def test_transition_mutations_preview_then_apply_and_drain():
     assert backend.state == "admitting"
 
 
+@contextmanager
+def _member_transition_server(auth_token=TOKEN):
+    # Use real routing and compound admission, not the legacy tier-only double.
+    from tests.router.test_transition_integration import _TextBackend, _replica_stream_routing
+
+    tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
+    try:
+        with running_server(routing, auth_token) as (host, port):
+            yield tier, routing, host, port
+    finally:
+        routing.close()
+
+
+def test_member_transition_auth_denial_precedes_probes_and_mutation():
+    for configured, headers, expected in (
+        (None, {}, 404),
+        (TOKEN, {}, 401),
+        (TOKEN, {"Authorization": "Bearer incorrect"}, 401),
+    ):
+        with _member_transition_server(configured) as (tier, routing, host, port):
+            status, _, _ = _get(
+                host, port, TRANSITION_ENDPOINT + f"?tier_id={tier.id}&member_id=member-a", headers,
+            )
+            assert status == expected
+            status, _, _ = _post(host, port, TRANSITION_ENDPOINT, {
+                "action": "quiesce", "tier_id": tier.id, "member_id": "member-a",
+                "confirm": True, "dry_run": False,
+            }, headers)
+            assert status == expected
+            assert not routing._admission.member_snapshot(tier.id, "member-a").quiesced
+            assert routing._availability.calls == routing._availability.invalidated == []
+
+
+def test_member_transition_previews_are_validated_and_probe_free_then_apply_exact_scope():
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    with _member_transition_server() as (tier, routing, host, port):
+        target = {"tier_id": tier.id, "member_id": "member-a"}
+        for action in ("quiesce", "readmit"):
+            for approval in ({}, {"confirm": True}, {"dry_run": False}, {"confirm": 1, "dry_run": False}):
+                status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+                    "action": action, **target, **approval,
+                }, headers)
+                assert status == 200
+                assert json.loads(raw) == {"applied": False, "dry_run": True, "action": action, **target}
+        assert routing._availability.calls == routing._availability.invalidated == []
+        assert not routing._admission.member_snapshot(tier.id, "member-a").quiesced
+        status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+            "action": "quiesce", **target, "reason": "maintenance",
+            "confirm": True, "dry_run": False,
+        }, headers)
+        assert status == 200
+        result = json.loads(raw)["result"]
+        assert result["member_id"] == "member-a" and result["state"] == "quiesced"
+        assert not routing._admission.snapshot(tier.id).quiesced
+        assert not routing._admission.member_snapshot(tier.id, "member-b").quiesced
+        for method in ("GET", "POST"):
+            status, _, raw = (
+                _get(host, port, TRANSITION_ENDPOINT + f"?tier_id={tier.id}&member_id=member-a", headers)
+                if method == "GET" else
+                _post(host, port, TRANSITION_ENDPOINT, {"action": "status", **target}, headers)
+            )
+            assert status == 200 and json.loads(raw)["tiers"][0]["member_id"] == "member-a"
+        assert routing._availability.calls == [(tier.id, "member-a")] * 2
+        status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+            "action": "drain", **target, "timeout": 1,
+        }, headers)
+        assert status == 200 and json.loads(raw)["result"]["drained"]
+        routing.quiesce_tier(tier.id)
+        routing._availability.calls.clear()
+        status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+            "action": "readmit", **target, "confirm": True, "dry_run": False,
+        }, headers)
+        assert status == 200 and json.loads(raw)["result"]["readmitted"]
+        assert routing._availability.calls == [(tier.id, "member-a")]
+        assert routing._admission.snapshot(tier.id).quiesced
+
+
+def test_member_transition_malformed_or_unknown_scope_is_never_widened_to_tier():
+    headers = {"x-api-key": TOKEN}
+    with _member_transition_server() as (tier, routing, host, port):
+        bad_targets = [
+            {"tier_id": tier.id, "member_id": value}
+            for value in (None, "", "unknown", " member-a", "member/a", "a" * 65, 1, False, [], {})
+        ] + [
+            {"member_id": "member-a"},
+            {"tier_id": None, "member_id": "member-a"},
+            {"tier_id": "unknown-tier", "member_id": "member-a"},
+        ]
+        for target in bad_targets:
+            for action in ("status", "quiesce", "readmit", "drain"):
+                # Invalid targets refuse even a preview, before any scope mutation.
+                status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+                    "action": action, **target, "timeout": 1,
+                }, headers)
+                assert status == 400
+                assert json.loads(raw)["error"]["type"] == "invalid_transition"
+        for query in (
+            "member_id=member-a", "member_id=&tier_id=" + tier.id,
+            "tier_id=&member_id=member-a",
+            f"tier_id={tier.id}&member_id=member-a&member_id=member-b",
+            f"tier_id={tier.id}&tier_id={tier.id}&member_id=member-a",
+            f"tier_id={tier.id}&member_id=member%2Fa",
+        ):
+            status, _, raw = _get(host, port, TRANSITION_ENDPOINT + "?" + query, headers)
+            assert status == 400
+            assert json.loads(raw)["error"]["type"] == "invalid_transition"
+        assert not routing._admission.snapshot(tier.id).quiesced
+        assert not routing._admission.member_snapshot(tier.id, "member-a").quiesced
+        assert routing._availability.calls == routing._availability.invalidated == []
+
+
+def test_member_drain_endpoint_preserves_scope_quiesce_and_timeout_requirements():
+    headers = {"x-api-key": TOKEN}
+    with _member_transition_server() as (tier, routing, host, port):
+        body = {"action": "drain", "tier_id": tier.id, "member_id": "member-a", "timeout": 1}
+        routing.quiesce_tier(tier.id)
+        status, _, _ = _post(host, port, TRANSITION_ENDPOINT, body, headers)
+        assert status == 400  # tier quiesce cannot stand in for member quiesce
+        routing.quiesce_tier(tier.id, member_id="member-a")
+        for timeout in (None, True, "1", 0, -1, float("nan"), float("inf")):
+            status, _, _ = _post(host, port, TRANSITION_ENDPOINT, {**body, "timeout": timeout}, headers)
+            assert status == 400
+        status, _, raw = _post(host, port, TRANSITION_ENDPOINT, body, headers)
+        assert status == 200 and json.loads(raw)["result"]["drained"]
+        assert routing._availability.calls == []
+
+
+def test_legacy_tier_only_backend_never_silently_accepts_member_preview():
+    backend = _TransitionBackend()
+    with running_server(backend, TOKEN) as (host, port):
+        for action in ("status", "quiesce", "readmit", "drain"):
+            status, _, _ = _post(host, port, TRANSITION_ENDPOINT, {
+                "action": action, "tier_id": "primary-local", "member_id": "member-a", "timeout": 1,
+            }, {"x-api-key": TOKEN})
+            assert status == 400
+    assert backend.state == "admitting"
+
+
 # --------------------------------------------------------------------------- #
 # Scoped operator routes: distinct from ordinary router bearer authentication
 # --------------------------------------------------------------------------- #
