@@ -363,12 +363,12 @@ Harden the registry/`DecisionLog` integration against finish, delivery, close, t
 **Feature:** F003
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/control_plane/controller/store.py, anvil_serving/observability/workloads.py, tests/test_benchmark_jobs.py, tests/control_plane/test_benchmark_jobs.py
+**Likely files:** .tickets/2026-09-05-store-workload-read-boundaries.md
 **Dependencies:** T001, T003.1, T003.2
 
 Add `BenchmarkJobStore.list_workloads(host, query, now) -> SourceResult` and the same method on `OperationStore`. Both classes live in `control_plane/controller/store.py`. Validate trusted host, canonical query and collection datetime first; provable owner/kind/host exclusions return complete empty without touching storage. Media follows in T010. The source finding is `.tickets/2026-09-05-store-workload-read-boundaries.md`.
 
-T003 is the integration acceptance gate for the two independently reviewed implementation children below. Preserve this complete shared contract in each child packet; do not duplicate or independently reinterpret selection, serialization or timestamp semantics.
+T003 records the combined regression evidence for the two separately implemented children below. Their source is already integrated: do not duplicate the implementation. Preserve this complete shared contract in each child packet; do not independently reinterpret selection, serialization or timestamp semantics. Consolidated formal acceptance remains a later batch step.
 
 Use the existing owner RLock with a bounded acquire and a new SQLite `mode=ro`, query-only connection. Never call either existing `_connection()` helper: both create directories/tables and change journal mode. Never call `status`, `lookup`, `_record`, expiry or recovery. Begin one read transaction, issue one SELECT, copy primitive values, close before record construction, and leave all lifecycle writes unchanged. A single one-second monotonic deadline covers lock acquisition, SQLite busy timeout and execution; check it with a progress handler every 1000 VM instructions and again after fetch, clear the handler and close in finally. Missing database/table (including `operation_leases`), absent JSON support, busy/interruption or query failure returns fixed UNAVAILABLE with unknown omission, never creating a main database or schema. The deadline/clock seam is injectable for tests, not a new CLI option.
 
@@ -382,7 +382,7 @@ Register small deterministic scalar functions only on this read connection for c
 
 For benchmarks use submitted time as created, and updated time as both updated and source observation. For running operations use the validated maximum of record update and matching lease heartbeat as source observation while preserving lifecycle updated time; terminal operations ignore lease time. A missing matching lease in an existing table is valid and allows old running work to become stale; a missing lease table is unavailable. Add `map_store_state(owner, state)` in the canonical schema module for controller/benchmark owners only, preserving the fixed mapping table and mapping unknown text (including benchmark cancelling) to unsupported. Wrong types fail with fixed invalid data.
 
-Native workload identity is `benchmark-row:<rowid>` or `operation-row:<rowid>:<canonical-created-at>`, passed only to `workload_id`, never serialized. Caller run IDs, request IDs and idempotency keys are not owner-generated and must not enter identity construction. These digests identify current store rows through ordinary updates/restarts, not durable benchmark evidence. Operation creation time fences normal rowid reuse after expiry; neither identity promises continuity across VACUUM, rebuild or restore/import. No schema migration or new persistent identity is introduced in this slice.
+Native workload identity is `benchmark-row:<rowid>` or `operation-row:<rowid>:<canonical-created-at>`, passed only to `workload_id`, never serialized. Caller run IDs, request IDs and idempotency keys are not owner-generated and must not enter identity construction. These digests identify current store rows through ordinary updates/restarts, not durable benchmark evidence. Operation creation time fences normal rowid reuse after expiry; neither identity promises continuity across VACUUM, rebuild or restore/import. No persistent schema changes or new persistent identity are introduced in this slice.
 
 **Acceptance criteria:**
 
@@ -2336,10 +2336,10 @@ container-name fixtures. No collector, model, route or fleet change is permitted
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** docs/CLI.md, docs/ARCHITECTURE.md, tests/test_cli_reference_audit.py, tests/test_docs_command_invocations.py
-**Dependencies:** T007.4, T015
+**Likely files:** .tickets/2026-09-05-router-fleet-batch-delivery.md, tests/test_cli_reference_audit.py, tests/test_docs_command_invocations.py
+**Dependencies:** T007.4, T015, T016.1, T016.2, T016.3
 
-Document the canonical schema, authorization, ownership, provenance, filters, partiality, freshness, caps, exclusions, and troubleshooting. Add final documentation/command invocation regressions and run the whole-PRD release gates; do not claim completion from focused slices alone.
+After the documentation children are integrated, add any missing documentation/command invocation regressions and record the whole-PRD regression gates in the existing batch-delivery ticket. Do not duplicate their documentation or claim completion from focused slices alone. This gathers source evidence, not the deferred consolidated formal acceptance or a deployment claim.
 
 **Acceptance criteria:**
 
@@ -2356,5 +2356,68 @@ Document the canonical schema, authorization, ownership, provenance, filters, pa
 - `python -m ruff check anvil_serving tests`
 - `python -m mkdocs build --strict`
 - `python scripts/check_markdown_links.py --root .`
+- `python scripts/run_tests.py tests/test_cli_reference_audit.py tests/test_docs_command_invocations.py -x -q`
+- `git diff --check`
+
+### T016.1: Explain workload reads and observation provenance
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** docs/WORKLOAD-VISIBILITY.md, docs/ARCHITECTURE.md, docs/cli/router.md, docs/cli/fleet.md
+**Dependencies:** T007.4, T015
+
+Write the workload usage guide and link it from the architecture and router/fleet command pages. Match actual canonical workload modules and the closed dashboard startup contract. Cover all six owners, five kinds, fixed phases/outcomes, bounded filters, unknown omission, source versus collection timestamps, 30-second freshness and honest partiality. Give safe explicit router/fleet CLI examples, node_workloads/fleet_workloads argument examples with absent optional fields omitted, and dashboard startup/connect/disconnect instructions. Every read requires workloads:read; legacy or node-admin-only tokens confer none. Explain disabled configuration, fixed error troubleshooting and no lifecycle/routing/promotion authority. Do not invent live deployment or healthy-identity evidence.
+
+**Acceptance criteria:**
+
+- Examples use generic loopback endpoints and identifiers, never credential values or actual operator paths.
+- Declared endpoint/expected-node/credential options and dashboard startup options match implementation.
+- Configuration, recorded state, observed-running, health-plus-identity, stale, absent, unsupported and unavailable remain distinct.
+
+**Verification:**
+
+- `python scripts/check_markdown_links.py --root .`
+- `git diff --check`
+
+### T016.2: Make workload documentation and repair contracts discoverable
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** mkdocs.yml, docs/prds/README.md
+**Dependencies:** T016.1
+
+Add the workload guide to the existing Fleet and host operations navigation. Link the workload-contract-repairs PRD from the router/fleet delivery index and describe it as source contract repairs awaiting consolidated acceptance, not a fifth deployed product. Preserve unrelated Miles PRDs and existing privacy, workspace and deployment boundaries.
+
+**Acceptance criteria:**
+
+- Workload guide is discoverable in rendered navigation and the repair PRD from its owning delivery index.
+- No index wording claims candidates are accepted, released or deployed.
+
+**Verification:**
+
+- `python -m mkdocs build --strict`
+- `python scripts/check_markdown_links.py --root .`
+- `git diff --check`
+
+### T016.3: Regenerate workload command reference inventories
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** docs/CLI.md, docs/CLI-REFERENCE-AUDIT.json, tests/fixtures/cli_reference_audit/expected.json
+**Dependencies:** T016.2
+
+After staging all new tracked documentation, run the existing audit_cli_references.py --update generator. Do not hand-edit generated command tables or inventories. Verify that router/fleet workload entries retain their explicit endpoint ownership and do not advertise global resource-resolution options. Keep fixture inventories unchanged when regeneration produces identical bytes. The command manifest was already generated by T015; do not widen its behavior in this documentation task.
+
+**Acceptance criteria:**
+
+- Generated documentation and full inventory match current tracked source and command manifest.
+- Fixture reference audit and documentation invocation regressions pass.
+
+**Verification:**
+
+- `python scripts/audit_cli_references.py --check --scope full`
 - `python scripts/run_tests.py tests/test_cli_reference_audit.py tests/test_docs_command_invocations.py -x -q`
 - `git diff --check`
