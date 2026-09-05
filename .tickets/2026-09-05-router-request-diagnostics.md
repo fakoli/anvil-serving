@@ -103,6 +103,15 @@ Confirmed review defects and fixes:
   in its command label. The new diagnostic and bundle leaves now identify only
   the canonical command; full-dispatch tests prove sensitive operands are not
   copied into their result envelopes.
+- The PR's automated review reproduced two further cases after the first local
+  passes: incomplete/misspelled command families still echoed operands, and an
+  AWS-shaped authentication reference rendered a router-invalid fragment.
+  Router/edge command labels now omit operands throughout the family; unresolved
+  error envelopes drop raw stderr and unexpected-argument details while keeping
+  declared actions and the stable error code. New metadata-leaf parser errors
+  are content-free. Bundle references now use the canonical router auth-name
+  validator, with content-free error projection. Regressions cover missing and
+  misspelled leaves/groups, parser failures, and both credential-shaped prefixes.
 - Review found a pre-existing tool-only SSE response-size bypass. The
   [streaming cap ticket](2026-09-05-streaming-response-byte-cap.md) tracks the
   raw-byte bound and independent verification.
