@@ -11,6 +11,9 @@ from dataclasses import dataclass, field
 from typing import Callable, Iterable, Optional
 
 from .availability import AvailabilityResult
+from .replica_scheduler import (
+    ReplicaCandidate, ReplicaDecision, ReplicaPressure, copy_replica_pressure, rank_replica_candidates,
+)
 
 _MAX_REASON_LENGTH = 128
 _MEMBER_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
@@ -139,10 +142,18 @@ class AdmissionLease:
 
 
 class MemberAdmissionLease(AdmissionLease):
-    def __init__(self, tier_id: str, member_id: str, release: Callable[[], None]) -> None:
+    def __init__(
+        self, tier_id: str, member_id: str, release: Callable[[], None],
+        *, selection: Optional[ReplicaDecision] = None,
+    ) -> None:
         super().__init__(release)
         self._tier_id = tier_id
         self._member_id = member_id
+        self._selection = selection
+
+    @property
+    def selection(self) -> Optional[ReplicaDecision]:
+        return self._selection
 
     @property
     def tier_id(self) -> str:
@@ -172,6 +183,7 @@ class _TierState:
     cursor: int = 0
     max_concurrency: Optional[int] = None
     member_states: dict[str, _MemberState] = field(default_factory=dict)
+    replica_strategy: str = "round_robin"
 
 
 class TierAdmission:
@@ -184,6 +196,7 @@ class TierAdmission:
         replica_members: Optional[Mapping[str, Sequence[str]]] = None,
         tier_max_concurrency: Optional[Mapping[str, int]] = None,
         member_max_concurrency: Optional[Mapping[str, Mapping[str, int]]] = None,
+        replica_strategies: Optional[Mapping[str, str]] = None,
         on_state_change: Optional[Callable[[str], None]] = None,
     ) -> None:
         ids = tuple(tier_ids)
@@ -192,6 +205,7 @@ class TierAdmission:
         if len(set(ids)) != len(ids):
             raise ValueError("tier_ids must be unique")
         replicas = self._validate_replicas(ids, replica_members)
+        strategies = self._validate_strategies(replica_strategies, tuple(replicas))
         tier_caps = self._validate_ceilings(tier_max_concurrency, tuple(replicas))
         member_caps: dict[str, dict[str, int]] = {}
         if member_max_concurrency is not None:
@@ -204,6 +218,9 @@ class TierAdmission:
                 if caps is None:
                     raise ValueError("member_max_concurrency must contain mappings")
                 member_caps[tid] = self._validate_ceilings(caps, replicas[tid], maximum=100000)
+        for tid, strategy in strategies.items():
+            if strategy == "capacity" and len(member_caps.get(tid, {})) != len(replicas[tid]):
+                raise ValueError("capacity requires a ceiling for every replica member")
         self._tier_ids = ids
         self._tiers = {
             tid: _TierState(
@@ -214,6 +231,7 @@ class TierAdmission:
                     member: _MemberState(max_concurrency=member_caps.get(tid, {}).get(member))
                     for member in replicas.get(tid, ())
                 },
+                replica_strategy=strategies.get(tid, "round_robin"),
             )
             for tid in ids
         }
@@ -223,6 +241,22 @@ class TierAdmission:
                 state.max_concurrency = sum(caps.values())
         self._conditions = {tid: threading.Condition() for tid in ids}
         self._on_state_change = on_state_change
+
+    @staticmethod
+    def _validate_strategies(raw: object, known: tuple[str, ...]) -> dict[str, str]:
+        if raw is None:
+            return {}
+        items = _bounded_mapping_items(raw, len(known))
+        if items is None:
+            raise ValueError("replica strategies must be a bounded mapping")
+        result: dict[str, str] = {}
+        for tid, strategy in items:
+            if type(tid) is not str or tid not in known or tid in result:
+                raise ValueError("replica strategies contain an unknown or duplicate tier")
+            if type(strategy) is not str or strategy not in ("round_robin", "capacity"):
+                raise ValueError("replica strategy must be round_robin or capacity")
+            result[tid] = strategy
+        return result
 
     @staticmethod
     def _validate_ceilings(
@@ -323,14 +357,35 @@ class TierAdmission:
             return None
         return tuple(member for member in members if copied[member].available)
 
+    @staticmethod
+    def _member_pressures(members: tuple[str, ...], pressure: object) -> tuple[ReplicaPressure, ...] | None:
+        if pressure is None:
+            return tuple(ReplicaPressure() for _ in members)
+        items = _bounded_mapping_items(pressure, len(members))
+        if items is None or len(items) != len(members):
+            return None
+        copied = {}
+        for member, value in items:
+            if type(member) is not str or member not in members or member in copied:
+                return None
+            try:
+                copied[member] = copy_replica_pressure(value)
+            except (ValueError, AttributeError):
+                return None
+        return tuple(copied[member] for member in members)
+
     def acquire_member(
-        self, tier_id: str, readiness: Mapping[str, AvailabilityResult]
+        self, tier_id: str, readiness: Mapping[str, AvailabilityResult],
+        pressure: Optional[Mapping[str, ReplicaPressure]] = None,
     ) -> Optional[MemberAdmissionLease]:
         state = self._state(tier_id)
         if not state.members:
             return None
         eligible = self._eligible_members(state.members, readiness)
         if not eligible:
+            return None
+        pressures = self._member_pressures(state.members, pressure)
+        if pressures is None:
             return None
         condition = self._condition(tier_id)
         with condition:
@@ -348,20 +403,34 @@ class TierAdmission:
                     or state.member_active_requests[member] < state.member_states[member].max_concurrency
                 )
             )
-            selected_index = next(
-                (
-                    index % len(state.members)
-                    for index in range(state.cursor, state.cursor + len(state.members))
-                    if state.members[index % len(state.members)] in eligible
-                ),
-                None,
-            )
+            selection = None
+            if state.replica_strategy == "capacity":
+                selection = rank_replica_candidates(tuple(
+                    ReplicaCandidate(
+                        member, member in eligible, state.member_active_requests[member],
+                        state.member_states[member].max_concurrency, pressures[index],
+                    )
+                    for index, member in enumerate(state.members)
+                ), cursor=state.cursor)
+                selected_index = (
+                    state.members.index(selection.selected_member_id)
+                    if selection.selected_member_id is not None else None
+                )
+            else:
+                selected_index = next(
+                    (
+                        index % len(state.members)
+                        for index in range(state.cursor, state.cursor + len(state.members))
+                        if state.members[index % len(state.members)] in eligible
+                    ),
+                    None,
+                )
             if selected_index is None:
                 return None
             selected = state.members[selected_index]
-            state.cursor = (selected_index + 1) % len(state.members)
             state.active_requests += 1
             state.member_active_requests[selected] += 1
+            state.cursor = (selected_index + 1) % len(state.members)
 
         def _release() -> None:
             with condition:
@@ -373,7 +442,7 @@ class TierAdmission:
                 if current.member_active_requests[selected] == 0:
                     condition.notify_all()
 
-        return MemberAdmissionLease(tier_id, selected, _release)
+        return MemberAdmissionLease(tier_id, selected, _release, selection=selection)
 
     def quiesce(self, tier_id: str, reason: str = "promotion") -> AdmissionSnapshot:
         reason = _reason_code(reason)
