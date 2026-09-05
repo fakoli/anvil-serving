@@ -6,6 +6,23 @@ The `fleet` family answers questions that span more than one declared host.
 `fleet version` is cross-host `anvil-serving` version skew; `fleet drift` is
 live-home-vs-repo-snapshot skew.
 
+## Workloads
+
+Read a bounded canonical fleet snapshot through one explicit controller
+aggregator:
+
+```bash
+anvil-serving fleet workloads --controller-url http://127.0.0.1:8765 --auth-env ANVIL_WORKLOAD_TOKEN --expected-node controller-a --recent-seconds 3600 --limit 200
+anvil-serving fleet workloads --controller-url http://127.0.0.1:8765 --auth-env ANVIL_WORKLOAD_TOKEN --expected-node controller-a --owner media --active-only --json
+```
+
+This command does not collect topology locally, use SSH, or treat an
+unreachable node as idle. The controller identity must match
+`--expected-node`, and the client credential must carry `workloads:read`.
+`--host` filters returned records rather than selecting the aggregator. See
+[workload visibility](../WORKLOAD-VISIBILITY.md) for query bounds, node/fleet
+envelopes, source provenance, and honest partiality.
+
 ## Fleet version
 
 ```bash
@@ -108,6 +125,7 @@ second host's live home was a wholesale byte-copy of the wrong host's home
 
 ## Related references
 
+- [Workload visibility](../WORKLOAD-VISIBILITY.md)
 - [Router fleet-status](router.md#fleet-status)
 - [Strategy: make divergence loud](../STRATEGY-MAKE-DIVERGENCE-LOUD.md)
 - [Operator playbooks](../OPERATOR-PLAYBOOKS.md)
