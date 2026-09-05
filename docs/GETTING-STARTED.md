@@ -16,6 +16,9 @@ Use `127.0.0.1` in local URLs.
   and vLLM are common options.
 - **For a managed Docker-backed GPU serve:** Docker, Compose v2, and a supported
   GPU host. `anvil-serving doctor` checks these host prerequisites.
+- **For a native macOS MLX serve:** Apple Silicon, an installed MLX engine, and
+  a reviewed launchd definition bound through `host services`. See
+  [Host-supervised services](HOST-SERVICES.md) for discovery and adoption.
 - **For the reference multi-device deployment:** Tailscale on every participating
   server, harness, operator, and mobile device. A single-host loopback deployment
   does not require it. Read [Private networking with Tailscale](TAILSCALE-NETWORKING.md)
@@ -92,8 +95,12 @@ OpenAI-style model serves at:
 | `primary-local` | `http://127.0.0.1:30002/v1` | Higher-capacity local work. |
 
 **Where do these serves come from?** Anvil Serving manages local model serves as
-Docker Compose services: declare them in a manifest, then run
-`anvil-serving serves up` (see [Operator playbooks](OPERATOR-PLAYBOOKS.md)).
+Docker Compose services or declared native service bindings on macOS. Declare
+them in a serve manifest, then run `anvil-serving serves up`. For Docker, follow
+[Operator playbooks](OPERATOR-PLAYBOOKS.md). For native MLX, first bind the
+reviewed launchd service through [Host-supervised services](HOST-SERVICES.md),
+then reference that binding from the native serve or recipe. Adoption records
+the existing service without restarting it or installing an engine.
 `anvil-serving serves render` renders a tuned Compose file for a given GPU and
 model, and `configs/serve-recipes.toml` carries recorded serve recipes. Each
 tier's `model` value must exactly match the model name advertised by its
@@ -225,6 +232,8 @@ to need on a first run:
   making those roles reachable across devices or from a phone or tablet.
 - Read [Model settings](MODEL-SETTINGS-EXAMPLE.md) before serving thinking-by-default models.
 - Read [Operator playbooks](OPERATOR-PLAYBOOKS.md) to manage Docker Compose model serves.
+- Read [Host-supervised services](HOST-SERVICES.md) for the OS/engine matrix,
+  existing-service adoption, status, logs, and start/stop commands through CLI or MCP.
 - Read [Voice pipeline](VOICE.md) to run STT/TTS lifecycle, the Realtime voice
   server, and model-free harness-node validation.
 - Read [Anvil Media commands](cli/media.md) to discover, qualify, run, and

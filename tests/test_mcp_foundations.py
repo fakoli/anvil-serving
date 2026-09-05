@@ -22,10 +22,10 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "ac18df8cc4bcc03821893aa20bb06a4378c5721d6da70c53252df42d3f181f49"
+    "fb398ba54421b01b4cb7b80999f183b20a2004809a2b67a733396f3ad1b1759a"
 )
 HANDLER_MAP_SHA256 = (
-    "aed352154d729466b1abbe884e957252e909d627f7e352afbc7a9ef9c1458824"
+    "039b5723817dae0c5ca60258e05fef61752db2bd6bbac6e0b4101fa26f55f33e"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -65,6 +65,11 @@ TOOL_NAMES = [
     "operator_config_export",
     "observability_collect",
     "host_manage",
+    "host_services_status",
+    "host_services_discover",
+    "host_services_capabilities",
+    "host_services_logs",
+    "host_services_manage",
     "models_inventory",
     "model_cache_inventory",
     "recipe_containers",
@@ -146,15 +151,19 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
         "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
     }
 
-    # Reconstruct the pinned pre-member catalog in a copy: every other schema,
-    # description, ordering and metadata field must remain byte-compatible.
+    # Reconstruct upstream PR #471's catalog: only the two diagnostic tools
+    # and member transition are added here. All unrelated fields stay exact.
     schema["maxProperties"] = 6
     transition["description"] = (
         "Inspect, quiesce, drain, or safely readmit a router tier "
         "through the authenticated router boundary."
     )
+    public_tools = [
+        tool for tool in public_tools
+        if tool["name"] not in {"controller_inspect", "controller_logs"}
+    ]
     assert _canonical_sha256(public_tools) == (
-        "b637edac3815408da26e7fc2d6f7eb80ee864702252cb661883cf42a49a54b27"
+        "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
     )
     assert _canonical_sha256(mcp.list_tools()) == PUBLIC_CATALOG_SHA256
 
@@ -228,6 +237,7 @@ def test_explicit_ordered_families_compose_the_public_catalog():
         "media",
         "voice",
         "host",
+        "services",
         "models",
         "openclaw",
         "benchmarks",

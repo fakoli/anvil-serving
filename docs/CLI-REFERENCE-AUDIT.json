@@ -37,16 +37,16 @@
         "router-run": 16,
         "serves-multiplex": 1,
         "serves-render": 2,
-        "voice-audio": 20,
+        "voice-audio": 21,
         "voice-lifecycle": 8,
-        "voice-proxy": 32,
+        "voice-proxy": 33,
         "voice-sidecar": 7
       },
       "files_by_category": {
-        "docs": 147,
+        "docs": 150,
         "tooling": 6
       },
-      "files_scanned": 153,
+      "files_scanned": 156,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
@@ -104,20 +104,20 @@
         "router-run": 34,
         "serves-multiplex": 4,
         "serves-render": 8,
-        "voice-audio": 44,
+        "voice-audio": 45,
         "voice-lifecycle": 8,
-        "voice-proxy": 60,
+        "voice-proxy": 61,
         "voice-sidecar": 29
       },
       "files_by_category": {
-        "docs": 147,
-        "examples": 174,
-        "implementation": 299,
+        "docs": 150,
+        "examples": 175,
+        "implementation": 310,
         "skills": 20,
-        "tests": 282,
+        "tests": 293,
         "tooling": 35
       },
-      "files_scanned": 957,
+      "files_scanned": 983,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

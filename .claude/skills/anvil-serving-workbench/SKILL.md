@@ -59,6 +59,8 @@ narration.
 - Host, models, and telemetry: `doctor_summary`, `host_summary`,
   `gpu_inventory`, `host_shared_memory`, `operator_config_inventory`,
   `operator_config_export`, `observability_collect`, `host_manage`,
+  `host_services_status`, `host_services_discover`, `host_services_capabilities`,
+  `host_services_logs`, `host_services_manage`,
   `models_inventory`, `recipe_containers`, `model_cache_inventory`, and
   `cache_prune_plan`.
 - Harness: `openclaw_sync`, `client_catalog_sync`, `routed_eval`, `hermes_media_sync`,
@@ -184,6 +186,16 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   manual reclaim after a `reclaimed` result. Ad-hoc Compose, voice, request-time
   ComfyUI loads, and the request-triggered multiplexer remain outside that
   policy. Treat changing the persistent opt-in as a reviewed host mutation.
+- Host-supervised service work: use `host_services_status`,
+  `host_services_discover`, `host_services_capabilities`, and bounded
+  `host_services_logs` before `host_services_manage`. Adopt only an exact
+  launchd or Anvil-owned Docker identity. Mutating service actions stay previews
+  until `dry_run=false` and `confirm=true`; never use raw supervisor commands.
+  Keep manager and engine separate, retain Parakeet/Kokoro LaunchAgent entries
+  as `legacy`, and use a qualified model-lifecycle or recipe workflow for any model
+  migration. Docker model bindings require their owning model declaration and
+  manifest path;
+  native model bindings require `memory_mib` and preserve the 4 GiB host reserve.
 - Public/private config work: use `operator_config_inventory` first for
   metadata-only classification and dependency closure. Use
   `operator_config_export` only for the resulting safe versionable files and

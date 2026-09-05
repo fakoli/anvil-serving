@@ -104,6 +104,7 @@ def commands() -> CommandNode:
                         mutation="mutate",
                         gpu=True,
                         argv_prefix=("recipe", "load"),
+                        forward_resolution_options=True,
                         docs_anchor="docs/cli/models.md#load-a-recipe",
                     ),
                     _resource_node(
@@ -112,6 +113,7 @@ def commands() -> CommandNode:
                         "anvil_serving.models",
                         role="model-serve",
                         argv_prefix=("recipe", "status"),
+                        forward_resolution_options=True,
                         docs_anchor="docs/cli/models.md#operate-a-loaded-recipe",
                     ),
                     _resource_node(
@@ -137,6 +139,7 @@ def commands() -> CommandNode:
                             ),
                         ),
                         argv_prefix=("recipe", "logs"),
+                        forward_resolution_options=True,
                         docs_anchor="docs/cli/models.md#operate-a-loaded-recipe",
                     ),
                     _resource_node(
@@ -147,6 +150,7 @@ def commands() -> CommandNode:
                         options=CONFIRM_OPTIONS,
                         mutation="mutate",
                         argv_prefix=("recipe", "unload"),
+                        forward_resolution_options=True,
                         docs_anchor="docs/cli/models.md#operate-a-loaded-recipe",
                     ),
                 ),

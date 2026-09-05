@@ -30128,6 +30128,2523 @@
     },
     {
       "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": null,
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Inspect, adopt, and operate declared portable supervised services.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local services.toml override; not accepted by remote controllers.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum bounded log lines.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded operation timeout.",
+          "value_name": "SECONDS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services status",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_status"
+      },
+      "resource_role": "host",
+      "summary": "Show bounded declared-service status.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services discover",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_discover"
+      },
+      "resource_role": "host",
+      "summary": "Discover eligible unmanaged local services.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services capabilities",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_capabilities"
+      },
+      "resource_role": "host",
+      "summary": "Show the owning runtime's supported service operations.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local services.toml override; not accepted by remote controllers.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum bounded log lines.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded operation timeout.",
+          "value_name": "SECONDS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services logs",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_logs"
+      },
+      "resource_role": "host",
+      "summary": "Read a bounded declared-service log tail.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--no-dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Apply instead of the default preview; requires --confirm.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local services.toml override; not accepted by remote controllers.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum bounded log lines.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded operation timeout.",
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--manager"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared supervisor manager.",
+          "value_name": "MANAGER"
+        },
+        {
+          "flags": [
+            "--service-label"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared launchd service label.",
+          "value_name": "LABEL"
+        },
+        {
+          "flags": [
+            "--resource"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology resource identity.",
+          "value_name": "RESOURCE"
+        },
+        {
+          "flags": [
+            "--engine"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared engine adapter.",
+          "value_name": "ENGINE"
+        },
+        {
+          "flags": [
+            "--support"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Binding support classification.",
+          "value_name": "CLASS"
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared Docker container identity.",
+          "value_name": "CONTAINER"
+        },
+        {
+          "flags": [
+            "--endpoint"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared loopback endpoint.",
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared served model name.",
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--health-path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared health path.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--models-path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared models inventory path.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--feature"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared feature kind.",
+          "value_name": "FEATURE"
+        },
+        {
+          "flags": [
+            "--startup-policy"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared automatic-start policy.",
+          "value_name": "POLICY"
+        },
+        {
+          "flags": [
+            "--memory-mib"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared service memory budget.",
+          "value_name": "MIB"
+        },
+        {
+          "flags": [
+            "--serve"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owning model serve for reservation admission.",
+          "value_name": "SERVE"
+        },
+        {
+          "flags": [
+            "--serve-manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local owning serves manifest override.",
+          "value_name": "PATH"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services adopt",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds",
+          "manager",
+          "service_label",
+          "resource",
+          "engine",
+          "support",
+          "container",
+          "endpoint",
+          "model",
+          "health_path",
+          "models_path",
+          "feature",
+          "startup_policy",
+          "memory_mib",
+          "serve"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "adopt"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_manage"
+      },
+      "resource_role": "host",
+      "summary": "Preview or adopt an exact existing launchd or Docker service.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--no-dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Apply instead of the default preview; requires --confirm.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local services.toml override; not accepted by remote controllers.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum bounded log lines.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded operation timeout.",
+          "value_name": "SECONDS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services install",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds",
+          "manager",
+          "service_label",
+          "resource",
+          "engine",
+          "support",
+          "container",
+          "endpoint",
+          "model",
+          "health_path",
+          "models_path",
+          "feature",
+          "startup_policy",
+          "memory_mib",
+          "serve"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "install"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_manage"
+      },
+      "resource_role": "host",
+      "summary": "Render a declared service supervisor definition without starting it.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--no-dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Apply instead of the default preview; requires --confirm.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local services.toml override; not accepted by remote controllers.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum bounded log lines.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded operation timeout.",
+          "value_name": "SECONDS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services up",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds",
+          "manager",
+          "service_label",
+          "resource",
+          "engine",
+          "support",
+          "container",
+          "endpoint",
+          "model",
+          "health_path",
+          "models_path",
+          "feature",
+          "startup_policy",
+          "memory_mib",
+          "serve"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "up"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_manage"
+      },
+      "resource_role": "host",
+      "summary": "Start one declared service.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--no-dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Apply instead of the default preview; requires --confirm.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local services.toml override; not accepted by remote controllers.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum bounded log lines.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded operation timeout.",
+          "value_name": "SECONDS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services down",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds",
+          "manager",
+          "service_label",
+          "resource",
+          "engine",
+          "support",
+          "container",
+          "endpoint",
+          "model",
+          "health_path",
+          "models_path",
+          "feature",
+          "startup_policy",
+          "memory_mib",
+          "serve"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "down"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_manage"
+      },
+      "resource_role": "host",
+      "summary": "Stop one declared service.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--no-dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Apply instead of the default preview; requires --confirm.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local services.toml override; not accepted by remote controllers.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum bounded log lines.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded operation timeout.",
+          "value_name": "SECONDS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services restart",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds",
+          "manager",
+          "service_label",
+          "resource",
+          "engine",
+          "support",
+          "container",
+          "endpoint",
+          "model",
+          "health_path",
+          "models_path",
+          "feature",
+          "startup_policy",
+          "memory_mib",
+          "serve"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "restart"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_manage"
+      },
+      "resource_role": "host",
+      "summary": "Restart one declared service.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--no-dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Apply instead of the default preview; requires --confirm.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local services.toml override; not accepted by remote controllers.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum bounded log lines.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded operation timeout.",
+          "value_name": "SECONDS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services enable",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds",
+          "manager",
+          "service_label",
+          "resource",
+          "engine",
+          "support",
+          "container",
+          "endpoint",
+          "model",
+          "health_path",
+          "models_path",
+          "feature",
+          "startup_policy",
+          "memory_mib",
+          "serve"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "enable"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_manage"
+      },
+      "resource_role": "host",
+      "summary": "Enable automatic start for one declared service.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#command-map",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker",
+        "wsl"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.service_runtime.cli:run",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--no-dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Apply instead of the default preview; requires --confirm.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local services.toml override; not accepted by remote controllers.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum bounded log lines.",
+          "value_name": "LINES"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded operation timeout.",
+          "value_name": "SECONDS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host services disable",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "service",
+          "dry_run",
+          "confirm",
+          "tail",
+          "timeout_seconds",
+          "manager",
+          "service_label",
+          "resource",
+          "engine",
+          "support",
+          "container",
+          "endpoint",
+          "model",
+          "health_path",
+          "models_path",
+          "feature",
+          "startup_policy",
+          "memory_mib",
+          "serve"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "disable"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "service"
+        ],
+        "tool": "host_services_manage"
+      },
+      "resource_role": "host",
+      "summary": "Disable automatic start for one declared service.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#operator-configuration-inventory-and-export",
       "execution_host_os": [],
       "execution_policy": "offline",
