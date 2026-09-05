@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import os
 from pathlib import Path
@@ -181,6 +181,110 @@ LIMIT ?
 """
 
 
+_OPERATION_WORKLOAD_SQL = """
+WITH lease_metadata AS (
+    SELECT
+        idempotency_key,
+        COUNT(*) AS match_count,
+        CASE WHEN COUNT(*) = 1 THEN MAX(updated_at) END AS updated_at
+    FROM operation_leases
+    GROUP BY idempotency_key
+), extracted AS (
+    SELECT
+        records.rowid AS native_rowid,
+        CASE
+            WHEN typeof(records.status) <> 'text' THEN NULL
+            WHEN records.status IN ('running', 'succeeded', 'failed')
+                THEN records.status
+            ELSE ?
+        END AS state_code,
+        CASE WHEN typeof(records.created_at) IN ('integer', 'real')
+            THEN anvil_operation_timestamp(records.created_at) END AS created_at,
+        CASE WHEN typeof(records.updated_at) IN ('integer', 'real')
+            THEN anvil_operation_timestamp(records.updated_at) END AS updated_at,
+        CASE WHEN typeof(leases.updated_at) IN ('integer', 'real')
+            THEN anvil_operation_timestamp(leases.updated_at) END AS lease_updated_at,
+        COALESCE(leases.match_count, 0) AS lease_match_count
+    FROM operation_records AS records
+    LEFT JOIN lease_metadata AS leases
+        ON leases.idempotency_key = records.idempotency_key
+), stamped AS (
+    SELECT
+        native_rowid,
+        state_code,
+        created_at,
+        updated_at,
+        lease_updated_at,
+        lease_match_count,
+        CASE
+            WHEN state_code = 'running'
+                 AND lease_updated_at IS NOT NULL
+                 AND lease_updated_at > updated_at THEN lease_updated_at
+            ELSE updated_at
+        END AS source_at
+    FROM extracted
+), digested AS (
+    SELECT
+        anvil_operation_digest(native_rowid, created_at) AS workload_digest,
+        state_code,
+        created_at,
+        updated_at,
+        source_at,
+        lease_match_count
+    FROM stamped
+), classified AS (
+    SELECT
+        workload_digest,
+        state_code,
+        CASE
+            WHEN state_code = 'running' THEN 'running'
+            WHEN state_code IN ('succeeded', 'failed') THEN 'terminal'
+            WHEN state_code = ? THEN 'unsupported'
+            ELSE NULL
+        END AS mapped_state,
+        created_at,
+        updated_at,
+        source_at,
+        CASE
+            WHEN state_code IS NULL OR created_at IS NULL OR updated_at IS NULL
+                 OR source_at IS NULL OR created_at > updated_at
+                 OR updated_at > source_at OR workload_digest IS NULL
+                 OR lease_match_count > 1 THEN 1
+            WHEN created_at > ? OR updated_at > ? OR source_at > ? THEN 2
+            ELSE 0
+        END AS invalid_code
+    FROM digested
+), selected AS (
+    SELECT workload_digest, state_code, created_at, updated_at, source_at, invalid_code
+    FROM classified
+    WHERE
+        (? IS NULL OR mapped_state = ? OR mapped_state IS NULL)
+        AND (
+            mapped_state IS NULL
+            OR (
+                ? = 1
+                AND mapped_state = 'running'
+                AND (source_at IS NULL OR source_at >= ?)
+            )
+            OR (
+                ? = 0
+                AND (
+                    (mapped_state = 'running'
+                        AND (source_at IS NULL OR source_at >= ?))
+                    OR mapped_state = 'unsupported'
+                    OR (mapped_state = 'terminal'
+                        AND (updated_at IS NULL OR updated_at >= ?))
+                )
+            )
+        )
+)
+SELECT workload_digest, state_code, created_at, updated_at, source_at, invalid_code
+FROM selected
+ORDER BY (invalid_code <> 0) ASC, updated_at DESC, workload_digest ASC
+LIMIT ?
+"""
+
+
 def _unavailable_source(owner: WorkloadOwner, collected: datetime) -> SourceResult:
     return SourceResult(
         owner=owner,
@@ -230,7 +334,44 @@ def _benchmark_digest(host: str, rowid: object) -> str | None:
         return None
 
 
+def _canonical_operation_timestamp(value: object) -> str | None:
+    """Return one canonical UTC timestamp from a SQLite numeric epoch scalar."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        epoch = float(value)
+        if epoch != epoch or epoch in (float("inf"), float("-inf")):
+            return None
+        return format_workload_timestamp(datetime.fromtimestamp(epoch, tz=timezone.utc))
+    except (OSError, OverflowError, ValueError, WorkloadError):
+        return None
+
+
+def _operation_digest(host: str, rowid: object, created_at: object) -> str | None:
+    if (
+        isinstance(rowid, bool)
+        or not isinstance(rowid, int)
+        or rowid < 1
+        or not isinstance(created_at, str)
+    ):
+        return None
+    try:
+        parse_workload_timestamp(created_at)
+        return workload_id(
+            host,
+            WorkloadKind.CONTROLLER_OPERATION,
+            WorkloadOwner.CONTROLLER,
+            f"operation-row:{rowid}:{created_at}",
+        )
+    except WorkloadError:
+        return None
+
+
 def _query_benchmark_state(state: WorkloadState | None) -> str | None:
+    return None if state is None else state.value
+
+
+def _query_operation_state(state: WorkloadState | None) -> str | None:
     return None if state is None else state.value
 
 
@@ -842,6 +983,7 @@ class OperationStore:
         max_records: int = DEFAULT_IDEMPOTENCY_MAX_RECORDS,
         max_result_bytes: int = DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES,
         clock: Clock = time.time,
+        _snapshot_clock: Clock = time.monotonic,
     ) -> None:
         if not isinstance(path, str) or not path:
             raise ValueError("idempotency database path must be a non-empty string")
@@ -851,14 +993,187 @@ class OperationStore:
             raise ValueError("idempotency max records must be positive")
         if max_result_bytes < 1:
             raise ValueError("idempotency max result bytes must be positive")
+        if not callable(_snapshot_clock):
+            raise ValueError("operation snapshot clock must be callable")
         self.path = path
         self.retention_seconds = float(retention_seconds)
         self.max_records = int(max_records)
         self.max_result_bytes = int(max_result_bytes)
         self._clock = clock
+        self._snapshot_clock = _snapshot_clock
         self._lock = threading.RLock()
         self._active_keys: set[str] = set()
         self._lease_owner = uuid.uuid4().hex
+
+    def list_workloads(
+        self, host: str, query: WorkloadQuery, now: datetime,
+    ) -> SourceResult:
+        """Return one bounded, read-only controller operation snapshot.
+
+        This deliberately bypasses every operation lifecycle helper: a workload
+        observation neither expires nor recovers controller work.
+        """
+        if not isinstance(query, WorkloadQuery):
+            raise WorkloadError(
+                WorkloadErrorCode.INVALID, "workload query has the wrong type",
+            )
+        collected = normalize_workload_timestamp(now)
+        workload_id(
+            host, WorkloadKind.CONTROLLER_OPERATION, WorkloadOwner.CONTROLLER,
+            "validation",
+        )
+        if (
+            (query.owner is not None and query.owner is not WorkloadOwner.CONTROLLER)
+            or (
+                query.kind is not None
+                and query.kind is not WorkloadKind.CONTROLLER_OPERATION
+            )
+            or (query.host is not None and query.host != host)
+            or (
+                query.state is not None
+                and query.state not in {
+                    WorkloadState.RUNNING,
+                    WorkloadState.TERMINAL,
+                    WorkloadState.UNSUPPORTED,
+                }
+            )
+            or (
+                query.active_only
+                and query.state is not None
+                and query.state is not WorkloadState.RUNNING
+            )
+        ):
+            return _empty_source(WorkloadOwner.CONTROLLER, collected)
+
+        try:
+            future_cutoff = format_workload_timestamp(
+                collected + timedelta(seconds=MAX_FUTURE_SECONDS),
+            )
+            freshness_cutoff = format_workload_timestamp(
+                collected - timedelta(seconds=30),
+            )
+            recent_cutoff = format_workload_timestamp(
+                collected - timedelta(seconds=query.recent_seconds),
+            )
+        except (OverflowError, WorkloadError):
+            raise WorkloadError(
+                WorkloadErrorCode.INVALID,
+                "workload collection time is outside the supported range",
+            ) from None
+        cap = min(query.limit, SOURCE_LIMIT)
+        state_code = _query_operation_state(query.state)
+        parameters: tuple[object, ...] = (
+            _UNKNOWN_STATE,
+            _UNKNOWN_STATE,
+            future_cutoff,
+            future_cutoff,
+            future_cutoff,
+            state_code,
+            state_code,
+            int(query.active_only),
+            freshness_cutoff,
+            int(query.active_only),
+            freshness_cutoff,
+            recent_cutoff,
+            cap + 1,
+        )
+        try:
+            deadline = self._snapshot_clock() + _STORE_SNAPSHOT_SECONDS
+        except Exception:
+            return _unavailable_source(WorkloadOwner.CONTROLLER, collected)
+        remaining = _remaining(deadline, self._snapshot_clock)
+        if remaining <= 0:
+            return _unavailable_source(WorkloadOwner.CONTROLLER, collected)
+        try:
+            acquired = self._lock.acquire(timeout=remaining)
+        except Exception:
+            acquired = False
+        if not acquired:
+            return _unavailable_source(WorkloadOwner.CONTROLLER, collected)
+        try:
+            rows = _read_snapshot_rows(
+                self.path,
+                sql=_OPERATION_WORKLOAD_SQL,
+                parameters=parameters,
+                deadline=deadline,
+                monotonic=self._snapshot_clock,
+                functions=(
+                    ("anvil_operation_timestamp", 1, _canonical_operation_timestamp),
+                    (
+                        "anvil_operation_digest", 2,
+                        lambda rowid, created: _operation_digest(host, rowid, created),
+                    ),
+                ),
+            )
+        except Exception:
+            return _unavailable_source(WorkloadOwner.CONTROLLER, collected)
+        finally:
+            self._lock.release()
+
+        extra = len(rows) > cap
+        records: list[WorkloadRecord] = []
+        error: WorkloadErrorCode | None = None
+        for row in rows[:cap]:
+            invalid_code = row["invalid_code"]
+            if invalid_code:
+                code = (
+                    WorkloadErrorCode.FUTURE
+                    if invalid_code == 2
+                    else WorkloadErrorCode.INVALID
+                )
+                if error is not WorkloadErrorCode.FUTURE:
+                    error = code
+                continue
+            try:
+                state, phase, outcome = map_store_state(
+                    WorkloadOwner.CONTROLLER, row["state_code"],
+                )
+                record = WorkloadRecord(
+                    id=row["workload_digest"],
+                    kind=WorkloadKind.CONTROLLER_OPERATION,
+                    owner=WorkloadOwner.CONTROLLER,
+                    host=host,
+                    state=state,
+                    phase=phase,
+                    outcome=outcome,
+                    created_at=parse_workload_timestamp(row["created_at"]),
+                    updated_at=parse_workload_timestamp(row["updated_at"]),
+                    source_timestamp=parse_workload_timestamp(row["source_at"]),
+                    source_authority=SourceAuthority.CONTROLLER_STORE,
+                    observation_quality=ObservationQuality.RECORDED,
+                )
+                validate_source_records(
+                    (record,),
+                    owner=WorkloadOwner.CONTROLLER,
+                    host=host,
+                    collection_timestamp=collected,
+                )
+            except WorkloadError as exc:
+                if error is not WorkloadErrorCode.FUTURE:
+                    error = exc.code
+                continue
+            records.append(record)
+
+        try:
+            canonical_records, canonical_truncation = select_records(
+                tuple(records), query, now=collected,
+            )
+        except Exception:
+            return _unavailable_source(WorkloadOwner.CONTROLLER, collected)
+        if canonical_records != tuple(records) or canonical_truncation.omitted != 0:
+            return _unavailable_source(WorkloadOwner.CONTROLLER, collected)
+        partial = extra or error is not None
+        try:
+            return SourceResult(
+                owner=WorkloadOwner.CONTROLLER,
+                status=ResultStatus.PARTIAL if partial else ResultStatus.COMPLETE,
+                collection_timestamp=collected,
+                records=canonical_records,
+                truncation=Truncation(len(records), None if partial else 0),
+                error=error,
+            )
+        except Exception:
+            return _unavailable_source(WorkloadOwner.CONTROLLER, collected)
 
     def claim(
         self, key: str, fingerprint: str, request_id: str
