@@ -8,8 +8,10 @@ import json
 
 import pytest
 
-from anvil_serving import cli, controller_diagnostics as diagnostics
+from anvil_serving import cli, controller_diagnostics as diagnostics, mcp
 from anvil_serving.commands.control_plane import commands as control_plane_commands
+from anvil_serving.control_plane.mcp.errors import ToolError
+from anvil_serving.control_plane.mcp.tools import operations
 
 
 def _child(source):
@@ -618,17 +620,22 @@ def test_cli_main_prints_only_safe_json_and_has_fixed_exit_codes(monkeypatch, ca
 def test_controller_diagnostic_command_nodes_are_local_read_only_and_bounded():
     controller = next(node for node in control_plane_commands.build() if node.name == "controller")
     nodes = {node.name: node for node in controller.children}
-    for name, prefix in (("inspect", ("inspect",)), ("logs", ("logs",))):
+    for name, prefix, tool, allowed in (
+        ("inspect", ("inspect",), "controller_inspect", ("container",)),
+        ("logs", ("logs",), "controller_logs", ("container", "tail")),
+    ):
         node = nodes[name]
         assert node.handler is not None
         assert node.handler.module == "anvil_serving.controller_diagnostics"
         assert node.handler.argv_prefix == prefix
         assert node.resource_role == "controller"
-        assert node.transports == ("local",)
+        assert node.transports == ("local", "controller")
         assert node.execution_runtime_roles == ("native", "docker")
         assert node.gpu_role_required is False
         assert node.mutation_class == "read"
-        assert node.remote_operation is None
+        assert node.remote_operation is not None
+        assert node.remote_operation.tool == tool
+        assert node.remote_operation.allowed_arguments == allowed
     inspect_flags = {flag for option in nodes["inspect"].options for flag in option.flags}
     logs_flags = {flag for option in nodes["logs"].options for flag in option.flags}
     assert inspect_flags == {"--container"}
@@ -647,3 +654,88 @@ def test_controller_command_tree_dispatches_to_fixed_diagnostic_handler(monkeypa
     assert cli.main(["controller", "inspect", "--container", "controller_1"]) == 0
     assert calls == ["controller_1"]
     assert json.loads(capsys.readouterr().out) == diagnostics.safe_result("inspect", "ok")
+
+
+def test_mcp_diagnostics_match_cli_library_results_and_discovery(monkeypatch):
+    calls = []
+    inspect_result = diagnostics.safe_result("inspect", "ok")
+    logs_result = diagnostics.safe_result("logs", "unavailable")
+    monkeypatch.setattr(
+        diagnostics,
+        "inspect_controller",
+        lambda container: calls.append(("inspect", container)) or inspect_result,
+    )
+    monkeypatch.setattr(
+        diagnostics,
+        "controller_logs",
+        lambda container, tail: calls.append(("logs", container, tail)) or logs_result,
+    )
+
+    assert diagnostics.run(["inspect", "--container", "controller_1"]) == inspect_result
+    assert mcp.call_tool("controller_inspect", {"container": "controller_1"}) == {
+        "ok": True,
+        "data": inspect_result,
+    }
+    assert diagnostics.run(["logs", "--container", "controller_1", "--tail", "17"]) == logs_result
+    assert mcp.call_tool("controller_logs", {"container": "controller_1", "tail": 17}) == {
+        "ok": True,
+        "data": logs_result,
+    }
+    assert calls == [
+        ("inspect", "controller_1"),
+        ("inspect", "controller_1"),
+        ("logs", "controller_1", 17),
+        ("logs", "controller_1", 17),
+    ]
+
+    tools = {tool["name"]: tool for tool in mcp.list_tools()}
+    assert {"controller_inspect", "controller_logs"} <= set(tools)
+    assert tools["controller_inspect"]["inputSchema"]["required"] == ["container"]
+    assert tools["controller_logs"]["inputSchema"]["properties"]["tail"] == {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 200,
+        "default": 100,
+    }
+    operations = {entry["name"]: entry for entry in mcp.operation_declarations()}
+    assert operations["controller-inspect"]["tool"] == "controller_inspect"
+    assert operations["controller-logs"]["tool"] == "controller_logs"
+
+
+def test_mcp_diagnostics_reject_invalid_inputs_before_library_calls(monkeypatch):
+    monkeypatch.setattr(
+        diagnostics,
+        "inspect_controller",
+        lambda container: (_ for _ in ()).throw(AssertionError("inspect called")),
+    )
+    monkeypatch.setattr(
+        diagnostics,
+        "controller_logs",
+        lambda container, tail: (_ for _ in ()).throw(AssertionError("logs called")),
+    )
+
+    for name, arguments in (
+        ("controller_inspect", {}),
+        ("controller_inspect", {"container": "bad/name"}),
+        ("controller_inspect", {"container": "controller", "extra": 1}),
+        ("controller_logs", {"container": "controller", "tail": True}),
+        ("controller_logs", {"container": "controller", "tail": 1.0}),
+        ("controller_logs", {"container": "controller", "tail": "1"}),
+        ("controller_logs", {"container": "controller", "tail": 0}),
+        ("controller_logs", {"container": "controller", "tail": 201}),
+        ("controller_logs", {"container": "controller", "unknown": 1}),
+    ):
+        result = mcp.call_tool(name, arguments)
+        assert result["ok"] is False
+        assert result["error"]["code"] in {"bad_argument", "missing_argument"}
+
+    for handler, arguments in (
+        (operations._controller_inspect, {"container": "bad/name"}),
+        (operations._controller_inspect, {"container": "controller", "extra": 1}),
+        (operations._controller_logs, {"container": "controller", "tail": True}),
+        (operations._controller_logs, {"container": "controller", "tail": 201}),
+    ):
+        with pytest.raises(ToolError) as error:
+            handler(arguments)
+        assert error.value.code == "bad_argument"
+        assert "bad/name" not in error.value.message

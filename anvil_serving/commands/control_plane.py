@@ -64,6 +64,10 @@ def commands() -> tuple[CommandNode, ...]:
                         ),
                     ),
                     argv_prefix=("inspect",),
+                    remote_operation=_remote(
+                        "controller_inspect",
+                        allowed=("container",),
+                    ),
                 ),
                 _resource_node(
                     "logs",
@@ -83,6 +87,10 @@ def commands() -> tuple[CommandNode, ...]:
                         ),
                     ),
                     argv_prefix=("logs",),
+                    remote_operation=_remote(
+                        "controller_logs",
+                        allowed=("container", "tail"),
+                    ),
                 ),
             ),
             docs_anchor="docs/cli/control-plane.md#controller",
