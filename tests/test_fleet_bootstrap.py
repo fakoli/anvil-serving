@@ -277,6 +277,138 @@ def receiver_frame(
     return bootstrap.BootstrapReceiverFrame(**values)
 
 
+def receiver_identity_result(
+    *,
+    outcome: bootstrap.BootstrapOutcome = bootstrap.BootstrapOutcome.SUCCESS,
+    receiver_sha256: str | None = SHA_A,
+    target_config_sha256: str | None = SHA_D,
+    receiver_permission: bootstrap.BootstrapPermissionVerdict = (
+        bootstrap.BootstrapPermissionVerdict.OWNER_READONLY
+    ),
+    target_config_permission: bootstrap.BootstrapPermissionVerdict = (
+        bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE
+    ),
+    error_code: bootstrap.BootstrapErrorCode | None = None,
+) -> bootstrap.BootstrapReceiverIdentityResult:
+    return bootstrap.BootstrapReceiverIdentityResult(
+        expected_node="Node_1",
+        outcome=outcome,
+        receiver_sha256=receiver_sha256,
+        target_config_sha256=target_config_sha256,
+        receiver_permission=receiver_permission,
+        target_config_permission=target_config_permission,
+        error_code=error_code,
+    )
+
+
+def receiver_operation_result(
+    operation: bootstrap.ReceiverOperation = bootstrap.ReceiverOperation.STAGE,
+    phase: bootstrap.BootstrapPhase = bootstrap.BootstrapPhase.STAGED,
+    *,
+    bound: bool = True,
+    outcome: bootstrap.BootstrapOutcome = bootstrap.BootstrapOutcome.PENDING,
+    error_code: bootstrap.BootstrapErrorCode | None = None,
+    trigger_error_code: bootstrap.BootstrapErrorCode | None = None,
+) -> bootstrap.BootstrapReceiverOperationResult:
+    return bootstrap.BootstrapReceiverOperationResult(
+        operation=operation,
+        expected_node="Node_1",
+        operation_id=OPERATION_ID,
+        plan_sha256=SHA_B,
+        target_config_sha256=SHA_D,
+        bound=bound,
+        bundle_sha256=SHA_A if bound else None,
+        bundle_length=4096 if bound else None,
+        manifest_sha256=SHA_D if bound else None,
+        phase=phase,
+        outcome=outcome,
+        error_code=error_code,
+        trigger_error_code=trigger_error_code,
+    )
+
+
+def receiver_result_state(phase: bootstrap.BootstrapPhase) -> dict:
+    if phase in {
+        bootstrap.BootstrapPhase.STAGED,
+        bootstrap.BootstrapPhase.VERIFIED,
+        bootstrap.BootstrapPhase.INSTALLED,
+        bootstrap.BootstrapPhase.ACTIVATED,
+        bootstrap.BootstrapPhase.RESTARTED,
+    }:
+        return {
+            "outcome": bootstrap.BootstrapOutcome.PENDING,
+            "error_code": None,
+            "trigger_error_code": None,
+        }
+    if phase is bootstrap.BootstrapPhase.ROLLBACK_STARTED:
+        return {
+            "outcome": bootstrap.BootstrapOutcome.PENDING,
+            "error_code": bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED,
+            "trigger_error_code": None,
+        }
+    if phase in {
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+    }:
+        return {
+            "outcome": bootstrap.BootstrapOutcome.ERROR,
+            "error_code": bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED,
+            "trigger_error_code": None,
+        }
+    if phase is bootstrap.BootstrapPhase.CLEANUP_FAILED:
+        return {
+            "outcome": bootstrap.BootstrapOutcome.ERROR,
+            "error_code": bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+            "trigger_error_code": bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED,
+        }
+    return {
+        "outcome": bootstrap.BootstrapOutcome.PENDING,
+        "error_code": None,
+        "trigger_error_code": None,
+    }
+
+
+RECEIVER_RESULT_PHASES = {
+    bootstrap.ReceiverOperation.STAGE: (
+        bootstrap.BootstrapPhase.STAGED,
+        bootstrap.BootstrapPhase.VERIFIED,
+        bootstrap.BootstrapPhase.INSTALLED,
+        bootstrap.BootstrapPhase.ACTIVATED,
+        bootstrap.BootstrapPhase.RESTARTED,
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+    bootstrap.ReceiverOperation.ACTIVATE: (
+        bootstrap.BootstrapPhase.INSTALLED,
+        bootstrap.BootstrapPhase.ACTIVATED,
+        bootstrap.BootstrapPhase.RESTARTED,
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+    bootstrap.ReceiverOperation.STATUS: (
+        bootstrap.BootstrapPhase.STAGED,
+        bootstrap.BootstrapPhase.VERIFIED,
+        bootstrap.BootstrapPhase.INSTALLED,
+        bootstrap.BootstrapPhase.ACTIVATED,
+        bootstrap.BootstrapPhase.RESTARTED,
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+    bootstrap.ReceiverOperation.ROLLBACK: (
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+}
+
+
 @pytest.mark.parametrize("operation", tuple(bootstrap.ReceiverOperation))
 def test_receiver_frames_have_exact_fields_and_canonical_roundtrip(operation):
     payload = b"fixed-stage-payload" if operation is bootstrap.ReceiverOperation.STAGE else b""
@@ -670,6 +802,627 @@ def test_receiver_codec_errors_do_not_echo_seeded_private_values():
     metadata = bootstrap.canonical_json_bytes(raw)
     with pytest.raises(bootstrap.BootstrapContractError) as caught:
         bootstrap.decode_receiver_frame(len(metadata).to_bytes(4, "big") + metadata)
+    rendered = str(caught.value) + repr(caught.value)
+    assert seeded not in rendered
+    assert caught.value.__cause__ is None
+
+
+@pytest.mark.parametrize(
+    ("result", "metadata"),
+    (
+        (
+            bootstrap.BootstrapReceiverProtocolError(),
+            b'{"error_code":"invalid-contract","expected_node":null,"operation":null,'
+            b'"outcome":"error","schema":"anvil-serving.fleet-bootstrap-receiver-result/v1"}',
+        ),
+        (
+            receiver_identity_result(),
+            b'{"error_code":null,"expected_node":"Node_1","operation":"identity","outcome":"success",'
+            b'"receiver_permission":"owner-readonly",'
+            b'"receiver_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-result/v1",'
+            b'"target_config_permission":"owner-writable",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}',
+        ),
+        (
+            receiver_operation_result(),
+            b'{"bound":true,"bundle_length":4096,'
+            b'"bundle_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
+            b'"error_code":null,"expected_node":"Node_1",'
+            b'"manifest_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",'
+            b'"operation":"stage","operation_id":"12345678-1234-4234-9234-123456789abc",'
+            b'"outcome":"pending","phase":"staged",'
+            b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-result/v1",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",'
+            b'"trigger_error_code":null}',
+        ),
+    ),
+)
+def test_receiver_results_have_literal_canonical_wire_bytes(result, metadata):
+    expected = len(metadata).to_bytes(4, "big") + metadata
+    assert bootstrap.encode_receiver_result(result) == expected
+    assert bootstrap.decode_receiver_result(expected) == result
+
+
+@pytest.mark.parametrize(
+    ("parser", "value"),
+    (
+        (
+            bootstrap.BootstrapReceiverProtocolError.from_dict,
+            bootstrap.BootstrapReceiverProtocolError(),
+        ),
+        (
+            bootstrap.BootstrapReceiverIdentityResult.from_dict,
+            receiver_identity_result(),
+        ),
+        (
+            bootstrap.BootstrapReceiverOperationResult.from_dict,
+            receiver_operation_result(),
+        ),
+    ),
+)
+def test_receiver_result_variants_require_their_exact_closed_field_sets(parser, value):
+    raw = value.to_dict()
+    missing = dict(raw)
+    missing.pop(next(iter(missing)))
+    extra = {**raw, "detail": "private"}
+    for malformed in (missing, extra, {"schema": bootstrap.RECEIVER_RESULT_SCHEMA}):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            parser(malformed)
+        assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"operation": "identity"},
+        {"expected_node": "Node_1"},
+        {"outcome": "error"},
+        {"error_code": "invalid-contract"},
+    ),
+)
+def test_receiver_protocol_error_constants_cannot_be_overridden_or_tampered(changes):
+    with pytest.raises(TypeError):
+        bootstrap.BootstrapReceiverProtocolError(**changes)
+    value = bootstrap.BootstrapReceiverProtocolError()
+    field_name, field_value = next(iter(changes.items()))
+    object.__setattr__(value, field_name, field_value)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        value.to_dict()
+
+
+@pytest.mark.parametrize(
+    ("operation", "phase"),
+    tuple(
+        (operation, phase)
+        for operation, phases in RECEIVER_RESULT_PHASES.items()
+        for phase in phases
+    ),
+)
+def test_receiver_operation_result_roundtrips_every_allowed_bound_phase(
+    operation, phase
+):
+    result = receiver_operation_result(operation, phase, **receiver_result_state(phase))
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(result)
+    ) == result
+
+
+@pytest.mark.parametrize(
+    ("operation", "phase"),
+    tuple(
+        (operation, phase)
+        for operation, allowed in RECEIVER_RESULT_PHASES.items()
+        for phase in bootstrap.BootstrapPhase
+        if phase not in allowed and phase is not bootstrap.BootstrapPhase.REFUSED
+    ),
+)
+def test_receiver_operation_result_rejects_every_disallowed_bound_phase(
+    operation, phase
+):
+    with pytest.raises(bootstrap.BootstrapContractError, match="inconsistent"):
+        receiver_operation_result(operation, phase, **receiver_result_state(phase))
+
+
+@pytest.mark.parametrize(
+    "operation",
+    (
+        bootstrap.ReceiverOperation.STAGE,
+        bootstrap.ReceiverOperation.ACTIVATE,
+        bootstrap.ReceiverOperation.STATUS,
+        bootstrap.ReceiverOperation.ROLLBACK,
+    ),
+)
+def test_receiver_operation_result_allows_exact_unbound_refusal(operation):
+    result = receiver_operation_result(
+        operation,
+        bootstrap.BootstrapPhase.REFUSED,
+        bound=False,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        error_code=bootstrap.BootstrapErrorCode.PRECONDITION_FAILED,
+    )
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(result)
+    ) == result
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"operation": bootstrap.ReceiverOperation.IDENTITY},
+        {"bound": 1},
+        {"bundle_sha256": None},
+        {"bundle_length": 0},
+        {"bundle_length": bootstrap.MAX_BUNDLE_BYTES + 1},
+        {"manifest_sha256": None},
+        {"phase": bootstrap.BootstrapPhase.REFUSED},
+        {"phase": bootstrap.BootstrapPhase.ACCEPTED},
+        {"outcome": bootstrap.BootstrapOutcome.SUCCESS},
+        {"error_code": bootstrap.BootstrapErrorCode.INTERNAL_ERROR},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+    ),
+)
+def test_receiver_bound_operation_result_rejects_type_identity_and_state_defects(
+    changes,
+):
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(receiver_operation_result(), **changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"bundle_sha256": SHA_A},
+        {"bundle_length": 1},
+        {"manifest_sha256": SHA_D},
+        {"phase": bootstrap.BootstrapPhase.STAGED},
+        {"outcome": bootstrap.BootstrapOutcome.PENDING},
+        {"error_code": None},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+    ),
+)
+def test_receiver_unbound_result_rejects_binding_and_state_defects(changes):
+    value = receiver_operation_result(
+        bootstrap.ReceiverOperation.STATUS,
+        bootstrap.BootstrapPhase.REFUSED,
+        bound=False,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        error_code=bootstrap.BootstrapErrorCode.INVALID_CONTRACT,
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"outcome": bootstrap.BootstrapOutcome.ERROR},
+        {"error_code": bootstrap.BootstrapErrorCode.INTERNAL_ERROR},
+        {"receiver_sha256": None},
+        {"target_config_sha256": None},
+        {
+            "receiver_permission": bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE
+        },
+        {
+            "target_config_permission": bootstrap.BootstrapPermissionVerdict.UNTRUSTED_WRITABLE
+        },
+    ),
+)
+def test_receiver_identity_success_rejects_inconsistent_evidence(changes):
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(receiver_identity_result(), **changes)
+
+
+@pytest.mark.parametrize(
+    "target_permission",
+    (
+        bootstrap.BootstrapPermissionVerdict.OWNER_READONLY,
+        bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE,
+    ),
+)
+def test_receiver_identity_success_accepts_both_trusted_config_permissions(
+    target_permission,
+):
+    value = receiver_identity_result(target_config_permission=target_permission)
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(value)
+    ) == value
+
+
+@pytest.mark.parametrize(
+    ("receiver_permission", "target_permission"),
+    tuple(
+        (receiver_permission, target_permission)
+        for receiver_permission in bootstrap.BootstrapPermissionVerdict
+        for target_permission in bootstrap.BootstrapPermissionVerdict
+    ),
+)
+def test_receiver_identity_success_permission_matrix(
+    receiver_permission, target_permission
+):
+    allowed = (
+        receiver_permission is bootstrap.BootstrapPermissionVerdict.OWNER_READONLY
+        and target_permission
+        in {
+            bootstrap.BootstrapPermissionVerdict.OWNER_READONLY,
+            bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE,
+        }
+    )
+    if allowed:
+        receiver_identity_result(
+            receiver_permission=receiver_permission,
+            target_config_permission=target_permission,
+        )
+    else:
+        with pytest.raises(bootstrap.BootstrapContractError):
+            receiver_identity_result(
+                receiver_permission=receiver_permission,
+                target_config_permission=target_permission,
+            )
+
+
+@pytest.mark.parametrize(
+    "error_code",
+    (
+        bootstrap.BootstrapErrorCode.RECEIVER_MISMATCH,
+        bootstrap.BootstrapErrorCode.PRECONDITION_FAILED,
+        bootstrap.BootstrapErrorCode.UNSUPPORTED_PLATFORM,
+        bootstrap.BootstrapErrorCode.INVALID_CONTRACT,
+        bootstrap.BootstrapErrorCode.INTERNAL_ERROR,
+    ),
+)
+def test_receiver_identity_error_accepts_only_closed_error_codes(error_code):
+    value = receiver_identity_result(
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        receiver_sha256=None,
+        target_config_sha256=None,
+        receiver_permission=bootstrap.BootstrapPermissionVerdict.INDETERMINATE,
+        target_config_permission=bootstrap.BootstrapPermissionVerdict.UNSUPPORTED,
+        error_code=error_code,
+    )
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(value)
+    ) == value
+
+
+@pytest.mark.parametrize(
+    "error_code",
+    (
+        None,
+        bootstrap.BootstrapErrorCode.AUTHORIZATION_DENIED,
+        bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+    ),
+)
+def test_receiver_identity_error_rejects_other_error_codes(error_code):
+    with pytest.raises(bootstrap.BootstrapContractError):
+        receiver_identity_result(
+            outcome=bootstrap.BootstrapOutcome.ERROR,
+            error_code=error_code,
+        )
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"outcome": bootstrap.BootstrapOutcome.ERROR},
+        {"error_code": None},
+        {"error_code": bootstrap.BootstrapErrorCode.CLEANUP_FAILED},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+    ),
+)
+def test_receiver_rollback_started_requires_pending_original_noncleanup_error(changes):
+    value = receiver_operation_result(
+        bootstrap.ReceiverOperation.ROLLBACK,
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        **receiver_result_state(bootstrap.BootstrapPhase.ROLLBACK_STARTED),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"outcome": bootstrap.BootstrapOutcome.PENDING},
+        {"error_code": None},
+        {"error_code": bootstrap.BootstrapErrorCode.CLEANUP_FAILED},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+    ),
+)
+def test_receiver_completed_rollback_requires_error_original_and_no_trigger(changes):
+    value = receiver_operation_result(
+        bootstrap.ReceiverOperation.ROLLBACK,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        **receiver_result_state(bootstrap.BootstrapPhase.ROLLED_BACK),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"outcome": bootstrap.BootstrapOutcome.PENDING},
+        {"error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+        {"trigger_error_code": None},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.CLEANUP_FAILED},
+    ),
+)
+def test_receiver_cleanup_failure_requires_original_noncleanup_trigger(changes):
+    value = receiver_operation_result(
+        bootstrap.ReceiverOperation.ROLLBACK,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+        **receiver_result_state(bootstrap.BootstrapPhase.CLEANUP_FAILED),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **changes)
+
+
+@pytest.mark.parametrize(
+    "original_error",
+    tuple(
+        error
+        for error in bootstrap.BootstrapErrorCode
+        if error is not bootstrap.BootstrapErrorCode.CLEANUP_FAILED
+    ),
+)
+def test_receiver_historical_and_cleanup_states_accept_every_noncleanup_cause(
+    original_error,
+):
+    historical = receiver_operation_result(
+        bootstrap.ReceiverOperation.STATUS,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        error_code=original_error,
+    )
+    cleanup = receiver_operation_result(
+        bootstrap.ReceiverOperation.STATUS,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        error_code=bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+        trigger_error_code=original_error,
+    )
+    for result in (historical, cleanup):
+        assert bootstrap.decode_receiver_result(
+            bootstrap.encode_receiver_result(result)
+        ) == result
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        b"",
+        b"\x00\x00\x00",
+        b"\x00\x00\x00\x00x",
+        (4097).to_bytes(4, "big") + b"x",
+        (10).to_bytes(4, "big") + b"{}",
+        (1).to_bytes(4, "big") + b"\xff",
+        b"x" * (5 + bootstrap.MAX_RECEIVER_RESULT_BYTES),
+    ),
+)
+def test_receiver_result_decode_rejects_header_length_truncation_and_utf8(raw):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_result(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_result_decode_rejects_trailing_duplicate_noncanonical_and_unknown():
+    valid = bootstrap.encode_receiver_result(bootstrap.BootstrapReceiverProtocolError())
+    duplicate = (
+        b'{"error_code":"invalid-contract","expected_node":null,"operation":null,'
+        b'"operation":null,"outcome":"error",'
+        b'"schema":"anvil-serving.fleet-bootstrap-receiver-result/v1"}'
+    )
+    noncanonical = json.dumps(
+        bootstrap.BootstrapReceiverProtocolError().to_dict()
+    ).encode()
+    unknown = bootstrap.canonical_json_bytes(
+        {
+            **bootstrap.BootstrapReceiverProtocolError().to_dict(),
+            "detail": "private",
+        }
+    )
+    for raw in (
+        valid + b"x",
+        len(duplicate).to_bytes(4, "big") + duplicate,
+        len(noncanonical).to_bytes(4, "big") + noncanonical,
+        len(unknown).to_bytes(4, "big") + unknown,
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.decode_receiver_result(raw)
+        assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_result_direct_and_wire_types_are_exact():
+    value = receiver_operation_result()
+    for change in (
+        {"operation": "stage"},
+        {"phase": "staged"},
+        {"outcome": "pending"},
+        {"bound": 1},
+        {"bundle_length": True},
+        {"error_code": "timeout"},
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError):
+            replace(value, **change)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.decode_receiver_result(bytearray(bootstrap.encode_receiver_result(value)))
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.encode_receiver_result(value.to_dict())
+
+    raw = value.to_dict()
+    raw["bundle_length"] = True
+    metadata = bootstrap.canonical_json_bytes(raw)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.decode_receiver_result(len(metadata).to_bytes(4, "big") + metadata)
+
+
+@pytest.mark.parametrize("bundle_length", (1, bootstrap.MAX_BUNDLE_BYTES))
+def test_receiver_operation_result_accepts_exact_bundle_length_bounds(bundle_length):
+    value = replace(receiver_operation_result(), bundle_length=bundle_length)
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(value)
+    ) == value
+
+
+def test_receiver_result_matcher_accepts_exact_identity_and_advanced_stage_state():
+    identity = receiver_identity_result()
+    assert bootstrap.match_receiver_result(
+        receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b""), identity
+    ) is identity
+
+    frame = receiver_frame(bootstrap.ReceiverOperation.STAGE, b"fixed-stage-payload")
+    advanced = replace(
+        receiver_operation_result(
+            bootstrap.ReceiverOperation.STAGE,
+            bootstrap.BootstrapPhase.RESTARTED,
+        ),
+        bundle_sha256=frame.bundle_sha256,
+        bundle_length=frame.bundle_length,
+    )
+    assert bootstrap.match_receiver_result(frame, advanced) is advanced
+
+
+@pytest.mark.parametrize(
+    "change",
+    (
+        {"operation": bootstrap.ReceiverOperation.STATUS},
+        {"expected_node": "Other_Node"},
+        {"operation_id": "22345678-1234-4234-9234-123456789abc"},
+        {"plan_sha256": SHA_A},
+        {"target_config_sha256": SHA_A},
+        {"bundle_sha256": SHA_B},
+        {"bundle_length": 4095},
+    ),
+)
+def test_receiver_result_matcher_rejects_every_stage_binding_mismatch(change):
+    payload = b"fixed-stage-payload"
+    frame = receiver_frame(bootstrap.ReceiverOperation.STAGE, payload)
+    values = {
+        "bundle_sha256": frame.bundle_sha256,
+        "bundle_length": frame.bundle_length,
+        **change,
+    }
+    result = replace(receiver_operation_result(), **values)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.match_receiver_result(frame, result)
+    assert caught.value.code == "receiver-mismatch"
+
+
+@pytest.mark.parametrize(
+    "phase",
+    (
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+)
+def test_receiver_result_matcher_binds_rollback_original_trigger(phase):
+    frame = receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b"")
+    result = receiver_operation_result(
+        bootstrap.ReceiverOperation.ROLLBACK,
+        phase,
+        **receiver_result_state(phase),
+    )
+    assert bootstrap.match_receiver_result(frame, result) is result
+    changed = replace(
+        frame,
+        trigger_error_code=bootstrap.BootstrapErrorCode.TIMEOUT,
+    )
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.match_receiver_result(changed, result)
+    assert caught.value.code == "receiver-mismatch"
+
+
+def test_receiver_protocol_error_match_is_always_invalid_contract():
+    for frame in (
+        receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b""),
+        receiver_frame(bootstrap.ReceiverOperation.STATUS, b""),
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.match_receiver_result(
+                frame, bootstrap.BootstrapReceiverProtocolError()
+            )
+        assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "factory",
+    (
+        bootstrap.BootstrapReceiverProtocolError,
+        receiver_identity_result,
+        receiver_operation_result,
+    ),
+)
+def test_receiver_result_is_frozen_and_revalidates_tampering(factory):
+    result = factory()
+    with pytest.raises((AttributeError, TypeError)):
+        result.schema = "other"  # type: ignore[misc]
+    object.__setattr__(result, "schema", "other")
+    for action in (
+        result.to_dict,
+        lambda: bootstrap.encode_receiver_result(result),
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            action()
+        assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_result_subclasses_are_rejected():
+    class ProtocolSubclass(bootstrap.BootstrapReceiverProtocolError):
+        pass
+
+    with pytest.raises(bootstrap.BootstrapContractError):
+        ProtocolSubclass()
+
+    class IdentitySubclass(bootstrap.BootstrapReceiverIdentityResult):
+        pass
+
+    class OperationSubclass(bootstrap.BootstrapReceiverOperationResult):
+        pass
+
+    with pytest.raises(bootstrap.BootstrapContractError):
+        IdentitySubclass(
+            expected_node="Node_1",
+            outcome=bootstrap.BootstrapOutcome.SUCCESS,
+            receiver_sha256=SHA_A,
+            target_config_sha256=SHA_D,
+            receiver_permission=bootstrap.BootstrapPermissionVerdict.OWNER_READONLY,
+            target_config_permission=bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE,
+            error_code=None,
+        )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        OperationSubclass(
+            operation=bootstrap.ReceiverOperation.STAGE,
+            expected_node="Node_1",
+            operation_id=OPERATION_ID,
+            plan_sha256=SHA_B,
+            target_config_sha256=SHA_D,
+            bound=True,
+            bundle_sha256=SHA_A,
+            bundle_length=4096,
+            manifest_sha256=SHA_D,
+            phase=bootstrap.BootstrapPhase.STAGED,
+            outcome=bootstrap.BootstrapOutcome.PENDING,
+            error_code=None,
+            trigger_error_code=None,
+        )
+
+
+def test_receiver_result_errors_do_not_echo_private_data_or_call_io(monkeypatch):
+    seeded = "private-path-token-command.invalid"
+
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError("result codec performed I/O")
+
+    monkeypatch.setattr(bootstrap.os, "stat", unexpected)
+    raw = receiver_identity_result().to_dict()
+    raw["expected_node"] = seeded
+    metadata = bootstrap.canonical_json_bytes(raw)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_result(len(metadata).to_bytes(4, "big") + metadata)
     rendered = str(caught.value) + repr(caught.value)
     assert seeded not in rendered
     assert caught.value.__cause__ is None
