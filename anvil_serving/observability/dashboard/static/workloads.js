@@ -38,6 +38,8 @@
 
   function require(value) { if (!value) throw new Error('Invalid workload response'); }
   function text(value) { return typeof value === 'string' && value.length > 0 && value.length <= 1024; }
+  // Match the entire value: JavaScript's $ alone also accepts a final newline.
+  function hostId(value) { return typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_-]{0,63}$/.exec(value)?.[0] === value; }
   function count(value, max = 1000000000) { return Number.isSafeInteger(value) && value >= 0 && value <= max; }
   function fields(value, required, optional = []) {
     require(value !== null && typeof value === 'object' && !Array.isArray(value));
@@ -83,7 +85,7 @@
     const hosts = new Set();
     for (const node of fleet.nodes) {
       fields(node, ['schema', 'host', 'status', 'collection_timestamp', 'sources']);
-      require(node.schema === fleet.schema && text(node.host) && !hosts.has(node.host) && statuses.includes(node.status));
+      require(node.schema === fleet.schema && hostId(node.host) && !hosts.has(node.host) && statuses.includes(node.status));
       hosts.add(node.host);
       timestamp(node.collection_timestamp);
       require(Array.isArray(node.sources) && node.sources.length > 0 && node.sources.length <= 6);
@@ -175,7 +177,7 @@
     require(values.owner === '' || Object.hasOwn(ownerKinds, values.owner));
     require(values.kind === '' || kinds.includes(values.kind));
     require(values.state === '' || states.includes(values.state));
-    require(values.host === '' || (values.host.length <= 1024 && /^[A-Za-z][A-Za-z0-9_-]*$/.test(values.host)));
+    require(values.host === '' || hostId(values.host));
     require(['true', 'false'].includes(values.active_only));
     for (const [key, max] of [['recent_seconds', 86400], ['limit', 1000]]) {
       require(/^[0-9]{1,5}$/.test(values[key]) && Number(values[key]) >= 1 && Number(values[key]) <= max);
