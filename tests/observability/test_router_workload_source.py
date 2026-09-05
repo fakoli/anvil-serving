@@ -17,6 +17,7 @@ from anvil_serving.observability.workloads import (
     WorkloadErrorCode,
     WorkloadOwner,
     WorkloadQuery,
+    node_result_to_dict,
 )
 from anvil_serving.paths import LOOPBACK_ALIAS_ENV
 
@@ -287,3 +288,84 @@ def test_invalid_arguments_raise_before_opener():
     with pytest.raises(WorkloadError):
         read_router_workloads("http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", "", WorkloadQuery(), NOW, _open=opener)
     assert calls == []
+
+
+def _snapshot(payload, **kwargs):
+    response = _Response(payload)
+    result = router_workloads.read_router_node_workloads(
+        "http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", HOST,
+        kwargs.pop("query", WorkloadQuery()), NOW,
+        environment={"ROUTER_WORKLOAD_TOKEN": TOKEN},
+        _open=lambda *args, **options: response, **kwargs,
+    )
+    assert response.closed
+    return result
+
+
+def test_client_snapshot_preserves_distinct_stale_node_and_source_times():
+    payload = json.loads(_wire(collected="2026-09-05T11:59:30.000000Z"))
+    payload["sources"][0]["collection_timestamp"] = "2026-09-05T11:59:20.000000Z"
+    result = _snapshot(json.dumps(payload).encode())
+    assert node_result_to_dict(result) == payload
+
+
+def test_client_host_exclusion_reads_no_environment_or_http():
+    class Forbidden:
+        def get(self, *args):
+            pytest.fail("environment read")
+
+    result = router_workloads.read_router_node_workloads(
+        "private-invalid-url", "private-reference", HOST, WorkloadQuery(host="node-b"), NOW,
+        environment=Forbidden(), _open=lambda *args, **kwargs: pytest.fail("HTTP read"),
+    )
+    assert result.host == HOST and result.status is ResultStatus.COMPLETE
+    assert len(result.sources) == 1 and result.sources[0].owner is WorkloadOwner.ROUTER
+    assert result.sources[0].truncation == Truncation(0, 0)
+
+
+@pytest.mark.parametrize("mutation,code", (
+    ("schema", WorkloadErrorCode.UNSUPPORTED),
+    ("future-source", WorkloadErrorCode.FUTURE),
+    ("query", WorkloadErrorCode.INVALID),
+    ("extra-source", WorkloadErrorCode.INVALID),
+))
+def test_client_refuses_invalid_snapshot_with_fixed_typed_failure(mutation, code):
+    data = json.loads(_wire(records=[_record()] if mutation == "query" else []))
+    query = WorkloadQuery()
+    if mutation == "schema":
+        data["schema"] = "private-unsupported-schema"
+    elif mutation == "future-source":
+        data["collection_timestamp"] = "2026-09-05T12:00:29.000000Z"
+        data["sources"][0]["collection_timestamp"] = "2026-09-05T12:00:59.000000Z"
+    elif mutation == "query":
+        query = WorkloadQuery(owner=WorkloadOwner.MEDIA)
+    else:
+        data["sources"].append(dict(data["sources"][0], owner="media"))
+    with pytest.raises(WorkloadError) as caught:
+        _snapshot(json.dumps(data).encode(), query=query)
+    assert caught.value.code is code
+    assert "private" not in str(caught.value)
+    assert caught.value.__suppress_context__
+
+
+def test_client_recent_window_is_receipt_relative_not_remote_node_relative():
+    record = _record()
+    record.update(state="terminal", phase="completed", outcome="success")
+    record.update(created_at="2026-09-05T11:59:40.000000Z",
+                  updated_at="2026-09-05T11:59:45.000000Z",
+                  source_timestamp="2026-09-05T11:59:45.000000Z")
+    payload = _wire(records=[record], collected="2026-09-05T11:59:31.000000Z")
+    with pytest.raises(WorkloadError) as caught:
+        _snapshot(payload, query=WorkloadQuery(recent_seconds=10))
+    assert caught.value.code is WorkloadErrorCode.INVALID
+
+
+def test_client_close_failure_is_not_a_valid_unavailable_snapshot():
+    with pytest.raises(WorkloadError) as caught:
+        router_workloads.read_router_node_workloads(
+            "http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", HOST, WorkloadQuery(), NOW,
+            environment={"ROUTER_WORKLOAD_TOKEN": TOKEN},
+            _open=lambda *args, **kwargs: _ThrowingCloseResponse(_wire()),
+        )
+    assert caught.value.code is WorkloadErrorCode.UNAVAILABLE
+    assert "private" not in str(caught.value)
