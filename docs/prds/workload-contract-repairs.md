@@ -45,6 +45,50 @@ Repair request omission and identifier validation with independent producer/cons
 
 ## Tasks
 
+### T017: Require the exact controller health identity envelope
+
+**Feature:** F001
+**Priority:** high
+**Type:** bugfix
+**Likely files:** anvil_serving/transports.py, tests/test_transports.py, tests/test_controller.py, tests/observability/test_controller_workload_source.py, tests/observability/test_workload_http.py, .tickets/2026-09-05-controller-health-identity.md
+**Dependencies:** T018
+
+Consolidated control-plane review reproduced a tools POST after duplicate node keys and a 65537-byte health response were accepted by ControllerTransport._verify_node. Reuse _strict_json_loads and _REQUEST_ID_RE, enforce the 65536-byte bound before decoding, and require exactly status/service/request_id/node with status ok, service anvil-serving-controller, a valid bounded request ID and the exact expected node. Reject malformed, duplicate, nonfinite, oversized and wrong-identity payloads with fixed privacy-safe controller_node_mismatch errors and execution_state not_started. Set the cached node verification flag only after the full gate. Preserve existing auth, shared deadlines, cleanup, no-proxy/no-redirect transport, operation/status behavior and no-expected-node compatibility. Update only the reproduced successful expected-node health stubs to the real producer envelope; negative mismatch fixtures must still reach their intended rejection. Use actual loopback controller health for positive compatibility, not just parallel fake serializers. This is one atomic transport predicate with bounded consumer fixture synchronization, not a protocol redesign or fleet enrollment implementation.
+
+**Acceptance criteria:**
+
+- Malformed, duplicate, nonfinite, unsupported, missing/extra-field, invalid-ID, mismatched and oversized health data dispatches no tools POST and never caches verification.
+- Exactly 65536 bytes can pass for a valid envelope; 65537 bytes refuses before parsing. A valid identity is cached once without widening authority.
+- Existing real controller health works through the expected-node transport; legacy no-expected-node operations remain compatible.
+- The original duplicate-key and overflow probes fail on the predecessor and pass after repair; shared budget/cleanup tests retain their independent causes.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_transports.py tests/test_controller.py tests/observability/test_controller_workload_source.py tests/observability/test_workload_http.py -x -q`
+- `python -m ruff check anvil_serving/transports.py tests/test_transports.py tests/test_controller.py tests/observability/test_controller_workload_source.py tests/observability/test_workload_http.py`
+- `git diff --check`
+
+### T018: Make workload test credentials unambiguously synthetic
+
+**Feature:** F001
+**Priority:** medium
+**Type:** modify
+**Likely files:** tests/observability/test_controller_workload_source.py, tests/observability/test_fleet_workload_sources.py, .tickets/2026-09-05-workload-fixture-hygiene.md
+
+Pinned Gitleaks on the clean tracked snapshot reproduced two generic-api-key findings at the deterministic hexadecimal TOKEN fixtures in these two test modules. Replace those public fixtures with the plainly artificial repeated test-only value test-token-test-token. Preserve their minimum-length validation and exact credential forwarding/isolation assertions. Do not change authentication, load a real credential, obfuscate an actual secret or weaken any scanner rule or allowlist. Record the false-positive provenance and tracked-snapshot rescan separately from ignored build/cache scan findings.
+
+**Acceptance criteria:**
+
+- Both fake values remain valid test credentials and all forwarding, hermetic environment and malformed-input assertions pass unchanged.
+- A clean tracked snapshot passes the pinned signature scanner and semantic scanner, with scanner rules and allowlists unchanged.
+- No production or operator configuration changes; no credential rotation claim.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_controller_workload_source.py tests/observability/test_fleet_workload_sources.py -x -q`
+- `python -m ruff check tests/observability/test_controller_workload_source.py tests/observability/test_fleet_workload_sources.py`
+- `git diff --check`
+
 ### T014: Bind workload timestamps to ordering and receipt time
 
 **Feature:** F001
@@ -52,7 +96,7 @@ Repair request omission and identifier validation with independent producer/cons
 **Type:** bugfix
 **Likely files:** anvil_serving/observability/workloads.py, anvil_serving/observability/workload_collection.py, tests/observability/test_workload_review_regressions.py, .tickets/2026-09-05-workload-final-review.md
 
-Consolidated review at 7ef089b6 reproduced impossible updated-after-source records and stacked future allowance across source/node/fleet clocks. Enforce created <= updated <= source in the shared canonical record and validate records against trusted receipt time before query selection. Preserve independent source failure isolation and exactly 30 seconds inclusive, 30 seconds plus one microsecond exclusive. Remote provenance grants no extra skew. NodeResult/FleetResult decoding must reject compounded descendant skew against the enclosing collection as well. No schema, query selection, authentication or lifecycle change.
+Consolidated review at 7ef089b6 reproduced impossible updated-after-source store records and stacked future allowance across source/node/fleet clocks. Require created <= updated for all records and updated <= source for store/router owners. Preserve the existing recipe/manifest component-clock exception of at most 30 seconds after source observation; it never grants extra receipt-relative skew. Validate every record against trusted receipt time before query selection, retaining independent source failure isolation and exactly 30 seconds inclusive, 30 seconds plus one microsecond exclusive. NodeResult/FleetResult decoding must validate every descendant against the enclosing collection as well. Keep the existing owner-specific semantics, schema, query selection, authentication and lifecycle unchanged. Synchronize only previously incoherent test timestamps in tests/observability/test_workloads.py.
 
 **Acceptance criteria:**
 
