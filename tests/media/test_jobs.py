@@ -5,9 +5,10 @@ import threading
 import pytest
 
 from anvil_serving.media import JobState, MediaError, MediaJobStore
+from anvil_serving.media.jobs import read_media_workloads
 from anvil_serving.control_plane.mcp.security import normalize_caller_context
 from anvil_serving.observability.workloads import (
-    ResultStatus, WorkloadErrorCode, WorkloadKind, WorkloadOwner, WorkloadQuery,
+    ResultStatus, WorkloadError, WorkloadErrorCode, WorkloadKind, WorkloadOwner, WorkloadQuery,
     WorkloadState, source_result_to_json, workload_id,
 )
 
@@ -352,3 +353,112 @@ def test_media_read_absence_deadline_and_owner_exclusion_do_not_create_database(
                                    _monotonic=lambda: (_ for _ in ()).throw(AssertionError()))
     assert result.status is ResultStatus.COMPLETE and result.records == ()
     assert not target.path.exists()
+
+
+def test_standalone_media_workload_read_matches_instance_and_sees_wal_commit(tmp_path):
+    target = store(tmp_path)
+    _workload_rows(target, ["running", "completed"])
+    query = WorkloadQuery(limit=1)
+    expected = target.list_workloads("node-a", query, NOW)
+    standalone = read_media_workloads(target.path, "node-a", query, NOW)
+    assert source_result_to_json(standalone) == source_result_to_json(expected)
+
+    later = NOW + dt.timedelta(seconds=1)
+    with sqlite3.connect(target.path) as db:
+        db.execute(
+            "UPDATE media_jobs SET updated_at=? WHERE id=?",
+            (later.isoformat(), "job_" + "0" * 32),
+        )
+    refreshed = read_media_workloads(target.path, "node-a", WorkloadQuery(limit=1), later)
+    assert refreshed.records[0].updated_at == later
+
+
+def test_standalone_media_workload_read_never_initializes_missing_database(tmp_path, monkeypatch):
+    missing = tmp_path / "missing-parent" / "media-jobs.sqlite3"
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("standalone read must not construct MediaJobStore")
+
+    monkeypatch.setattr(MediaJobStore, "__init__", forbidden)
+    result = read_media_workloads(missing, "node-a", WorkloadQuery(), NOW)
+    assert result.status is ResultStatus.UNAVAILABLE
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+    assert not missing.parent.exists()
+
+
+def test_standalone_media_workload_read_keeps_bounded_lock_contention(tmp_path):
+    target = store(tmp_path)
+
+    class ContendedLock:
+        def __init__(self):
+            self.timeout = None
+
+        def acquire(self, *, timeout):
+            self.timeout = timeout
+            return False
+
+        def release(self):
+            raise AssertionError("an unacquired lock must not be released")
+
+    lock = ContendedLock()
+    result = read_media_workloads(target.path, "node-a", WorkloadQuery(), NOW, _lock=lock)
+    assert result.status is ResultStatus.UNAVAILABLE
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+    assert 0 < lock.timeout <= 1.0
+
+
+def test_standalone_media_workload_read_validates_before_path_or_lock_access(tmp_path):
+    class PoisonPath:
+        def __fspath__(self):
+            raise AssertionError("path must not be accessed")
+
+    class PoisonLock:
+        def acquire(self, *args, **kwargs):
+            raise AssertionError("lock must not be accessed")
+
+    with pytest.raises(WorkloadError):
+        read_media_workloads(PoisonPath(), "node-a", object(), NOW, _lock=PoisonLock())
+    with pytest.raises(WorkloadError):
+        read_media_workloads(PoisonPath(), "", WorkloadQuery(), NOW, _lock=PoisonLock())
+    with pytest.raises(WorkloadError):
+        read_media_workloads(
+            PoisonPath(),
+            "node-a",
+            WorkloadQuery(),
+            dt.datetime(2026, 8, 27),
+            _lock=PoisonLock(),
+        )
+
+
+def test_media_workload_instance_delegates_exact_owner_inputs(tmp_path, monkeypatch):
+    from anvil_serving.media import jobs
+
+    target = store(tmp_path)
+
+    def clock():
+        return 0.0
+
+    observed = {}
+    sentinel = object()
+
+    def delegated(path, host, query, now, *, _monotonic, _lock):
+        observed.update(
+            path=path,
+            host=host,
+            query=query,
+            now=now,
+            monotonic=_monotonic,
+            lock=_lock,
+        )
+        return sentinel
+
+    monkeypatch.setattr(jobs, "read_media_workloads", delegated)
+    assert target.list_workloads("node-a", WorkloadQuery(), NOW, _monotonic=clock) is sentinel
+    assert observed == {
+        "path": target.path,
+        "host": "node-a",
+        "query": WorkloadQuery(),
+        "now": NOW,
+        "monotonic": clock,
+        "lock": target._lock,
+    }
