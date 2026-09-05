@@ -23,7 +23,7 @@ import time
 from typing import Callable, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
-from .admission import AdmissionSnapshot, TierAdmission
+from .admission import AdmissionSnapshot, MemberAdmissionSnapshot, TierAdmission, _reason_code
 from .availability import AvailabilityResult, resolve_runtime_tier, safe_check, safe_check_member
 from .config import METADATA_UPSTREAM, RouterConfig, Tier, normalize_model_alias
 from .replica_scheduler import (
@@ -153,7 +153,7 @@ class ReplicaPressureCache:
             self._start_workers_locked()
             self._condition.notify()
 
-    def snapshot(self, tier_id: str) -> dict[str, ReplicaPressure]:
+    def _snapshot(self, tier_id: str, *, schedule: bool) -> dict[str, ReplicaPressure]:
         if type(tier_id) is not str:
             raise ValueError("invalid replica pressure cache query")
         now = self._now()
@@ -169,7 +169,8 @@ class ReplicaPressureCache:
                 ):
                     result[key[1]] = ReplicaPressure()
                     continue
-                self._schedule_locked(key, entry, now)
+                if schedule:
+                    self._schedule_locked(key, entry, now)
                 pressure = entry.pressure or ReplicaPressure()
                 if (
                     pressure.freshness is PressureFreshness.FRESH
@@ -187,6 +188,14 @@ class ReplicaPressureCache:
                     pressure = ReplicaPressure(PressureFreshness.FAILED)
                 result[key[1]] = copy_replica_pressure(pressure)
             return dict(result)
+
+    def snapshot(self, tier_id: str) -> dict[str, ReplicaPressure]:
+        """Return detached pressure and schedule any refresh that is due."""
+        return self._snapshot(tier_id, schedule=True)
+
+    def peek(self, tier_id: str) -> dict[str, ReplicaPressure]:
+        """Return detached current pressure without scheduling or notifying."""
+        return self._snapshot(tier_id, schedule=False)
 
     def _worker(self) -> None:
         while True:
@@ -487,6 +496,161 @@ def _replica_admission(tier: Tier, admission: Optional[TierAdmission]) -> dict:
         return unavailable
 
 
+def _capacity_replica_admission(tier: Tier, admission: Optional[TierAdmission]) -> dict:
+    """Project one fully reconciled capacity-owner snapshot without reasons."""
+    unavailable = {
+        "status": "unavailable",
+        "state": None,
+        "active_requests": None,
+        "draining": None,
+        "member_active_requests": None,
+        "max_concurrency": None,
+        "members": None,
+    }
+    if admission is None:
+        return unavailable
+    try:
+        snapshot = admission.snapshot(tier.id)
+        configured = {member.id: member for member in tier.replicas}
+        if (
+            type(snapshot) is not AdmissionSnapshot
+            or type(snapshot.tier_id) is not str
+            or snapshot.tier_id != tier.id
+            or type(snapshot.state) is not str
+            or snapshot.state not in {"admitting", "quiesced"}
+            or type(snapshot.draining) is not bool
+            or type(snapshot.active_requests) is not int
+            or not 0 <= snapshot.active_requests <= _MAX_ADMISSION_COUNT
+            or snapshot.draining
+            and (snapshot.state != "quiesced" or snapshot.active_requests == 0)
+            or type(snapshot.max_concurrency) is not int
+            or not 1 <= snapshot.max_concurrency <= _MAX_ADMISSION_COUNT
+            or type(snapshot.member_active_requests) is not tuple
+            or type(snapshot.members) is not tuple
+            or len(snapshot.member_active_requests) != len(configured)
+            or len(snapshot.members) != len(configured)
+        ):
+            return unavailable
+        if type(snapshot.reason) is not str:
+            return unavailable
+        _reason_code(snapshot.reason)
+        declared_caps = {}
+        for member_id, member in configured.items():
+            if type(member.max_concurrency) is not int or not 1 <= member.max_concurrency <= 100_000:
+                return unavailable
+            declared_caps[member_id] = member.max_concurrency
+        effective_ceiling = tier.max_concurrency
+        if effective_ceiling is None:
+            effective_ceiling = sum(declared_caps.values())
+        if (
+            type(effective_ceiling) is not int
+            or not 1 <= effective_ceiling <= _MAX_ADMISSION_COUNT
+            or snapshot.max_concurrency != effective_ceiling
+            or snapshot.active_requests > effective_ceiling
+        ):
+            return unavailable
+        counts = {}
+        for pair in snapshot.member_active_requests:
+            if type(pair) is not tuple or len(pair) != 2:
+                return unavailable
+            member_id, count = pair
+            if (
+                type(member_id) is not str
+                or member_id not in configured
+                or member_id in counts
+                or type(count) is not int
+                or not 0 <= count <= declared_caps[member_id]
+            ):
+                return unavailable
+            counts[member_id] = count
+        if set(counts) != set(configured) or sum(counts.values()) != snapshot.active_requests:
+            return unavailable
+        members = {}
+        for member in snapshot.members:
+            if (
+                type(member) is not MemberAdmissionSnapshot
+                or type(member.tier_id) is not str
+                or member.tier_id != tier.id
+                or type(member.member_id) is not str
+                or member.member_id not in configured
+                or member.member_id in members
+                or type(member.state) is not str
+                or member.state not in {"admitting", "quiesced"}
+                or type(member.active_requests) is not int
+                or member.active_requests != counts[member.member_id]
+                or type(member.max_concurrency) is not int
+                or member.max_concurrency != declared_caps[member.member_id]
+                or type(member.draining) is not bool
+                or member.draining
+                and (member.state != "quiesced" or member.active_requests == 0)
+            ):
+                return unavailable
+            if type(member.reason) is not str:
+                return unavailable
+            _reason_code(member.reason)
+            members[member.member_id] = {
+                "id": member.member_id,
+                "state": member.state,
+                "active_requests": member.active_requests,
+                "max_concurrency": member.max_concurrency,
+                "draining": member.draining,
+            }
+        if set(members) != set(configured):
+            return unavailable
+        return {
+            "status": "available",
+            "state": snapshot.state,
+            "active_requests": snapshot.active_requests,
+            "draining": snapshot.draining,
+            "member_active_requests": dict(sorted(counts.items())),
+            "max_concurrency": effective_ceiling,
+            "members": [members[member_id] for member_id in sorted(members)],
+        }
+    except Exception:  # noqa: BLE001 - never expose owner values or exceptions
+        return unavailable
+
+
+def _capacity_replica_pressure(tier: Tier, source: object) -> dict[str, ReplicaPressure]:
+    """Copy one exact current cache envelope, quarantining malformed members."""
+    member_ids = tuple(sorted(member.id for member in tier.replicas))
+    unknown = {member_id: ReplicaPressure() for member_id in member_ids}
+    if source is None:
+        return unknown
+    try:
+        raw = source.peek(tier.id)
+        if (
+            type(raw) is not dict
+            or len(raw) != len(member_ids)
+            or any(type(member_id) is not str for member_id in raw)
+            or set(raw) != set(member_ids)
+        ):
+            return unknown
+    except Exception:
+        return unknown
+    result = {}
+    for member_id in member_ids:
+        try:
+            result[member_id] = copy_replica_pressure(raw[member_id])
+        except Exception:
+            result[member_id] = ReplicaPressure()
+    return result
+
+
+def _with_pressure(members: list[dict], pressure: dict[str, ReplicaPressure]) -> None:
+    for member in members:
+        current = pressure[member["id"]]
+        member.update({
+            "freshness": current.freshness.value,
+            "pressure_ppm": (
+                current.pressure_ppm
+                if current.freshness is PressureFreshness.FRESH
+                else None
+            ),
+            "requests_state": current.requests_state.value,
+            "kv_state": current.kv_state.value,
+        })
+
+
 def _metrics(provider: MetricsProvider, tier: Tier) -> MetricsSnapshot:
     try:
         result = provider(tier)
@@ -627,6 +791,7 @@ def build_model_capacity(
     query: Mapping[str, list[str]],
     *,
     admission: Optional[TierAdmission] = None,
+    replica_pressure: object = None,
 ) -> dict:
     """Build a capacity snapshot for configured chat tiers."""
     supported = {
@@ -779,7 +944,12 @@ def build_model_capacity(
         }
         if replica:
             row.update(replica)
-            row["admission"] = _replica_admission(tier, admission)
+            if tier.replica_strategy == "capacity":
+                row["admission"] = _capacity_replica_admission(tier, admission)
+                pressure = _capacity_replica_pressure(tier, replica_pressure)
+                _with_pressure(row["members"], pressure)
+            else:
+                row["admission"] = _replica_admission(tier, admission)
             row["capacity"]["scheduler_max_num_seqs"] = None
             row["capacity"]["model_memory_gib"] = None
             row["gpu"]["name"] = None
@@ -790,6 +960,7 @@ def build_model_capacity(
 
 __all__ = [
     "MetricsSnapshot",
+    "ReplicaPressureCache",
     "build_model_capacity",
     "fetch_vllm_metrics",
     "replica_metadata",

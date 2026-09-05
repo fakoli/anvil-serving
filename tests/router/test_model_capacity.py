@@ -7,15 +7,25 @@ from dataclasses import replace
 
 import pytest
 
-from anvil_serving.router.admission import AdmissionSnapshot, TierAdmission
+from anvil_serving.router.admission import (
+    AdmissionSnapshot,
+    MemberAdmissionSnapshot,
+    TierAdmission,
+)
 from anvil_serving.router.availability import AlwaysAvailable, AvailabilityResult
 from anvil_serving.router.config import RouterConfig, ServerConfig, Tier
 from anvil_serving.router import serve as serve_module
 from anvil_serving.router.front_door import MODEL_CAPACITY_ENDPOINT, make_server
 from anvil_serving.router.model_capacity import (
     MetricsSnapshot,
+    ReplicaPressureCache,
     build_model_capacity,
     fetch_vllm_metrics,
+)
+from anvil_serving.router.replica_scheduler import (
+    PressureFreshness,
+    PressureSignalState,
+    ReplicaPressure,
 )
 from anvil_serving.router.serve import RoutingBackend
 from tests.router.helpers import StaticBackend
@@ -79,6 +89,27 @@ def _live(_tier) -> MetricsSnapshot:
             "multimodal_cache_queries_total": 5.0,
             "multimodal_cache_hits_total": 4.0,
         },
+    )
+
+
+def _capacity_replica_config(*, tier_max=6):
+    original = _replica_config()
+    tier = original.tiers[0]
+    members = tuple(replace(member, max_concurrency=index + 3) for index, member in enumerate(tier.replicas))
+    tier = replace(tier, replica_strategy="capacity", max_concurrency=tier_max, replicas=members)
+    return replace(original, tiers=(tier,))
+
+
+def _capacity_admission(config):
+    tier = config.tiers[0]
+    return TierAdmission(
+        [tier.id],
+        replica_members={tier.id: tuple(member.id for member in tier.replicas)},
+        tier_max_concurrency={tier.id: tier.max_concurrency} if tier.max_concurrency else None,
+        member_max_concurrency={
+            tier.id: {member.id: member.max_concurrency for member in tier.replicas}
+        },
+        replica_strategies={tier.id: "capacity"},
     )
 
 
@@ -602,3 +633,180 @@ def test_http_replica_owner_failure_stays_unavailable_not_idle(missing):
     assert admission["status"] == "unavailable"
     assert admission["active_requests"] is None
     assert "private" not in raw.decode()
+
+
+@pytest.mark.parametrize("tier_max,expected_ceiling", [(6, 6), (None, 7)])
+def test_capacity_strategy_projects_one_reconciled_atomic_owner_snapshot(
+    tier_max, expected_ceiling,
+):
+    config = _capacity_replica_config(tier_max=tier_max)
+    tier = config.tiers[0]
+    owner = _capacity_admission(config)
+    ready = {member.id: AvailabilityResult(True, "ready", "identity_passed") for member in tier.replicas}
+    lease = owner.acquire_member(tier.id, ready, pressure={
+        member.id: ReplicaPressure() for member in tier.replicas
+    })
+    assert lease is not None
+    try:
+        row = build_model_capacity(config, _MemberAvailability(), _live, {}, admission=owner)["data"][0]
+        assert row["admission"] == {
+            "status": "available",
+            "state": "admitting",
+            "active_requests": 1,
+            "draining": False,
+            "member_active_requests": {"member-a": 1, "member-b": 0},
+            "max_concurrency": expected_ceiling,
+            "members": [
+                {
+                    "id": "member-a", "state": "admitting", "active_requests": 1,
+                    "max_concurrency": 4, "draining": False,
+                },
+                {
+                    "id": "member-b", "state": "admitting", "active_requests": 0,
+                    "max_concurrency": 3, "draining": False,
+                },
+            ],
+        }
+        assert all(member["freshness"] == "unknown" for member in row["members"])
+        assert "reason" not in json.dumps(row["admission"])
+        owner.quiesce_member(tier.id, "member-a", reason="private-maintenance")
+        changed = build_model_capacity(
+            config, _MemberAvailability(), _live, {}, admission=owner
+        )["data"][0]["admission"]
+        assert changed["members"][0] == {
+            "id": "member-a", "state": "quiesced", "active_requests": 1,
+            "max_concurrency": 4, "draining": False,
+        }
+        assert "private-maintenance" not in json.dumps(changed)
+    finally:
+        lease.release()
+
+
+def test_capacity_strategy_rejects_forged_member_and_tier_snapshots_wholly():
+    config = _capacity_replica_config()
+    tier = config.tiers[0]
+    good_members = tuple(
+        MemberAdmissionSnapshot(
+            tier.id, member.id, "admitting", "admitting", 0, member.max_concurrency
+        )
+        for member in sorted(tier.replicas, key=lambda item: item.id)
+    )
+    cases = (
+        AdmissionSnapshot(
+            tier.id, "admitting", "admitting", 0,
+            member_active_requests=(("member-a", 0), ("member-b", 0)),
+            max_concurrency=8, members=good_members,
+        ),
+        replace(
+            AdmissionSnapshot(
+                tier.id, "admitting", "admitting", 0,
+                member_active_requests=(("member-a", 0), ("member-b", 0)),
+                max_concurrency=6, members=good_members,
+            ),
+            members=(replace(good_members[0], max_concurrency=99), good_members[1]),
+        ),
+        AdmissionSnapshot(
+            tier.id, "admitting", "admitting", 1,
+            member_active_requests=(("member-a", 1), ("member-b", 0)),
+            max_concurrency=6,
+            members=(replace(good_members[0], active_requests=0), good_members[1]),
+        ),
+    )
+
+    class Source:
+        def __init__(self, snapshot):
+            self.snapshot_value = snapshot
+            self.calls = 0
+
+        def snapshot(self, _tier_id):
+            self.calls += 1
+            return self.snapshot_value
+
+    for snapshot in cases:
+        source = Source(snapshot)
+        admission = build_model_capacity(
+            config, _MemberAvailability(), _live, {}, admission=source
+        )["data"][0]["admission"]
+        assert admission == {
+            "status": "unavailable", "state": None, "active_requests": None,
+            "draining": None, "member_active_requests": None,
+            "max_concurrency": None, "members": None,
+        }
+        assert source.calls == 1
+
+
+def test_capacity_pressure_peek_is_read_only_and_projection_quarantines_individual_values():
+    config = _capacity_replica_config()
+    tier = config.tiers[0]
+    provider_calls = []
+    now = [0.0]
+    cache = ReplicaPressureCache(
+        (tier,), metrics_provider=lambda _tier: provider_calls.append(1), monotonic=lambda: now[0]
+    )
+    try:
+        assert all(value.freshness is PressureFreshness.UNKNOWN for value in cache.peek(tier.id).values())
+        with cache._condition:
+            for entry in cache._entries.values():
+                entry.pressure = ReplicaPressure(
+                    PressureFreshness.FRESH, 500_000,
+                    PressureSignalState.VALID, PressureSignalState.MISSING,
+                )
+                entry.completed_at = 0.0
+        now[0] = 5.0
+        assert all(value.freshness is PressureFreshness.FRESH for value in cache.peek(tier.id).values())
+        now[0] = 5.000001
+        assert all(value.freshness is PressureFreshness.STALE for value in cache.peek(tier.id).values())
+        with cache._condition:
+            for entry in cache._entries.values():
+                entry.running_at = 4.0
+        assert all(value.freshness is PressureFreshness.FAILED for value in cache.peek(tier.id).values())
+        with cache._condition:
+            assert not cache._queue
+            assert cache._workers == []
+        assert provider_calls == []
+    finally:
+        cache.close()
+    assert all(value.freshness is PressureFreshness.UNKNOWN for value in cache.peek(tier.id).values())
+
+    fresh = ReplicaPressure(
+        PressureFreshness.FRESH,
+        625_000,
+        PressureSignalState.VALID,
+        PressureSignalState.MISSING,
+    )
+
+    class PressureSource:
+        calls = 0
+
+        def peek(self, tier_id):
+            self.calls += 1
+            assert tier_id == tier.id
+            return {"member-a": fresh, "member-b": object()}
+
+    source = PressureSource()
+    row = build_model_capacity(
+        config, _MemberAvailability(), _live, {},
+        admission=_capacity_admission(config), replica_pressure=source,
+    )["data"][0]
+    assert source.calls == 1
+    assert row["members"][0]["freshness"] == "fresh"
+    assert row["members"][0]["pressure_ppm"] == 625_000
+    assert row["members"][0]["requests_state"] == "valid"
+    assert row["members"][1]["freshness"] == "unknown"
+    assert row["members"][1]["pressure_ppm"] is None
+
+
+def test_capacity_pressure_bad_envelope_makes_every_member_unknown():
+    config = _capacity_replica_config()
+
+    class BadEnvelope:
+        def peek(self, _tier_id):
+            return {"member-a": ReplicaPressure()}
+
+    members = build_model_capacity(
+        config, _MemberAvailability(), _live, {},
+        admission=_capacity_admission(config), replica_pressure=BadEnvelope(),
+    )["data"][0]["members"]
+    assert [(member["id"], member["freshness"], member["pressure_ppm"]) for member in members] == [
+        ("member-a", "unknown", None), ("member-b", "unknown", None),
+    ]
