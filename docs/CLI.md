@@ -323,6 +323,10 @@ required operands, choices, and defaults.
 | `host shared-memory` | Inspect and reclaim vLLM native KV-offload shared memory. | `read` / `bounded` | - |
 | `host shared-memory status` | Inspect ownership of vLLM offload mmap files. | `read` / `bounded` | - |
 | `host shared-memory reclaim` | Remove only twice-verified orphan vLLM offload mmap files. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `host docker-image` | Audit and remove one exact immutable Docker image. | `read` / `bounded` | - |
+| `host docker-image remove` | Remove one unreferenced full image ID or digest. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config-home` |
+| `host docker-disk` | Inspect and compact the Docker Desktop data disk. | `read` / `bounded` | - |
+| `host docker-disk compact` | Stop Docker Desktop and compact one exact data VHDX. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host wsl-config` | Render or update WSL configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host restart-docker` | Restart Docker Desktop. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host reset-wsl` | Reset WSL. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
