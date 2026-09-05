@@ -118,9 +118,10 @@ def commands() -> CommandNode:
                 "Validate and atomically install a router config, including tier-set migrations.",
                 "anvil_serving.router_manage",
                 role="router",
+                forward_resolution_options=True,
                 options=CONFIRM_OPTIONS
                 + (
-                    _option("--config", summary="Complete direct router config.", value_name="PATH"),
+                    _option("--config", summary="Complete router config to validate and install.", value_name="PATH"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
                     _option(
                         "--drain-timeout",

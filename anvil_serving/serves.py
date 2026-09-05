@@ -1358,30 +1358,55 @@ def _install_router_config(
     Returns 0 on success, 1 when the prior config was certainly retained or
     restored, and 4 when the deployed router state is uncertain.
     """
-    try:
-        with open(config_file, "r", encoding="utf-8") as handle:
-            config_text = handle.read().replace("\r\n", "\n").replace("\r", "\n")
-    except OSError as exc:
-        print("  router config unreadable: %s" % exc)
-        return 1
+    from .router.topology_validation import ValidatedRouterConfigSnapshot
+
+    if isinstance(config_file, ValidatedRouterConfigSnapshot):
+        # Managed activation has already captured and topology-validated these
+        # bytes.  Never reopen or newline-normalize the original source path.
+        config_bytes = config_file.config_bytes
+        config_label = "validated snapshot"
+    else:
+        try:
+            with open(config_file, "r", encoding="utf-8") as handle:
+                config_text = handle.read().replace("\r\n", "\n").replace("\r", "\n")
+        except OSError:
+            print("  router config unreadable")
+            return 1
+        # Direct internal callers retain the deployed image as their syntax
+        # authority. A locally parseable replica config is nevertheless
+        # refused before Docker; malformed direct input remains a validator
+        # refusal just as it was before the snapshot-managed activation path.
+        try:
+            from .router.config import load as load_router_config
+
+            direct_config = load_router_config(config_file)
+        except Exception:
+            direct_config = None
+        if direct_config is not None:
+            try:
+                _guard_replica_lifecycle(
+                    direct_config, [tier.id for tier in direct_config.tiers]
+                )
+            except ReplicaLifecycleUnsupported as exc:
+                print("  router config install refused: %s" % exc.code)
+                return 1
+        config_bytes = config_text.encode("utf-8")
+        config_label = "direct config"
 
     validate = [
         "docker", "exec", "-i", container, "python", "-c",
         _DIRECT_CONFIG_VALIDATOR,
     ]
-    print("  validate capability meta-router config: %s" % config_file)
+    print("  validate capability meta-router config: %s" % config_label)
     try:
         result = _run(
-            validate, input=config_text, capture_output=True, text=True,
-            encoding="utf-8",
+            validate, input=config_bytes, capture_output=True,
         )
     except FileNotFoundError:
         print("  router config install failed: docker not available")
         return 1
     if result.returncode != 0:
-        print("  router config rejected by deployed image: %s" % (
-            result.stderr or result.stdout or "validation failed"
-        ).strip())
+        print("  router config rejected by deployed image")
         return 1
 
     image_result = _run(
@@ -1406,9 +1431,7 @@ def _install_router_config(
         capture_output=True, text=True,
     )
     if backup.returncode != 0:
-        print("  router config backup failed: %s" % (
-            backup.stderr or backup.stdout or "unknown error"
-        ).strip())
+        print("  router config backup failed")
         return 1
     write_script = "cat > {new} && mv {new} {cfg}".format(
         new=new_path, cfg=config_path
@@ -1416,17 +1439,13 @@ def _install_router_config(
     write = _run(
         ["docker", "run", "--rm", "-i", "--user", "0", "-v", mount,
          "--entrypoint", "sh", image, "-c", write_script],
-        # Bytes are deliberate.  On Windows, subprocess text mode rewrites
-        # every canonical LF to CRLF before Docker receives stdin, defeating
-        # the normalization above and making the installed artifact differ by
-        # host OS.  A binary pipe preserves the exact validated UTF-8 bytes.
-        input=config_text.encode("utf-8"), capture_output=True,
+        # Bytes are deliberate. On Windows, text mode can rewrite line endings
+        # before Docker receives stdin. A binary pipe preserves the exact
+        # snapshot (or legacy direct-path canonicalization) selected above.
+        input=config_bytes, capture_output=True,
     )
     if write.returncode != 0:
-        detail = write.stderr or write.stdout or b"unknown error"
-        if isinstance(detail, bytes):
-            detail = detail.decode("utf-8", "replace")
-        print("  router config write failed: %s" % detail.strip())
+        print("  router config write failed")
         return 1
 
     restart = _run(
