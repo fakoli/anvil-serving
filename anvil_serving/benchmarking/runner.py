@@ -3,6 +3,7 @@
 import json
 import math
 import random
+import statistics
 import sys
 import time
 from dataclasses import dataclass
@@ -149,8 +150,21 @@ def result_timing(result, fallback_index=None):
             if decode_tokens is not None and decode_tokens > 0 and generation > 0
             else None
         ),
+        "mean_time_per_output_token_ms": (
+            generation * 1000.0 / decode_tokens
+            if decode_tokens is not None and decode_tokens > 0 and generation > 0
+            else None
+        ),
+        "tpot_ms": (
+            generation * 1000.0 / decode_tokens
+            if decode_tokens is not None and decode_tokens > 0 and generation > 0
+            else None
+        ),
         "reasoning_chunks": result.get("reasoning_chunks", 0),
         "content_chunks": result.get("content_chunks", 0),
+        "request_canary": result.get("request_canary"),
+        "controlled_output": result.get("controlled_output"),
+        "visible_content_truncated": bool(result.get("visible_content_truncated")),
     }
     return row
 
@@ -170,32 +184,83 @@ def result_timings(results):
     )
 
 
-def _timing_percentiles(rows, key, *, scale=1.0):
+def _timing_distribution(rows, key, *, scale=1.0):
     values = [row.get(key) for row in rows if row.get(key) is not None]
     if not values:
-        return None, None
-    p50, p95 = percentiles(values, [50, 95])
-    return p50 * scale, p95 * scale
+        return {
+            "samples": 0,
+            "mean": None,
+            "stddev": None,
+            "mean_ci95_low": None,
+            "mean_ci95_high": None,
+            "min": None,
+            "p25": None,
+            "p50": None,
+            "p75": None,
+            "p90": None,
+            "p95": None,
+            "p99": None,
+            "max": None,
+        }
+    p25, p50, p75, p90, p95, p99 = percentiles(
+        values, [25, 50, 75, 90, 95, 99]
+    )
+    mean = statistics.fmean(values)
+    stddev = statistics.stdev(values) if len(values) > 1 else 0.0
+    ci95_half_width = 1.96 * stddev / math.sqrt(len(values))
+    return {
+        "samples": len(values),
+        "mean": mean * scale,
+        "stddev": stddev * scale,
+        "mean_ci95_low": (mean - ci95_half_width) * scale,
+        "mean_ci95_high": (mean + ci95_half_width) * scale,
+        "min": min(values) * scale,
+        "p25": p25 * scale,
+        "p50": p50 * scale,
+        "p75": p75 * scale,
+        "p90": p90 * scale,
+        "p95": p95 * scale,
+        "p99": p99 * scale,
+        "max": max(values) * scale,
+    }
+
+
+def _distribution_metrics(prefix, distribution, *, unit_suffix=""):
+    return {
+        (
+            f"{prefix}_samples"
+            if statistic == "samples"
+            else f"{prefix}_{statistic}{unit_suffix}"
+        ): value
+        for statistic, value in distribution.items()
+    }
 
 
 def result_metrics(results):
     timing_rows = result_timings(results)
-    first_output_p50, first_output_p95 = _timing_percentiles(
-        timing_rows, "time_to_first_output_ms"
+    first_output = _timing_distribution(timing_rows, "time_to_first_output_ms")
+    ttft = _timing_distribution(timing_rows, "ttft_ms")
+    e2e = _timing_distribution(timing_rows, "e2e_ms")
+    generation = _timing_distribution(timing_rows, "generation_ms")
+    prefill = _timing_distribution(timing_rows, "effective_prefill_tok_s")
+    decode = _timing_distribution(timing_rows, "decode_tok_s")
+    mitl = _timing_distribution(timing_rows, "mean_inter_token_latency_ms")
+    mtpot = _timing_distribution(timing_rows, "mean_time_per_output_token_ms")
+    prompt = _timing_distribution(timing_rows, "prompt_tokens")
+    completion = _timing_distribution(timing_rows, "output_tokens")
+    controlled_samples = sum(
+        row.get("controlled_output") is not None for row in timing_rows
     )
-    ttft_p50, ttft_p95 = _timing_percentiles(timing_rows, "ttft_ms")
-    e2e_p50, e2e_p95 = _timing_percentiles(timing_rows, "e2e_ms")
-    generation_p50, generation_p95 = _timing_percentiles(
-        timing_rows, "generation_ms"
+    controlled_exact = sum(
+        (row.get("controlled_output") or {}).get("exact_adherence") is True
+        for row in timing_rows
     )
-    prefill_p50, prefill_p95 = _timing_percentiles(
-        timing_rows, "effective_prefill_tok_s"
+    controlled_unobservable = sum(
+        (row.get("controlled_output") or {}).get("exact_adherence") is None
+        for row in timing_rows
+        if row.get("controlled_output") is not None
     )
-    decode_p50, decode_p95 = _timing_percentiles(timing_rows, "decode_tok_s")
-    mitl_p50, mitl_p95 = _timing_percentiles(
-        timing_rows, "mean_inter_token_latency_ms"
-    )
-    prompt_p50, prompt_p95 = _timing_percentiles(timing_rows, "prompt_tokens")
+    controlled_observable = controlled_samples - controlled_unobservable
     raw_output_units = sum(
         result.get("out_toks") or 0
         for result in results
@@ -223,25 +288,35 @@ def result_metrics(results):
         if row["prompt_tokens"] is not None
     ]
     return {
-        "time_to_first_output_p50_ms": first_output_p50,
-        "time_to_first_output_p95_ms": first_output_p95,
-        "ttft_p50_ms": ttft_p50,
-        "ttft_p95_ms": ttft_p95,
-        "ttft_samples": len(timing_rows),
-        "generation_p50_ms": generation_p50,
-        "generation_p95_ms": generation_p95,
-        "e2e_p50_ms": e2e_p50,
-        "e2e_p95_ms": e2e_p95,
-        "effective_prefill_tok_s_p50": prefill_p50,
-        "effective_prefill_tok_s_p95": prefill_p95,
-        "decode_tok_s_p50": decode_p50,
-        "decode_tok_s_p95": decode_p95,
-        "mean_inter_token_latency_ms_p50": mitl_p50,
-        "mean_inter_token_latency_ms_p95": mitl_p95,
+        **_distribution_metrics(
+            "time_to_first_output", first_output, unit_suffix="_ms"
+        ),
+        **_distribution_metrics("ttft", ttft, unit_suffix="_ms"),
+        **_distribution_metrics("generation", generation, unit_suffix="_ms"),
+        **_distribution_metrics("e2e", e2e, unit_suffix="_ms"),
+        **_distribution_metrics("effective_prefill_tok_s", prefill),
+        **_distribution_metrics("decode_tok_s", decode),
+        **_distribution_metrics("mean_inter_token_latency_ms", mitl),
+        **_distribution_metrics("mean_time_per_output_token", mtpot, unit_suffix="_ms"),
+        **_distribution_metrics("tpot", mtpot, unit_suffix="_ms"),
         "prompt_tokens": sum(prompt_tokens) if prompt_tokens else None,
         "prompt_token_samples": len(prompt_tokens),
-        "prompt_tokens_p50": prompt_p50,
-        "prompt_tokens_p95": prompt_p95,
+        **_distribution_metrics("prompt_tokens", prompt),
+        **_distribution_metrics("completion_tokens", completion),
+        "request_canary_samples": sum(
+            row.get("request_canary") is not None for row in timing_rows
+        ),
+        "request_canary_passed": sum(
+            bool((row.get("request_canary") or {}).get("passed"))
+            for row in timing_rows
+        ),
+        "controlled_output_samples": controlled_samples,
+        "controlled_output_exact_adherence": controlled_exact,
+        "controlled_output_unobservable": controlled_unobservable,
+        "controlled_output_exact_adherence_rate": (
+            controlled_exact / controlled_observable
+            if controlled_observable else None
+        ),
         "output_tokens": raw_output_units if exact_output_tokens else None,
         "content_chunks": content_chunks,
         "reasoning_chunks": reasoning_chunks,

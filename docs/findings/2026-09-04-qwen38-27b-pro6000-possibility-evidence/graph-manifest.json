@@ -1,0 +1,303 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "Qwen3.8 27B RTX PRO 6000 finalist matrix",
+  "subtitle": "Direct online 4K/C8 fixed-output n=100 comparisons; TP1 and TP2 are labeled separately; DP2 appears only in the two-GPU aggregate panel; 82K/C8 panels are n=8; no promotion",
+  "output": "benchmark-matrix.svg",
+  "data_output": "benchmark-graph-data.json",
+  "metric_semantics": {
+    "comparison_set": "The 4K/C8 panels use the retained 100-request fixed-output canary artifacts for the Inferact SGLang K12 finalist, RadixArk SGLang K8, Inferact SGLang TP2 K12, and kelnei vLLM 0.27.1 MTP2/no-speculation profiles.",
+    "topology": "TP1 is one RTX PRO 6000. TP2 is one service spanning two RTX PRO 6000 GPUs. DP2 is two independent TP1 replicas and is shown only in the dedicated two-GPU aggregate-throughput panel.",
+    "percentiles": "p50 and p99 are calculated over 100 successful requests in the fixed-output 4K/C8 cells. The separate 82K/C8 collapse panels contain eight successful requests per supported configuration and therefore show p50 only.",
+    "ttft": "Client-observed request start through first non-empty streamed content delta.",
+    "effective_prefill": "Prompt tokens divided by client-observed TTFT; includes queueing, scheduling, prefill, and first-token work.",
+    "decode": "Completion tokens after the first token divided by client-observed generation time; completion tokens may include reasoning tokens.",
+    "tpot": "Generation time divided by completion tokens after the first token.",
+    "mean_itl": "The capacity-v3 aggregate uses the same per-request calculation as TPOT; this is not a raw timestamp for every token.",
+    "e2e": "Client-observed request start through stream completion.",
+    "aggregate": "Total completion tokens divided by wall-clock duration for the retained cell. DP2 plots the conservative 1401.8 tok/s lower bound; legacy whole-second replica timestamps support 1401.8–1423.4 tok/s, not exact alignment."
+  },
+  "charts": [
+    {
+      "title": "4K/C8 n100 TTFT p50",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Configuration",
+      "y_label": "Milliseconds",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM no-spec", "artifact": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4K/C8 n100 TTFT p99",
+      "metric": "metrics.ttft_p99_ms",
+      "x_label": "Configuration",
+      "y_label": "Milliseconds",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM no-spec", "artifact": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4K/C8 n100 E2E p50",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Configuration",
+      "y_label": "Milliseconds",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM no-spec", "artifact": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4K/C8 n100 E2E p99",
+      "metric": "metrics.e2e_p99_ms",
+      "x_label": "Configuration",
+      "y_label": "Milliseconds",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM no-spec", "artifact": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4K/C8 n100 TPOT / mean ITL p50",
+      "metric": "metrics.tpot_p50_ms",
+      "x_label": "Configuration",
+      "y_label": "Milliseconds / token",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM no-spec", "artifact": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4K/C8 n100 effective prefill p50",
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "x_label": "Configuration",
+      "y_label": "Effective prompt tokens / second",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM no-spec", "artifact": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4K/C8 n100 TPOT / mean ITL p99",
+      "metric": "metrics.tpot_p99_ms",
+      "x_label": "Configuration",
+      "y_label": "Milliseconds / token",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM no-spec", "artifact": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4K/C8 n100 decode p50",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "Configuration",
+      "y_label": "Decode tokens / second",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM no-spec", "artifact": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4K/C8 n100 one-GPU aggregate throughput",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "TP1 configuration",
+      "y_label": "Aggregate tokens / second",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"},
+            {"x": "vLLM no-spec", "artifact": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Two GPUs: TP2 C8 vs DP2 C16 lower bound",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Two-GPU topology and offered concurrency",
+      "y_label": "Aggregate tokens / second",
+      "series": [
+        {
+          "label": "Two GPUs / fixed-output n100",
+          "points": [
+            {"x": "TP2 service C8", "artifact": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"},
+            {"x": "DP2 lower bound", "artifact": "dp2-combined-4k-c16-canary-long256-n100.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "82K/C8 collapse: TTFT p50 (n=8)",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Supported configuration",
+      "y_label": "Milliseconds",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-82k-c8-n8.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-82k-c8.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-82k-c8.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-82k-c8.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "82K/C8 collapse: E2E p50 (n=8)",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Supported configuration",
+      "y_label": "Milliseconds",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-82k-c8-n8.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-82k-c8.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-82k-c8.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-82k-c8.json"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "82K/C8 collapse: aggregate throughput (n=8)",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Supported configuration",
+      "y_label": "Aggregate tokens / second",
+      "series": [
+        {
+          "label": "TP1 / one GPU",
+          "points": [
+            {"x": "SGL I-K12", "artifact": "finalist-k12-chunk1k-82k-c8-n8.json"},
+            {"x": "SGL R-K8", "artifact": "radixark-dflash-k8-82k-c8.json"},
+            {"x": "vLLM MTP2", "artifact": "kelnei-vllm0271-mtp2-82k-c8.json"}
+          ]
+        },
+        {
+          "label": "TP2 / two GPUs",
+          "points": [
+            {"x": "SGL I-K12 TP2", "artifact": "opt-tp2-k12-chunk1k-82k-c8.json"}
+          ]
+        }
+      ]
+    }
+  ]
+}
