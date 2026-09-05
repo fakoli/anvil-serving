@@ -59,3 +59,11 @@ the exact validator and receiver source bytes are embedded with a fixed
 five-entry archive layout and isolated-launcher entry point. It performs no
 receiver provisioning, permission check, trusted-config read, staging,
 activation, or deployment.
+
+T004.6 adds only the opened-object permission primitive. It classifies a
+borrowed Linux descriptor from `fstat` plus the effective UID, and a borrowed
+Windows disk handle from its owner and bounded DACL bytes. It never opens a
+path, reads content, changes descriptor position, starts a receiver, or alters
+production permissions. Pure ACL/mode matrices and native temporary descriptor
+coverage remain implementation evidence only; receiver staging and activation
+are still separate work.

@@ -41,6 +41,21 @@ the exact allowed labels and retains lifecycle mutation exclusions. At
 filters. T005 updates that literal wire expectation and independently parses
 the actual arguments while preserving the forbidden ambient-environment spy.
 
+## Explicit CLI manifest global classification
+
+At the T008 base, the CLI reference renderer inferred global options by
+intersecting the flag tuples of every visible command. Sealed router and fleet
+workload commands intentionally omit resolution globals, so that inference
+repeated global flags on unrelated command rows. Conversely, a command-local
+flag shared by all visible commands could be hidden as though it were global.
+
+T007 publishes schema 7 with an explicit top-level `global_options` array.
+The T008 candidate validates that declaration and excludes only its exact flag
+tuples. Missing or malformed metadata fails closed; there is no legacy
+intersection fallback. T009 owns regeneration of CLI.md and reference
+inventories. This remains candidate source pending consolidated acceptance and
+deployment.
+
 ## Source evidence
 
 - T001: 1005be17, EV9C6C5074; 66 controller-source tests and Ruff passed.
