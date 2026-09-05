@@ -1662,32 +1662,64 @@ caps; do not reimplement transport, scheduler, serializer or selection here.
 - `python scripts/run_tests.py tests/observability/test_fleet_workload_sources.py tests/observability/test_controller_workload_source.py tests/observability/test_fleet_workload_collector.py -x -q`
 - `python -m ruff check anvil_serving/observability/fleet_workload_sources.py tests/observability/test_fleet_workload_sources.py`
 
-### T006.1: Preserve canonical HTTP workload snapshots for clients
+### T006.1.1: Preserve canonical router snapshots for clients
 
 **Feature:** F004
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/observability/probes/router_workloads.py, anvil_serving/observability/probes/controller_workloads.py, tests/observability/test_router_workload_source.py, tests/observability/test_controller_workload_source.py
-**Dependencies:** T012.5, T013, T014.1
+**Likely files:** anvil_serving/observability/probes/router_workloads.py, tests/observability/test_router_workload_source.py
+**Dependencies:** T012.5
 
 Add read_router_node_workloads(endpoint, auth_env, expected_node, query, now,
-*, environment=None, _open=None) returning NodeResult, and
-read_controller_fleet_workloads(endpoint, auth_env, expected_node, query, now,
+*, environment=None, _open=None) returning NodeResult. Refactor the existing
+SourceResult reader over it, preserving that owner's fixed source-failure
+contract. Validate exact canonical expected-node/query/time before config,
+environment or HTTP. Retain exact loopback /v1 grammar, normalized named
+credential, no proxy/redirect/retry, existing deliberate owner loopback-alias
+behavior, hermetic mappings and exact response-node equality. A provable
+host-filter exclusion returns an empty COMPLETE single-router-source node
+without environment or HTTP access.
+
+Require exactly one router source. Validate source and query against trusted
+receipt now through the canonical builder, then require equality after
+restoring only the original valid node/source timestamps. Do not refresh
+stale observations or trust the remote clock for recency/skew. Return the
+original canonical snapshot. The client entrypoint raises only fixed
+INVALID, UNSUPPORTED, FUTURE or UNAVAILABLE WorkloadError on failure;
+unsupported schema/future retain classification. The existing SourceResult
+entrypoint converts failures to its established fixed source envelope.
+Never expose endpoint, reference/value, response, exception or transport data.
+
+**Acceptance criteria:**
+
+- Exact router identity, one-source shape, original provenance and receipt-relative query/skew checks are shared by client and legacy owner paths without a second serializer.
+- Canonical exclusions avoid environment/network access; invalid arguments precede source access and transport/cleanup/schema failures stay fixed and private.
+- Existing SourceResult tests remain compatible and new snapshot, stale-time, malformed/future/unsupported, query-mismatch and no-alternate-source tests pass.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_router_workload_source.py tests/observability/test_workload_collection.py -x -q`
+- `python -m ruff check anvil_serving/observability/probes/router_workloads.py tests/observability/test_router_workload_source.py`
+
+### T006.1: Preserve canonical fleet HTTP snapshots for clients
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/observability/probes/controller_workloads.py, tests/observability/test_controller_workload_source.py
+**Dependencies:** T013, T014.1, T006.1.1
+
+Add read_controller_fleet_workloads(endpoint, auth_env, expected_node, query, now,
 *, environment=None, monotonic=time.monotonic, _open=None) returning
-FleetResult. Refactor the existing router SourceResult reader over the new
-node reader without changing its public API or fixed source-failure behavior.
-The new client readers raise only fixed WorkloadError failures when the
+FleetResult. The sibling router client is owned by T006.1.1 and is not edited
+here. The new client reader raises only fixed WorkloadError failures when the
 remote snapshot cannot be established; they never invent a complete-empty
 fleet inventory. Canonical partial/unavailable observations are valid data.
 
 Validate exact canonical expected-node/query/time before config, environment
-or network. Router uses the existing exact loopback /v1 endpoint grammar,
-one named normalized credential, no proxy/redirect/retry and exact response
-node equality. The injected mapping stays hermetic; the existing owner
-reader's deliberate loopback-alias behavior remains compatible, while CLI
-callers pass only a single credential mapping. A provable router host-filter
-exclusion is an empty COMPLETE single-router-source node without reading
-environment or HTTP. Fleet expected_node identifies the aggregator controller,
+or network. Use the existing controller endpoint/reference/credential checks
+and capture only one selected environment value; injected mappings remain
+hermetic. Fleet expected_node identifies the aggregator controller,
 not a workload filter: never skip its call merely because query.host differs.
 
 Fleet uses a fresh ControllerTransport with explicit expected_node,
@@ -1712,8 +1744,7 @@ original fleet collection timestamp, then require equality to the decoded
 remote snapshot. A changed source failure, query mismatch, cap, order,
 omission or status means invalid remote data, not silent client repair.
 Return the original canonical snapshot on equality, preserving all valid
-outer/node/source timestamps. Apply the equivalent one-router-source
-normalization/equality check for router snapshots, preserving its outer time.
+outer/node/source timestamps.
 
 Failures are fixed INVALID, UNSUPPORTED, FUTURE or UNAVAILABLE WorkloadError
 codes/messages with no endpoint, environment reference/value, body, path,
