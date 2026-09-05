@@ -18,6 +18,7 @@ from ..workload_collection import build_node_workloads
 from ..workloads import (
     MAX_FUTURE_SECONDS,
     MAX_JSON_BYTES,
+    NodeResult,
     ResultStatus,
     SourceResult,
     Truncation,
@@ -52,10 +53,6 @@ def _canonical_query(query: WorkloadQuery) -> WorkloadQuery:
     )
 
 
-def _unavailable(fallback) -> SourceResult:
-    return next(source for source in fallback.sources if source.owner is WorkloadOwner.ROUTER)
-
-
 def _router_source(node) -> SourceResult:
     return next(source for source in node.sources if source.owner is WorkloadOwner.ROUTER)
 
@@ -69,6 +66,16 @@ def _failed(fallback, code: WorkloadErrorCode) -> SourceResult:
         truncation=Truncation(0, None),
         error=code,
     )
+
+
+def _failure(code: WorkloadErrorCode) -> WorkloadError:
+    message = {
+        WorkloadErrorCode.INVALID: "router workload snapshot is invalid",
+        WorkloadErrorCode.UNSUPPORTED: "router workload schema is unsupported",
+        WorkloadErrorCode.FUTURE: "router workload timestamp is in the future",
+        WorkloadErrorCode.UNAVAILABLE: "router workload source is unavailable",
+    }[code]
+    return WorkloadError(code, message)
 
 
 def _close_http_error(error: urllib.error.HTTPError) -> None:
@@ -136,36 +143,41 @@ def _query_string(query: WorkloadQuery) -> str:
     return urllib.parse.urlencode(values)
 
 
-def read_router_workloads(
+def read_router_node_workloads(
     endpoint: str,
     auth_env: str,
-    host: str,
+    expected_node: str,
     query: WorkloadQuery,
     now: datetime,
     *,
     environment: Mapping[str, str] | None = None,
     _open: Callable[..., object] | None = None,
-) -> SourceResult:
-    """Read one declared, authenticated router workload source without retries."""
-    fallback = build_node_workloads(host, query, now, {})
+) -> NodeResult:
+    """Read an exact authenticated router snapshot, preserving its provenance."""
+    fallback = build_node_workloads(expected_node, query, now, {})
     checked_query = _canonical_query(query)
     checked_now = fallback.collection_timestamp
+    if checked_query.host is not None and checked_query.host != expected_node:
+        source = SourceResult(
+            WorkloadOwner.ROUTER, ResultStatus.COMPLETE, checked_now, (), Truncation(0, 0),
+        )
+        return NodeResult(expected_node, ResultStatus.COMPLETE, checked_now, (source,))
     declared = _declared_endpoint(endpoint)
     if declared is None or type(auth_env) is not str or _ENV_RE.fullmatch(auth_env) is None:
-        return _unavailable(fallback)
+        raise _failure(WorkloadErrorCode.UNAVAILABLE) from None
     values = _environment_value(environment, auth_env)
     if values is None:
-        return _unavailable(fallback)
+        raise _failure(WorkloadErrorCode.UNAVAILABLE) from None
     credential_value, loopback_alias = values
     try:
         credential = _normalize_credential(credential_value)
         token = credential.decode("ascii")
     except (AuthorizationError, UnicodeError):
-        return _unavailable(fallback)
+        raise _failure(WorkloadErrorCode.UNAVAILABLE) from None
     try:
         base = runtime_url(declared, environ={LOOPBACK_ALIAS_ENV: loopback_alias})
     except Exception:
-        return _unavailable(fallback)
+        raise _failure(WorkloadErrorCode.UNAVAILABLE) from None
     url = base.rstrip("/") + "/workloads?" + _query_string(checked_query)
     request = urllib.request.Request(
         url,
@@ -195,25 +207,53 @@ def read_router_workloads(
         if response is not None and not _close_response(response):
             transport_error = WorkloadErrorCode.UNAVAILABLE
     if transport_error is not None:
-        return _failed(fallback, transport_error)
+        raise _failure(transport_error) from None
     if payload is None:
-        return _failed(fallback, WorkloadErrorCode.UNAVAILABLE)
+        raise _failure(WorkloadErrorCode.UNAVAILABLE) from None
     try:
         node = node_result_from_json(payload)
-        if node.host != host:
+        if node.host != expected_node:
             raise WorkloadError(WorkloadErrorCode.INVALID, "invalid router workload source")
-        if node.collection_timestamp > checked_now + timedelta(seconds=MAX_FUTURE_SECONDS):
+        if node.collection_timestamp - checked_now > timedelta(seconds=MAX_FUTURE_SECONDS):
             raise WorkloadError(WorkloadErrorCode.FUTURE, "future router workload source")
         source = _single_router_source(node)
-        if source.collection_timestamp > checked_now + timedelta(seconds=MAX_FUTURE_SECONDS):
+        if source.collection_timestamp - checked_now > timedelta(seconds=MAX_FUTURE_SECONDS):
             raise WorkloadError(WorkloadErrorCode.FUTURE, "future router workload source")
-        result = build_node_workloads(host, checked_query, checked_now, {WorkloadOwner.ROUTER: source})
-        return _router_source(result)
+        result = build_node_workloads(expected_node, checked_query, checked_now, {WorkloadOwner.ROUTER: source})
+        checked_source = _router_source(result)
+        if checked_source != source:
+            code = WorkloadErrorCode.FUTURE if checked_source.error is WorkloadErrorCode.FUTURE else WorkloadErrorCode.INVALID
+            raise _failure(code)
+        return node
     except WorkloadError as exc:
-        code = WorkloadErrorCode.FUTURE if exc.code is WorkloadErrorCode.FUTURE else WorkloadErrorCode.INVALID
-        return _failed(fallback, code)
+        code = exc.code if exc.code in {WorkloadErrorCode.FUTURE, WorkloadErrorCode.UNSUPPORTED} else WorkloadErrorCode.INVALID
+        raise _failure(code) from None
     except Exception:
-        return _failed(fallback, WorkloadErrorCode.INVALID)
+        raise _failure(WorkloadErrorCode.INVALID) from None
 
 
-__all__ = ["read_router_workloads"]
+def read_router_workloads(
+    endpoint: str,
+    auth_env: str,
+    host: str,
+    query: WorkloadQuery,
+    now: datetime,
+    *,
+    environment: Mapping[str, str] | None = None,
+    _open: Callable[..., object] | None = None,
+) -> SourceResult:
+    """Project the client snapshot to the established owner-source contract."""
+    fallback = build_node_workloads(host, query, now, {})
+    try:
+        node = read_router_node_workloads(
+            endpoint, auth_env, host, query, now, environment=environment, _open=_open,
+        )
+        return _single_router_source(node)
+    except WorkloadError as exc:
+        # The original owner reader classified unsupported wire as invalid;
+        # the client API retains the more specific error without changing it.
+        code = WorkloadErrorCode.INVALID if exc.code is WorkloadErrorCode.UNSUPPORTED else exc.code
+        return _failed(fallback, code)
+
+
+__all__ = ["read_router_node_workloads", "read_router_workloads"]

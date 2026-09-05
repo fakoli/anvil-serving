@@ -1701,13 +1701,49 @@ Never expose endpoint, reference/value, response, exception or transport data.
 - `python scripts/run_tests.py tests/observability/test_router_workload_source.py tests/observability/test_workload_collection.py -x -q`
 - `python -m ruff check anvil_serving/observability/probes/router_workloads.py tests/observability/test_router_workload_source.py`
 
+### T006.1.2: Permit explicitly bounded large controller responses
+
+**Feature:** F004
+**Priority:** high
+**Type:** bugfix
+**Likely files:** anvil_serving/transports.py, tests/test_transports.py
+**Dependencies:** T013.2
+
+The canonical fleet client requires an 8 MiB response bound, but the shared
+transport validator rejects values above 1 MiB. Fix the explicit controller
+limit without changing any existing default or unrelated transport policy.
+The reproduction and scope are in
+`.tickets/2026-09-05-controller-workload-response-bound.md`.
+
+Keep DEFAULT_MAX_RESPONSE_BYTES at 65536 and MAX_RESPONSE_BYTES at 1048576.
+Add a controller-only maximum of 8388608. Parameterize the private
+_bounded_response_bytes helper with a keyword-only maximum defaulting to the
+existing general cap. Pass the controller maximum only from its constructor,
+execute override and operation_status override. Local and SSH constructors
+remain bounded at 1 MiB. Do not import workload modules into transports.
+Preserve integer validation, configured per-call limits, limit-plus-one reads,
+overflow classification, identity verification, authentication, redaction,
+timeouts and status schema validation. No CLI defaults or caller limits change.
+
+**Acceptance criteria:**
+
+- Controller constructor and both per-call overrides accept explicit limits through 8388608, reject one byte more, and reject bool, float, zero and negative values without opening HTTP.
+- Exact-limit synthetic JSON responses pass; one-byte-over responses fail as response_too_large with partial_result and configured-limit metadata for execute and operation_status.
+- All transports retain the 65536 default; Local and SSH still refuse 1048577 and preserve valid configured bounds.
+- Canonical MAX_JSON_BYTES and the controller upper bound agree in a test without a production import dependency; existing transport identity, authentication, status and redaction tests remain green.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_transports.py tests/observability/test_controller_workload_source.py -x -q`
+- `python -m ruff check anvil_serving/transports.py tests/test_transports.py`
+
 ### T006.1: Preserve canonical fleet HTTP snapshots for clients
 
 **Feature:** F004
 **Priority:** high
 **Type:** modify
 **Likely files:** anvil_serving/observability/probes/controller_workloads.py, tests/observability/test_controller_workload_source.py
-**Dependencies:** T013, T014.1, T006.1.1
+**Dependencies:** T013, T014.1, T006.1.1, T006.1.2
 
 Add read_controller_fleet_workloads(endpoint, auth_env, expected_node, query, now,
 *, environment=None, monotonic=time.monotonic, _open=None) returning

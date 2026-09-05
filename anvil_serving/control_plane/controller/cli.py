@@ -104,6 +104,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="explicit topology path for the workload router source",
     )
     serve_parser.add_argument(
+        "--workload-fleet-topology",
+        default=None,
+        help="explicit topology path enabling declared fleet workload aggregation",
+    )
+    serve_parser.add_argument(
         "--workload-router-resource",
         default=None,
         help="explicit workload router resource id (used with workload topology and auth env)",
@@ -266,6 +271,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 workload_recipe_registry=args.workload_recipe_registry,
                 workload_manifest=args.workload_manifest,
                 workload_topology=args.workload_topology,
+                workload_fleet_topology=args.workload_fleet_topology,
                 workload_router_resource=args.workload_router_resource,
                 workload_router_auth_env=args.workload_router_auth_env,
             )

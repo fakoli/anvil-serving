@@ -16,8 +16,12 @@ from typing import Any, Callable, Optional, Sequence
 
 from ... import mcp
 from ...observability.node_workload_collector import NodeWorkloadCollector
+from ...observability.fleet_workload_collector import FleetWorkloadCollector
 from ...observability.workload_tools import (
+    FLEET_WORKLOADS_TOOL_NAME,
     NODE_WORKLOADS_TOOL_NAME,
+    fleet_workloads_declaration,
+    is_exact_fleet_workloads_declaration,
     is_exact_node_workloads_declaration,
     node_workloads_declaration,
     parse_node_workload_query,
@@ -103,30 +107,36 @@ def _workload_protocol_error(
     }
 
 
-def _tools_with_node_workloads(
-    list_tools_func: ListToolsFunc, *, enabled: bool
+_WORKLOAD_DECLARATIONS = {
+    NODE_WORKLOADS_TOOL_NAME: (node_workloads_declaration, is_exact_node_workloads_declaration),
+    FLEET_WORKLOADS_TOOL_NAME: (fleet_workloads_declaration, is_exact_fleet_workloads_declaration),
+}
+
+
+def _tools_with_workloads(
+    list_tools_func: ListToolsFunc, *, enabled: set[str]
 ) -> ListToolsFunc:
     def list_tools() -> list[dict]:
         tools = list_tools_func()
         if not isinstance(tools, list):
             return tools
-        matches = [
-            item
-            for item in tools
-            if isinstance(item, dict)
-            and isinstance(item.get("name"), str)
-            and _mcp_tool_name(item["name"]) == NODE_WORKLOADS_TOOL_NAME
-        ]
-        if len(matches) > 1 or (
-            len(matches) == 1 and not is_exact_node_workloads_declaration(matches[0])
-        ):
-            raise ControllerError(
-                "reserved_tool_conflict",
-                "controller tool catalog conflicts with a reserved operation",
-                status=500,
-            )
-        if not matches and enabled:
-            return [*tools, node_workloads_declaration()]
+        additions: list[dict] = []
+        for name, (declaration, exact) in _WORKLOAD_DECLARATIONS.items():
+            matches = [
+                item for item in tools
+                if isinstance(item, dict) and isinstance(item.get("name"), str)
+                and _mcp_tool_name(item["name"]) == name
+            ]
+            if len(matches) > 1 or (len(matches) == 1 and not exact(matches[0])):
+                raise ControllerError(
+                    "reserved_tool_conflict",
+                    "controller tool catalog conflicts with a reserved operation",
+                    status=500,
+                )
+            if not matches and name in enabled:
+                additions.append(declaration())
+        if additions:
+            return [*tools, *additions]
         return tools
 
     return list_tools
@@ -348,6 +358,7 @@ def make_handler(
     node_id: Optional[str] = None,
     authorization_policy: Optional[AuthorizationPolicy] = None,
     workload_collector: Optional[NodeWorkloadCollector] = None,
+    fleet_workload_collector: Optional[FleetWorkloadCollector] = None,
     workload_clock: WorkloadClock = time.time,
 ):
     """Build a request handler class for controller tests or ``make_server``."""
@@ -355,15 +366,21 @@ def make_handler(
     audit = audit_logger or _default_audit_logger
     allowlist_enabled = allowed_operations is not None
     declared_tools, declared_name_by_normalized = _validated_tool_catalog(
-        _tools_with_node_workloads(
-            list_tools_func, enabled=workload_collector is not None
+        _tools_with_workloads(
+            list_tools_func,
+            enabled={
+                name for name, collector in (
+                    (NODE_WORKLOADS_TOOL_NAME, workload_collector),
+                    (FLEET_WORKLOADS_TOOL_NAME, fleet_workload_collector),
+                ) if collector is not None
+            },
         ),
         allowed_operations,
     )
-    node_workloads_allowed = (
-        not allowlist_enabled
-        or NODE_WORKLOADS_TOOL_NAME in declared_name_by_normalized
-    )
+    workload_allowed = {
+        name: not allowlist_enabled or name in declared_name_by_normalized
+        for name in _WORKLOAD_DECLARATIONS
+    }
     tool_scope_by_normalized: dict[str, str | None | object] = {}
     for declaration in declared_tools:
         name = declaration.get("name") if isinstance(declaration, dict) else None
@@ -382,6 +399,7 @@ def make_handler(
             super().setup()
             self._workload_request = False
             self._workload_request_id: Optional[str] = None
+            self._workload_operation: Optional[str] = None
             if read_timeout_seconds > 0:
                 self.connection.settimeout(read_timeout_seconds)
 
@@ -394,16 +412,18 @@ def make_handler(
             except Exception:
                 return ""
 
-        def _begin_workload_request(self) -> str:
+        def _begin_workload_request(self, operation: str = NODE_WORKLOADS_TOOL_NAME) -> str:
             if not self._workload_request:
                 self._workload_request = True
                 self._workload_request_id = _safe_request_id(None)
+                self._workload_operation = operation
             assert self._workload_request_id is not None
             return self._workload_request_id
 
         def _reset_workload_request(self) -> None:
             self._workload_request = False
             self._workload_request_id = None
+            self._workload_operation = None
 
         def _authenticated(self) -> bool:
             self._principal_kind = None
@@ -577,7 +597,7 @@ def make_handler(
                 audit(
                     {
                         "event": "workload_read",
-                        "operation": NODE_WORKLOADS_TOOL_NAME,
+                        "operation": self._workload_operation or NODE_WORKLOADS_TOOL_NAME,
                         "status": status,
                         "ok": ok,
                         "error_code": error_code,
@@ -587,15 +607,16 @@ def make_handler(
             except Exception:
                 pass
 
-        def _dispatch_node_workloads(
+        def _dispatch_workloads(
             self,
+            operation: str,
             arguments: object,
             *,
             idempotency_present: bool,
             valid_outer: bool,
         ) -> dict[str, Any]:
             self._authorize_scope(WORKLOADS_READ)
-            if not node_workloads_allowed or not valid_outer:
+            if operation not in _WORKLOAD_DECLARATIONS or not workload_allowed[operation] or not valid_outer:
                 return workload_failure("invalid_workload_request")
             if idempotency_present:
                 return workload_failure("idempotency_not_supported")
@@ -603,11 +624,16 @@ def make_handler(
                 query = parse_node_workload_query(arguments)
             except Exception:
                 return workload_failure("invalid_workload_query")
-            if workload_collector is None:
+            collector = (
+                workload_collector
+                if operation == NODE_WORKLOADS_TOOL_NAME
+                else fleet_workload_collector
+            )
+            if collector is None:
                 return workload_failure("workload_source_unavailable")
             try:
                 now = workload_clock()
-                result = workload_collector.collect(query, now)
+                result = collector.collect(query, now)
                 return workload_success(result)
             except Exception:
                 return workload_failure("workload_source_unavailable")
@@ -726,9 +752,10 @@ def make_handler(
             idempotency_key: Optional[str],
             idempotency_context: Any = None,
         ) -> tuple[dict[str, Any], int]:
-            if _mcp_tool_name(tool_name) == NODE_WORKLOADS_TOOL_NAME:
+            if _mcp_tool_name(tool_name) in _WORKLOAD_DECLARATIONS:
                 return (
-                    self._dispatch_node_workloads(
+                    self._dispatch_workloads(
+                        _mcp_tool_name(tool_name),
                         arguments,
                         idempotency_present=idempotency_key is not None,
                         valid_outer=idempotency_context is None,
@@ -844,7 +871,7 @@ def make_handler(
                 if (
                     body.get("method") == "tools/call"
                     and isinstance(raw_name, str)
-                    and _mcp_tool_name(raw_name) == NODE_WORKLOADS_TOOL_NAME
+                    and _mcp_tool_name(raw_name) in _WORKLOAD_DECLARATIONS
                 ):
                     return _workload_protocol_error(None)
                 return {
@@ -878,7 +905,7 @@ def make_handler(
                 normalized_name = (
                     _mcp_tool_name(raw_tool_name) if isinstance(raw_tool_name, str) else None
                 )
-                if normalized_name == NODE_WORKLOADS_TOOL_NAME:
+                if normalized_name in _WORKLOAD_DECLARATIONS:
                     correlation_id = _workload_rpc_id(req_id)
                     if correlation_id is None:
                         return _workload_protocol_error(None)
@@ -886,7 +913,8 @@ def make_handler(
                         set(params) in ({"name", "arguments"}, {"name", "arguments", "_meta"})
                         and type(params.get("arguments")) is dict
                     )
-                    envelope = self._dispatch_node_workloads(
+                    envelope = self._dispatch_workloads(
+                        normalized_name,
                         params.get("arguments"),
                         idempotency_present=idempotency_present,
                         valid_outer=valid_outer,
@@ -983,8 +1011,8 @@ def make_handler(
             except ControllerError:
                 raise ControllerError("header_mismatch", "MCP request headers are invalid", status=400) from None
             normalized_name = _mcp_tool_name(raw_name)
-            if normalized_name == NODE_WORKLOADS_TOOL_NAME:
-                self._begin_workload_request()
+            if normalized_name in _WORKLOAD_DECLARATIONS:
+                self._begin_workload_request(normalized_name)
                 self._authorize_scope(WORKLOADS_READ)
                 return
             if normalized_name not in declared_name_by_normalized and self._principal_kind == "legacy":
@@ -1160,9 +1188,9 @@ def make_handler(
                     )
                     if (
                         isinstance(requested_name, str)
-                        and _mcp_tool_name(requested_name) == NODE_WORKLOADS_TOOL_NAME
+                        and _mcp_tool_name(requested_name) in _WORKLOAD_DECLARATIONS
                     ):
-                        request_id = self._begin_workload_request()
+                        request_id = self._begin_workload_request(_mcp_tool_name(requested_name))
                     origin = self.headers.get("Origin")
                     if origin is not None and not _mcp_origin_allowed(origin):
                         status = 403
@@ -1315,10 +1343,11 @@ def make_handler(
                         status=400,
                     )
                 normalized_name = _mcp_tool_name(raw_name)
-                if normalized_name == NODE_WORKLOADS_TOOL_NAME:
-                    request_id = self._begin_workload_request()
+                if normalized_name in _WORKLOAD_DECLARATIONS:
+                    request_id = self._begin_workload_request(normalized_name)
                     raw_arguments = body.get("arguments")
-                    envelope = self._dispatch_node_workloads(
+                    envelope = self._dispatch_workloads(
+                        normalized_name,
                         raw_arguments,
                         idempotency_present=bool(
                             self.headers.get_all("X-Anvil-Idempotency-Key")
@@ -1334,7 +1363,7 @@ def make_handler(
                         error = envelope.get("error")
                         if isinstance(error, dict) and isinstance(error.get("code"), str):
                             error_code = error["code"]
-                    tool = NODE_WORKLOADS_TOOL_NAME
+                    tool = normalized_name
                     self._send_json(status, envelope, request_id=request_id)
                     return
                 raw_arguments = body.get("arguments", {})
