@@ -12,6 +12,18 @@ from anvil_serving.control_plane.controller.operation_context import (
     controller_operation_context,
     current_controller_operation_context,
 )
+from anvil_serving.observability.workload_tools import (
+    FLEET_WORKLOADS_TOOL_NAME,
+    NODE_WORKLOADS_TOOL_NAME,
+)
+from tests.control_plane.test_controller_fleet_workloads import (
+    LEGACY,
+    MEDIA,
+    SCOPED,
+    _FleetCollector,
+    _post,
+    _server,
+)
 from tests.test_controller import CONTEXT, _request, running_controller
 
 
@@ -72,6 +84,136 @@ def _structured(response: dict) -> dict:
 
 def _auth(token: str) -> dict[str, str]:
     return {"Authorization": "Bearer " + token, "x-api-key": token}
+
+
+def _workload_list_request() -> dict:
+    return {
+        "jsonrpc": "2.0",
+        "id": "workload-list",
+        "method": "tools/list",
+        "params": {
+            "_meta": {
+                "io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION,
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": {
+                    "name": "workload-contract-test",
+                    "version": "1.0",
+                },
+            },
+        },
+    }
+
+
+def test_scoped_mcp_workloads_are_dynamic_sealed_and_match_rest(monkeypatch, tmp_path):
+    """Workload declarations exist only in the scoped controller protocol."""
+    generic_calls = []
+    static_names = {tool["name"] for tool in mcp.list_tools()}
+    assert NODE_WORKLOADS_TOOL_NAME not in static_names
+    assert FLEET_WORKLOADS_TOOL_NAME not in static_names
+
+    def forbidden_generic_call(*args):
+        generic_calls.append(args)
+        raise AssertionError("workload calls must not reach generic MCP dispatch")
+
+    with _server(
+        tmp_path,
+        monkeypatch,
+        call_tool_func=forbidden_generic_call,
+    ) as (server, collector, _):
+        host, port = server.server_address[:2]
+        status, _, tools, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body=_workload_list_request(),
+            headers=_auth(SCOPED),
+        )
+        assert status == 200
+        declared = {
+            tool["name"]: tool
+            for tool in tools["result"]["tools"]
+            if tool["name"] in {NODE_WORKLOADS_TOOL_NAME, FLEET_WORKLOADS_TOOL_NAME}
+        }
+        assert set(declared) == {NODE_WORKLOADS_TOOL_NAME, FLEET_WORKLOADS_TOOL_NAME}
+        for tool in declared.values():
+            assert tool["_meta"]["anvil/requiredScope"] == "workloads:read"
+            assert tool["inputSchema"]["additionalProperties"] is False
+            properties = tool["inputSchema"]["properties"]
+            assert not {"context", "target", "confirm", "dry_run"} & set(properties)
+
+        for operation in (NODE_WORKLOADS_TOOL_NAME, FLEET_WORKLOADS_TOOL_NAME):
+            status, rest = _post(
+                server,
+                "/tools/call",
+                {"name": operation, "arguments": {}},
+            )
+            assert status == 200
+            status, _, rpc, _ = _request(
+                host,
+                port,
+                "POST",
+                "/mcp",
+                body=_remote_request(operation, {}),
+                headers=_auth(SCOPED),
+            )
+            assert status == 200
+            assert rpc["result"]["structuredContent"] == rest
+
+    assert len(collector.calls) == 2
+    assert generic_calls == []
+
+
+@pytest.mark.parametrize("token", (None, LEGACY, MEDIA, "wrong-workload-scope-token"))
+def test_mcp_workload_scope_denies_before_clock_or_collection(monkeypatch, tmp_path, token):
+    collector = _FleetCollector()
+    clocks = []
+
+    # Keep this test on the real HTTP path while making pre-collection timing observable.
+    with _server(
+        tmp_path,
+        monkeypatch,
+        collector=collector,
+        workload_clock=lambda: clocks.append(True),
+    ) as (server, _collector, _):
+        host, port = server.server_address[:2]
+        headers = {} if token is None else _auth(token)
+        status, _, response, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body=_remote_request(FLEET_WORKLOADS_TOOL_NAME, {}),
+            headers=headers,
+        )
+
+    assert status in {401, 403}
+    assert collector.calls == []
+    assert clocks == []
+    assert "wrong-workload-scope-token" not in repr(response)
+
+
+def test_mcp_workload_refuses_caller_context_without_collection_or_leak(monkeypatch, tmp_path):
+    collector = _FleetCollector()
+    private_context = "https://private.invalid/token=not-for-output"
+    with _server(tmp_path, monkeypatch, collector=collector) as (server, _collector, audits):
+        host, port = server.server_address[:2]
+        request = _remote_request(FLEET_WORKLOADS_TOOL_NAME, {})
+        request["params"]["context"] = {"private": private_context}
+        status, _, response, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body=request,
+            headers=_auth(SCOPED),
+        )
+
+    assert status == 200
+    assert response["result"]["structuredContent"]["error"]["code"] == "invalid_workload_request"
+    assert collector.calls == []
+    assert private_context not in repr(response)
+    assert private_context not in repr(audits)
 
 
 def test_distinct_child_mutations_get_stable_derived_keys_and_replay(tmp_path):

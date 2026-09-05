@@ -18,6 +18,7 @@ from anvil_serving.observability.fleet_workload_collection import build_fleet_wo
 NOW = datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc)
 LEGACY = "controller-legacy-token"
 SCOPED = "controller-workload-token"
+MEDIA = "controller-media-only-token"
 
 
 class _FleetCollector:
@@ -36,23 +37,38 @@ class _FleetCollector:
 def _policy(tmp_path):
     path = tmp_path / "policy.json"
     path.write_text(json.dumps({"schema_version": 1, "clients": [{
-        "id": "reader", "scopes": ["workloads:read"], "credential_env": "WORKLOAD_TOKEN",
+        "id": "reader",
+        "scopes": ["workloads:read"],
+        "credential_env": "WORKLOAD_TOKEN",
     }]}), encoding="utf-8")
     return str(path)
 
 
 @contextlib.contextmanager
-def _server(tmp_path, monkeypatch, *, collector=None, topology="fleet.toml", allowed_operations=None):
+def _server(
+    tmp_path,
+    monkeypatch,
+    *,
+    collector=None,
+    topology="fleet.toml",
+    allowed_operations=None,
+    call_tool_func=mcp.call_tool,
+    workload_clock=lambda: NOW,
+):
     collector = collector or _FleetCollector()
     monkeypatch.setattr(controller_server, "create_fleet_workload_collector", lambda *args, **kwargs: collector)
     audits = []
     server = controller_server.make_server(
         "127.0.0.1", 0,
-        env={"ANVIL_CONTROLLER_TOKEN": LEGACY, "WORKLOAD_TOKEN": SCOPED},
+        env={
+            "ANVIL_CONTROLLER_TOKEN": LEGACY,
+            "WORKLOAD_TOKEN": SCOPED,
+            "MEDIA_TOKEN": MEDIA,
+        },
         authorization_policy=_policy(tmp_path), node_id="node-a",
-        workload_fleet_topology=topology, workload_clock=lambda: NOW,
+        workload_fleet_topology=topology, workload_clock=workload_clock,
         idempotency_db_path=str(tmp_path / "ops.sqlite3"), audit_logger=audits.append,
-        allowed_operations=allowed_operations,
+        allowed_operations=allowed_operations, call_tool_func=call_tool_func,
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
