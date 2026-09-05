@@ -86,6 +86,7 @@ None. The first release is read-only, bounded, metadata-only, controller-collect
 
 ## Closed v1 implementation contract
 
+- Structural PRD approval authorizes implementation, not final acceptance. Record the actual agent reviewer explicitly during autonomous execution; retain candidate evidence in needs_review until the consolidated batch review and acceptance. Never describe a default reviewer label as proof of a human decision.
 - Schema is `anvil-workloads/v1`. Records use UTC source timestamps plus a separate collection timestamp. ID is a deterministic opaque digest of node, kind, owner and owner-generated source ID; router request IDs are generated internally. Do not hash prompts, credentials or payloads to manufacture IDs.
 - Owner enum is `router|controller|benchmark|media|recipe|manifest`. State and phase mappings are fixed by the table below. Outcomes are `success|error|cancelled|timeout|rejected|disconnected|unavailable|unknown` or absent for active work. Unknown owner states map to `unsupported` without retaining raw text.
 - Display labels come only from kind or a known command-catalog identifier, never job titles, filenames, exception text or caller strings. Progress is optional `{completed,total,unit}`, with nonnegative integers up to 1000000000, completed <= total, and unit `items|steps|requests`; no prose progress.
