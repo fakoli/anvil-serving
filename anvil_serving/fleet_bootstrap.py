@@ -489,6 +489,7 @@ class BootstrapPlan:
     bootstrap_authorized: bool
     expected_protocol_version: str
     expected_catalog_sha256: str
+    _plan_sha256: str
     schema: str = field(default=PLAN_SCHEMA, init=False)
 
     def __init__(self, execution: ExecutionPlan, manifest: BootstrapManifest) -> None:
@@ -498,31 +499,7 @@ class BootstrapPlan:
 
     @property
     def plan_sha256(self) -> str:
-        return hashlib.sha256(canonical_json_bytes(self._identity_dict())).hexdigest()
-
-    def _identity_dict(self) -> dict[str, Any]:
-        return {
-            "schema": self.schema,
-            "host": self.host,
-            "execution_runtime": self.execution_runtime,
-            "topology_sha256": self.topology_sha256,
-            "manifest_sha256": self.manifest_sha256,
-            "expected_node": self.expected_node,
-            "platform": self.platform.value,
-            "staging_root": self.staging_root,
-            "install_root": self.install_root,
-            "python_executable": self.python_executable,
-            "receiver_path": self.receiver_path,
-            "receiver_sha256": self.receiver_sha256,
-            "install_adapter": self.install_adapter.value,
-            "supervisor_adapter": self.supervisor_adapter.value,
-            "install_root_class": self.install_root_class.value,
-            "supervisor_id": self.supervisor_id,
-            "bootstrap_enabled": self.bootstrap_enabled,
-            "bootstrap_authorized": self.bootstrap_authorized,
-            "expected_protocol_version": self.expected_protocol_version,
-            "expected_catalog_sha256": self.expected_catalog_sha256,
-        }
+        return self._plan_sha256
 
     def to_dict(self) -> dict[str, Any]:
         """Return the exact public, path-free plan projection."""
@@ -690,7 +667,7 @@ def _bootstrap_plan_values(
     catalog_sha256 = controller_operation_catalog_sha256(
         execution.transport_allowed_operations
     )
-    return {
+    values = {
         "schema": PLAN_SCHEMA,
         "host": host.id,
         "execution_runtime": runtime.id,
@@ -712,6 +689,13 @@ def _bootstrap_plan_values(
         "expected_protocol_version": protocol,
         "expected_catalog_sha256": catalog_sha256,
     }
+    identity = dict(values)
+    identity["platform"] = platform.value
+    identity["install_adapter"] = declared.install_adapter.value
+    identity["supervisor_adapter"] = declared.supervisor_adapter.value
+    identity["install_root_class"] = manifest.install_root_class.value
+    values["_plan_sha256"] = hashlib.sha256(canonical_json_bytes(identity)).hexdigest()
+    return values
 
 
 def _validate_platform_pair(
