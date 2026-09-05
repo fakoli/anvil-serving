@@ -25,3 +25,9 @@ source timestamps remain untouched. Do not rewrite observations to look fresh.
 Add receipt-relative future, recency, malformed datetime and stale-node
 healthy-peer regression cases. This is a routine source-wiring compatibility
 correction; formal consolidated review and acceptance remain deferred.
+
+Additional literal probes confirmed that a forged naive node timestamp is
+accepted with a COMPLETE controller source, and a wrong-host node timestamped
+one hour ahead escapes build_fleet_workloads as WorkloadError instead of an
+isolated node failure. Invalid-header fallbacks must use trusted receipt time;
+only a fully valid header can supply the preserved original node time.

@@ -1341,13 +1341,55 @@ levels. Return new canonical detached objects, no cached input references.
 - `python scripts/run_tests.py tests/observability/test_fleet_workload_collection.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
 - `python -m ruff check anvil_serving/observability/fleet_workload_collection.py tests/observability/test_fleet_workload_collection.py`
 
+### T013.1.1: Keep fleet source validation anchored to receipt time
+
+**Feature:** F003
+**Priority:** high
+**Type:** bugfix
+**Likely files:** anvil_serving/observability/fleet_workload_collection.py, tests/observability/test_fleet_workload_collection.py
+**Dependencies:** T013.1
+
+Correct the reproduced T013.1 receipt-clock defects without changing the schema,
+global record cap, source ownership or other task boundaries. An invalid/naive
+node datetime must fail strict normalization; never substitute now and call
+its header valid. Invalid node headers use only trusted receipt time for their
+six-source INVALID fallback. A wrong-host/future header cannot inject its
+untrusted timestamp into the fleet fallback and raise out of composition.
+
+For a valid header, use trusted receipt now when calling build_node_workloads
+to validate source skew, source records and the recent-work query. Do not pass
+remote node collection time as its now: a node+29s/source+59s pair must reject
+the source, not combine two30-second skew allowances. Reconstruct the returned
+node with the original valid node collection timestamp. Preserve every unchanged
+source timestamp; only missing or newly rejected sources get a fixed empty
+failure at the original node time. Rejected-source recognition must be bounded
+and safe for forged input, never serialize unchecked originals or echo failures.
+Also check each normalized source's collection time against the original node
+time: if a forged source is more than30 seconds ahead of its node, isolate it
+as FUTURE at node time while preserving healthy peer sources. This check is
+timestamp-only, not a second application of the recent-work filter using the
+remote clock. Recompute canonical status and keep failures source-local.
+
+**Acceptance criteria:**
+
+- The literal node+29s/source+59s receipt probe becomes a source-local FUTURE failure and keeps an unchanged healthy peer; exactly30 seconds remains allowed.
+- A recent-work boundary is evaluated at receipt now rather than a stale/advanced node clock, without rewriting original valid node/source observation times.
+- Forged naive/invalid node datetimes and wrong-host future nodes produce fixed node failures without throwing from the fleet composer or relabeling them valid.
+- Missing or newly rejected sources in a stale valid node get compatible fixed timestamps, unchanged canonical unavailable sources keep their original timestamp, and forged source-ahead-of-node failures stay source-local.
+- Existing global selection, source ordering, known/unknown/overflow omissions, detached serialization and no-I/O behavior remain unchanged.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_fleet_workload_collection.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/observability/fleet_workload_collection.py tests/observability/test_fleet_workload_collection.py`
+
 ### T013.2: Read canonical workloads through expected-node controller transport
 
 **Feature:** F003
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/observability/probes/controller_workloads.py, tests/observability/test_controller_workload_source.py
-**Dependencies:** T012, T013.1
+**Dependencies:** T012, T013.1, T013.1.1
 
 Add read_controller_workloads(endpoint, auth_env, host, query, now, *,
 environment=None, monotonic=time.monotonic, _open=None), returning a canonical
@@ -1426,7 +1468,7 @@ only read_controller_workloads publicly.
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/observability/fleet_workload_collector.py, tests/observability/test_fleet_workload_collector.py
-**Dependencies:** T013.1
+**Dependencies:** T013.1, T013.1.1
 
 Add FleetWorkloadCollector(readers, *, monotonic=time.monotonic), with
 collect(query,now) and idempotent nonblocking close(). readers is an exact dict
