@@ -388,6 +388,19 @@ and token-user data through [GetTokenInformation](https://learn.microsoft.com/en
 The conservative trust/mask rules above are Anvil policy, not a claim that these
 APIs solve path races.
 
+### Durable operation record and retry contract
+
+T004.7 closes the pure persisted record before T004 opens operation directories.
+It is not a durable store, permission proof, activation engine or acceptance gate.
+
+- Add frozen BootstrapOperationRecord in fleet_bootstrap.py. Exact fields are schema (fixed anvil-serving.fleet-bootstrap-operation/v1), expected_node, operation_id, plan_sha256, target_config_sha256, bundle_sha256, bundle_length, manifest_sha256, phase, error_code and trigger_error_code. Reuse exact node/UUID/digest/int/enum validation. Its phase/error consistency is exactly the existing bound STATUS receiver result; derive outcome from that existing phase contract rather than introducing a new state vocabulary. No paths, timestamps, prior generation or caller prose belong here; activation's journal owns its additional transaction metadata.
+- to_dict and to_json_bytes emit only that allowlist. from_json_bytes accepts exact nonempty bytes of at most 4096 bytes, canonical duplicate-free JSON and the exact key set. Revalidate before serialization, repr and every helper, including tampered frozen instances and subclasses. All errors are fixed input-free BootstrapContractError values. The record is metadata-only, but never call it durable until the later store has flushed it.
+- BootstrapOperationRecord.from_stage(frame, payload) accepts only an exact STAGE BootstrapReceiverFrame and exact payload bytes. Reuse encode_receiver_frame for exact payload length/hash/type enforcement and validate_bundle as the sole archive validator. Require bundle manifest expected_node equal the frame node; disagreement is receiver-mismatch. Construct initial STAGED with no errors from the actual validated bundle manifest digest. A valid record proves only the supplied bytes and identity relationship, not target authorization, target-config measurement, filesystem writes or running state.
+- match_operation_record(frame, record) revalidates both exact values, rejects IDENTITY as invalid-contract, and compares expected_node, UUID, plan and target-config digests for every operation. STAGE additionally compares bundle digest and length. ROLLBACK additionally compares an already recorded original failure (error_code, or trigger_error_code for cleanup-failed) when present; an unchanged UUID with a different trigger is receiver-mismatch. It returns the unchanged validated record; a first rollback with no recorded failure still needs the separate lifecycle authorization/transition gate. Never disclose conflicting stored fields in an error.
+- record.transition(phase, *, error_code=None) returns a new record; it never mutates the original or performs I/O. Legal forward edges are staged->verified->installed->activated->restarted. Any ordinary phase may enter rollback-started with an explicit exact non-cleanup BootstrapErrorCode. rollback-started may enter rolled-back or manual-recovery, preserving its original error without a new argument. Those two terminal rollback states may enter cleanup-failed, preserving the original as trigger_error_code and setting error_code=cleanup-failed. No other edge is legal. An identical phase call without a new error is an idempotent read, not a repeated action; passing the identical original error on rollback-started is also idempotent. Changed errors, regression, skipped ordinary phases, accepted/refused/planned, and cleanup-failed as an initiating cause refuse with precondition-failed (bad primitive types still invalid-contract). There is no automatic transition, retry action or installation claim.
+- record.to_receiver_result(frame) first matches the binding, then returns the existing exact BootstrapReceiverOperationResult for that operation with bound=true and phase-derived outcome. If the stored phase is not legal for that response operation, refuse with precondition-failed rather than inventing progress. Thus ACTIVATE against staged/verified and ROLLBACK before rollback-started cannot manufacture a successful result. The dispatcher must complete and durably record the appropriate transition before constructing that response.
+- Tests use a real minimal canonical bundle, literal record JSON, every binding field mismatch, exact phase edge/rejection matrices, original-failure retention, same-UUID changed rollback triggers, stage retry after progress/rollback, canonical/duplicate/type/bounds/subclass/tampering failures and safe repr/errors. Negative tests must fail if a binding comparison is removed or a skipped phase is allowed. No filesystem, environment, subprocess, permission, supervisor, network or live deployment operation occurs.
+
 ## Code Map
 
 - `anvil_serving/topology.py::Host`, `Transport`, `Topology`, `validate_topology`, `load_topology`, and `topology_snapshot_identity` own declared host identity, transport policy, and stable drift detection.
@@ -717,13 +730,35 @@ Implement the open-handle permission contract above with Linux and Windows adapt
 - `python scripts/run_tests.py tests/test_bootstrap_permissions.py tests/test_bootstrap_package.py tests/test_fleet_bootstrap.py -x -q`
 - `python -m ruff check anvil_serving/control_plane/bootstrap_shim.py tests/test_bootstrap_permissions.py`
 
+### T004.7: Define operation records and exact retry identity
+
+**Feature:** F002
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/fleet_bootstrap.py, tests/test_bootstrap_operation_record.py, .tickets/2026-09-05-bootstrap-receiver-ownership-contract.md
+**Dependencies:** T002, T004.1, T004.3, T004.4
+
+Implement the durable operation record and retry contract above as pure immutable values, using the existing receiver result consistency and sole bundle validator. Bind actual canonical stage bytes before creating a record. Preserve original rollback failures and never infer authorization or durable storage from an object. This is the value contract consumed by the later anchored store and dispatcher.
+
+**Acceptance criteria:**
+
+- Canonical record bytes bind one exact operation, plan, config, node, bundle and manifest; changed retry identity refuses.
+- Explicit phase transitions preserve failure provenance and disallow skipped, regressed or invented progress.
+- Response projection preserves existing receiver wire contracts and never reports bound state for a mismatched request.
+- No filesystem, network, environment, installation or acceptance authority is introduced.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_bootstrap_operation_record.py tests/test_fleet_bootstrap.py -x -q`
+- `python -m ruff check anvil_serving/fleet_bootstrap.py tests/test_bootstrap_operation_record.py`
+
 ### T004: Implement the fixed receiver protocol and target validation
 
 **Feature:** F002
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/fleet_bootstrap.py, anvil_serving/control_plane/bootstrap_shim.py, tests/test_fleet_bootstrap.py
-**Dependencies:** T008, T011, T004.1, T004.2, T004.3, T004.4, T004.5, T004.6
+**Dependencies:** T008, T011, T004.1, T004.2, T004.3, T004.4, T004.5, T004.6, T004.7
 
 Implement the stdlib-only pinned receiver and fixed `identity|stage|activate|status|rollback` protocol. Every operation accepts only the closed framed metadata for operation ID, plan digest, and expected node; stage additionally binds the bundle digest/length and exact ZIP bytes. Install only after canonical manifest/archive/path/digest validation. This slice contains no network subprocess or controller endpoint wiring.
 
