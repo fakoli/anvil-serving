@@ -27,8 +27,8 @@ Add one versioned, metadata-only workload projection that lets operators answer 
 - R001: Define immutable versioned `WorkloadRecord` and query/result types according to the closed v1 contract below. No free-text labels, phases, progress messages, outcome messages, or caller-supplied correlation values may enter the projection.
 - R002: Support exactly `router-request`, `controller-operation`, `benchmark-job`, `media-job`, and `recipe-serve`. Unknown owner states map to `unsupported` without retaining raw text; unknown incoming kinds/schema are rejected as a typed source failure.
 - R003: Each source adapter must read the authoritative subsystem state and project it into `WorkloadRecord`; the unified registry must not become a second source of truth or write state back to the owner.
-- R004: The router must create an active metadata record only after front-door authentication and alias validation, then advance it through bounded states `checking`, `admitted`, `dispatched`, `streaming`, and `terminal` using the existing request/stream lifecycle.
-- R005: Router records must be removed from the active registry on every success, error, timeout, cancellation, client disconnect, and stream close; one bounded terminal record must be available through the existing content-free decision/telemetry path.
+- R004: The router may generate an internal gateway request ID earlier, but it must create active metadata only after front-door authentication, bounded request parsing, and successful configured-alias resolution. It then advances that record through the ordered active states `checking`, `admitted`, `dispatched`, and `streaming` at the existing admission/backend/iterator boundaries; caller-derived correlation values never identify workloads.
+- R005: Router completion is two phase: backend exhaustion or failure proposes a safe terminal result, while the front door commits it only after buffered or streaming response delivery and final flush. Every success, error, timeout, cancellation, client disconnect, socket-write failure, stream close, and close-before-first-iteration path must remove the active record and append at most one bounded terminal record to the existing content-free `DecisionLog`; workload observation failure must never alter routing or admission.
 - R006: Owner stores expose deterministic bounded list/recent projections under their existing locks/transactions. v1 uses limits and truncation, not pagination/cursors; workload code must never query another module's SQLite tables directly.
 - R007: Managed recipe serves must be projected from Anvil-owned recipe/container state and stable labels, distinguish recipe-owned from manifest-owned serves, and report configured, observed, stale, absent, or error provenance without equating container existence with a healthy serving identity.
 - R008: Remote collection uses authenticated `ControllerTransport(expected_node=...)`. Validate schema, envelope node, every record host, bounds, and timestamps; wrong identity/schema, malformed records, future-skew violation, timeout, or unreachable controllers produce per-node errors while preserving peers.
@@ -42,7 +42,7 @@ Add one versioned, metadata-only workload projection that lets operators answer 
 ## Acceptance Criteria
 
 - Each fixture record has byte-identical canonical serialization through CLI, endpoint, MCP/controller, fleet, and dashboard. Envelopes may add collection timestamps, node status, and truncation metadata; those wrappers are not claimed byte-identical.
-- Router tests cover ordinary success, rejection before admission, upstream HTTP error, timeout, cancellation, disconnect, normal SSE completion, and malformed SSE; active records always return to zero and exactly one safe terminal projection remains where policy allows.
+- Router tests cover ordinary success, rejection before admission, eager backend failure, upstream HTTP error, timeout, cancellation, disconnect, normal SSE completion, malformed SSE, close-before-first-iteration, buffered and streaming socket-write failure, and final-flush failure. Active records always return to zero and exactly one safe terminal projection remains where policy allows; the actual `build_server` path uses the same registry and `DecisionLog` as `RoutingBackend`.
 - Controller operation, benchmark, and media stores return deterministic bounded snapshots without direct cross-module SQL access; concurrent writer/reader tests never expose partial rows.
 - Recipe projections distinguish configured, observed-running, healthy-identity, stale, absent, and inspection-error states without claiming deployment or qualification.
 - A fleet query with one healthy node, one wrong-identity node, and one unreachable/sleeping node returns the healthy records plus explicit error rows and overall `partial` status.
@@ -54,6 +54,7 @@ Add one versioned, metadata-only workload projection that lets operators answer 
 
 - A unified registry can accidentally become duplicate mutable state and drift from owner stores; projections must remain read-only and derived.
 - Router lifecycle cleanup is easy to miss on disconnect and SSE generator close paths, causing ghost active requests or memory growth.
+- Committing backend success before the front door delivers and flushes the response can falsely report success after a socket failure; terminal proposal and delivery-aware commit must remain separate and idempotent.
 - Seemingly harmless labels or exception text can leak prompts, endpoints, filenames, or private topology; serialization must be allowlisted at the schema boundary.
 - Fleet fan-out can turn one unavailable node into a slow global query; per-node deadlines and bounded parallel collection are required.
 - Recipe/container inspection can confuse historical configuration, physical occupancy, health, and live identity; provenance fields must keep them separate.
@@ -89,7 +90,12 @@ None. The first release is read-only, bounded, metadata-only, controller-collect
 - Owner enum is `router|controller|benchmark|media|recipe|manifest`. State and phase mappings are fixed by the table below. Outcomes are `success|error|cancelled|timeout|rejected|disconnected|unavailable|unknown` or absent for active work. Unknown owner states map to `unsupported` without retaining raw text.
 - Display labels come only from kind or a known command-catalog identifier, never job titles, filenames, exception text or caller strings. Progress is optional `{completed,total,unit}`, with nonnegative integers up to 1000000000, completed <= total, and unit `items|steps|requests`; no prose progress.
 - Per-source result limit is 200; aggregate limit is 1000; recent window is 1-86400 seconds (default 3600). Default query is active plus recent terminal work. Validate kind/state/host/owner filters against the same schema, reject unknown/repeated scalar filters, and sort newest source-updated first with record ID ascending as tie break.
-- Router active registry cap is 1024 with an explicit dropped/truncated counter; saturation never affects admission, routing or request success. Recent terminal projection reads at most 512 entries from the existing `DecisionLog`, not a second terminal ring. Extend that authoritative record with safe workload timestamps/generated identity if required. Finalization is idempotent, including close-before-first-iteration.
+- `anvil_serving/router/workloads.py` is the sole router workload owner. `RouterWorkloadRegistry(decision_log, *, clock, max_active=1024)` returns an initially inert `RouterWorkloadToken` from `begin(gateway_request_id)`; `activate()` creates `checking` only after a configured alias resolves, and `advance()` accepts only the ordered active states `checking|admitted|dispatched|streaming` idempotently.
+- `RoutingBackend.generate_tracked(request, *, gateway_request_id)` is the authenticated runtime seam. Existing `generate()` remains behavior-compatible and untracked for direct callers. `build_server` creates one registry over the exact `DecisionLog` used by its `RoutingBackend` and exposes that registry to the authenticated workload endpoint; it must not construct an unused parallel registry.
+- A token's `propose_terminal(decision, outcome)` retains one safe pending proposal without appending a second ring. `finish(delivery_outcome=None)` commits at most one existing `DecisionLog` record under the registry's finalization guard and removes active state in `finally`. A delivery disconnect may override workload outcome without rewriting legacy decision fields. Normal success is committed only after response bytes, stream terminator, and any buffered flush complete; fallback close commits the pending backend failure or `disconnected`.
+- `RouterWorkloadStream` owns delivery finalization for the wrapped admission iterator and exposes `finish_delivery(outcome)`. No registry lock may span readiness, admission, backend/network work, response delivery, or a slow decision sink. Clock, registry, saturation, projection, and cleanup failures are observational only and must not fail or change routing/admission.
+- Router active registry cap is 1024. Saturation tracks the exact number of currently unrepresented active requests in truncation/omission metadata but never affects request success; a saturated token may still yield terminal `DecisionLog` projection. Recent terminal projection uses `DecisionLog.recent(limit=512)` and never a second terminal store. Terminal entries supersede same-ID active entries.
+- `DecisionRecord` may add only exact UTC microsecond-Z workload timestamps and the fixed workload outcome. The internally generated `gateway_request_id` is the owner-native identity; caller request/workbench/task IDs and payload-derived values are never workload identity or projected fields. `source_result(host, query, now)` receives the trusted configured host from the later endpoint/collection seam, derives the canonical digest there, and never infers host identity from bind address, machine hostname, or caller input.
 - Provenance has separate `source_authority` (`router-memory|controller-store|benchmark-store|media-store|managed-status`) and `observation_quality` (`recorded|configured|observed-running|healthy-identity|stale|absent|inspection-error`). Health-only never maps to healthy-identity. Both recipe/manifest serves use kind `recipe-serve` with their distinct owner.
 - Each node response identifies its expected node and every record must match it. Preserve source time and collection time; source times more than 30 seconds in the future fail that source. Freshness uses source observation age (30-second default stale threshold), never collection time relabeled as observation.
 - Node controller reads its own stores through bounded public projection methods and router active/recent state through authenticated `GET /v1/workloads` at a topology-declared loopback router resource. Missing source/config/auth is explicit unavailable, not idle. It must not open the router database or discover ports.
@@ -134,7 +140,8 @@ within the recent window.
 ## Code Map
 
 - `anvil_serving/observability/schema.py::TelemetrySample` and `anvil_serving/observability/api.py::TelemetryRegistry` provide immutable schema, bounded registry, injected-clock, and API serialization patterns. Workloads should be a sibling projection module, not fields bolted onto hardware telemetry.
-- `anvil_serving/router/front_door.py`, `serve.py::RoutingBackend`, `backends/relay.py`, `backends/sse.py`, and `decision_log.py::DecisionLog` own authentication, alias validation, dispatch, stream lifetime, and content-free terminal records.
+- `anvil_serving/router/workloads.py::RouterWorkloadRegistry` owns active router projection, phase ordering, terminal proposal, delivery-aware finalization, saturation, and active/recent deduplication. `decision_log.py::DecisionLog` remains the only terminal store and supplies a bounded `recent(limit)` copy.
+- `anvil_serving/router/front_door.py` owns authentication, bounded request parsing, response delivery and final flush; `serve.py::RoutingBackend` owns configured-alias resolution, readiness, admission and backend dispatch; `backends/relay.py` supplies only a fixed safe timeout/error discriminator at its injected transport boundary. Existing stream framing/cleanup remains in `backends/sse.py` and the front door; it is not a second workload owner.
 - `anvil_serving/router/router_telemetry.py` shows how bounded aggregates derive from `DecisionLog`; do not add prompts or raw records to make workload visibility easier.
 - `anvil_serving/control_plane/controller/store.py::BenchmarkJobStore` and `OperationStore` own durable controller job state. Add public bounded projection methods next to existing locked/transactional reads.
 - `anvil_serving/media/jobs.py::MediaJobStore` owns media-job lifecycle and cancellation; workload visibility must call a safe list projection rather than access storage internals.
@@ -154,7 +161,7 @@ Define bounded records, source adapters, filtering, ordering, freshness, limits,
 
 ### F002: Router active and recent workload lifecycle
 
-Track authenticated valid-alias requests through dispatch/stream termination and project safe terminal metadata.
+Track authenticated valid-alias requests through admission, dispatch, iteration, response delivery, and final flush, then project safe terminal metadata from the existing `DecisionLog`.
 
 **Requirements:** R004, R005, R010, R014
 
@@ -198,65 +205,71 @@ Create immutable enums/value objects for workload kind, state, provenance, fresh
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router/serve.py, anvil_serving/router/decision_log.py, anvil_serving/observability/workloads.py, tests/router/test_workloads.py
+**Likely files:** anvil_serving/observability/workloads.py, anvil_serving/router/workloads.py, anvil_serving/router/decision_log.py, tests/router/test_workloads.py
 **Dependencies:** T001
 
-Implement the bounded in-memory active registry and content-free terminal projection over the existing `DecisionLog`. Define injected clock/ID seams and an idempotent close token, but do not wire HTTP or streaming backends in this slice. Saturation increments explicit dropped/truncated metadata and never affects routing or admission.
+Expose the canonical timestamp helpers needed by router projection and implement the bounded registry, initially inert token, ordered active transitions, pending terminal proposal, idempotent finalization, and active/recent projection over the existing `DecisionLog`. Add `DecisionLog.recent(limit=512)` and only the safe workload timestamps/outcome required for projection. Do not wire runtime callers in this slice and do not create a second terminal store.
 
 **Acceptance criteria:**
 
-- Registry transitions enforce only the fixed router states and reject unknown/raw owner text.
-- Cap 1024 saturation changes only observability counters, never request success, admission, or dispatch.
-- Finalization is idempotent and terminal projection reads at most 512 existing `DecisionLog` entries.
+- Registry transitions enforce the fixed order and reject unknown/raw owner text; inactive tokens create no record.
+- Cap 1024 saturation reports the exact count of currently unrepresented active requests and changes only observability metadata, never request success, admission, or dispatch. Saturated requests remain eligible for terminal projection.
+- Concurrent/repeated finalization appends at most one existing `DecisionLog` record, always clears represented active state, and terminal projection reads at most 512 recent decisions while superseding same-ID active entries.
+- Malformed or unavailable decisions/projection clocks fail safely without routing effects, ghost active entries, or a second terminal collection.
 - Terminal projection contains no request, response, tool, endpoint, credential, or raw-error data.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_workloads.py tests/router/test_decision_log.py -x -q`
-- `python -m ruff check anvil_serving/router/serve.py anvil_serving/router/decision_log.py anvil_serving/observability/workloads.py tests/router/test_workloads.py`
+- `python scripts/run_tests.py tests/router/test_workloads.py tests/router/test_decision_log.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/observability/workloads.py anvil_serving/router/workloads.py anvil_serving/router/decision_log.py tests/router/test_workloads.py`
 
 ### T008: Wire authenticated request and streaming lifecycle boundaries
 
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router/front_door.py, anvil_serving/router/backends/relay.py, anvil_serving/router/backends/sse.py, tests/router/test_streaming_relay.py
+**Likely files:** anvil_serving/router/front_door.py, anvil_serving/router/serve.py, anvil_serving/router/backends/relay.py, tests/router/test_workloads.py
 **Dependencies:** T002
 
-Create active records only after authentication and alias validation, advance them at checking/admitted/dispatched/streaming boundaries, and attach the close token to ordinary and streaming completion. Use backend fakes to force disconnect, cancellation, timeout, and close-before-first-iteration.
+Instantiate the one shared registry in `build_server`, route authenticated requests through `RoutingBackend.generate_tracked`, and advance at actual alias/readiness, lease, backend-return, and first-iteration boundaries. Preserve ordinary `generate()` behavior. Classify relay timeout versus error without retaining raw exceptions, and carry pending terminal state through `RouterWorkloadStream` so the front door commits only after buffered or streaming delivery and final flush.
 
 **Acceptance criteria:**
 
-- Invalid authentication, unknown aliases, rejected admission, and pre-dispatch validation failures create no misleading active work.
-- Success, upstream error, timeout, cancellation, disconnect, generator close, and close-before-first-iteration remove the active record exactly once.
-- Streaming lifetime ends on actual close/cancellation rather than response creation.
+- Invalid authentication and unknown aliases create no workload. A valid alias rejected before admission is visible as `checking` then exactly one `rejected` terminal record.
+- Blocking readiness is observable as `checking`, blocking after lease acquisition as `admitted`, return from `backend.generate` as `dispatched`, and first iterator advancement—including empty/tool-only streams—as `streaming`.
+- Success, eager generate failure, upstream error, timeout, malformed SSE, cancellation, disconnect, generator close, close-before-first-iteration, buffered/SSE socket-write failure, and final-flush failure remove the active record exactly once and append at most one terminal decision.
+- Streaming lifetime ends on actual delivery/close/cancellation rather than response or iterator creation. An immediate backend terminal commit is a required negative control: it must fail the buffered socket-write regression because that result must be `disconnected`, not `success`.
+- Disabled observation, saturation, or registry/clock failure leaves ordinary routing, admission, response bytes, and cleanup behavior unchanged; tests exercise the actual `build_server` shared-registry path.
 - No request/response/tool content, raw error, endpoint, credential, or caller label is retained.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_streaming_relay.py tests/router/test_workloads.py -x -q`
-- `python -m ruff check anvil_serving/router/front_door.py anvil_serving/router/backends/relay.py anvil_serving/router/backends/sse.py tests/router/test_streaming_relay.py`
+- `python scripts/run_tests.py tests/router/test_workloads.py tests/router/test_streaming_relay.py tests/router/test_request_measurements.py tests/router/test_front_door.py -x -q`
+- `python -m ruff check anvil_serving/router/front_door.py anvil_serving/router/serve.py anvil_serving/router/backends/relay.py tests/router/test_workloads.py`
 
 ### T009: Harden router terminal records and lifecycle regressions
 
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router/decision_log.py, tests/router/test_decision_log.py, tests/router/test_observability_hardening.py, tests/router/test_workloads.py
+**Likely files:** anvil_serving/router/workloads.py, anvil_serving/router/decision_log.py, tests/router/test_workloads.py, tests/router/test_observability_hardening.py
 **Dependencies:** T002, T008
 
-Extend `DecisionLog` only with the safe generated workload identity and timestamps needed by terminal projection. Add adversarial and concurrency regressions across every terminal boundary without creating a second terminal store.
+Harden the registry/`DecisionLog` integration against finish, delivery, close, timeout, and disconnect races without creating a second terminal store. Prove exact fixed outcome/timestamp projection, bounded active/recent reads, and strict exclusion of caller-derived identity and content.
 
 **Acceptance criteria:**
 
 - Terminal outcome and timestamps map exactly from authoritative lifecycle events; raw status/error strings never become schema text.
-- Repeated close/race paths create at most one terminal record and leave no active record.
+- Repeated close/delivery/finish races create at most one terminal append and leave no active record. Removing the finalized guard is a required negative control that must produce a duplicate-append test failure.
+- At cap and under concurrent active/terminal reads, the 1024 active and 512 recent bounds hold and terminal supersedes matching active projection deterministically.
 - Seeded prompts, responses, tools, filenames, URLs, credentials, private addresses, and exceptions are absent from records and logs.
+- Replacing the generated gateway identity with caller `request_id`, or removing the admitted-phase advance, are required negative controls that must fail identity/privacy and phase-boundary regressions respectively.
 - Existing decision-log capacity, routing, and metadata-only behavior remain unchanged.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py tests/router/test_workloads.py -x -q`
+- `python scripts/run_tests.py tests/router/test_workloads.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py -x -q`
+- `python -m ruff check anvil_serving/router/workloads.py anvil_serving/router/decision_log.py tests/router/test_workloads.py tests/router/test_observability_hardening.py`
 
 ### T003: Add bounded controller-store workload projections
 
@@ -353,7 +366,7 @@ Build the read-only manifest-managed adapter from existing serve status results 
 
 **External prerequisites:** fleet-node-enrollment:T008, fleet-node-enrollment:T009, and fleet-node-enrollment:T010 must each be `done` before this task is claimed. Anvil's PRD parser supports local dependency IDs only; the coordinator must run `anvil show fleet-node-enrollment:T008 --prd fleet-node-enrollment --json`, `anvil show fleet-node-enrollment:T009 --prd fleet-node-enrollment --json`, and `anvil show fleet-node-enrollment:T010 --prd fleet-node-enrollment --json`, require `.data.task.status == "done"` for every result, and retain all results in the dispatch packet. A missing task is an unmet prerequisite, not permission to proceed.
 
-Expose authenticated `GET /v1/workloads` on the router using the canonical query/serializer and the dedicated `workloads:read` gate. This slice is router-local only; node aggregation and fleet fan-out follow.
+Expose authenticated `GET /v1/workloads` on the router using the canonical query/serializer, the registry already created by `build_server`, and the dedicated `workloads:read` gate. Inject the trusted configured host identifier into `source_result(host, query, now)` for canonical ID construction; never infer it from bind address, machine hostname, or caller input and never construct a second registry. This slice is router-local only; node aggregation and fleet fan-out follow.
 
 **Acceptance criteria:**
 

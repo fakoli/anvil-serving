@@ -1,6 +1,6 @@
 # Preserve strict integer spelling across local and controller CLI dispatch
 
-Status: open; required before diagnostic feature release.
+Status: source fix accepted; diagnostic feature release remains separately gated.
 
 ## Reproduction
 
@@ -26,3 +26,20 @@ including accepted default/1/200 and the four malformed spellings. Keep the
 fix behind the durable CLI, not a one-off operational workaround. This
 cross-command lexical correction needs a scoped PRD task and existing remote
 CLI regressions before diagnostic feature closure.
+
+## Resolution
+
+Implementation `3b1a59afc3945e9d058bfa6e42e1701faada8924` enforces the
+ASCII integer grammar generically. It also maps rejected MCP schema bounds to
+a fixed CLI usage error: previously out-of-range values could escape as a
+`ToolError`. The correction preserves string/float behavior and permitted
+negative/leading-zero scalar spellings, and sends no operation request for
+rejected input. Existing parser handling of separate negative option values
+is unchanged; callers may use the existing inline option form.
+
+Independent root review covered the scalar, remote argument, schema and CLI
+error paths. The exact post-commit CLI/diagnostic gate passed 354 tests and
+Ruff passed. Removing the integer guard reproduced the missing refusal in
+the scalar regression. Anvil accepted `controller-diagnostics:T008` with
+proof `controller-diagnostics-T008-E000461.json`. This is source/dispatch
+evidence, not controller deployment or live diagnostic acceptance.
