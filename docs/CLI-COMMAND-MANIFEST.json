@@ -9220,6 +9220,15 @@
         },
         {
           "flags": [
+            "--member"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Optional declared replica member; requires --tier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
             "--router-url"
           ],
           "output_policy": null,
@@ -9235,6 +9244,7 @@
       "remote_operation": {
         "allowed_arguments": [
           "tier",
+          "member",
           "router_url"
         ],
         "argument_aliases": {},
@@ -9406,6 +9416,15 @@
         },
         {
           "flags": [
+            "--member"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Optional declared replica member; requires --tier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
             "--router-url"
           ],
           "output_policy": null,
@@ -9421,6 +9440,7 @@
       "remote_operation": {
         "allowed_arguments": [
           "tier",
+          "member",
           "router_url",
           "timeout",
           "dry_run"
@@ -9436,7 +9456,7 @@
         "tool": "router_transition"
       },
       "resource_role": "router",
-      "summary": "Quiesce one router tier.",
+      "summary": "Quiesce one router tier or declared member.",
       "transports": [
         "local",
         "controller"
@@ -9576,6 +9596,15 @@
         },
         {
           "flags": [
+            "--member"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Optional declared replica member; requires --tier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
             "--router-url"
           ],
           "output_policy": null,
@@ -9600,6 +9629,7 @@
       "remote_operation": {
         "allowed_arguments": [
           "tier",
+          "member",
           "router_url",
           "timeout",
           "dry_run"
@@ -9615,7 +9645,7 @@
         "tool": "router_transition"
       },
       "resource_role": "router",
-      "summary": "Wait for a quiesced tier to drain.",
+      "summary": "Wait for a quiesced tier or declared member to drain.",
       "transports": [
         "local",
         "controller"
@@ -9773,6 +9803,15 @@
         },
         {
           "flags": [
+            "--member"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Optional declared replica member; requires --tier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
             "--router-url"
           ],
           "output_policy": null,
@@ -9788,6 +9827,7 @@
       "remote_operation": {
         "allowed_arguments": [
           "tier",
+          "member",
           "router_url",
           "timeout",
           "dry_run"
@@ -9803,7 +9843,7 @@
         "tool": "router_transition"
       },
       "resource_role": "router",
-      "summary": "Safely readmit one router tier.",
+      "summary": "Safely readmit one router tier or declared member.",
       "transports": [
         "local",
         "controller"
