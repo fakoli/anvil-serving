@@ -620,13 +620,41 @@ fixture owner outside this list instead of silently editing it.
 - `python scripts/run_tests.py tests/test_serves_manage.py tests/test_serves_profiles.py tests/test_serves_preflight_gate.py tests/test_events.py tests/test_recipe_container_discovery.py -x -q`
 - `python -m ruff check tests/test_serves_manage.py tests/test_serves_profiles.py tests/test_serves_preflight_gate.py tests/test_events.py tests/test_recipe_container_discovery.py`
 
+### T013.1: Synchronize the generated command manifest
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** docs/CLI-COMMAND-MANIFEST.json
+**Dependencies:** T012.2, T014, T015
+
+Regenerate the existing manifest with anvil_serving.commands.spec.write_manifest
+after the implemented CLI declarations. Do not edit JSON by hand, change CLI
+behavior, add arguments or weaken parity tests. The integration run at source
+7473b866 found only the existing deterministic manifest parity test failing:
+five local mode/profile --config options and the updated install-config help
+summary were absent from the checked-in artifact. This leaf unblocks combined
+regression runs before the remaining narrative documentation task.
+
+**Acceptance criteria:**
+
+- The artifact is byte-identical to deterministic regeneration and includes exactly the implemented command declarations.
+- The delta contains only the five implemented local mode/profile --config options and existing install-config summary correction at this candidate baseline; unexpected changes are investigated before committing.
+- Existing command-tree tests pass without changes to tests, parser behavior or command authority.
+
+**Verification:**
+
+- `python -c "from anvil_serving.commands.spec import write_manifest; write_manifest()"`
+- `python scripts/run_tests.py tests/test_command_tree.py -x -q`
+- `git diff --check`
+
 ### T013: Document replicas and run integrated release gates
 
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
 **Likely files:** docs/CONFIGURATION.md, docs/THIN-CAPABILITY-GATEWAY.md, docs/cli/control-plane.md, docs/cli/serves.md, docs/CLI-COMMAND-MANIFEST.json
-**Dependencies:** T005.2, T009, T010, T011, T012, T014, T015
+**Dependencies:** T005.2, T009, T010, T011, T012, T013.1, T014, T015
 
 Document a generic two-member loopback configuration, exact declared-versus-live identity boundary, immutable snapshot validation, `anvil-serving topology validate-router-config`, round robin, one-attempt behavior, lifecycle refusal, observability, and the later capacity-scheduler boundary. Regenerate `docs/CLI-COMMAND-MANIFEST.json` only through `anvil_serving.commands.spec.write_manifest`, then run the complete repository gates without weakening any earlier acceptance criterion.
 
