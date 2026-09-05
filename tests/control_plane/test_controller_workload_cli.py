@@ -11,6 +11,7 @@ _WORKLOAD_KEYS = (
     "workload_topology",
     "workload_router_resource",
     "workload_router_auth_env",
+    "workload_fleet_topology",
 )
 
 
@@ -30,12 +31,14 @@ def test_controller_serve_forwards_explicit_workload_source_options_unchanged(mo
     values = (
         "benchmark.sqlite", "media.sqlite", "recipes.toml", "serves.toml",
         "topology.toml", "router-observation", "ROUTER_WORKLOAD_TOKEN",
+        "fleet-topology.toml",
     )
     argv = ["serve"]
     for flag, value in zip((
         "--workload-benchmark-db", "--workload-media-db", "--workload-recipe-registry",
         "--workload-manifest", "--workload-topology", "--workload-router-resource",
         "--workload-router-auth-env",
+        "--workload-fleet-topology",
     ), values, strict=True):
         argv.extend((flag, value))
 
@@ -48,6 +51,7 @@ def test_controller_serve_forwards_explicit_workload_source_options_unchanged(mo
     [
         ["serve", "--workload-benchmark-db"],
         ["serve", "--workload-router-auth-env"],
+        ["serve", "--workload-fleet-topology"],
         ["serve", "--workload-endpoint", "private"],
     ],
 )
@@ -67,6 +71,28 @@ def test_serve_help_describes_explicit_paths_and_router_environment(capsys):
         "--workload-benchmark-db", "--workload-media-db", "--workload-recipe-registry",
         "--workload-manifest", "--workload-topology", "--workload-router-resource",
         "--workload-router-auth-env",
+        "--workload-fleet-topology",
     ):
         assert flag in output
     assert "environment variable name" in output
+    assert "declared fleet workload aggregation" in " ".join(output.split())
+
+
+def test_fleet_topology_does_not_enable_node_router_source(monkeypatch):
+    calls = []
+    monkeypatch.setattr(controller_cli, "serve", lambda **kwargs: calls.append(kwargs) or 0)
+    path = "relative fleet topology.toml"
+    assert controller_cli.main(["serve", "--workload-fleet-topology", path]) == 0
+    assert len(calls) == 1
+    assert calls[0]["workload_fleet_topology"] == path
+    assert all(calls[0][key] is None for key in _WORKLOAD_KEYS if key != "workload_fleet_topology")
+
+
+def test_top_level_help_exposes_fleet_topology_without_running_serve(monkeypatch, capsys):
+    from anvil_serving import cli
+
+    monkeypatch.setattr(controller_cli, "serve", lambda **kwargs: pytest.fail("serve must not run"))
+    assert cli.main(["controller", "serve", "--help"]) == 0
+    output = capsys.readouterr().out
+    assert "--workload-fleet-topology" in output
+    assert "declared fleet workload aggregation" in " ".join(output.split())
