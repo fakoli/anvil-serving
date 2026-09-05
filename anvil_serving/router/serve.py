@@ -18,7 +18,7 @@ import time
 from dataclasses import replace
 from http.server import ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 from .admission import AdmissionLease, TierAdmission
 from .audio import AudioGateway
@@ -51,7 +51,7 @@ from .decision_log import (
 )
 from .discovery import models_payload
 from .dialects.translate import has_tool_artifacts
-from .front_door import make_server
+from .front_door import OperatorRoute, make_server
 from .gateway import ProtocolGateway
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult, estimate_tokens
 from .media_admission import evaluate_media_admission
@@ -77,6 +77,10 @@ from .tier_health import build_tier_health
 from .. import envfile
 from .. import mcp as mcp_facade
 from ..a2a.tasks import A2AMediaTasks
+from ..control_plane.authorization import (
+    AuthorizationError,
+    load_authorization_policy,
+)
 from ..control_plane.mcp.controller_client import remote_controller_request
 from ..control_plane.mcp.errors import ToolError
 from ..control_plane.mcp.protocol import (
@@ -812,6 +816,8 @@ def build_server(
     availability: Optional[object] = None,
     admission: Optional[TierAdmission] = None,
     capacity_metrics: Optional[MetricsProvider] = None,
+    authorization_policy: Optional[str] = None,
+    operator_routes: Sequence[OperatorRoute] | None = None,
 ) -> ThreadingHTTPServer:
     """Load configured capability routes and build an un-started authenticated front door."""
     config = load(config_path)
@@ -835,6 +841,18 @@ def build_server(
         raise ConfigError(
             "[[router.audio_routes]] require a resolved [server].auth_env"
         )
+    scoped_policy = None
+    if authorization_policy is not None:
+        try:
+            scoped_policy = load_authorization_policy(
+                authorization_policy,
+                env=environ,
+                legacy_token=auth_token,
+            )
+        except AuthorizationError:
+            # A malformed optional scoped policy disables only future scoped
+            # surfaces.  Existing legacy router authentication remains intact.
+            scoped_policy = None
 
     injected = backends is not None
     if backends is None:
@@ -952,6 +970,8 @@ def build_server(
         host, port, routing, timeout=timeout, model_routes=config.model_routes,
         exhaustion_status=config.exhaustion_status, auth_token=auth_token,
         purpose=purpose, audio=audio, gateway=gateway,
+        authorization_policy=scoped_policy,
+        operator_routes=operator_routes,
     )
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
@@ -985,6 +1005,7 @@ def serve(
     *,
     host: str = "127.0.0.1",
     port: int = 8000,
+    authorization_policy: Optional[str] = None,
 ) -> None:
     """Run a configured thin capability gateway until interrupted."""
     try:
@@ -992,7 +1013,10 @@ def serve(
     except ConfigError:
         authed = False
     _warn_if_public_bind(host, authed=authed)
-    httpd = build_server(config_path, host=host, port=port)
+    httpd = build_server(
+        config_path, host=host, port=port,
+        authorization_policy=authorization_policy,
+    )
     actual_host, actual_port = httpd.server_address[:2]
     routes = (
         "POST /v1/chat/completions, POST /v1/messages, GET /v1/models, "
@@ -1046,9 +1070,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     ap.add_argument("--host", default="127.0.0.1", help="bind host (default 127.0.0.1; never localhost)")
     ap.add_argument("--port", type=int, default=8000, help="bind port (default 8000)")
+    ap.add_argument(
+        "--authorization-policy", metavar="PATH",
+        help="optional scoped operator authorization policy",
+    )
     args = ap.parse_args(argv)
     try:
-        serve(resolve_config_path(args.config), host=args.host, port=args.port)
+        serve(
+            resolve_config_path(args.config), host=args.host, port=args.port,
+            authorization_policy=args.authorization_policy,
+        )
     except ConfigError as exc:
         print(f"anvil-serving router run: {exc}", file=sys.stderr)
         return 2
