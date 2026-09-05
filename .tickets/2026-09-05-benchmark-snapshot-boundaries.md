@@ -14,3 +14,12 @@ the progress callback, active-only exclusion of provably nonactive malformed
 rows, canonical bounded selection and honest omitted counts for quarantined
 rows. Add regressions before accepting this source implementation. Existing
 green happy-path/concurrency tests are not sufficient proof of these boundaries.
+
+Independent closed-writer WAL fixture inspection also reproduced SQLite-managed
+`-wal`/`-shm` creation by `mode=ro`. The approved parent contract now explicitly
+means logical read-only: no main-database/schema/content/lifecycle writes, with
+SQLite coordination sidecars allowed for an existing database. Missing main
+storage must still stay absent. Do not disable locking or assert immutability
+on a live mutable database. Add byte/schema/row invariance coverage and retain
+the coherent concurrent-writer regression. This was a contract ambiguity, not
+permission to mutate owner state or manually remove WAL files.
