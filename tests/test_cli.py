@@ -496,7 +496,31 @@ def test_package_version_matches_pyproject():
 def test_command_manifest_is_terminal_and_machine_readable(capsys):
     assert cli.main(["--command-manifest"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["schema_version"] == 6
+    assert payload["schema_version"] == 7
+    assert payload["global_options"] == [
+        {
+            "flags": list(option.flags),
+            "output_policy": option.output_policy,
+            "requires_confirmation": option.requires_confirmation,
+            "summary": option.summary,
+            "value_name": option.value_name,
+        }
+        for option in COMMAND_TREE.global_options
+    ]
+    assert [option["flags"] for option in payload["global_options"]] == [
+        ["--topology"],
+        ["--topology-overlay"],
+        ["--command-host"],
+        ["--command-runtime"],
+        ["--target"],
+        ["--transport"],
+        ["--allow-ssh-fallback"],
+        ["--experimental-model-workload"],
+        ["--json"],
+        ["--quiet"],
+        ["--verbose"],
+        ["-h", "--help"],
+    ]
     assert len(payload["product_families"]) == 6
     assert payload["umbrella"]["name"] == "Anvil Serving"
     assert any(record["path"] == "topology resolve" for record in payload["commands"])

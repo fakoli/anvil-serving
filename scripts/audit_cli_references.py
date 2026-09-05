@@ -500,8 +500,31 @@ def _write_json(path: Path, value: dict[str, object]) -> None:
     _atomic_write_text(path, json.dumps(value, indent=2, sort_keys=True) + "\n")
 
 
+def _option_flag_tuples(value: object, *, field: str) -> tuple[tuple[str, ...], ...]:
+    if not isinstance(value, list):
+        raise ValueError(f"{field} must be an array")
+    result: list[tuple[str, ...]] = []
+    for option_index, option in enumerate(value):
+        if not isinstance(option, dict):
+            raise ValueError(f"{field}[{option_index}] must be an object")
+        flags = option.get("flags")
+        if (
+            not isinstance(flags, list)
+            or not flags
+            or any(not isinstance(flag, str) or not flag for flag in flags)
+        ):
+            raise ValueError(
+                f"{field}[{option_index}].flags must be a non-empty string array"
+            )
+        result.append(tuple(flags))
+    return tuple(result)
+
+
 def _manifest(root: Path) -> dict[str, object]:
     value = _load_json(root / MANIFEST_REL)
+    _option_flag_tuples(
+        value.get("global_options"), field="command manifest global_options"
+    )
     commands = value.get("commands")
     if not isinstance(commands, list):
         raise ValueError("command manifest must contain a commands array")
@@ -513,25 +536,10 @@ def _manifest(root: Path) -> dict[str, object]:
                 raise ValueError(f"command manifest commands[{command_index}].{field} is required")
         if not isinstance(command.get("visible"), bool):
             raise ValueError(f"command manifest commands[{command_index}].visible must be boolean")
-        options = command.get("options")
-        if not isinstance(options, list):
-            raise ValueError(f"command manifest commands[{command_index}].options must be an array")
-        for option_index, option in enumerate(options):
-            if not isinstance(option, dict):
-                raise ValueError(
-                    f"command manifest commands[{command_index}].options[{option_index}] "
-                    "must be an object"
-                )
-            flags = option.get("flags")
-            if (
-                not isinstance(flags, list)
-                or not flags
-                or any(not isinstance(flag, str) or not flag for flag in flags)
-            ):
-                raise ValueError(
-                    f"command manifest commands[{command_index}].options[{option_index}].flags "
-                    "must be a non-empty string array"
-                )
+        _option_flag_tuples(
+            command.get("options"),
+            field=f"command manifest commands[{command_index}].options",
+        )
     return value
 
 
@@ -540,9 +548,12 @@ def _markdown(value: object) -> str:
 
 
 def render_manifest_index(manifest: dict[str, object]) -> str:
+    global_options = set(
+        _option_flag_tuples(
+            manifest.get("global_options"), field="command manifest global_options"
+        )
+    )
     commands = [record for record in manifest["commands"] if record["visible"]]
-    option_sets = [{tuple(option["flags"]) for option in record["options"]} for record in commands]
-    global_options = set.intersection(*option_sets) if option_sets else set()
     lines = [
         "| Command path | Purpose | Class / output | Declared command options |",
         "|---|---|---|---|",
