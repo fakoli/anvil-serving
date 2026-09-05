@@ -25,6 +25,7 @@ from typing import Dict
 import pytest
 
 from anvil_serving.router.backends import relay as relay_module
+from anvil_serving.router import serve as serve_module
 from anvil_serving.router.backends.relay import (
     RelayBackendError,
     _urlopen_transport,
@@ -52,6 +53,7 @@ from anvil_serving.router.serve import (
     build_backend_for_tier,
     build_backends,
 )
+from anvil_serving.router.replica_scheduler import ReplicaPressure, normalize_replica_pressure
 
 
 # --------------------------------------------------------------------------- #
@@ -502,7 +504,7 @@ def test_direct_build_still_constructs_one_existing_adapter():
     assert backends[tier.id]._tier is tier
 
 
-def test_routing_backend_wraps_replica_runtime_once_at_logical_tier():
+def test_routing_backend_uses_compound_admission_not_a_replica_semaphore():
     tier = replace(_replica_tier(), max_concurrency=1)
     config = _config(tier)
     backends, _skipped = build_backends(config, env={})
@@ -510,9 +512,8 @@ def test_routing_backend_wraps_replica_runtime_once_at_logical_tier():
 
     routing = RoutingBackend(config, backends)
 
-    limited = routing._backends[tier.id]
-    assert isinstance(limited, _ConcurrencyLimitedBackend)
-    assert limited._inner is runtime
+    assert routing._backends[tier.id] is runtime
+    assert routing._admission.snapshot(tier.id).max_concurrency == 1
     assert isinstance(runtime, ReplicaRuntime)
     assert all(
         not isinstance(runtime.member_backend(member_id), _ConcurrencyLimitedBackend)
@@ -930,3 +931,151 @@ def test_replica_member_keys_are_isolated_by_logical_tier_and_keep_outer_metadat
         (first_tier.id, "member-a"), (first_tier.id, "member-b"),
         (second_tier.id, "member-a"), (second_tier.id, "member-b"),
     ]
+
+
+class _CompletedPressure:
+    """A completed cache view, never a collector invoked by admission."""
+
+    def __init__(self, tiers, *, metrics_provider):
+        self.tiers = tiers
+        self.metrics_provider = metrics_provider
+        self.values = {
+            tier.id: {member.id: ReplicaPressure() for member in tier.replicas}
+            for tier in tiers
+        }
+        self.calls = []
+        self.closed = 0
+
+    def snapshot(self, tier_id):
+        self.calls.append(tier_id)
+        return dict(self.values[tier_id])
+
+    def close(self):
+        self.closed += 1
+
+
+def _capacity_routing(monkeypatch, *, cap=None, member_cap=2, strategy="capacity", error=None):
+    monkeypatch.setattr(serve_module, "ReplicaPressureCache", _CompletedPressure)
+    original = _replica_tier()
+    tier = replace(
+        original, max_concurrency=cap, replica_strategy=strategy,
+        replicas=tuple(replace(member, max_concurrency=member_cap) for member in original.replicas),
+    )
+    members = {"member-a": _MemberBackend("a", eager_error=error), "member-b": _MemberBackend("b")}
+    availability = _ReplicaAvailability({(tier.id, member.id): _ready() for member in tier.replicas})
+    routing = _replica_routing((tier,), {tier.id: ReplicaRuntime(members)}, availability)
+    return tier, routing, members
+
+
+def test_capacity_dispatch_prefers_fresh_on_tie_but_local_counts_are_authoritative(monkeypatch):
+    tier, routing, members = _capacity_routing(monkeypatch)
+    cache = routing._replica_pressure
+    cache.values[tier.id]["member-b"] = normalize_replica_pressure(
+        observed_at=1, now_monotonic=1, successful=True,
+        requests_running=0, requests_waiting=0, scheduler_capacity=2,
+    )
+    first = routing.generate(_replica_request(tier.id))
+    second = routing.generate(_replica_request(tier.id))
+    try:
+        assert [members[key].calls for key in ("member-a", "member-b")] == [1, 1]
+        assert next(first) == "b"  # fresh wins at equal 0/2
+        assert next(second) == "a"  # unknown 0/2 beats fresh 1/2
+        snapshot = routing._admission.snapshot(tier.id)
+        assert snapshot.active_requests == 2
+        assert snapshot.member_active_requests == (("member-a", 1), ("member-b", 1))
+        assert cache.calls == [tier.id, tier.id]
+    finally:
+        first.close()
+        second.close()
+        routing.close()
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+
+
+@pytest.mark.parametrize("cap,member_cap,accepted,strategy", [
+    (3, 2, 3, "capacity"), (None, 1, 2, "capacity"),
+    (1, 2, 1, "round_robin"), (None, 1, 2, "round_robin"),
+])
+def test_routed_capacity_exhaustion_is_immediate_and_invokes_no_backend(
+    monkeypatch, cap, member_cap, accepted, strategy,
+):
+    tier, routing, members = _capacity_routing(
+        monkeypatch, cap=cap, member_cap=member_cap, strategy=strategy,
+    )
+    held = []
+    try:
+        for _ in range(accepted):
+            held.append(routing.generate(_replica_request(tier.id)))
+        before = tuple(member.calls for member in members.values())
+        with pytest.raises(NoAvailableTierError) as error:
+            routing.generate(_replica_request(tier.id))
+        assert error.value.kind == "unavailable"
+        assert tuple(member.calls for member in members.values()) == before
+        snapshot = routing._admission.snapshot(tier.id)
+        assert snapshot.active_requests == accepted
+        assert sum(count for _, count in snapshot.member_active_requests) == accepted
+        assert all(count <= member_cap for _, count in snapshot.member_active_requests)
+        if strategy == "round_robin":
+            assert routing._replica_pressure.tiers == ()
+            assert routing._replica_pressure.calls == []
+    finally:
+        for iterator in held:
+            iterator.close()
+        routing.close()
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("private-error"), TimeoutError("private-timeout"),
+                                      BackendClientError(429, "rate_limit", "private-denial")])
+def test_capacity_error_is_one_selection_one_attempt_and_releases(monkeypatch, failure):
+    tier, routing, members = _capacity_routing(monkeypatch, error=failure)
+    try:
+        with pytest.raises(type(failure)):
+            routing.generate(_replica_request(tier.id))
+        assert members["member-a"].calls == 1
+        assert members["member-b"].calls == 0
+        assert routing._replica_pressure.calls == [tier.id]
+        assert routing._admission.snapshot(tier.id).active_requests == 0
+        assert len(routing._decision_log.last.attempts) == 1
+    finally:
+        routing.close()
+
+
+def test_capacity_rejects_request_before_any_pressure_snapshot_or_probe(monkeypatch):
+    tier, routing, members = _capacity_routing(monkeypatch)
+    request = _replica_request(tier.id)
+    request.messages = [Message("user", "word " * (tier.context_limit + 1))]
+    try:
+        with pytest.raises(NoAvailableTierError) as error:
+            routing.generate(request)
+        assert error.value.kind == "over_context"
+        assert routing._replica_pressure.calls == []
+        assert routing._availability.member_calls == []
+        assert all(member.calls == 0 for member in members.values())
+    finally:
+        routing.close()
+
+
+def test_capacity_eligibility_excludes_unbound_member_without_selecting_it(monkeypatch):
+    tier, routing, members = _capacity_routing(monkeypatch)
+    routing._backends[tier.id] = ReplicaRuntime({"member-b": members["member-b"]})
+    try:
+        assert list(routing.generate(_replica_request(tier.id))) == ["b"]
+        assert routing._availability.member_calls == [(tier.id, "member-b")]
+        assert members["member-a"].calls == 0
+        assert members["member-b"].calls == 1
+    finally:
+        routing.close()
+
+
+def test_direct_tier_keeps_legacy_limiter_and_never_registers_pressure(monkeypatch):
+    monkeypatch.setattr(serve_module, "ReplicaPressureCache", _CompletedPressure)
+    tier = _local_tier(max_concurrency=1)
+    backend = _MemberBackend("ok")
+    routing = RoutingBackend(_config(tier), {tier.id: backend})
+    try:
+        assert isinstance(routing._backends[tier.id], _ConcurrencyLimitedBackend)
+        assert routing._replica_pressure.tiers == ()
+        assert list(routing.generate(_replica_request(tier.id))) == ["ok"]
+        assert routing._replica_pressure.calls == []
+    finally:
+        routing.close()
