@@ -12,6 +12,7 @@ from anvil_serving.router.config import (
     PRIVACY_LOCAL,
     load,
     load_bytes,
+    load_server_config,
 )
 
 
@@ -69,6 +70,59 @@ def test_load_bytes_preserves_crlf_and_matches_path_loading(tmp_path):
 
     assert load_bytes(raw) == load(path)
     assert path.read_bytes() == raw
+
+
+@pytest.mark.parametrize("server", ["", "[server]\n", '[server]\nauth_env = "TEST_TOKEN"\n'])
+def test_workload_host_absent_preserves_server_defaults(tmp_path, server):
+    config = load_server_config(_write(tmp_path, _ONE_TIER + server))
+
+    assert config.workload_host is None
+    assert config.auth_env == ("TEST_TOKEN" if "auth_env" in server else None)
+    assert config.admission_state_path is None
+    assert config.decision_log_path is None
+    assert config.media_scopes == ()
+
+
+@pytest.mark.parametrize("host", ["A", "host-a", "Host_2-X", "a" * 64])
+def test_workload_host_is_exact_operator_identity(tmp_path, monkeypatch, host):
+    import os
+    import platform
+    import socket
+
+    def no_discovery(*args, **kwargs):
+        raise AssertionError("host discovery is forbidden")
+
+    path = _write(tmp_path, _ONE_TIER + f'[server]\nworkload_host = "{host}"\n')
+    with monkeypatch.context() as patch:
+        patch.setattr(socket, "gethostname", no_discovery)
+        patch.setattr(platform, "node", no_discovery)
+        patch.setattr(os, "getenv", no_discovery)
+        config = load_server_config(path)
+
+    assert config.workload_host == host
+    assert config.auth_env is None
+
+
+@pytest.mark.parametrize(
+    "literal",
+    [
+        '""', "true", "3", "2.5", "[]", '["host-a"]',
+        '{ private_marker = "do-not-echo" }',
+        '"' + "a" * 65 + '"', '" host-a"', '"host-a "',
+        '"host\\n"', '"host\\t"', '"h\\u00f6st"', '"1host"',
+        '"host.a"', '"host/a"', '"https://example.invalid/private-marker"',
+        "'C:\\private-marker\\host'", '"host:token"',
+    ],
+)
+def test_workload_host_rejects_noncanonical_values_without_echo(tmp_path, literal):
+    path = _write(tmp_path, _ONE_TIER + f"[server]\nworkload_host = {literal}\n")
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_server_config(path)
+
+    assert str(excinfo.value) == (
+        "[server].workload_host must match [A-Za-z][A-Za-z0-9_-]{0,63}"
+    )
 
 
 def test_load_bytes_requires_exact_bytes_without_echoing_input():
