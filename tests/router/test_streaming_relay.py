@@ -226,6 +226,75 @@ def test_non_sse_response_falls_back_to_buffered_parse():
     assert s.usage == {"input_tokens": 3, "output_tokens": 2}
 
 
+@pytest.mark.parametrize(
+    ("dialect", "wire_usage", "expected"),
+    [
+        ("openai", {"prompt_tokens": 11}, {"input_tokens": 11}),
+        ("anthropic", {"output_tokens": 7}, {"output_tokens": 7}),
+    ],
+)
+def test_real_buffered_relay_preserves_each_partial_usage_field(
+    dialect, wire_usage, expected
+):
+    def buffered(url, *, data, headers, timeout):
+        if dialect == "anthropic":
+            return json.dumps(
+                {"content": [{"type": "text", "text": "ok"}], "usage": wire_usage}
+            ).encode()
+        return json.dumps(
+            {"choices": [{"message": {"content": "ok"}}], "usage": wire_usage}
+        ).encode()
+
+    request = InternalRequest(
+        model="chat",
+        messages=[Message("user", "hi")],
+        stream=False,
+        dialect=dialect,
+    )
+    backend = RelayBackend(
+        _tier(dialect), env={"EXAMPLE_KEY": "k"}, transport=buffered
+    )
+    assert list(backend.generate(request)) == ["ok"]
+    assert backend.get_last_structured().usage == expected
+
+
+def test_real_openai_sse_relay_preserves_partial_input_usage():
+    payload = _openai_sse(
+        {"choices": [{"index": 0, "delta": {"content": "ok"}}]},
+        {"choices": [], "usage": {"prompt_tokens": 11}},
+    )
+    backend = RelayBackend(
+        _tier("openai"),
+        env={"EXAMPLE_KEY": "k"},
+        stream_transport=FakeStreamTransport(payload),
+    )
+    assert list(backend.generate(_request())) == ["ok"]
+    assert backend.get_last_structured().usage == {"input_tokens": 11}
+
+
+def test_real_anthropic_sse_relay_preserves_partial_output_usage():
+    payload = (
+        b'event: content_block_delta\ndata: {"type":"content_block_delta",'
+        b'"index":0,"delta":{"type":"text_delta","text":"ok"}}\n\n'
+        b'event: message_delta\ndata: {"type":"message_delta",'
+        b'"usage":{"output_tokens":7}}\n\n'
+        b'event: message_stop\ndata: {"type":"message_stop"}\n\n'
+    )
+    request = InternalRequest(
+        model="chat",
+        messages=[Message("user", "hi")],
+        stream=True,
+        dialect="anthropic",
+    )
+    backend = RelayBackend(
+        _tier("anthropic"),
+        env={"EXAMPLE_KEY": "k"},
+        stream_transport=FakeStreamTransport(payload),
+    )
+    assert list(backend.generate(request)) == ["ok"]
+    assert backend.get_last_structured().usage == {"output_tokens": 7}
+
+
 def test_custom_buffered_transport_never_streams():
     """A hermetic buffered transport (no stream companion) keeps the old path —
     it must not attempt a network streaming call."""

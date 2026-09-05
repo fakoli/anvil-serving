@@ -151,7 +151,11 @@ def test_stt_normalizes_json_base64_to_parakeet_multipart_and_logs_metadata_only
         "audio_b64": base64.b64encode(b"RIFFnot-a-real-wav").decode("ascii"),
         "format": "wav",
         "is_final": True,
-    }, correlation={"request_id": "voice-280"})
+    }, correlation={
+        "request_id": "voice-280",
+        "gateway_request_id": "req_0123456789abcdef0123456789abcdef",
+        "workbench_run_id": "run-audio-1",
+    })
 
     assert result["text"] == "sensitive transcript must not be logged"
     assert result["is_final"] is True
@@ -162,11 +166,17 @@ def test_stt_normalizes_json_base64_to_parakeet_multipart_and_logs_metadata_only
     assert b'name="model"' in call["data"] and b"tdt-0.6b-v3" in call["data"]
     assert b'filename="audio.wav"' in call["data"]
     assert b"RIFFnot-a-real-wav" in call["data"]
+    assert call["headers"]["X-Request-Id"] == (
+        "req_0123456789abcdef0123456789abcdef"
+    )
 
     record = decisions.last
     assert record is not None
     assert record.served_tier == "dark-stt"
     assert record.request_bytes == len(b"RIFFnot-a-real-wav")
+    assert record.request_id == "voice-280"
+    assert record.gateway_request_id == "req_0123456789abcdef0123456789abcdef"
+    assert record.workbench_run_id == "run-audio-1"
     rendered = repr(decisions.summary()) + capsys.readouterr().err
     assert "sensitive transcript" not in rendered
     assert "RIFFnot-a-real-wav" not in rendered

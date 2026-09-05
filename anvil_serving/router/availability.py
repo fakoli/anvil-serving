@@ -223,8 +223,26 @@ class HttpHealthAvailability:
         parsed = urlsplit(tier.base_url)
         return urlunsplit((parsed.scheme, parsed.netloc, "/props", "", ""))
 
+    def _probe_headers(self, tier: Tier) -> dict[str, str]:
+        """Build the bounded OpenAI-compatible readiness probe headers.
+
+        ``/v1/models`` and configured health paths are direct probes of the
+        same local OpenAI-compatible tier. Redirects remain disabled by
+        :func:`_direct_opener`, so this bearer credential cannot be followed
+        to another origin. Anthropic-specific probe contracts are not inferred
+        here; an Anthropic tier must declare a health endpoint compatible with
+        this configured readiness contract.
+        """
+        headers = {"Accept": "application/json"}
+        token = self._env.get(tier.auth_env, "") if tier.auth_env else ""
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        return headers
+
     def _probe(self, url: str, tier: Tier) -> AvailabilityResult:
-        request = urllib.request.Request(url, method="GET")
+        request = urllib.request.Request(
+            url, headers=self._probe_headers(tier), method="GET"
+        )
         try:
             with self._opener(request, timeout=self._probe_timeout) as response:
                 status = getattr(response, "status", None) or response.getcode()
@@ -246,10 +264,7 @@ class HttpHealthAvailability:
 
     def _probe_identity(self, tier: Tier) -> AvailabilityResult:
         expected = tier.model
-        headers = {"Accept": "application/json"}
-        token = self._env.get(tier.auth_env, "")
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
+        headers = self._probe_headers(tier)
         request = urllib.request.Request(
             self._models_url(tier), headers=headers, method="GET"
         )

@@ -9,6 +9,12 @@
 
 ## Context
 
+**Implementation correction, 2026-09-05:** Tailscale strips a matched mount
+before proxying. The original path-preservation explanation below was incorrect;
+the `/v1` target requires an explicit `/v1` suffix. The decision to preserve the
+router API remains unchanged. See the
+[correction ticket](https://github.com/fakoli/anvil-serving/blob/main/.tickets/2026-09-05-edge-v1-prefix.md).
+
 T014 (the [single tailnet DNS endpoint runbook](../TAILNET-ENDPOINT-RUNBOOK.md), shipped
 in PR #244) established the goal of **one front door, one name, one token**: every serving
 surface — chat, embeddings, rerank, the routed OCR/vision presets — is published from the
@@ -63,7 +69,7 @@ path-routes it:
 
 | Mount | Target | Surface |
 |-------|--------|---------|
-| `/v1` | `127.0.0.1:8000` | The **existing anvil-router, COMPLETELY UNCHANGED** — the whole OpenAI/Anthropic inference surface. |
+| `/v1` | `http://127.0.0.1:8000/v1` | The existing router's OpenAI/Anthropic inference surface. |
 | `/comfyui` | `127.0.0.1:8188` | ComfyUI, whose live queue needs WebSockets (handled natively by Tailscale Serve). |
 
 Additional `path -> local port` mappings (future dashboards, the anvil dashboard on `:8766`,
@@ -72,10 +78,9 @@ Additional `path -> local port` mappings (future dashboards, the anvil dashboard
 
 Design commitments:
 
-- **The edge is a pure L7 path-router in front of the unchanged router.** Each managed mount
-  forwards its path to the target verbatim (`tailscale serve --set-path=/v1` appends the mount
-  to the MagicDNS base URL and proxies the request through), so `/v1/models` reaches the
-  router as `/v1/models`. The router's request path and dialects are never touched. The
+- **The edge is a pure L7 path-router in front of the unchanged router.** Tailscale
+  removes the public mount and joins the remainder to the target path. The `/v1`
+  target retains `/v1`, so `/v1/models` reaches the router as `/v1/models`. The
   direct router binding (e.g. `100.64.0.10:8000`) is left as-is.
 - **Stdlib-only, no new runtime deps.** `edge.py` renders and applies `tailscale serve`
   invocations via `subprocess` and parses `tailscale serve status --json`; it adds **no proxy
@@ -97,7 +102,7 @@ Design commitments:
   [T014 runbook](../TAILNET-ENDPOINT-RUNBOOK.md) is updated to point at the verb, superseding
   its *document-only* note for the `tailscale serve` + ComfyUI-path sections.
 - The router keeps its single responsibility. `front_door.py` is unchanged; the `/v1`
-  OpenAI/Anthropic contract is preserved because the edge rewrites nothing.
+  OpenAI/Anthropic contract is preserved by the explicit upstream target path.
 - ComfyUI's base-path caveat from the runbook still stands: ComfyUI serves absolute asset
   paths, so the `/comfyui` prefix may need a matching ComfyUI base-path before its UI loads
   end-to-end. A clean `502`/connection-refused when ComfyUI is down is expected passthrough,
