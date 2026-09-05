@@ -107,6 +107,11 @@ class _BudgetedResponse:
     def __exit__(self, *_unused: object) -> bool:
         if not _safe_close(self._raw):
             self._budget.cleanup_failed = True
+        else:
+            try:
+                self._budget.completed()
+            except _BudgetFailure:
+                self._budget.cleanup_failed = True
         return False
 
     def read(self, amount: int = -1) -> bytes:
