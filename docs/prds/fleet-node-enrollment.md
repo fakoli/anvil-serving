@@ -275,6 +275,55 @@ must not expose internal paths or resolved transport values.
 - Shape/digest/identifier failures use invalid-contract; false policy flags use authorization-denied; unsupported platform/supervisor pairing uses unsupported-platform; target/runtime/node/adapter/protocol/catalog inconsistency uses precondition-failed. All messages are fixed and input-free. A later apply comparison uses topology-drift for changed topology, receiver-mismatch for changed receiver, digest-mismatch for changed artifact and precondition-failed for other plan drift, before any staging. T011 itself performs no apply, staging, identity probe or filesystem mutation.
 - Tests construct real parsed synthetic Windows/Linux topologies and resolve them through resolve_execution_plan before building. Prove equivalent inputs have identical plan hashes; each private target/root/receiver/artifact/policy/protocol/catalog change either changes identity or refuses; catalog order is canonical, duplicates/malformed IDs/missing bootstrap/257 entries refuse, and 256 valid entries succeed. Check constructor/builder reject individual override keywords, public dict and repr omit seeded private values, and existing manifest/bundle/receipt tests retain their behavior.
 
+### Fixed receiver request framing contract
+
+T004.1 is pure framing. It performs no receiver provisioning, target file read,
+bundle validation, staging, installation, transport or authorization decision.
+
+- Export ReceiverOperation with exactly identity, stage, activate, status and rollback. Frozen BootstrapReceiverFrame has operation, expected_node and optional operation_id, plan_sha256, target_config_sha256, bundle_sha256 and bundle_length; schema is fixed to anvil-serving.fleet-bootstrap-receiver-frame/v1. Direct constructors require exact enum/value types; from_dict requires exact primitive wire types and the exact operation-specific key set. Unknown keys, explicit nulls for omitted fields and Boolean integer substitutes refuse.
+- identity has exactly schema, operation and expected_node. stage additionally requires operation_id, plan_sha256, target_config_sha256, bundle_sha256 and bundle_length. activate/status/rollback additionally require operation_id, plan_sha256 and target_config_sha256, and forbid bundle fields. Reuse the existing canonical node, UUIDv4 and lowercase SHA-256 grammars. bundle_length is an exact integer from 1 through MAX_BUNDLE_BYTES.
+- encode_receiver_frame(frame, payload=b"") returns four-byte unsigned big-endian JSON length, canonical JSON bytes and stage payload. decode_receiver_frame(raw) returns the validated immutable frame and exact payload bytes. Both accept exact bytes, reject metadata lengths outside 1..4096 before JSON parsing, enforce canonical duplicate-free JSON through the existing decoder, and bound total input before slicing. Identity and non-stage requests have no trailing bytes; stage requires exactly bundle_length bytes, no truncation or trailing bytes.
+- The framing layer checks the outer payload SHA-256 against bundle_sha256 before returning or encoding stage bytes, using digest-mismatch on disagreement. It does not parse ZIP or install anything: structurally framed non-ZIP bytes are still subject to later validate_bundle. Malformed framing, wrong types, unknown fields and noncanonical JSON use invalid-contract with fixed input-free messages. to_dict serializes only the operation-specific allowlist, never object __dict__.
+- target_config_sha256 binds the trusted local target configuration independently of the opaque full plan hash. A transport first compares receiver identity and configuration digests against BootstrapPlan, then includes the expected configuration digest on every non-identity request. The receiver must re-read and compare it at each stage/activation mutation boundary. This closes configuration drift between identity preflight and upload. Controller stage additionally carries X-Anvil-Target-Config-SHA256 and applies the same pre-body check; later typed calls carry that digest with operation_id and plan_sha256.
+- Tests cover all five operation round trips, exact literal byte framing, 0/4097 metadata lengths, truncated header/JSON/payload, trailing data, duplicate keys, noncanonical JSON, invalid UTF-8, unknown operations/fields, explicit null/Boolean substitutions, UUID/digest/node bounds, maximum payload, digest mismatch, immutable values and no seeded private payload in errors. No filesystem/network/environment/mutation seam is called.
+
+### Receiver ownership and staging boundary
+
+The preprovisioned receiver is a deterministic self-contained Python ZIP
+application, not an import from the candidate wheel. Its byte-exact embedded
+fleet_bootstrap validator is the sole bundle validator. Candidate shim bytes
+remain inert before verification; candidate paths are never added to sys.path.
+
+Trusted local configuration is a fixed sibling of the receiver, canonical JSON
+bounded to 16 KiB. Its exact target-config/v1 fields are schema, expected_node,
+platform, staging_root, install_root, python_executable, receiver_path,
+receiver_sha256, install_adapter, supervisor_adapter, install_root_class,
+supervisor_id, bootstrap_enabled and bootstrap_authorized. The schema string is
+anvil-serving.fleet-bootstrap-target-config/v1. All values derive exactly from
+BootstrapPlan, with the target-config schema replacing the plan schema;
+bootstrap_target_config_sha256(plan) hashes that closed canonical domain.
+Neither a frame nor the candidate bundle supplies paths or local policy.
+
+A later receiver identity result must prove receiver_sha256 and
+target_config_sha256 plus bounded permission verdicts, without paths, owner IDs
+or ACL details. Inspect the same opened file identity while hashing and recheck
+identity before use. File ownership/permission checks are platform adapters,
+not stat UID guesses on Windows. Untrusted-writable, indeterminate or unsupported
+checks fail closed. Owner-writable local configuration is permitted; the receiver
+artifact itself must be owner-readonly. Ancestor owner write is not equivalent
+to an untrusted writer. Trusted administrator/root compromise is out of scope.
+
+Stage owns only operations/<canonical UUID> under the trusted staging root.
+Bind operation_id, plan_sha256, target_config_sha256, expected_node,
+bundle_sha256, bundle_length, manifest_sha256 and phase durably. Identical lost
+response retries may return/resume that bound operation; any identity mismatch
+refuses before writing. Validate all bundle and manifest identities plus local
+platform/adapters before a verified phase. Exact result framing, permission
+adapters, file-handle-safe staging and receiver packaging are closed before the
+remaining T004 implementation is dispatched; T004.1 depends only on the fully
+specified pure request contract above. They remain implementation prerequisites,
+not evidence of installed receiver availability.
+
 ## Code Map
 
 - `anvil_serving/topology.py::Host`, `Transport`, `Topology`, `validate_topology`, `load_topology`, and `topology_snapshot_identity` own declared host identity, transport policy, and stable drift detection.
@@ -471,13 +520,35 @@ Implement the Bootstrap plan identity contract above using only the two resolved
 - `python scripts/run_tests.py tests/test_fleet_bootstrap.py -x -q`
 - `python -m ruff check anvil_serving/fleet_bootstrap.py tests/test_fleet_bootstrap.py`
 
+### T004.1: Define bounded immutable receiver request frames
+
+**Feature:** F002
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/fleet_bootstrap.py, tests/test_fleet_bootstrap.py
+**Dependencies:** T002, T011
+
+Implement only the fixed receiver request framing contract above. Reuse canonical JSON, exact enum/identifier validators and existing fixed bootstrap errors. Keep the frame codec independent of target configuration I/O, ZIP parsing, authorization, transport and installation. The configuration digest is a required value on non-identity requests, not permission to choose target paths.
+
+**Acceptance criteria:**
+
+- All five operations round-trip through exact canonical length-prefixed bytes with only their closed fields and immutable validated values.
+- Length, type, canonical JSON, UUID, node and digest defects refuse with fixed metadata-safe errors before any side effect.
+- Stage requires exactly the declared bounded payload and matching SHA-256; non-stage requests forbid all trailing bytes.
+- Target configuration identity is mandatory on every non-identity request and cannot be replaced by an arbitrary path, command or environment field.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_fleet_bootstrap.py -x -q`
+- `python -m ruff check anvil_serving/fleet_bootstrap.py tests/test_fleet_bootstrap.py`
+
 ### T004: Implement the fixed receiver protocol and target validation
 
 **Feature:** F002
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/fleet_bootstrap.py, anvil_serving/control_plane/bootstrap_shim.py, tests/test_fleet_bootstrap.py
-**Dependencies:** T008, T011
+**Dependencies:** T008, T011, T004.1
 
 Implement the stdlib-only pinned receiver and fixed `identity|stage|activate|status|rollback` protocol. Every operation accepts only the closed framed metadata for operation ID, plan digest, and expected node; stage additionally binds the bundle digest/length and exact ZIP bytes. Install only after canonical manifest/archive/path/digest validation. This slice contains no network subprocess or controller endpoint wiring.
 
@@ -501,7 +572,7 @@ Implement the stdlib-only pinned receiver and fixed `identity|stage|activate|sta
 **Likely files:** anvil_serving/control_plane/controller/http.py, anvil_serving/control_plane/controller/server.py, tests/test_controller.py, tests/test_fleet_bootstrap.py
 **Dependencies:** T004, T009
 
-Add authenticated `POST /admin/bootstrap/stage` as a bounded `application/octet-stream` endpoint. Validate `node-admin:bootstrap`, local policy, expected node, exact Content-Length, UUID, plan digest, and bundle digest headers before reading the body; then call the fixed receiver contract.
+Add authenticated `POST /admin/bootstrap/stage` as a bounded `application/octet-stream` endpoint. Validate `node-admin:bootstrap`, local policy, expected node, exact Content-Length, UUID, plan digest, target configuration digest, and bundle digest headers before reading the body; then call the fixed receiver contract.
 
 **Acceptance criteria:**
 
@@ -529,7 +600,7 @@ Extract the existing hardened SSH argv construction and add the dedicated forced
 
 - Recovery uses literal declared endpoint/user/key, strict known-host checking, batch mode, no PTY/forwarding, bounded deadlines, and bounded output.
 - Wrong receiver digest/owner/permissions, an unpinned key/host identity, or an undeclared endpoint refuses before upload.
-- Non-stage frames contain operation ID, plan digest, and expected node and no trailing bytes; stage length must equal exact ZIP bytes.
+- Identity contains only its schema, operation and expected node; all other frames bind operation ID, plan digest and target configuration digest. Non-stage operations forbid trailing bytes, while stage length equals exact ZIP bytes.
 - Existing non-bootstrap SSH recovery behavior remains unchanged and no shell-string execution is introduced.
 
 **Verification:**
