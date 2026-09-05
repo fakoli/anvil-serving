@@ -366,6 +366,28 @@ It does not provision a receiver or claim an executable enrollment path.
 - The trusted local target config is named exactly `bootstrap-target.json` beside the receiver artifact. Later runtime code derives this sibling from the verified receiver file identity, never from cwd, environment, frame or bundle. T004.5 does not load it. Its contents, permissions and measured digest remain governed by the target-config and identity contracts above.
 - Tests build twice and compare exact bytes/digests, inspect all entry names/order/metadata/content, mutate one source byte and observe changed artifact identity, reject wrong types/empty/oversized/invalid UTF-8/NUL/syntax inputs without executing them, and run a temporary fixture receiver with the real embedded validator through `python -I -S <artifact>`. A poisoned working-directory/PYTHONPATH package must not load; the emitted frame must decode with the canonical result parser. Packaging that omits the validator or executes a copied package initializer must fail this isolated subprocess test. No installation, permission measurement, staging or supervisor action occurs.
 
+### Open-handle permission inspection contract
+
+T004.6 introduces the permission primitive in control_plane/bootstrap_shim.py.
+It does not implement main, open a path, read configuration, stage, or install.
+Keeping this stdlib-only primitive in the receiver module preserves the fixed
+five-entry self-contained package.
+
+- Export inspect_opened_permissions(descriptor: int, *, ancestor: bool = False) -> BootstrapPermissionVerdict. The descriptor must be an exact nonnegative int and ancestor an exact bool. Borrow, never close it; never read or alter its content/offset. Return only the existing enum, never identifiers, ACLs, paths or raw errors. An invalid/closed descriptor or unreadable/malformed security state returns indeterminate. Non-Windows/non-Linux returns unsupported.
+- The caller remains responsible for no-follow opening, anchoring every ancestor, same-handle hashing, before/after identity checks and repeated permission inspection at use boundaries. This primitive is a conservative snapshot, not an authorization grant or a race-free path capability. Ordinary inspection accepts only regular files/directories; ancestor=true requires a directory. Links/reparse objects, sockets, pipes and devices refuse as indeterminate.
+- On Linux, use fstat on that descriptor and current effective UID. Only that UID or UID 0 is a trusted owner. Another owner or any group/other write bit is untrusted-writable. For an ancestor directory only, a sticky bit with a trusted owner permits group/other write: the later anchored child must independently have a trusted owner. Owner write produces owner-writable; otherwise owner-readonly. Do not inspect Windows st_uid or treat access() as a permission proof. Linux ACL write grants are bounded by the group-class mode mask, so rejecting group write is deliberately conservative; do not remove ACLs or change permissions.
+- On Windows, use msvcrt.get_osfhandle, disk-file/type and reparse checks, and ctypes calls on the same handle. GetSecurityInfo with SE_FILE_OBJECT and OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION retrieves the owner/DACL; GetTokenInformation(TokenUser) retrieves the process user. Explicitly bind pointer-width-correct argtypes/restype, bound token/security-descriptor buffers to 64 KiB, ACL entries to 256 and each validated SID to 68 bytes. Copy internal SID bytes only; compare the current-user SID and the fixed LocalSystem/BUILTIN Administrators SIDs, never localized account names. Free every allocated descriptor/SID buffer and close only the token handle in finally blocks. Do not enable privileges or query SACLs.
+- Windows owner must be current user, LocalSystem or BUILTIN Administrators; any other owner is untrusted-writable. A missing/null DACL is untrusted-writable. Accept only structurally valid ordinary allow/deny ACEs with complete valid SIDs; an unknown/object/callback ACE or failed native query is indeterminate. INHERIT_ONLY_ACE does not apply to the opened object and is skipped only after bounded structural validation. Deny ACEs do not subtract grants: retaining an overlapping allow is an intentional conservative refusal, not a full Windows effective-access evaluator.
+- The Windows mutation mask is FILE_WRITE_DATA, FILE_APPEND_DATA, FILE_WRITE_EA, FILE_WRITE_ATTRIBUTES, FILE_DELETE_CHILD, DELETE, WRITE_DAC, WRITE_OWNER, GENERIC_WRITE and GENERIC_ALL. Any applicable allow to a SID outside the three trusted principals with one of these rights yields untrusted-writable. For ancestor=true only, exclude FILE_WRITE_DATA/FILE_APPEND_DATA (directory add-file/add-subdirectory) from that mask: creating a new sibling alone cannot replace the independently anchored trusted child. Unknown access bits refuse as indeterminate. An applicable data-write/append/EA/attribute or generic-write/all grant to current user or the actual owner yields owner-writable; otherwise owner-readonly. Administrative grants not belonging to the current user or actual owner do not change that verdict; trusted administration is already outside the threat model. The read-only attribute alone is never proof.
+- Separate bounded pure classification from the native snapshot seam so literal permission matrices execute on every OS. Cover trusted/untrusted owners, each mutation bit, readonly/writable, absent and empty DACL, deny-plus-allow, inherit-only, unknown ACE/mask, oversized counts and failed native calls. Add real platform tests: Linux fchmod on a temporary opened regular file; Windows set an explicit temporary-file DACL with native test-only APIs and inspect the real descriptor for owner read, owner write and Everyone write. Restore test ownership/permissions before temporary cleanup. No test mutates repository or operator ACLs; platform-specific tests skip only on the other OS. Run both in cross-platform CI before merge.
+
+API references: Microsoft documents handle-based security descriptors in
+[GetSecurityInfo](https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-getsecurityinfo),
+ACE access through [GetAce](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-getace),
+and token-user data through [GetTokenInformation](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-gettokeninformation).
+The conservative trust/mask rules above are Anvil policy, not a claim that these
+APIs solve path races.
+
 ## Code Map
 
 - `anvil_serving/topology.py::Host`, `Transport`, `Topology`, `validate_topology`, `load_topology`, and `topology_snapshot_identity` own declared host identity, transport policy, and stable drift detection.
@@ -673,13 +695,35 @@ Implement the pure packaging contract above using the existing deterministic ZIP
 - `python scripts/run_tests.py tests/test_bootstrap_package.py tests/test_fleet_bootstrap.py -x -q`
 - `python -m ruff check anvil_serving/control_plane/bootstrap_package.py tests/test_bootstrap_package.py`
 
+### T004.6: Inspect receiver permissions through the opened object
+
+**Feature:** F002
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/control_plane/bootstrap_shim.py, tests/test_bootstrap_permissions.py, .tickets/2026-09-05-bootstrap-receiver-ownership-contract.md
+**Dependencies:** T004.3, T004.5
+
+Implement the open-handle permission contract above with Linux and Windows adapters, bounded pure classification, fixed enum-only output and native resource cleanup. Mirror operator_config.py's pointer-width-safe handle APIs without importing that package-dependent module or copying its path-bearing error strings. This slice creates the receiver module but no executable main or request dispatcher. Record measured primitive coverage in the ownership ticket, not receiver availability.
+
+**Acceptance criteria:**
+
+- The same borrowed descriptor supplies native security evidence; content, position and ownership remain unchanged.
+- Every documented trust, grant, bound and native-failure case returns the exact conservative enum without private output.
+- Pure matrices run on every platform, and native temporary-file tests execute on their own OS.
+- No path lookup, subprocess, network, permission mutation, receiver dispatch or deployment occurs in production code.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_bootstrap_permissions.py tests/test_bootstrap_package.py tests/test_fleet_bootstrap.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/bootstrap_shim.py tests/test_bootstrap_permissions.py`
+
 ### T004: Implement the fixed receiver protocol and target validation
 
 **Feature:** F002
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/fleet_bootstrap.py, anvil_serving/control_plane/bootstrap_shim.py, tests/test_fleet_bootstrap.py
-**Dependencies:** T008, T011, T004.1, T004.2, T004.3, T004.4, T004.5
+**Dependencies:** T008, T011, T004.1, T004.2, T004.3, T004.4, T004.5, T004.6
 
 Implement the stdlib-only pinned receiver and fixed `identity|stage|activate|status|rollback` protocol. Every operation accepts only the closed framed metadata for operation ID, plan digest, and expected node; stage additionally binds the bundle digest/length and exact ZIP bytes. Install only after canonical manifest/archive/path/digest validation. This slice contains no network subprocess or controller endpoint wiring.
 
