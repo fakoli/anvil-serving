@@ -36,6 +36,8 @@ DEFAULT_TIMEOUT_SECONDS = 10.0
 MAX_TIMEOUT_SECONDS = 7260.0
 DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024
 MAX_RESPONSE_BYTES = 1024 * 1024
+# Explicit controller reads may carry bounded fleet snapshots; defaults stay small.
+MAX_CONTROLLER_RESPONSE_BYTES = 8 * 1024 * 1024
 
 # Null config path for the ssh CLI. Literal "/dev/null", not os.devnull: on Windows
 # os.devnull is "nul", which MSYS ssh (Git for Windows) rejects, while both MSYS ssh
@@ -353,7 +355,9 @@ class ControllerTransport:
         self.expected_node = expected_node
         self._node_verified = False
         self.timeout_seconds = _bounded_timeout(timeout_seconds)
-        self.max_response_bytes = _bounded_response_bytes(max_response_bytes)
+        self.max_response_bytes = _bounded_response_bytes(
+            max_response_bytes, maximum=MAX_CONTROLLER_RESPONSE_BYTES
+        )
         self._opener = opener or _urlopen_no_proxy_no_redirect
 
     def execute(
@@ -385,7 +389,7 @@ class ControllerTransport:
         limit = (
             self.max_response_bytes
             if max_response_bytes is None
-            else _bounded_response_bytes(max_response_bytes)
+            else _bounded_response_bytes(max_response_bytes, maximum=MAX_CONTROLLER_RESPONSE_BYTES)
         )
         if self.expected_node and not self._node_verified:
             self._verify_node(token, timeout)
@@ -512,7 +516,7 @@ class ControllerTransport:
         limit = (
             self.max_response_bytes
             if max_response_bytes is None
-            else _bounded_response_bytes(max_response_bytes)
+            else _bounded_response_bytes(max_response_bytes, maximum=MAX_CONTROLLER_RESPONSE_BYTES)
         )
         request = urllib.request.Request(
             self.endpoint + "/operations/" + urllib.parse.quote(key, safe=""),
@@ -1449,11 +1453,11 @@ def _bounded_timeout(value: float) -> float:
     return value
 
 
-def _bounded_response_bytes(value: int) -> int:
+def _bounded_response_bytes(value: int, *, maximum: int = MAX_RESPONSE_BYTES) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError("max_response_bytes must be an integer")
-    if value < 1 or value > MAX_RESPONSE_BYTES:
-        raise ValueError("max_response_bytes must be between 1 and %s" % MAX_RESPONSE_BYTES)
+    if value < 1 or value > maximum:
+        raise ValueError("max_response_bytes must be between 1 and %s" % maximum)
     return value
 
 

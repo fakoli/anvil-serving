@@ -295,6 +295,106 @@ def test_controller_transport_accepts_configured_response_above_default_bound():
     assert result.response_bytes == len(body)
 
 
+@pytest.mark.parametrize("method", ["constructor", "execute", "operation_status"])
+@pytest.mark.parametrize("limit", [1_048_577, 8_388_608])
+@pytest.mark.parametrize("overflow", [False, True])
+def test_controller_explicit_large_response_limit(method, limit, overflow):
+    status = method == "operation_status"
+    envelope = {"key": "probe-1", "status": "succeeded", "result": {}} if status else {
+        "ok": True, "data": {}
+    }
+    # Whitespace is valid JSON and lets the fixture set an exact wire-byte bound.
+    raw = json.dumps(envelope).encode("ascii")
+    raw += b" " * (limit + int(overflow) - len(raw))
+    reads = []
+
+    class MeasuredResponse(Response):
+        def read(self, amount=None):
+            reads.append(amount)
+            return super().read(amount)
+
+    transport = transports.ControllerTransport(
+        "http://127.0.0.1:8765", auth_env="TOKEN",
+        allowed_operations=["router-status"], environment={"TOKEN": TOKEN},
+        opener=lambda request, timeout: MeasuredResponse(raw),
+        **({"max_response_bytes": limit} if method == "constructor" else {}),
+    )
+
+    def run():
+        if status:
+            return transport.operation_status("probe-1", max_response_bytes=limit)
+        return transport.execute(
+            transports.Operation("router-status", {}),
+            **({"max_response_bytes": limit} if method == "execute" else {}),
+        )
+
+    if overflow:
+        with pytest.raises(transports.TransportError) as exc:
+            run()
+        assert exc.value.code == "response_too_large"
+        assert exc.value.execution_state == "partial_result"
+        assert exc.value.details["max_response_bytes"] == limit
+    else:
+        result = run()
+        assert result.data == envelope
+        assert result.response_bytes == limit
+    assert reads == [limit + 1]
+
+
+@pytest.mark.parametrize("method", ["constructor", "execute", "operation_status"])
+@pytest.mark.parametrize("limit", [8_388_609, True, False, 1.5, 0, -1])
+def test_controller_rejects_invalid_explicit_bounds_without_http(method, limit):
+    def run():
+        transport = transports.ControllerTransport(
+            "http://127.0.0.1:8765", auth_env="TOKEN",
+            allowed_operations=["router-status"], environment={"TOKEN": TOKEN},
+            opener=lambda *args, **kwargs: pytest.fail("invalid bound opened HTTP"),
+            **({"max_response_bytes": limit} if method == "constructor" else {}),
+        )
+        if method == "execute":
+            transport.execute(transports.Operation("router-status", {}), max_response_bytes=limit)
+        elif method == "operation_status":
+            transport.operation_status("probe-1", max_response_bytes=limit)
+
+    with pytest.raises(ValueError, match="max_response_bytes"):
+        run()
+
+
+def test_transport_defaults_and_non_controller_caps_remain_unchanged(tmp_path):
+    from anvil_serving.observability.workloads import MAX_JSON_BYTES
+
+    assert transports.DEFAULT_MAX_RESPONSE_BYTES == 65_536
+    assert transports.MAX_RESPONSE_BYTES == 1_048_576
+    assert transports.MAX_CONTROLLER_RESPONSE_BYTES == MAX_JSON_BYTES == 8_388_608
+    known_hosts, fingerprint = _known_host(tmp_path)
+    identity = _identity(tmp_path)
+
+    def local(**kwargs):
+        return transports.LocalTransport({"router-status": lambda args: {}}, **kwargs)
+
+    def ssh(**kwargs):
+        return transports.SSHRecoveryTransport(
+            "ssh://100.64.0.10", adapters={"controller-recovery": ["recover"]},
+            known_hosts_path=known_hosts, host_key_fingerprint=fingerprint,
+            identity_file=identity, **kwargs,
+        )
+
+    for factory in (local, ssh):
+        assert factory().max_response_bytes == 65_536
+        assert factory(max_response_bytes=1_048_576).max_response_bytes == 1_048_576
+        with pytest.raises(ValueError, match="between 1 and 1048576"):
+            factory(max_response_bytes=1_048_577)
+    controller = transports.ControllerTransport(
+        "http://127.0.0.1:8765", auth_env="TOKEN", allowed_operations=["router-status"],
+        environment={"TOKEN": TOKEN},
+        opener=lambda request, timeout: Response(b" " * 65_537),
+    )
+    assert controller.max_response_bytes == 65_536
+    with pytest.raises(transports.TransportError) as exc:
+        controller.execute(transports.Operation("router-status", {}))
+    assert exc.value.code == "response_too_large"
+
+
 @pytest.mark.parametrize("body", [b"{}", b'{"ok":"yes"}'])
 def test_controller_transport_rejects_missing_or_malformed_ok(body):
     transport = transports.ControllerTransport(
