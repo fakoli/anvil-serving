@@ -397,6 +397,13 @@ class WorkloadRecord:
         source = _normalize_datetime(self.source_timestamp, field="workload.source_timestamp")
         if created > updated:
             raise _invalid("workload.created_at cannot follow workload.updated_at")
+        if self.owner in _STORE_OWNERS and updated > source:
+            raise _invalid("workload.updated_at cannot follow workload.source_timestamp")
+        # Managed lifecycle timestamps can come from a different component
+        # clock. Preserve its documented skew allowance, not an extra receipt
+        # allowance: node/fleet composition checks every timestamp again.
+        if self.owner in _MANAGED_OWNERS and updated - source > timedelta(seconds=MAX_FUTURE_SECONDS):
+            raise WorkloadError(WorkloadErrorCode.FUTURE, "managed workload timestamp is too far beyond observation")
         object.__setattr__(self, "created_at", created)
         object.__setattr__(self, "updated_at", updated)
         object.__setattr__(self, "source_timestamp", source)
@@ -508,6 +515,7 @@ class NodeResult:
             for record in source.records:
                 if record.host != self.host:
                     raise _invalid("source record host does not match node host")
+                _validate_record_time(record, collected)
             total += len(source.records)
             if total > AGGREGATE_LIMIT:
                 raise _invalid("node records exceed the aggregate bound")
@@ -541,6 +549,12 @@ class FleetResult:
             hosts.add(node.host)
             if node.collection_timestamp - collected > timedelta(seconds=MAX_FUTURE_SECONDS):
                 raise WorkloadError(WorkloadErrorCode.FUTURE, "node collection timestamp is too far in the future")
+            # Provenance clocks do not grant another skew allowance per layer.
+            for source in node.sources:
+                if source.collection_timestamp - collected > timedelta(seconds=MAX_FUTURE_SECONDS):
+                    raise WorkloadError(WorkloadErrorCode.FUTURE, "source collection timestamp is too far in the future")
+                for record in source.records:
+                    _validate_record_time(record, collected)
             total += sum(len(source.records) for source in node.sources)
             if total > AGGREGATE_LIMIT:
                 raise _invalid("fleet records exceed the aggregate bound")

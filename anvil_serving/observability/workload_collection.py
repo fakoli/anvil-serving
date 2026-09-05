@@ -229,6 +229,11 @@ def _validated_source(
         host=host,
         collection_timestamp=collection_timestamp,
     )
+    # Source time is provenance, not authority to extend trusted receipt skew.
+    # Refuse at this source boundary so healthy sibling owners survive.
+    validate_source_records(
+        records, owner=owner, host=host, collection_timestamp=now,
+    )
     selected, selection = select_records(records, query, now=now)
     if selected != records or selection.omitted != 0:
         raise _refuse("workload source result does not satisfy the query")
