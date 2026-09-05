@@ -80,3 +80,24 @@ Negative controls reproduced late-cleanup success, scope-check bypass, and
 generic/static shadowing respectively. Workload UI implementation and its
 executable Node harness continue separately. All these candidates remain
 `needs_review`; the older full-suite baseline does not cover them.
+
+The CLI global-classification repair at `450a6b8a` (`EV9C79282C`) passed
+122 documentation tests with 6 skips and 369 CLI tests. The generated-reference
+refresh at `a009e171` (`EV2B1FB460`) scanned 955 files with zero violations at
+that immutable checkpoint and passed 122 documentation tests with 6 skips.
+Scheduler methodology candidate `f7fd7f3b` (`EVA9CF1FD1`) passed 1,133 router
+tests and a 6,937-test full suite with 10 skips. Permission primitive candidate
+`7fda2abc` (`EVDEDBBD59`) later passed 476 tests with 2 Linux-only skips and
+changes the inventory inputs, so this task does not overwrite the generated
+inventory. These are historical candidate checkpoints, not proof for the
+current tree. Final formal acceptance, CI, merge, package publication and live
+deployment remain pending.
+
+Whole-PRD source run at `f0a369b2` passed its 219-test focused gate and
+1,133-test router gate, then found 33 manifest-fixture failures (6,974 passed,
+14 skipped). The real file mtimes had passed the test's frozen clock; the
+future-timestamp quarantine was behaving correctly. The separately ticketed
+fixture repair `42d5eb3d` (`EV041BA0C3`) passed 139 focused tests and Ruff,
+and its 30/31-second boundary rejected a deliberately weakened guard. It is
+integrated for a fresh complete source run. The failed run remains recorded;
+neither a focused repair nor local integration supplies formal acceptance.
