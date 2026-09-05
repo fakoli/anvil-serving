@@ -851,7 +851,7 @@ transport context may be returned.
 
 **Feature:** F003
 **Priority:** high
-**Type:** fix
+**Type:** bugfix
 **Likely files:** anvil_serving/observability/workload_collection.py, tests/observability/test_workload_collection.py
 **Dependencies:** T012.3
 
