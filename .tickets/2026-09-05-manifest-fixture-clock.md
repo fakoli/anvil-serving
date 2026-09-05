@@ -1,6 +1,6 @@
 # Freeze filesystem time alongside the manifest test clock
 
-Status: reproduced; test-fixture repair pending.
+Status: source candidate repaired; complete source rerun pending.
 
 Full source verification at f0a369b2 produced 33 failures in
 tests/test_manifest_workloads.py after real UTC time passed its frozen
@@ -15,5 +15,9 @@ Pin test-only file mtimes, including regular siblings, relative to the injected
 clock. Retain explicit future-file overrides and add the exact 30/31-second
 boundary with a valid peer. Do not change production timestamp guards, replace
 the fixed clock with wall-clock time, or move the fixed date farther ahead.
-Candidate repair tests and the complete source rerun remain pending, as do
-consolidated acceptance and deployment.
+The candidate pins primary and regular sibling fixtures to 22:00 UTC, while
+intentional future timestamps remain explicit overrides. All 139 focused
+manifest tests and Ruff pass. The new real-file 30/31-second boundary test
+rejects a deliberately weakened 31-second guard in an isolated process.
+Production code is unchanged. The complete source rerun, consolidated
+acceptance and deployment remain pending.
