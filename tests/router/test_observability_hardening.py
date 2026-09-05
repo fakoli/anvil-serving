@@ -15,6 +15,8 @@ from anvil_serving.router.availability import AvailabilityResult, HttpHealthAvai
 from anvil_serving.router.config import ReplicaIdentity, ReplicaMember, load
 from anvil_serving.router.decision_log import DecisionLog, DecisionLogWriter, decision_line
 from anvil_serving.router.internal import InternalRequest, Message, estimate_tokens
+from anvil_serving.router.model_capacity import MetricsSnapshot
+from anvil_serving.router.replica_scheduler import ReplicaDecisionReason
 from anvil_serving.router.serve import NoAvailableTierError, ReplicaRuntime, RoutingBackend, build_server
 
 
@@ -239,20 +241,21 @@ class _DecisionReadiness:
         )
 
 
-def _replica_decisions(tmp_path, mode="success"):
+def _replica_decisions(tmp_path, mode="success", *, capacity=False, capacity_cap=2):
     # Mirror test_backends' actual ReplicaRuntime + compound TierAdmission path.
     config = load(_config(tmp_path))
     tier = replace(
         config.tiers[0], base_url="", model_identity=True,
         replicas=tuple(ReplicaMember(
             member, f"http://127.0.0.1:{31001 + index}/v1",
-            "node-a", f"resource-{index}", "qualification:a",
+            "node-a", f"resource-{index}", "qualification:a", capacity_cap if capacity else None,
         ) for index, member in enumerate(("member-a", "member-b"))),
         replica_identity=ReplicaIdentity(
             "revision-private", "engine-private", "sha256:" + "1" * 64,
             "sha256:" + "2" * 64,
         ),
         max_output_tokens=8 if mode == "clamped" else None,
+        replica_strategy="capacity" if capacity else "round_robin",
     )
     config = replace(config, tiers=(tier,))
     members = {"member-a": _DecisionMember(mode), "member-b": _DecisionMember("success")}
@@ -261,6 +264,10 @@ def _replica_decisions(tmp_path, mode="success"):
     log = DecisionLog(sink=DecisionLogWriter(str(path)))
     routing = RoutingBackend(
         config, {tier.id: ReplicaRuntime(members)}, availability=readiness, decision_log=log,
+        capacity_metrics=(
+            (lambda _tier: MetricsSnapshot("unavailable", {}, "metrics_missing"))
+            if capacity else None
+        ),
     )
     request = InternalRequest(
         model="llm.primary", messages=[Message("user", "prompt-secret")],
@@ -351,3 +358,70 @@ def test_router_does_not_stamp_an_undeclared_member_or_caller_metadata(tmp_path)
     assert log.last.replica_member_id is None
     assert log.last.replica_selection == "request_rejected"
     assert log.last.attempts == ()
+
+
+@pytest.mark.parametrize("mode", ["success", "eager", "first_stream", "mid_stream", "close_before", "close_after"])
+def test_capacity_replica_terminal_records_retain_one_pre_reservation_decision(tmp_path, mode):
+    routing, log, _, request, members, _ = _replica_decisions(
+        tmp_path, mode, capacity=True,
+    )
+    if mode in {"eager", "first_stream", "mid_stream"}:
+        with pytest.raises(_PrivateProviderError):
+            list(routing.generate(request))
+    elif mode == "close_before":
+        stream = routing.generate(request)
+        stream.close()
+    elif mode == "close_after":
+        stream = routing.generate(request)
+        assert next(stream) == "response-secret"
+        stream.close()
+    else:
+        assert list(routing.generate(request)) == ["response-secret"]
+    record = log.last
+    decision = record.replica_scheduler
+    assert decision is not None
+    assert decision.reason is ReplicaDecisionReason.SELECTED
+    assert decision.selected_member_id == record.replica_member_id == "member-a"
+    assert decision.scores[0].local_numerator == 0
+    assert decision.scores[0].local_denominator == 2
+    assert members["member-a"].calls == 1
+    assert members["member-b"].calls == 0
+
+
+def test_capacity_exhaustion_and_semantic_refusal_do_not_fabricate_scheduler_evidence(tmp_path):
+    routing, log, _, request, members, _ = _replica_decisions(
+        tmp_path, capacity=True, capacity_cap=1,
+    )
+    first = routing.generate(request)
+    second = routing.generate(request)
+    assert next(first) == "response-secret"
+    assert next(second) == "response-secret"
+    try:
+        with pytest.raises(NoAvailableTierError):
+            list(routing.generate(request))
+        exhausted = log.last
+        assert exhausted.replica_selection == "not_admitted"
+        assert exhausted.replica_scheduler is None
+        assert exhausted.attempts == ()
+        assert sum(member.calls for member in members.values()) == 2
+    finally:
+        first.close()
+        second.close()
+
+    semantic_request = InternalRequest(
+        model="llm.primary", messages=[Message("user", "x" * 20_000)], raw={},
+    )
+    with pytest.raises(NoAvailableTierError):
+        list(routing.generate(semantic_request))
+    assert log.last.replica_selection == "request_rejected"
+    assert log.last.replica_scheduler is None
+
+
+def test_capacity_scheduler_ignores_caller_supplied_raw_spoofing(tmp_path):
+    routing, log, _, request, _, _ = _replica_decisions(tmp_path, capacity=True)
+    request.raw["replica_scheduler"] = {"private-token": "http://100.64.0.10"}
+    assert list(routing.generate(request)) == ["response-secret"]
+    assert log.last.replica_scheduler is not None
+    rendered = repr(log.last) + repr(log.summary()) + decision_line(log.last)
+    assert "private-token" not in rendered
+    assert "100.64.0.10" not in rendered
